@@ -55,7 +55,7 @@ STD_JSON = STD_JSON_RESPONSE
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
 )
 def create_url(
-    utub_id: int, current_utub: Utubs, validated_request: CreateURLRequest
+    utub_id: int, current_utub: Utubs, create_url_request: CreateURLRequest
 ) -> FlaskResponse:
     """
     User wants to add URL to UTub. On success, adds the URL to the UTub.
@@ -64,8 +64,8 @@ def create_url(
         utub_id (int): The Utubs to add this URL to
     """
     return create_url_in_utub(
-        url_string=validated_request.urlString,
-        url_title=validated_request.urlTitle,
+        url_string=create_url_request.urlString,
+        url_title=create_url_request.urlTitle,
         current_utub=current_utub,
     )
 
@@ -114,7 +114,7 @@ def update_url(
     utub_url_id: int,
     current_utub: Utubs,
     current_utub_url: Utub_Urls,
-    validated_request: UpdateURLStringRequest,
+    update_url_string_request: UpdateURLStringRequest,
 ) -> FlaskResponse:
     """
     Allows a user to update a URL without updating the title.
@@ -135,7 +135,7 @@ def update_url(
         )
 
     return update_url_in_utub(
-        url_string=validated_request.urlString,
+        url_string=update_url_string_request.urlString,
         current_utub=current_utub,
         current_utub_url=current_utub_url,
     )
@@ -154,7 +154,7 @@ def update_url_title(
     utub_url_id: int,
     current_utub: Utubs,
     current_utub_url: Utub_Urls,
-    validated_request: UpdateURLTitleRequest,
+    update_url_title_request: UpdateURLTitleRequest,
 ) -> FlaskResponse:
     """
     Allows a user to update a URL title without updating the url.
@@ -175,7 +175,7 @@ def update_url_title(
         )
 
     return update_url_title_if_new(
-        new_url_title=validated_request.urlTitle,
+        new_url_title=update_url_title_request.urlTitle,
         current_utub=current_utub,
         current_utub_url=current_utub_url,
     )

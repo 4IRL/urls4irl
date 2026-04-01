@@ -88,6 +88,10 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 
 1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
 
+### TMPDIR Usage
+
+When writing to `$TMPDIR`, never use parameter substitution syntax (`${TMPDIR}filename`). Always use `"$TMPDIR/filename"` with an explicit `/` separator and double quotes.
+
 ## Build Verification
 
 After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.

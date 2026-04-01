@@ -32,7 +32,7 @@ utub_tags = Blueprint("utub_tags", __name__)
     error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
 )
 def create_utub_tag(
-    utub_id: int, current_utub: Utubs, validated_request: AddTagRequest
+    utub_id: int, current_utub: Utubs, add_tag_request: AddTagRequest
 ) -> FlaskResponse:
     """
     User wants to add a tag to a UTub.
@@ -40,10 +40,10 @@ def create_utub_tag(
     Args:
         utub_id (int): The tag is being added to UTub with this ID
         current_utub (Utubs): The UTub model being added to
-        validated_request (AddTagRequest): Validated request schema
+        add_tag_request (AddTagRequest): Validated request schema
     """
     return create_tag_in_utub(
-        tag_string=validated_request.tagString, current_utub=current_utub
+        tag_string=add_tag_request.tagString, current_utub=current_utub
     )
 
 

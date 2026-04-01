@@ -104,9 +104,9 @@ def home() -> str | WerkzeugResponse:
     error_message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
 )
-def create_utub(validated_request: CreateUTubRequest) -> FlaskResponse:
+def create_utub(create_u_tub_request: CreateUTubRequest) -> FlaskResponse:
     return create_new_utub(
-        validated_request.utubName, validated_request.utubDescription
+        create_u_tub_request.utubName, create_u_tub_request.utubDescription
     )
 
 
@@ -141,7 +141,7 @@ def get_utubs() -> FlaskResponse:
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
 )
 def update_utub_name(
-    utub_id: int, current_utub: Utubs, validated_request: UpdateUTubNameRequest
+    utub_id: int, current_utub: Utubs, update_u_tub_name_request: UpdateUTubNameRequest
 ) -> FlaskResponse:
     """
     Creator wants to update their UTub name.
@@ -150,7 +150,7 @@ def update_utub_name(
     Args:
         utub_id (int): The ID of the UTub that will have its name updated
     """
-    return update_utub_name_if_new(current_utub, validated_request.utubName)
+    return update_utub_name_if_new(current_utub, update_u_tub_name_request.utubName)
 
 
 @utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
@@ -162,7 +162,9 @@ def update_utub_name(
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
 )
 def update_utub_desc(
-    utub_id: int, current_utub: Utubs, validated_request: UpdateUTubDescriptionRequest
+    utub_id: int,
+    current_utub: Utubs,
+    update_u_tub_description_request: UpdateUTubDescriptionRequest,
 ) -> FlaskResponse:
     """
     Creator wants to update their UTub description.
@@ -171,7 +173,9 @@ def update_utub_desc(
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    return update_utub_desc_if_new(current_utub, validated_request.utubDescription)
+    return update_utub_desc_if_new(
+        current_utub, update_u_tub_description_request.utubDescription
+    )
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])

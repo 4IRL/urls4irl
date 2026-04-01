@@ -5,7 +5,7 @@ from flask import Flask
 from pydantic import BaseModel
 
 from backend import limiter
-from backend.api_common.parse_request import api_route
+from backend.api_common.parse_request import _schema_name_to_kwarg, api_route
 from backend.contact.routes import contact
 from backend.members.routes import members
 from backend.schemas.base import BaseSchema
@@ -74,8 +74,8 @@ def minimal_app():
         error_message="Invalid input",
         error_code=1,
     )
-    def test_with_body(validated_request: LoginRequest):
-        return {"username": validated_request.username}, 200
+    def test_with_body(login_request: LoginRequest):
+        return {"username": login_request.username}, 200
 
     @flask_app.route("/test-no-body", methods=["GET"])
     @api_route()
@@ -89,8 +89,8 @@ def minimal_app():
         error_message="Invalid input",
         error_code=1,
     )
-    def test_with_response(validated_request: LoginRequest):
-        return {"username": validated_request.username}, 200
+    def test_with_response(login_request: LoginRequest):
+        return {"username": login_request.username}, 200
 
     return flask_app
 
@@ -114,7 +114,7 @@ def test_api_route_valid_body_injects_validated_request(minimal_app: Flask):
     """
     GIVEN a route decorated with @api_route that requires a request body
     WHEN the request has a valid JSON body
-    THEN validated_request is injected and the route returns 200
+    THEN the schema-derived kwarg (login_request) is injected and the route returns 200
     """
     with minimal_app.test_client() as client:
         response = client.post(
@@ -335,3 +335,33 @@ def test_api_route_schema_stashed_on_all_migrated_routes(
     view_fn = real_app_with_all_blueprints.view_functions[endpoint_name]
     assert view_fn._api_route_request_schema is expected_request_schema
     assert view_fn._api_route_response_schema is expected_response_schema
+
+
+def test_api_route_raises_when_route_missing_derived_kwarg():
+    """
+    GIVEN @api_route with request_schema=LoginRequest
+    WHEN the decorated function does not declare a 'login_request' parameter
+    THEN a ValueError is raised indicating the required parameter name
+    """
+    with pytest.raises(ValueError, match="must declare a 'login_request' parameter"):
+
+        @api_route(
+            request_schema=LoginRequest,
+            error_message="Invalid input",
+            error_code=1,
+        )
+        def bad_route():
+            pass
+
+
+def test_schema_name_to_kwarg_conversions():
+    """
+    GIVEN various schema classes with CamelCase names
+    WHEN _schema_name_to_kwarg is called
+    THEN the names are correctly converted to snake_case
+    """
+    assert _schema_name_to_kwarg(LoginRequest) == "login_request"
+    assert _schema_name_to_kwarg(CreateURLRequest) == "create_url_request"
+    assert _schema_name_to_kwarg(AddMemberRequest) == "add_member_request"
+    assert _schema_name_to_kwarg(CreateUTubRequest) == "create_u_tub_request"
+    assert _schema_name_to_kwarg(ContactRequest) == "contact_request"

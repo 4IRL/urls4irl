@@ -1,4 +1,6 @@
 from __future__ import annotations
+import inspect
+import re
 from functools import wraps
 from typing import Callable, Type, TypeVar
 
@@ -17,6 +19,23 @@ from backend.schemas.errors import (
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
 
+def _schema_name_to_kwarg(schema_cls: Type[BaseModel]) -> str:
+    """Convert a schema class name from CamelCase to snake_case for kwarg injection.
+
+    Examples::
+
+        LoginRequest        → login_request
+        CreateURLRequest    → create_url_request
+        AddMemberRequest    → add_member_request
+    """
+    name = schema_cls.__name__
+    # Insert underscore between lowercase/digit and uppercase
+    snake = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
+    # Insert underscore between consecutive uppercase letters followed by lowercase
+    snake = re.sub(r"([A-Z]+)([A-Z][a-z])", r"\1_\2", snake)
+    return snake.lower()
+
+
 def api_route(
     *,
     request_schema: Type[SchemaT] | None = None,
@@ -28,8 +47,9 @@ def api_route(
     declaration for API routes.
 
     When ``request_schema`` is provided, parses the JSON body, validates it, and
-    injects the result as a ``validated_request`` kwarg. Returns 400 on missing
-    body or validation failure.
+    injects the result as a kwarg whose name is derived from the schema class
+    (e.g. ``LoginRequest`` → ``login_request``). Returns 400 on missing body or
+    validation failure.
 
     When ``request_schema`` is ``None``, skips body parsing entirely (useful for
     GET/DELETE routes).
@@ -52,7 +72,20 @@ def api_route(
                 f"(got request_schema={request_schema.__name__})"
             )
 
+    kwarg_name: str | None = (
+        _schema_name_to_kwarg(request_schema) if request_schema is not None else None
+    )
+
     def decorator(route_fn: Callable) -> Callable:
+        if kwarg_name is not None:
+            fn_params = set(inspect.signature(route_fn).parameters.keys())
+            if kwarg_name not in fn_params:
+                raise ValueError(
+                    f"Route '{route_fn.__name__}' must declare a '{kwarg_name}' "
+                    f"parameter to receive the validated "
+                    f"{request_schema.__name__} body"
+                )
+
         @wraps(route_fn)
         def wrapper(*args, **kwargs):
             if request_schema is not None:
@@ -66,9 +99,7 @@ def api_route(
                         status_code=400,
                     )
                 try:
-                    kwargs["validated_request"] = request_schema.model_validate(
-                        json_body
-                    )
+                    kwargs[kwarg_name] = request_schema.model_validate(json_body)
                 except ValidationError as validation_error:
                     user_id = getattr(current_user, "id", "unknown")
                     field_errors = pydantic_errors_to_dict(validation_error)
@@ -81,6 +112,7 @@ def api_route(
                     )
             return route_fn(*args, **kwargs)
 
+        # Stashed for OpenAPI schema generation via route introspection.
         wrapper._api_route_request_schema = request_schema
         wrapper._api_route_response_schema = response_schema
         return wrapper

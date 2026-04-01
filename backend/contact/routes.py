@@ -33,5 +33,5 @@ def contact_us() -> str:
     f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day",
     methods=["POST"],
 )
-def submit_contact_us(validated_request: ContactRequest) -> FlaskResponse:
-    return validate_and_contact(validated_request.subject, validated_request.content)
+def submit_contact_us(contact_request: ContactRequest) -> FlaskResponse:
+    return validate_and_contact(contact_request.subject, contact_request.content)

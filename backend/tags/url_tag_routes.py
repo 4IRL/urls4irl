@@ -35,7 +35,7 @@ def create_utub_url_tag(
     utub_url_id: int,
     current_utub: Utubs,
     current_utub_url: Utub_Urls,
-    validated_request: AddTagRequest,
+    add_tag_request: AddTagRequest,
 ) -> FlaskResponse:
     """
     User wants to add a tag to a URL. 5 tags per URL.
@@ -45,10 +45,10 @@ def create_utub_url_tag(
         utub_url_id (int): The URL this user wants to add a tag to
         current_utub (Utubs): The UTub model
         current_utub_url (Utub_Urls): The URL model
-        validated_request (AddTagRequest): Validated request schema
+        add_tag_request (AddTagRequest): Validated request schema
     """
     return add_tag_to_url_if_valid(
-        tag_string=validated_request.tagString,
+        tag_string=add_tag_request.tagString,
         utub=current_utub,
         utub_url=current_utub_url,
     )

@@ -41,7 +41,7 @@ def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskRespo
     error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
 )
 def create_member(
-    utub_id: int, current_utub: Utubs, validated_request: AddMemberRequest
+    utub_id: int, current_utub: Utubs, add_member_request: AddMemberRequest
 ) -> FlaskResponse:
     """
     Creator of utub wants to add a user to the utub.
@@ -50,5 +50,5 @@ def create_member(
         utub_id (int): The utub to which this user is being added
     """
     return create_utub_member(
-        username=validated_request.username, current_utub=current_utub
+        username=add_member_request.username, current_utub=current_utub
     )
