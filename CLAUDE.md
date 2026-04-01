@@ -88,9 +88,9 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 
 1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
 
-### TMPDIR Usage
+### Test Output Location
 
-When writing to `$TMPDIR`, never use parameter substitution syntax (`${TMPDIR}filename`). Always use `"$TMPDIR/filename"` with an explicit `/` separator and double quotes.
+Always write test output to `/tmp/claude/` (e.g., `/tmp/claude/test-foo-results.txt`). Never use `$TMPDIR` — it resolves to different directories depending on sandbox mode, causing files written in one tool call to be invisible in the next. Never use project-level directories for test output.
 
 ## Build Verification
 
@@ -120,7 +120,7 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 
 ### Docker Execution Note
 
-**CRITICAL:** All `docker` and `docker compose` commands must be run outside sandbox mode due to Docker socket access requirements. Always use `dangerouslyDisableSandbox: true` when running Docker commands.
+**CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
 
 ### Running the App (Docker - recommended)
 

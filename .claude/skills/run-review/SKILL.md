@@ -57,7 +57,8 @@ Important overrides for this run:
 - Do NOT pause at the end to ask the user — complete the full workflow (apply change, validate, review, fix, cross off item) and return your final report.
 - Commit the changes using /git-commit before returning. Follow all CLAUDE.md guidelines for commits.
 - Follow all CLAUDE.md guidelines.
-- Use dangerouslyDisableSandbox: true for Docker/make commands only. Never for git commands.
+- CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true. Never for git commands.
+  Example: Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)
 ```
 
 The subagent handles the entire workflow internally:
@@ -93,9 +94,12 @@ If the completed item changed frontend code (JS, templates, CSS) or test locator
 ```
 Run a quick UI smoke test against built assets. Execute:
   make test-ui-parallel-built n=2
-Write the full test output to $TMPDIR/smoke-test-review-item-N.txt.
+Write the full test output to /tmp/claude/smoke-test-review-item-N.txt.
 Report: total passed, total failed. If failures, include test names and error summaries.
-Use dangerouslyDisableSandbox: true for make commands.
+
+CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true.
+Example:
+  Bash(command: "make test-ui-parallel-built n=2 > \"/tmp/claude/smoke-test-review-item-N.txt\" 2>&1", dangerouslyDisableSandbox: true)
 ```
 
 If the smoke test fails, enter the **Test Fix Loop** (Section 2e) before continuing.
@@ -111,7 +115,7 @@ After each item, re-read the review file to:
 
 When any test run (smoke test or validation) reports failures:
 
-1. **Test runner subagent** writes full output to a temp file (`$TMPDIR/<descriptive-name>.txt`)
+1. **Test runner subagent** writes full output to a temp file (`/tmp/claude/<descriptive-name>.txt`)
 2. **Main agent reads the temp file** to understand failure count and patterns
 3. **Fix subagent** is spawned with:
    ```
@@ -121,7 +125,10 @@ When any test run (smoke test or validation) reports failures:
    <include user decisions if any were provided>
    After fixing, run `make vite-build` and `make test-js` to verify JS changes (if applicable).
    Do NOT run the full test suite — just implement fixes.
-   Use dangerouslyDisableSandbox: true for Docker/make commands only.
+
+   CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true.
+   Example:
+     Bash(command: "make vite-build > \"/tmp/claude/vite-build.txt\" 2>&1", dangerouslyDisableSandbox: true)
    ```
 4. **Spawn a commit subagent** to commit the fixes using `/git-commit`
 5. **Re-run test subagent** writes output to a new temp file
@@ -133,8 +140,8 @@ When any test run (smoke test or validation) reports failures:
 When all items are done:
 
 1. **Run the relevant test suite via subagents** — sequentially, never simultaneously:
-   - Spawn integration test subagent: `make test-integration-parallel`. Write output to `$TMPDIR/final-integration-results.txt`.
-   - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `$TMPDIR/final-ui-results.txt`.
+   - Spawn integration test subagent: `make test-integration-parallel`. Write output to `/tmp/claude/final-integration-results.txt`.
+   - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `/tmp/claude/final-ui-results.txt`.
    - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
    - Main agent reads each result file to determine pass/fail.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
@@ -170,7 +177,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Main agent CAN**: read the review file, read temp test output files, run `git diff --name-only`, spawn subagents, re-read the review between items, and report progress.
 - **Commits happen inside the execution subagent** — the subagent runs `/git-commit` as part of its workflow. The main agent does not commit directly.
 - **Each subagent runs the full /next-step-taker review mode workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
-- **Test output goes to temp files** — test runner subagents write output to `$TMPDIR/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
+- **Test output goes to temp files** — test runner subagents write output to `/tmp/claude/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
 - **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.
 - **Review item ordering** — process items in the order they appear in the review file. Do not reorder or parallelize, as later items may depend on earlier fixes.
 - When stopping on a blocker, report: which item failed, what was tried, what needs user input.

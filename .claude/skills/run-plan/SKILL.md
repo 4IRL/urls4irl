@@ -77,9 +77,12 @@ If the completed step changed frontend code (JS, templates, CSS) or test locator
 ```
 Run a quick UI smoke test against built assets. Execute:
   make test-ui-parallel-built n=2
-Write the full test output to $TMPDIR/smoke-test-step-N.txt.
+Write the full test output to /tmp/claude/smoke-test-step-N.txt.
 Report: total passed, total failed. If failures, include test names and error summaries.
-Use dangerouslyDisableSandbox: true for make commands.
+
+CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true.
+Example:
+  Bash(command: "make test-ui-parallel-built n=2 > \"/tmp/claude/smoke-test-step-N.txt\" 2>&1", dangerouslyDisableSandbox: true)
 ```
 
 If the smoke test fails, enter the **Test Fix Loop** (Section 2e) before committing. If it passes, proceed to commit.
@@ -100,7 +103,7 @@ Never use dangerouslyDisableSandbox for git commands.
 
 When any test run (smoke test, final suite, or step validation) reports failures:
 
-1. **Test runner subagent** writes full output to a temp file (`$TMPDIR/<descriptive-name>.txt`)
+1. **Test runner subagent** writes full output to a temp file (`/tmp/claude/<descriptive-name>.txt`)
 2. **Main agent reads the temp file** to understand failure count and patterns
 3. **Fix subagent** is spawned with:
    ```
@@ -110,7 +113,10 @@ When any test run (smoke test, final suite, or step validation) reports failures
    <include user decisions if any were provided>
    After fixing, run `make vite-build` and `make test-js` to verify JS changes.
    Do NOT run the full test suite — just implement fixes.
-   Use dangerouslyDisableSandbox: true for Docker/make commands only.
+
+   CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true.
+   Example:
+     Bash(command: "make vite-build > \"/tmp/claude/vite-build.txt\" 2>&1", dangerouslyDisableSandbox: true)
    ```
 4. **Re-run test subagent** writes output to a new temp file
 5. **Repeat** up to 3 iterations. If failures persist after 3 rounds, stop and report to user.
@@ -121,9 +127,10 @@ When any test run (smoke test, final suite, or step validation) reports failures
 When all steps are done or the plan is marked finished:
 
 1. **Run the full test suite via subagents** — sequentially, never simultaneously:
-   - Spawn integration test subagent: `make test-integration-parallel`. Write output to `$TMPDIR/final-integration-results.txt`.
-   - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `$TMPDIR/final-ui-results.txt`.
+   - Spawn integration test subagent: `make test-integration-parallel`. Write output to `/tmp/claude/final-integration-results.txt`.
+   - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `/tmp/claude/final-ui-results.txt`.
    - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
+   - **CRITICAL:** Tell each test subagent that every Bash call running `make` or `docker` MUST set `dangerouslyDisableSandbox: true`. Include an example: `Bash(command: "make test-integration-parallel > \"/tmp/claude/final-integration-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`.
    - Main agent reads each result file to determine pass/fail.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
 3. **Clean up** all temp test output files.
@@ -156,7 +163,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Main agent is orchestrator only** — never directly edit implementation files, run tests, run make commands, or make code changes. ALL execution (code changes, tests, builds, make targets) MUST be delegated to subagents. This includes the final test suite in Step 3.
 - **Main agent CAN**: read the plan, read temp test output files, run `git diff --name-only`, spawn subagents (including commit subagents), re-read the plan between steps, and report progress. **Main agent CANNOT** invoke `/git-commit` directly — it must always be delegated to a subagent.
 - **Each subagent runs the full /next-step-taker workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
-- **Test output goes to temp files** — test runner subagents write output to `$TMPDIR/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
+- **Test output goes to temp files** — test runner subagents write output to `/tmp/claude/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
 - **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.
 - If a step modifies the plan itself (e.g., adds sub-steps), the main agent re-reads the plan before continuing.
 - When stopping on a blocker, report: which step failed, what was tried, what needs user input.
