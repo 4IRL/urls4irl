@@ -94,6 +94,15 @@ If the commit fails due to pre-commit hooks:
 
 5. **Report to user** - Summarize what was fixed and complete the commit
 
+### 5. Append Changelog Entry
+
+After a successful commit, append a changelog entry per the global CLAUDE.md instructions:
+
+1. **Run `date '+%m-%d-%Y %H:%M'`** to get the current date and time — this is **mandatory**, never skip it or assume the date from context/filenames
+2. Use the `MM-DD-YYYY` portion for the changelog filename (`changelog/MM-DD-YYYY-changelog.md`)
+3. Use the `HH:MM` portion for the entry timestamp
+4. Append a `- [HH:MM] git-commit: <summary>` entry
+
 ## Important Notes
 
 - Never use `--no-verify` to bypass pre-commit hooks unless explicitly requested
