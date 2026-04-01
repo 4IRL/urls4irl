@@ -1278,7 +1278,7 @@ def test_update_url_title_missing_title_field_log(
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
     WHEN the creator attempts to modify the URL title with no JSON body, via a PATCH to:
         "/utubs/<int:utub_id>/urls/<int:url_id>/title"
-    THEN the server sends back a 400 HTTP status code and parse_json_body logs the missing body
+    THEN the server sends back a 400 HTTP status code and @api_route logs the missing body
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 
@@ -1317,7 +1317,7 @@ def test_update_url_title_empty_title_field_log(
     WHEN the creator attempts to modify the URL title with an empty title field, via a PATCH to:
         "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.URL_TITLE: Empty string
-    THEN the server sends back a 400 HTTP status code and parse_json_body logs the validation failure
+    THEN the server sends back a 400 HTTP status code and @api_route logs the validation failure
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 

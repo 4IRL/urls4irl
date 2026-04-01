@@ -72,6 +72,10 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 
 This project is primarily Python with some JavaScript/HTML/CSS. When editing Python code, verify constant names, decorator types (`@model_validator` vs `@field_validator`), and imports against the actual codebase before making changes.
 
+### Import Style
+
+Always use top-level (global) imports. Never use local imports (inside functions, methods, or conditional blocks) unless the user explicitly requests it as a design decision — no exceptions.
+
 ### Import Ordering
 
 Imports are sorted into three groups, each alphabetized internally, separated by a blank line:
@@ -83,6 +87,10 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 ### General
 
 1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
+
+### TMPDIR Usage
+
+When writing to `$TMPDIR`, never use parameter substitution syntax (`${TMPDIR}filename`). Always use `"$TMPDIR/filename"` with an explicit `/` separator and double quotes.
 
 ## Build Verification
 

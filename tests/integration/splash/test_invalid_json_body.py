@@ -1,6 +1,6 @@
 """Integration tests for invalid/missing JSON bodies on splash POST routes.
 
-Verifies that the @parse_json_body decorator correctly returns 400 responses
+Verifies that the @api_route decorator correctly returns 400 responses
 when JSON is missing entirely, empty, or missing required fields.
 """
 

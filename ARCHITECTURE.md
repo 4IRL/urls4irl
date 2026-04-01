@@ -45,7 +45,7 @@ Pydantic models for request parsing and response serialization used by the AJAX 
 - `@utub_membership_required` - requires membership in target UTub
 - `@xml_http_request_only` - AJAX only (`X-Requested-With: XMLHttpRequest`)
 - `@no_authenticated_users_allowed` - splash pages (logged-out only)
-- **`backend/api_common/parse_request.py`** - `@parse_json_body(schema, message, error_code)`: validates `request.get_json()` against a Pydantic schema and injects a `validated_request` kwarg into the route handler; returns 400 with `errors` dict on missing body or validation failure.
+- **`backend/api_common/parse_request.py`** - `@api_route(request_schema, response_schema, error_message, error_code)`: unified decorator for API routes. When `request_schema` is provided, validates `request.get_json()` against a Pydantic schema and injects a kwarg named after the schema (e.g. `LoginRequest` → `login_request`); returns 400 on missing body or validation failure. `response_schema` declares the expected response type for future OpenAPI generation.
 
 ## Models (`backend/models/`)
 

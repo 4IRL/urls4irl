@@ -86,7 +86,7 @@ Collect all 7 subagent responses. Parse each verdict:
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
-git -c credential.helper="" push "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
+git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
 ```
 
 This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
@@ -161,7 +161,7 @@ Example:
 ### To-Do: Required Changes
 
 - [ ] **Extract `_register_json` to shared helper** — `tests/integration/splash/test_email_validation.py`, `tests/integration/splash/test_register_user.py` — Move the duplicated `_register_json()` function to `tests/integration/splash/conftest.py` and import from there in both test files
-- [ ] **Add `ForgotPasswordErrorCodes` enum** — `backend/splash/constants.py`, `backend/splash/routes.py` — Create `ForgotPasswordErrorCodes(IntEnum)` with `INVALID_FORM_INPUT = 1` and use it in the `@parse_json_body` decorator call for the forgot-password route instead of bare `error_code=1`
+- [ ] **Add `ForgotPasswordErrorCodes` enum** — `backend/splash/constants.py`, `backend/splash/routes.py` — Create `ForgotPasswordErrorCodes(IntEnum)` with `INVALID_FORM_INPUT = 1` and use it in the `@api_route` decorator call for the forgot-password route instead of bare `error_code=1`
 ```
 
 After writing, inform the user:

@@ -2650,7 +2650,7 @@ def test_update_url_with_invalid_form_log(
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
     WHEN a member attempts to modify URL but gives no JSON body via a PATCH to
         "/utubs/<int:utub_id>/urls/<int:url_id>"
-    THEN verify the server sends back a 400 HTTP status code and parse_json_body logs the missing body
+    THEN verify the server sends back a 400 HTTP status code and @api_route logs the missing body
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 

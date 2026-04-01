@@ -4,13 +4,14 @@ from backend.api_common.auth_decorators import (
     utub_creator_required,
     utub_membership_required,
 )
-from backend.api_common.parse_request import parse_json_body
+from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.members.constants import UTubMembersErrorCodes
 from backend.members.services.create_members import create_utub_member
 from backend.members.services.delete_members import remove_member_or_self_from_utub
 from backend.models.utubs import Utubs
 from backend.schemas.requests.members import AddMemberRequest
+from backend.schemas.users import MemberModifiedResponseSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE
 
 members = Blueprint("members", __name__)
@@ -18,6 +19,7 @@ members = Blueprint("members", __name__)
 
 @members.route("/utubs/<int:utub_id>/members/<int:user_id>", methods=["DELETE"])
 @utub_membership_required
+@api_route(response_schema=MemberModifiedResponseSchema)
 def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Remove a user from a Utubs. The creator of the Utubs can remove anyone but themselves.
@@ -32,13 +34,14 @@ def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskRespo
 
 @members.route("/utubs/<int:utub_id>/members", methods=["POST"])
 @utub_creator_required
-@parse_json_body(
-    AddMemberRequest,
-    message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
+@api_route(
+    request_schema=AddMemberRequest,
+    response_schema=MemberModifiedResponseSchema,
+    error_message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
     error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
 )
 def create_member(
-    utub_id: int, current_utub: Utubs, validated_request: AddMemberRequest
+    utub_id: int, current_utub: Utubs, add_member_request: AddMemberRequest
 ) -> FlaskResponse:
     """
     Creator of utub wants to add a user to the utub.
@@ -47,5 +50,5 @@ def create_member(
         utub_id (int): The utub to which this user is being added
     """
     return create_utub_member(
-        username=validated_request.username, current_utub=current_utub
+        username=add_member_request.username, current_utub=current_utub
     )

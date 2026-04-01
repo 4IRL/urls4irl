@@ -1845,7 +1845,7 @@ def test_add_url_invalid_form_log(
         added to the database and all URLs added to each UTub
     WHEN the user tries to add a previously added URL to a UTub they are a part of with missing form data
         - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
-    THEN ensure that the server responds with a 400 HTTP status code and parse_json_body logs the validation failure
+    THEN ensure that the server responds with a 400 HTTP status code and @api_route logs the validation failure
     """
     client, csrf_token, user, app = login_first_user_without_register
 

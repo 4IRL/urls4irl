@@ -13,13 +13,21 @@ from backend.api_common.auth_decorators import (
     utub_membership_required,
     xml_http_request_only,
 )
-from backend.api_common.parse_request import parse_json_body
+from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utubs import Utubs
 from backend.schemas.requests.utubs import (
     CreateUTubRequest,
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
+)
+from backend.schemas.users import UtubSummaryListSchema
+from backend.schemas.utubs import (
+    UtubCreatedResponseSchema,
+    UtubDeletedResponseSchema,
+    UtubDescUpdatedResponseSchema,
+    UtubDetailSchema,
+    UtubNameUpdatedResponseSchema,
 )
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
 from backend.utubs.constants import UTubErrorCodes
@@ -90,20 +98,22 @@ def home() -> str | WerkzeugResponse:
 
 @utubs.route("/utubs", methods=["POST"])
 @email_validation_required
-@parse_json_body(
-    CreateUTubRequest,
-    message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
+@api_route(
+    request_schema=CreateUTubRequest,
+    response_schema=UtubCreatedResponseSchema,
+    error_message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
 )
-def create_utub(validated_request: CreateUTubRequest) -> FlaskResponse:
+def create_utub(create_utub_request: CreateUTubRequest) -> FlaskResponse:
     return create_new_utub(
-        validated_request.utubName, validated_request.utubDescription
+        create_utub_request.utubName, create_utub_request.utubDescription
     )
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["GET"])
 @xml_http_request_only
 @utub_membership_required
+@api_route(response_schema=UtubDetailSchema)
 def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Retrieves data for a single UTub, and returns it in a serialized format
@@ -114,6 +124,7 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
 @utubs.route("/utubs", methods=["GET"])
 @xml_http_request_only
 @email_validation_required
+@api_route(response_schema=UtubSummaryListSchema)
 def get_utubs() -> FlaskResponse:
     """
     User wants a summary of their UTubs in JSON format.
@@ -123,13 +134,14 @@ def get_utubs() -> FlaskResponse:
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
 @utub_creator_required
-@parse_json_body(
-    UpdateUTubNameRequest,
-    message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
+@api_route(
+    request_schema=UpdateUTubNameRequest,
+    response_schema=UtubNameUpdatedResponseSchema,
+    error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
 )
 def update_utub_name(
-    utub_id: int, current_utub: Utubs, validated_request: UpdateUTubNameRequest
+    utub_id: int, current_utub: Utubs, update_utub_name_request: UpdateUTubNameRequest
 ) -> FlaskResponse:
     """
     Creator wants to update their UTub name.
@@ -138,18 +150,21 @@ def update_utub_name(
     Args:
         utub_id (int): The ID of the UTub that will have its name updated
     """
-    return update_utub_name_if_new(current_utub, validated_request.utubName)
+    return update_utub_name_if_new(current_utub, update_utub_name_request.utubName)
 
 
 @utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
 @utub_creator_required
-@parse_json_body(
-    UpdateUTubDescriptionRequest,
-    message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
+@api_route(
+    request_schema=UpdateUTubDescriptionRequest,
+    response_schema=UtubDescUpdatedResponseSchema,
+    error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
 )
 def update_utub_desc(
-    utub_id: int, current_utub: Utubs, validated_request: UpdateUTubDescriptionRequest
+    utub_id: int,
+    current_utub: Utubs,
+    update_utub_description_request: UpdateUTubDescriptionRequest,
 ) -> FlaskResponse:
     """
     Creator wants to update their UTub description.
@@ -158,11 +173,14 @@ def update_utub_desc(
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    return update_utub_desc_if_new(current_utub, validated_request.utubDescription)
+    return update_utub_desc_if_new(
+        current_utub, update_utub_description_request.utubDescription
+    )
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
 @utub_creator_required
+@api_route(response_schema=UtubDeletedResponseSchema)
 def delete_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained

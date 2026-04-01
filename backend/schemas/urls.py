@@ -86,6 +86,11 @@ class UrlDeletedResponseSchema(BaseSchema):
     tag_counts_modified: dict[int, int] = Field(alias=TAG_COUNTS_MODIFIED)
 
 
+# Kept distinct from UrlTitleUpdatedResponseSchema for OpenAPI schema generation.
+class UrlReadResponseSchema(BaseSchema):
+    url: UtubUrlDetailSchema = Field(alias=M.URL)
+
+
 class UrlTitleUpdatedResponseSchema(BaseSchema):
     url: UtubUrlDetailSchema = Field(alias=M.URL)
 

@@ -807,7 +807,7 @@ def test_add_user_to_utub_invalid_log(
     """
     GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
     WHEN the user wants to add a user to their UTub by POST to "/utubs/<int:utub_id>/members" with an invalid form
-    THEN ensure that the backend responds with a 400 HTTP status code and parse_json_body logs the validation failure
+    THEN ensure that the backend responds with a 400 HTTP status code and @api_route logs the validation failure
     """
     client, csrf_token, user, app = login_first_user_without_register
 
