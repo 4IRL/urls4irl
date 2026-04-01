@@ -231,9 +231,9 @@ Base path: `/utubs/<utub_id>/urls`
 |---|---|
 | **Handler** | `backend/urls/routes.py:get_url` |
 | **Decorators** | `@xml_http_request_only`, `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema)` |
-| **Service** | `APIResponse()` direct |
+| **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
 | **JS Module** | `frontend/home/urls/cards/get.js`, also called from `update-string.js`, `update-title.js`, `delete.js`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
-| **Tests** | `tests/integration/urls/test_get_url_in_utub_route.py` (marker: `urls`) |
+| **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
 
 ### PATCH /utubs/\<utub_id\>/urls/\<utub_url_id\>
 

@@ -6,10 +6,7 @@ from backend.api_common.auth_decorators import (
     xml_http_request_only,
 )
 from backend.api_common.parse_request import api_route
-from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.app_logger import (
-    safe_add_many_logs,
-)
+from backend.api_common.responses import FlaskResponse
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
@@ -24,7 +21,6 @@ from backend.schemas.urls import (
     UrlReadResponseSchema,
     UrlTitleUpdatedResponseSchema,
     UrlUpdatedResponseSchema,
-    UtubUrlDetailSchema,
 )
 from backend.urls.constants import URLErrorCodes
 from backend.urls.services.create_urls import create_url_in_utub
@@ -32,13 +28,14 @@ from backend.urls.services.delete_urls import (
     check_if_is_url_adder_or_utub_creator_on_url_delete,
     delete_url_in_utub,
 )
+from backend.urls.services.read_urls import get_url_in_utub
 from backend.urls.services.update_url_titles import update_url_title_if_new
 from backend.urls.services.update_urls import (
     check_if_is_url_adder_or_utub_creator_on_url_update,
     update_url_in_utub,
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
-from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from backend.utils.strings.url_strs import URL_FAILURE
 
 urls = Blueprint("urls", __name__)
 
@@ -86,19 +83,11 @@ def get_url(
         utub_url_id (int): The URL ID to be modified
     """
 
-    safe_add_many_logs(
-        [
-            "Retrieved URL",
-            f"UTub.id={utub_id}",
-            f"UTubURL.id={utub_url_id}",
-        ]
+    return get_url_in_utub(
+        utub_id=utub_id,
+        utub_url_id=utub_url_id,
+        current_utub_url=current_utub_url,
     )
-    return APIResponse(
-        message=URL_SUCCESS.URL_FOUND_IN_UTUB,
-        data=UrlReadResponseSchema(
-            url=UtubUrlDetailSchema.from_orm_url(current_utub_url),
-        ),
-    ).to_response()
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
