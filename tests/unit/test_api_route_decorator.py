@@ -354,6 +354,25 @@ def test_api_route_raises_when_route_missing_derived_kwarg():
             pass
 
 
+def test_api_route_succeeds_with_mixed_positional_and_injected_params():
+    """
+    GIVEN @api_route with request_schema=LoginRequest
+    WHEN the decorated function has URL path params before the schema kwarg
+    THEN decoration succeeds without ValueError
+    """
+
+    @api_route(
+        request_schema=LoginRequest,
+        error_message="Invalid input",
+        error_code=1,
+    )
+    def route_with_path_params(utub_id: int, login_request: LoginRequest):
+        pass
+
+    assert hasattr(route_with_path_params, "_api_route_request_schema")
+    assert route_with_path_params._api_route_request_schema is LoginRequest
+
+
 def test_schema_name_to_kwarg_conversions():
     """
     GIVEN various schema classes with CamelCase names
@@ -362,6 +381,12 @@ def test_schema_name_to_kwarg_conversions():
     """
     assert _schema_name_to_kwarg(LoginRequest) == "login_request"
     assert _schema_name_to_kwarg(CreateURLRequest) == "create_url_request"
+    assert _schema_name_to_kwarg(UpdateURLStringRequest) == "update_url_string_request"
     assert _schema_name_to_kwarg(AddMemberRequest) == "add_member_request"
     assert _schema_name_to_kwarg(CreateUTubRequest) == "create_u_tub_request"
+    assert _schema_name_to_kwarg(UpdateUTubNameRequest) == "update_u_tub_name_request"
+    assert (
+        _schema_name_to_kwarg(UpdateUTubDescriptionRequest)
+        == "update_u_tub_description_request"
+    )
     assert _schema_name_to_kwarg(ContactRequest) == "contact_request"
