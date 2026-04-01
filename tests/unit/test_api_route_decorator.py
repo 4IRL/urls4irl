@@ -383,10 +383,10 @@ def test_schema_name_to_kwarg_conversions():
     assert _schema_name_to_kwarg(CreateURLRequest) == "create_url_request"
     assert _schema_name_to_kwarg(UpdateURLStringRequest) == "update_url_string_request"
     assert _schema_name_to_kwarg(AddMemberRequest) == "add_member_request"
-    assert _schema_name_to_kwarg(CreateUTubRequest) == "create_u_tub_request"
-    assert _schema_name_to_kwarg(UpdateUTubNameRequest) == "update_u_tub_name_request"
+    assert _schema_name_to_kwarg(CreateUTubRequest) == "create_utub_request"
+    assert _schema_name_to_kwarg(UpdateUTubNameRequest) == "update_utub_name_request"
     assert (
         _schema_name_to_kwarg(UpdateUTubDescriptionRequest)
-        == "update_u_tub_description_request"
+        == "update_utub_description_request"
     )
     assert _schema_name_to_kwarg(ContactRequest) == "contact_request"

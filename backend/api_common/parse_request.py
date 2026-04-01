@@ -26,9 +26,12 @@ def _schema_name_to_kwarg(schema_cls: Type[BaseModel]) -> str:
 
         LoginRequest        → login_request
         CreateURLRequest    → create_url_request
+        CreateUTubRequest   → create_utub_request
         AddMemberRequest    → add_member_request
     """
     name = schema_cls.__name__
+    # Normalize product name "UTub" to "Utub" so it converts as a single word
+    name = name.replace("UTub", "Utub")
     # Insert underscore between lowercase/digit and uppercase
     snake = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", name)
     # Insert underscore between consecutive uppercase letters followed by lowercase
