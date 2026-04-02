@@ -69,7 +69,7 @@ Delegate to a subagent:
 
 #### Subagent Guidelines:
 - Use the Agent tool with a clear, self-contained prompt
-- The subagent must use `dangerouslyDisableSandbox: true` for all Docker commands
+- CRITICAL: The subagent must set `dangerouslyDisableSandbox: true` on every Bash call that runs `make` or `docker`. Include an example in the subagent prompt: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
 - The subagent must activate the virtualenv: `source /code/venv/bin/activate`
 - The subagent should use `make` targets when available (preferred over raw docker commands)
 - Never run two test suites simultaneously (they share a single test DB)
@@ -271,9 +271,9 @@ Launch a single fix subagent via the Agent tool. It receives:
 The fix subagent must:
 1. Read the relevant files
 2. Apply fixes for each finding
-3. Re-validate using the appropriate method:
-   - **JavaScript/Frontend changes**: Run `make vite-build` (with `dangerouslyDisableSandbox: true`)
-   - **Python changes**: Run the relevant test marker via `make test-marker-parallel m=<marker>` (with `dangerouslyDisableSandbox: true`, activate venv first)
+3. Re-validate using the appropriate method (CRITICAL: every Bash call running `make` or `docker` MUST set `dangerouslyDisableSandbox: true`):
+   - **JavaScript/Frontend changes**: Run `make vite-build` — example: `Bash(command: "make vite-build > \"/tmp/claude/vite-build.txt\" 2>&1", dangerouslyDisableSandbox: true)`
+   - **Python changes**: Run the relevant test marker via `make test-marker-parallel m=<marker>` — example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
    - **Template changes**: Verify Flask container starts without errors
 4. Return a structured response:
 
@@ -292,7 +292,7 @@ UNRESOLVED:
 If the fix subagent reports `VALIDATION: FAIL` or has `UNRESOLVED` items, the main agent must surface these to the user in the report step and ask for guidance before proceeding.
 
 ### Subagent Guidelines (applies to all 4 subagents)
-- Use `dangerouslyDisableSandbox: true` for all Docker commands
+- CRITICAL: Set `dangerouslyDisableSandbox: true` on every Bash call that runs `make` or `docker`. Example: `Bash(command: "make vite-build > \"/tmp/claude/vite-build.txt\" 2>&1", dangerouslyDisableSandbox: true)`
 - Activate the virtualenv in Docker: `source /code/venv/bin/activate`
 - Use `make` targets when available (preferred over raw docker commands)
 - Never run two test suites simultaneously (they share a single test DB)
@@ -306,6 +306,6 @@ If the fix subagent reports `VALIDATION: FAIL` or has `UNRESOLVED` items, the ma
 - **Always review via subagents**: The Subagent Review Pipeline is mandatory before reporting to the user
 - **Always update tracking**: Mark progress after every step/item completion
 - **Always pause**: Never auto-continue to next step without user confirmation
-- **Use dangerouslyDisableSandbox: true** for all Docker commands
+- **CRITICAL: Set `dangerouslyDisableSandbox: true`** on every Bash call running `make` or `docker`
 - **Follow existing patterns**: Read code before making changes
 - **Clean up**: Remove debug code, console.logs, window globals per CLAUDE.md

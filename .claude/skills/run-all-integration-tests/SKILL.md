@@ -1,6 +1,6 @@
 ---
 name: run-all-integration-tests
-description: Run ALL non-UI tests (integration and unit tests) for URLS4IRL in parallel. Use when asked to run all integration tests, run the full test suite excluding UI tests, or verify all backend/unit tests pass. Records failures to tmp/ with timestamped files; cleans up on full success.
+description: Run ALL non-UI tests (integration and unit tests) for URLS4IRL in parallel. Use when asked to run all integration tests, run the full test suite excluding UI tests, or verify all backend/unit tests pass. Records failures to /tmp/claude/ with timestamped files; cleans up on full success.
 ---
 
 # Run All Integration Tests
@@ -12,17 +12,16 @@ Run all non-UI tests in parallel using `make test-integration-parallel`, recordi
 ### 1. Setup
 
 ```bash
-mkdir -p tmp
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
-OUTPUT_FILE="tmp/INTEGRATION_${TIMESTAMP}_output.txt"
-FAILURE_FILE="tmp/INTEGRATION_${TIMESTAMP}_failures.txt"
+OUTPUT_FILE="/tmp/claude/INTEGRATION_${TIMESTAMP}_output.txt"
+FAILURE_FILE="/tmp/claude/INTEGRATION_${TIMESTAMP}_failures.txt"
 ```
 
 ### 2. Run All Tests in Parallel (preferred)
 
 Capture all output to the raw output file:
 ```bash
-make test-integration-parallel 2>&1 | tee "$OUTPUT_FILE"
+make test-integration-parallel > "$OUTPUT_FILE" 2>&1
 ```
 
 This runs all non-UI markers (`unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`) in parallel within a single pytest invocation. Default `-n 4` workers.
@@ -32,7 +31,7 @@ This runs all non-UI markers (`unit`, `splash`, `utubs`, `members`, `urls`, `tag
 Markers in order: `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`
 
 ```bash
-docker compose --project-directory . -f docker/compose.local.yaml exec web bash -c "source /code/venv/bin/activate && python -m pytest -m 'MARKER'" 2>&1 | tee -a "$OUTPUT_FILE"
+docker compose --project-directory . -f docker/compose.local.yaml exec web bash -c "source /code/venv/bin/activate && python -m pytest -m 'MARKER'" >> "$OUTPUT_FILE" 2>&1
 ```
 
 - Wait for each suite to complete before starting the next
