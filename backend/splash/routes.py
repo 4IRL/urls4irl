@@ -187,6 +187,7 @@ def reset_password_page(token: str) -> WerkzeugResponse | str:
     request_schema=ResetPasswordRequest,
     error_message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
     error_code=ResetPasswordErrorCodes.INVALID_FORM_INPUT,
+    ajax_required=False,
 )
 def reset_password(
     token: str, reset_password_request: ResetPasswordRequest
