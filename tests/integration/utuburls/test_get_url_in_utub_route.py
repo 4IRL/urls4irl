@@ -232,6 +232,7 @@ def test_get_url_in_utub_non_ajax_request(
             utub_id=UTUB_ID,
             utub_url_id=valid_url_in_utub.id,
         ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: "not-ajax"},
     )
 
     assert get_url_response.status_code == 302
@@ -383,6 +384,10 @@ def test_get_url_not_ajax_log(
             utub_id=utub_creator_of.id,
             utub_url_id=url_id_in_utub,
         ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: "not-ajax"},
     )
 
     assert get_url_response.status_code == 302
+    assert is_string_in_logs(
+        f"User={user.id} did not make an AJAX request", caplog.records
+    )

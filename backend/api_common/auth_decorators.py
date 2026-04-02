@@ -1,5 +1,5 @@
 from typing import Callable
-from flask import abort, g, request, session, url_for, redirect
+from flask import abort, g, redirect, session, url_for
 from flask_login import login_required, current_user
 from functools import wraps
 
@@ -16,24 +16,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.email_validation_strs import EMAILS
-from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE
-
-
-def xml_http_request_only(func: Callable) -> Callable:
-    """Ensures JSON not viewed in browser by verifying the request is an XMLHTTPRequest"""
-
-    @wraps(func)
-    def decorated_view(*args, **kwargs):
-        if (
-            request.headers.get(URL_VALIDATION.X_REQUESTED_WITH, None)
-            != URL_VALIDATION.XMLHTTPREQUEST
-        ):
-            warning_log(f"User={current_user.id} did not make an AJAX request")
-            return redirect(url_for(ROUTES.UTUBS.HOME))
-        return func(*args, **kwargs)
-
-    return decorated_view
 
 
 def no_authenticated_users_allowed(func: Callable) -> Callable:

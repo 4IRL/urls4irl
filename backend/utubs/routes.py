@@ -11,7 +11,6 @@ from backend.api_common.auth_decorators import (
     email_validation_required,
     utub_creator_required,
     utub_membership_required,
-    xml_http_request_only,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
@@ -111,7 +110,6 @@ def create_utub(create_utub_request: CreateUTubRequest) -> FlaskResponse:
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["GET"])
-@xml_http_request_only
 @utub_membership_required
 @api_route(response_schema=UtubDetailSchema)
 def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
@@ -122,7 +120,6 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
 
 
 @utubs.route("/utubs", methods=["GET"])
-@xml_http_request_only
 @email_validation_required
 @api_route(response_schema=UtubSummaryListSchema)
 def get_utubs() -> FlaskResponse:

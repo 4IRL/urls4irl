@@ -3,7 +3,6 @@ from flask import Blueprint
 from backend.api_common.auth_decorators import (
     utub_membership_required,
     utub_membership_with_valid_url_in_utub_required,
-    xml_http_request_only,
 )
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
@@ -68,7 +67,6 @@ def create_url(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["GET"])
-@xml_http_request_only
 @utub_membership_with_valid_url_in_utub_required
 @api_route(response_schema=UrlReadResponseSchema)
 def get_url(

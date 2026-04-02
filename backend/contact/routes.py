@@ -28,6 +28,7 @@ def contact_us() -> str:
     request_schema=ContactRequest,
     error_message="Unable to submit contact form.",
     error_code=1,
+    ajax_required=False,
 )
 @limiter.limit(
     f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day",

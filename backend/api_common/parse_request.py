@@ -4,7 +4,7 @@ import re
 from functools import wraps
 from typing import Callable, Type, TypeVar
 
-from flask import request
+from flask import redirect, request, url_for
 from flask_login import current_user
 from pydantic import BaseModel, ValidationError
 
@@ -15,6 +15,8 @@ from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -45,6 +47,7 @@ def api_route(
     response_schema: Type[BaseSchema] | None = None,
     error_message: str | None = None,
     error_code: int | None = None,
+    ajax_required: bool = True,
 ) -> Callable:
     """Unified decorator that handles request body validation and response schema
     declaration for API routes.
@@ -91,6 +94,15 @@ def api_route(
 
         @wraps(route_fn)
         def wrapper(*args, **kwargs):
+            if ajax_required:
+                if (
+                    request.headers.get(URL_VALIDATION.X_REQUESTED_WITH, None)
+                    != URL_VALIDATION.XMLHTTPREQUEST
+                ):
+                    user_id = getattr(current_user, "id", "unknown")
+                    warning_log(f"User={user_id} did not make an AJAX request")
+                    return redirect(url_for(ROUTES.UTUBS.HOME))
+
             if request_schema is not None:
                 json_body = request.get_json(silent=True)
                 if json_body is None:
@@ -118,6 +130,7 @@ def api_route(
         # Stashed for OpenAPI schema generation via route introspection.
         wrapper._api_route_request_schema = request_schema
         wrapper._api_route_response_schema = response_schema
+        wrapper._api_route_ajax_required = ajax_required
         return wrapper
 
     return decorator
