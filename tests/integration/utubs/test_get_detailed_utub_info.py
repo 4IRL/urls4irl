@@ -369,6 +369,7 @@ def test_get_valid_utub_without_ajax_request_logs(
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: "not-ajax"},
     )
 
     assert response.status_code == 302

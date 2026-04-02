@@ -224,6 +224,7 @@ def test_get_utubs_without_ajax_request(
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: "not-ajax"},
     )
 
     assert response.status_code == 302
@@ -264,6 +265,7 @@ def test_get_utubs_without_ajax_request_logs(
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: "not-ajax"},
     )
 
     assert response.status_code == 302

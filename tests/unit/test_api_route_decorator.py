@@ -1,7 +1,8 @@
+import logging
 from typing import Type
 
 import pytest
-from flask import Flask
+from flask import Blueprint, Flask
 from pydantic import BaseModel
 
 from backend import limiter
@@ -57,7 +58,10 @@ from backend.system.routes import system
 from backend.tags.url_tag_routes import utub_url_tags
 from backend.tags.utub_tag_routes import utub_tags
 from backend.urls.routes import urls
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.routes import utubs
+
+AJAX_HEADER = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
 
 pytestmark = pytest.mark.unit
 
@@ -67,6 +71,15 @@ def minimal_app():
     """Minimal Flask app with test routes decorated by @api_route."""
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
+
+    # Register a stub utubs blueprint so url_for("utubs.home") resolves
+    utubs_bp = Blueprint("utubs", __name__)
+
+    @utubs_bp.route("/home")
+    def home():
+        return "home", 200
+
+    flask_app.register_blueprint(utubs_bp)
 
     @flask_app.route("/test-with-body", methods=["POST"])
     @api_route(
@@ -92,6 +105,11 @@ def minimal_app():
     def test_with_response(login_request: LoginRequest):
         return {"username": login_request.username}, 200
 
+    @flask_app.route("/test-no-ajax-required", methods=["GET"])
+    @api_route(ajax_required=False)
+    def test_no_ajax_required():
+        return {"status": "ok"}, 200
+
     return flask_app
 
 
@@ -102,7 +120,7 @@ def test_api_route_missing_json_body_returns_400(minimal_app: Flask):
     THEN a 400 response is returned with the configured error message
     """
     with minimal_app.test_client() as client:
-        response = client.post("/test-with-body")
+        response = client.post("/test-with-body", headers=AJAX_HEADER)
 
     assert response.status_code == 400
     payload = response.get_json()
@@ -120,6 +138,7 @@ def test_api_route_valid_body_injects_validated_request(minimal_app: Flask):
         response = client.post(
             "/test-with-body",
             json={"username": "testuser", "password": "validpassword1"},
+            headers=AJAX_HEADER,
         )
 
     assert response.status_code == 200
@@ -137,6 +156,7 @@ def test_api_route_invalid_body_returns_400_with_errors(minimal_app: Flask):
         response = client.post(
             "/test-with-body",
             json={"username": "ab"},
+            headers=AJAX_HEADER,
         )
 
     assert response.status_code == 400
@@ -154,7 +174,7 @@ def test_api_route_get_without_body_succeeds(minimal_app: Flask):
     THEN the route returns 200 with the expected payload
     """
     with minimal_app.test_client() as client:
-        response = client.get("/test-no-body")
+        response = client.get("/test-no-body", headers=AJAX_HEADER)
 
     assert response.status_code == 200
     payload = response.get_json()
@@ -171,6 +191,7 @@ def test_api_route_no_schema_ignores_request_body(minimal_app: Flask):
         response = client.get(
             "/test-no-body",
             json={"unexpected": "data", "should_be": "ignored"},
+            headers=AJAX_HEADER,
         )
 
     assert response.status_code == 200
@@ -371,6 +392,79 @@ def test_api_route_succeeds_with_mixed_positional_and_injected_params():
 
     assert hasattr(route_with_path_params, "_api_route_request_schema")
     assert route_with_path_params._api_route_request_schema is LoginRequest
+
+
+def test_api_route_rejects_non_ajax_request(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route that requires a request body
+    WHEN a POST is made with valid JSON but WITHOUT the AJAX header
+    THEN a 302 redirect response is returned
+    """
+    with minimal_app.test_client() as client:
+        response = client.post(
+            "/test-with-body",
+            json={"username": "testuser", "password": "validpassword1"},
+        )
+
+    assert response.status_code == 302
+
+
+def test_api_route_rejects_non_ajax_get_request(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route with no request_schema
+    WHEN a GET request is made WITHOUT the AJAX header
+    THEN a 302 redirect response is returned
+    """
+    with minimal_app.test_client() as client:
+        response = client.get("/test-no-body")
+
+    assert response.status_code == 302
+
+
+def test_api_route_ajax_required_false_allows_non_ajax(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(ajax_required=False)
+    WHEN a GET request is made WITHOUT the AJAX header
+    THEN the route returns 200 normally
+    """
+    with minimal_app.test_client() as client:
+        response = client.get("/test-no-ajax-required")
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["status"] == "ok"
+
+
+def test_api_route_stashes_ajax_required(minimal_app: Flask):
+    """
+    GIVEN routes decorated with @api_route with different ajax_required values
+    WHEN accessing the view functions
+    THEN _api_route_ajax_required reflects the configured value
+    """
+    ajax_true_fn = minimal_app.view_functions["test_with_body"]
+    assert ajax_true_fn._api_route_ajax_required is True
+
+    ajax_false_fn = minimal_app.view_functions["test_no_ajax_required"]
+    assert ajax_false_fn._api_route_ajax_required is False
+
+
+def test_api_route_non_ajax_logs_warning(minimal_app: Flask, caplog):
+    """
+    GIVEN a route decorated with @api_route (ajax_required=True by default)
+    WHEN a POST is made WITHOUT the AJAX header
+    THEN the caplog contains a warning about the non-AJAX request
+    """
+    with caplog.at_level(logging.WARNING):
+        with minimal_app.test_client() as client:
+            client.post(
+                "/test-with-body",
+                json={"username": "testuser", "password": "validpassword1"},
+            )
+
+    assert any(
+        "User=unknown did not make an AJAX request" in record.message
+        for record in caplog.records
+    )
 
 
 def test_schema_name_to_kwarg_conversions():

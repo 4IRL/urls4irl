@@ -25,6 +25,7 @@ from backend.config import (
     TEST_REDIS_URI,
 )
 from backend.utils.db_uri_builder import build_db_uri
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
@@ -45,6 +46,37 @@ from tests.models_for_test import (
     all_tags,
     maximum_tags,
 )
+
+
+class AjaxFlaskClient(FlaskClient):
+    """FlaskClient subclass that injects X-Requested-With: XMLHttpRequest on every request."""
+
+    def open(self, *args: Any, **kwargs: Any) -> Any:
+        headers = kwargs.get("headers", {})
+        if headers is None:
+            headers = {}
+        if isinstance(headers, dict):
+            headers = dict(headers)
+        if URL_VALIDATION.X_REQUESTED_WITH not in headers:
+            headers[URL_VALIDATION.X_REQUESTED_WITH] = URL_VALIDATION.XMLHTTPREQUEST
+        kwargs["headers"] = headers
+        return super().open(*args, **kwargs)
+
+
+class AjaxFlaskLoginClient(FlaskLoginClient):
+    """FlaskLoginClient that also injects X-Requested-With: XMLHttpRequest."""
+
+    def open(self, *args: Any, **kwargs: Any) -> Any:
+        headers = kwargs.get("headers", {})
+        if headers is None:
+            headers = {}
+        if isinstance(headers, dict):
+            headers = dict(headers)
+        if URL_VALIDATION.X_REQUESTED_WITH not in headers:
+            headers[URL_VALIDATION.X_REQUESTED_WITH] = URL_VALIDATION.XMLHTTPREQUEST
+        kwargs["headers"] = headers
+        return super().open(*args, **kwargs)
+
 
 # Order matters!
 TEST_SPLIT = (
@@ -382,6 +414,7 @@ def provide_redis(app: Flask) -> Generator[Redis | None, None, None]:
 
 @pytest.fixture
 def client(app: Flask) -> FlaskClient:
+    app.test_client_class = AjaxFlaskClient
     return app.test_client()
 
 
@@ -514,7 +547,7 @@ def login_first_user_with_register(
         (Flask): The Flask client for providing an app context
     """
 
-    app.test_client_class = FlaskLoginClient
+    app.test_client_class = AjaxFlaskLoginClient
     with app.app_context():
         user_to_login: Users = Users.query.get(1)
 
@@ -542,7 +575,7 @@ def login_first_user_without_register(
         (Flask): The Flask client for providing an app context
     """
 
-    app.test_client_class = FlaskLoginClient
+    app.test_client_class = AjaxFlaskLoginClient
     with app.app_context():
         user_to_login: Users = Users.query.get(1)
 
@@ -569,7 +602,7 @@ def login_second_user_without_register(
         (Users): The User model of currently logged in user
         (Flask): The Flask client for providing an app context
     """
-    app.test_client_class = FlaskLoginClient
+    app.test_client_class = AjaxFlaskLoginClient
     with app.app_context():
         user_to_login = Users.query.get(2)
 
