@@ -27,7 +27,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:login` |
-| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=LoginRequest, response_schema=LoginRedirectResponseSchema)` |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=LoginRequest, response_schema=LoginRedirectResponseSchema, ajax_required=False)` |
 | **Service** | `backend/splash/services/login.py:login_user_to_u4i` |
 | **Schema** | `backend/schemas/requests/splash/login.py:LoginRequest` |
 | **JS Module** | `frontend/splash/login-form.js` — `JSON.stringify`, `application/json` |
@@ -39,7 +39,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:register_user` |
-| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=RegisterRequest)` |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=RegisterRequest, ajax_required=False)` |
 | **Service** | `backend/splash/services/register.py:register_new_user` |
 | **Schema** | `backend/schemas/requests/splash/register.py:RegisterRequest` |
 | **JS Module** | `frontend/splash/register-form.js` — `JSON.stringify`, `application/json` |
@@ -61,7 +61,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:send_validation_email` |
-| **Decorators** | `@api_route()` |
+| **Decorators** | `@api_route(ajax_required=False)` |
 | **Service** | `backend/splash/services/email_validation.py:send_validation_email_to_user` |
 | **JS Module** | `frontend/splash/email-validation-form.js` — form serialize |
 | **CSRF** | Meta tag |
@@ -93,7 +93,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:forgot_password` |
-| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ForgotPasswordRequest)` |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ForgotPasswordRequest, ajax_required=False)` |
 | **Service** | `backend/splash/services/forgot_password.py:send_forgot_password_email_to_user` |
 | **Schema** | `backend/schemas/requests/splash/forgot_password.py:ForgotPasswordRequest` |
 | **JS Module** | `frontend/splash/forgot-password-form.js` — `JSON.stringify`, `application/json` |
@@ -116,7 +116,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:reset_password` |
-| **Decorators** | `@api_route(request_schema=ResetPasswordRequest)` |
+| **Decorators** | `@api_route(request_schema=ResetPasswordRequest, ajax_required=False)` |
 | **Service** | `backend/splash/services/reset_password.py:reset_password_for_user` |
 | **Schema** | `backend/schemas/requests/splash/reset_password.py:ResetPasswordRequest` |
 | **JS Module** | `frontend/splash/reset-password-form.js` — `JSON.stringify`, `application/json` |
@@ -157,7 +157,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:get_single_utub` |
-| **Decorators** | `@xml_http_request_only`, `@utub_membership_required`, `@api_route(response_schema=UtubDetailSchema)` |
+| **Decorators** | `@utub_membership_required`, `@api_route(response_schema=UtubDetailSchema)` |
 | **Service** | `backend/utubs/services/get_utub.py:get_single_utub_for_user` |
 | **JS Module** | `frontend/home/utubs/selectors.js` |
 | **Tests** | `tests/integration/utubs/test_get_detailed_utub_info.py` (marker: `utubs`), `tests/functional/utubs_ui/test_select_utub_ui.py` (marker: `utubs_ui`) |
@@ -167,7 +167,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:get_utubs` |
-| **Decorators** | `@xml_http_request_only`, `@email_validation_required`, `@api_route(response_schema=UtubSummaryListSchema)` |
+| **Decorators** | `@email_validation_required`, `@api_route(response_schema=UtubSummaryListSchema)` |
 | **Service** | `backend/utubs/services/get_utub.py:get_all_utubs_of_user` |
 | **JS Module** | `frontend/home/utubs/selectors.js` |
 | **Tests** | `tests/integration/utubs/test_get_utubs_summary_route.py` (marker: `utubs`) |
@@ -230,7 +230,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:get_url` |
-| **Decorators** | `@xml_http_request_only`, `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema)` |
+| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema)` |
 | **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
 | **JS Module** | `frontend/home/urls/cards/get.js`, also called from `update-string.js`, `update-title.js`, `delete.js`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
 | **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
@@ -411,7 +411,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/contact/routes.py:submit_contact_us` |
-| **Decorators** | `@api_route(request_schema=ContactRequest)`, `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])` |
+| **Decorators** | `@api_route(request_schema=ContactRequest, ajax_required=False)`, `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])` |
 | **Schema** | `backend/schemas/requests/contact.py:ContactRequest` |
 | **Request** | JSON `{"subject": "...", "content": "..."}` |
 | **Response** | Success: JSON `{"status": "Success", "message": "..."}`, Failure: JSON `{"status": "Failure", "errors": {...}}` |
@@ -427,7 +427,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/system/routes.py:health` |
-| **Decorators** | `@limiter.exempt`, `@api_route()` |
+| **Decorators** | `@limiter.exempt`, `@api_route(ajax_required=False)` |
 | **Service** | `APIResponse()` direct |
 | **Tests** | None identified |
 
@@ -464,7 +464,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 1. Auth gate: `@email_validation_required` / `@no_authenticated_users_allowed`
 2. Membership: `@utub_membership_required` / `@utub_creator_required` / `@utub_membership_with_valid_*`
 3. Request parsing & response declaration: `@api_route(request_schema=..., response_schema=...)`
-4. AJAX enforcement: `@xml_http_request_only` (GET-only routes)
+4. AJAX enforcement: built into `@api_route` (`ajax_required=True` by default; opt out with `ajax_required=False`)
 
 ### Test Markers
 | Marker | Integration tests | UI tests |
