@@ -10,14 +10,14 @@ Orchestrate the plan-reviewer → apply-plan-review loop using per-pass subagent
 
 ## Args
 
-- `$1` — plan name (fuzzy-matched against `plans/`)
+- `$1` — plan name (fuzzy-matched against `plans/**/<name>*.md` recursively)
 - `$2` — max iterations (default: 5, hard cap: 5)
 
 ## Step 1: Initialize
 
-1. Confirm a plan file matching `$1` exists in `plans/`. If no match, report and stop.
+1. Confirm a plan file matching `$1` exists by globbing `plans/**/<name>*.md`. If no match, report and stop. Derive `<topic>` from the parent directory of the matched file (e.g., `plans/auth/<name>.md` → `<topic>=auth`).
 2. Set `MAX_ITER = min($2 ?? 5, 5)`.
-3. Create (or clear) `tmp/design-questions-<plan-name>.md` with header: `# Design Questions: <plan-name>\n`
+3. Create (or clear) `plans/<topic>/tmp/design-questions-<plan-name>.md` with header: `# Design Questions: <plan-name>\n`
 4. **Ask for confirmation before proceeding**: "Start the refinement loop for `<plan-name>` — up to `<MAX_ITER>` iterations? (yes/no)"
 5. Wait for user confirmation. If not confirmed, stop.
 
@@ -29,7 +29,7 @@ For each iteration `i` from 1 to MAX_ITER:
 
 Spawn a subagent using the Agent tool with these instructions:
 
-> Follow ALL steps of the plan-reviewer skill (Steps 1–4): locate the plan at `plans/<plan-name>.md`, read all relevant source files, review the plan as a staff engineer across every dimension (correctness, per-endpoint trace, ordering, edge cases, codebase integration, verification steps, implementation specificity, risk), and write/append your findings to `reviews/<plan-name>-review.md`. The `reviews/` directory is at the project root, NOT inside `plans/`.
+> Follow ALL steps of the plan-reviewer skill (Steps 1–4): locate the plan at `plans/<topic>/<plan-name>.md`, read all relevant source files, review the plan as a staff engineer across every dimension (correctness, per-endpoint trace, ordering, edge cases, codebase integration, verification steps, implementation specificity, risk), and write/append your findings to `plans/<topic>/reviews/<plan-name>-review.md`.
 >
 > **Count accuracy rule**: The JSON counts you report MUST exactly equal the number of NEW unchecked `- [ ]` items you wrote in this pass's "To-Do: Required Changes" section. Do NOT count findings from prior passes — even if they are still `[ ]` in an older section. If a prior finding was already applied to the plan (the plan now contains the fix), do NOT re-report it or create a new `- [ ]` item for it. Only genuinely new issues that are not already addressed in the current plan text produce `- [ ]` items and increment counts.
 >
@@ -45,7 +45,7 @@ The subagent performs all file I/O independently. The main agent receives only t
 
 ### 2b. Verify Reported Counts
 
-**The main agent must verify the review subagent's reported counts before proceeding.** Read the last 60 lines of `reviews/<plan-name>-review.md` and:
+**The main agent must verify the review subagent's reported counts before proceeding.** Read the last 60 lines of `plans/<topic>/reviews/<plan-name>-review.md` and:
 
 1. Confirm a new pass section was appended (look for a new dated heading that wasn't there before).
 2. Count the actual `- [ ]` (unchecked) items in the **latest** pass's "To-Do: Required Changes" section.
@@ -71,7 +71,7 @@ Otherwise report: "Pass `i` complete — `<critical>` critical, `<major>` major,
 
 Spawn a subagent using the Agent tool with these instructions:
 
-> Follow ALL steps of the apply-plan-review skill (Steps 1–3): locate `plans/<plan-name>.md` and `reviews/<plan-name>-review.md` (both at the project root). Read the full review file to find the **latest revision** (highest pass ordinal, not highest line number). Find every unchecked item (`- [ ]`) in the latest revision's "To-Do: Required Changes" section only. Apply each one to the plan.
+> Follow ALL steps of the apply-plan-review skill (Steps 1–3): locate `plans/<topic>/<plan-name>.md` and `plans/<topic>/reviews/<plan-name>-review.md`. Read the full review file to find the **latest revision** (highest pass ordinal, not highest line number). Find every unchecked item (`- [ ]`) in the latest revision's "To-Do: Required Changes" section only. Apply each one to the plan.
 >
 > For any item that is ambiguous or requires a decision the review item does not resolve: evaluate the options using ALL of the following criteria before choosing. Do not guess — reason through each criterion explicitly.
 >
@@ -85,7 +85,7 @@ Spawn a subagent using the Agent tool with these instructions:
 >
 > If after applying all criteria an option is clearly better, apply it and record it. If two options are genuinely tied or the criteria conflict, surface it as a design question instead of guessing.
 >
-> Record each resolved decision by appending to `tmp/design-questions-<plan-name>.md`:
+> Record each resolved decision by appending to `plans/<topic>/tmp/design-questions-<plan-name>.md`:
 > ```markdown
 > ## Iteration <i> — <YYYY-MM-DD>
 > ### Q<n>: <brief title>
@@ -128,13 +128,13 @@ If this was the final iteration without convergence, mark the last row "No (max 
 ```
 
 2. Report whether the loop converged early or hit the max iteration limit.
-3. If `tmp/design-questions-<plan-name>.md` has entries beyond the header, display the full file contents and say: "The following design questions were deferred — please review and confirm or adjust each decision."
+3. If `plans/<topic>/tmp/design-questions-<plan-name>.md` has entries beyond the header, display the full file contents and say: "The following design questions were deferred — please review and confirm or adjust each decision."
 4. If no design questions: "No design questions were deferred — all review items were unambiguous."
 5. Remind the user to run the plan's verification steps.
 
 ### Persist the Run Log
 
-Write (or append) to `reviews/<plan-name>-refine-log.md`. If the file doesn't exist, create it with the header `# Refinement Log: <plan-name>\n`. Append a new dated section each run:
+Write (or append) to `plans/<topic>/reviews/<plan-name>-refine-log.md`. If the file doesn't exist, create it with the header `# Refinement Log: <plan-name>\n`. Append a new dated section each run:
 
 ```markdown
 ## Run — <YYYY-MM-DD HH:MM>
@@ -149,14 +149,14 @@ Write (or append) to `reviews/<plan-name>-refine-log.md`. If the file doesn't ex
 
 ### Design Questions Deferred
 
-<copy full contents of tmp/design-questions-<plan-name>.md if any questions were recorded, otherwise write "None.">
+<copy full contents of plans/<topic>/tmp/design-questions-<plan-name>.md if any questions were recorded, otherwise write "None.">
 ```
 
 ## Important Notes
 
-- `reviews/` is a sibling of `plans/` at the project root — NOT nested inside `plans/`
+- Review files live at `plans/<topic>/reviews/`. The project-root `reviews/` directory no longer exists.
 - The main agent must NOT read plan or review files directly — EXCEPT during step 2b (verify reported counts), where it reads the tail of the review file to confirm actual unchecked item counts
 - Each review subagent appends a new dated section; it does not overwrite prior reviews
 - Subagents must follow the full plan-reviewer and apply-plan-review skill instructions, not abbreviated versions
 - Best-effort decisions in the apply phase should favor the simplest, most conservative interpretation
-- `tmp/` must exist before writing design questions — create it if needed
+- `plans/<topic>/tmp/` must exist before writing design questions — create it if needed

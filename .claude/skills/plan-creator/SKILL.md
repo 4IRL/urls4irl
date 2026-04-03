@@ -16,11 +16,19 @@ Before starting, check the current branch:
      - **Stay on current branch** — proceed with plan creation on the current working branch without switching
    - Follow the user's choice before proceeding
 
-## Step 1: Deep Research via Parallel Subagents
+## Step 1: Determine Topic Folder
+
+Before creating any files, determine the `<topic>` folder for this plan:
+- Infer it from the user's request (e.g., request about URL model changes → `urls`, about API decorators → `api-route`, about OpenAPI → `openapi`)
+- If the topic is not obvious, ask: "Which topic folder should this plan go in? (api-route, urls, openapi, or a new name)"
+
+Store the result as `<topic>` for use in all subsequent file paths.
+
+## Step 2: Deep Research via Parallel Subagents
 
 Before writing any plan, perform deep codebase research using parallel subagents. This keeps source file reads out of the main context window and enables thorough, parallel investigation.
 
-### 1a. Identify Research Targets
+### 2a. Identify Research Targets
 
 From the user's feature/task description, identify:
 - **Affected modules**: Which backend blueprints, frontend modules, templates, and test directories are involved?
@@ -28,20 +36,23 @@ From the user's feature/task description, identify:
 - **Affected symbols**: Which functions, classes, schemas, or models will change?
 - **Task type flags**: Does this involve data validation or model changes? (determines whether Subagent #5 launches)
 
-### 1b. Launch Research Subagents
+### 2b. Launch Research Subagents
 
 Read `references/research-prompts.md` for the full prompt definitions and expected JSON response format.
 
+Before launching subagents, create the `plans/<topic>/tmp/` directory.
+
 Launch subagents **in parallel** using the Agent tool. Each subagent:
-- Receives the user's task description and the research targets from 1a
+- Receives the user's task description, the research targets from 2a, and the path it must write its output to
 - Reads source files independently (the main agent does NOT pre-read files)
-- Returns structured JSON per the format in `references/research-prompts.md`
+- Writes its full findings JSON to `plans/<topic>/tmp/research-<focus>.md` (where `<focus>` describes the research area, e.g., `research-architecture.md`, `research-dependencies.md`, `research-request-chain.md`, `research-tests.md`, `research-schemas.md`)
+- Returns only a one-line confirmation: `Written to <path>`
 
 Include this preamble in every subagent prompt:
 
-> You are researching the codebase to inform a detailed implementation plan. The task is: `<user's task description>`. Affected modules/files: `<list from 1a>`.
+> You are researching the codebase to inform a detailed implementation plan. The task is: `<user's task description>`. Affected modules/files: `<list from 2a>`.
 >
-> Read the source files relevant to your research area. Return ONLY a JSON block — no other text. Every file path you cite must be one you actually read.
+> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/tmp/research-<focus>.md`, then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
 
 | # | Subagent | Focus | Launch condition |
 |---|---|---|---|
@@ -53,19 +64,21 @@ Include this preamble in every subagent prompt:
 
 All applicable subagents must launch in a **single message** for true parallelism.
 
-### 1c. Collect and Use Research Results
+### 2c. Collect and Use Research Results
 
-After all subagents return:
-1. Parse each JSON response
-2. If any subagent fails or returns invalid JSON, note the gap — do NOT skip the area; instead, read the minimum necessary files directly to fill the gap
-3. Use the structured findings to inform plan writing in Step 2 — the main agent should reference subagent findings (file paths, signatures, patterns) rather than re-reading those files
+After all subagents return their one-line confirmations:
+1. Read each `plans/<topic>/tmp/research-<focus>.md` file to compile findings
+2. Parse each JSON response
+3. If any subagent fails or its file is missing/invalid, note the gap — do NOT skip the area; instead, read the minimum necessary files directly to fill the gap
+4. Use the structured findings to inform plan writing in Step 3 — the main agent should reference subagent findings (file paths, signatures, patterns) rather than re-reading those files
 
 **The research summaries are the foundation of the plan.** Every file path, function signature, data shape, and pattern referenced in to-do items should trace back to a subagent finding.
 
-## Step 2: Plan Creation
+## Step 3: Plan Creation
 
-1. Create `@plans/<feature-name>.md` (create `@plans/` if missing).
+1. Create `plans/<topic>/<feature-name>.md` (create `plans/<topic>/` if missing).
 2. Name the file after the feature/task (kebab-case).
+3. If research is written as a separate document, it goes to `plans/<topic>/research/<doc-name>.md`.
 3. Structure the plan as follows:
 
 ```markdown
@@ -101,6 +114,8 @@ finished: false
 - **Ground to-dos in research findings.** Every file path, function signature, constant name, or data shape referenced in a to-do must come from a research subagent's findings. If a subagent didn't cover it, read the file before writing the to-do.
 - **Specify exact data structures.** When a to-do item constructs or populates a dict, list, or object, name the exact keys and value types — e.g., `errors["email"] = [USER_FAILURE.EMAIL_TAKEN]`, not "add `EMAIL_TAKEN` to the errors dict." Vague structure descriptions produce silent runtime failures when the implementer guesses the wrong key.
 - **No forward references within a step.** If a step's to-do item calls or imports a function, that function must either already exist in the codebase or have been created earlier in the same step. If a function is first defined in step N, no to-do in steps 1–(N-1) may reference it. Check this before finalising step order.
+
+**Cleanup:** After the plan file is written, delete all files matching `plans/<topic>/tmp/research-*.md`.
 
 ## End-to-End Chain Tracing
 

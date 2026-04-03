@@ -2,50 +2,13 @@ from flask_login import current_user
 from sqlalchemy import case, func
 
 from backend import db
-from backend.api_common.request_utils import (
-    is_adder_of_utub_url,
-    is_current_utub_creator,
-)
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.app_logger import critical_log, safe_add_many_logs
+from backend.app_logger import safe_add_many_logs
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UrlDeletedResponseSchema, UtubUrlDeleteSchema
 from backend.utils.strings.url_strs import URL_SUCCESS
-
-
-def check_if_is_url_adder_or_utub_creator_on_url_delete(
-    utub_id: int, utub_url_id: int
-) -> bool:
-    """
-    Verify that the current user has permission to delete a URL from a UTub.
-
-    Checks whether the current user is either the creator of the UTub or the user who
-    originally added the URL. If neither condition is met, logs a critical error and
-    returns a 403 Forbidden response.
-
-    Args:
-        utub_id (int): The ID of the UTub containing the URL to be deleted.
-        utub_url_id (int): The ID of the Utub_Urls association to be deleted.
-
-    Returns:
-        (bool): True if is URL adder or creator
-        tuple[Response, int] | None: If the user lacks permission, returns:
-        - Response: JSON response indicating deletion is not allowed
-        - int: HTTP status code 403 (Forbidden)
-        If the user has permission, returns None to allow deletion to proceed.
-    """
-    is_utub_creator_or_adder_of_utub_url = (
-        is_current_utub_creator() or is_adder_of_utub_url()
-    )
-    if not is_utub_creator_or_adder_of_utub_url:
-        # Can only remove URLs you added, or if you are the creator of this UTub
-        critical_log(
-            f"User={current_user.id} tried removing UTubURL.id={utub_url_id} from UTub.id={utub_id} and they aren't the URL adder or UTub creator"
-        )
-
-    return is_utub_creator_or_adder_of_utub_url
 
 
 def delete_url_in_utub(

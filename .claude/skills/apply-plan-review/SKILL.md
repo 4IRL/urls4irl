@@ -1,6 +1,6 @@
 ---
 name: apply-plan-review
-description: Apply all pending review changes from a review file to its corresponding plan file, one item at a time, with a staff-engineer quality check after each change. Use when asked to apply a review to a plan, update a plan from its review, or work through review feedback on a plan. The plan name is inferred from the argument (e.g., "/apply-plan-review pydantic-integration"). Plan files live at plans/<name>.md; review files live at reviews/<name>-review.md.
+description: Apply all pending review changes from a review file to its corresponding plan file, one item at a time, with a staff-engineer quality check after each change. Use when asked to apply a review to a plan, update a plan from its review, or work through review feedback on a plan. The plan name is inferred from the argument (e.g., "/apply-plan-review pydantic-integration"). Plan files live at plans/<topic>/<name>.md; review files live at plans/<topic>/reviews/<name>-review.md.
 ---
 
 # Apply Plan Review
@@ -11,10 +11,8 @@ Apply every unchecked item from a review's "To-Do" section to the corresponding 
 
 ### Step 1: Locate and Read Files
 
-- Plan: `plans/<name>.md`
-- Review: `reviews/<name>-review.md`
-
-Both paths are **relative to the project root**, not nested under each other. `reviews/` is a sibling of `plans/`, not `plans/reviews/`.
+- Plan: glob `plans/**/<name>.md` to locate the file; the plan's parent directory is `<topic>`.
+- Review: `plans/<topic>/reviews/<name>-review.md`
 
 Read the plan file in full.
 

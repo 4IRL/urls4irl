@@ -48,37 +48,55 @@ git status --short
 
 If the diff is empty (nothing to push), inform the user and stop.
 
-### 2. Launch 7 Parallel Review Subagents
+### 2. Infer Topic and Resolve Tmp Directory
+
+Before launching subagents, infer `<topic>` from the current branch name:
+
+1. Split the branch name on `/` and `-`
+2. Match tokens against known topics:
+   - `api-route` → tokens include `api`, `route`, `decorator`, `permission`
+   - `urls` → tokens include `url`, `urls`, `rename`
+   - `openapi` → tokens include `openapi`, `schema`, `spec`
+3. Examples: `refactor/url-permission-decorator` → `api-route`, `feature/openapi-schema` → `openapi`, `fix/rename-url-title` → `urls`
+4. If a topic can be inferred: set `<tmp-dir>` to `plans/<topic>/tmp/` and create the directory if it does not exist
+5. If topic cannot be inferred: set `<tmp-dir>` to `$TMPDIR`
+
+Store `<tmp-dir>` for use in all subagent prompts below.
+
+### 3. Launch 7 Parallel Review Subagents
 
 Read `references/subagent-prompts.md` for the full prompt definitions and expected response format.
 
 Launch **all 7 subagents in parallel** using the Agent tool. Each subagent:
 - Receives the full diff output from Step 1
 - Receives its specific review focus area from the reference file
-- Must return a structured JSON response with `verdict`, `findings`, and `summary`
+- Receives `<tmp-dir>` and its assigned output filename (see table below)
+- Writes its JSON response to `<tmp-dir>/<role>.md` and returns only: `Written to <path>`
 - Uses `model: sonnet` for speed
 
 Subagents (all launched in a single message):
 
-| # | Name | Focus |
-|---|---|---|
-| 1 | Safety & Security | XSS, injection, secrets, OWASP, destructive ops |
-| 2 | Correctness | Logic errors, edge cases, type issues, wrong APIs |
-| 3 | Simplicity & Conciseness | Over-engineering, dead code, verbose patterns |
-| 4 | Test Coverage | Missing tests, untested new behavior, coverage gaps |
-| 5 | Completeness & Cleanup | Debug artifacts, TODOs, commented code, stubs |
-| 6 | Consistency & Style | Project conventions, naming, patterns, imports |
-| 7 | Integration Risk | Breaking changes, missing migrations, cross-module impact |
+| # | Name | Focus | Output file |
+|---|---|---|---|
+| 1 | Safety & Security | XSS, injection, secrets, OWASP, destructive ops | `<tmp-dir>/safety-security.md` |
+| 2 | Correctness | Logic errors, edge cases, type issues, wrong APIs | `<tmp-dir>/correctness.md` |
+| 3 | Simplicity & Conciseness | Over-engineering, dead code, verbose patterns | `<tmp-dir>/simplicity.md` |
+| 4 | Test Coverage | Missing tests, untested new behavior, coverage gaps | `<tmp-dir>/test-coverage.md` |
+| 5 | Completeness & Cleanup | Debug artifacts, TODOs, commented code, stubs | `<tmp-dir>/completeness.md` |
+| 6 | Consistency & Style | Project conventions, naming, patterns, imports | `<tmp-dir>/consistency.md` |
+| 7 | Integration Risk | Breaking changes, missing migrations, cross-module impact | `<tmp-dir>/integration-risk.md` |
 
-### 3. Evaluate Results
+### 4. Evaluate Results
+
+After all subagents complete, read each `<tmp-dir>/<role>.md` file to parse the JSON verdicts. Then evaluate:
 
 Collect all 7 subagent responses. Parse each verdict:
 
-- **ALL PASS, no findings at all**: Proceed to Step 4 (push).
-- **ALL PASS, but minor findings exist**: Write findings (Step 5), then push (Step 4). Minor findings should not block the push but must be recorded so `/next-step-taker` can address them.
-- **ANY FAIL**: Proceed to Step 5 (write findings). Do NOT push.
+- **ALL PASS, no findings at all**: Proceed to Step 5 (push).
+- **ALL PASS, but minor findings exist**: Write findings (Step 6), then push (Step 5). Minor findings should not block the push but must be recorded so `/next-step-taker` can address them.
+- **ANY FAIL**: Proceed to Step 6 (write findings). Do NOT push.
 
-### 4. Push
+### 5. Push
 
 **CRITICAL: Never use bare `git push`.** The repo remote uses SSH, which attributes the push to the user's personal account. This breaks branch protection rules that block self-approval from the last pusher.
 
@@ -91,17 +109,19 @@ git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com
 
 This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
 
-After pushing, proceed to Step 6 (PR creation).
+After pushing, proceed to Step 7 (PR creation).
 
 If a review file was written (minor findings), include its path and note that `/next-step-taker push-review-<branch>` can address them.
 
-### 5. Write Findings
+After a successful push, delete all files in `<tmp-dir>/` if a topic was inferred and the tmp dir was used (i.e., `<tmp-dir>` is `plans/<topic>/tmp/`).
 
-The review file is `reviews/push-review-<branch>.md` (one file per branch, no timestamp in filename).
+### 6. Write Findings
+
+Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. If topic cannot be inferred, fall back to `plans/tmp/push-review-<branch>.md`.
 
 #### File and Review Numbering
 
-1. Check if `reviews/push-review-<branch>.md` already exists
+1. Check if `plans/<topic>/reviews/push-review-<branch>.md` already exists (or the fallback path if no topic)
 2. **If it exists**: read the file, find the highest `## Review N` number, and append a new section numbered N+1
 3. **If it does not exist**: create the file with a header and start with `## Review 1`
 
@@ -170,7 +190,7 @@ After writing, inform the user:
 - That they can use `/next-step-taker push-review-<branch>` to implement items one by one
 - Do NOT automatically push — the user must fix findings and re-invoke
 
-### 6. Create or Update PR
+### 7. Create or Update PR
 
 After a successful push, create or update a PR targeting `main`.
 
@@ -331,6 +351,6 @@ Output:
 - Never push to `main` or `master` — warn the user and abort
 - Never force-push
 - If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code
-- The `reviews/` directory is at the project root, NOT under `plans/`
+- Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. Fall back to `plans/tmp/push-review-<branch>.md` when topic cannot be inferred.
 - All subagent launches must be in a single message for true parallelism
-- If a subagent fails to return valid JSON, treat it as FAIL with a note about the parse error
+- If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error

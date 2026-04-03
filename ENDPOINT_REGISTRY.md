@@ -240,7 +240,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:update_url` |
-| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema)` |
+| **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema)` |
 | **Service** | `backend/urls/services/update_url.py:update_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLStringRequest` |
 | **JS Module** | `frontend/home/urls/cards/update-string.js` — `JSON.stringify`, `application/json`, 35s timeout |
@@ -252,7 +252,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:update_url_title` |
-| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema)` |
+| **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema)` |
 | **Service** | `backend/urls/services/update_url_title.py:update_url_title_if_new` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLTitleRequest` |
 | **JS Module** | `frontend/home/urls/cards/update-title.js` — `JSON.stringify`, `application/json` |
@@ -264,7 +264,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:delete_url` |
-| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlDeletedResponseSchema)` |
+| **Decorators** | `@url_adder_or_creator_required`, `@api_route(response_schema=UrlDeletedResponseSchema)` |
 | **Service** | `backend/urls/services/delete_url.py:delete_url_in_utub` |
 | **JS Module** | `frontend/home/urls/cards/delete.js` |
 | **CSRF** | Meta tag |

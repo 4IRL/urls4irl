@@ -1,15 +1,7 @@
 from flask_login import current_user
 from backend import db
-from backend.api_common.request_utils import (
-    is_adder_of_utub_url,
-    is_current_utub_creator,
-)
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.app_logger import (
-    critical_log,
-    safe_add_many_logs,
-    warning_log,
-)
+from backend.app_logger import safe_add_many_logs, warning_log
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -29,34 +21,6 @@ from backend.urls.services.create_urls import (
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
-
-
-def check_if_is_url_adder_or_utub_creator_on_url_update(
-    utub_id: int, utub_url_id: int
-) -> bool:
-    """
-    Verify that the current user has permission to delete a URL from a UTub.
-
-    Checks whether the current user is either the creator of the UTub or the user who
-    originally added the URL. If neither condition is met, logs a critical error and
-    returns a 403 Forbidden response.
-
-    Args:
-        utub_id (int): The ID of the UTub containing the URL to be deleted.
-        utub_url_id (int): The ID of the Utub_Urls association to be deleted.
-
-    Returns:
-        (bool): True if is UTub Creator URL adder
-    """
-    is_utub_creator_or_adder_of_utub_url = (
-        is_current_utub_creator() or is_adder_of_utub_url()
-    )
-    if not is_utub_creator_or_adder_of_utub_url:
-        critical_log(
-            f"User={current_user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id={utub_id}"
-        )
-
-    return is_utub_creator_or_adder_of_utub_url
 
 
 def update_url_in_utub(

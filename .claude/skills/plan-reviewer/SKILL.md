@@ -37,9 +37,13 @@ Track the current pass number (1, 2, or 3). When writing to the review document:
 
 ### Step 1: Locate the Plan (once, before the loop)
 
-- Search `plans/` for a file matching **$0** (fuzzy match on filename)
+- Search `plans/**/` recursively for a file matching **$0** (fuzzy match on filename)
 - Read the full plan document
-- Note: plan files live at `plans/<name>.md`
+- Derive `<topic>` from the plan file's parent directory (e.g., if the plan is at `plans/auth/my-plan.md`, `<topic>` is `auth`)
+
+### Step 1b: Prepare tmp directory
+
+Before launching subagents, create `plans/<topic>/tmp/` if it does not already exist.
 
 ### Step 2: Launch 6 Parallel Review Subagents
 
@@ -53,26 +57,28 @@ Launch **all 6 subagents in parallel** using the Agent tool. Each subagent:
 
 **Critical instruction for each subagent prompt:** Include the full text of the relevant subagent section from `references/subagent-prompts.md` (response format + the specific subagent's checklist). Also include:
 
-> You are reviewing the plan at `plans/<plan-name>.md`. Read it in full, then read the source files relevant to your review area. Return ONLY a JSON block — no other text.
+> You are reviewing the plan at `plans/<topic>/<plan-name>.md`. Read it in full, then read the source files relevant to your review area. Write your complete JSON response to `plans/<topic>/tmp/<role>.md` (where `<role>` is your subagent role filename, e.g. `correctness.md`), then return only this one-line confirmation: `Written to <path>`.
 >
 > **Do not defer any dimension to a follow-up pass.** Every item in your checklist must be evaluated before writing findings. If you run out of findings in one area, continue to the next.
 
 Subagents (all launched in a single message):
 
-| # | Name | Focus | Key files to read |
-|---|---|---|---|
-| 1 | Correctness & Accuracy | Plan assertions vs actual code, signatures, Pydantic | Source files the plan references, one level of callees |
-| 2 | Full-Stack Trace | Per-endpoint request/response cycle | Route handlers, JS files (entire module dir), templates |
-| 3 | Ordering, Dependencies & Cleanup | Step sequencing, intermediate state, dead imports | Plan + lint config (`tox.ini`, `.flake8`, `pyproject.toml`) |
-| 4 | Codebase Integration & Conventions | Project patterns, CLAUDE.md rules, packages | CLAUDE.md, ARCHITECTURE.md, requirements files, sample module files |
-| 5 | Verification & Test Coverage | Verification sufficiency, layer-match | Test files, `pytest.ini`, `Makefile` |
-| 6 | Completeness, Risk & Specificity | Gaps, risks, underspecified steps | Schema defs, factory methods, template structures |
+| # | Name | Role filename | Focus | Key files to read |
+|---|---|---|---|---|
+| 1 | Correctness & Accuracy | `correctness.md` | Plan assertions vs actual code, signatures, Pydantic | Source files the plan references, one level of callees |
+| 2 | Full-Stack Trace | `full-stack-trace.md` | Per-endpoint request/response cycle | Route handlers, JS files (entire module dir), templates |
+| 3 | Ordering, Dependencies & Cleanup | `ordering.md` | Step sequencing, intermediate state, dead imports | Plan + lint config (`tox.ini`, `.flake8`, `pyproject.toml`) |
+| 4 | Codebase Integration & Conventions | `integration.md` | Project patterns, CLAUDE.md rules, packages | CLAUDE.md, ARCHITECTURE.md, requirements files, sample module files |
+| 5 | Verification & Test Coverage | `verification.md` | Verification sufficiency, layer-match | Test files, `pytest.ini`, `Makefile` |
+| 6 | Completeness, Risk & Specificity | `completeness.md` | Gaps, risks, underspecified steps | Schema defs, factory methods, template structures |
 
 ### Step 3: Collect and Validate Results
 
-Collect all 6 subagent responses. For each:
+After all 6 subagents return their one-line confirmations, read each `plans/<topic>/tmp/<role>.md` file to retrieve the JSON findings. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`.
+
+For each file:
 - Parse the JSON response
-- If a subagent fails to return valid JSON, treat as FAIL with a note about the parse error
+- If a file is missing or contains invalid JSON, treat as FAIL with a note about the parse error
 - Tally findings by severity across all subagents
 
 ### Step 4: Merge Findings into Review Document
@@ -101,9 +107,7 @@ Mark each area `[x]` if the primary subagent reported reading the relevant files
 
 #### File location
 
-`reviews/<plan-name>-review.md` — create `reviews/` if it doesn't exist.
-
-NOTE: `reviews/` MUST be at the project root, NOT inside `plans/`.
+`plans/<topic>/reviews/<plan-name>-review.md` — create `plans/<topic>/reviews/` if it doesn't exist. Derive `<topic>` from the plan file's parent directory.
 
 One file per plan. If a review file already exists, **append** a new dated review section; do not overwrite previous reviews.
 
@@ -307,11 +311,11 @@ The subagent reads the files, makes all edits, and returns a summary of what was
 After applying DD choices, evaluate:
 
 1. **Early exit check**: Did this pass produce 0 critical + 0 major findings?
-   - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation." Proceed to Steps 6-7 if prior reviews exist.
+   - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation." Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7 if prior reviews exist.
    - **No** → Continue to next pass.
 
 2. **Hard cap check**: Is this Pass 3?
-   - **Yes** → Stop reviewing. If any unresolved issues remain, append a `### Resolve During Implementation` section to the review document listing them. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation." Proceed to Steps 6-7.
+   - **Yes** → Stop reviewing. If any unresolved issues remain, append a `### Resolve During Implementation` section to the review document listing them. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation." Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7.
    - **No** → Print: "Pass N complete. Starting Pass N+1..." and loop back to **Step 2**.
 
 ### Step 6: Root-Cause Analysis of Missed Findings (when prior reviews exist)
@@ -349,7 +353,7 @@ After mechanical fixes are applied and the root-cause table is written, launch a
 #### 7a: Launch the skill-improvement subagent
 
 The subagent receives:
-- The review file path (`reviews/<plan-name>-review.md`)
+- The review file path (`plans/<topic>/reviews/<plan-name>-review.md`)
 - The plan file path
 - The `### Missed-Finding Root Causes` table from Step 6
 - Paths to skill files: `.claude/skills/plan-reviewer/SKILL.md`, `.claude/skills/plan-reviewer/references/subagent-prompts.md`
@@ -455,4 +459,4 @@ Append a `### Skill Improvements Applied` section to the current review pass:
 - Cite specific step numbers and file paths in every finding
 - If the plan is solid, say so clearly — a clean review is a useful result
 - Multiple reviews of the same plan accumulate in one file (append, don't overwrite)
-- The `reviews/` directory is at the project root, NOT nested inside `plans/`
+- The review file lives at `plans/<topic>/reviews/<plan-name>-review.md`. Derive `<topic>` from the plan file's parent directory.

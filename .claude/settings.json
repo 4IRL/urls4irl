@@ -8,16 +8,32 @@
       "Read(./build)"
     ],
     "allow": [
+      "Bash(ls ~/.claude/**)",
+      "Bash(cat ~/.claude/**)",
+      "Bash(ls .claude/**)",
+      "Bash(cat .claude/**)",
       "Bash(curl * http://127.0.0.1:8659/*)",
       "Bash(docker compose exec *)",
       "Bash(docker compose ps *)",
       "Bash(docker compose restart *)",
       "Bash(docker compose up *)",
       "Bash(docker compose build *)",
-      "Bash(make *)"
+      "Bash(make *)",
+      "Write(./plans/*/tmp/*)"
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); first=$(echo \"$cmd\" | awk '{print $1}' | sed 's|.*/||'); case \"$first\" in ls|find) tool=\"Glob\" ;; cat|head|tail) tool=\"Read\" ;; grep|rg) tool=\"Grep\" ;; sed|awk) tool=\"Edit\" ;; echo) echo \"$cmd\" | grep -qE '>>?|tee' && tool=\"Write\" || exit 0 ;; *) exit 0 ;; esac; jq -n --arg f \"$first\" --arg t \"$tool\" '{\"systemMessage\":\"⚠ Bash(\\($f)) — use the \\($t) tool instead\",\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"TOOL USAGE REMINDER: You ran `\\($f)` via Bash. Per absolute project rules, ALWAYS use the dedicated \\($t) tool instead of Bash when available. Rewrite this action using \\($t).\"}}'"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

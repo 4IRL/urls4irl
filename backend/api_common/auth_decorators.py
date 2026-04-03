@@ -3,10 +3,7 @@ from flask import abort, g, redirect, session, url_for
 from flask_login import login_required, current_user
 from functools import wraps
 
-from backend.api_common.request_utils import (
-    is_adder_of_utub_url,
-    is_current_utub_creator,
-)
+from backend.api_common.request_utils import is_current_utub_creator
 from backend.schemas.errors import build_message_error_response
 from backend.app_logger import critical_log, warning_log
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -120,16 +117,22 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
     return decorated_view
 
 
-def utub_membership_and_utub_url_creator_required(func: Callable) -> Callable:
-    @wraps(func)
-    @utub_membership_with_valid_url_in_utub_required
-    def decorated_view(*args, **kwargs):
-        if not is_adder_of_utub_url():
-            abort(404)
+def url_adder_or_creator_required(message: str) -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        @utub_membership_with_valid_url_in_utub_required
+        def decorated_view(*args, **kwargs):
+            if not (g.user_added_url or g.is_creator):
+                critical_log(
+                    f"User={current_user.id} not URL adder or UTub creator: "
+                    f"UTubURL.id={kwargs['utub_url_id']} in UTub.id={kwargs['utub_id']}"
+                )
+                return build_message_error_response(message=message, status_code=403)
+            return func(*args, **kwargs)
 
-        return func(*args, **kwargs)
+        return decorated_view
 
-    return decorated_view
+    return decorator
 
 
 def _verify_and_get_utub_tag(**kwargs) -> Utub_Tags:

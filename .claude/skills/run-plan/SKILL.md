@@ -23,7 +23,8 @@ Autonomously execute all remaining steps of a plan. The **main agent is an orche
 
 ### Step 1: Locate and Read the Plan
 
-- Find the plan in `plans/` matching **$ARGUMENTS**
+- Find the plan in `plans/**` matching **$ARGUMENTS** (plans are now nested at `plans/<topic>/<name>.md`)
+- Derive `<topic>` from the plan file's parent directory name (e.g., if the plan is at `plans/auth/login-flow.md`, `<topic>` is `auth`)
 - Read the full plan to understand scope and remaining work
 - Count total steps and identify which are already complete (`[x]`) vs remaining (`[ ]`)
 - Report to user: "Found N remaining steps out of M total. Starting from Phase/Step X."
@@ -134,6 +135,7 @@ When all steps are done or the plan is marked finished:
    - Main agent reads each result file to determine pass/fail.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
 3. **Clean up** all temp test output files.
+4. **Delete all files in `plans/<topic>/tmp/`** — this is the subagent communication directory created during the run; it is not needed after completion.
 5. Report final summary:
 
 ```

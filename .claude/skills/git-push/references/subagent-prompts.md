@@ -4,6 +4,8 @@ Each subagent receives the diff output and a focused review prompt. All subagent
 
 ## Response Format (all subagents)
 
+**File delivery:** Write your complete JSON response to the file path provided in your prompt (`<tmp-dir>/<role>.md`), then return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The JSON structure below is unchanged.
+
 ```json
 {
   "verdict": "PASS" | "FAIL",

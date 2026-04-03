@@ -30,7 +30,7 @@ Determine the mode based on user intent:
 ## Plan Mode Workflow
 
 ### Step 1: Locate the Plan
-- Search for an existing plan in the `/Users/ggpropersi/code/urls4irl/plans/` directory that matches **$ARGUMENTS** contextually
+- Search for an existing plan by globbing `plans/**` relative to the project root, matching **$ARGUMENTS** contextually (e.g., `plans/**/<name>.md`). Derive the `<topic>` from the plan file's parent directory name.
 - Read the plan document to understand the full context
 - Identify the next incomplete step or phase (look for unchecked checkboxes: `- [ ]`)
 
@@ -149,12 +149,16 @@ Ready for Phase 5 (Contact Form Migration)?
 ## Review Mode Workflow
 
 ### Step 1: Locate and Read Files
-- Plan: `plans/<name>.md` where `<name>` matches **$ARGUMENTS** contextually
-- Review: `reviews/<name>-review.md` (for plan reviews) OR `reviews/push-review-<branch>.md` (for push reviews)
+- Plan: glob `plans/**/<name>.md` where `<name>` matches **$ARGUMENTS** contextually. Derive `<topic>` from the plan file's parent directory name.
+- Review: `plans/<topic>/reviews/<name>-review.md` (for plan reviews) OR `plans/<topic>/reviews/push-review-<branch>.md` (for push reviews)
 
-Both paths are **relative to the project root**. `reviews/` is a sibling of `plans/`, not nested under it.
+Review files live at `plans/<topic>/reviews/`. Derive `<topic>` from the plan file's parent directory, or infer from branch name for push reviews.
 
-**For push reviews**: derive the exact filename from the current git branch (`git branch --show-current`), then construct `reviews/push-review-<branch>.md`. Do NOT glob or fuzzy-match — use the exact branch name to avoid collisions with similarly-named files.
+**For push reviews**: derive the exact branch name (`git branch --show-current`), then infer `<topic>` from it:
+- Split the branch name on `/` and `-`, match tokens against known topics: `api-route`, `urls`, `openapi`
+- Examples: `refactor/url-permission-decorator` → `api-route`; `feature/openapi-schema` → `openapi`
+- If topic cannot be inferred, fall back to `plans/tmp/` for review files
+- Construct the path as `plans/<topic>/reviews/push-review-<branch>.md`. Do NOT glob or fuzzy-match — use the exact branch name to avoid collisions with similarly-named files.
 
 When **$ARGUMENTS** matches a push review file (e.g., "push-review-refactor-splash"), there is no associated plan file — the review is standalone. Skip reading the plan.
 
