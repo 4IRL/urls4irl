@@ -31,7 +31,7 @@ Launch a background subagent that polls CI/CD status for up to 10 minutes. This 
 2. Polls every 60 seconds for up to 10 minutes (10 iterations max)
 3. On each poll, checks the run status:
    - **`completed` + `success`**: Report success and stop polling
-   - **`completed` + `failure`**: Write the run ID and failed job names to `reviews/ci-failures-<branch>.md` (see format below), then stop polling
+   - **`completed` + `failure`**: Write the run ID and failed job names to `plans/<topic>/reviews/ci-failures-<branch>.md` (see format below), then stop polling
    - **`in_progress`** or **`queued`**: Sleep 60 seconds, poll again
 4. If still in progress after 10 minutes, write a timeout note to the CI failures file and stop
 
@@ -40,7 +40,9 @@ When a failure is detected, also fetch failed job details:
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --json jobs --jq '.jobs[] | select(.conclusion == "failure") | {name, conclusion}'
 ```
 
-**CI Failures File Format** (`reviews/ci-failures-<branch>.md`):
+**CI Failures File Format** (`plans/<topic>/reviews/ci-failures-<branch>.md`):
+
+Infer `<topic>` from the branch name by splitting on `/` and `-` and matching against known topics (e.g., `api-route`, `urls`, `openapi`). If the topic cannot be inferred, fall back to `plans/tmp/ci-failures-<branch>.md`.
 
 ```markdown
 # CI Failures: <branch>
@@ -68,7 +70,7 @@ When the CI Monitor writes a failure file, it must then launch a second subagent
    - Test names that failed (if test jobs)
    - Error messages and stack traces
    - Build errors (if build jobs)
-3. Append a summarized, structured analysis to `reviews/ci-failures-<branch>.md` under `### Failure Logs`:
+3. Append a summarized, structured analysis to `plans/<topic>/reviews/ci-failures-<branch>.md` under `### Failure Logs`:
    ```markdown
    ### Failure Logs
 
@@ -88,7 +90,7 @@ When the CI Monitor writes a failure file, it must then launch a second subagent
 
 After the CI Log Reader finishes writing the failure analysis, it must launch a third subagent to investigate fixes:
 
-1. Read `reviews/ci-failures-<branch>.md` to understand the failures
+1. Read `plans/<topic>/reviews/ci-failures-<branch>.md` to understand the failures
 2. For each failure, investigate the root cause in the codebase:
    - Read the failing test files to understand what they expect
    - Read the source files referenced in stack traces
@@ -226,7 +228,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 
 **If `/git-push` review blocks the push:**
 
-1. Read the review file at `reviews/push-review-<branch>.md`
+1. Read the review file at `plans/<topic>/reviews/push-review-<branch>.md`
 2. Find the latest `## Review N` section
 3. Extract all unchecked to-do items
 4. Launch a subagent to fix all findings:
@@ -249,7 +251,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 
 - All `gh` commands require `GH_TOKEN` prefix and `dangerouslyDisableSandbox: true`
 - Never force-push or push to main/master
-- The `reviews/` directory is at the project root, NOT under `plans/`
+- CI failure files and push review files live at `plans/<topic>/reviews/`. Infer `<topic>` from the branch name.
 - Follow existing commit message style (check `git log -3 --oneline`)
 - All subagent launches in a single step must be in one message for parallelism
 - If a subagent fails or returns unclear results, treat as needing user intervention

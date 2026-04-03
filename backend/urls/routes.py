@@ -1,6 +1,7 @@
 from flask import Blueprint
 
 from backend.api_common.auth_decorators import (
+    url_adder_or_creator_required,
     utub_membership_required,
     utub_membership_with_valid_url_in_utub_required,
 )
@@ -8,7 +9,6 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.schemas.errors import build_message_error_response
 from backend.schemas.requests.urls import (
     CreateURLRequest,
     UpdateURLStringRequest,
@@ -23,16 +23,10 @@ from backend.schemas.urls import (
 )
 from backend.urls.constants import URLErrorCodes
 from backend.urls.services.create_urls import create_url_in_utub
-from backend.urls.services.delete_urls import (
-    check_if_is_url_adder_or_utub_creator_on_url_delete,
-    delete_url_in_utub,
-)
+from backend.urls.services.delete_urls import delete_url_in_utub
 from backend.urls.services.read_urls import get_url_in_utub
 from backend.urls.services.update_url_titles import update_url_title_if_new
-from backend.urls.services.update_urls import (
-    check_if_is_url_adder_or_utub_creator_on_url_update,
-    update_url_in_utub,
-)
+from backend.urls.services.update_urls import update_url_in_utub
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.url_strs import URL_FAILURE
 
@@ -89,7 +83,7 @@ def get_url(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
-@utub_membership_with_valid_url_in_utub_required
+@url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
 @api_route(
     request_schema=UpdateURLStringRequest,
     response_schema=UrlUpdatedResponseSchema,
@@ -114,13 +108,6 @@ def update_url(
         current_utub: (Utubs): The UTub for this URL
         current_utub_url: (Utub_Urls): The UTub_Urls to update
     """
-    if not check_if_is_url_adder_or_utub_creator_on_url_update(
-        utub_id=utub_id, utub_url_id=utub_url_id
-    ):
-        return build_message_error_response(
-            message=URL_FAILURE.UNABLE_TO_MODIFY_URL, status_code=403
-        )
-
     return update_url_in_utub(
         url_string=update_url_string_request.urlString,
         current_utub=current_utub,
@@ -129,7 +116,7 @@ def update_url(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/title", methods=["PATCH"])
-@utub_membership_with_valid_url_in_utub_required
+@url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)
 @api_route(
     request_schema=UpdateURLTitleRequest,
     response_schema=UrlTitleUpdatedResponseSchema,
@@ -154,13 +141,6 @@ def update_url_title(
         current_utub: (Utubs): The UTub for this URL
         current_utub_url: (Utub_Urls): The UTub_Urls to update
     """
-    if not check_if_is_url_adder_or_utub_creator_on_url_update(
-        utub_id=utub_id, utub_url_id=utub_url_id
-    ):
-        return build_message_error_response(
-            message=URL_FAILURE.UNABLE_TO_MODIFY_URL, status_code=403
-        )
-
     return update_url_title_if_new(
         new_url_title=update_url_title_request.urlTitle,
         current_utub=current_utub,
@@ -169,7 +149,7 @@ def update_url_title(
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
-@utub_membership_with_valid_url_in_utub_required
+@url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
 @api_route(response_schema=UrlDeletedResponseSchema)
 def delete_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
@@ -182,15 +162,6 @@ def delete_url(
         utub_id (int): The ID of the UTub that contains the URL to be removed
         utub_url_id (int): The ID of the UtubUrl to be removed
     """
-    is_utub_creator_or_url_adder = check_if_is_url_adder_or_utub_creator_on_url_delete(
-        utub_id=utub_id, utub_url_id=utub_url_id
-    )
-
-    if not is_utub_creator_or_url_adder:
-        return build_message_error_response(
-            message=URL_FAILURE.UNABLE_TO_DELETE_URL, status_code=403
-        )
-
     return delete_url_in_utub(
         current_utub=current_utub, current_utub_url=current_utub_url
     )

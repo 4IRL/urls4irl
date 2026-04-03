@@ -2596,7 +2596,7 @@ def test_update_url_user_not_allowed_to_log(
 
     assert update_url_string_form.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id={utub_id}",
+        f"User={user.id} not URL adder or UTub creator: UTubURL.id={utub_url_id} in UTub.id={utub_id}",
         caplog.records,
     )
 

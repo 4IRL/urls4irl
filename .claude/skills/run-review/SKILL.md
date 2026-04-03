@@ -24,12 +24,12 @@ Autonomously execute all pending TODO items from a review file. The **main agent
 ### Step 1: Locate and Read the Review
 
 #### If $ARGUMENTS is provided:
-- Search for a review file in `reviews/` matching **$ARGUMENTS** contextually
-- Try `reviews/$ARGUMENTS.md`, `reviews/$ARGUMENTS-review.md`, `reviews/push-review-$ARGUMENTS.md`
+- Search for a review file under `plans/` matching **$ARGUMENTS** contextually
+- Try `plans/**/<arg>.md`, `plans/**/<arg>-review.md`, `plans/*/reviews/push-review-<arg>.md`
 
 #### If $ARGUMENTS is omitted:
 - Get the current branch: `git branch --show-current`
-- Look for `reviews/push-review-<branch>.md`
+- Look for `plans/*/reviews/push-review-<branch>.md`
 
 #### Read the review:
 - Read the full review file — review files accumulate multiple revision passes and the **latest revision is at the bottom**
@@ -145,7 +145,7 @@ When all items are done:
    - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
    - Main agent reads each result file to determine pass/fail.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
-3. **Clean up** all temp test output files.
+3. **Clean up** all temp test output files. Also delete all files in `plans/<topic>/tmp/` (the subagent communication directory for this review run). Derive `<topic>` from the review file's parent path (`plans/<topic>/reviews/`).
 4. Report final summary:
 
 ```

@@ -4,6 +4,8 @@ Each subagent receives the user's feature/task description and a list of affecte
 
 ## Response Format (all subagents)
 
+> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/tmp/research-<focus>.md`), then return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
+
 ```json
 {
   "area": "architecture | dependencies | request-chain | tests | schemas",
