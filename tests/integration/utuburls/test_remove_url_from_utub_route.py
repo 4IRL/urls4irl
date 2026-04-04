@@ -602,7 +602,9 @@ def test_delete_url_not_in_utub_no_tags(
 
     # Ensure 200 HTTP status code response
     assert delete_url_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in delete_url_response.data
+    json_response = delete_url_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     # Ensure proper removal from database
     with app.app_context():

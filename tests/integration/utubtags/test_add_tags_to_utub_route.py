@@ -475,7 +475,9 @@ def test_add_tag_to_nonexistent_utub(
     )
 
     assert add_tag_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in add_tag_response.data
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         assert num_of_utub_tags == Utub_Tags.query.count()

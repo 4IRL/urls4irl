@@ -250,7 +250,9 @@ def test_delete_nonexistent_tag_from_utub(
     )
 
     assert delete_tag_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in delete_tag_response.data
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags
@@ -287,7 +289,9 @@ def test_delete_tag_from_nonexistent_utub(
     )
 
     assert delete_tag_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in delete_tag_response.data
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags

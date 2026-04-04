@@ -1,8 +1,11 @@
-from flask import render_template
+from flask import render_template, request
 from flask_login import current_user
+from werkzeug.exceptions import NotFound
 
 from backend.app_logger import warning_log
+from backend.schemas.errors import build_message_error_response
 from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 
 def handle_403_response_from_csrf(_):
@@ -18,7 +21,13 @@ def handle_403_response_from_csrf(_):
     )
 
 
-def handle_404_response(_):
+def handle_404_response(error: NotFound):
+    if (
+        request.headers.get(URL_VALIDATION.X_REQUESTED_WITH)
+        == URL_VALIDATION.XMLHTTPREQUEST
+    ):
+        return build_message_error_response(message="Not Found", status_code=404)
+
     return (
         render_template(
             "error_pages/error_response.html",

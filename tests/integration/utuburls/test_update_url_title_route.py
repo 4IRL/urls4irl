@@ -991,7 +991,9 @@ def test_update_url_title_of_nonexistent_url(
     assert update_url_string_title_form.status_code == 404
 
     # Assert JSON response from server is valid
-    assert IDENTIFIERS.HTML_404.encode() in update_url_string_title_form.data
+    json_response = update_url_string_title_form.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1043,7 +1045,9 @@ def test_update_url_title_in_nonexistent_utub(
     assert update_url_string_title_form.status_code == 404
 
     # Assert JSON response from server is valid
-    assert IDENTIFIERS.HTML_404.encode() in update_url_string_title_form.data
+    json_response = update_url_string_title_form.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
