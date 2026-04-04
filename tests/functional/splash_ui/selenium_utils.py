@@ -35,7 +35,8 @@ def register_user_ui(
         pass_confirm = password
 
     # Identify and load register modal
-    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+    # Longer timeout: first click after page load is sensitive to resource contention at n=8
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER, time=5)
 
     wait_for_modal_ready(browser, SPL.REGISTER_MODAL)
 
