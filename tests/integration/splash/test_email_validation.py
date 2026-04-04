@@ -5,6 +5,7 @@ from flask_login import current_user
 import pytest
 
 from backend.models.utils import VerifyTokenResponse
+from backend.schemas.users import EmailValidationResponseSchema
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.splash.utils import verify_token
 from tests.models_for_test import valid_user_1
@@ -404,3 +405,43 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
         == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
     )
     assert email_response_json[STD_JSON.MESSAGE] == EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX
+
+
+def test_send_validation_email_response_conforms_to_schema(app, load_register_page):
+    """
+    GIVEN a registered but non-email-validated user who is logged in
+    WHEN they request a validation email via POST to "/send-validation-email"
+    THEN ensure the 200 JSON response conforms to EmailValidationResponseSchema
+    """
+    client, csrf_token = load_register_page
+
+    # Register the user (leaves them logged in but not email-validated)
+    client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(valid_user_1),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    # Request validation email
+    send_email_response = client.post(
+        url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert send_email_response.status_code == 200
+    response_json = send_email_response.json
+
+    # Validate response conforms to declared schema
+    validated = EmailValidationResponseSchema.model_validate(response_json)
+    assert validated is not None
+
+    # Verify response keys match schema's aliased field names
+    expected_keys = {
+        field_info.alias or field_name
+        for field_name, field_info in EmailValidationResponseSchema.model_fields.items()
+    }
+    assert set(response_json.keys()) == expected_keys
+
+    # Verify both status and message are present
+    assert STD_JSON.STATUS in response_json
+    assert STD_JSON.MESSAGE in response_json

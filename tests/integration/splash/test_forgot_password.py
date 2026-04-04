@@ -4,6 +4,7 @@ import pytest
 
 from backend.api_common.request_errors import INVALID_EMAIL_STR
 from backend.models.utils import VerifyTokenResponse
+from backend.schemas.users import ForgotPasswordResponseSchema
 from backend.splash.utils import verify_token
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
@@ -485,3 +486,39 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
             Forgot_Passwords.reset_token == reset_token
         ).first()
         assert incremented_forgot_password.attempts == current_attempts + 1
+
+
+def test_forgot_password_response_conforms_to_schema(
+    app, register_first_user, load_login_page
+):
+    """
+    GIVEN a registered, email-validated user
+    WHEN they submit the forgot password form with a valid email
+    THEN ensure the 200 JSON response conforms to ForgotPasswordResponseSchema
+    """
+    new_user, _ = register_first_user
+    client, csrf_token = load_login_page
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    # Validate response conforms to declared schema
+    validated = ForgotPasswordResponseSchema.model_validate(response_json)
+    assert validated is not None
+
+    # Verify response keys match schema's aliased field names
+    expected_keys = {
+        field_info.alias or field_name
+        for field_name, field_info in ForgotPasswordResponseSchema.model_fields.items()
+    }
+    assert set(response_json.keys()) == expected_keys
+
+    # Verify both status and message are present
+    assert STD_JSON.STATUS in response_json
+    assert STD_JSON.MESSAGE in response_json

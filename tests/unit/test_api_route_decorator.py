@@ -10,6 +10,7 @@ from backend.api_common.parse_request import _schema_name_to_kwarg, api_route
 from backend.contact.routes import contact
 from backend.members.routes import members
 from backend.schemas.base import BaseSchema
+from backend.schemas.contact import ContactResponseSchema
 from backend.schemas.requests.contact import ContactRequest
 from backend.schemas.requests.members import AddMemberRequest
 from backend.schemas.requests.splash import (
@@ -18,6 +19,7 @@ from backend.schemas.requests.splash import (
     RegisterRequest,
     ResetPasswordRequest,
 )
+from backend.schemas.system import HealthResponseSchema
 from backend.schemas.requests.tags import AddTagRequest
 from backend.schemas.requests.urls import (
     CreateURLRequest,
@@ -42,8 +44,12 @@ from backend.schemas.urls import (
     UrlUpdatedResponseSchema,
 )
 from backend.schemas.users import (
+    EmailValidationResponseSchema,
+    ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     MemberModifiedResponseSchema,
+    RegisterResponseSchema,
+    ResetPasswordResponseSchema,
     UtubSummaryListSchema,
 )
 from backend.schemas.utubs import (
@@ -280,11 +286,11 @@ def test_api_route_preserves_functools_wraps_attributes(minimal_app: Flask):
 # All 24 migrated routes with their expected request and response schemas
 ALL_API_ROUTES = [
     # Splash routes
-    ("splash.register_user", RegisterRequest, None),
+    ("splash.register_user", RegisterRequest, RegisterResponseSchema),
     ("splash.login", LoginRequest, LoginRedirectResponseSchema),
-    ("splash.send_validation_email", None, None),
-    ("splash.forgot_password", ForgotPasswordRequest, None),
-    ("splash.reset_password", ResetPasswordRequest, None),
+    ("splash.send_validation_email", None, EmailValidationResponseSchema),
+    ("splash.forgot_password", ForgotPasswordRequest, ForgotPasswordResponseSchema),
+    ("splash.reset_password", ResetPasswordRequest, ResetPasswordResponseSchema),
     # UTub routes
     ("utubs.create_utub", CreateUTubRequest, UtubCreatedResponseSchema),
     ("utubs.get_single_utub", None, UtubDetailSchema),
@@ -312,9 +318,9 @@ ALL_API_ROUTES = [
     ("utub_url_tags.create_utub_url_tag", AddTagRequest, UrlTagModifiedResponseSchema),
     ("utub_url_tags.delete_utub_url_tag", None, UrlTagModifiedResponseSchema),
     # Contact routes
-    ("contact.submit_contact_us", ContactRequest, None),
+    ("contact.submit_contact_us", ContactRequest, ContactResponseSchema),
     # System routes
-    ("system.health", None, None),
+    ("system.health", None, HealthResponseSchema),
 ]
 
 

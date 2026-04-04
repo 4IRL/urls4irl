@@ -6,6 +6,7 @@ from backend import db
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
+from backend.schemas.users import ResetPasswordResponseSchema
 from backend.splash.utils import verify_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -326,3 +327,39 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
+
+
+def test_reset_password_response_conforms_to_schema(user_attempts_reset_password):
+    """
+    GIVEN a user with a valid reset password token
+    WHEN they submit a valid new password via POST to "/reset-password/<token>"
+    THEN ensure the 200 JSON response conforms to ResetPasswordResponseSchema
+    """
+    app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
+        json={
+            RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
+            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    # Validate response conforms to declared schema
+    validated = ResetPasswordResponseSchema.model_validate(response_json)
+    assert validated is not None
+
+    # Verify response keys match schema's aliased field names
+    expected_keys = {
+        field_info.alias or field_name
+        for field_name, field_info in ResetPasswordResponseSchema.model_fields.items()
+    }
+    assert set(response_json.keys()) == expected_keys
+
+    # Verify both status and message are present
+    assert STD_JSON.STATUS in response_json
+    assert STD_JSON.MESSAGE in response_json

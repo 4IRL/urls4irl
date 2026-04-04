@@ -1,4 +1,6 @@
 from backend.schemas.base import BaseSchema
+from backend.schemas.contact import ContactResponseSchema
+from backend.schemas.system import HealthResponseSchema
 from backend.schemas.tags import (
     UrlTagModifiedResponseSchema,
     UtubTagAddedToUtubResponseSchema,
@@ -18,9 +20,13 @@ from backend.schemas.urls import (
     UtubUrlSchema,
 )
 from backend.schemas.users import (
+    EmailValidationResponseSchema,
+    ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
     MemberModifiedResponseSchema,
     MemberSchema,
+    RegisterResponseSchema,
+    ResetPasswordResponseSchema,
     UserSchema,
     UtubSummaryItemSchema,
     UtubSummaryListSchema,
@@ -35,9 +41,15 @@ from backend.schemas.utubs import (
 
 __all__ = [
     "BaseSchema",
+    "ContactResponseSchema",
+    "EmailValidationResponseSchema",
+    "ForgotPasswordResponseSchema",
+    "HealthResponseSchema",
     "LoginRedirectResponseSchema",
     "MemberModifiedResponseSchema",
     "MemberSchema",
+    "RegisterResponseSchema",
+    "ResetPasswordResponseSchema",
     "UserSchema",
     "UtubSummaryItemSchema",
     "UtubSummaryListSchema",

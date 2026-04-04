@@ -9,6 +9,7 @@ from backend.api_common.request_errors import max_length_message, min_length_mes
 from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.users import Users
+from backend.schemas.contact import ContactResponseSchema
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
@@ -487,3 +488,44 @@ def _assert_valid_contact_form_entry(
     assert comparison_entry.subject == entry.subject
     assert comparison_entry.content == entry.content
     assert comparison_entry.user_agent_hash == entry.user_agent_hash
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_contact_us_response_conforms_to_schema(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user submitting a valid contact form
+    WHEN the server processes the submission successfully
+    THEN ensure the 200 JSON response conforms to ContactResponseSchema
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
+
+    response = client.post(
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": MOCK_SUBJECT,
+            "content": MOCK_CONTENT,
+        },
+        headers={**HEADERS, "X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+
+    # Validate response conforms to declared schema
+    validated = ContactResponseSchema.model_validate(response_json)
+    assert validated is not None
+
+    # Verify response keys match schema's aliased field names
+    expected_keys = {
+        field_info.alias or field_name
+        for field_name, field_info in ContactResponseSchema.model_fields.items()
+    }
+    assert set(response_json.keys()) == expected_keys
+
+    # Verify both status and message are present
+    assert STD_JSON.STATUS in response_json
+    assert STD_JSON.MESSAGE in response_json
