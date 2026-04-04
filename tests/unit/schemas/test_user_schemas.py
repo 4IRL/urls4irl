@@ -90,101 +90,49 @@ def test_login_redirect_response_schema_model_validate_round_trip():
     assert schema.redirect_url == "/home"
 
 
-# --- RegisterResponseSchema tests ---
+# --- Parametrized tests for status+message response schemas ---
+
+STATUS_MESSAGE_SCHEMAS = pytest.mark.parametrize(
+    "schema_class",
+    [
+        RegisterResponseSchema,
+        ForgotPasswordResponseSchema,
+        ResetPasswordResponseSchema,
+        EmailValidationResponseSchema,
+    ],
+    ids=[
+        "RegisterResponseSchema",
+        "ForgotPasswordResponseSchema",
+        "ResetPasswordResponseSchema",
+        "EmailValidationResponseSchema",
+    ],
+)
 
 
-def test_register_response_schema_dump():
-    schema = RegisterResponseSchema(status="Success", message="User registered.")
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_dump(schema_class):
+    schema = schema_class(status="Success", message="Done.")
     dumped = schema.model_dump(by_alias=True)
-    assert dumped == {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "User registered."}
+    assert dumped == {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "Done."}
 
 
-def test_register_response_schema_missing_required_fields():
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_missing_required_fields(schema_class):
     with pytest.raises(ValidationError):
-        RegisterResponseSchema()
+        schema_class()
 
 
-def test_register_response_schema_model_validate_round_trip():
-    data = {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "User registered."}
-    schema = RegisterResponseSchema.model_validate(data)
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_model_validate_round_trip(schema_class):
+    data = {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "Done."}
+    schema = schema_class.model_validate(data)
     assert schema.status == "Success"
-    assert schema.message == "User registered."
+    assert schema.message == "Done."
 
 
-def test_register_response_schema_has_expected_fields():
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_has_expected_fields(schema_class):
     field_aliases = {
-        field.alias or name
-        for name, field in RegisterResponseSchema.model_fields.items()
-    }
-    assert field_aliases == {STD_JSON.STATUS, STD_JSON.MESSAGE}
-
-
-# --- ForgotPasswordResponseSchema tests ---
-
-
-def test_forgot_password_response_schema_dump():
-    schema = ForgotPasswordResponseSchema(status="Success", message="Email sent.")
-    dumped = schema.model_dump(by_alias=True)
-    assert dumped == {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "Email sent."}
-
-
-def test_forgot_password_response_schema_missing_required_fields():
-    with pytest.raises(ValidationError):
-        ForgotPasswordResponseSchema()
-
-
-def test_forgot_password_response_schema_has_expected_fields():
-    field_aliases = {
-        field.alias or name
-        for name, field in ForgotPasswordResponseSchema.model_fields.items()
-    }
-    assert field_aliases == {STD_JSON.STATUS, STD_JSON.MESSAGE}
-
-
-# --- ResetPasswordResponseSchema tests ---
-
-
-def test_reset_password_response_schema_dump():
-    schema = ResetPasswordResponseSchema(status="Success", message="Password reset.")
-    dumped = schema.model_dump(by_alias=True)
-    assert dumped == {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "Password reset."}
-
-
-def test_reset_password_response_schema_missing_required_fields():
-    with pytest.raises(ValidationError):
-        ResetPasswordResponseSchema()
-
-
-def test_reset_password_response_schema_has_expected_fields():
-    field_aliases = {
-        field.alias or name
-        for name, field in ResetPasswordResponseSchema.model_fields.items()
-    }
-    assert field_aliases == {STD_JSON.STATUS, STD_JSON.MESSAGE}
-
-
-# --- EmailValidationResponseSchema tests ---
-
-
-def test_email_validation_response_schema_dump():
-    schema = EmailValidationResponseSchema(
-        status="Success", message="Validation email sent."
-    )
-    dumped = schema.model_dump(by_alias=True)
-    assert dumped == {
-        STD_JSON.STATUS: "Success",
-        STD_JSON.MESSAGE: "Validation email sent.",
-    }
-
-
-def test_email_validation_response_schema_missing_required_fields():
-    with pytest.raises(ValidationError):
-        EmailValidationResponseSchema()
-
-
-def test_email_validation_response_schema_has_expected_fields():
-    field_aliases = {
-        field.alias or name
-        for name, field in EmailValidationResponseSchema.model_fields.items()
+        field.alias or name for name, field in schema_class.model_fields.items()
     }
     assert field_aliases == {STD_JSON.STATUS, STD_JSON.MESSAGE}
