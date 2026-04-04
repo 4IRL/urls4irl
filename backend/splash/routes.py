@@ -21,13 +21,13 @@ from backend.app_logger import (
 )
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.splash import (
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
 )
-from backend.schemas.errors import ErrorResponse
 from backend.schemas.users import (
     EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
