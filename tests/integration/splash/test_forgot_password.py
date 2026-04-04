@@ -4,6 +4,7 @@ import pytest
 
 from backend.api_common.request_errors import INVALID_EMAIL_STR
 from backend.models.utils import VerifyTokenResponse
+from backend.schemas.users import ForgotPasswordResponseSchema
 from backend.splash.utils import verify_token
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
@@ -15,6 +16,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from tests.integration.utils import assert_response_conforms_to_schema
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 
 pytestmark = pytest.mark.splash
@@ -485,3 +487,30 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
             Forgot_Passwords.reset_token == reset_token
         ).first()
         assert incremented_forgot_password.attempts == current_attempts + 1
+
+
+def test_forgot_password_response_conforms_to_schema(
+    app, register_first_user, load_login_page
+):
+    """
+    GIVEN a registered, email-validated user
+    WHEN they submit the forgot password form with a valid email
+    THEN ensure the 200 JSON response conforms to ForgotPasswordResponseSchema
+    """
+    new_user, _ = register_first_user
+    client, csrf_token = load_login_page
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    assert_response_conforms_to_schema(
+        response_json,
+        ForgotPasswordResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
+    )

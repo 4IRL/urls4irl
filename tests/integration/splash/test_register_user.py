@@ -4,6 +4,7 @@ from flask_login import current_user
 import pytest
 from werkzeug.security import check_password_hash
 
+from backend.schemas.users import RegisterResponseSchema
 from backend.splash.constants import RegisterErrorCodes
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
@@ -12,6 +13,7 @@ from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
+from tests.integration.utils import assert_response_conforms_to_schema
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.integration.splash.conftest import register_json
 
@@ -463,4 +465,30 @@ def test_register_unvalidated_email_with_valid_username(
     assert (
         int(response_json[STD_JSON.ERROR_CODE])
         == RegisterErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    )
+
+
+def test_register_response_conforms_to_schema(app, load_register_page):
+    """
+    GIVEN a new, unregistered user
+    WHEN they register successfully via POST to "/register"
+    THEN ensure the 201 JSON response conforms to RegisterResponseSchema
+    """
+    client, csrf_token_string = load_register_page
+
+    new_user = deepcopy(valid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 201
+    response_json = response.json
+
+    assert_response_conforms_to_schema(
+        response_json,
+        RegisterResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
     )

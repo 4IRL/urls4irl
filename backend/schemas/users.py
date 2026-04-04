@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from backend.schemas.base import BaseSchema
+from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.utub_strs import UTUB_ID
 from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
@@ -59,3 +59,19 @@ class LoginRedirectResponseSchema(BaseSchema):
 class MemberModifiedResponseSchema(BaseSchema):
     utub_id: int = Field(alias=UTUB_ID)
     member: UserSchema = Field(alias=MEMBER)
+
+
+class RegisterResponseSchema(StatusMessageResponseSchema):
+    pass
+
+
+class ForgotPasswordResponseSchema(StatusMessageResponseSchema):
+    pass
+
+
+class ResetPasswordResponseSchema(StatusMessageResponseSchema):
+    pass
+
+
+class EmailValidationResponseSchema(StatusMessageResponseSchema):
+    pass

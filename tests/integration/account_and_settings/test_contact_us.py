@@ -9,11 +9,13 @@ from backend.api_common.request_errors import max_length_message, min_length_mes
 from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.users import Users
+from backend.schemas.contact import ContactResponseSchema
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_validation_strs import USER_AGENT
+from tests.integration.utils import assert_response_conforms_to_schema
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.account_and_support
@@ -487,3 +489,35 @@ def _assert_valid_contact_form_entry(
     assert comparison_entry.subject == entry.subject
     assert comparison_entry.content == entry.content
     assert comparison_entry.user_agent_hash == entry.user_agent_hash
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_contact_us_response_conforms_to_schema(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user submitting a valid contact form
+    WHEN the server processes the submission successfully
+    THEN ensure the 200 JSON response conforms to ContactResponseSchema
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
+
+    response = client.post(
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": MOCK_SUBJECT,
+            "content": MOCK_CONTENT,
+        },
+        headers={**HEADERS, "X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+
+    assert_response_conforms_to_schema(
+        response_json,
+        ContactResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
+    )

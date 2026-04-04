@@ -2,11 +2,16 @@ import pytest
 from pydantic import ValidationError
 
 from backend.schemas.users import (
+    EmailValidationResponseSchema,
+    ForgotPasswordResponseSchema,
     LoginRedirectResponseSchema,
+    RegisterResponseSchema,
+    ResetPasswordResponseSchema,
     UserSchema,
     UtubSummaryItemSchema,
     UtubSummaryListSchema,
 )
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.user_strs import REDIRECT_URL
 
@@ -83,3 +88,51 @@ def test_login_redirect_response_schema_model_validate_round_trip():
     data = {REDIRECT_URL: "/home"}
     schema = LoginRedirectResponseSchema.model_validate(data)
     assert schema.redirect_url == "/home"
+
+
+# --- Parametrized tests for status+message response schemas ---
+
+STATUS_MESSAGE_SCHEMAS = pytest.mark.parametrize(
+    "schema_class",
+    [
+        RegisterResponseSchema,
+        ForgotPasswordResponseSchema,
+        ResetPasswordResponseSchema,
+        EmailValidationResponseSchema,
+    ],
+    ids=[
+        "RegisterResponseSchema",
+        "ForgotPasswordResponseSchema",
+        "ResetPasswordResponseSchema",
+        "EmailValidationResponseSchema",
+    ],
+)
+
+
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_dump(schema_class):
+    schema = schema_class(status="Success", message="Done.")
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped == {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "Done."}
+
+
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_missing_required_fields(schema_class):
+    with pytest.raises(ValidationError):
+        schema_class()
+
+
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_model_validate_round_trip(schema_class):
+    data = {STD_JSON.STATUS: "Success", STD_JSON.MESSAGE: "Done."}
+    schema = schema_class.model_validate(data)
+    assert schema.status == "Success"
+    assert schema.message == "Done."
+
+
+@STATUS_MESSAGE_SCHEMAS
+def test_status_message_schema_has_expected_fields(schema_class):
+    field_aliases = {
+        field.alias or name for name, field in schema_class.model_fields.items()
+    }
+    assert field_aliases == {STD_JSON.STATUS, STD_JSON.MESSAGE}

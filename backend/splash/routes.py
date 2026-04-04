@@ -27,7 +27,13 @@ from backend.schemas.requests.splash import (
     RegisterRequest,
     ResetPasswordRequest,
 )
-from backend.schemas.users import LoginRedirectResponseSchema
+from backend.schemas.users import (
+    EmailValidationResponseSchema,
+    ForgotPasswordResponseSchema,
+    LoginRedirectResponseSchema,
+    RegisterResponseSchema,
+    ResetPasswordResponseSchema,
+)
 from backend.splash.constants import (
     ForgotPasswordErrorCodes,
     LoginErrorCodes,
@@ -87,6 +93,7 @@ def splash_page() -> WerkzeugResponse | str:
 @no_authenticated_users_allowed
 @api_route(
     request_schema=RegisterRequest,
+    response_schema=RegisterResponseSchema,
     error_message=USER_FAILURE.UNABLE_TO_REGISTER,
     error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
@@ -126,7 +133,7 @@ def confirm_email_after_register() -> WerkzeugResponse:
 
 
 @splash.route("/send-validation-email", methods=["POST"])
-@api_route(ajax_required=False)
+@api_route(response_schema=EmailValidationResponseSchema, ajax_required=False)
 def send_validation_email() -> WerkzeugResponse | FlaskResponse:
     return send_validation_email_to_user()
 
@@ -169,6 +176,7 @@ def validate_email(token: str) -> WerkzeugResponse:
 @no_authenticated_users_allowed
 @api_route(
     request_schema=ForgotPasswordRequest,
+    response_schema=ForgotPasswordResponseSchema,
     error_message=FORGOT_PASSWORD.INVALID_EMAIL,
     error_code=ForgotPasswordErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
@@ -185,6 +193,7 @@ def reset_password_page(token: str) -> WerkzeugResponse | str:
 @splash.route("/reset-password/<string:token>", methods=["POST"])
 @api_route(
     request_schema=ResetPasswordRequest,
+    response_schema=ResetPasswordResponseSchema,
     error_message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
     error_code=ResetPasswordErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
