@@ -241,7 +241,7 @@ def test_register_user_rate_limits(browser: WebDriver):
     add_forced_rate_limit_header(browser)
 
     # Submit form
-    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT, time=5)
     assert_on_429_page(browser)
 
 
