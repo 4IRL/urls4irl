@@ -4,8 +4,7 @@ from typing import TYPE_CHECKING
 
 from pydantic import Field
 
-from backend.schemas.base import BaseSchema
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.utub_strs import UTUB_ID
 from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
@@ -62,21 +61,17 @@ class MemberModifiedResponseSchema(BaseSchema):
     member: UserSchema = Field(alias=MEMBER)
 
 
-class RegisterResponseSchema(BaseSchema):
-    status: str = Field(alias=STD_JSON.STATUS)
-    message: str = Field(alias=STD_JSON.MESSAGE)
+class RegisterResponseSchema(StatusMessageResponseSchema):
+    pass
 
 
-class ForgotPasswordResponseSchema(BaseSchema):
-    status: str = Field(alias=STD_JSON.STATUS)
-    message: str = Field(alias=STD_JSON.MESSAGE)
+class ForgotPasswordResponseSchema(StatusMessageResponseSchema):
+    pass
 
 
-class ResetPasswordResponseSchema(BaseSchema):
-    status: str = Field(alias=STD_JSON.STATUS)
-    message: str = Field(alias=STD_JSON.MESSAGE)
+class ResetPasswordResponseSchema(StatusMessageResponseSchema):
+    pass
 
 
-class EmailValidationResponseSchema(BaseSchema):
-    status: str = Field(alias=STD_JSON.STATUS)
-    message: str = Field(alias=STD_JSON.MESSAGE)
+class EmailValidationResponseSchema(StatusMessageResponseSchema):
+    pass

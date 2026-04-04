@@ -1,4 +1,4 @@
-from backend.schemas.base import BaseSchema
+from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.schemas.contact import ContactResponseSchema
 from backend.schemas.system import HealthResponseSchema
 from backend.schemas.tags import (
@@ -50,6 +50,7 @@ __all__ = [
     "MemberSchema",
     "RegisterResponseSchema",
     "ResetPasswordResponseSchema",
+    "StatusMessageResponseSchema",
     "UserSchema",
     "UtubSummaryItemSchema",
     "UtubSummaryListSchema",
