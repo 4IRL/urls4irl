@@ -14,6 +14,7 @@ from backend.utils.strings.json_strs import (
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
@@ -695,11 +696,17 @@ def test_update_name_of_invalid_utub(
     update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=NONEXISTENT_UTUB_ID),
         json={UTUB_FORM.UTUB_NAME: utub_of_user.name + "Hello"},
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure valid reponse
     assert update_utub_name_response.status_code == 404
+    json_response = update_utub_name_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
