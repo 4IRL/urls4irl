@@ -13,6 +13,7 @@ from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
+from tests.integration.utils import assert_response_conforms_to_schema
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.integration.splash.conftest import register_json
 
@@ -486,17 +487,8 @@ def test_register_response_conforms_to_schema(app, load_register_page):
     assert response.status_code == 201
     response_json = response.json
 
-    # Validate response conforms to declared schema
-    validated = RegisterResponseSchema.model_validate(response_json)
-    assert validated is not None
-
-    # Verify response keys match schema's aliased field names
-    expected_keys = {
-        field_info.alias or field_name
-        for field_name, field_info in RegisterResponseSchema.model_fields.items()
-    }
-    assert set(response_json.keys()) == expected_keys
-
-    # Verify both status and message are present
-    assert STD_JSON.STATUS in response_json
-    assert STD_JSON.MESSAGE in response_json
+    assert_response_conforms_to_schema(
+        response_json,
+        RegisterResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
+    )

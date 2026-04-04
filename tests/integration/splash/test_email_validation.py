@@ -25,6 +25,7 @@ from backend.utils.strings.email_validation_strs import (
 )
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.integration.splash.conftest import register_json
+from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.splash
 
@@ -431,17 +432,8 @@ def test_send_validation_email_response_conforms_to_schema(app, load_register_pa
     assert send_email_response.status_code == 200
     response_json = send_email_response.json
 
-    # Validate response conforms to declared schema
-    validated = EmailValidationResponseSchema.model_validate(response_json)
-    assert validated is not None
-
-    # Verify response keys match schema's aliased field names
-    expected_keys = {
-        field_info.alias or field_name
-        for field_name, field_info in EmailValidationResponseSchema.model_fields.items()
-    }
-    assert set(response_json.keys()) == expected_keys
-
-    # Verify both status and message are present
-    assert STD_JSON.STATUS in response_json
-    assert STD_JSON.MESSAGE in response_json
+    assert_response_conforms_to_schema(
+        response_json,
+        EmailValidationResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
+    )

@@ -15,6 +15,7 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_validation_strs import USER_AGENT
+from tests.integration.utils import assert_response_conforms_to_schema
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.account_and_support
@@ -515,17 +516,8 @@ def test_contact_us_response_conforms_to_schema(
     assert response.status_code == 200
     response_json = response.get_json()
 
-    # Validate response conforms to declared schema
-    validated = ContactResponseSchema.model_validate(response_json)
-    assert validated is not None
-
-    # Verify response keys match schema's aliased field names
-    expected_keys = {
-        field_info.alias or field_name
-        for field_name, field_info in ContactResponseSchema.model_fields.items()
-    }
-    assert set(response_json.keys()) == expected_keys
-
-    # Verify both status and message are present
-    assert STD_JSON.STATUS in response_json
-    assert STD_JSON.MESSAGE in response_json
+    assert_response_conforms_to_schema(
+        response_json,
+        ContactResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
+    )

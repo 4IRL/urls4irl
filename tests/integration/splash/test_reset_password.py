@@ -12,6 +12,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
+from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.splash
 
@@ -349,17 +350,8 @@ def test_reset_password_response_conforms_to_schema(user_attempts_reset_password
     assert response.status_code == 200
     response_json = response.json
 
-    # Validate response conforms to declared schema
-    validated = ResetPasswordResponseSchema.model_validate(response_json)
-    assert validated is not None
-
-    # Verify response keys match schema's aliased field names
-    expected_keys = {
-        field_info.alias or field_name
-        for field_name, field_info in ResetPasswordResponseSchema.model_fields.items()
-    }
-    assert set(response_json.keys()) == expected_keys
-
-    # Verify both status and message are present
-    assert STD_JSON.STATUS in response_json
-    assert STD_JSON.MESSAGE in response_json
+    assert_response_conforms_to_schema(
+        response_json,
+        ResetPasswordResponseSchema,
+        {STD_JSON.STATUS, STD_JSON.MESSAGE},
+    )
