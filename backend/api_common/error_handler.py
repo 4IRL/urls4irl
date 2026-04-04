@@ -21,7 +21,7 @@ def handle_403_response_from_csrf(_):
     )
 
 
-def handle_404_response(error: NotFound):
+def handle_404_response(_: NotFound):
     if (
         request.headers.get(URL_VALIDATION.X_REQUESTED_WITH)
         == URL_VALIDATION.XMLHTTPREQUEST
