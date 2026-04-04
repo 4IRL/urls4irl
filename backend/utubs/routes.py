@@ -15,6 +15,7 @@ from backend.api_common.auth_decorators import (
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utubs import Utubs
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.utubs import (
     CreateUTubRequest,
     UpdateUTubDescriptionRequest,
@@ -102,6 +103,9 @@ def home() -> str | WerkzeugResponse:
     response_schema=UtubCreatedResponseSchema,
     error_message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+    tags=["utubs"],
+    description="Create a new UTub",
+    status_codes={200: UtubCreatedResponseSchema, 400: ErrorResponse},
 )
 def create_utub(create_utub_request: CreateUTubRequest) -> FlaskResponse:
     return create_new_utub(
@@ -111,7 +115,12 @@ def create_utub(create_utub_request: CreateUTubRequest) -> FlaskResponse:
 
 @utubs.route("/utubs/<int:utub_id>", methods=["GET"])
 @utub_membership_required
-@api_route(response_schema=UtubDetailSchema)
+@api_route(
+    response_schema=UtubDetailSchema,
+    tags=["utubs"],
+    description="Retrieve data for a single UTub",
+    status_codes={200: UtubDetailSchema, 404: ErrorResponse},
+)
 def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Retrieves data for a single UTub, and returns it in a serialized format
@@ -121,7 +130,12 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
 
 @utubs.route("/utubs", methods=["GET"])
 @email_validation_required
-@api_route(response_schema=UtubSummaryListSchema)
+@api_route(
+    response_schema=UtubSummaryListSchema,
+    tags=["utubs"],
+    description="Retrieve a summary of all UTubs for the current user",
+    status_codes={200: UtubSummaryListSchema},
+)
 def get_utubs() -> FlaskResponse:
     """
     User wants a summary of their UTubs in JSON format.
@@ -136,6 +150,14 @@ def get_utubs() -> FlaskResponse:
     response_schema=UtubNameUpdatedResponseSchema,
     error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+    tags=["utubs"],
+    description="Update a UTub name",
+    status_codes={
+        200: UtubNameUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def update_utub_name(
     utub_id: int, current_utub: Utubs, update_utub_name_request: UpdateUTubNameRequest
@@ -157,6 +179,14 @@ def update_utub_name(
     response_schema=UtubDescUpdatedResponseSchema,
     error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+    tags=["utubs"],
+    description="Update a UTub description",
+    status_codes={
+        200: UtubDescUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def update_utub_desc(
     utub_id: int,
@@ -177,7 +207,16 @@ def update_utub_desc(
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
 @utub_creator_required
-@api_route(response_schema=UtubDeletedResponseSchema)
+@api_route(
+    response_schema=UtubDeletedResponseSchema,
+    tags=["utubs"],
+    description="Delete a UTub",
+    status_codes={
+        200: UtubDeletedResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
 def delete_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained

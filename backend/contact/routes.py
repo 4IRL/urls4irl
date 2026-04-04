@@ -8,6 +8,7 @@ from backend.api_common.responses import FlaskResponse
 from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.contact.contact_us import load_contact_us_page, validate_and_contact
 from backend.schemas.contact import ContactResponseSchema
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests import ContactRequest
 from backend.utils.constants import provide_config_for_constants
 
@@ -31,6 +32,9 @@ def contact_us() -> str:
     error_message="Unable to submit contact form.",
     error_code=1,
     ajax_required=False,
+    tags=["contact"],
+    description="Submit a contact form",
+    status_codes={200: ContactResponseSchema, 400: ErrorResponse},
 )
 @limiter.limit(
     f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day",

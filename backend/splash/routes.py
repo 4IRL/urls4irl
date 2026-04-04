@@ -27,6 +27,7 @@ from backend.schemas.requests.splash import (
     RegisterRequest,
     ResetPasswordRequest,
 )
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.users import (
     EmailValidationResponseSchema,
     ForgotPasswordResponseSchema,
@@ -97,6 +98,9 @@ def splash_page() -> WerkzeugResponse | str:
     error_message=USER_FAILURE.UNABLE_TO_REGISTER,
     error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
+    tags=["auth"],
+    description="Register a new user account",
+    status_codes={201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
 )
 def register_user(register_request: RegisterRequest) -> FlaskResponse:
     """Handles registration form submission."""
@@ -115,6 +119,13 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
     error_message=USER_FAILURE.UNABLE_TO_LOGIN,
     error_code=LoginErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
+    tags=["auth"],
+    description="Log in to an existing account",
+    status_codes={
+        200: LoginRedirectResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+    },
 )
 def login(login_request: LoginRequest) -> FlaskResponse:
     """Handles login form submission."""
@@ -133,7 +144,18 @@ def confirm_email_after_register() -> WerkzeugResponse:
 
 
 @splash.route("/send-validation-email", methods=["POST"])
-@api_route(response_schema=EmailValidationResponseSchema, ajax_required=False)
+@api_route(
+    response_schema=EmailValidationResponseSchema,
+    ajax_required=False,
+    tags=["auth"],
+    description="Send an email validation link to the current user",
+    status_codes={
+        200: EmailValidationResponseSchema,
+        400: ErrorResponse,
+        404: ErrorResponse,
+        429: ErrorResponse,
+    },
+)
 def send_validation_email() -> WerkzeugResponse | FlaskResponse:
     return send_validation_email_to_user()
 
@@ -180,6 +202,9 @@ def validate_email(token: str) -> WerkzeugResponse:
     error_message=FORGOT_PASSWORD.INVALID_EMAIL,
     error_code=ForgotPasswordErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
+    tags=["auth"],
+    description="Send a password reset email",
+    status_codes={200: ForgotPasswordResponseSchema, 400: ErrorResponse},
 )
 def forgot_password(forgot_password_request: ForgotPasswordRequest) -> FlaskResponse:
     return send_forgot_password_email_to_user(forgot_password_request.email)
@@ -197,6 +222,13 @@ def reset_password_page(token: str) -> WerkzeugResponse | str:
     error_message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
     error_code=ResetPasswordErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
+    tags=["auth"],
+    description="Reset a user password with a valid token",
+    status_codes={
+        200: ResetPasswordResponseSchema,
+        400: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def reset_password(
     token: str, reset_password_request: ResetPasswordRequest

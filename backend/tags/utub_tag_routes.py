@@ -8,6 +8,7 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.tags import AddTagRequest
 from backend.schemas.tags import (
     UtubTagAddedToUtubResponseSchema,
@@ -30,6 +31,13 @@ utub_tags = Blueprint("utub_tags", __name__)
     response_schema=UtubTagAddedToUtubResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
     error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
+    tags=["tags"],
+    description="Add a tag to a UTub",
+    status_codes={
+        200: UtubTagAddedToUtubResponseSchema,
+        400: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def create_utub_tag(
     utub_id: int, current_utub: Utubs, add_tag_request: AddTagRequest
@@ -52,7 +60,12 @@ def create_utub_tag(
     methods=["DELETE"],
 )
 @utub_membership_with_valid_utub_tag
-@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema)
+@api_route(
+    response_schema=UtubTagDeletedFromUtubResponseSchema,
+    tags=["tags"],
+    description="Delete a tag from a UTub",
+    status_codes={200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
+)
 def delete_utub_tag(
     utub_id: int, utub_tag_id: int, current_utub: Utubs, current_utub_tag: Utub_Tags
 ) -> FlaskResponse:

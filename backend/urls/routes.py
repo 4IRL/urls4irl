@@ -9,6 +9,7 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.urls import (
     CreateURLRequest,
     UpdateURLStringRequest,
@@ -43,6 +44,14 @@ STD_JSON = STD_JSON_RESPONSE
     response_schema=UrlCreatedResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
+    tags=["urls"],
+    description="Add a URL to a UTub",
+    status_codes={
+        200: UrlCreatedResponseSchema,
+        400: ErrorResponse,
+        404: ErrorResponse,
+        409: ErrorResponse,
+    },
 )
 def create_url(
     utub_id: int, current_utub: Utubs, create_url_request: CreateURLRequest
@@ -62,7 +71,12 @@ def create_url(
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["GET"])
 @utub_membership_with_valid_url_in_utub_required
-@api_route(response_schema=UrlReadResponseSchema)
+@api_route(
+    response_schema=UrlReadResponseSchema,
+    tags=["urls"],
+    description="Retrieve a URL from a UTub",
+    status_codes={200: UrlReadResponseSchema, 404: ErrorResponse},
+)
 def get_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
 ) -> FlaskResponse:
@@ -89,6 +103,15 @@ def get_url(
     response_schema=UrlUpdatedResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
+    tags=["urls"],
+    description="Update a URL string in a UTub",
+    status_codes={
+        200: UrlUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+        409: ErrorResponse,
+    },
 )
 def update_url(
     utub_id: int,
@@ -122,6 +145,14 @@ def update_url(
     response_schema=UrlTitleUpdatedResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
+    tags=["urls"],
+    description="Update a URL title in a UTub",
+    status_codes={
+        200: UrlTitleUpdatedResponseSchema,
+        400: ErrorResponse,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
 )
 def update_url_title(
     utub_id: int,
@@ -150,7 +181,16 @@ def update_url_title(
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
 @url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
-@api_route(response_schema=UrlDeletedResponseSchema)
+@api_route(
+    response_schema=UrlDeletedResponseSchema,
+    tags=["urls"],
+    description="Delete a URL from a UTub",
+    status_codes={
+        200: UrlDeletedResponseSchema,
+        403: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
 def delete_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
 ) -> FlaskResponse:

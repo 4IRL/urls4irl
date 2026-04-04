@@ -312,44 +312,250 @@ def test_api_route_preserves_functools_wraps_attributes(minimal_app: Flask):
     assert callable(no_body_view_fn.__wrapped__)
 
 
-# All 24 migrated routes with their expected request and response schemas
+# All 24 migrated routes with their expected request schemas, response schemas,
+# tags, descriptions, and status_codes.
 ALL_API_ROUTES = [
     # Splash routes
-    ("splash.register_user", RegisterRequest, RegisterResponseSchema),
-    ("splash.login", LoginRequest, LoginRedirectResponseSchema),
-    ("splash.send_validation_email", None, EmailValidationResponseSchema),
-    ("splash.forgot_password", ForgotPasswordRequest, ForgotPasswordResponseSchema),
-    ("splash.reset_password", ResetPasswordRequest, ResetPasswordResponseSchema),
+    (
+        "splash.register_user",
+        RegisterRequest,
+        RegisterResponseSchema,
+        ["auth"],
+        "Register a new user account",
+        {201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+    ),
+    (
+        "splash.login",
+        LoginRequest,
+        LoginRedirectResponseSchema,
+        ["auth"],
+        "Log in to an existing account",
+        {200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+    ),
+    (
+        "splash.send_validation_email",
+        None,
+        EmailValidationResponseSchema,
+        ["auth"],
+        "Send an email validation link to the current user",
+        {
+            200: EmailValidationResponseSchema,
+            400: ErrorResponse,
+            404: ErrorResponse,
+            429: ErrorResponse,
+        },
+    ),
+    (
+        "splash.forgot_password",
+        ForgotPasswordRequest,
+        ForgotPasswordResponseSchema,
+        ["auth"],
+        "Send a password reset email",
+        {200: ForgotPasswordResponseSchema, 400: ErrorResponse},
+    ),
+    (
+        "splash.reset_password",
+        ResetPasswordRequest,
+        ResetPasswordResponseSchema,
+        ["auth"],
+        "Reset a user password with a valid token",
+        {200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
     # UTub routes
-    ("utubs.create_utub", CreateUTubRequest, UtubCreatedResponseSchema),
-    ("utubs.get_single_utub", None, UtubDetailSchema),
-    ("utubs.get_utubs", None, UtubSummaryListSchema),
-    ("utubs.update_utub_name", UpdateUTubNameRequest, UtubNameUpdatedResponseSchema),
+    (
+        "utubs.create_utub",
+        CreateUTubRequest,
+        UtubCreatedResponseSchema,
+        ["utubs"],
+        "Create a new UTub",
+        {200: UtubCreatedResponseSchema, 400: ErrorResponse},
+    ),
+    (
+        "utubs.get_single_utub",
+        None,
+        UtubDetailSchema,
+        ["utubs"],
+        "Retrieve data for a single UTub",
+        {200: UtubDetailSchema, 404: ErrorResponse},
+    ),
+    (
+        "utubs.get_utubs",
+        None,
+        UtubSummaryListSchema,
+        ["utubs"],
+        "Retrieve a summary of all UTubs for the current user",
+        {200: UtubSummaryListSchema},
+    ),
+    (
+        "utubs.update_utub_name",
+        UpdateUTubNameRequest,
+        UtubNameUpdatedResponseSchema,
+        ["utubs"],
+        "Update a UTub name",
+        {
+            200: UtubNameUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
     (
         "utubs.update_utub_desc",
         UpdateUTubDescriptionRequest,
         UtubDescUpdatedResponseSchema,
+        ["utubs"],
+        "Update a UTub description",
+        {
+            200: UtubDescUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
     ),
-    ("utubs.delete_utub", None, UtubDeletedResponseSchema),
+    (
+        "utubs.delete_utub",
+        None,
+        UtubDeletedResponseSchema,
+        ["utubs"],
+        "Delete a UTub",
+        {200: UtubDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse},
+    ),
     # URL routes
-    ("urls.create_url", CreateURLRequest, UrlCreatedResponseSchema),
-    ("urls.get_url", None, UrlReadResponseSchema),
-    ("urls.update_url", UpdateURLStringRequest, UrlUpdatedResponseSchema),
-    ("urls.update_url_title", UpdateURLTitleRequest, UrlTitleUpdatedResponseSchema),
-    ("urls.delete_url", None, UrlDeletedResponseSchema),
+    (
+        "urls.create_url",
+        CreateURLRequest,
+        UrlCreatedResponseSchema,
+        ["urls"],
+        "Add a URL to a UTub",
+        {
+            200: UrlCreatedResponseSchema,
+            400: ErrorResponse,
+            404: ErrorResponse,
+            409: ErrorResponse,
+        },
+    ),
+    (
+        "urls.get_url",
+        None,
+        UrlReadResponseSchema,
+        ["urls"],
+        "Retrieve a URL from a UTub",
+        {200: UrlReadResponseSchema, 404: ErrorResponse},
+    ),
+    (
+        "urls.update_url",
+        UpdateURLStringRequest,
+        UrlUpdatedResponseSchema,
+        ["urls"],
+        "Update a URL string in a UTub",
+        {
+            200: UrlUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+            409: ErrorResponse,
+        },
+    ),
+    (
+        "urls.update_url_title",
+        UpdateURLTitleRequest,
+        UrlTitleUpdatedResponseSchema,
+        ["urls"],
+        "Update a URL title in a UTub",
+        {
+            200: UrlTitleUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
+    (
+        "urls.delete_url",
+        None,
+        UrlDeletedResponseSchema,
+        ["urls"],
+        "Delete a URL from a UTub",
+        {200: UrlDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse},
+    ),
     # Member routes
-    ("members.create_member", AddMemberRequest, MemberModifiedResponseSchema),
-    ("members.remove_member", None, MemberModifiedResponseSchema),
+    (
+        "members.create_member",
+        AddMemberRequest,
+        MemberModifiedResponseSchema,
+        ["members"],
+        "Add a member to a UTub",
+        {
+            200: MemberModifiedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
+    (
+        "members.remove_member",
+        None,
+        MemberModifiedResponseSchema,
+        ["members"],
+        "Remove a member from a UTub",
+        {
+            200: MemberModifiedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
     # UTub tag routes
-    ("utub_tags.create_utub_tag", AddTagRequest, UtubTagAddedToUtubResponseSchema),
-    ("utub_tags.delete_utub_tag", None, UtubTagDeletedFromUtubResponseSchema),
+    (
+        "utub_tags.create_utub_tag",
+        AddTagRequest,
+        UtubTagAddedToUtubResponseSchema,
+        ["tags"],
+        "Add a tag to a UTub",
+        {200: UtubTagAddedToUtubResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
+    (
+        "utub_tags.delete_utub_tag",
+        None,
+        UtubTagDeletedFromUtubResponseSchema,
+        ["tags"],
+        "Delete a tag from a UTub",
+        {200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
+    ),
     # URL tag routes
-    ("utub_url_tags.create_utub_url_tag", AddTagRequest, UrlTagModifiedResponseSchema),
-    ("utub_url_tags.delete_utub_url_tag", None, UrlTagModifiedResponseSchema),
+    (
+        "utub_url_tags.create_utub_url_tag",
+        AddTagRequest,
+        UrlTagModifiedResponseSchema,
+        ["tags"],
+        "Add a tag to a URL in a UTub",
+        {200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
+    (
+        "utub_url_tags.delete_utub_url_tag",
+        None,
+        UrlTagModifiedResponseSchema,
+        ["tags"],
+        "Remove a tag from a URL in a UTub",
+        {200: UrlTagModifiedResponseSchema, 404: ErrorResponse},
+    ),
     # Contact routes
-    ("contact.submit_contact_us", ContactRequest, ContactResponseSchema),
+    (
+        "contact.submit_contact_us",
+        ContactRequest,
+        ContactResponseSchema,
+        ["contact"],
+        "Submit a contact form",
+        {200: ContactResponseSchema, 400: ErrorResponse},
+    ),
     # System routes
-    ("system.health", None, HealthResponseSchema),
+    (
+        "system.health",
+        None,
+        HealthResponseSchema,
+        ["system"],
+        "Health check endpoint",
+        {200: HealthResponseSchema},
+    ),
 ]
 
 
@@ -373,7 +579,8 @@ def real_app_with_all_blueprints():
 
 
 @pytest.mark.parametrize(
-    "endpoint_name,expected_request_schema,expected_response_schema",
+    "endpoint_name,expected_request_schema,expected_response_schema,"
+    "expected_tags,expected_description,expected_status_codes",
     ALL_API_ROUTES,
     ids=[route[0] for route in ALL_API_ROUTES],
 )
@@ -382,15 +589,22 @@ def test_api_route_schema_stashed_on_all_migrated_routes(
     endpoint_name: str,
     expected_request_schema: Type[BaseModel] | None,
     expected_response_schema: Type[BaseSchema] | None,
+    expected_tags: list[str],
+    expected_description: str,
+    expected_status_codes: dict[int, Type[BaseSchema]],
 ):
     """
     GIVEN a route that has been migrated to @api_route
     WHEN accessing the view function via app.view_functions
-    THEN _api_route_request_schema and _api_route_response_schema match expectations
+    THEN _api_route_request_schema, _api_route_response_schema, _api_route_tags,
+         _api_route_description, and _api_route_status_codes match expectations
     """
     view_fn = real_app_with_all_blueprints.view_functions[endpoint_name]
     assert view_fn._api_route_request_schema is expected_request_schema
     assert view_fn._api_route_response_schema is expected_response_schema
+    assert view_fn._api_route_tags == expected_tags
+    assert view_fn._api_route_description == expected_description
+    assert view_fn._api_route_status_codes == expected_status_codes
 
 
 def test_api_route_raises_when_route_missing_derived_kwarg():
