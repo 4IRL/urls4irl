@@ -19,7 +19,6 @@ from backend.schemas.requests.splash import (
     RegisterRequest,
     ResetPasswordRequest,
 )
-from backend.schemas.system import HealthResponseSchema
 from backend.schemas.requests.tags import AddTagRequest
 from backend.schemas.requests.urls import (
     CreateURLRequest,
@@ -31,6 +30,7 @@ from backend.schemas.requests.utubs import (
     UpdateUTubDescriptionRequest,
     UpdateUTubNameRequest,
 )
+from backend.schemas.system import HealthResponseSchema
 from backend.schemas.tags import (
     UrlTagModifiedResponseSchema,
     UtubTagAddedToUtubResponseSchema,
