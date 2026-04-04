@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from backend import limiter
 from backend.api_common.parse_request import _schema_name_to_kwarg, api_route
 from backend.contact.routes import contact
+from backend.schemas.errors import ErrorResponse
 from backend.members.routes import members
 from backend.schemas.base import BaseSchema
 from backend.schemas.contact import ContactResponseSchema
@@ -114,6 +115,34 @@ def minimal_app():
     @flask_app.route("/test-no-ajax-required", methods=["GET"])
     @api_route(ajax_required=False)
     def test_no_ajax_required():
+        return {"status": "ok"}, 200
+
+    @flask_app.route("/test-with-metadata", methods=["POST"])
+    @api_route(
+        request_schema=LoginRequest,
+        response_schema=LoginRedirectResponseSchema,
+        error_message="Invalid input",
+        error_code=1,
+        tags=["utubs"],
+        description="Test route with full metadata",
+        status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse},
+    )
+    def test_with_metadata(login_request: LoginRequest):
+        return {"username": login_request.username}, 200
+
+    @flask_app.route("/test-empty-tags", methods=["GET"])
+    @api_route(tags=[], status_codes={})
+    def test_empty_tags():
+        return {"status": "ok"}, 200
+
+    @flask_app.route("/test-tags-no-status-codes", methods=["GET"])
+    @api_route(tags=["members"])
+    def test_tags_no_status_codes():
+        return {"status": "ok"}, 200
+
+    @flask_app.route("/test-description-only", methods=["GET"])
+    @api_route(description="A route with only a description")
+    def test_description_only():
         return {"status": "ok"}, 200
 
     return flask_app
@@ -490,3 +519,110 @@ def test_schema_name_to_kwarg_conversions():
         == "update_utub_description_request"
     )
     assert _schema_name_to_kwarg(ContactRequest) == "contact_request"
+
+
+# --- Tests for tags, description, and status_codes metadata ---
+
+
+def test_api_route_stashes_tags_when_provided(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(tags=["utubs"])
+    WHEN accessing the view function
+    THEN _api_route_tags is set to ["utubs"]
+    """
+    view_fn = minimal_app.view_functions["test_with_metadata"]
+    assert view_fn._api_route_tags == ["utubs"]
+
+
+def test_api_route_tags_defaults_to_none_when_omitted(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() without tags
+    WHEN accessing the view function
+    THEN _api_route_tags is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_tags is None
+
+
+def test_api_route_stashes_description_when_provided(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(description="Test route with full metadata")
+    WHEN accessing the view function
+    THEN _api_route_description is set to the provided string
+    """
+    view_fn = minimal_app.view_functions["test_with_metadata"]
+    assert view_fn._api_route_description == "Test route with full metadata"
+
+
+def test_api_route_description_defaults_to_none_when_omitted(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() without description
+    WHEN accessing the view function
+    THEN _api_route_description is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_description is None
+
+
+def test_api_route_stashes_status_codes_when_provided(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(status_codes={200: Schema, 400: ErrorResponse})
+    WHEN accessing the view function
+    THEN _api_route_status_codes is set to the provided dict
+    """
+    view_fn = minimal_app.view_functions["test_with_metadata"]
+    expected = {200: LoginRedirectResponseSchema, 400: ErrorResponse}
+    assert view_fn._api_route_status_codes == expected
+
+
+def test_api_route_status_codes_defaults_to_none_when_omitted(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() without status_codes
+    WHEN accessing the view function
+    THEN _api_route_status_codes is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_status_codes is None
+
+
+def test_api_route_stashes_empty_tags_list(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(tags=[])
+    WHEN accessing the view function
+    THEN _api_route_tags is an empty list
+    """
+    view_fn = minimal_app.view_functions["test_empty_tags"]
+    assert view_fn._api_route_tags == []
+
+
+def test_api_route_stashes_empty_status_codes_dict(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(status_codes={})
+    WHEN accessing the view function
+    THEN _api_route_status_codes is an empty dict
+    """
+    view_fn = minimal_app.view_functions["test_empty_tags"]
+    assert view_fn._api_route_status_codes == {}
+
+
+def test_api_route_tags_without_status_codes(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(tags=["members"]) but no status_codes
+    WHEN accessing the view function
+    THEN _api_route_tags is ["members"] and _api_route_status_codes is None
+    """
+    view_fn = minimal_app.view_functions["test_tags_no_status_codes"]
+    assert view_fn._api_route_tags == ["members"]
+    assert view_fn._api_route_status_codes is None
+
+
+def test_api_route_description_without_other_metadata(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(description="...") but no tags or status_codes
+    WHEN accessing the view function
+    THEN _api_route_description is set and tags/status_codes are None
+    """
+    view_fn = minimal_app.view_functions["test_description_only"]
+    assert view_fn._api_route_description == "A route with only a description"
+    assert view_fn._api_route_tags is None
+    assert view_fn._api_route_status_codes is None

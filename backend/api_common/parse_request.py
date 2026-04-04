@@ -48,6 +48,9 @@ def api_route(
     error_message: str | None = None,
     error_code: int | None = None,
     ajax_required: bool = True,
+    tags: list[str] | None = None,
+    description: str | None = None,
+    status_codes: dict[int, Type[BaseSchema]] | None = None,
 ) -> Callable:
     """Unified decorator that handles request body validation and response schema
     declaration for API routes.
@@ -131,6 +134,9 @@ def api_route(
         wrapper._api_route_request_schema = request_schema
         wrapper._api_route_response_schema = response_schema
         wrapper._api_route_ajax_required = ajax_required
+        wrapper._api_route_tags = tags
+        wrapper._api_route_description = description
+        wrapper._api_route_status_codes = status_codes
         return wrapper
 
     return decorator

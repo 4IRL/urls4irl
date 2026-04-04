@@ -109,7 +109,15 @@ git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com
 
 This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
 
-After pushing, proceed to Step 7 (PR creation).
+**CRITICAL: Set upstream tracking after push.** The sandbox blocks `.git/config` writes, so `push -u` silently fails to save the tracking ref. After every successful push, run:
+
+```bash
+git branch --set-upstream-to=origin/$BRANCH $BRANCH
+```
+
+This command **must** use `dangerouslyDisableSandbox: true` because it writes to `.git/config`. Without this, `git fetch -p` cannot detect merged/deleted remote branches as "gone", breaking branch cleanup workflows.
+
+After setting upstream, proceed to Step 7 (PR creation).
 
 If a review file was written (minor findings), include its path and note that `/next-step-taker push-review-<branch>` can address them.
 
