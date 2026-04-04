@@ -746,10 +746,16 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=NONEXISTENT_TAG_ID,
         ),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert delete_tag_response.status_code == 404
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Ensure the Tag-URL-UTub association does not exist
@@ -819,10 +825,16 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=NONEXISTENT_TAG_ID,
         ),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert delete_tag_response.status_code == 404
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Ensure the Tag-URL-UTub association does not exist any longer
@@ -911,10 +923,16 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             utub_url_id=url_id_in_utub,
             utub_tag_id=tag_id_to_delete,
         ),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert delete_tag_response.status_code == 404
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Ensure tag exists
@@ -990,10 +1008,16 @@ def test_delete_tag_from_url_from_nonexistent_utub(
             utub_url_id=url_id_to_delete,
             utub_tag_id=tag_id_to_delete,
         ),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert delete_tag_response.status_code == 404
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Ensure the valid Tag-URL-UTub association still exists
@@ -1065,10 +1089,16 @@ def test_delete_tag_from_nonexistent_url_utub(
             utub_url_id=NONEXISTENT_URL_ID,
             utub_tag_id=tag_id_to_delete,
         ),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert delete_tag_response.status_code == 404
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         # Ensure the valid Tag-URL-UTub association still exists
@@ -1245,10 +1275,16 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=NONEXISTENT_TAG_ID,
         ),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert delete_tag_response.status_code == 404
+    json_response = delete_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == "Not Found"
 
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_id_this_user_creator_of)
