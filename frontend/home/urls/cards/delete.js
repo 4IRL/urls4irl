@@ -74,6 +74,7 @@ async function deleteURL(utubUrlID, urlCard, utubID) {
       deleteURLFail(xhr);
     });
   } catch (error) {
+    $("#modalSubmit").prop("disabled", false);
     handleRejectFromGetURL(error, urlCard, { showError: false });
   }
 }
