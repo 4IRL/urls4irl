@@ -5,6 +5,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from locators import HomePageLocators as HPL
 from backend.models.users import Users
@@ -29,6 +30,7 @@ from tests.functional.members_ui.selenium_utils import (
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
+    force_next_delete_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -334,3 +336,37 @@ def test_delete_member_invalid_csrf_token(
         browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
     )
     assert not delete_utub_submit_btn_modal.is_displayed()
+
+
+def test_delete_member_submit_button_reenables_on_server_error(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    Tests that the submit button re-enables after a server error so the user can retry.
+
+    GIVEN a user owns a UTub with members and the delete member confirmation modal is open
+    WHEN the DELETE request fails with a 500 server error
+    THEN ensure the #modalSubmit button is re-enabled (not disabled)
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+
+    delete_member_active_utub(browser, other_member.username)
+
+    # Force the next DELETE ajax call to fail (with early return to prevent navigation)
+    force_next_delete_ajax_failure_no_navigate(browser)
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )

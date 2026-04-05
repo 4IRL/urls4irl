@@ -3,6 +3,7 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from backend import db
 from backend.models.users import Users
@@ -23,6 +24,7 @@ from tests.functional.login_utils import login_user_and_select_utub_by_utubid
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
+    force_next_delete_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
     wait_then_get_element,
@@ -455,3 +457,40 @@ def test_delete_utub_tag_invalid_csrf_token(
         browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
     )
     assert not delete_utub_submit_btn_modal.is_displayed()
+
+
+def test_delete_utub_tag_submit_button_reenables_on_server_error(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests that the submit button re-enables after a server error so the user can retry.
+
+    GIVEN a user in a UTub with Tags and the delete UTub Tag confirmation modal is open
+    WHEN the DELETE request fails with a 500 server error
+    THEN ensure the #modalSubmit button is re-enabled (not disabled)
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+
+    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+        HPL.TAG_BADGE_ID_ATTRIB
+    )
+    assert tag_id
+
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+
+    # Force the next DELETE ajax call to fail (with early return to prevent navigation)
+    force_next_delete_ajax_failure_no_navigate(browser)
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
