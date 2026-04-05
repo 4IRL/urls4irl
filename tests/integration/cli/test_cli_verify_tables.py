@@ -111,21 +111,15 @@ def test_verify_tables_reports_single_missing_table_in_deployed_mode(runner):
 def test_verify_tables_checks_all_model_tables(runner):
     """
     GIVEN a database with all model tables created
-    WHEN inspecting the database
-    THEN verify that every table in SQLAlchemy metadata exists in the database
-        and the verify-tables command passes
+    WHEN the developer runs `flask utils verify-tables`
+    THEN verify the command exits with code 0 and reports all tables present
     """
     app, cli_runner = runner
 
-    with app.app_context():
-        expected_tables = {table.name for table in db.metadata.sorted_tables}
-        inspector: Inspector = sa_inspect(db.engine)
-        actual_tables = set(inspector.get_table_names())
-
-    assert expected_tables.issubset(actual_tables)
-
     result = cli_runner.invoke(args=["utils", "verify-tables"])
+
     assert result.exit_code == 0
+    assert VERIFY_TABLES_ALL_OK in result.output
 
 
 def test_verify_tables_auto_repairs_when_tables_missing_in_non_deployed_mode(runner):
