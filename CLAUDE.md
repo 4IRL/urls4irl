@@ -7,6 +7,10 @@ Keep your replies extremely concise and focus on conveying the key information. 
 Reference plan may have files in the @plans directory - please reference these if there's a relevant plan file in this directory.
 
 
+## Workflow Rules
+
+Always delegate work to subagents when a skill/workflow specifies subagent delegation. Never perform the work directly in the parent context.
+
 ## Project Overview
 
 urls4irl is a full-stack web app for managing shared collections of URLs called "UTubs". Flask backend with Jinja2 templates and a vanilla JS frontend currently transitioning to Vite/ES6 modules.
@@ -103,6 +107,10 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 ### Test Output Location
 
 Always write test output to `/tmp/claude/` (e.g., `/tmp/claude/test-foo-results.txt`). Never use `$TMPDIR` — it resolves to different directories depending on sandbox mode, causing files written in one tool call to be invisible in the next. Never use project-level directories for test output.
+
+## Testing & Verification
+
+After making code changes, proactively check for downstream breakage (changed error messages, removed elements, renamed constants) before marking work complete.
 
 ## Build Verification
 

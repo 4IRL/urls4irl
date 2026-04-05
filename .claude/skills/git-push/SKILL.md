@@ -1,6 +1,6 @@
 ---
 name: git-push
-description: Review all unpushed code on the current branch using 7 parallel subagents (Safety & Security, Correctness, Simplicity & Conciseness, Test Coverage, Completeness & Cleanup, Consistency & Style, Integration Risk), then push if all approve or write findings to reviews/push-review-<branch>.md if any reject. After a successful push, create or update a GitHub PR using the GitHub App token. Use when asked to push, push code, git push, review-and-push, or create a PR.
+description: Review all unpushed code on the current branch using 7 parallel subagents (Safety & Security, Correctness, Simplicity & Conciseness, Test Coverage, Completeness & Cleanup, Consistency & Style, Integration Risk). Classifies findings as mechanical (auto-fixed via /run-review) or design_decision (presented via AskUserQuestion). Auto-fixes mechanical issues, presents design decisions for user input, re-reviews, then pushes when clean. Creates or updates a GitHub PR after push. Use when asked to push, push code, git push, review-and-push, or create a PR.
 ---
 
 # Git Push with Multi-Agent Review
@@ -88,44 +88,43 @@ Subagents (all launched in a single message):
 | 6 | Consistency & Style | Project conventions, naming, patterns, imports | `<tmp-dir>/consistency.md` |
 | 7 | Integration Risk | Breaking changes, missing migrations, cross-module impact | `<tmp-dir>/integration-risk.md` |
 
-### 4. Evaluate Results
+### 4a. Launch Coordinator Subagent
 
-After all subagents complete, read each `<tmp-dir>/<role>.md` file to parse the JSON verdicts. Then evaluate:
+After all 7 subagent files are written, launch a **single coordinator subagent** to deduplicate and conflict-detect across all findings before writing the push review.
 
-Collect all 7 subagent responses. Parse each verdict:
+Read `.claude/skills/git-push/references/subagent-prompts.md` for the full coordinator prompt definition.
 
-- **ALL PASS, no findings at all**: Proceed to Step 5 (push).
-- **ALL PASS, but minor findings exist**: Write findings (Step 6), then push (Step 5). Minor findings should not block the push but must be recorded so `/run-review` can address them.
-- **ANY FAIL**: Proceed to Step 6 (write findings). Do NOT push.
+The coordinator subagent:
+- Receives the paths to all 7 `<tmp-dir>/<role>.md` files and the full diff from Step 1
+- Groups findings by file + proximity, classifies each group as `unique`, `duplicate`, or `conflict`
+- Escalates any `conflict` to `fix_type: "design_decision"` regardless of original `fix_type`
+- Writes consolidated output to `<tmp-dir>/coordinator.md`
+- Returns only: `Written to <tmp-dir>/coordinator.md`
+- Uses `model: sonnet` for speed
 
-### 5. Push
+### 4b. Evaluate and Classify Results
 
-**CRITICAL: Never use bare `git push`.** The repo remote uses SSH, which attributes the push to the user's personal account. This breaks branch protection rules that block self-approval from the last pusher.
+Read `<tmp-dir>/coordinator.md` written by the coordinator in Step 4a.
 
-**Always push via HTTPS with the GitHub App token** so the push is attributed to the bot:
+Parse:
+- `reviewer_verdicts` — per-reviewer PASS/FAIL map (used for Step 7c re-review targeting)
+- `findings` — deduplicated, conflict-annotated finding list
 
-```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
-git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
-```
+Evaluate:
 
-This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
+- **ALL PASS, no findings at all**: Proceed to Step 8 (push).
+- **ALL PASS, only minor findings**: Write findings (Step 5), classify. If any findings exist (mechanical or design), proceed to Step 6. Otherwise proceed to Step 8 (push).
+- **ANY FAIL**: Write findings (Step 5), classify, proceed to Step 6.
 
-**CRITICAL: Set upstream tracking after push.** The sandbox blocks `.git/config` writes, so `push -u` silently fails to save the tracking ref. After every successful push, run:
+Partition all findings into two lists:
+- `mechanical_fixes[]` — all findings with `fix_type: "mechanical"`
+- `design_decisions[]` — all findings with `fix_type: "design_decision"` (includes escalated conflicts)
 
-```bash
-git branch --set-upstream-to=origin/$BRANCH $BRANCH
-```
+Track which reviewers returned FAIL from `reviewer_verdicts` (needed for re-review in Step 7c).
 
-This command **must** use `dangerouslyDisableSandbox: true` because it writes to `.git/config`. Without this, `git fetch -p` cannot detect merged/deleted remote branches as "gone", breaking branch cleanup workflows.
+Track `fix_round = 1` (used in Step 7c to cap fix-review loops).
 
-After setting upstream, proceed to Step 7 (PR creation).
-
-If a review file was written (minor findings), include its path and note that `/run-review push-review-<branch>` can address them.
-
-After a successful push, delete all files in `<tmp-dir>/` if a topic was inferred and the tmp dir was used (i.e., `<tmp-dir>` is `plans/<topic>/tmp/`).
-
-### 6. Write Findings
+### 5. Write Findings
 
 Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name using the exhaustive token matching from Step 2. If topic truly cannot be inferred after checking all tokens, ask the user which topic to use rather than defaulting to `plans/tmp/`. `plans/tmp/` must never contain final review documents.
 
@@ -170,37 +169,201 @@ Verdict: **BLOCKED** or **PUSHED WITH MINOR FINDINGS**
 #### 7. Integration Risk — <PASS/FAIL>
 ...
 
-### To-Do: Required Changes
+### To-Do: Mechanical Fixes
 
 - [ ] **<Imperative action>** — <file(s) to change> — <what to do specifically>
 - [ ] ...
+
+### To-Do: Design Decisions
+
+#### DD-1: <Decision title>
+**Context:** <Why this needs a decision — what the review found and why it can't be fixed mechanically.>
+
+| # | Option | Trade-off |
+|---|---|---|
+| 1 | <Option A> | <Pro/con> |
+| 2 | <Option B> | <Pro/con> |
+
+**Chosen:** _(pending)_
 ```
+
+Omit `### To-Do: Mechanical Fixes` if there are no mechanical findings. Omit `### To-Do: Design Decisions` if there are no design decisions. Each DD must have at least 2 options with trade-offs.
+
+#### Verdict Labels
+
+| Verdict | Meaning |
+|---|---|
+| **PUSHED** | All PASS, no findings |
+| **PUSHED WITH MINOR FINDINGS** | All PASS, minor findings recorded but no fixes needed |
+| **RESOLVED — PUSHED** | Had FAILs, all fixed (mechanical + DDs), re-review passed, pushed |
+| **BLOCKED** | FAILs remain after 2 fix rounds, or re-review still fails |
 
 #### TO-DO Item Guidelines
 
-Each TO-DO item must be:
+Each mechanical fix TO-DO item must be:
 - **Self-contained**: Include the file path(s), what to change, and why. The implementer should not need to read the reviewer results above.
 - **Imperative**: Start with a verb (Add, Update, Extract, Fix, Remove, Replace).
 - **Concrete**: Name the exact file, function, variable, or line to change. Avoid vague items like "fix style issues."
 - **One logical change**: Each item should be implementable and verifiable independently.
 
-Consolidate related findings from different reviewers into a single TO-DO item when they refer to the same fix. **Include all findings in the TO-DO list regardless of severity** — minor findings must also be actionable items so `/run-review` can address them.
+**Include all findings in the TO-DO list regardless of severity** — minor findings must also be actionable items.
+
+For findings with `classification: "duplicate"` (flagged by multiple reviewers), append a `*(flagged by: Reviewer A, Reviewer B)*` attribution after the item description — this explains why a minor finding appears without inflating its severity.
+
+For findings with `classification: "conflict"` that were escalated to `design_decision`, the DD context must name the disagreeing reviewers and their positions explicitly.
 
 Example:
 ```markdown
-### To-Do: Required Changes
+### To-Do: Mechanical Fixes
 
-- [ ] **Extract `_register_json` to shared helper** — `tests/integration/splash/test_email_validation.py`, `tests/integration/splash/test_register_user.py` — Move the duplicated `_register_json()` function to `tests/integration/splash/conftest.py` and import from there in both test files
-- [ ] **Add `ForgotPasswordErrorCodes` enum** — `backend/splash/constants.py`, `backend/splash/routes.py` — Create `ForgotPasswordErrorCodes(IntEnum)` with `INVALID_FORM_INPUT = 1` and use it in the `@api_route` decorator call for the forgot-password route instead of bare `error_code=1`
+- [ ] **Fix import ordering in `test_api_route_decorator.py`** — line 13: move `ErrorResponse` import after `ContactResponseSchema` import to maintain alphabetical ordering *(flagged by: Correctness, Consistency)*
+- [ ] **Remove dead `None` default from `getattr`** — `tests/unit/schemas/test_schema_descriptions.py` line 20: change `getattr(module, name, None)` to `getattr(module, name)` since `name` comes from `__all__` and is guaranteed to exist
+
+### To-Do: Design Decisions
+
+#### DD-1: Replace `HealthDbResponseSchema` with `StatusMessageResponseSchema`?
+**Context:** `HealthDbResponseSchema` duplicates `StatusMessageResponseSchema` — identical status + message fields. But the health endpoint might diverge later.
+
+| # | Option | Trade-off |
+|---|---|---|
+| 1 | Replace with `StatusMessageResponseSchema` | Eliminates duplication now; easy to split later if needed |
+| 2 | Keep separate | Explicit coupling to health domain; minor duplication |
+
+**Chosen:** _(pending)_
+
+#### DD-2: Inline helper vs keep separate — reviewer conflict
+**Context:** Simplicity and Test Coverage disagree on `backend/utils/health.py:67`. Simplicity flags the helper as single-use and suggests inlining. Test Coverage flags the same function as lacking test coverage and suggests keeping it separate so it can be unit-tested directly.
+
+| # | Option | Trade-off |
+|---|---|---|
+| 1 | Inline the helper (Simplicity) | Removes indirection; function no longer independently testable |
+| 2 | Keep separate and add unit test (Test Coverage) | Preserves testability; minor extra indirection |
+
+**Chosen:** _(pending)_
 ```
 
-After writing, inform the user:
+After writing the review file, inform the user:
 - Which reviewers failed and why (brief)
 - Path to the full review file and review number (e.g., "Review 2 appended")
-- That they can use `/run-review push-review-<branch>` to address the findings
-- Do NOT automatically push — the user must fix findings and re-invoke
+- Count of mechanical fixes and design decisions: `"Found N findings (M mechanical, K design decisions)."`
+- Then proceed automatically to Step 6 — do NOT ask the user to run `/run-review` manually.
 
-### 7. Create or Update PR
+### 6. Auto-Fix Mechanical Findings via /run-review
+
+If `mechanical_fixes[]` is empty, skip to Step 7.
+
+Inform the user: `"Launching /run-review for M mechanical fixes..."`
+
+Launch `/run-review` as a **subagent** (using the Agent tool) targeting the push review file. The subagent processes all unchecked mechanical fix items through the standard `/run-review` pipeline (each item gets `/next-step-taker` with validation, 3-subagent review, tests, and commit).
+
+Subagent prompt:
+
+```
+Run /run-review for "push-review-<branch>".
+
+Process ONLY the items under "### To-Do: Mechanical Fixes" — skip any items
+under "### To-Do: Design Decisions".
+
+Important overrides:
+- Do NOT pause at the end to ask the user — complete the full workflow and return your final report.
+- Follow all CLAUDE.md guidelines.
+- CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true. Never for git commands.
+```
+
+After the subagent returns:
+1. Read the review file to confirm mechanical items are crossed off
+2. Report to user: `"Applied N of M mechanical fixes."`
+3. If any mechanical items were NOT crossed off, report which ones and why
+4. Proceed to Step 7
+
+### 7. Present and Apply Design Decisions
+
+If `design_decisions[]` is empty, proceed to Step 7c (re-review).
+
+#### Step 7a: Present via AskUserQuestion
+
+Present each design decision using the `AskUserQuestion` tool (max 4 questions per call, max 4 options each):
+
+- `question`: `"DD-N: <finding title>?"` — include enough context for the user to decide without reading the review file
+- `header`: `"DD-N"` (max 12 chars)
+- `options`: Each option from the DD table
+  - `label`: Short name (1-5 words)
+  - `description`: Trade-off text
+- `multiSelect`: `false`
+
+**All design decisions must be resolved before pushing.** Do not include a "skip" option. The user can always select "Other" to provide a custom approach.
+
+If there are more than 4 DDs, batch across multiple `AskUserQuestion` calls (4 at a time).
+
+#### Step 7b: Apply Design Decisions via /run-review
+
+After the user answers all DDs:
+
+1. Update the review file: fill in `**Chosen:** <user's choice>` for each DD
+2. Rewrite each DD's chosen option as an actionable to-do item (imperative, self-contained, concrete) and add it as an unchecked `- [ ]` item under that DD's section in the review file
+3. Launch `/run-review` as a **subagent** to process the newly-added DD items
+
+Subagent prompt:
+
+```
+Run /run-review for "push-review-<branch>".
+
+Process ONLY the unchecked items under "### To-Do: Design Decisions" —
+the mechanical fixes are already complete.
+
+For each design decision, the user has chosen a specific approach. The chosen
+option is recorded in the **Chosen:** field above each item. Implement exactly
+what the user chose.
+
+Important overrides:
+- Do NOT pause at the end to ask the user — complete the full workflow and return your final report.
+- Follow all CLAUDE.md guidelines.
+- CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true. Never for git commands.
+```
+
+After the subagent returns:
+1. Read the review file to confirm DD items are crossed off
+2. Report to user: `"Applied N of M design decisions."`
+
+#### Step 7c: Re-Review (verification pass)
+
+After all fixes (mechanical + design decisions) are applied and committed:
+
+Re-run **only the subagents that originally returned FAIL** (not all 7). Use the same subagent prompts from Step 3 but with the updated diff (`origin/main...HEAD` or `origin/$BRANCH...HEAD`). Write results to the same `<tmp-dir>/<role>.md` files.
+
+Evaluate re-review results:
+- **All now PASS**: Update review file verdict to `**RESOLVED — PUSHED**`. Proceed to Step 8 (push).
+- **Still FAIL with new findings**:
+  - Increment `fix_round`
+  - If `fix_round <= 2`: Write new findings to review file (append as next `## Review N+1` section), classify into mechanical/design, loop back to Step 6 for mechanical fixes / Step 7a for design decisions
+  - If `fix_round > 2`: **BLOCK**. Update review file verdict to `**BLOCKED**`. Inform user with review file path. Do NOT push.
+
+### 8. Push
+
+**CRITICAL: Never use bare `git push`.** The repo remote uses SSH, which attributes the push to the user's personal account. This breaks branch protection rules that block self-approval from the last pusher.
+
+**Always push via HTTPS with the GitHub App token** so the push is attributed to the bot:
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
+git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
+```
+
+This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
+
+**CRITICAL: Set upstream tracking after push.** The sandbox blocks `.git/config` writes, so `push -u` silently fails to save the tracking ref. After every successful push, run:
+
+```bash
+git branch --set-upstream-to=origin/$BRANCH $BRANCH
+```
+
+This command **must** use `dangerouslyDisableSandbox: true` because it writes to `.git/config`. Without this, `git fetch -p` cannot detect merged/deleted remote branches as "gone", breaking branch cleanup workflows.
+
+After setting upstream, proceed to Step 9 (PR creation).
+
+After a successful push, delete all files in `<tmp-dir>/` if a topic was inferred and the tmp dir was used (i.e., `<tmp-dir>` is `plans/<topic>/tmp/`).
+
+### 9. Create or Update PR
 
 After a successful push, create or update a PR targeting `main`.
 
@@ -364,3 +527,7 @@ Output:
 - Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. **Never store final documents (reviews, plans) in `plans/tmp/`** — if no topic can be inferred after exhaustive token matching, ask the user which topic to use.
 - All subagent launches must be in a single message for true parallelism
 - If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error
+- **All design decisions must be resolved before pushing.** The skill blocks until the user has answered every DD via `AskUserQuestion`. There is no "skip" or "defer" option.
+- **Max 2 fix-review rounds.** After fixes are applied (Step 6 + 7b), a re-review runs (Step 7c). If new issues appear, the cycle repeats up to 2 times total. After 2 rounds, the skill blocks.
+- **`/run-review` is launched as a subagent** for both mechanical fixes (Step 6) and design decision fixes (Step 7b). It runs the full `/next-step-taker` pipeline per item (validate, review, test, commit). The main `/git-push` agent orchestrates but never directly edits source files.
+- **The coordinator subagent (Step 4a) guarantees non-contradictory mechanical fix items.** Any finding where two reviewers suggest incompatible changes to the same code is escalated to a design decision before `/run-review` runs — so `/run-review` never receives items that would conflict with each other.

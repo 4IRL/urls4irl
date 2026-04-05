@@ -48,6 +48,96 @@ Classification rules for `fix_type`:
 - Architectural choices (refactor vs wrapper, merge vs split)
 - Any finding where the suggestion contains "could" or "consider" with alternatives
 
+## Coordinator Subagent
+
+You are a review coordinator. Your job is to read the findings from 7 parallel code reviewers and produce a single deduplicated, conflict-annotated finding list.
+
+**Input:** Seven JSON files at the paths provided, plus the full diff.
+
+**Task:**
+
+### Step 1 — Parse all findings
+
+Read each of the 7 reviewer files. Extract every finding into a flat list tagged with its source reviewer name.
+
+### Step 2 — Group by location
+
+Group findings by `(file, line)` proximity. Findings in the same file within 3 lines of each other are candidates for dedup/conflict analysis. Findings in different files are always `unique` and pass through unchanged.
+
+### Step 3 — Classify each group
+
+For each group of 2+ findings at the same location:
+
+**`duplicate`** — Multiple reviewers flagged the same issue and their suggestions point to the same fix (e.g., both say fix import ordering, both say remove the print statement, both flag the same unused variable). Merge into a single finding:
+- Keep the highest severity among the group
+- Keep `fix_type` from the highest-severity finding; if they disagree and one says `design_decision`, use `design_decision`
+- Set `classification: "duplicate"` and `sources: [<list of reviewer names>]`
+- Write one consolidated `description` and `suggestion`
+
+**`conflict`** — Multiple reviewers flagged the same location with mutually exclusive suggestions (e.g., "inline this function" vs "keep it separate for testability", "remove this code" vs "add tests for this code", "simplify by merging" vs "keep separate for clarity"). Escalate regardless of original `fix_type`:
+- Set `fix_type: "design_decision"` (always, even if both reviewers said `mechanical`)
+- Set `classification: "conflict"` and `sources: [<list of reviewer names>]`
+- Include an `options` array with one entry per conflicting reviewer, each containing `source`, `label` (3-5 words), and `suggestion`
+- Write a `description` that explains the disagreement neutrally
+
+Single findings with no co-located finding from another reviewer are `unique` — pass through unchanged with `classification: "unique"` and `sources: [<reviewer name>]`.
+
+### Step 4 — Write output
+
+Write the following JSON to `<tmp-dir>/coordinator.md`, then return only: `Written to <tmp-dir>/coordinator.md`
+
+```json
+{
+  "reviewer_verdicts": {
+    "safety-security": "PASS" | "FAIL",
+    "correctness": "PASS" | "FAIL",
+    "simplicity": "PASS" | "FAIL",
+    "test-coverage": "PASS" | "FAIL",
+    "completeness": "PASS" | "FAIL",
+    "consistency": "PASS" | "FAIL",
+    "integration-risk": "PASS" | "FAIL"
+  },
+  "summaries": {
+    "safety-security": "<one-line summary from that reviewer>",
+    "correctness": "...",
+    "simplicity": "...",
+    "test-coverage": "...",
+    "completeness": "...",
+    "consistency": "...",
+    "integration-risk": "..."
+  },
+  "findings": [
+    {
+      "severity": "critical" | "major" | "minor",
+      "fix_type": "mechanical" | "design_decision",
+      "classification": "unique" | "duplicate" | "conflict",
+      "sources": ["<reviewer name>"],
+      "file": "path/to/file",
+      "line": 42,
+      "description": "...",
+      "suggestion": "...",
+      "options": [
+        {
+          "source": "<reviewer name>",
+          "label": "<3-5 word label>",
+          "suggestion": "..."
+        }
+      ]
+    }
+  ]
+}
+```
+
+`options` is only present on `conflict` findings. Omit it entirely for `unique` and `duplicate` findings.
+
+**Rules:**
+- Do not invent findings. Only work with what the 7 reviewer files contain.
+- Do not re-evaluate the diff yourself — trust the reviewer findings as written.
+- If a reviewer file is missing or contains invalid JSON, record that reviewer as FAIL with a single finding: `{ "severity": "major", "fix_type": "mechanical", "classification": "unique", "sources": ["<reviewer>"], "description": "Reviewer output missing or unparseable — re-run required." }`
+- Preserve all findings, including minor ones. Do not filter by severity.
+
+---
+
 ## Subagent 1: Safety & Security
 
 Review the diff for security vulnerabilities and dangerous operations:
