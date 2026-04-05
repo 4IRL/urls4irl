@@ -109,6 +109,11 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Assert submit button is disabled immediately after click to prevent double-submit
+    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
+    assert modal_submit_btn.get_property("disabled") is True
+
     wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Wait for animation to complete

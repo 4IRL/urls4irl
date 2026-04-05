@@ -177,6 +177,10 @@ def delete_utub_tag_elem(browser: WebDriver, tag_id: str, app):
     open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
+    # Assert submit button is disabled immediately after click to prevent double-submit
+    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
+    assert modal_submit_btn.get_property("disabled") is True
+
     delete_utub_tag_css_selector = (
         f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
     )

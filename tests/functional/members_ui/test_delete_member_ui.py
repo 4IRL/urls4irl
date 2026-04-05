@@ -219,6 +219,10 @@ def test_delete_member_btn(
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
+    # Assert submit button is disabled immediately after click to prevent double-submit
+    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
+    assert modal_submit_btn.get_property("disabled") is True
+
     # Wait for DELETE request
     member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"]'
     member_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
