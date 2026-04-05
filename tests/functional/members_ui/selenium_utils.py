@@ -119,5 +119,5 @@ def leave_utub_as_member(browser: WebDriver, utub_to_leave: Utubs):
     utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
     wait_for_element_to_be_removed(browser, utub_selector)

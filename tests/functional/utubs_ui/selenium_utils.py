@@ -188,6 +188,6 @@ def delete_utub_as_creator(browser: WebDriver, utub_to_delete: Utubs):
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 
     # Wait for DELETE request
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     wait_for_element_to_be_removed(browser, utub_selector, timeout=10)

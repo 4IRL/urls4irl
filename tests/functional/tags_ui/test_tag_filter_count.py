@@ -385,7 +385,7 @@ def test_delete_url_decrements_all_tag_counters(
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Wait for animation to complete
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)

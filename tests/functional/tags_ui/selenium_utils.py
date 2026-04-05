@@ -181,5 +181,5 @@ def delete_utub_tag_elem(browser: WebDriver, tag_id: str, app):
         f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
     )
     utub_tag_elem = browser.find_element(By.CSS_SELECTOR, delete_utub_tag_css_selector)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
     wait_for_element_to_be_removed(browser, utub_tag_elem)

@@ -222,7 +222,7 @@ def test_delete_member_btn(
     # Wait for DELETE request
     member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"]'
     member_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
     wait_for_element_to_be_removed(browser, member_elem)
 
     member_usernames = get_all_member_usernames(browser)

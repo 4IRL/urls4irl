@@ -109,7 +109,7 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Wait for animation to complete
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
@@ -343,7 +343,7 @@ def test_delete_last_url(
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, css_selector)

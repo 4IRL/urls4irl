@@ -109,6 +109,8 @@ function removeMemberSetup(memberID, utubID) {
 
 // Handles post request and response for removing a member from current UTub, after confirmation
 function removeMember(memberID, isCreator, utubID) {
+  $("#modalSubmit").prop("disabled", true);
+
   // Extract data to submit in POST request
   let postURL = removeMemberSetup(memberID, utubID);
 
@@ -171,6 +173,7 @@ function leaveUTubSuccess(utubID) {
 }
 
 function removeMemberFail(xhr) {
+  $("#modalSubmit").prop("disabled", false);
   if (xhr._429Handled) return;
 
   if (
