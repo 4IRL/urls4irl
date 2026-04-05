@@ -12,6 +12,7 @@ Each subagent receives the diff output and a focused review prompt. All subagent
   "findings": [
     {
       "severity": "critical" | "major" | "minor",
+      "fix_type": "mechanical" | "design_decision",
       "file": "path/to/file",
       "line": 42,
       "description": "What's wrong and why it matters",
@@ -28,6 +29,24 @@ Rules:
 - Keep findings actionable and specific — reference file paths and line numbers from the diff
 - Do not fabricate findings; if the diff is clean for your area, return PASS with empty findings
 - **All test suites have already passed** before this code was committed. Do not speculate about runtime failures or flag "this might break tests." Focus on what the code does, not whether it runs.
+
+Classification rules for `fix_type`:
+
+**`mechanical`** — exactly one correct resolution, no trade-offs:
+- Import ordering/grouping violations
+- Dead code, dead parameters, unused imports
+- Naming convention fixes (single-letter vars, `error` → `_`, quoted type hints)
+- Debug artifact removal (console.log, print, time.sleep → WebDriverWait)
+- Vacuous/redundant assertions
+- Log level corrections (critical_log → warning_log for routine events)
+- Blank line / whitespace style fixes
+
+**`design_decision`** — multiple valid approaches, requires human judgment:
+- New class/base class extraction or schema hierarchy changes
+- New test file creation or significant test additions
+- Public API or function signature changes
+- Architectural choices (refactor vs wrapper, merge vs split)
+- Any finding where the suggestion contains "could" or "consider" with alternatives
 
 ## Subagent 1: Safety & Security
 
