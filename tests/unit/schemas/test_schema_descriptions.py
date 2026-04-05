@@ -4,26 +4,8 @@ import pytest
 from pydantic import BaseModel
 
 import backend.schemas as schema_module
+import backend.schemas.requests as request_schema_module
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.contact import ContactRequest
-from backend.schemas.requests.members import AddMemberRequest
-from backend.schemas.requests.splash import (
-    ForgotPasswordRequest,
-    LoginRequest,
-    RegisterRequest,
-    ResetPasswordRequest,
-)
-from backend.schemas.requests.tags import AddTagRequest
-from backend.schemas.requests.urls import (
-    CreateURLRequest,
-    UpdateURLStringRequest,
-    UpdateURLTitleRequest,
-)
-from backend.schemas.requests.utubs import (
-    CreateUTubRequest,
-    UpdateUTubDescriptionRequest,
-    UpdateUTubNameRequest,
-)
 
 pytestmark = pytest.mark.unit
 
@@ -35,21 +17,12 @@ _response_schemas = [
     and issubclass(getattr(schema_module, name), BaseModel)
 ]
 
-# Explicit request schemas
+# Collect request schemas from __all__ (filter to BaseModel subclasses)
 _request_schemas = [
-    CreateUTubRequest,
-    UpdateUTubNameRequest,
-    UpdateUTubDescriptionRequest,
-    CreateURLRequest,
-    UpdateURLStringRequest,
-    UpdateURLTitleRequest,
-    AddTagRequest,
-    AddMemberRequest,
-    LoginRequest,
-    RegisterRequest,
-    ForgotPasswordRequest,
-    ResetPasswordRequest,
-    ContactRequest,
+    getattr(request_schema_module, name)
+    for name in request_schema_module.__all__
+    if isinstance(getattr(request_schema_module, name, None), type)
+    and issubclass(getattr(request_schema_module, name), BaseModel)
 ]
 
 # ErrorResponse is not in __all__, add it explicitly
