@@ -13,6 +13,7 @@ from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.members import AddMemberRequest
 from backend.schemas.users import MemberModifiedResponseSchema
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.user_strs import MEMBER_FAILURE
 
 members = Blueprint("members", __name__)
@@ -22,7 +23,7 @@ members = Blueprint("members", __name__)
 @utub_membership_required
 @api_route(
     response_schema=MemberModifiedResponseSchema,
-    tags=["members"],
+    tags=[OPEN_API.MEMBERS],
     description="Remove a member from a UTub",
     status_codes={
         200: MemberModifiedResponseSchema,
@@ -50,7 +51,7 @@ def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskRespo
     response_schema=MemberModifiedResponseSchema,
     error_message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
     error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
-    tags=["members"],
+    tags=[OPEN_API.MEMBERS],
     description="Add a member to a UTub",
     status_codes={
         200: MemberModifiedResponseSchema,

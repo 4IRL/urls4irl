@@ -57,6 +57,7 @@ from backend.splash.services.validate_email import (
     validate_email_for_user,
 )
 from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.all_routes import ROUTES
@@ -98,7 +99,7 @@ def splash_page() -> WerkzeugResponse | str:
     error_message=USER_FAILURE.UNABLE_TO_REGISTER,
     error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
-    tags=["auth"],
+    tags=[OPEN_API.AUTH],
     description="Register a new user account",
     status_codes={201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
 )
@@ -119,7 +120,7 @@ def register_user(register_request: RegisterRequest) -> FlaskResponse:
     error_message=USER_FAILURE.UNABLE_TO_LOGIN,
     error_code=LoginErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
-    tags=["auth"],
+    tags=[OPEN_API.AUTH],
     description="Log in to an existing account",
     status_codes={
         200: LoginRedirectResponseSchema,
@@ -147,7 +148,7 @@ def confirm_email_after_register() -> WerkzeugResponse:
 @api_route(
     response_schema=EmailValidationResponseSchema,
     ajax_required=False,
-    tags=["auth"],
+    tags=[OPEN_API.AUTH],
     description="Send an email validation link to the current user",
     status_codes={
         200: EmailValidationResponseSchema,
@@ -202,7 +203,7 @@ def validate_email(token: str) -> WerkzeugResponse:
     error_message=FORGOT_PASSWORD.INVALID_EMAIL,
     error_code=ForgotPasswordErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
-    tags=["auth"],
+    tags=[OPEN_API.AUTH],
     description="Send a password reset email",
     status_codes={200: ForgotPasswordResponseSchema, 400: ErrorResponse},
 )
@@ -222,7 +223,7 @@ def reset_password_page(token: str) -> WerkzeugResponse | str:
     error_message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
     error_code=ResetPasswordErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
-    tags=["auth"],
+    tags=[OPEN_API.AUTH],
     description="Reset a user password with a valid token",
     status_codes={
         200: ResetPasswordResponseSchema,

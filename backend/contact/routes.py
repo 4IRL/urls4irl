@@ -11,6 +11,7 @@ from backend.schemas.contact import ContactResponseSchema
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests import ContactRequest
 from backend.utils.constants import provide_config_for_constants
+from backend.utils.strings.openapi_strs import OPEN_API
 
 contact = Blueprint("contact", __name__)
 
@@ -32,7 +33,7 @@ def contact_us() -> str:
     error_message="Unable to submit contact form.",
     error_code=1,
     ajax_required=False,
-    tags=["contact"],
+    tags=[OPEN_API.CONTACT],
     description="Submit a contact form",
     status_codes={200: ContactResponseSchema, 400: ErrorResponse},
 )

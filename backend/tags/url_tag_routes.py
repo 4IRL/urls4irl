@@ -16,6 +16,7 @@ from backend.schemas.tags import UrlTagModifiedResponseSchema
 from backend.tags.constants import URLTagErrorCodes
 from backend.tags.services.create_url_tag import add_tag_to_url_if_valid
 from backend.tags.services.delete_url_tag import delete_url_tag
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 
 utub_url_tags = Blueprint("utub_url_tags", __name__)
@@ -30,7 +31,7 @@ utub_url_tags = Blueprint("utub_url_tags", __name__)
     response_schema=UrlTagModifiedResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
     error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
-    tags=["tags"],
+    tags=[OPEN_API.TAGS],
     description="Add a tag to a URL in a UTub",
     status_codes={
         200: UrlTagModifiedResponseSchema,
@@ -69,7 +70,7 @@ def create_utub_url_tag(
 @utub_membership_with_valid_url_tag
 @api_route(
     response_schema=UrlTagModifiedResponseSchema,
-    tags=["tags"],
+    tags=[OPEN_API.TAGS],
     description="Remove a tag from a URL in a UTub",
     status_codes={200: UrlTagModifiedResponseSchema, 404: ErrorResponse},
 )

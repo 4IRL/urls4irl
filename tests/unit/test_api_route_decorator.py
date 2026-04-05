@@ -65,6 +65,7 @@ from backend.system.routes import system
 from backend.tags.url_tag_routes import utub_url_tags
 from backend.tags.utub_tag_routes import utub_tags
 from backend.urls.routes import urls
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.routes import utubs
 
@@ -123,7 +124,7 @@ def minimal_app():
         response_schema=LoginRedirectResponseSchema,
         error_message="Invalid input",
         error_code=1,
-        tags=["utubs"],
+        tags=[OPEN_API.UTUBS],
         description="Test route with full metadata",
         status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse},
     )
@@ -136,7 +137,7 @@ def minimal_app():
         return {"status": "ok"}, 200
 
     @flask_app.route("/test-tags-no-status-codes", methods=["GET"])
-    @api_route(tags=["members"])
+    @api_route(tags=[OPEN_API.MEMBERS])
     def test_tags_no_status_codes():
         return {"status": "ok"}, 200
 
@@ -320,7 +321,7 @@ ALL_API_ROUTES = [
         "splash.register_user",
         RegisterRequest,
         RegisterResponseSchema,
-        ["auth"],
+        [OPEN_API.AUTH],
         "Register a new user account",
         {201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
     ),
@@ -328,7 +329,7 @@ ALL_API_ROUTES = [
         "splash.login",
         LoginRequest,
         LoginRedirectResponseSchema,
-        ["auth"],
+        [OPEN_API.AUTH],
         "Log in to an existing account",
         {200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
     ),
@@ -336,7 +337,7 @@ ALL_API_ROUTES = [
         "splash.send_validation_email",
         None,
         EmailValidationResponseSchema,
-        ["auth"],
+        [OPEN_API.AUTH],
         "Send an email validation link to the current user",
         {
             200: EmailValidationResponseSchema,
@@ -349,7 +350,7 @@ ALL_API_ROUTES = [
         "splash.forgot_password",
         ForgotPasswordRequest,
         ForgotPasswordResponseSchema,
-        ["auth"],
+        [OPEN_API.AUTH],
         "Send a password reset email",
         {200: ForgotPasswordResponseSchema, 400: ErrorResponse},
     ),
@@ -357,7 +358,7 @@ ALL_API_ROUTES = [
         "splash.reset_password",
         ResetPasswordRequest,
         ResetPasswordResponseSchema,
-        ["auth"],
+        [OPEN_API.AUTH],
         "Reset a user password with a valid token",
         {200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
     ),
@@ -366,7 +367,7 @@ ALL_API_ROUTES = [
         "utubs.create_utub",
         CreateUTubRequest,
         UtubCreatedResponseSchema,
-        ["utubs"],
+        [OPEN_API.UTUBS],
         "Create a new UTub",
         {200: UtubCreatedResponseSchema, 400: ErrorResponse},
     ),
@@ -374,7 +375,7 @@ ALL_API_ROUTES = [
         "utubs.get_single_utub",
         None,
         UtubDetailSchema,
-        ["utubs"],
+        [OPEN_API.UTUBS],
         "Retrieve data for a single UTub",
         {200: UtubDetailSchema, 404: ErrorResponse},
     ),
@@ -382,7 +383,7 @@ ALL_API_ROUTES = [
         "utubs.get_utubs",
         None,
         UtubSummaryListSchema,
-        ["utubs"],
+        [OPEN_API.UTUBS],
         "Retrieve a summary of all UTubs for the current user",
         {200: UtubSummaryListSchema},
     ),
@@ -390,7 +391,7 @@ ALL_API_ROUTES = [
         "utubs.update_utub_name",
         UpdateUTubNameRequest,
         UtubNameUpdatedResponseSchema,
-        ["utubs"],
+        [OPEN_API.UTUBS],
         "Update a UTub name",
         {
             200: UtubNameUpdatedResponseSchema,
@@ -403,7 +404,7 @@ ALL_API_ROUTES = [
         "utubs.update_utub_desc",
         UpdateUTubDescriptionRequest,
         UtubDescUpdatedResponseSchema,
-        ["utubs"],
+        [OPEN_API.UTUBS],
         "Update a UTub description",
         {
             200: UtubDescUpdatedResponseSchema,
@@ -416,7 +417,7 @@ ALL_API_ROUTES = [
         "utubs.delete_utub",
         None,
         UtubDeletedResponseSchema,
-        ["utubs"],
+        [OPEN_API.UTUBS],
         "Delete a UTub",
         {200: UtubDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse},
     ),
@@ -425,7 +426,7 @@ ALL_API_ROUTES = [
         "urls.create_url",
         CreateURLRequest,
         UrlCreatedResponseSchema,
-        ["urls"],
+        [OPEN_API.URLS],
         "Add a URL to a UTub",
         {
             200: UrlCreatedResponseSchema,
@@ -438,7 +439,7 @@ ALL_API_ROUTES = [
         "urls.get_url",
         None,
         UrlReadResponseSchema,
-        ["urls"],
+        [OPEN_API.URLS],
         "Retrieve a URL from a UTub",
         {200: UrlReadResponseSchema, 404: ErrorResponse},
     ),
@@ -446,7 +447,7 @@ ALL_API_ROUTES = [
         "urls.update_url",
         UpdateURLStringRequest,
         UrlUpdatedResponseSchema,
-        ["urls"],
+        [OPEN_API.URLS],
         "Update a URL string in a UTub",
         {
             200: UrlUpdatedResponseSchema,
@@ -460,7 +461,7 @@ ALL_API_ROUTES = [
         "urls.update_url_title",
         UpdateURLTitleRequest,
         UrlTitleUpdatedResponseSchema,
-        ["urls"],
+        [OPEN_API.URLS],
         "Update a URL title in a UTub",
         {
             200: UrlTitleUpdatedResponseSchema,
@@ -473,7 +474,7 @@ ALL_API_ROUTES = [
         "urls.delete_url",
         None,
         UrlDeletedResponseSchema,
-        ["urls"],
+        [OPEN_API.URLS],
         "Delete a URL from a UTub",
         {200: UrlDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse},
     ),
@@ -482,7 +483,7 @@ ALL_API_ROUTES = [
         "members.create_member",
         AddMemberRequest,
         MemberModifiedResponseSchema,
-        ["members"],
+        [OPEN_API.MEMBERS],
         "Add a member to a UTub",
         {
             200: MemberModifiedResponseSchema,
@@ -495,7 +496,7 @@ ALL_API_ROUTES = [
         "members.remove_member",
         None,
         MemberModifiedResponseSchema,
-        ["members"],
+        [OPEN_API.MEMBERS],
         "Remove a member from a UTub",
         {
             200: MemberModifiedResponseSchema,
@@ -509,7 +510,7 @@ ALL_API_ROUTES = [
         "utub_tags.create_utub_tag",
         AddTagRequest,
         UtubTagAddedToUtubResponseSchema,
-        ["tags"],
+        [OPEN_API.TAGS],
         "Add a tag to a UTub",
         {200: UtubTagAddedToUtubResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
     ),
@@ -517,7 +518,7 @@ ALL_API_ROUTES = [
         "utub_tags.delete_utub_tag",
         None,
         UtubTagDeletedFromUtubResponseSchema,
-        ["tags"],
+        [OPEN_API.TAGS],
         "Delete a tag from a UTub",
         {200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
     ),
@@ -526,7 +527,7 @@ ALL_API_ROUTES = [
         "utub_url_tags.create_utub_url_tag",
         AddTagRequest,
         UrlTagModifiedResponseSchema,
-        ["tags"],
+        [OPEN_API.TAGS],
         "Add a tag to a URL in a UTub",
         {200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
     ),
@@ -534,7 +535,7 @@ ALL_API_ROUTES = [
         "utub_url_tags.delete_utub_url_tag",
         None,
         UrlTagModifiedResponseSchema,
-        ["tags"],
+        [OPEN_API.TAGS],
         "Remove a tag from a URL in a UTub",
         {200: UrlTagModifiedResponseSchema, 404: ErrorResponse},
     ),
@@ -543,7 +544,7 @@ ALL_API_ROUTES = [
         "contact.submit_contact_us",
         ContactRequest,
         ContactResponseSchema,
-        ["contact"],
+        [OPEN_API.CONTACT],
         "Submit a contact form",
         {200: ContactResponseSchema, 400: ErrorResponse},
     ),
@@ -552,7 +553,7 @@ ALL_API_ROUTES = [
         "system.health",
         None,
         HealthResponseSchema,
-        ["system"],
+        [OPEN_API.SYSTEM],
         "Health check endpoint",
         {200: HealthResponseSchema},
     ),
@@ -745,7 +746,7 @@ def test_api_route_stashes_tags_when_provided(minimal_app: Flask):
     THEN _api_route_tags is set to ["utubs"]
     """
     view_fn = minimal_app.view_functions["test_with_metadata"]
-    assert view_fn._api_route_tags == ["utubs"]
+    assert view_fn._api_route_tags == [OPEN_API.UTUBS]
 
 
 def test_api_route_tags_defaults_to_none_when_omitted(minimal_app: Flask):
@@ -826,7 +827,7 @@ def test_api_route_tags_without_status_codes(minimal_app: Flask):
     THEN _api_route_tags is ["members"] and _api_route_status_codes is None
     """
     view_fn = minimal_app.view_functions["test_tags_no_status_codes"]
-    assert view_fn._api_route_tags == ["members"]
+    assert view_fn._api_route_tags == [OPEN_API.MEMBERS]
     assert view_fn._api_route_status_codes is None
 
 

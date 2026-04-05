@@ -29,6 +29,7 @@ from backend.schemas.utubs import (
     UtubDetailSchema,
     UtubNameUpdatedResponseSchema,
 )
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
 from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.services.create_utubs import create_new_utub
@@ -103,7 +104,7 @@ def home() -> str | WerkzeugResponse:
     response_schema=UtubCreatedResponseSchema,
     error_message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
-    tags=["utubs"],
+    tags=[OPEN_API.UTUBS],
     description="Create a new UTub",
     status_codes={200: UtubCreatedResponseSchema, 400: ErrorResponse},
 )
@@ -117,7 +118,7 @@ def create_utub(create_utub_request: CreateUTubRequest) -> FlaskResponse:
 @utub_membership_required
 @api_route(
     response_schema=UtubDetailSchema,
-    tags=["utubs"],
+    tags=[OPEN_API.UTUBS],
     description="Retrieve data for a single UTub",
     status_codes={200: UtubDetailSchema, 404: ErrorResponse},
 )
@@ -132,7 +133,7 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
 @email_validation_required
 @api_route(
     response_schema=UtubSummaryListSchema,
-    tags=["utubs"],
+    tags=[OPEN_API.UTUBS],
     description="Retrieve a summary of all UTubs for the current user",
     status_codes={200: UtubSummaryListSchema},
 )
@@ -150,7 +151,7 @@ def get_utubs() -> FlaskResponse:
     response_schema=UtubNameUpdatedResponseSchema,
     error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
-    tags=["utubs"],
+    tags=[OPEN_API.UTUBS],
     description="Update a UTub name",
     status_codes={
         200: UtubNameUpdatedResponseSchema,
@@ -179,7 +180,7 @@ def update_utub_name(
     response_schema=UtubDescUpdatedResponseSchema,
     error_message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
     error_code=UTubErrorCodes.INVALID_FORM_INPUT,
-    tags=["utubs"],
+    tags=[OPEN_API.UTUBS],
     description="Update a UTub description",
     status_codes={
         200: UtubDescUpdatedResponseSchema,
@@ -209,7 +210,7 @@ def update_utub_desc(
 @utub_creator_required
 @api_route(
     response_schema=UtubDeletedResponseSchema,
-    tags=["utubs"],
+    tags=[OPEN_API.UTUBS],
     description="Delete a UTub",
     status_codes={
         200: UtubDeletedResponseSchema,

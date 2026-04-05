@@ -29,6 +29,7 @@ from backend.urls.services.read_urls import get_url_in_utub
 from backend.urls.services.update_url_titles import update_url_title_if_new
 from backend.urls.services.update_urls import update_url_in_utub
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.url_strs import URL_FAILURE
 
 urls = Blueprint("urls", __name__)
@@ -44,7 +45,7 @@ STD_JSON = STD_JSON_RESPONSE
     response_schema=UrlCreatedResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
-    tags=["urls"],
+    tags=[OPEN_API.URLS],
     description="Add a URL to a UTub",
     status_codes={
         200: UrlCreatedResponseSchema,
@@ -73,7 +74,7 @@ def create_url(
 @utub_membership_with_valid_url_in_utub_required
 @api_route(
     response_schema=UrlReadResponseSchema,
-    tags=["urls"],
+    tags=[OPEN_API.URLS],
     description="Retrieve a URL from a UTub",
     status_codes={200: UrlReadResponseSchema, 404: ErrorResponse},
 )
@@ -103,7 +104,7 @@ def get_url(
     response_schema=UrlUpdatedResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
-    tags=["urls"],
+    tags=[OPEN_API.URLS],
     description="Update a URL string in a UTub",
     status_codes={
         200: UrlUpdatedResponseSchema,
@@ -145,7 +146,7 @@ def update_url(
     response_schema=UrlTitleUpdatedResponseSchema,
     error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
-    tags=["urls"],
+    tags=[OPEN_API.URLS],
     description="Update a URL title in a UTub",
     status_codes={
         200: UrlTitleUpdatedResponseSchema,
@@ -183,7 +184,7 @@ def update_url_title(
 @url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)
 @api_route(
     response_schema=UrlDeletedResponseSchema,
-    tags=["urls"],
+    tags=[OPEN_API.URLS],
     description="Delete a URL from a UTub",
     status_codes={
         200: UrlDeletedResponseSchema,

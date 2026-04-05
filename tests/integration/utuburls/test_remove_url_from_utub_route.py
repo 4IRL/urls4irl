@@ -9,7 +9,10 @@ from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.url_strs import URL_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
@@ -604,7 +607,7 @@ def test_delete_url_not_in_utub_no_tags(
     assert delete_url_response.status_code == 404
     json_response = delete_url_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure proper removal from database
     with app.app_context():

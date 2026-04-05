@@ -10,7 +10,10 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
@@ -381,7 +384,7 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
     assert delete_utub_response.status_code == 404
     json_response = delete_utub_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Assert no UTub exists after nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -411,7 +414,7 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
     assert delete_utub_response.status_code == 404
     json_response = delete_utub_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Assert no UTub exists after nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -482,7 +485,7 @@ def test_delete_utub_as_not_member_or_creator(
         assert delete_utub_response.status_code == 404
         json_response = delete_utub_response.get_json()
         assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert json_response[STD_JSON.MESSAGE] == "Not Found"
+        assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
         with app.app_context():
             user_not_in_these_utubs: list[Utub_Members] = Utub_Members.query.filter(

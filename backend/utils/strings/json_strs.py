@@ -23,6 +23,7 @@ class STD_JSON_RESPONSE:
 
 # Strings for general failure, included in JSON message
 NOT_AUTHORIZED = "Not authorized."
+NOT_FOUND = "Not Found"
 FIELD_REQUIRED_STR = "This field is required."
 FIELD_REQUIRED = [FIELD_REQUIRED_STR]
 INVALID_INPUT = "Invalid input, please try again."
@@ -33,6 +34,7 @@ REDIRECT = "redirect"
 
 class FAILURE_GENERAL:
     NOT_AUTHORIZED = NOT_AUTHORIZED
+    NOT_FOUND = NOT_FOUND
     FIELD_REQUIRED_STR = FIELD_REQUIRED_STR
     FIELD_REQUIRED = FIELD_REQUIRED
     REDIRECT = REDIRECT

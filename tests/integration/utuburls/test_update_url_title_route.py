@@ -12,6 +12,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
@@ -993,7 +994,7 @@ def test_update_url_title_of_nonexistent_url(
     # Assert JSON response from server is valid
     json_response = update_url_string_title_form.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1047,7 +1048,7 @@ def test_update_url_title_in_nonexistent_utub(
     # Assert JSON response from server is valid
     json_response = update_url_string_title_form.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

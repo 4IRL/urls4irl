@@ -12,6 +12,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import ADD_USER_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
@@ -440,7 +441,7 @@ def test_add_user_to_nonexistant_utub(
     assert add_user_response.status_code == 404
     json_response = add_user_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Make sure no UTub User associations exist
     with app.app_context():
@@ -542,7 +543,7 @@ def test_add_user_to_another_users_utub(
     assert add_user_response.status_code == 404
     json_response = add_user_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Confirm third user not in second user's UTub
     with app.app_context():

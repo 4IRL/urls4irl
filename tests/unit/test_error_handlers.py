@@ -1,23 +1,20 @@
-from pathlib import Path
-
 import pytest
 from flask import Flask, abort
 
+import backend
 from backend.api_common.error_handler import handle_404_response
+from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.unit
 
 XHR_HEADER = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
-BACKEND_TEMPLATES_DIR = str(
-    Path(__file__).resolve().parent.parent.parent / "backend" / "templates"
-)
 
 
 @pytest.fixture()
 def error_handler_app():
     """Minimal Flask app with the 404 handler and a route that aborts with 404."""
-    app = Flask(__name__, template_folder=BACKEND_TEMPLATES_DIR)
+    app = Flask(backend.__name__)
     app.config["TESTING"] = True
     app.register_error_handler(404, handle_404_response)
 
@@ -38,7 +35,7 @@ class TestHandle404ResponseXHR:
         assert response.status_code == 404
         data = response.get_json()
         assert data["status"] == "Failure"
-        assert data["message"] == "Not Found"
+        assert data["message"] == FAILURE_GENERAL.NOT_FOUND
 
     def test_xhr_404_content_type_is_json(self, error_handler_app: Flask):
         with error_handler_app.test_client() as client:

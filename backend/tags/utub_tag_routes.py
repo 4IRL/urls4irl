@@ -19,6 +19,7 @@ from backend.tags.services.create_utub_tag import create_tag_in_utub
 from backend.tags.services.delete_utub_tag import (
     delete_utub_tag_from_utub_and_utub_urls,
 )
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 
 utub_tags = Blueprint("utub_tags", __name__)
@@ -31,7 +32,7 @@ utub_tags = Blueprint("utub_tags", __name__)
     response_schema=UtubTagAddedToUtubResponseSchema,
     error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
     error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
-    tags=["tags"],
+    tags=[OPEN_API.TAGS],
     description="Add a tag to a UTub",
     status_codes={
         200: UtubTagAddedToUtubResponseSchema,
@@ -62,7 +63,7 @@ def create_utub_tag(
 @utub_membership_with_valid_utub_tag
 @api_route(
     response_schema=UtubTagDeletedFromUtubResponseSchema,
-    tags=["tags"],
+    tags=[OPEN_API.TAGS],
     description="Delete a tag from a UTub",
     status_codes={200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
 )

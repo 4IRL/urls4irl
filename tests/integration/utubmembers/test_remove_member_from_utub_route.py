@@ -10,7 +10,10 @@ from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
@@ -495,7 +498,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     assert remove_user_response.status_code == 404
     json_response = remove_user_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure 404 response is given no matter what USER ID
     for num in range(10):
@@ -513,7 +516,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
         assert remove_user_response.status_code == 404
         json_response = remove_user_response.get_json()
         assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert json_response[STD_JSON.MESSAGE] == "Not Found"
+        assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
@@ -775,7 +778,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     assert remove_user_response.status_code == 404
     json_response = remove_user_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure database still shows user 3 is member of utub 2
     with app.app_context():
@@ -860,7 +863,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     assert remove_user_response.status_code == 404
     json_response = remove_user_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure database still shows user 1 is member of utub 2
     with app.app_context():

@@ -6,7 +6,10 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
@@ -206,7 +209,7 @@ def test_get_url_in_nonexistent_utub(
     assert get_url_response.status_code == 404
     json_response = get_url_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
 
 def test_get_url_in_utub_non_ajax_request(

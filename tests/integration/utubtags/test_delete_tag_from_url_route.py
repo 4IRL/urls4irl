@@ -11,7 +11,10 @@ from backend.models.utub_urls import Utub_Urls
 from backend.schemas.urls import UtubUrlSchema
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
@@ -755,7 +758,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure the Tag-URL-UTub association does not exist
@@ -834,7 +837,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure the Tag-URL-UTub association does not exist any longer
@@ -932,7 +935,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure tag exists
@@ -1017,7 +1020,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure the valid Tag-URL-UTub association still exists
@@ -1098,7 +1101,7 @@ def test_delete_tag_from_nonexistent_url_utub(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure the valid Tag-URL-UTub association still exists
@@ -1284,7 +1287,7 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_id_this_user_creator_of)

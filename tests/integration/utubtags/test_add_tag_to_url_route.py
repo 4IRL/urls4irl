@@ -17,6 +17,7 @@ from tests.models_for_test import all_tag_strings
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
@@ -858,7 +859,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
     assert add_tag_response.status_code == 404
     json_response = add_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -946,7 +947,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
     assert add_tag_response.status_code == 404
     json_response = add_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1024,7 +1025,7 @@ def test_add_tag_to_url_in_nonexistent_utub(
     assert add_tag_response.status_code == 404
     json_response = add_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1111,7 +1112,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
     assert add_tag_response.status_code == 404
     json_response = add_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1218,7 +1219,7 @@ def test_add_tag_to_url_not_in_utub(
     assert add_tag_response.status_code == 404
     json_response = add_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist

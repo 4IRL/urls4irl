@@ -9,7 +9,10 @@ from backend.schemas.tags import UtubTagOnAddDeleteSchema
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
 from tests.utils_for_test import is_string_in_logs
@@ -252,7 +255,7 @@ def test_delete_nonexistent_tag_from_utub(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags
@@ -291,7 +294,7 @@ def test_delete_tag_from_nonexistent_utub(
     assert delete_tag_response.status_code == 404
     json_response = delete_tag_response.get_json()
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == "Not Found"
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags
