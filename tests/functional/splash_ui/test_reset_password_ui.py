@@ -37,6 +37,16 @@ from tests.functional.selenium_utils import (
 pytestmark = pytest.mark.splash_ui
 
 
+def wait_for_reset_password_close_button(browser: WebDriver) -> None:
+    """Wait for handleUserChangedPassword to run, which changes the submit button to 'Close'."""
+    WebDriverWait(browser, 5).until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
+        ).get_attribute("value")
+        == "Close"
+    )
+
+
 def test_password_reset_routes_user_properly(
     browser: WebDriver, create_user_resetting_password
 ):
@@ -210,13 +220,7 @@ def test_password_reset_successful_reset_btn(
 
     wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT)
 
-    # Wait for handleUserChangedPassword to run — it changes the button to "Close"
-    WebDriverWait(browser, 5).until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
-        ).get_attribute("value")
-        == "Close"
-    )
+    wait_for_reset_password_close_button(browser)
 
     confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=5)
     assert confirm_alert is not None
@@ -265,13 +269,7 @@ def test_password_reset_successful_reset_key(
 
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
-    # Wait for handleUserChangedPassword to run — it changes the button to "Close"
-    WebDriverWait(browser, 5).until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
-        ).get_attribute("value")
-        == "Close"
-    )
+    wait_for_reset_password_close_button(browser)
 
     confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=5)
     assert confirm_alert is not None
