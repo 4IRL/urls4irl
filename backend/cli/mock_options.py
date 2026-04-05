@@ -222,21 +222,25 @@ def create_db(db_type: str):
     default="dev",
 )
 @click.option(
+    "--keep-alembic",
+    is_flag=True,
+    help="Preserve alembic_version table so 'flask db upgrade' remains a no-op",
+)
+@click.option(
     "--drop-alembic",
     is_flag=True,
-    help="Prevent UTubs being created with the same name",
+    hidden=True,
+    help="Deprecated: alembic is now dropped by default. Use --keep-alembic to preserve it.",
 )
 @with_appcontext
-def drop_db(db_type: str, drop_alembic: bool):
+def drop_db(db_type: str, keep_alembic: bool, drop_alembic: bool):
     print(f"\n\n--- Dropping each table in {db_type} database ---\n")
     engine = db.engines[db_type]
     con = engine.connect()
     meta = MetaData(engine)
     meta.reflect()
 
-    if drop_alembic:
-        meta.drop_all()
-    else:
+    if keep_alembic:
         print("\n\nSkipping alembic_version to preserve migrations...\n\n")
 
         tables_to_drop = []
@@ -248,6 +252,8 @@ def drop_db(db_type: str, drop_alembic: bool):
         # Drop only the tables we want
         for table in tables_to_drop:
             table.drop(engine)
+    else:
+        meta.drop_all()
     con.close()
     print(f"\n--- Dropped each table in {db_type} database ---\n\n")
 
