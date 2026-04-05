@@ -1,9 +1,9 @@
 import random
 from typing import Tuple
 
+from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
-from flask import Flask
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys

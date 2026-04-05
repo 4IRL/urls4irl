@@ -18,7 +18,7 @@ system = Blueprint("system", __name__)
     ajax_required=False,
     tags=[OPEN_API.SYSTEM],
     description="Health check endpoint. Pass ?db=true to verify all database tables exist.",
-    status_codes={200: StatusMessageResponseSchema, 503: StatusMessageResponseSchema},
+    status_codes={200: HealthResponseSchema, 503: StatusMessageResponseSchema},
 )
 def health() -> FlaskResponse:
     if request.args.get("db", "").lower() == "true":

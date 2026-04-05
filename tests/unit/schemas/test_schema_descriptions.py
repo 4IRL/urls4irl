@@ -11,25 +11,28 @@ pytestmark = pytest.mark.unit
 
 # Collect response schemas from __all__ (filter to BaseModel subclasses)
 _response_schemas = [
-    getattr(schema_module, name)
+    cls
     for name in schema_module.__all__
-    if isinstance(getattr(schema_module, name), type)
-    and issubclass(getattr(schema_module, name), BaseModel)
+    if isinstance(cls := getattr(schema_module, name), type)
+    and issubclass(cls, BaseModel)
 ]
 
 # Collect request schemas from __all__ (filter to BaseModel subclasses)
 _request_schemas = [
-    getattr(request_schema_module, name)
+    cls
     for name in request_schema_module.__all__
-    if isinstance(getattr(request_schema_module, name), type)
-    and issubclass(getattr(request_schema_module, name), BaseModel)
+    if isinstance(cls := getattr(request_schema_module, name), type)
+    and issubclass(cls, BaseModel)
 ]
 
 # ErrorResponse is not in __all__, add it explicitly
 _all_raw_schemas = _response_schemas + _request_schemas + [ErrorResponse]
 
 # Deduplicate by class identity (e.g., UrlCreatedItemSchema is an alias for UtubUrlDeleteSchema)
-ALL_SCHEMAS = list({id(cls): cls for cls in _all_raw_schemas}.values())
+_seen: set[int] = set()
+ALL_SCHEMAS = [
+    cls for cls in _all_raw_schemas if not (id(cls) in _seen or _seen.add(id(cls)))
+]
 
 
 def _assert_all_properties_described(

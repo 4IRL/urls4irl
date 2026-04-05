@@ -555,7 +555,7 @@ ALL_API_ROUTES = [
         HealthResponseSchema,
         [OPEN_API.SYSTEM],
         "Health check endpoint. Pass ?db=true to verify all database tables exist.",
-        {200: StatusMessageResponseSchema, 503: StatusMessageResponseSchema},
+        {200: HealthResponseSchema, 503: StatusMessageResponseSchema},
     ),
 ]
 
