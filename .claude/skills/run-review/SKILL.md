@@ -59,6 +59,7 @@ Important overrides for this run:
 - Follow all CLAUDE.md guidelines.
 - CRITICAL: Every Bash call that runs `make` or `docker` MUST set dangerouslyDisableSandbox: true. Never for git commands.
   Example: Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)
+- CRITICAL: Never dismiss a test failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For every failure: (1) read the traceback, (2) check if branch changes could affect the failing path, (3) fix if related, (4) if confirmed unrelated, rerun in isolation 2-3 times and report findings.
 ```
 
 The subagent handles the entire workflow internally:
@@ -123,6 +124,7 @@ When any test run (smoke test or validation) reports failures:
      <path-to-temp-file>
    Read this file to understand all failures, then fix them.
    <include user decisions if any were provided>
+   CRITICAL: Never dismiss a failure as "pre-existing" — check if branch changes could affect the failing path indirectly (shared fixtures, CSS, templates, timing, imports). If confirmed unrelated, rerun in isolation 2-3 times to verify flakiness.
    After fixing, run `make vite-build` and `make test-js` to verify JS changes (if applicable).
    Do NOT run the full test suite — just implement fixes.
 
@@ -144,6 +146,7 @@ When all items are done:
    - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `/tmp/claude/final-ui-results.txt`.
    - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
    - Main agent reads each result file to determine pass/fail.
+   - **Investigate every failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
 3. **Clean up** all temp test output files. Also delete all files in `plans/<topic>/tmp/` (the subagent communication directory for this review run). Derive `<topic>` from the review file's parent path (`plans/<topic>/reviews/`).
 4. Report final summary:
@@ -181,3 +184,4 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.
 - **Review item ordering** — process items in the order they appear in the review file. Do not reorder or parallelize, as later items may depend on earlier fixes.
 - When stopping on a blocker, report: which item failed, what was tried, what needs user input.
+- **Investigate every test failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times. Include this rule in all subagent prompts that run or evaluate tests.

@@ -59,6 +59,7 @@ Read both output files and check each for failures.
 
 **For each suite with failures:**
 - Extract failure summaries and stack traces and write them to the corresponding `_failures.txt` file
+- **Investigate every failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on the current branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and report whether it's likely related or confirmed unrelated (rerun in isolation 2-3 times to verify)
 - Report which tests failed with a stack trace snippet showing the root cause
 - Reference the failure file for full details
 

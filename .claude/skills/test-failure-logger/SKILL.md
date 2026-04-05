@@ -23,7 +23,7 @@ When a test fails:
 
 1. **Extract failure information**:
    - Test name/path (e.g., `tests/functional/splash_ui/test_reset_password_ui.py::test_reset_password_success`)
-   - Likely cause (brief analysis: "Missing element on page", "API returned 500", "Database connection timeout")
+   - Likely cause (brief analysis: "Missing element on page", "API returned 500", "Database connection timeout"). **Never dismiss a failure as "pre-existing" or "flaky"** — even if the test file wasn't modified on the current branch, current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). Always investigate whether branch changes could affect the failing path.
    - Stack trace snippet (the relevant error lines, not the full trace)
 
 2. **Log the failure**:

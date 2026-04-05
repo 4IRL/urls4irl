@@ -46,6 +46,7 @@ Important overrides for this run:
 - Do NOT pause at the end to ask the user — complete the full workflow (execute, validate, review, fix, update tracking) and return your final report.
 - Follow all CLAUDE.md guidelines.
 - Use dangerouslyDisableSandbox: true for Docker/make commands only. Never for git commands.
+- CRITICAL: Never dismiss a test failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For every failure: (1) read the traceback, (2) check if branch changes could affect the failing path, (3) fix if related, (4) if confirmed unrelated, rerun in isolation 2-3 times and report findings.
 ```
 
 The subagent handles the entire next-step-taker workflow internally:
@@ -112,6 +113,7 @@ When any test run (smoke test, final suite, or step validation) reports failures
      <path-to-temp-file>
    Read this file to understand all failures, then fix them.
    <include user decisions if any were provided>
+   CRITICAL: Never dismiss a failure as "pre-existing" — check if branch changes could affect the failing path indirectly (shared fixtures, CSS, templates, timing, imports). If confirmed unrelated, rerun in isolation 2-3 times to verify flakiness.
    After fixing, run `make vite-build` and `make test-js` to verify JS changes.
    Do NOT run the full test suite — just implement fixes.
 
@@ -133,6 +135,7 @@ When all steps are done or the plan is marked finished:
    - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
    - **CRITICAL:** Tell each test subagent that every Bash call running `make` or `docker` MUST set `dangerouslyDisableSandbox: true`. Include an example: `Bash(command: "make test-integration-parallel > \"/tmp/claude/final-integration-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`.
    - Main agent reads each result file to determine pass/fail.
+   - **Investigate every failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
 3. **Clean up** all temp test output files.
 4. **Delete all files in `plans/<topic>/tmp/`** — this is the subagent communication directory created during the run; it is not needed after completion.
@@ -169,3 +172,4 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.
 - If a step modifies the plan itself (e.g., adds sub-steps), the main agent re-reads the plan before continuing.
 - When stopping on a blocker, report: which step failed, what was tried, what needs user input.
+- **Investigate every test failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times. Include this rule in all subagent prompts that run or evaluate tests.

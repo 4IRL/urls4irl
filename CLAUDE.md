@@ -71,6 +71,14 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
    - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
    - **UI parallelism cap: n=8 max** — Each UI worker needs a dedicated Flask server, Chrome session, and Postgres DB. Running n=12 saturates host CPU/RAM during concurrent startup, causing 120+ second fixture setup times that exceed Selenium wait timeouts and produce spurious login assertion failures. Individual markers pass at n=4; the full suite is stable at n=8.
 8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
+9. **Never dismiss test failures without investigation** - "File not modified on this branch" does not prove the failure is unrelated. Follow this structure for every failure:
+   1. **Read the failing test** — understand what it asserts and how it sets up state
+   2. **Check branch changes for indirect effects** — shared test utilities/fixtures, templates/CSS/JS the test's page depends on, schema/model changes affecting the endpoint, additive changes with potential side effects
+   3. **Trace the full code path** — read the JS, template, route handler, and schema involved in the failing assertion end-to-end
+   4. **Compare with passing sibling tests** — if a similar test passes (e.g., `_btn` vs `_key` variant), identify what differs (timing, interaction method, element targeting)
+   5. **Check timeout/wait values** — compare with similar waits elsewhere in the codebase; tight timeouts under parallel load are a common flake source
+   6. **Rerun in isolation** — run the test alone 2-3 times to determine if it's a parallelism/timing flake vs a deterministic failure
+   7. **Identify specific root cause** — conclude with a concrete diagnosis (e.g., "3-second timeout too tight under 8-worker parallel load"), not a vague "flaky" or "pre-existing"
 
 ### Code Style
 

@@ -5,6 +5,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from backend import db
 from backend.api_common.request_errors import min_length_message
@@ -208,7 +209,16 @@ def test_password_reset_successful_reset_btn(
     confirm_new_password_input.send_keys(NEW_PASSWORD)
 
     wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT)
-    confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+
+    # Wait for handleUserChangedPassword to run — it changes the button to "Close"
+    WebDriverWait(browser, 5).until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
+        ).get_attribute("value")
+        == "Close"
+    )
+
+    confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=5)
     assert confirm_alert is not None
 
     assert confirm_alert.text == RESET_PASSWORD.PASSWORD_RESET
@@ -255,7 +265,15 @@ def test_password_reset_successful_reset_key(
 
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
-    confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    # Wait for handleUserChangedPassword to run — it changes the button to "Close"
+    WebDriverWait(browser, 5).until(
+        lambda driver: driver.find_element(
+            By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
+        ).get_attribute("value")
+        == "Close"
+    )
+
+    confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=5)
     assert confirm_alert is not None
 
     assert confirm_alert.text == RESET_PASSWORD.PASSWORD_RESET
