@@ -59,6 +59,39 @@ _all_raw_schemas = _response_schemas + _request_schemas + [ErrorResponse]
 ALL_SCHEMAS = list({id(cls): cls for cls in _all_raw_schemas}.values())
 
 
+def _assert_all_properties_described(
+    properties: dict[str, dict], schema_label: str
+) -> None:
+    """Assert every property in a JSON Schema properties dict has a description.
+
+    Handles plain fields, bare ``$ref`` fields (missing description), and
+    ``allOf``-wrapped ``$ref`` fields (Pydantic wraps in allOf when a
+    description is present alongside a reference).
+    """
+    for field_name, field_schema in properties.items():
+        # A bare $ref with no sibling keys means Pydantic had no description
+        # to attach — this is a missing-description case.
+        if "$ref" in field_schema and "description" not in field_schema:
+            raise AssertionError(
+                f"{schema_label}.{field_name} uses "
+                "$ref but is missing a 'description' in JSON Schema"
+            )
+        # allOf with $ref entries: Pydantic uses this when a description IS
+        # present alongside a schema reference.  Verify description exists.
+        if "allOf" in field_schema and all(
+            "$ref" in entry for entry in field_schema["allOf"]
+        ):
+            assert "description" in field_schema, (
+                f"{schema_label}.{field_name} uses allOf/"
+                "$ref but is missing a 'description' in JSON Schema"
+            )
+            continue
+        # Standard scalar / list / etc. field
+        assert (
+            "description" in field_schema
+        ), f"{schema_label}.{field_name} is missing a 'description' in JSON Schema"
+
+
 @pytest.mark.parametrize(
     "schema_cls",
     ALL_SCHEMAS,
@@ -70,30 +103,10 @@ def test_all_schema_fields_have_description(schema_cls: type[BaseModel]) -> None
 
     # Check top-level properties
     properties = json_schema.get("properties", {})
-    for field_name, field_schema in properties.items():
-        # Fields that use $ref won't have description at this level; check $defs instead
-        if "$ref" in field_schema:
-            continue
-        # allOf with a single $ref is also a reference pattern
-        if "allOf" in field_schema and all(
-            "$ref" in entry for entry in field_schema["allOf"]
-        ):
-            continue
-        assert (
-            "description" in field_schema
-        ), f"{schema_cls.__name__}.{field_name} is missing a 'description' in JSON Schema"
+    _assert_all_properties_described(properties, schema_cls.__name__)
 
     # Check nested schemas in $defs
     defs = json_schema.get("$defs", {})
     for def_name, def_schema in defs.items():
         nested_properties = def_schema.get("properties", {})
-        for field_name, field_schema in nested_properties.items():
-            if "$ref" in field_schema:
-                continue
-            if "allOf" in field_schema and all(
-                "$ref" in entry for entry in field_schema["allOf"]
-            ):
-                continue
-            assert (
-                "description" in field_schema
-            ), f"$defs[{def_name}].{field_name} is missing a 'description' in JSON Schema"
+        _assert_all_properties_described(nested_properties, f"$defs[{def_name}]")

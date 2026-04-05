@@ -95,7 +95,7 @@ After all subagents complete, read each `<tmp-dir>/<role>.md` file to parse the 
 Collect all 7 subagent responses. Parse each verdict:
 
 - **ALL PASS, no findings at all**: Proceed to Step 5 (push).
-- **ALL PASS, but minor findings exist**: Write findings (Step 6), then push (Step 5). Minor findings should not block the push but must be recorded so `/next-step-taker` can address them.
+- **ALL PASS, but minor findings exist**: Write findings (Step 6), then push (Step 5). Minor findings should not block the push but must be recorded so `/run-review` can address them.
 - **ANY FAIL**: Proceed to Step 6 (write findings). Do NOT push.
 
 ### 5. Push
@@ -121,7 +121,7 @@ This command **must** use `dangerouslyDisableSandbox: true` because it writes to
 
 After setting upstream, proceed to Step 7 (PR creation).
 
-If a review file was written (minor findings), include its path and note that `/next-step-taker push-review-<branch>` can address them.
+If a review file was written (minor findings), include its path and note that `/run-review push-review-<branch>` can address them.
 
 After a successful push, delete all files in `<tmp-dir>/` if a topic was inferred and the tmp dir was used (i.e., `<tmp-dir>` is `plans/<topic>/tmp/`).
 
@@ -184,7 +184,7 @@ Each TO-DO item must be:
 - **Concrete**: Name the exact file, function, variable, or line to change. Avoid vague items like "fix style issues."
 - **One logical change**: Each item should be implementable and verifiable independently.
 
-Consolidate related findings from different reviewers into a single TO-DO item when they refer to the same fix. **Include all findings in the TO-DO list regardless of severity** — minor findings must also be actionable items so `/next-step-taker` can address them.
+Consolidate related findings from different reviewers into a single TO-DO item when they refer to the same fix. **Include all findings in the TO-DO list regardless of severity** — minor findings must also be actionable items so `/run-review` can address them.
 
 Example:
 ```markdown
@@ -197,7 +197,7 @@ Example:
 After writing, inform the user:
 - Which reviewers failed and why (brief)
 - Path to the full review file and review number (e.g., "Review 2 appended")
-- That they can use `/next-step-taker push-review-<branch>` to implement items one by one
+- That they can use `/run-review push-review-<branch>` to address the findings
 - Do NOT automatically push — the user must fix findings and re-invoke
 
 ### 7. Create or Update PR
