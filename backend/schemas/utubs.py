@@ -16,30 +16,45 @@ if TYPE_CHECKING:
 
 
 class UtubDetailSchema(BaseSchema):
-    id: int = Field(alias=M.ID, description="Unique UTub ID")
-    name: str = Field(alias=M.NAME, description="Name of the UTub")
+    id: int = Field(
+        alias=M.ID,
+        description="Unique UTub ID",
+    )
+    name: str = Field(
+        alias=M.NAME,
+        description="Name of the UTub",
+    )
     created_by: int = Field(
-        alias=M.CREATED_BY, description="User ID of the UTub creator"
+        alias=M.CREATED_BY,
+        description="User ID of the UTub creator",
     )
     created_at: str = Field(
-        alias=M.CREATED_AT, description="Creation timestamp of the UTub"
+        alias=M.CREATED_AT,
+        description="Creation timestamp of the UTub",
     )
-    description: str = Field(alias=M.DESCRIPTION, description="Description of the UTub")
+    description: str = Field(
+        alias=M.DESCRIPTION,
+        description="Description of the UTub",
+    )
     members: list[UserSchema] = Field(
-        alias=M.MEMBERS, description="List of members in the UTub"
+        alias=M.MEMBERS,
+        description="List of members in the UTub",
     )
     urls: list[UtubUrlSchema] = Field(
-        alias=M.URLS, description="List of URLs in the UTub"
+        alias=M.URLS,
+        description="List of URLs in the UTub",
     )
     tags: list[UtubTagSchema] = Field(
-        alias=M.TAGS, description="List of tags used in the UTub"
+        alias=M.TAGS,
+        description="List of tags used in the UTub",
     )
     is_creator: bool = Field(
         alias=M.IS_CREATOR,
         description="Whether the current user is the creator of the UTub",
     )
     current_user: str = Field(
-        alias=M.CURRENT_USER, description="ID of the currently authenticated user"
+        alias=M.CURRENT_USER,
+        description="ID of the currently authenticated user",
     )
 
     @classmethod
@@ -79,23 +94,32 @@ UtubDetailSchema.model_rebuild()
 
 class UtubCreatedResponseSchema(BaseSchema):
     utub_id: int = Field(
-        alias=UTUB_ID, description="Unique ID of the newly created UTub"
+        alias=UTUB_ID,
+        description="Unique ID of the newly created UTub",
     )
     utub_name: str = Field(
-        alias=UTUB_NAME, description="Name of the newly created UTub"
+        alias=UTUB_NAME,
+        description="Name of the newly created UTub",
     )
     utub_description: str | None = Field(
         alias=UTUB_DESCRIPTION,
         description="Description of the newly created UTub, or null if not set",
     )
     utub_creator_id: int = Field(
-        alias=UTUB_CREATOR_ID, description="User ID of the UTub creator"
+        alias=UTUB_CREATOR_ID,
+        description="User ID of the UTub creator",
     )
 
 
 class UtubDeletedResponseSchema(BaseSchema):
-    utub_id: int = Field(alias=UTUB_ID, description="ID of the deleted UTub")
-    utub_name: str = Field(alias=UTUB_NAME, description="Name of the deleted UTub")
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the deleted UTub",
+    )
+    utub_name: str = Field(
+        alias=UTUB_NAME,
+        description="Name of the deleted UTub",
+    )
     utub_description: str | None = Field(
         alias=UTUB_DESCRIPTION,
         description="Description of the deleted UTub, or null if not set",
@@ -104,14 +128,19 @@ class UtubDeletedResponseSchema(BaseSchema):
 
 class UtubNameUpdatedResponseSchema(BaseSchema):
     utub_id: int = Field(
-        alias=UTUB_ID, description="ID of the UTub whose name was updated"
+        alias=UTUB_ID,
+        description="ID of the UTub whose name was updated",
     )
-    utub_name: str = Field(alias=UTUB_NAME, description="New name of the UTub")
+    utub_name: str = Field(
+        alias=UTUB_NAME,
+        description="New name of the UTub",
+    )
 
 
 class UtubDescUpdatedResponseSchema(BaseSchema):
     utub_id: int = Field(
-        alias=UTUB_ID, description="ID of the UTub whose description was updated"
+        alias=UTUB_ID,
+        description="ID of the UTub whose description was updated",
     )
     utub_description: str | None = Field(
         alias=UTUB_DESCRIPTION,

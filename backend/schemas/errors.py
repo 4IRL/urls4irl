@@ -16,7 +16,8 @@ class ErrorResponse(BaseSchema):
         description="Error status, always Failure",
     )
     message: str = Field(
-        alias=STD_JSON.MESSAGE, description="Human-readable error message"
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable error message",
     )
     error_code: int | None = Field(
         default=None,
