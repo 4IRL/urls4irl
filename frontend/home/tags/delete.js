@@ -150,6 +150,6 @@ function deleteUTubTagFail(xhr) {
     window.location.reload();
   });
 
-  $("#modalSubmit").addClass("disabled");
+  $("#modalSubmit").prop("disabled", true);
   return;
 }
