@@ -10,8 +10,12 @@ from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.schemas.users import UserSchema
 from tests.utils_for_test import is_string_in_logs
@@ -484,11 +488,17 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
             utub_id=NONEXISTENT_UTUB_ID,
             user_id=current_user.id,
         ),
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure 404 HTTP status code response
     assert remove_user_response.status_code == 404
+    json_response = remove_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure 404 response is given no matter what USER ID
     for num in range(10):
@@ -496,11 +506,17 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
             url_for(
                 ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=NONEXISTENT_UTUB_ID, user_id=num
             ),
-            headers={"X-CSRFToken": csrf_token_string},
+            headers={
+                "X-CSRFToken": csrf_token_string,
+                URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+            },
         )
 
         # Ensure 404 HTTP status code response
         assert remove_user_response.status_code == 404
+        json_response = remove_user_response.get_json()
+        assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
@@ -542,7 +558,10 @@ def test_remove_invalid_user_from_utub_as_creator(
             utub_id=current_utub.id,
             user_id=NONEXISTENT_USER_ID,
         ),
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure 404 HTTP status code response
@@ -749,11 +768,17 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
             utub_id=second_user_utub_id,
             user_id=third_user_id,
         ),
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
-    # Ensure 403 HTTP status code response
+    # Ensure 404 HTTP status code response
     assert remove_user_response.status_code == 404
+    json_response = remove_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure database still shows user 3 is member of utub 2
     with app.app_context():
@@ -828,11 +853,17 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
             utub_id=new_utub_from_third_user.id,
             user_id=first_user_id,
         ),
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
-    # Ensure 403 HTTP status code response
+    # Ensure 404 HTTP status code response
     assert remove_user_response.status_code == 404
+    json_response = remove_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure database still shows user 1 is member of utub 2
     with app.app_context():
@@ -925,11 +956,17 @@ def test_remove_invalid_user_from_utub_does_not_update_utub(
             utub_id=current_utub_id,
             user_id=NONEXISTENT_USER_ID,
         ),
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure 404 HTTP status code response
     assert remove_user_response.status_code == 404
+    json_response = remove_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
 
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(current_utub_id)
@@ -997,11 +1034,17 @@ def test_remove_missing_user_from_utub_as_creator_log(
             utub_id=utub.id,
             user_id=second_user.id,
         ),
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure HTTP response code is correct
     assert remove_user_response.status_code == 404
+    json_response = remove_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
     assert is_string_in_logs(
         f"User={user.id} tried removing a member that isn't in this UTub",
         caplog.records,

@@ -12,10 +12,12 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import ADD_USER_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.schemas.users import UserSchema
 from tests.utils_for_test import is_string_in_logs
@@ -430,10 +432,16 @@ def test_add_user_to_nonexistant_utub(
     add_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=1),
         json={ADD_USER_FORM.USERNAME: another_user.username},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_user_response.status_code == 404
+    json_response = add_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Make sure no UTub User associations exist
     with app.app_context():
@@ -526,10 +534,16 @@ def test_add_user_to_another_users_utub(
     add_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=another_utub.id),
         json={ADD_USER_FORM.USERNAME: test_user_to_add.username},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_user_response.status_code == 404
+    json_response = add_user_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Confirm third user not in second user's UTub
     with app.app_context():

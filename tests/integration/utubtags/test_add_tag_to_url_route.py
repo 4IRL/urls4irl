@@ -17,11 +17,13 @@ from tests.models_for_test import all_tag_strings
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.tags
@@ -848,10 +850,16 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
         json={TAG_FORM.TAG_STRING: tag_to_add},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_tag_response.status_code == 404
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -930,10 +938,16 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
         json={TAG_FORM.TAG_STRING: tag_to_add},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_tag_response.status_code == 404
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1002,10 +1016,16 @@ def test_add_tag_to_url_in_nonexistent_utub(
             utub_url_id=NONEXISTENT_UTUB_ID,
         ),
         json={TAG_FORM.TAG_STRING: tag_to_add},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_tag_response.status_code == 404
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1083,10 +1103,16 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
             utub_url_id=url_id_for_url_in_utub,
         ),
         json={TAG_FORM.TAG_STRING: tag_to_add},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_tag_response.status_code == 404
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1184,10 +1210,16 @@ def test_add_tag_to_url_not_in_utub(
             utub_url_id=url_id_for_url_not_in_utub,
         ),
         json={TAG_FORM.TAG_STRING: tag_to_add},
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     assert add_tag_response.status_code == 404
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Ensure no new tags exist

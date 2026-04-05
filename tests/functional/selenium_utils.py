@@ -1094,3 +1094,4 @@ def add_cookie_banner_cookie(browser: WebDriver):
 
     browser.add_cookie(cookie)
     browser.refresh()
+    wait_for_page_complete_and_dom_stable(browser)

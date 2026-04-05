@@ -10,7 +10,11 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.constants import UTUB_CONSTANTS
 from backend.utils.strings.form_strs import UTUB_DESCRIPTION_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
@@ -654,11 +658,17 @@ def test_update_utub_description_of_invalid_utub(
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=NONEXISTENT_UTUB_ID),
         json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
-        headers={"X-CSRFToken": csrf_token_string},
+        headers={
+            "X-CSRFToken": csrf_token_string,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure valid reponse
     assert update_utub_desc_response.status_code == 404
+    json_response = update_utub_desc_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():

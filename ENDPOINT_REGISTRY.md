@@ -3,7 +3,7 @@
 Cross-layer navigation map for every route in the application. Each entry traces:
 **Route → Handler → Service → Template → JS Module → Tests**
 
-Last updated: 2026-03-29
+Last updated: 2026-04-04
 
 ---
 
@@ -27,7 +27,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:login` |
-| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=LoginRequest, response_schema=LoginRedirectResponseSchema, ajax_required=False)` |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=LoginRequest, response_schema=LoginRedirectResponseSchema, ajax_required=False, tags=["auth"], description="Log in to an existing account", status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse})` |
 | **Service** | `backend/splash/services/login.py:login_user_to_u4i` |
 | **Schema** | `backend/schemas/requests/splash/login.py:LoginRequest` |
 | **JS Module** | `frontend/splash/login-form.js` — `JSON.stringify`, `application/json` |
@@ -39,7 +39,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:register_user` |
-| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=RegisterRequest, ajax_required=False)` |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=RegisterRequest, response_schema=RegisterResponseSchema, ajax_required=False, tags=["auth"], description="Register a new user account", status_codes={201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse})` |
 | **Service** | `backend/splash/services/register.py:register_new_user` |
 | **Schema** | `backend/schemas/requests/splash/register.py:RegisterRequest` |
 | **JS Module** | `frontend/splash/register-form.js` — `JSON.stringify`, `application/json` |
@@ -61,7 +61,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:send_validation_email` |
-| **Decorators** | `@api_route(ajax_required=False)` |
+| **Decorators** | `@api_route(response_schema=EmailValidationResponseSchema, ajax_required=False, tags=["auth"], description="Send an email validation link to the current user", status_codes={200: EmailValidationResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 429: ErrorResponse})` |
 | **Service** | `backend/splash/services/email_validation.py:send_validation_email_to_user` |
 | **JS Module** | `frontend/splash/email-validation-form.js` — form serialize |
 | **CSRF** | Meta tag |
@@ -93,7 +93,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:forgot_password` |
-| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ForgotPasswordRequest, ajax_required=False)` |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ForgotPasswordRequest, response_schema=ForgotPasswordResponseSchema, ajax_required=False, tags=["auth"], description="Send a password reset email", status_codes={200: ForgotPasswordResponseSchema, 400: ErrorResponse})` |
 | **Service** | `backend/splash/services/forgot_password.py:send_forgot_password_email_to_user` |
 | **Schema** | `backend/schemas/requests/splash/forgot_password.py:ForgotPasswordRequest` |
 | **JS Module** | `frontend/splash/forgot-password-form.js` — `JSON.stringify`, `application/json` |
@@ -116,7 +116,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/splash/routes.py:reset_password` |
-| **Decorators** | `@api_route(request_schema=ResetPasswordRequest, ajax_required=False)` |
+| **Decorators** | `@api_route(request_schema=ResetPasswordRequest, response_schema=ResetPasswordResponseSchema, ajax_required=False, tags=["auth"], description="Reset a user password with a valid token", status_codes={200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/splash/services/reset_password.py:reset_password_for_user` |
 | **Schema** | `backend/schemas/requests/splash/reset_password.py:ResetPasswordRequest` |
 | **JS Module** | `frontend/splash/reset-password-form.js` — `JSON.stringify`, `application/json` |
@@ -145,7 +145,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:create_utub` |
-| **Decorators** | `@email_validation_required`, `@api_route(request_schema=CreateUTubRequest, response_schema=UtubCreatedResponseSchema)` |
+| **Decorators** | `@email_validation_required`, `@api_route(request_schema=CreateUTubRequest, response_schema=UtubCreatedResponseSchema, tags=["utubs"], description="Create a new UTub", status_codes={200: UtubCreatedResponseSchema, 400: ErrorResponse})` |
 | **Service** | `backend/utubs/services/create_utub.py:create_new_utub` |
 | **Schema** | `backend/schemas/requests/utubs/create_utub.py:CreateUTubRequest` |
 | **JS Module** | `frontend/home/utubs/create.js` — `JSON.stringify`, `application/json` |
@@ -157,7 +157,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:get_single_utub` |
-| **Decorators** | `@utub_membership_required`, `@api_route(response_schema=UtubDetailSchema)` |
+| **Decorators** | `@utub_membership_required`, `@api_route(response_schema=UtubDetailSchema, tags=["utubs"], description="Retrieve data for a single UTub", status_codes={200: UtubDetailSchema, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/get_utub.py:get_single_utub_for_user` |
 | **JS Module** | `frontend/home/utubs/selectors.js` |
 | **Tests** | `tests/integration/utubs/test_get_detailed_utub_info.py` (marker: `utubs`), `tests/functional/utubs_ui/test_select_utub_ui.py` (marker: `utubs_ui`) |
@@ -167,7 +167,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:get_utubs` |
-| **Decorators** | `@email_validation_required`, `@api_route(response_schema=UtubSummaryListSchema)` |
+| **Decorators** | `@email_validation_required`, `@api_route(response_schema=UtubSummaryListSchema, tags=["utubs"], description="Retrieve a summary of all UTubs for the current user", status_codes={200: UtubSummaryListSchema})` |
 | **Service** | `backend/utubs/services/get_utub.py:get_all_utubs_of_user` |
 | **JS Module** | `frontend/home/utubs/selectors.js` |
 | **Tests** | `tests/integration/utubs/test_get_utubs_summary_route.py` (marker: `utubs`) |
@@ -177,7 +177,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:update_utub_name` |
-| **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubNameRequest, response_schema=UtubNameUpdatedResponseSchema)` |
+| **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubNameRequest, response_schema=UtubNameUpdatedResponseSchema, tags=["utubs"], description="Update a UTub name", status_codes={200: UtubNameUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/update_utub.py:update_utub_name_if_new` |
 | **Schema** | `backend/schemas/requests/utubs/update_utub.py:UpdateUTubNameRequest` |
 | **JS Module** | `frontend/home/urls/update-name.js` — `JSON.stringify`, `application/json` |
@@ -189,7 +189,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:update_utub_desc` |
-| **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubDescriptionRequest, response_schema=UtubDescUpdatedResponseSchema)` |
+| **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubDescriptionRequest, response_schema=UtubDescUpdatedResponseSchema, tags=["utubs"], description="Update a UTub description", status_codes={200: UtubDescUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/update_utub.py:update_utub_desc_if_new` |
 | **Schema** | `backend/schemas/requests/utubs/update_utub.py:UpdateUTubDescriptionRequest` |
 | **JS Module** | `frontend/home/urls/update-description.js` — `JSON.stringify`, `application/json` |
@@ -201,7 +201,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/utubs/routes.py:delete_utub` |
-| **Decorators** | `@utub_creator_required`, `@api_route(response_schema=UtubDeletedResponseSchema)` |
+| **Decorators** | `@utub_creator_required`, `@api_route(response_schema=UtubDeletedResponseSchema, tags=["utubs"], description="Delete a UTub", status_codes={200: UtubDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/delete_utub.py:delete_utub_for_user` |
 | **JS Module** | `frontend/home/utubs/delete.js` |
 | **CSRF** | Meta tag |
@@ -218,7 +218,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:create_url` |
-| **Decorators** | `@utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema)` |
+| **Decorators** | `@utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, tags=["urls"], description="Add a URL to a UTub", status_codes={200: UrlCreatedResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/create_url.py:create_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/create_url.py:CreateURLRequest` |
 | **JS Module** | `frontend/home/urls/cards/create.js` — `JSON.stringify`, `application/json`, 35s timeout |
@@ -230,7 +230,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:get_url` |
-| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema)` |
+| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, tags=["urls"], description="Retrieve a URL from a UTub", status_codes={200: UrlReadResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
 | **JS Module** | `frontend/home/urls/cards/get.js`, also called from `update-string.js`, `update-title.js`, `delete.js`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
 | **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
@@ -240,7 +240,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:update_url` |
-| **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema)` |
+| **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema, tags=["urls"], description="Update a URL string in a UTub", status_codes={200: UrlUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/update_url.py:update_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLStringRequest` |
 | **JS Module** | `frontend/home/urls/cards/update-string.js` — `JSON.stringify`, `application/json`, 35s timeout |
@@ -252,7 +252,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:update_url_title` |
-| **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema)` |
+| **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema, tags=["urls"], description="Update a URL title in a UTub", status_codes={200: UrlTitleUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/update_url_title.py:update_url_title_if_new` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLTitleRequest` |
 | **JS Module** | `frontend/home/urls/cards/update-title.js` — `JSON.stringify`, `application/json` |
@@ -264,7 +264,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:delete_url` |
-| **Decorators** | `@url_adder_or_creator_required`, `@api_route(response_schema=UrlDeletedResponseSchema)` |
+| **Decorators** | `@url_adder_or_creator_required`, `@api_route(response_schema=UrlDeletedResponseSchema, tags=["urls"], description="Delete a URL from a UTub", status_codes={200: UrlDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/delete_url.py:delete_url_in_utub` |
 | **JS Module** | `frontend/home/urls/cards/delete.js` |
 | **CSRF** | Meta tag |
@@ -281,7 +281,7 @@ Base path: `/utubs/<utub_id>/members`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/members/routes.py:create_member` |
-| **Decorators** | `@utub_creator_required`, `@api_route(request_schema=AddMemberRequest, response_schema=MemberModifiedResponseSchema)` |
+| **Decorators** | `@utub_creator_required`, `@api_route(request_schema=AddMemberRequest, response_schema=MemberModifiedResponseSchema, tags=["members"], description="Add a member to a UTub", status_codes={200: MemberModifiedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/members/services/create_member.py:create_utub_member` |
 | **Schema** | `backend/schemas/requests/members/add_member.py:AddMemberRequest` |
 | **JS Module** | `frontend/home/members/create.js` — `JSON.stringify`, `application/json` |
@@ -293,7 +293,7 @@ Base path: `/utubs/<utub_id>/members`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/members/routes.py:remove_member` |
-| **Decorators** | `@utub_membership_required`, `@api_route(response_schema=MemberModifiedResponseSchema)` |
+| **Decorators** | `@utub_membership_required`, `@api_route(response_schema=MemberModifiedResponseSchema, tags=["members"], description="Remove a member from a UTub", status_codes={200: MemberModifiedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/members/services/remove_member.py:remove_member_or_self_from_utub` |
 | **JS Module** | `frontend/home/members/delete.js` |
 | **CSRF** | Meta tag |
@@ -310,7 +310,7 @@ Base path: `/utubs/<utub_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/tags/utub_tag_routes.py:create_utub_tag` |
-| **Decorators** | `@utub_membership_required`, `@api_route(request_schema=AddTagRequest, response_schema=UtubTagAddedToUtubResponseSchema)` |
+| **Decorators** | `@utub_membership_required`, `@api_route(request_schema=AddTagRequest, response_schema=UtubTagAddedToUtubResponseSchema, tags=["tags"], description="Add a tag to a UTub", status_codes={200: UtubTagAddedToUtubResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/create_utub_tag.py:create_tag_in_utub` |
 | **Schema** | `backend/schemas/requests/tags/add_tag.py:AddTagRequest` |
 | **JS Module** | `frontend/home/tags/create.js` — `JSON.stringify`, `application/json` |
@@ -322,7 +322,7 @@ Base path: `/utubs/<utub_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/tags/utub_tag_routes.py:delete_utub_tag` |
-| **Decorators** | `@utub_membership_with_valid_utub_tag`, `@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema)` |
+| **Decorators** | `@utub_membership_with_valid_utub_tag`, `@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema, tags=["tags"], description="Delete a tag from a UTub", status_codes={200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/delete_utub_tag.py:delete_utub_tag_from_utub_and_utub_urls` |
 | **JS Module** | `frontend/home/tags/delete.js` |
 | **CSRF** | Meta tag |
@@ -339,7 +339,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/tags/url_tag_routes.py:create_utub_url_tag` |
-| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagRequest, response_schema=UrlTagModifiedResponseSchema)` |
+| **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagRequest, response_schema=UrlTagModifiedResponseSchema, tags=["tags"], description="Add a tag to a URL in a UTub", status_codes={200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/create_url_tag.py:add_tag_to_url_if_valid` |
 | **Schema** | `backend/schemas/requests/tags/add_tag.py:AddTagRequest` |
 | **JS Module** | `frontend/home/urls/tags/create.js` — `JSON.stringify`, `application/json` |
@@ -351,7 +351,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/tags/url_tag_routes.py:delete_utub_url_tag` |
-| **Decorators** | `@utub_membership_with_valid_url_tag`, `@api_route(response_schema=UrlTagModifiedResponseSchema)` |
+| **Decorators** | `@utub_membership_with_valid_url_tag`, `@api_route(response_schema=UrlTagModifiedResponseSchema, tags=["tags"], description="Remove a tag from a URL in a UTub", status_codes={200: UrlTagModifiedResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/delete_url_tag.py:delete_url_tag` |
 | **JS Module** | `frontend/home/urls/tags/delete.js` |
 | **CSRF** | Meta tag |
@@ -411,7 +411,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/contact/routes.py:submit_contact_us` |
-| **Decorators** | `@api_route(request_schema=ContactRequest, ajax_required=False)`, `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])` |
+| **Decorators** | `@api_route(request_schema=ContactRequest, response_schema=ContactResponseSchema, ajax_required=False, tags=["contact"], description="Submit a contact form", status_codes={200: ContactResponseSchema, 400: ErrorResponse})`, `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])` |
 | **Schema** | `backend/schemas/requests/contact.py:ContactRequest` |
 | **Request** | JSON `{"subject": "...", "content": "..."}` |
 | **Response** | Success: JSON `{"status": "Success", "message": "..."}`, Failure: JSON `{"status": "Failure", "errors": {...}}` |
@@ -427,7 +427,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/system/routes.py:health` |
-| **Decorators** | `@limiter.exempt`, `@api_route(ajax_required=False)` |
+| **Decorators** | `@limiter.exempt`, `@api_route(response_schema=HealthResponseSchema, ajax_required=False, tags=["system"], description="Health check endpoint", status_codes={200: HealthResponseSchema})` |
 | **Service** | `APIResponse()` direct |
 | **Tests** | None identified |
 
@@ -463,8 +463,9 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 ### Decorator Stack (typical ordering)
 1. Auth gate: `@email_validation_required` / `@no_authenticated_users_allowed`
 2. Membership: `@utub_membership_required` / `@utub_creator_required` / `@utub_membership_with_valid_*`
-3. Request parsing & response declaration: `@api_route(request_schema=..., response_schema=...)`
+3. Request parsing & response declaration: `@api_route(request_schema=..., response_schema=..., tags=..., description=..., status_codes=...)`
 4. AJAX enforcement: built into `@api_route` (`ajax_required=True` by default; opt out with `ajax_required=False`)
+5. OpenAPI metadata: all 24 API routes declare `tags`, `description`, and `status_codes` in their `@api_route` decorators
 
 ### Test Markers
 | Marker | Integration tests | UI tests |

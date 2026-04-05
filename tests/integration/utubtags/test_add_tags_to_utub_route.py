@@ -11,6 +11,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.form_strs import TAG_FORM
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
@@ -475,7 +476,9 @@ def test_add_tag_to_nonexistent_utub(
     )
 
     assert add_tag_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in add_tag_response.data
+    json_response = add_tag_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         assert num_of_utub_tags == Utub_Tags.query.count()

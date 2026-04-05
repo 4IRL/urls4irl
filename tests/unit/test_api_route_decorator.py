@@ -11,6 +11,7 @@ from backend.contact.routes import contact
 from backend.members.routes import members
 from backend.schemas.base import BaseSchema
 from backend.schemas.contact import ContactResponseSchema
+from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.contact import ContactRequest
 from backend.schemas.requests.members import AddMemberRequest
 from backend.schemas.requests.splash import (
@@ -64,6 +65,7 @@ from backend.system.routes import system
 from backend.tags.url_tag_routes import utub_url_tags
 from backend.tags.utub_tag_routes import utub_tags
 from backend.urls.routes import urls
+from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utubs.routes import utubs
 
@@ -114,6 +116,34 @@ def minimal_app():
     @flask_app.route("/test-no-ajax-required", methods=["GET"])
     @api_route(ajax_required=False)
     def test_no_ajax_required():
+        return {"status": "ok"}, 200
+
+    @flask_app.route("/test-with-metadata", methods=["POST"])
+    @api_route(
+        request_schema=LoginRequest,
+        response_schema=LoginRedirectResponseSchema,
+        error_message="Invalid input",
+        error_code=1,
+        tags=[OPEN_API.UTUBS],
+        description="Test route with full metadata",
+        status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse},
+    )
+    def test_with_metadata(login_request: LoginRequest):
+        return {"username": login_request.username}, 200
+
+    @flask_app.route("/test-empty-tags", methods=["GET"])
+    @api_route(tags=[], status_codes={})
+    def test_empty_tags():
+        return {"status": "ok"}, 200
+
+    @flask_app.route("/test-tags-no-status-codes", methods=["GET"])
+    @api_route(tags=[OPEN_API.MEMBERS])
+    def test_tags_no_status_codes():
+        return {"status": "ok"}, 200
+
+    @flask_app.route("/test-description-only", methods=["GET"])
+    @api_route(description="A route with only a description")
+    def test_description_only():
         return {"status": "ok"}, 200
 
     return flask_app
@@ -283,44 +313,250 @@ def test_api_route_preserves_functools_wraps_attributes(minimal_app: Flask):
     assert callable(no_body_view_fn.__wrapped__)
 
 
-# All 24 migrated routes with their expected request and response schemas
+# All 24 migrated routes with their expected request schemas, response schemas,
+# tags, descriptions, and status_codes.
 ALL_API_ROUTES = [
     # Splash routes
-    ("splash.register_user", RegisterRequest, RegisterResponseSchema),
-    ("splash.login", LoginRequest, LoginRedirectResponseSchema),
-    ("splash.send_validation_email", None, EmailValidationResponseSchema),
-    ("splash.forgot_password", ForgotPasswordRequest, ForgotPasswordResponseSchema),
-    ("splash.reset_password", ResetPasswordRequest, ResetPasswordResponseSchema),
+    (
+        "splash.register_user",
+        RegisterRequest,
+        RegisterResponseSchema,
+        [OPEN_API.AUTH],
+        "Register a new user account",
+        {201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+    ),
+    (
+        "splash.login",
+        LoginRequest,
+        LoginRedirectResponseSchema,
+        [OPEN_API.AUTH],
+        "Log in to an existing account",
+        {200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+    ),
+    (
+        "splash.send_validation_email",
+        None,
+        EmailValidationResponseSchema,
+        [OPEN_API.AUTH],
+        "Send an email validation link to the current user",
+        {
+            200: EmailValidationResponseSchema,
+            400: ErrorResponse,
+            404: ErrorResponse,
+            429: ErrorResponse,
+        },
+    ),
+    (
+        "splash.forgot_password",
+        ForgotPasswordRequest,
+        ForgotPasswordResponseSchema,
+        [OPEN_API.AUTH],
+        "Send a password reset email",
+        {200: ForgotPasswordResponseSchema, 400: ErrorResponse},
+    ),
+    (
+        "splash.reset_password",
+        ResetPasswordRequest,
+        ResetPasswordResponseSchema,
+        [OPEN_API.AUTH],
+        "Reset a user password with a valid token",
+        {200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
     # UTub routes
-    ("utubs.create_utub", CreateUTubRequest, UtubCreatedResponseSchema),
-    ("utubs.get_single_utub", None, UtubDetailSchema),
-    ("utubs.get_utubs", None, UtubSummaryListSchema),
-    ("utubs.update_utub_name", UpdateUTubNameRequest, UtubNameUpdatedResponseSchema),
+    (
+        "utubs.create_utub",
+        CreateUTubRequest,
+        UtubCreatedResponseSchema,
+        [OPEN_API.UTUBS],
+        "Create a new UTub",
+        {200: UtubCreatedResponseSchema, 400: ErrorResponse},
+    ),
+    (
+        "utubs.get_single_utub",
+        None,
+        UtubDetailSchema,
+        [OPEN_API.UTUBS],
+        "Retrieve data for a single UTub",
+        {200: UtubDetailSchema, 404: ErrorResponse},
+    ),
+    (
+        "utubs.get_utubs",
+        None,
+        UtubSummaryListSchema,
+        [OPEN_API.UTUBS],
+        "Retrieve a summary of all UTubs for the current user",
+        {200: UtubSummaryListSchema},
+    ),
+    (
+        "utubs.update_utub_name",
+        UpdateUTubNameRequest,
+        UtubNameUpdatedResponseSchema,
+        [OPEN_API.UTUBS],
+        "Update a UTub name",
+        {
+            200: UtubNameUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
     (
         "utubs.update_utub_desc",
         UpdateUTubDescriptionRequest,
         UtubDescUpdatedResponseSchema,
+        [OPEN_API.UTUBS],
+        "Update a UTub description",
+        {
+            200: UtubDescUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
     ),
-    ("utubs.delete_utub", None, UtubDeletedResponseSchema),
+    (
+        "utubs.delete_utub",
+        None,
+        UtubDeletedResponseSchema,
+        [OPEN_API.UTUBS],
+        "Delete a UTub",
+        {200: UtubDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse},
+    ),
     # URL routes
-    ("urls.create_url", CreateURLRequest, UrlCreatedResponseSchema),
-    ("urls.get_url", None, UrlReadResponseSchema),
-    ("urls.update_url", UpdateURLStringRequest, UrlUpdatedResponseSchema),
-    ("urls.update_url_title", UpdateURLTitleRequest, UrlTitleUpdatedResponseSchema),
-    ("urls.delete_url", None, UrlDeletedResponseSchema),
+    (
+        "urls.create_url",
+        CreateURLRequest,
+        UrlCreatedResponseSchema,
+        [OPEN_API.URLS],
+        "Add a URL to a UTub",
+        {
+            200: UrlCreatedResponseSchema,
+            400: ErrorResponse,
+            404: ErrorResponse,
+            409: ErrorResponse,
+        },
+    ),
+    (
+        "urls.get_url",
+        None,
+        UrlReadResponseSchema,
+        [OPEN_API.URLS],
+        "Retrieve a URL from a UTub",
+        {200: UrlReadResponseSchema, 404: ErrorResponse},
+    ),
+    (
+        "urls.update_url",
+        UpdateURLStringRequest,
+        UrlUpdatedResponseSchema,
+        [OPEN_API.URLS],
+        "Update a URL string in a UTub",
+        {
+            200: UrlUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+            409: ErrorResponse,
+        },
+    ),
+    (
+        "urls.update_url_title",
+        UpdateURLTitleRequest,
+        UrlTitleUpdatedResponseSchema,
+        [OPEN_API.URLS],
+        "Update a URL title in a UTub",
+        {
+            200: UrlTitleUpdatedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
+    (
+        "urls.delete_url",
+        None,
+        UrlDeletedResponseSchema,
+        [OPEN_API.URLS],
+        "Delete a URL from a UTub",
+        {200: UrlDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse},
+    ),
     # Member routes
-    ("members.create_member", AddMemberRequest, MemberModifiedResponseSchema),
-    ("members.remove_member", None, MemberModifiedResponseSchema),
+    (
+        "members.create_member",
+        AddMemberRequest,
+        MemberModifiedResponseSchema,
+        [OPEN_API.MEMBERS],
+        "Add a member to a UTub",
+        {
+            200: MemberModifiedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
+    (
+        "members.remove_member",
+        None,
+        MemberModifiedResponseSchema,
+        [OPEN_API.MEMBERS],
+        "Remove a member from a UTub",
+        {
+            200: MemberModifiedResponseSchema,
+            400: ErrorResponse,
+            403: ErrorResponse,
+            404: ErrorResponse,
+        },
+    ),
     # UTub tag routes
-    ("utub_tags.create_utub_tag", AddTagRequest, UtubTagAddedToUtubResponseSchema),
-    ("utub_tags.delete_utub_tag", None, UtubTagDeletedFromUtubResponseSchema),
+    (
+        "utub_tags.create_utub_tag",
+        AddTagRequest,
+        UtubTagAddedToUtubResponseSchema,
+        [OPEN_API.TAGS],
+        "Add a tag to a UTub",
+        {200: UtubTagAddedToUtubResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
+    (
+        "utub_tags.delete_utub_tag",
+        None,
+        UtubTagDeletedFromUtubResponseSchema,
+        [OPEN_API.TAGS],
+        "Delete a tag from a UTub",
+        {200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse},
+    ),
     # URL tag routes
-    ("utub_url_tags.create_utub_url_tag", AddTagRequest, UrlTagModifiedResponseSchema),
-    ("utub_url_tags.delete_utub_url_tag", None, UrlTagModifiedResponseSchema),
+    (
+        "utub_url_tags.create_utub_url_tag",
+        AddTagRequest,
+        UrlTagModifiedResponseSchema,
+        [OPEN_API.TAGS],
+        "Add a tag to a URL in a UTub",
+        {200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
+    (
+        "utub_url_tags.delete_utub_url_tag",
+        None,
+        UrlTagModifiedResponseSchema,
+        [OPEN_API.TAGS],
+        "Remove a tag from a URL in a UTub",
+        {200: UrlTagModifiedResponseSchema, 404: ErrorResponse},
+    ),
     # Contact routes
-    ("contact.submit_contact_us", ContactRequest, ContactResponseSchema),
+    (
+        "contact.submit_contact_us",
+        ContactRequest,
+        ContactResponseSchema,
+        [OPEN_API.CONTACT],
+        "Submit a contact form",
+        {200: ContactResponseSchema, 400: ErrorResponse},
+    ),
     # System routes
-    ("system.health", None, HealthResponseSchema),
+    (
+        "system.health",
+        None,
+        HealthResponseSchema,
+        [OPEN_API.SYSTEM],
+        "Health check endpoint",
+        {200: HealthResponseSchema},
+    ),
 ]
 
 
@@ -344,7 +580,8 @@ def real_app_with_all_blueprints():
 
 
 @pytest.mark.parametrize(
-    "endpoint_name,expected_request_schema,expected_response_schema",
+    "endpoint_name,expected_request_schema,expected_response_schema,"
+    "expected_tags,expected_description,expected_status_codes",
     ALL_API_ROUTES,
     ids=[route[0] for route in ALL_API_ROUTES],
 )
@@ -353,15 +590,22 @@ def test_api_route_schema_stashed_on_all_migrated_routes(
     endpoint_name: str,
     expected_request_schema: Type[BaseModel] | None,
     expected_response_schema: Type[BaseSchema] | None,
+    expected_tags: list[str],
+    expected_description: str,
+    expected_status_codes: dict[int, Type[BaseSchema]],
 ):
     """
     GIVEN a route that has been migrated to @api_route
     WHEN accessing the view function via app.view_functions
-    THEN _api_route_request_schema and _api_route_response_schema match expectations
+    THEN _api_route_request_schema, _api_route_response_schema, _api_route_tags,
+         _api_route_description, and _api_route_status_codes match expectations
     """
     view_fn = real_app_with_all_blueprints.view_functions[endpoint_name]
     assert view_fn._api_route_request_schema is expected_request_schema
     assert view_fn._api_route_response_schema is expected_response_schema
+    assert view_fn._api_route_tags == expected_tags
+    assert view_fn._api_route_description == expected_description
+    assert view_fn._api_route_status_codes == expected_status_codes
 
 
 def test_api_route_raises_when_route_missing_derived_kwarg():
@@ -490,3 +734,110 @@ def test_schema_name_to_kwarg_conversions():
         == "update_utub_description_request"
     )
     assert _schema_name_to_kwarg(ContactRequest) == "contact_request"
+
+
+# --- Tests for tags, description, and status_codes metadata ---
+
+
+def test_api_route_stashes_tags_when_provided(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(tags=["utubs"])
+    WHEN accessing the view function
+    THEN _api_route_tags is set to ["utubs"]
+    """
+    view_fn = minimal_app.view_functions["test_with_metadata"]
+    assert view_fn._api_route_tags == [OPEN_API.UTUBS]
+
+
+def test_api_route_tags_defaults_to_none_when_omitted(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() without tags
+    WHEN accessing the view function
+    THEN _api_route_tags is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_tags is None
+
+
+def test_api_route_stashes_description_when_provided(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(description="Test route with full metadata")
+    WHEN accessing the view function
+    THEN _api_route_description is set to the provided string
+    """
+    view_fn = minimal_app.view_functions["test_with_metadata"]
+    assert view_fn._api_route_description == "Test route with full metadata"
+
+
+def test_api_route_description_defaults_to_none_when_omitted(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() without description
+    WHEN accessing the view function
+    THEN _api_route_description is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_description is None
+
+
+def test_api_route_stashes_status_codes_when_provided(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(status_codes={200: Schema, 400: ErrorResponse})
+    WHEN accessing the view function
+    THEN _api_route_status_codes is set to the provided dict
+    """
+    view_fn = minimal_app.view_functions["test_with_metadata"]
+    expected = {200: LoginRedirectResponseSchema, 400: ErrorResponse}
+    assert view_fn._api_route_status_codes == expected
+
+
+def test_api_route_status_codes_defaults_to_none_when_omitted(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() without status_codes
+    WHEN accessing the view function
+    THEN _api_route_status_codes is None
+    """
+    view_fn = minimal_app.view_functions["test_no_body"]
+    assert view_fn._api_route_status_codes is None
+
+
+def test_api_route_stashes_empty_tags_list(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(tags=[])
+    WHEN accessing the view function
+    THEN _api_route_tags is an empty list
+    """
+    view_fn = minimal_app.view_functions["test_empty_tags"]
+    assert view_fn._api_route_tags == []
+
+
+def test_api_route_stashes_empty_status_codes_dict(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(status_codes={})
+    WHEN accessing the view function
+    THEN _api_route_status_codes is an empty dict
+    """
+    view_fn = minimal_app.view_functions["test_empty_tags"]
+    assert view_fn._api_route_status_codes == {}
+
+
+def test_api_route_tags_without_status_codes(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(tags=["members"]) but no status_codes
+    WHEN accessing the view function
+    THEN _api_route_tags is ["members"] and _api_route_status_codes is None
+    """
+    view_fn = minimal_app.view_functions["test_tags_no_status_codes"]
+    assert view_fn._api_route_tags == [OPEN_API.MEMBERS]
+    assert view_fn._api_route_status_codes is None
+
+
+def test_api_route_description_without_other_metadata(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route(description="...") but no tags or status_codes
+    WHEN accessing the view function
+    THEN _api_route_description is set and tags/status_codes are None
+    """
+    view_fn = minimal_app.view_functions["test_description_only"]
+    assert view_fn._api_route_description == "A route with only a description"
+    assert view_fn._api_route_tags is None
+    assert view_fn._api_route_status_codes is None

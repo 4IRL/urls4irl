@@ -122,6 +122,16 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 
 **CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
 
+### Git Config Write Note
+
+The sandbox blocks writes to `.git/config`. This means `git push -u` silently fails to save upstream tracking refs. After pushing a branch, always set tracking separately with `dangerouslyDisableSandbox: true`:
+
+```bash
+git branch --set-upstream-to=origin/$BRANCH $BRANCH
+```
+
+Without this, `git fetch -p` cannot detect merged/deleted remote branches as "gone", breaking branch cleanup workflows like `gmas`.
+
 ### Running the App (Docker - recommended)
 
 ```bash

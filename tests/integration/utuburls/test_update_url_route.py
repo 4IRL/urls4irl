@@ -20,6 +20,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
     FIELD_REQUIRED_STR,
     STD_JSON_RESPONSE as STD_JSON,
 )
@@ -1745,7 +1746,9 @@ def test_update_nonexistent_url_as_utub_creator(
     )
 
     assert update_url_string_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in update_url_string_response.data
+    json_response = update_url_string_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

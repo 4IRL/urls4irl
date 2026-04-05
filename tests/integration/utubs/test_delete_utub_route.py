@@ -10,7 +10,11 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FAILURE_GENERAL,
+    STD_JSON_RESPONSE as STD_JSON,
+)
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
 from tests.utils_for_test import is_string_in_logs
@@ -370,11 +374,17 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
 
     delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=NONEXISTENT_UTUB_ID),
-        headers={"X-CSRFToken": csrf_token},
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
     assert delete_utub_response.status_code == 404
+    json_response = delete_utub_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Assert no UTub exists after nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -393,11 +403,18 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
     client, csrf_token, _, app = login_first_user_with_register
 
     delete_utub_response = client.delete(
-        "/utubs/InvalidRoute", headers={"X-CSRFToken": csrf_token}
+        "/utubs/InvalidRoute",
+        headers={
+            "X-CSRFToken": csrf_token,
+            URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+        },
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
     assert delete_utub_response.status_code == 404
+    json_response = delete_utub_response.get_json()
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
     # Assert no UTub exists after nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -459,10 +476,16 @@ def test_delete_utub_as_not_member_or_creator(
     for utub_not_in in user_not_in_these_utubs:
         delete_utub_response = client.delete(
             url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_not_in.utub_id),
-            headers={"X-CSRFToken": csrf_token},
+            headers={
+                "X-CSRFToken": csrf_token,
+                URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST,
+            },
         )
 
         assert delete_utub_response.status_code == 404
+        json_response = delete_utub_response.get_json()
+        assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert json_response[STD_JSON.MESSAGE] == FAILURE_GENERAL.NOT_FOUND
 
         with app.app_context():
             user_not_in_these_utubs: list[Utub_Members] = Utub_Members.query.filter(
