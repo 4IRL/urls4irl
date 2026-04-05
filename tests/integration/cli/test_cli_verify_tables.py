@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 from sqlalchemy import inspect as sa_inspect, text
 from sqlalchemy.engine.reflection import Inspector
@@ -6,6 +8,7 @@ from backend import db
 from backend.cli.utils import (
     VERIFY_TABLES_ALL_OK,
     VERIFY_TABLES_FATAL_DEPLOYED,
+    VERIFY_TABLES_REPAIRED,
 )
 from backend.utils.db_table_names import TABLE_NAMES
 from backend.utils.strings.config_strs import CONFIG_ENVS
@@ -96,3 +99,32 @@ def test_verify_tables_checks_all_model_tables(runner):
 
     result = cli_runner.invoke(args=["utils", "verify-tables"])
     assert result.exit_code == 0
+
+
+def test_verify_tables_auto_repairs_when_tables_missing_in_non_deployed_mode(runner):
+    """
+    GIVEN a non-deployed environment where all tables have been dropped
+    WHEN the developer runs `flask utils verify-tables`
+    THEN verify the command auto-repairs by dropping the schema, re-running
+        migrations, and exits with code 0 reporting successful repair
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        db.drop_all()
+
+    with patch(
+        "flask_migrate.upgrade",
+        side_effect=lambda: db.create_all(),
+    ):
+        result = cli_runner.invoke(args=["utils", "verify-tables"])
+
+    assert result.exit_code == 0
+    assert VERIFY_TABLES_REPAIRED in result.output
+
+    with app.app_context():
+        expected_tables = {table.name for table in db.metadata.sorted_tables}
+        inspector: Inspector = sa_inspect(db.engine)
+        actual_tables = set(inspector.get_table_names())
+
+    assert expected_tables.issubset(actual_tables)
