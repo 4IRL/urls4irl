@@ -1,5 +1,4 @@
 import random
-import time
 from typing import Tuple
 
 from flask.testing import FlaskCliRunner
@@ -9,6 +8,7 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.models.users import Users
@@ -430,16 +430,9 @@ def test_delete_url_submit_button_reenables_on_server_error(
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
-    # Wait for the async failure handler to process and re-enable the button
-    time.sleep(1)
-
-    # Use execute_script to check disabled property directly, avoiding stale element
-    # issues that can occur when the DOM is updated by the response handler
-    is_disabled = browser.execute_script(
-        "var btn = document.querySelector(arguments[0]); return btn ? btn.disabled : null;",
-        HPL.BUTTON_MODAL_SUBMIT,
-    )
-    assert is_disabled is False, (
-        "Expected #modalSubmit to be re-enabled after server error, "
-        f"but disabled={is_disabled}"
+    # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
     )

@@ -53,13 +53,15 @@ If the diff is empty (nothing to push), inform the user and stop.
 Before launching subagents, infer `<topic>` from the current branch name:
 
 1. Split the branch name on `/` and `-`
-2. Match tokens against known topics:
+2. **Exhaustively** check every token against **all** known topics. Do not stop at the first non-match — check every token:
    - `api-route` → tokens include `api`, `route`, `decorator`, `permission`
    - `urls` → tokens include `url`, `urls`, `rename`
-   - `openapi` → tokens include `openapi`, `schema`, `spec`
-3. Examples: `refactor/url-permission-decorator` → `api-route`, `feature/openapi-schema` → `openapi`, `fix/rename-url-title` → `urls`
+   - `openapi` → tokens include `openapi`, `schema`, `spec`, `description`
+3. Examples: `refactor/url-permission-decorator` → `api-route`, `feature/openapi-schema` → `openapi`, `fix/rename-url-title` → `urls`, `review/enrich-schema-descriptions` → `openapi` (token `schema` matches)
 4. If a topic can be inferred: set `<tmp-dir>` to `plans/<topic>/tmp/` and create the directory if it does not exist
 5. If topic cannot be inferred: set `<tmp-dir>` to `$TMPDIR`
+
+**CRITICAL: `plans/tmp/` must never be used as the final storage location for plans, reviews, or any persistent document.** `plans/tmp/` and `$TMPDIR` are for transient subagent output only — the files are deleted after evaluation. Final documents (push reviews, plans) always go under `plans/<topic>/`.
 
 Store `<tmp-dir>` for use in all subagent prompts below.
 
@@ -125,7 +127,7 @@ After a successful push, delete all files in `<tmp-dir>/` if a topic was inferre
 
 ### 6. Write Findings
 
-Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. If topic cannot be inferred, fall back to `plans/tmp/push-review-<branch>.md`.
+Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name using the exhaustive token matching from Step 2. If topic truly cannot be inferred after checking all tokens, ask the user which topic to use rather than defaulting to `plans/tmp/`. `plans/tmp/` must never contain final review documents.
 
 #### File and Review Numbering
 
@@ -359,6 +361,6 @@ Output:
 - Never push to `main` or `master` — warn the user and abort
 - Never force-push
 - If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code
-- Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. Fall back to `plans/tmp/push-review-<branch>.md` when topic cannot be inferred.
+- Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. **Never store final documents (reviews, plans) in `plans/tmp/`** — if no topic can be inferred after exhaustive token matching, ask the user which topic to use.
 - All subagent launches must be in a single message for true parallelism
 - If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error

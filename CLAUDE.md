@@ -16,6 +16,10 @@ urls4irl is a full-stack web app for managing shared collections of URLs called 
 
 Review files are stored at the project root level (`reviews/`), NOT under the `plans/` directory. Always look for `reviews/` at the repository root.
 
+### `plans/tmp/` Is Transient Only
+
+`plans/tmp/` (and `$TMPDIR`) are for **transient intermediate files only** — e.g., subagent output that gets read and deleted in the same workflow. **Never store final documents** (plans, reviews, push reviews) in `plans/tmp/`. Final documents always go under `plans/<topic>/`. If no topic can be inferred, ask the user which topic to use.
+
 ### Endpoint Registry
 
 `ENDPOINT_REGISTRY.md` at the project root maps every route through all implementation layers (handler → service → schema → template → JS module → tests). **When any code change adds, modifies, or removes an endpoint, its entry in the registry must be updated in the same commit.** This includes changes to:
