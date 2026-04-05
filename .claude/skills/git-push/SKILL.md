@@ -67,7 +67,7 @@ Store `<tmp-dir>` for use in all subagent prompts below.
 
 ### 3. Launch 7 Parallel Review Subagents
 
-Read `references/subagent-prompts.md` for the full prompt definitions and expected response format.
+Read `.claude/skills/git-push/references/subagent-prompts.md` for the full prompt definitions and expected response format.
 
 Launch **all 7 subagents in parallel** using the Agent tool. Each subagent:
 - Receives the full diff output from Step 1

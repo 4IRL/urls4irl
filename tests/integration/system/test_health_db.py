@@ -2,7 +2,7 @@ from flask import Flask
 import pytest
 
 from backend import db
-from backend.schemas.system import HealthDbResponseSchema
+from backend.schemas.base import StatusMessageResponseSchema
 from backend.utils.db_table_names import TABLE_NAMES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from tests.integration.utils import assert_response_conforms_to_schema
@@ -23,7 +23,7 @@ def test_health_db_check_passes_when_all_tables_exist(app: Flask):
     response_json = response.json
 
     assert_response_conforms_to_schema(
-        response_json, HealthDbResponseSchema, {STD_JSON.STATUS, STD_JSON.MESSAGE}
+        response_json, StatusMessageResponseSchema, {STD_JSON.STATUS, STD_JSON.MESSAGE}
     )
     assert response_json[STD_JSON.MESSAGE] == "All database tables verified"
 
@@ -48,7 +48,7 @@ def test_health_db_check_fails_when_tables_are_missing(runner):
 
         assert_response_conforms_to_schema(
             response_json,
-            HealthDbResponseSchema,
+            StatusMessageResponseSchema,
             {STD_JSON.STATUS, STD_JSON.MESSAGE},
         )
         assert TABLE_NAMES.USERS in response_json[STD_JSON.MESSAGE]

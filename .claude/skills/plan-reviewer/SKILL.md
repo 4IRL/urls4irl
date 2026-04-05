@@ -47,7 +47,7 @@ Before launching subagents, create `plans/<topic>/tmp/` if it does not already e
 
 ### Step 2: Launch 6 Parallel Review Subagents
 
-Read `references/subagent-prompts.md` for the full prompt definitions and expected response format.
+Read `.claude/skills/plan-reviewer/.claude/skills/plan-reviewer/references/subagent-prompts.md` for the full prompt definitions and expected response format.
 
 Launch **all 6 subagents in parallel** using the Agent tool. Each subagent:
 - Receives the plan file path from Step 1
@@ -55,7 +55,7 @@ Launch **all 6 subagents in parallel** using the Agent tool. Each subagent:
 - Must independently read the plan AND relevant source files (no pre-fetching by the main agent)
 - Must return a structured JSON response with `verdict`, `findings`, `files_read`, and `summary`
 
-**Critical instruction for each subagent prompt:** Include the full text of the relevant subagent section from `references/subagent-prompts.md` (response format + the specific subagent's checklist). Also include:
+**Critical instruction for each subagent prompt:** Include the full text of the relevant subagent section from `.claude/skills/plan-reviewer/.claude/skills/plan-reviewer/references/subagent-prompts.md` (response format + the specific subagent's checklist). Also include:
 
 > You are reviewing the plan at `plans/<topic>/<plan-name>.md`. Read it in full, then read the source files relevant to your review area. Write your complete JSON response to `plans/<topic>/tmp/<role>.md` (where `<role>` is your subagent role filename, e.g. `correctness.md`), then return only this one-line confirmation: `Written to <path>`.
 >
@@ -356,7 +356,7 @@ The subagent receives:
 - The review file path (`plans/<topic>/reviews/<plan-name>-review.md`)
 - The plan file path
 - The `### Missed-Finding Root Causes` table from Step 6
-- Paths to skill files: `.claude/skills/plan-reviewer/SKILL.md`, `.claude/skills/plan-reviewer/references/subagent-prompts.md`
+- Paths to skill files: `.claude/skills/plan-reviewer/SKILL.md`, `.claude/skills/plan-reviewer/.claude/skills/plan-reviewer/references/subagent-prompts.md`
 - Path to project CLAUDE.md
 - Path to memory index: `.claude/projects/-Users-ggpropersi-code-urls4irl/memory/MEMORY.md`
 
@@ -372,7 +372,7 @@ The subagent:
      - `scope_limitation`: The subagent's "what to read" section doesn't include the relevant files
      - `no_skill_gap`: The subagent's instructions already cover this; it was an execution miss (no fix needed)
    - **Concrete improvement** — exactly what to change and where:
-     - For `prompt_gap`: exact checklist item to add to the subagent's section in `references/subagent-prompts.md`
+     - For `prompt_gap`: exact checklist item to add to the subagent's section in `.claude/skills/plan-reviewer/references/subagent-prompts.md`
      - For `prompt_ambiguity`: exact rewrite of the ambiguous checklist item
      - For `missing_context`: either a CLAUDE.md addition or a new memory file
      - For `scope_limitation`: exact edit to the subagent's "What to read" section
@@ -415,7 +415,7 @@ Present each proposed improvement concisely:
 ```
 **Improvement 1** — Subagent #3 (Ordering & Cleanup)
 Gap: prompt_gap — checklist doesn't verify X
-Proposed: Add checklist item to references/subagent-prompts.md
+Proposed: Add checklist item to .claude/skills/plan-reviewer/references/subagent-prompts.md
 > "- **New check**: <exact text>"
 Apply? [y/n]
 ```
@@ -434,7 +434,7 @@ Apply? [y/n]
 #### 7c: Apply approved improvements
 
 For each approved improvement:
-1. Apply the edit to the target file (`references/subagent-prompts.md`, `CLAUDE.md`, or a memory file)
+1. Apply the edit to the target file (`.claude/skills/plan-reviewer/references/subagent-prompts.md`, `CLAUDE.md`, or a memory file)
 2. If adding a memory file, also update the memory index at `MEMORY.md`
 3. After all edits, verify the modified files are syntactically coherent (no broken markdown, no orphaned references)
 
