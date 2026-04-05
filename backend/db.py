@@ -1,6 +1,5 @@
-from sqlalchemy import inspect
-
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import inspect
 
 db = SQLAlchemy()
 
