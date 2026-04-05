@@ -8,6 +8,7 @@ from backend import db
 from backend.cli.utils import (
     VERIFY_TABLES_ALL_OK,
     VERIFY_TABLES_FATAL_DEPLOYED,
+    VERIFY_TABLES_FATAL_REPAIR_FAILED,
     VERIFY_TABLES_REPAIRED,
 )
 from backend.utils.db_table_names import TABLE_NAMES
@@ -128,3 +129,26 @@ def test_verify_tables_auto_repairs_when_tables_missing_in_non_deployed_mode(run
         actual_tables = set(inspector.get_table_names())
 
     assert expected_tables.issubset(actual_tables)
+
+
+def test_verify_tables_exits_with_fatal_when_repair_fails(runner):
+    """
+    GIVEN a non-deployed environment where all tables have been dropped
+    WHEN `flask_migrate.upgrade` is mocked to no-op (tables remain missing)
+        and the developer runs `flask utils verify-tables`
+    THEN verify the command exits with code 1 and reports fatal repair failure
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        db.drop_all()
+
+    with patch("flask_migrate.upgrade"):
+        result = cli_runner.invoke(args=["utils", "verify-tables"])
+
+    assert result.exit_code == 1
+    assert VERIFY_TABLES_FATAL_REPAIR_FAILED in result.output
+
+    # Restore tables for subsequent tests
+    with app.app_context():
+        db.create_all()
