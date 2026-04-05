@@ -1084,6 +1084,48 @@ def contact_form_entry(
     clear_then_send_keys(content_input, content)
 
 
+def force_next_delete_ajax_failure_no_navigate(browser: WebDriver):
+    """Monkey-patches $.ajax so the next DELETE request fails with a fake error.
+
+    The fake xhr uses an immutable _429Handled getter that always returns true.
+    This causes the failure handler to return early after re-enabling the submit
+    button, without attempting any page navigation. The getter is necessary because
+    ajaxCall's global fail handler unconditionally writes _429Handled = false
+    before the app-level fail handler reads it.
+    """
+    browser.execute_script("""
+    (function() {
+        var originalAjax = $.ajax;
+        $.ajax = function(options) {
+            if (options && options.type && options.type.toLowerCase() === 'delete') {
+                // Restore original $.ajax for subsequent calls
+                $.ajax = originalAjax;
+                var deferred = $.Deferred();
+                var fakeXhr = {
+                    status: 500,
+                    getResponseHeader: function() { return 'application/json'; },
+                    responseText: '{"error": "forced test failure"}'
+                };
+                // Use a getter so _429Handled always reads as true, even after
+                // ajaxCall's global handler writes false to it. This makes
+                // deleteURLFail return early after re-enabling the button.
+                Object.defineProperty(fakeXhr, '_429Handled', {
+                    get: function() { return true; },
+                    set: function() { /* no-op: ignore writes from ajaxCall */ },
+                    configurable: true
+                });
+                setTimeout(function() {
+                    deferred.reject(fakeXhr, 'error', 'Internal Server Error');
+                }, 0);
+                deferred.promise(fakeXhr);
+                return fakeXhr;
+            }
+            return originalAjax.apply(this, arguments);
+        };
+    })();
+    """)
+
+
 def add_cookie_banner_cookie(browser: WebDriver):
     cookie = {
         "name": UTS.COOKIE_NAME,

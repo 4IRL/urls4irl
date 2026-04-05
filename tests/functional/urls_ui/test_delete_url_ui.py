@@ -1,5 +1,7 @@
 import random
+import time
 from typing import Tuple
+
 from flask.testing import FlaskCliRunner
 import pytest
 from flask import Flask
@@ -34,6 +36,7 @@ from tests.functional.urls_ui.login_utils import (
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
+    force_next_delete_ajax_failure_no_navigate,
     get_num_url_rows,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
@@ -397,3 +400,46 @@ def test_delete_url_invalid_csrf_token(
 
     # Reload will bring user back to the UTub they were in before
     assert_active_utub(browser, utub_user_created.name)
+
+
+def test_delete_url_submit_button_reenables_on_server_error(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that the submit button re-enables after a server error so the user can retry.
+
+    GIVEN a user with a selected URL and the delete confirmation modal open
+    WHEN the DELETE request fails with a 500 server error
+    THEN ensure the #modalSubmit button is re-enabled (not disabled)
+    """
+    user_id_for_test = 1
+
+    delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
+        browser=browser,
+        app=provide_app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+
+    confirmation_modal_body_text = delete_modal.text
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
+
+    # Force the next DELETE ajax call to fail (with early return to prevent navigation)
+    force_next_delete_ajax_failure_no_navigate(browser)
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Wait for the async failure handler to process and re-enable the button
+    time.sleep(1)
+
+    # Use execute_script to check disabled property directly, avoiding stale element
+    # issues that can occur when the DOM is updated by the response handler
+    is_disabled = browser.execute_script(
+        "var btn = document.querySelector(arguments[0]); return btn ? btn.disabled : null;",
+        HPL.BUTTON_MODAL_SUBMIT,
+    )
+    assert is_disabled is False, (
+        "Expected #modalSubmit to be re-enabled after server error, "
+        f"but disabled={is_disabled}"
+    )
