@@ -55,6 +55,32 @@ def test_verify_tables_fails_in_deployed_mode_when_tables_missing(runner):
             db.create_all()
 
 
+def test_verify_tables_fails_in_dev_server_mode_when_tables_missing(runner):
+    """
+    GIVEN a DEV_SERVER environment where application tables have been dropped
+    WHEN the developer runs `flask utils verify-tables`
+    THEN verify the command exits with code 1 and refuses to auto-repair,
+        identical to PRODUCTION behavior
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        db.drop_all()
+        app.config[CONFIG_ENVS.DEV_SERVER] = True
+
+    try:
+        result = cli_runner.invoke(args=["utils", "verify-tables"])
+
+        assert result.exit_code == 1
+        assert VERIFY_TABLES_FATAL_DEPLOYED in result.output
+        assert TABLE_NAMES.USERS in result.output
+        assert TABLE_NAMES.UTUBS in result.output
+    finally:
+        with app.app_context():
+            app.config[CONFIG_ENVS.DEV_SERVER] = False
+            db.create_all()
+
+
 def test_verify_tables_reports_single_missing_table_in_deployed_mode(runner):
     """
     GIVEN a deployed environment where only ContactFormEntries has been dropped
