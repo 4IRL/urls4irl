@@ -13,7 +13,7 @@ pytestmark = pytest.mark.unit
 _response_schemas = [
     getattr(schema_module, name)
     for name in schema_module.__all__
-    if isinstance(getattr(schema_module, name, None), type)
+    if isinstance(getattr(schema_module, name), type)
     and issubclass(getattr(schema_module, name), BaseModel)
 ]
 
@@ -21,7 +21,7 @@ _response_schemas = [
 _request_schemas = [
     getattr(request_schema_module, name)
     for name in request_schema_module.__all__
-    if isinstance(getattr(request_schema_module, name, None), type)
+    if isinstance(getattr(request_schema_module, name), type)
     and issubclass(getattr(request_schema_module, name), BaseModel)
 ]
 
