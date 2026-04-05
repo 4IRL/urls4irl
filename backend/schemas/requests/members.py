@@ -7,4 +7,5 @@ class AddMemberRequest(BaseModel):
     username: str = Field(
         min_length=USER_CONSTANTS.MIN_USERNAME_LENGTH,
         max_length=USER_CONSTANTS.MAX_USERNAME_LENGTH,
+        description="Username of the member to add",
     )

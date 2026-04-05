@@ -9,8 +9,12 @@ class CreateUTubRequest(BaseModel):
     utubName: SanitizedStr = Field(
         min_length=UTUB_CONSTANTS.MIN_NAME_LENGTH,
         max_length=UTUB_CONSTANTS.MAX_NAME_LENGTH,
+        description="Name of the UTub to create",
     )
-    utubDescription: OptionalSanitizedStr = Field(default=None)
+    utubDescription: OptionalSanitizedStr = Field(
+        default=None,
+        description="Optional description for the UTub",
+    )
 
     @field_validator("utubName", mode="after")
     @classmethod
@@ -33,6 +37,7 @@ class UpdateUTubNameRequest(BaseModel):
     utubName: SanitizedStr = Field(
         min_length=UTUB_CONSTANTS.MIN_NAME_LENGTH,
         max_length=UTUB_CONSTANTS.MAX_NAME_LENGTH,
+        description="New name for the UTub",
     )
 
     @field_validator("utubName", mode="after")
@@ -44,7 +49,10 @@ class UpdateUTubNameRequest(BaseModel):
 
 
 class UpdateUTubDescriptionRequest(BaseModel):
-    utubDescription: OptionalSanitizedStr = Field(default=None)
+    utubDescription: OptionalSanitizedStr = Field(
+        default=None,
+        description="New description for the UTub, or empty to clear",
+    )
 
     @field_validator("utubDescription", mode="after")
     @classmethod

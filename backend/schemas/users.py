@@ -14,21 +14,27 @@ if TYPE_CHECKING:
 
 
 class UserSchema(BaseSchema):
-    id: int = Field(alias=M.ID)
-    username: str = Field(alias=M.USERNAME)
+    id: int = Field(alias=M.ID, description="Unique user ID")
+    username: str = Field(alias=M.USERNAME, description="Username of the user")
 
 
 MemberSchema = UserSchema
 
 
 class UtubSummaryItemSchema(BaseSchema):
-    id: int = Field(alias=M.ID)
-    name: str = Field(alias=M.NAME)
-    member_role: str = Field(alias=M.MEMBER_ROLE)
+    id: int = Field(alias=M.ID, description="Unique UTub ID")
+    name: str = Field(alias=M.NAME, description="Name of the UTub")
+    member_role: str = Field(
+        alias=M.MEMBER_ROLE,
+        description="Role of the current user in the UTub",
+    )
 
 
 class UtubSummaryListSchema(BaseSchema):
-    utubs: list[UtubSummaryItemSchema] = Field(alias=M.UTUBS)
+    utubs: list[UtubSummaryItemSchema] = Field(
+        alias=M.UTUBS,
+        description="List of UTubs the user is a member of",
+    )
 
     @classmethod
     def from_user(cls, user: Users) -> UtubSummaryListSchema:
@@ -53,12 +59,21 @@ UtubSummaryListSchema.model_rebuild()
 
 
 class LoginRedirectResponseSchema(BaseSchema):
-    redirect_url: str = Field(alias=REDIRECT_URL)
+    redirect_url: str = Field(
+        alias=REDIRECT_URL,
+        description="URL to redirect to after login",
+    )
 
 
 class MemberModifiedResponseSchema(BaseSchema):
-    utub_id: int = Field(alias=UTUB_ID)
-    member: UserSchema = Field(alias=MEMBER)
+    utub_id: int = Field(
+        alias=UTUB_ID,
+        description="ID of the UTub the member was added to or removed from",
+    )
+    member: UserSchema = Field(
+        alias=MEMBER,
+        description="User object for the member added or removed",
+    )
 
 
 class RegisterResponseSchema(StatusMessageResponseSchema):
