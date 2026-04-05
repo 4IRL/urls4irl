@@ -233,7 +233,7 @@ def create_db(db_type: str):
     help="Deprecated: alembic is now dropped by default. Use --keep-alembic to preserve it.",
 )
 @with_appcontext
-def drop_db(db_type: str, keep_alembic: bool, drop_alembic: bool):
+def drop_db(db_type: str, keep_alembic: bool, **_kwargs: bool):
     print(f"\n\n--- Dropping each table in {db_type} database ---\n")
     engine = db.engines[db_type]
     con = engine.connect()
