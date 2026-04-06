@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import tempfile
+from pathlib import Path
 
 import pytest
 
@@ -67,3 +69,187 @@ def test_generate_openapi_spec_to_file(runner, tmp_path):
     # Security schemes
     assert "securitySchemes" in spec["components"]
     assert "sessionAuth" in spec["components"]["securitySchemes"]
+
+
+def _generate_spec(runner):
+    """Helper: invoke the CLI and return the parsed spec dict."""
+    app, cli_runner = runner
+    with tempfile.TemporaryDirectory() as tmpdir:
+        output_path = Path(tmpdir) / "openapi.json"
+        result = cli_runner.invoke(
+            args=["openapi", "generate", "--output", str(output_path)]
+        )
+        assert result.exit_code == 0, f"CLI failed: {result.output}"
+        return json.loads(output_path.read_text())
+
+
+def test_utubs_path_has_get_and_post_methods(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the /utubs path item
+    THEN both 'get' and 'post' method keys exist (multi-method merge)
+    """
+    spec = _generate_spec(runner)
+    utubs_path = spec["paths"].get("/utubs")
+    assert utubs_path is not None, "/utubs path not found"
+    assert "get" in utubs_path, "/utubs missing GET"
+    assert "post" in utubs_path, "/utubs missing POST"
+
+
+def test_post_utubs_has_request_body_referencing_create_utub_request(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /utubs
+    THEN it has a requestBody referencing CreateUTubRequest
+    """
+    spec = _generate_spec(runner)
+    post_op = spec["paths"]["/utubs"]["post"]
+    assert "requestBody" in post_op
+    schema_ref = post_op["requestBody"]["content"]["application/json"]["schema"]["$ref"]
+    assert schema_ref == "#/components/schemas/CreateUTubRequest"
+
+
+def test_post_utubs_has_utubs_tag(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /utubs
+    THEN it has tags: ["utubs"]
+    """
+    spec = _generate_spec(runner)
+    post_op = spec["paths"]["/utubs"]["post"]
+    assert post_op["tags"] == ["utubs"]
+
+
+def test_post_utubs_has_session_auth_and_csrf_security(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /utubs (email_validation_required + POST)
+    THEN security is [{"sessionAuth": [], "csrfToken": []}]
+    """
+    spec = _generate_spec(runner)
+    post_op = spec["paths"]["/utubs"]["post"]
+    assert post_op["security"] == [{"sessionAuth": [], "csrfToken": []}]
+
+
+def test_get_health_has_empty_security_no_csrf(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect GET /health
+    THEN security is [] (no auth, no CSRF for GET)
+    """
+    spec = _generate_spec(runner)
+    health_op = spec["paths"]["/health"]["get"]
+    assert health_op["security"] == []
+
+
+def test_delete_utub_has_integer_path_param(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect DELETE /utubs/{utub_id}
+    THEN it has a path parameter utub_id with type: integer
+    """
+    spec = _generate_spec(runner)
+    delete_op = spec["paths"]["/utubs/{utub_id}"]["delete"]
+    assert "parameters" in delete_op
+    utub_id_param = next(
+        (p for p in delete_op["parameters"] if p["name"] == "utub_id"), None
+    )
+    assert utub_id_param is not None, "utub_id param not found"
+    assert utub_id_param["schema"]["type"] == "integer"
+    assert utub_id_param["in"] == "path"
+    assert utub_id_param["required"] is True
+
+
+def test_post_utub_urls_has_path_param_and_request_body(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /utubs/{utub_id}/urls
+    THEN it has both utub_id path param and requestBody
+    """
+    spec = _generate_spec(runner)
+    post_op = spec["paths"]["/utubs/{utub_id}/urls"]["post"]
+
+    # Path param
+    assert "parameters" in post_op
+    utub_id_param = next(
+        (p for p in post_op["parameters"] if p["name"] == "utub_id"), None
+    )
+    assert utub_id_param is not None, "utub_id param not found"
+
+    # Request body
+    assert "requestBody" in post_op
+
+
+def test_error_responses_reference_error_response_schema(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect routes with 400/403/404 responses
+    THEN those responses reference ErrorResponse schema
+    """
+    spec = _generate_spec(runner)
+    # POST /utubs has 400: ErrorResponse
+    post_op = spec["paths"]["/utubs"]["post"]
+    resp_400 = post_op["responses"].get("400")
+    assert resp_400 is not None, "POST /utubs missing 400 response"
+    schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
+    assert schema_ref == "#/components/schemas/ErrorResponse"
+
+
+def test_output_flag_writes_to_specified_path(runner, tmp_path):
+    """
+    GIVEN a fully configured Flask app
+    WHEN the developer runs the generate command with --output pointing to a custom path
+    THEN the spec is written to that exact path
+    """
+    app, cli_runner = runner
+    output_path = tmp_path / "custom_dir" / "my_spec.json"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    result = cli_runner.invoke(
+        args=["openapi", "generate", "--output", str(output_path)]
+    )
+    assert result.exit_code == 0, f"CLI failed: {result.output}"
+    assert output_path.exists()
+
+    spec = json.loads(output_path.read_text())
+    assert spec["openapi"] == "3.1.0"
+
+
+def test_output_to_nonexistent_directory_fails(runner, tmp_path):
+    """
+    GIVEN a fully configured Flask app
+    WHEN --output points to a non-existent directory
+    THEN exit_code != 0 and output contains a descriptive error
+    """
+    app, cli_runner = runner
+    bad_path = tmp_path / "does_not_exist" / "spec.json"
+
+    result = cli_runner.invoke(args=["openapi", "generate", "--output", str(bad_path)])
+    assert result.exit_code != 0
+    assert "does not exist" in result.output.lower() or "error" in result.output.lower()
+
+
+def test_non_api_route_endpoints_excluded(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we look at the paths
+    THEN static and template-rendered routes (e.g., /home) are excluded
+    """
+    spec = _generate_spec(runner)
+    paths = spec["paths"]
+    # Static endpoint should not be present
+    for path in paths:
+        assert "/static" not in path, f"Static path found: {path}"
+    # /home is a template-rendered route, not an @api_route
+    assert "/home" not in paths
+
+
+def test_post_register_has_csrf_only_security(runner):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /register (decorated with @no_authenticated_users_allowed)
+    THEN security is [{"csrfToken": []}] — CSRF required globally, no session auth
+    """
+    spec = _generate_spec(runner)
+    register_op = spec["paths"]["/register"]["post"]
+    assert register_op["security"] == [{"csrfToken": []}]
