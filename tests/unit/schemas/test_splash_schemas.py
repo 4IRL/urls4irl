@@ -155,7 +155,7 @@ class TestRegisterRequest:
     def test_password_too_long_raises(self):
         from backend.schemas.requests.splash import RegisterRequest
 
-        long_pw = "a" * (USER_CONSTANTS.MAX_PASSWORD_LENGTH + 1)
+        long_pw = "a" * (USER_CONSTANTS.MAX_PASSWORD_INPUT_LENGTH + 1)
         with pytest.raises(ValidationError) as exc_info:
             RegisterRequest.model_validate(
                 self._valid_payload(password=long_pw, confirmPassword=long_pw)
@@ -223,9 +223,10 @@ class TestResetPasswordRequest:
     def test_password_too_long_raises(self):
         from backend.schemas.requests.splash import ResetPasswordRequest
 
+        long_pw = "a" * (USER_CONSTANTS.MAX_PASSWORD_INPUT_LENGTH + 1)
         with pytest.raises(ValidationError) as exc_info:
             ResetPasswordRequest.model_validate(
-                {"newPassword": "a" * 65, "confirmNewPassword": "a" * 65}
+                {"newPassword": long_pw, "confirmNewPassword": long_pw}
             )
         errors = exc_info.value.errors()
         assert any(err["loc"][0] == "newPassword" for err in errors)
