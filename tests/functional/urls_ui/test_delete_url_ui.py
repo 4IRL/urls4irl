@@ -1,12 +1,14 @@
 import random
 from typing import Tuple
+
+from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
-from flask import Flask
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.models.users import Users
@@ -34,12 +36,14 @@ from tests.functional.urls_ui.login_utils import (
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
+    force_next_delete_ajax_failure_no_navigate,
     get_num_url_rows,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_visible_css_selector,
 )
 from locators import HomePageLocators as HPL
 
@@ -109,7 +113,12 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Assert submit button is disabled immediately after click to prevent double-submit
+    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
+    assert modal_submit_btn.get_property("disabled") is True
+
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Wait for animation to complete
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
@@ -343,7 +352,7 @@ def test_delete_last_url(
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, css_selector)
@@ -392,3 +401,94 @@ def test_delete_url_invalid_csrf_token(
 
     # Reload will bring user back to the UTub they were in before
     assert_active_utub(browser, utub_user_created.name)
+
+
+def test_delete_url_submit_button_reenables_on_server_error(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that the submit button re-enables after a server error so the user can retry.
+
+    GIVEN a user with a selected URL and the delete confirmation modal open
+    WHEN the DELETE request fails with a 500 server error
+    THEN ensure the #modalSubmit button is re-enabled (not disabled)
+    """
+    user_id_for_test = 1
+
+    delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
+        browser=browser,
+        app=provide_app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+
+    confirmation_modal_body_text = delete_modal.text
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
+
+    # Force the next DELETE ajax call to fail (with early return to prevent navigation)
+    force_next_delete_ajax_failure_no_navigate(browser)
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
+
+
+def test_delete_url_submit_button_enabled_on_second_modal_open(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that the submit button is enabled when opening the delete modal for a
+    second URL after successfully deleting the first.
+
+    GIVEN a user with a selected UTub containing at least 2 URLs
+    WHEN they successfully delete URL 1 and then open the delete modal for URL 2
+    THEN ensure the #modalSubmit button is NOT disabled
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_created.id
+        ).all()
+        first_utub_url_id = utub_urls[0].id
+        first_utub_url_string = utub_urls[0].standalone_url.url_string
+        second_utub_url_id = utub_urls[1].id
+
+    login_select_utub_select_url_click_delete_get_modal_url(
+        browser=browser,
+        app=app,
+        user_id=user_id_for_test,
+        utub_name=utub_user_created.name,
+        url_string=first_utub_url_string,
+    )
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Wait for the first URL row to be removed from the DOM
+    first_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{first_utub_url_id}"]'
+    first_url_row_elem = browser.find_element(By.CSS_SELECTOR, first_url_row_selector)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(browser, first_url_row_elem)
+
+    # Select the second URL and open its delete modal
+    second_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{second_utub_url_id}"]'
+    wait_then_click_element(browser, second_url_row_selector, time=3)
+    wait_then_click_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=3
+    )
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=5)
+
+    # Assert the submit button is NOT disabled when the modal opens for the second URL
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )

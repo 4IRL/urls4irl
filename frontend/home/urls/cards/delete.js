@@ -34,6 +34,7 @@ export function deleteURLShowModal(utubUrlID, urlCard, utubID) {
     })
     .text(buttonTextSubmit);
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal")
     .addClass("deleteUrlModal")
     .modal("show")
@@ -52,6 +53,8 @@ function deleteURLSetup(utubID, utubUrlID) {
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
 async function deleteURL(utubUrlID, urlCard, utubID) {
+  $("#modalSubmit").prop("disabled", true);
+
   try {
     // Check for stale data
     await getUpdatedURL(utubID, utubUrlID, urlCard);
@@ -72,6 +75,7 @@ async function deleteURL(utubUrlID, urlCard, utubID) {
       deleteURLFail(xhr);
     });
   } catch (error) {
+    $("#modalSubmit").prop("disabled", false);
     handleRejectFromGetURL(error, urlCard, { showError: false });
   }
 }
@@ -116,6 +120,7 @@ function deleteURLSuccess(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function deleteURLFail(xhr) {
+  $("#modalSubmit").prop("disabled", false);
   if (xhr._429Handled) return;
 
   if (

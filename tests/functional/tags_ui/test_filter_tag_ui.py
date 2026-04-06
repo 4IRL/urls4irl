@@ -603,7 +603,7 @@ def test_filtered_url_count_decrements_when_url_deleted(
     url_elem_to_delete = browser.find_element(By.CSS_SELECTOR, selected_url_selector)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Wait for DELETE request
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)

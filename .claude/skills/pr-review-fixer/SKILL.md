@@ -95,10 +95,11 @@ After the CI Log Reader finishes writing the failure analysis, it must launch a 
    - Read the failing test files to understand what they expect
    - Read the source files referenced in stack traces
    - Determine if the failure is caused by changes on this branch
-3. If the fix is straightforward (typo, import error, missing constant, test assertion update):
+3. **Never dismiss a failure as "pre-existing" or "flaky"** because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For every failure: read the traceback, check if branch changes could affect the failing path, and either fix or confirm unrelated by rerunning in isolation 2-3 times.
+4. If the fix is straightforward (typo, import error, missing constant, test assertion update):
    - Apply the fix directly
    - Report what was changed
-4. If the fix requires behavioral or design decisions:
+5. If the fix requires behavioral or design decisions:
    - **Do NOT make changes**
    - Document the issue and recommended approach in the CI failures file
    - Flag it for user intervention
@@ -211,6 +212,7 @@ Collect all subagent results. If any subagent reports issues requiring user inpu
    - For other paths, use best judgment to pick the right markers
 3. Run integration tests first using `make test-marker-parallel m=<marker>`, then UI tests using `make test-marker-parallel m=<marker_ui>`. **Never run both simultaneously** — they share a single test DB.
 4. If tests fail:
+   - **Never dismiss a failure as "pre-existing" or "flaky"** — check if branch changes could affect the failing path indirectly (shared fixtures, CSS, templates, timing, imports). If confirmed unrelated, rerun in isolation 2-3 times to verify flakiness and report findings.
    - Investigate the failure and fix if straightforward
    - If the fix requires design decisions, stop and inform the user
    - Re-run tests after fixing to confirm they pass

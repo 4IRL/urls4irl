@@ -10,14 +10,35 @@ from backend.utils.strings.url_strs import URL_FAILURE
 
 
 class ErrorResponse(BaseSchema):
-    status: str = Field(default=STD_JSON.FAILURE, alias=STD_JSON.STATUS)
-    message: str = Field(alias=STD_JSON.MESSAGE)
-    error_code: int | None = Field(default=None, alias=STD_JSON.ERROR_CODE)
-    field_errors: dict[str, list[str]] | None = Field(
-        default=None, alias=STD_JSON.ERRORS
+    status: str = Field(
+        default=STD_JSON.FAILURE,
+        alias=STD_JSON.STATUS,
+        description="Error status, always Failure",
     )
-    error_detail: str | None = Field(default=None, alias=STD_JSON.DETAILS)
-    url_string: str | None = Field(default=None, alias=URL_FAILURE.URL_STRING)
+    message: str = Field(
+        alias=STD_JSON.MESSAGE,
+        description="Human-readable error message",
+    )
+    error_code: int | None = Field(
+        default=None,
+        alias=STD_JSON.ERROR_CODE,
+        description="Application-specific error code, if applicable",
+    )
+    field_errors: dict[str, list[str]] | None = Field(
+        default=None,
+        alias=STD_JSON.ERRORS,
+        description="Map of field names to lists of validation error messages, if applicable",
+    )
+    error_detail: str | None = Field(
+        default=None,
+        alias=STD_JSON.DETAILS,
+        description="Additional error detail, if applicable",
+    )
+    url_string: str | None = Field(
+        default=None,
+        alias=URL_FAILURE.URL_STRING,
+        description="URL string involved in the error, if applicable",
+    )
 
     def to_response(self, status_code: int) -> FlaskResponse:
         payload = self.model_dump(by_alias=True, exclude_none=True)

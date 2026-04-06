@@ -9,6 +9,8 @@ class AddTagRequest(BaseModel):
     tagString: SanitizedStr = Field(
         min_length=TAG_CONSTANTS.MIN_TAG_LENGTH,
         max_length=TAG_CONSTANTS.MAX_TAG_LENGTH,
+        description="Tag label to add",
+        examples=["python"],
     )
 
     @field_validator("tagString", mode="after")

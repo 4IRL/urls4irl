@@ -19,6 +19,6 @@ UI tests are run against pre-built Vite assets using make targets.
 4. Verify the tests run.
 5. Check for any failures.
 6. Report any test failures to the user with relevant error lines from the test.
-7. Investigate the test failures and hypothesize why they are occurring.
+7. Investigate the test failures and hypothesize why they are occurring. **Never dismiss a failure as "pre-existing" or "flaky"** because the test file wasn't modified on the current branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For every failure: read the traceback, check if branch changes could affect the failing path, and either fix or confirm unrelated by rerunning in isolation 2-3 times.
 
 ### NOTE - You MUST run one of the markers ending in _ui.

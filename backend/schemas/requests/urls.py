@@ -9,10 +9,13 @@ class CreateURLRequest(BaseModel):
     urlString: str = Field(
         min_length=URL_CONSTANTS.MIN_URL_LENGTH,
         max_length=URL_CONSTANTS.MAX_URL_LENGTH,
+        description="URL string to add",
+        examples=["https://example.com"],
     )
     urlTitle: SanitizedStr = Field(
         min_length=URL_CONSTANTS.MIN_URL_TITLE_LENGTH,
         max_length=URL_CONSTANTS.MAX_URL_TITLE_LENGTH,
+        description="Display title for the URL",
     )
 
     @field_validator("urlTitle", mode="after")
@@ -27,6 +30,8 @@ class UpdateURLStringRequest(BaseModel):
     urlString: str = Field(
         min_length=URL_CONSTANTS.MIN_URL_LENGTH,
         max_length=URL_CONSTANTS.MAX_URL_LENGTH,
+        description="New URL string to replace the existing one",
+        examples=["https://example.com"],
     )
 
 
@@ -34,6 +39,7 @@ class UpdateURLTitleRequest(BaseModel):
     urlTitle: SanitizedStr = Field(
         min_length=URL_CONSTANTS.MIN_URL_TITLE_LENGTH,
         max_length=URL_CONSTANTS.MAX_URL_TITLE_LENGTH,
+        description="New display title for the URL",
     )
 
     @field_validator("urlTitle", mode="after")

@@ -313,3 +313,4 @@ If the fix subagent reports `VALIDATION: FAIL` or has `UNRESOLVED` items, the ma
 - **CRITICAL: Set `dangerouslyDisableSandbox: true`** on every Bash call running `make` or `docker`
 - **Follow existing patterns**: Read code before making changes
 - **Clean up**: Remove debug code, console.logs, window globals per CLAUDE.md
+- **Investigate every test failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times. Include this rule in all subagent prompts that run or evaluate tests.

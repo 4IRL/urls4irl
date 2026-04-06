@@ -10,8 +10,11 @@ class ContactRequest(BaseModel):
     subject: SanitizedStr = Field(
         min_length=CONTACT_FORM_CONSTANTS.MIN_SUBJECT_LENGTH,
         max_length=CONTACT_FORM_CONSTANTS.MAX_SUBJECT_LENGTH,
+        description="Subject line of the contact message",
+        examples=["Bug report"],
     )
     content: SanitizedStr = Field(
         min_length=1,
         max_length=CONTACT_FORM_CONSTANTS.MAX_CONTENT_LENGTH,
+        description="Body content of the contact message",
     )

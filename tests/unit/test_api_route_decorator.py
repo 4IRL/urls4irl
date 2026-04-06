@@ -9,7 +9,7 @@ from backend import limiter
 from backend.api_common.parse_request import _schema_name_to_kwarg, api_route
 from backend.contact.routes import contact
 from backend.members.routes import members
-from backend.schemas.base import BaseSchema
+from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.schemas.contact import ContactResponseSchema
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.contact import ContactRequest
@@ -554,8 +554,8 @@ ALL_API_ROUTES = [
         None,
         HealthResponseSchema,
         [OPEN_API.SYSTEM],
-        "Health check endpoint",
-        {200: HealthResponseSchema},
+        "Health check endpoint. Pass ?db=true to verify all database tables exist.",
+        {200: HealthResponseSchema, 503: StatusMessageResponseSchema},
     ),
 ]
 

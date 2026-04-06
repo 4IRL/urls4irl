@@ -29,6 +29,7 @@ fi
 
 . /code/venv/bin/activate
 flask db upgrade
+flask utils verify-tables
 flask shorturls add
 
 if [[ "$PRODUCTION" != "true" && "$DEV_SERVER" != "true" ]]; then

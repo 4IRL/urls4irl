@@ -201,7 +201,7 @@ def test_utub_search_resets_on_delete_utub(
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 
     # Wait for DELETE request
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     wait_for_element_to_be_removed(browser, utub_elem, timeout=10)
 

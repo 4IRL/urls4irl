@@ -17,19 +17,44 @@ class _UsernameStripMixin(BaseModel):
 
 
 class LoginRequest(_UsernameStripMixin):
-    username: SanitizedStr = Field(min_length=3, max_length=20)
-    password: str = Field(min_length=1)
+    username: SanitizedStr = Field(
+        min_length=USER_CONSTANTS.MIN_USERNAME_LENGTH,
+        max_length=USER_CONSTANTS.MAX_USERNAME_LENGTH,
+        description="Username for login",
+        examples=["john_doe"],
+    )
+    password: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        description="Password for login",
+    )
 
 
 class RegisterRequest(_UsernameStripMixin):
-    username: SanitizedStr = Field(min_length=3, max_length=20)
-    email: EmailStr
-    confirm_email: str = Field(min_length=1, alias="confirmEmail")
+    username: SanitizedStr = Field(
+        min_length=USER_CONSTANTS.MIN_USERNAME_LENGTH,
+        max_length=USER_CONSTANTS.MAX_USERNAME_LENGTH,
+        description="Username for the new account",
+        examples=["john_doe"],
+    )
+    email: EmailStr = Field(
+        description="Email address for the new account",
+        examples=["user@example.com"],
+    )
+    confirm_email: str = Field(
+        min_length=USER_CONSTANTS.MIN_EMAIL_LENGTH,
+        alias="confirmEmail",
+        description="Email confirmation, must match email",
+    )
     password: str = Field(
         min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,
-        max_length=USER_CONSTANTS.MAX_PASSWORD_LENGTH,
+        max_length=USER_CONSTANTS.MAX_PASSWORD_INPUT_LENGTH,
+        description="Password for the new account",
     )
-    confirm_password: str = Field(min_length=1, alias="confirmPassword")
+    confirm_password: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        alias="confirmPassword",
+        description="Password confirmation, must match password",
+    )
 
     @field_validator("confirm_email", mode="after")
     @classmethod
@@ -51,12 +76,24 @@ class RegisterRequest(_UsernameStripMixin):
 
 
 class ForgotPasswordRequest(BaseModel):
-    email: EmailStr
+    email: EmailStr = Field(
+        description="Email address associated with the account",
+        examples=["user@example.com"],
+    )
 
 
 class ResetPasswordRequest(BaseModel):
-    new_password: str = Field(min_length=12, max_length=64, alias="newPassword")
-    confirm_new_password: str = Field(min_length=1, alias="confirmNewPassword")
+    new_password: str = Field(
+        min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,
+        max_length=USER_CONSTANTS.MAX_PASSWORD_INPUT_LENGTH,
+        alias="newPassword",
+        description="New password for the account",
+    )
+    confirm_new_password: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        alias="confirmNewPassword",
+        description="New password confirmation, must match new password",
+    )
 
     @field_validator("confirm_new_password", mode="after")
     @classmethod

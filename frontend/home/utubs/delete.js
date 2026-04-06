@@ -65,12 +65,15 @@ function deleteUTubShowModal(utubID) {
       closeUTubSearchAndEraseInput();
     });
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
   $("#modalRedirect").hide();
 }
 
 // Handles deletion of a current UTub
 function deleteUTub(utubID) {
+  $("#modalSubmit").prop("disabled", true);
+
   // Extract data to submit in POST request
   let postURL = deleteUTubSetup(utubID);
 
@@ -142,6 +145,7 @@ function deleteUTubSuccess(utubID) {
 }
 
 function deleteUTubFail(xhr) {
+  $("#modalSubmit").prop("disabled", false);
   if (xhr._429Handled) return;
 
   if (

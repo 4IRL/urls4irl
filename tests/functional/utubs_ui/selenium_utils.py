@@ -187,7 +187,11 @@ def delete_utub_as_creator(browser: WebDriver, utub_to_delete: Utubs):
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 
+    # Assert submit button is disabled immediately after click to prevent double-submit
+    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
+    assert modal_submit_btn.get_property("disabled") is True
+
     # Wait for DELETE request
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
 
     wait_for_element_to_be_removed(browser, utub_selector, timeout=10)

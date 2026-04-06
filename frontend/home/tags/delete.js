@@ -48,6 +48,7 @@ export function deleteUTubTagShowModal(utubID, utubTagID, string) {
       deleteUTubTag(utubID, utubTagID);
     });
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
   $("#modalRedirect").hide();
 }
@@ -59,6 +60,8 @@ function deleteUTubTagSetup(utubID, utubTagID) {
 }
 
 function deleteUTubTag(utubID, utubTagID) {
+  $("#modalSubmit").prop("disabled", true);
+
   let deleteUTubTagURL = deleteUTubTagSetup(utubID, utubTagID);
 
   const request = ajaxCall("delete", deleteUTubTagURL, []);
@@ -117,6 +120,7 @@ function deleteUTubTagSuccess(response) {
 }
 
 function deleteUTubTagFail(xhr) {
+  $("#modalSubmit").prop("disabled", false);
   if (xhr._429Handled) return;
 
   if (
@@ -147,6 +151,6 @@ function deleteUTubTagFail(xhr) {
     window.location.reload();
   });
 
-  $("#modalSubmit").addClass("disabled");
+  $("#modalSubmit").prop("disabled", true);
   return;
 }

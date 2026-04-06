@@ -69,8 +69,9 @@ def test_drop_db_without_migrations(runner):
     """
     GIVEN a database containing relevant tables for URLS4IRL
     WHEN the developer drops all the tables from the database using the CLI command as follows:
-        `flask managedb drop test --drop-alembic`
+        `flask managedb drop test`
     THEN verify that the database tables are dropped from the database
+        (alembic_version is dropped by default)
 
     Args:
         runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
@@ -88,7 +89,7 @@ def test_drop_db_without_migrations(runner):
         has_utub_urls = inspector.has_table(TABLE_NAMES.UTUB_URLS)
         has_utub_tags = inspector.has_table(TABLE_NAMES.UTUB_URL_TAGS)
 
-    cli_runner.invoke(args=["managedb", "drop", "test", "--drop-alembic"])
+    cli_runner.invoke(args=["managedb", "drop", "test"])
 
     with app.app_context():
         inspector: Inspector = inspect(db.engine)
@@ -113,7 +114,7 @@ def test_drop_db_with_migrations(runner):
     """
     GIVEN a database containing relevant tables for URLS4IRL that is fully migrated
     WHEN the developer drops all the tables except migration table from the database using the CLI command as follows:
-        `flask managedb drop test`
+        `flask managedb drop test --keep-alembic`
     THEN verify that the database tables are dropped from the database, but the migration table is kept
 
     Args:
@@ -145,7 +146,7 @@ def test_drop_db_with_migrations(runner):
         has_utub_tags = inspector.has_table(TABLE_NAMES.UTUB_URL_TAGS)
         has_alembic_version = inspector.has_table(TABLE_NAMES.ALEMBIC_VERSION)
 
-    cli_runner.invoke(args=["managedb", "drop", "test"])
+    cli_runner.invoke(args=["managedb", "drop", "test", "--keep-alembic"])
 
     with app.app_context():
         inspector: Inspector = inspect(db.engine)
