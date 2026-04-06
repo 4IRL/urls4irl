@@ -47,7 +47,7 @@ class RegisterRequest(_UsernameStripMixin):
     )
     password: str = Field(
         min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,
-        max_length=USER_CONSTANTS.MAX_PASSWORD_LENGTH,
+        max_length=USER_CONSTANTS.MAX_PASSWORD_INPUT_LENGTH,
         description="Password for the new account",
     )
     confirm_password: str = Field(
@@ -85,7 +85,7 @@ class ForgotPasswordRequest(BaseModel):
 class ResetPasswordRequest(BaseModel):
     new_password: str = Field(
         min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,
-        max_length=USER_CONSTANTS.MAX_PASSWORD_LENGTH,
+        max_length=USER_CONSTANTS.MAX_PASSWORD_INPUT_LENGTH,
         alias="newPassword",
         description="New password for the account",
     )
