@@ -1,0 +1,317 @@
+from __future__ import annotations
+
+import json
+import re
+import warnings
+from collections import defaultdict
+from pathlib import Path
+from typing import Any, Type
+
+import click
+from flask import Flask, current_app
+from flask.cli import AppGroup, with_appcontext
+from pydantic import BaseModel
+
+HELP_SUMMARY_OPENAPI = """OpenAPI spec generation for U4I."""
+
+openapi_cli = AppGroup(
+    "openapi",
+    help=HELP_SUMMARY_OPENAPI,
+)
+
+# Auth decorators that imply session-based login
+SESSION_AUTH_DECORATORS = frozenset(
+    {
+        "email_validation_required",
+        "utub_membership_required",
+        "utub_creator_required",
+        "utub_membership_with_valid_url_in_utub_required",
+        "utub_membership_with_valid_utub_tag",
+        "utub_membership_with_valid_url_tag",
+        "url_adder_or_creator_required",
+    }
+)
+
+# Methods that require CSRF protection (Flask-WTF global enforcement)
+MUTATING_METHODS = frozenset({"POST", "PATCH", "DELETE", "PUT"})
+
+# Flask path parameter pattern: <converter:name> or <name>
+PATH_PARAM_PATTERN = re.compile(r"<(\w+:)?(\w+)>")
+
+# Converter mapping: Flask converter → OpenAPI type
+CONVERTER_TYPE_MAP = {
+    "int": "integer",
+    "float": "number",
+    "string": "string",
+}
+
+
+def _flask_path_to_openapi(rule_path: str) -> str:
+    """Convert Flask path `/utubs/<int:utub_id>` to OpenAPI `/utubs/{utub_id}`."""
+    return PATH_PARAM_PATTERN.sub(lambda match: f"{{{match.group(2)}}}", rule_path)
+
+
+def _extract_path_parameters(rule_path: str) -> list[dict[str, Any]]:
+    """Extract OpenAPI path parameter objects from a Flask rule string."""
+    params = []
+    for match in PATH_PARAM_PATTERN.finditer(rule_path):
+        converter_raw = match.group(1)  # e.g. "int:" or None
+        param_name = match.group(2)
+
+        if converter_raw:
+            converter_name = converter_raw.rstrip(":")
+        else:
+            converter_name = "string"
+
+        openapi_type = CONVERTER_TYPE_MAP.get(converter_name, "string")
+        params.append(
+            {
+                "name": param_name,
+                "in": "path",
+                "required": True,
+                "schema": {"type": openapi_type},
+            }
+        )
+    return params
+
+
+def _endpoint_to_operation_id(endpoint: str) -> str:
+    """Convert Flask endpoint to camelCase operationId.
+
+    Drop the blueprint prefix (everything before and including the first dot),
+    then convert the remaining snake_case to camelCase.
+
+    Examples:
+        utubs.create_utub → createUtub
+        utub_url_tags.create_utub_url_tag → createUtubUrlTag
+        splash.register_user → registerUser
+    """
+    if "." in endpoint:
+        endpoint = endpoint.split(".", 1)[1]
+
+    parts = endpoint.split("_")
+    return parts[0] + "".join(word.capitalize() for word in parts[1:])
+
+
+def _build_schema_ref(schema_cls: Type[BaseModel]) -> str:
+    """Return a JSON $ref string for a Pydantic schema."""
+    return f"#/components/schemas/{schema_cls.__name__}"
+
+
+def _collect_schema(
+    schema_cls: Type[BaseModel],
+    components_schemas: dict[str, Any],
+) -> None:
+    """Add a schema and its $defs to components.schemas (first-write wins)."""
+    schema_dict = schema_cls.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
+
+    # Extract nested $defs first
+    defs = schema_dict.pop("$defs", {})
+    for def_name, def_schema in defs.items():
+        if def_name not in components_schemas:
+            components_schemas[def_name] = def_schema
+
+    # Add root schema under its class name
+    class_name = schema_cls.__name__
+    if class_name not in components_schemas:
+        components_schemas[class_name] = schema_dict
+
+
+def _build_security(
+    auth_decorator: str | None,
+    method: str,
+) -> list[dict[str, list]]:
+    """Build the OpenAPI security requirement for an operation."""
+    is_mutating = method.upper() in MUTATING_METHODS
+
+    has_session_auth = auth_decorator in SESSION_AUTH_DECORATORS
+
+    if has_session_auth:
+        security_obj: dict[str, list] = {"sessionAuth": []}
+        if is_mutating:
+            security_obj["csrfToken"] = []
+        return [security_obj]
+
+    # no_authenticated_users_allowed or no auth decorator
+    if is_mutating:
+        return [{"csrfToken": []}]
+
+    return []
+
+
+def generate_openapi_spec(app: Flask) -> dict[str, Any]:
+    """Build an OpenAPI 3.1 spec dict from the Flask app's registered routes."""
+    paths: defaultdict[str, dict] = defaultdict(dict)
+    components_schemas: dict[str, Any] = {}
+    operation_ids: dict[str, str] = (
+        {}
+    )  # operation_id → endpoint (for collision detection)
+
+    for rule in app.url_map.iter_rules():
+        # Skip non-API endpoints
+        if rule.endpoint == "static" or rule.endpoint.startswith("debugtoolbar"):
+            continue
+
+        view_fn = app.view_functions.get(rule.endpoint)
+        if view_fn is None:
+            continue
+
+        # Only process routes decorated with @api_route
+        if not hasattr(view_fn, "_api_route_request_schema"):
+            continue
+
+        # Read stashed attributes
+        request_schema = view_fn._api_route_request_schema
+        response_schema = view_fn._api_route_response_schema
+        tags = view_fn._api_route_tags
+        description = view_fn._api_route_description
+        status_codes = view_fn._api_route_status_codes
+        auth_decorator = getattr(view_fn, "_auth_decorator", None)
+
+        # Convert path
+        openapi_path = _flask_path_to_openapi(rule.rule)
+
+        # Extract path parameters
+        path_params = _extract_path_parameters(rule.rule)
+
+        # Build operation for each HTTP method
+        for method in rule.methods:
+            if method in ("HEAD", "OPTIONS"):
+                continue
+
+            operation_id = _endpoint_to_operation_id(rule.endpoint)
+
+            # Check for duplicate operationIds
+            if operation_id in operation_ids:
+                existing_endpoint = operation_ids[operation_id]
+                raise ValueError(
+                    f"Duplicate operationId '{operation_id}' generated from "
+                    f"endpoints '{existing_endpoint}' and '{rule.endpoint}'"
+                )
+            operation_ids[operation_id] = rule.endpoint
+
+            operation: dict[str, Any] = {
+                "operationId": operation_id,
+                "tags": tags or [],
+                "security": _build_security(auth_decorator, method),
+            }
+
+            if description:
+                operation["description"] = description
+
+            # Path parameters
+            if path_params:
+                operation["parameters"] = path_params
+
+            # Request body
+            if request_schema is not None:
+                _collect_schema(request_schema, components_schemas)
+                operation["requestBody"] = {
+                    "content": {
+                        "application/json": {
+                            "schema": {"$ref": _build_schema_ref(request_schema)},
+                        }
+                    }
+                }
+
+            # Responses
+            if status_codes is not None:
+                responses: dict[str, Any] = {}
+                for code, schema_cls in status_codes.items():
+                    _collect_schema(schema_cls, components_schemas)
+                    responses[str(code)] = {
+                        "description": schema_cls.__name__,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": _build_schema_ref(schema_cls)},
+                            }
+                        },
+                    }
+                operation["responses"] = responses
+            elif response_schema is not None:
+                _collect_schema(response_schema, components_schemas)
+                operation["responses"] = {
+                    "200": {
+                        "description": response_schema.__name__,
+                        "content": {
+                            "application/json": {
+                                "schema": {"$ref": _build_schema_ref(response_schema)},
+                            }
+                        },
+                    }
+                }
+            else:
+                operation["responses"] = {"200": {"description": "Success"}}
+                warnings.warn(
+                    f"Route {rule.endpoint!r} has no response schema — "
+                    f"add one to @api_route"
+                )
+
+            paths[openapi_path][method.lower()] = operation
+
+    spec: dict[str, Any] = {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "urls4irl API",
+            "version": "1.0.0",
+        },
+        "x-non-json-responses": (
+            "Known non-JSON responses not documented in this spec: "
+            "302 redirects from @no_authenticated_users_allowed and "
+            "@email_validation_required auth decorators, "
+            "and HTML 404s from abort()/get_or_404()."
+        ),
+        "paths": dict(paths),
+        "components": {
+            "schemas": components_schemas,
+            "securitySchemes": {
+                "sessionAuth": {
+                    "type": "apiKey",
+                    "in": "cookie",
+                    "name": "session",
+                },
+                "csrfToken": {
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": "X-CSRFToken",
+                },
+            },
+        },
+    }
+
+    return spec
+
+
+@openapi_cli.command("generate")
+@click.option(
+    "--output",
+    "-o",
+    default="openapi.json",
+    help="Output file path",
+)
+@with_appcontext
+def generate_openapi_command(output: str) -> None:
+    """Generate an OpenAPI 3.1 JSON specification from registered API routes."""
+    output_path = Path(output)
+
+    # Validate parent directory exists
+    if not output_path.parent.exists():
+        raise click.ClickException(f"Directory does not exist: {output_path.parent}")
+
+    app = current_app._get_current_object()
+    spec = generate_openapi_spec(app)
+
+    path_count = len(spec["paths"])
+    schema_count = len(spec["components"]["schemas"])
+
+    output_path.write_text(json.dumps(spec, indent=2))
+    click.echo(
+        f"Generated OpenAPI 3.1 spec with {path_count} paths, "
+        f"{schema_count} schemas → {output_path}"
+    )
+
+
+def register_openapi_cli(app: Flask) -> None:
+    app.cli.add_command(openapi_cli)
