@@ -65,6 +65,7 @@ function deleteUTubShowModal(utubID) {
       closeUTubSearchAndEraseInput();
     });
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
   $("#modalRedirect").hide();
 }

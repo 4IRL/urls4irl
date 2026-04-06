@@ -18,18 +18,21 @@ class _UsernameStripMixin(BaseModel):
 
 class LoginRequest(_UsernameStripMixin):
     username: SanitizedStr = Field(
-        min_length=3,
-        max_length=20,
+        min_length=USER_CONSTANTS.MIN_USERNAME_LENGTH,
+        max_length=USER_CONSTANTS.MAX_USERNAME_LENGTH,
         description="Username for login",
         examples=["john_doe"],
     )
-    password: str = Field(min_length=1, description="Password for login")
+    password: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        description="Password for login",
+    )
 
 
 class RegisterRequest(_UsernameStripMixin):
     username: SanitizedStr = Field(
-        min_length=3,
-        max_length=20,
+        min_length=USER_CONSTANTS.MIN_USERNAME_LENGTH,
+        max_length=USER_CONSTANTS.MAX_USERNAME_LENGTH,
         description="Username for the new account",
         examples=["john_doe"],
     )
@@ -38,7 +41,7 @@ class RegisterRequest(_UsernameStripMixin):
         examples=["user@example.com"],
     )
     confirm_email: str = Field(
-        min_length=1,
+        min_length=USER_CONSTANTS.MIN_EMAIL_LENGTH,
         alias="confirmEmail",
         description="Email confirmation, must match email",
     )
@@ -48,7 +51,7 @@ class RegisterRequest(_UsernameStripMixin):
         description="Password for the new account",
     )
     confirm_password: str = Field(
-        min_length=1,
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
         alias="confirmPassword",
         description="Password confirmation, must match password",
     )
@@ -81,13 +84,13 @@ class ForgotPasswordRequest(BaseModel):
 
 class ResetPasswordRequest(BaseModel):
     new_password: str = Field(
-        min_length=12,
-        max_length=64,
+        min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,
+        max_length=USER_CONSTANTS.MAX_PASSWORD_LENGTH,
         alias="newPassword",
         description="New password for the account",
     )
     confirm_new_password: str = Field(
-        min_length=1,
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
         alias="confirmNewPassword",
         description="New password confirmation, must match new password",
     )

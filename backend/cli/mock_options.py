@@ -234,6 +234,18 @@ def create_db(db_type: str):
 )
 @with_appcontext
 def drop_db(db_type: str, keep_alembic: bool, **_kwargs: bool):
+    """Drop all tables in the specified database.
+
+    By default the alembic_version table is also dropped so that a subsequent
+    ``flask db upgrade`` re-runs every migration from scratch.  Pass
+    ``--keep-alembic`` to preserve the alembic_version table (useful when you
+    want ``flask db upgrade`` to remain a no-op after the drop).
+
+    ``**_kwargs`` absorbs the now-deprecated ``--drop-alembic`` Click flag so
+    that callers who still pass it do not receive an "unexpected option" error.
+    Each value in ``_kwargs`` is a boolean because all absorbed flags are
+    Click ``is_flag=True`` options.
+    """
     print(f"\n\n--- Dropping each table in {db_type} database ---\n")
     engine = db.engines[db_type]
     con = engine.connect()

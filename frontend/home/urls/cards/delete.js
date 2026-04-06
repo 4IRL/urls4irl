@@ -34,6 +34,7 @@ export function deleteURLShowModal(utubUrlID, urlCard, utubID) {
     })
     .text(buttonTextSubmit);
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal")
     .addClass("deleteUrlModal")
     .modal("show")

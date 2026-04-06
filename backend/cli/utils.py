@@ -106,6 +106,15 @@ VERIFY_TABLES_REPAIRED = "Database repaired — all tables verified after re-mig
 )
 @with_appcontext
 def verify_tables():
+    """Verify that every model table exists in the database.
+
+    If all tables are present the function exits cleanly.  If any are missing
+    and the app is running in a non-deployed environment (i.e. neither
+    ``PRODUCTION`` nor ``DEV_SERVER`` config flags are set), it automatically
+    repairs the database by dropping the public schema and re-running all
+    Alembic migrations.  In deployed environments missing tables are treated as
+    a fatal error that requires manual intervention.
+    """
     missing_tables = get_missing_tables()
     if not missing_tables:
         click.echo(VERIFY_TABLES_ALL_OK)

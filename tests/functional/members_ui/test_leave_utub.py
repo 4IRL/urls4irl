@@ -8,6 +8,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from locators import HomePageLocators as HPL
 from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utubs import Utubs
 from backend.utils.strings.user_strs import MEMBER_LEAVE_WARNING
 from tests.functional.assert_utils import (
     assert_login_with_username,
@@ -26,9 +28,11 @@ from tests.functional.selenium_utils import (
     force_next_delete_ajax_failure_no_navigate,
     get_num_utubs,
     invalidate_csrf_token_on_page,
+    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_utub_name_appears,
     wait_until_visible_css_selector,
 )
 
@@ -350,6 +354,66 @@ def test_leave_utub_submit_button_reenables_on_server_error(
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
+
+
+def test_leave_utub_submit_button_enabled_on_second_modal_open(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    Tests that the submit button is enabled when opening the leave UTub modal for a
+    second UTub after successfully leaving the first.
+
+    GIVEN a user is a member of at least 2 UTubs they did not create
+    WHEN they successfully leave UTub A and then open the leave modal for UTub B
+    THEN ensure the #modalSubmit button is NOT disabled
+    """
+    app = provide_app
+    user_id_for_test = 1
+
+    with app.app_context():
+        non_created_utubs: list = (
+            Utubs.query.join(
+                Utub_Members,
+                (Utub_Members.utub_id == Utubs.id)
+                & (Utub_Members.user_id == user_id_for_test),
+            )
+            .filter(Utubs.utub_creator != user_id_for_test)
+            .all()
+        )
+        first_utub_id = non_created_utubs[0].id
+        first_utub_name = non_created_utubs[0].name
+        second_utub_id = non_created_utubs[1].id
+        second_utub_name = non_created_utubs[1].name
+
+    login_user_and_select_utub_by_name(app, browser, user_id_for_test, first_utub_name)
+
+    # Get UTub element reference before leaving so we can wait for its removal
+    first_utub_css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{first_utub_id}"]'
+    first_utub_elem = browser.find_element(By.CSS_SELECTOR, first_utub_css_selector)
+
+    # Leave the first UTub
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(browser, first_utub_elem)
+
+    # Select the second UTub and open the leave modal
+    second_utub_css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{second_utub_id}"]'
+    wait_then_click_element(browser, second_utub_css_selector, time=3)
+    wait_until_utub_name_appears(browser, second_utub_name)
+
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+
+    # Assert the submit button is NOT disabled when the modal opens for the second UTub
     WebDriverWait(browser, 5).until(
         lambda driver: not driver.find_element(
             By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT

@@ -29,6 +29,7 @@ from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_visible_css_selector,
 )
 from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_shown
 from tests.functional.tags_ui.selenium_utils import (
@@ -489,6 +490,52 @@ def test_delete_utub_tag_submit_button_reenables_on_server_error(
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
+
+
+def test_delete_utub_tag_submit_button_enabled_on_second_modal_open(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests that the submit button is enabled when opening the delete modal for a
+    second UTub tag after successfully deleting the first.
+
+    GIVEN a user in a UTub with at least 2 tags
+    WHEN they successfully delete tag 1 and then open the delete modal for tag 2
+    THEN ensure the #modalSubmit button is NOT disabled
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+
+    # Get the first visible tag
+    first_tag_elem = get_first_visible_tag_in_utub(browser)
+    first_tag_id = first_tag_elem.get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
+    assert first_tag_id
+
+    # Delete the first tag (leaves UI in tag update mode)
+    delete_utub_tag_elem(browser, first_tag_id, app)
+
+    # Still in update mode — get the next visible tag and click its delete button directly
+    second_tag_elem = get_first_visible_tag_in_utub(browser)
+    second_tag_id = second_tag_elem.get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
+    assert second_tag_id
+
+    second_tag_delete_selector = (
+        f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{second_tag_id}']"
+        f" > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
+    )
+    wait_then_click_element(browser, second_tag_delete_selector, time=3)
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+
+    # Assert the submit button is NOT disabled when the modal opens for the second tag
     WebDriverWait(browser, 5).until(
         lambda driver: not driver.find_element(
             By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT

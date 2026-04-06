@@ -43,6 +43,7 @@ from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_visible_css_selector,
 )
 from locators import HomePageLocators as HPL
 
@@ -431,6 +432,61 @@ def test_delete_url_submit_button_reenables_on_server_error(
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
+
+
+def test_delete_url_submit_button_enabled_on_second_modal_open(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that the submit button is enabled when opening the delete modal for a
+    second URL after successfully deleting the first.
+
+    GIVEN a user with a selected UTub containing at least 2 URLs
+    WHEN they successfully delete URL 1 and then open the delete modal for URL 2
+    THEN ensure the #modalSubmit button is NOT disabled
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_created.id
+        ).all()
+        first_utub_url_id = utub_urls[0].id
+        first_utub_url_string = utub_urls[0].standalone_url.url_string
+        second_utub_url_id = utub_urls[1].id
+
+    login_select_utub_select_url_click_delete_get_modal_url(
+        browser=browser,
+        app=app,
+        user_id=user_id_for_test,
+        utub_name=utub_user_created.name,
+        url_string=first_utub_url_string,
+    )
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Wait for the first URL row to be removed from the DOM
+    first_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{first_utub_url_id}"]'
+    first_url_row_elem = browser.find_element(By.CSS_SELECTOR, first_url_row_selector)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(browser, first_url_row_elem)
+
+    # Select the second URL and open its delete modal
+    second_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{second_utub_url_id}"]'
+    wait_then_click_element(browser, second_url_row_selector, time=3)
+    wait_then_click_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=3
+    )
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=5)
+
+    # Assert the submit button is NOT disabled when the modal opens for the second URL
     WebDriverWait(browser, 5).until(
         lambda driver: not driver.find_element(
             By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT

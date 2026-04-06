@@ -96,6 +96,7 @@ export function removeMemberShowModal(memberID, isCreator, utubID) {
     })
     .text(buttonTextSubmit);
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
   $("#modalRedirect").hide();
 }

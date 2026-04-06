@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from backend import db
 from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import (
@@ -391,6 +391,60 @@ def test_delete_utub_submit_button_reenables_on_server_error(
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 
     # Poll until the async failure handler re-enables the submit button
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
+
+
+def test_delete_utub_submit_button_enabled_on_second_modal_open(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests that the submit button is enabled when opening the delete modal for a
+    second UTub after successfully deleting the first.
+
+    GIVEN a user who owns at least 2 UTubs
+    WHEN they successfully delete UTub A and then open the delete modal for UTub B
+    THEN ensure the #modalSubmit button is NOT disabled
+    """
+    app = provide_app
+    user_id_for_test = 1
+    first_utub_created = get_utub_this_user_created(app, user_id_for_test)
+
+    # Create a second UTub for user 1 directly in the database
+    with app.app_context():
+        second_utub = Utubs(
+            name="MockUTub_second",
+            utub_creator=user_id_for_test,
+            utub_description="Second UTub for delete test",
+        )
+        db.session.add(second_utub)
+        db.session.flush()
+        second_utub_member = Utub_Members()
+        second_utub_member.member_role = Member_Role.CREATOR
+        second_utub_member.user_id = user_id_for_test
+        second_utub_member.to_utub = second_utub
+        db.session.add(second_utub_member)
+        db.session.commit()
+        second_utub_id = second_utub.id
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, first_utub_created.name
+    )
+
+    # Delete the first UTub
+    delete_utub_as_creator(browser, first_utub_created)
+
+    # Select the second UTub and open its delete modal
+    second_utub_css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{second_utub_id}"]'
+    wait_then_click_element(browser, second_utub_css_selector, time=3)
+    wait_until_visible_css_selector(browser, HPL.BUTTON_UTUB_DELETE, timeout=3)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+
+    # Assert the submit button is NOT disabled when the modal opens for the second UTub
     WebDriverWait(browser, 5).until(
         lambda driver: not driver.find_element(
             By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT

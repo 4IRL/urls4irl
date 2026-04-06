@@ -48,6 +48,7 @@ export function deleteUTubTagShowModal(utubID, utubTagID, string) {
       deleteUTubTag(utubID, utubTagID);
     });
 
+  $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
   $("#modalRedirect").hide();
 }

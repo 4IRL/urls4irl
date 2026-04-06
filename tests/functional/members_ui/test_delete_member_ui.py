@@ -370,3 +370,52 @@ def test_delete_member_submit_button_reenables_on_server_error(
             By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
         ).get_property("disabled")
     )
+
+
+def test_delete_member_submit_button_enabled_on_second_modal_open(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    Tests that the submit button is enabled when opening the delete modal for a
+    second member after successfully deleting the first.
+
+    GIVEN a user owns a UTub with at least 2 other members
+    WHEN they successfully delete member 1 and then open the delete modal for member 2
+    THEN ensure the #modalSubmit button is NOT disabled
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    with app.app_context():
+        other_members: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id != user_id,
+            Utub_Members.utub_id == utub_user_created.id,
+        ).all()
+        first_member_user = other_members[0].to_user
+        second_member_user = other_members[1].to_user
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    # Delete the first member
+    delete_member_active_utub(browser, first_member_user.username)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    # Wait for the first member's badge to be removed from the DOM
+    first_member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{first_member_user.id}"]'
+    first_member_elem = browser.find_element(By.CSS_SELECTOR, first_member_selector)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(browser, first_member_elem)
+
+    # Open the delete modal for the second member
+    delete_member_active_utub(browser, second_member_user.username)
+
+    # Assert the submit button is NOT disabled when the modal opens for the second member
+    WebDriverWait(browser, 5).until(
+        lambda driver: not driver.find_element(
+            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
+        ).get_property("disabled")
+    )
