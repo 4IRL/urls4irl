@@ -30,6 +30,7 @@ def no_authenticated_users_allowed(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = no_authenticated_users_allowed.__name__
     return decorated_view
 
 
@@ -48,6 +49,7 @@ def email_validation_required(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = email_validation_required.__name__
     return decorated_view
 
 
@@ -70,10 +72,11 @@ def utub_membership_required(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = utub_membership_required.__name__
     return decorated_view
 
 
-def utub_creator_required(func: Callable):
+def utub_creator_required(func: Callable) -> Callable:
     @wraps(func)
     @utub_membership_required
     def decorated_view(*args, **kwargs):
@@ -91,6 +94,7 @@ def utub_creator_required(func: Callable):
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = utub_creator_required.__name__
     return decorated_view
 
 
@@ -114,6 +118,9 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = (
+        utub_membership_with_valid_url_in_utub_required.__name__
+    )
     return decorated_view
 
 
@@ -130,6 +137,7 @@ def url_adder_or_creator_required(message: str) -> Callable:
                 return build_message_error_response(message=message, status_code=403)
             return func(*args, **kwargs)
 
+        decorated_view._auth_decorator = url_adder_or_creator_required.__name__
         return decorated_view
 
     return decorator
@@ -158,6 +166,7 @@ def utub_membership_with_valid_utub_tag(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = utub_membership_with_valid_utub_tag.__name__
     return decorated_view
 
 
@@ -185,4 +194,19 @@ def utub_membership_with_valid_url_tag(func: Callable) -> Callable:
 
         return func(*args, **kwargs)
 
+    decorated_view._auth_decorator = utub_membership_with_valid_url_tag.__name__
     return decorated_view
+
+
+# Auth decorators that require an active session (used by OpenAPI spec generator)
+SESSION_AUTH_DECORATORS: frozenset[str] = frozenset(
+    {
+        email_validation_required.__name__,
+        url_adder_or_creator_required.__name__,
+        utub_creator_required.__name__,
+        utub_membership_required.__name__,
+        utub_membership_with_valid_url_in_utub_required.__name__,
+        utub_membership_with_valid_url_tag.__name__,
+        utub_membership_with_valid_utub_tag.__name__,
+    }
+)

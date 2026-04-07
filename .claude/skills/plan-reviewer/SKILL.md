@@ -47,205 +47,146 @@ Before launching subagents, create `plans/<topic>/tmp/` if it does not already e
 
 ### Step 2: Launch 6 Parallel Review Subagents
 
-Read `.claude/skills/plan-reviewer/references/subagent-prompts.md` for the full prompt definitions and expected response format.
+Launch **all 6 subagents in parallel** using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from the reference file — the orchestrator does NOT inline the full checklist or response format.
 
-Launch **all 6 subagents in parallel** using the Agent tool. Each subagent:
-- Receives the plan file path from Step 1
-- Receives its specific review focus area from the reference file
-- Must independently read the plan AND relevant source files (no pre-fetching by the main agent)
-- Must return a structured JSON response with `verdict`, `findings`, `files_read`, and `summary`
+**Subagent prompt template** (send this to each, filling in the blanks):
 
-**Critical instruction for each subagent prompt:** Include the full text of the relevant subagent section from `.claude/skills/plan-reviewer/references/subagent-prompts.md` (response format + the specific subagent's checklist). Also include:
-
-> You are reviewing the plan at `plans/<topic>/<plan-name>.md`. Read it in full, then read the source files relevant to your review area. Write your complete JSON response to `plans/<topic>/tmp/<role>.md` (where `<role>` is your subagent role filename, e.g. `correctness.md`), then return only this one-line confirmation: `Written to <path>`.
+> You are Subagent #N (<Role Name>) reviewing the plan at `plans/<topic>/<plan-name>.md`.
 >
-> **Do not defer any dimension to a follow-up pass.** Every item in your checklist must be evaluated before writing findings. If you run out of findings in one area, continue to the next.
+> 1. Read `.claude/skills/plan-reviewer/references/subagent-prompts.md` — find the "Response Format" section and your specific subagent section ("Subagent N: <Role Name>"). Follow those instructions exactly.
+> 2. Read the plan in full, then read the source files relevant to your review area.
+> 3. Write your complete JSON response to `plans/<topic>/tmp/<role>.md`.
+> 4. Return only: `Written to <path>`.
+>
+> **Do not defer any dimension to a follow-up pass.** Every checklist item must be evaluated.
+> <Pass 2+ only: "This is Pass N. Do not re-flag issues already fixed. Prior fixes: [concise bullet list of fix titles from earlier passes]">
+
+**Key rules:**
+- Each subagent reads source files independently — the main agent does NOT pre-read files
+- All 6 launches must be in a **single message** for true parallelism
+- Use `model: sonnet` for all review subagents
 
 Subagents (all launched in a single message):
 
-| # | Name | Role filename | Focus | Key files to read |
-|---|---|---|---|---|
-| 1 | Correctness & Accuracy | `correctness.md` | Plan assertions vs actual code, signatures, Pydantic | Source files the plan references, one level of callees |
-| 2 | Full-Stack Trace | `full-stack-trace.md` | Per-endpoint request/response cycle | Route handlers, JS files (entire module dir), templates |
-| 3 | Ordering, Dependencies & Cleanup | `ordering.md` | Step sequencing, intermediate state, dead imports | Plan + lint config (`tox.ini`, `.flake8`, `pyproject.toml`) |
-| 4 | Codebase Integration & Conventions | `integration.md` | Project patterns, CLAUDE.md rules, packages | CLAUDE.md, ARCHITECTURE.md, requirements files, sample module files |
-| 5 | Verification & Test Coverage | `verification.md` | Verification sufficiency, layer-match | Test files, `pytest.ini`, `Makefile` |
-| 6 | Completeness, Risk & Specificity | `completeness.md` | Gaps, risks, underspecified steps | Schema defs, factory methods, template structures |
+| # | Name | Role filename |
+|---|---|---|
+| 1 | Correctness & Accuracy | `correctness.md` |
+| 2 | Full-Stack Trace | `full-stack-trace.md` |
+| 3 | Ordering, Dependencies & Cleanup | `ordering.md` |
+| 4 | Codebase Integration & Conventions | `integration.md` |
+| 5 | Verification & Test Coverage | `verification.md` |
+| 6 | Completeness, Risk & Specificity | `completeness.md` |
 
 ### Step 3: Collect and Validate Results
 
-After all 6 subagents return their one-line confirmations, read each `plans/<topic>/tmp/<role>.md` file to retrieve the JSON findings. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`.
+After all 6 subagents return their one-line confirmations, verify each `plans/<topic>/tmp/<role>.md` file exists. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`.
 
 For each file:
-- Parse the JSON response
-- If a file is missing or contains invalid JSON, treat as FAIL with a note about the parse error
-- Tally findings by severity across all subagents
+- If a file is missing or contains invalid JSON, note it — the coordinator (Step 3b) will treat that reviewer as FAIL with a parse error finding
 
-### Step 4: Merge Findings into Review Document
+### Step 3b: Launch Coordinator Subagent
 
-#### Deduplication
+After confirming all 6 files are present, launch a **single coordinator subagent** to deduplicate, conflict-detect, and produce two output files.
 
-Before writing, deduplicate findings across subagents:
-- If two subagents flag the same issue (same step + same file + same root cause), keep the more detailed finding and note which subagents identified it
-- Findings about the same step but different aspects are NOT duplicates — keep both
+The coordinator subagent prompt:
 
-#### Coverage Checklist
+> Read `.claude/skills/plan-reviewer/references/subagent-prompts.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/{correctness,full-stack-trace,ordering,integration,verification,completeness}.md`. Follow the coordinator workflow, then write TWO files:
+>
+> 1. **`plans/<topic>/tmp/coordinator.md`** — the full JSON output (verdicts, summaries, files_read, findings) as specified in the reference file.
+> 2. **`plans/<topic>/tmp/coordinator-summary.md`** — a short summary for the orchestrator containing ONLY:
+>    - `verdicts`: one-line per reviewer (`correctness: PASS/FAIL`, etc.)
+>    - `counts`: `{critical: N, major: N, minor: N}` (deduplicated totals)
+>    - `mechanical_count`: number of findings with `fix_type: "mechanical"`
+>    - `design_decision_count`: number of findings with `fix_type: "design_decision"`
+>    - `design_decision_titles`: list of DD finding titles (one line each) — the orchestrator needs these for AskUserQuestion prompts
+>
+> Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summary.md`
 
-Build the coverage checklist from subagent results:
+- Uses `model: sonnet` for speed
+- The orchestrator reads ONLY `coordinator-summary.md` — never `coordinator.md` directly. The full findings file is consumed by the writer subagent (Step 4) and fixing subagents (Step 5b).
 
-| Area | Primary subagent | What to verify |
-|---|---|---|
-| Imports (dead, missing, circular) | #3 Ordering | Dead imports after deletions, missing imports for new symbols |
-| Type annotations | #1 Correctness | New/changed functions have correct type hints |
-| Error handling (status codes, exceptions, user feedback) | #2 Full-Stack Trace | Status codes match JS handlers, exceptions propagate correctly |
-| Test coverage (happy path, sad path, edge cases) | #5 Verification | Tests exist for every changed endpoint |
-| Breaking changes (API contracts, shared state, DB schema) | #6 Completeness | Cross-module dependencies accounted for |
-| Config consistency (env vars, requirements pins, lint rules) | #4 Integration | Env vars, lint rules, CI config aligned |
-| Naming conventions (CLAUDE.md rules, project patterns) | #4 Integration | No single-letter vars, no quoted hints, no window globals |
+### Step 4: Write Review Document via Subagent
 
-Mark each area `[x]` if the primary subagent reported reading the relevant files (check `files_read`). Mark `[ ]` with explanation if the subagent could not verify.
+**The orchestrator does NOT read `coordinator.md` or write the review document directly.** Instead, launch a **writer subagent** that handles all review document construction.
 
-#### File location
+The writer subagent prompt:
 
-`plans/<topic>/reviews/<plan-name>-review.md` — create `plans/<topic>/reviews/` if it doesn't exist. Derive `<topic>` from the plan file's parent directory.
+> You are a review document writer. Read `plans/<topic>/tmp/coordinator.md` (the full coordinator output) and write the review section into `plans/<topic>/reviews/<plan-name>-review.md`.
+>
+> Create `plans/<topic>/reviews/` if it doesn't exist. If the review file already exists, **append** a new dated section — do not overwrite.
+>
+> **Pass info:** This is Pass N. Date: <YYYY-MM-DD>. Use heading `## Review — <YYYY-MM-DD>` (Pass 1) or `## Review — <YYYY-MM-DD> (Pass N)` (Pass 2+).
+>
+> **Re-verify prior resolutions (required when appending):** When the file already exists, read every `[x]` item from prior reviews. For each, re-read the actual source file the fix depends on and confirm it resolves the root cause. If incorrect, re-open as a new Critical finding.
+>
+> **Document structure:** Use `classification` and `sources` from each finding for attribution: `duplicate` → append `*(flagged by: Subagent A, Subagent B)*`; `conflict` → render as a design decision naming disagreeing subagents.
+>
+> **Coverage checklist mapping:** Mark `[x]` if the primary subagent for that area reported reading relevant files (check `files_read`):
+> - Imports → #3 Ordering | Type annotations → #1 Correctness | Error handling → #2 Full-Stack Trace
+> - Test coverage → #5 Verification | Breaking changes → #6 Completeness | Config → #4 Integration | Naming → #4 Integration
+>
+> **DD numbering:** Design decisions use sequential IDs continuing from prior passes. Read the existing file to find the highest DD-N, then start from DD-(N+1). If no prior DDs exist, start at DD-1.
+>
+> Write the review section using this structure:
+> ```
+> ### Summary — 2-3 sentences
+> ### Subagent Results — table with verdicts and finding counts
+> ### Findings — grouped by Critical/Major/Minor (omit empty categories)
+> ### Verification Gaps — steps lacking verification
+> ### To-Do: Mechanical Fixes — checklist (all [ ] initially)
+> ### Design Decisions — each with DD-N, context, options table, empty Chosen field
+> ### Verdict — one of: Ready / Proceed after minor / Requires changes
+> ### Coverage Checklist — 7-area table
+> ```
+>
+> Return only: `Written to <review-file-path>`
 
-One file per plan. If a review file already exists, **append** a new dated review section; do not overwrite previous reviews.
-
-**Re-verify prior review resolutions (required when appending):** When a review file already exists, read every `[x]` item from prior reviews. For each, re-read the actual source file the fix depends on and confirm the fix resolves the root cause. "The plan now says X" is not verification — the code/template/config must support X. If a prior resolution is incorrect, re-open it as a new Critical finding.
-
-#### Review file structure
-
-```markdown
-# Review: <Plan Name>
-
-## Review — <YYYY-MM-DD>
-
-### Summary
-<2-3 sentence overall assessment: ready to proceed / needs changes / blocked.>
-
-### Subagent Results
-
-| # | Subagent | Verdict | Findings |
-|---|---|---|---|
-| 1 | Correctness & Accuracy | PASS/FAIL | N critical, N major, N minor |
-| 2 | Full-Stack Trace | PASS/FAIL | N critical, N major, N minor |
-| 3 | Ordering & Cleanup | PASS/FAIL | N critical, N major, N minor |
-| 4 | Integration & Conventions | PASS/FAIL | N critical, N major, N minor |
-| 5 | Verification & Coverage | PASS/FAIL | N critical, N major, N minor |
-| 6 | Completeness & Risk | PASS/FAIL | N critical, N major, N minor |
-
-### Findings
-
-#### Critical (must fix before proceeding)
-- **[Step N] <Finding title>** _(Subagent #N)_: <Specific issue and why it matters.>
-
-#### Major (should fix)
-- **[Step N] <Finding title>** _(Subagent #N)_: <Specific issue and impact.>
-
-#### Minor (nice to fix)
-- **[Step N] <Finding title>** _(Subagent #N)_: <Suggestion.>
-
-### Verification Gaps
-Steps that lack sufficient verification:
-- **Step N**: Suggest running `<command>` to verify `<behavior>`.
-
-### To-Do: Mechanical Fixes (auto-applied)
-- [x] <Fix description> _(applied by fixing subagent)_
-- [ ] <Fix description> _(skipped: <reason> — needs user input)_
-
-### Design Decisions (awaiting user input)
-
-#### DD-1: [Step N] <Decision title>
-**Context:** <Why this needs a decision — what the review found and why it can't be fixed mechanically.>
-
-| # | Option | Trade-off |
-|---|---|---|
-| 1 | <Option A> | <Pro/con> |
-| 2 | <Option B> | <Pro/con> |
-
-**Chosen:** _(filled in after user decides)_
-
----
-
-### Verdict
-[ ] Ready to proceed as-is
-[ ] Proceed after minor fixes
-[x] Requires changes before proceeding
-
-### Coverage Checklist
-| Area | Checked? | Notes |
-|---|---|---|
-| Imports (dead, missing, circular) | [x] / [ ] | <files checked or why not verified> |
-| Type annotations | [x] / [ ] | |
-| Error handling (status codes, exceptions, user feedback) | [x] / [ ] | |
-| Test coverage (happy path, sad path, edge cases) | [x] / [ ] | |
-| Breaking changes (API contracts, shared state, DB schema) | [x] / [ ] | |
-| Config consistency (env vars, requirements pins, lint rules) | [x] / [ ] | |
-| Naming conventions (CLAUDE.md rules, project patterns) | [x] / [ ] | |
-```
-
-If there are no findings in a category, omit that section.
+- Uses `model: sonnet` for speed
+- The orchestrator reads ONLY `coordinator-summary.md` (from Step 3b) — never the full coordinator output or the review file
 
 ### Step 5: Report, Auto-Fix Mechanicals, and Present Design Decisions
 
-#### 5a: Separate findings by fix_type
+#### 5a: Read the summary (orchestrator reads ONLY the summary)
 
-After deduplication, partition the to-do list into two groups:
+Read `plans/<topic>/tmp/coordinator-summary.md`. This gives the orchestrator:
+- Per-reviewer verdicts (PASS/FAIL)
+- Deduplicated finding counts (critical, major, minor)
+- Mechanical fix count and design decision count
+- Design decision titles (needed for AskUserQuestion prompts)
 
-**Mechanical fixes** (`fix_type: "mechanical"`):
-- List each with its exact edit description
-- These will be auto-applied without user confirmation
-
-**Design decisions** (`fix_type: "design_decision"`):
-- List each with the decision needed and the options
-- These require user input before any changes
+**The orchestrator NEVER reads `coordinator.md` directly.** The full findings are consumed by the fixing subagents (5b) and the writer subagent (Step 4).
 
 #### 5b: Auto-apply mechanical fixes
 
-Launch **one fixing subagent per mechanical finding** in parallel. Each subagent receives:
-- The plan file path
-- A single mechanical finding (title, step, fix_description)
+Launch **one or more fixing subagents** in parallel. Each fixing subagent reads `plans/<topic>/tmp/coordinator.md` directly to get its assigned findings.
 
-Each fixing subagent:
-1. Reads the plan file
-2. Applies its single mechanical fix (edits to plan text only — never source files)
-3. After the edit, verifies the surrounding plan text is still coherent (no orphaned references, no broken step numbering)
-4. Returns a JSON response:
+**Batching strategy:** Group mechanical findings into batches of ~5-8 per subagent (rather than one subagent per finding) to reduce subagent overhead. Each batch subagent:
 
-```json
-{
-  "status": "applied" | "skipped",
-  "title": "finding title",
-  "step": "Step N",
-  "edit_summary": "what was changed (if applied)",
-  "skip_reason": "why it couldn't be applied mechanically (if skipped)"
-}
-```
+1. Reads `plans/<topic>/tmp/coordinator.md` to extract its assigned findings (by title or index range)
+2. Reads the plan file
+3. Applies each mechanical fix (edits to plan text only — never source files)
+4. After each edit, verifies surrounding plan text is coherent
+5. Returns a JSON summary of applied/skipped fixes
 
 **All fixing subagents launch in a single message** for true parallelism. After all return, collect results into `applied` and `skipped` lists.
 
-**Skipped items**: If a fixing subagent discovers that its "mechanical" fix actually requires a design choice (e.g., the edit location is ambiguous, or applying it would contradict another part of the plan), it MUST skip it and explain why. Skipped items are promoted to design decisions and presented to the user.
+**Skipped items**: If a fixing subagent discovers that its "mechanical" fix actually requires a design choice, it MUST skip it and explain why. Skipped items are promoted to design decisions.
 
-#### 5c: Write design decisions into the review document
+#### 5c: Update review document with fix results
 
-Before presenting to the user, write all design decisions into the review document's `### Design Decisions (awaiting user input)` section. Each decision gets:
-- A sequential ID (`DD-1`, `DD-2`, etc.)
-- The step reference and title
-- Context explaining why this needs a decision
-- A table of options with trade-offs
-- An empty `**Chosen:**` field
-
-This ensures design decisions persist in the review file and are visible in future review passes, even if the conversation ends before the user decides.
+Launch a subagent to update the review document's mechanical fixes checklist:
+- Mark each applied fix as `[x]` with `_(applied)_`
+- Mark skipped items as `[ ]` with skip reason
+- The subagent reads the review file and edits it directly — the orchestrator does not
 
 #### 5d: Present results to user
 
-Present a concise summary:
+Present a concise summary using data from `coordinator-summary.md` and fix subagent results:
 - Current pass number (e.g., "Pass 1 of 3")
-- Overall verdict
-- Subagent results table (from the review document)
-- Count of critical / major / minor findings (deduplicated total)
-- **Mechanical fixes applied** (count + list with one-line summaries)
-- **Mechanical fixes skipped** (if any, with reasons — these need user input now)
+- Per-reviewer verdicts
+- Count of critical / major / minor findings
+- **Mechanical fixes applied** (count)
+- **Mechanical fixes skipped** (if any, with reasons)
 - Path to the review file
 
 **Do NOT apply design decisions to the plan without explicit user confirmation.**
@@ -253,49 +194,21 @@ Present a concise summary:
 
 #### 5e: Present design decisions via AskUserQuestion
 
-Present each design decision as an interactive question using the `AskUserQuestion` tool. This gives the user scrollable options they can select, plus an "Other" option for custom input.
+The orchestrator has the DD titles from `coordinator-summary.md`. For each DD, it needs enough context to construct the AskUserQuestion — the title and a brief description are sufficient. If the summary lacks option details, the orchestrator may read ONLY the specific DD entries from `coordinator.md` (grep for the finding title, read ~10 lines of context) rather than reading the entire file.
+
+Present each design decision using `AskUserQuestion`:
 
 **Constraints:**
-- `AskUserQuestion` supports max 4 questions per call, each with max 4 options
-- If there are more than 4 DDs, batch them across multiple `AskUserQuestion` calls (4 at a time)
-- If a DD has more than 4 options, include the top 3-4 most viable options; the user can always select "Other" for an unlisted alternative
+- Max 4 questions per call, each with max 4 options
+- Batch across multiple calls if needed
+- `multiSelect: false` (DDs are mutually exclusive)
 
-**Mapping DDs to AskUserQuestion format:**
-- `question`: `"DD-N: [Step M] <finding title>?"` — include enough context in the question text for the user to understand the decision without referencing the review file
+**Mapping:**
+- `question`: `"DD-N: [Step M] <finding title>?"` — include enough context for the user to decide
 - `header`: `"DD-N"` (max 12 chars)
-- `options`: Each option from the DD table becomes an option:
-  - `label`: Short option name (1-5 words), e.g., "Refactor initResetPasswordForm" or "Use .one() binding"
-  - `description`: The trade-off text from the DD table
-  - `preview` (optional): Use when the option involves a specific code pattern or API choice that benefits from visual comparison. Include a short code snippet or ASCII diagram showing the approach.
-- `multiSelect`: `false` (DDs are mutually exclusive choices)
+- `options`: label (1-5 words) + description (trade-off) + optional `preview` (code snippet)
 
-**Example mapping:**
-
-A DD like:
-```
-#### DD-1: [Step 4] Missing initResetPasswordForm $modal refactor
-| # | Option | Trade-off |
-|---|---|---|
-| 1 | Refactor initResetPasswordForm($modal) | Consistent with all other form inits; slightly more code touched |
-| 2 | Keep old signatures via wrapper | Avoids touching reset-password-form.js; adds indirection |
-```
-
-Becomes:
-```
-AskUserQuestion({
-  questions: [{
-    question: "DD-1: [Step 4] handleImproperFormErrors and showSplashModalAlertBanner now require $modal after Step 2's refactor, but reset-password-form.js still calls them without it. How should we fix this?",
-    header: "DD-1",
-    options: [
-      { label: "Refactor initResetPasswordForm($modal)", description: "Consistent with all other form inits; slightly more code touched" },
-      { label: "Keep old signatures via wrapper", description: "Avoids touching reset-password-form.js; adds indirection and a second API surface" }
-    ],
-    multiSelect: false
-  }]
-})
-```
-
-**After the user answers all DDs (across one or more AskUserQuestion calls):**
+**After the user answers all DDs:**
 
 #### 5f: Apply user's design decisions via subagent
 
@@ -453,10 +366,23 @@ Append a `### Skill Improvements Applied` section to the current review pass:
 
 ## Important Notes
 
+### Orchestrator Context Budget
+
+**The orchestrator must stay lean.** It is a dispatcher, not a reviewer. Follow these rules strictly:
+
+- **NEVER read `coordinator.md`** (the full findings JSON). Read only `coordinator-summary.md`.
+- **NEVER read or write the review document** directly. Delegate to the writer subagent (Step 4) and update subagent (Step 5c).
+- **NEVER inline the full subagent prompt text.** Send the minimal template (Step 2) — subagents read the reference file themselves.
+- **NEVER read the plan file** in the orchestrator. Subagents read it independently.
+- The orchestrator's job is: launch subagents → read summary → present DDs to user → launch fix/DD subagents → evaluate loop condition. That's it.
+
+### General Rules
+
 - Each subagent reads source files independently — the main agent does NOT pre-read files for them
 - All 6 subagent launches must be in a single message for true parallelism
-- If a subagent fails to return valid JSON, treat as FAIL with a parse error note
+- If a subagent fails to return valid JSON, the coordinator (Step 3b) handles it as a FAIL with a parse error finding — do not attempt to handle it in the orchestrator
 - Cite specific step numbers and file paths in every finding
 - If the plan is solid, say so clearly — a clean review is a useful result
 - Multiple reviews of the same plan accumulate in one file (append, don't overwrite)
 - The review file lives at `plans/<topic>/reviews/<plan-name>-review.md`. Derive `<topic>` from the plan file's parent directory.
+- **The coordinator subagent (Step 3b) guarantees non-contradictory mechanical fix items.** Any finding where two reviewers suggest incompatible plan edits to the same step is escalated to a design decision before the parallel fixing subagents run — so they never receive items that conflict with each other.
