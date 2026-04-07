@@ -12,11 +12,9 @@ from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 from pydantic import BaseModel
 
-HELP_SUMMARY_OPENAPI = """OpenAPI spec generation for U4I."""
-
 openapi_cli = AppGroup(
     "openapi",
-    help=HELP_SUMMARY_OPENAPI,
+    help="OpenAPI spec generation for U4I.",
 )
 
 # Auth decorators that imply session-based login
@@ -145,13 +143,16 @@ def generate_openapi_spec(app: Flask) -> dict[str, Any]:
     """Build an OpenAPI 3.1 spec dict from the Flask app's registered routes."""
     paths: defaultdict[str, dict] = defaultdict(dict)
     components_schemas: dict[str, Any] = {}
-    operation_ids: dict[str, str] = (
-        {}
-    )  # operation_id → endpoint (for collision detection)
+    # operation_id → endpoint (for collision detection)
+    operation_ids: dict[str, str] = {}
 
     for rule in app.url_map.iter_rules():
         # Skip non-API endpoints
-        if rule.endpoint == "static" or rule.endpoint.startswith("debugtoolbar"):
+        if (
+            rule.endpoint == "static"
+            or rule.endpoint.endswith(".static")
+            or rule.endpoint.startswith("debugtoolbar")
+        ):
             continue
 
         view_fn = app.view_functions.get(rule.endpoint)
@@ -176,12 +177,20 @@ def generate_openapi_spec(app: Flask) -> dict[str, Any]:
         # Extract path parameters
         path_params = _extract_path_parameters(rule.rule)
 
-        # Build operation for each HTTP method
-        for method in rule.methods:
-            if method in ("HEAD", "OPTIONS"):
-                continue
+        # Determine effective HTTP methods (exclude HEAD/OPTIONS)
+        effective_methods = sorted(
+            method for method in rule.methods if method not in ("HEAD", "OPTIONS")
+        )
+        is_multi_method = len(effective_methods) > 1
 
-            operation_id = _endpoint_to_operation_id(rule.endpoint)
+        # Build operation for each HTTP method
+        for method in effective_methods:
+            base_operation_id = _endpoint_to_operation_id(rule.endpoint)
+            operation_id = (
+                f"{base_operation_id}_{method.lower()}"
+                if is_multi_method
+                else base_operation_id
+            )
 
             # Check for duplicate operationIds
             if operation_id in operation_ids:
@@ -306,7 +315,7 @@ def generate_openapi_command(output: str) -> None:
     path_count = len(spec["paths"])
     schema_count = len(spec["components"]["schemas"])
 
-    output_path.write_text(json.dumps(spec, indent=2))
+    output_path.write_text(json.dumps(spec, indent=2), encoding="utf-8")
     click.echo(
         f"Generated OpenAPI 3.1 spec with {path_count} paths, "
         f"{schema_count} schemas → {output_path}"
