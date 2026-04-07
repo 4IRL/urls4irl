@@ -241,16 +241,17 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                     }
                 }
             else:
-                operation["responses"] = {"200": {"description": "Success"}}
                 if strict:
                     raise click.ClickException(
                         f"Route {rule.endpoint!r} has no response schema — "
                         f"add one to @api_route (use without --strict to warn instead)"
                     )
-                warnings.warn(
-                    f"Route {rule.endpoint!r} has no response schema — "
-                    f"add one to @api_route"
-                )
+                else:
+                    operation["responses"] = {"200": {"description": "Success"}}
+                    warnings.warn(
+                        f"Route {rule.endpoint!r} has no response schema — "
+                        f"add one to @api_route"
+                    )
 
             paths[openapi_path][method.lower()] = operation
 

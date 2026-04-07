@@ -110,3 +110,6 @@ class TestSessionAuthDecoratorRegistry:
             url_adder_or_creator_required.__name__,
         }
         assert SESSION_AUTH_DECORATORS == expected
+
+    def test_registry_size(self):
+        assert len(SESSION_AUTH_DECORATORS) == 7

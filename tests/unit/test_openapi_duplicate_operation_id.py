@@ -103,7 +103,10 @@ def test_no_response_schema_strict_raises_click_exception():
     app.register_blueprint(bp)
 
     with app.app_context():
-        with pytest.raises(click.ClickException, match="no response schema"):
+        with pytest.raises(
+            click.ClickException,
+            match=r"strict_bp\.no_schema_strict_route.*no response schema",
+        ):
             generate_openapi_spec(app, strict=True)
 
 

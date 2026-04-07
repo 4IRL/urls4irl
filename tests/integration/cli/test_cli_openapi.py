@@ -332,3 +332,4 @@ def test_strict_flag_fails_when_route_lacks_response_schema(tmp_path):
     )
     assert result.exit_code != 0
     assert "no response schema" in result.output
+    assert "schemaless" in result.output
