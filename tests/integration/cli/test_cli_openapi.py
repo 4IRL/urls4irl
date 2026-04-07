@@ -3,6 +3,10 @@ from __future__ import annotations
 import json
 
 import pytest
+from flask import Blueprint, Flask
+
+from backend.api_common.parse_request import api_route
+from backend.cli.openapi import register_openapi_cli
 
 pytestmark = pytest.mark.cli
 
@@ -282,3 +286,49 @@ def test_default_output_path_writes_openapi_json_to_cwd(runner, tmp_path, monkey
 
     spec = json.loads(default_output.read_text())
     assert spec["openapi"] == "3.1.0"
+
+
+def test_strict_flag_succeeds_when_all_routes_have_schemas(runner, tmp_path):
+    """
+    GIVEN a fully configured Flask app where all @api_route endpoints have response schemas
+    WHEN the developer runs `flask openapi generate --strict`
+    THEN exit code is 0 and the spec is written successfully
+    """
+    app, cli_runner = runner
+    output_path = tmp_path / "strict-openapi.json"
+
+    result = cli_runner.invoke(
+        args=["openapi", "generate", "--strict", "--output", str(output_path)]
+    )
+    assert result.exit_code == 0, f"--strict failed unexpectedly: {result.output}"
+    assert output_path.exists()
+
+    spec = json.loads(output_path.read_text())
+    assert spec["openapi"] == "3.1.0"
+
+
+def test_strict_flag_fails_when_route_lacks_response_schema(tmp_path):
+    """
+    GIVEN a Flask app with an @api_route that has no response schema
+    WHEN the developer runs `flask openapi generate --strict`
+    THEN exit code is non-zero and the error mentions the missing response schema
+    """
+    bp = Blueprint("schemaless_bp", __name__)
+
+    @bp.route("/schemaless", methods=["POST"])
+    @api_route(tags=["test"])
+    def schemaless_route() -> dict:
+        return {}
+
+    minimal_app = Flask(__name__)
+    minimal_app.register_blueprint(bp)
+    register_openapi_cli(minimal_app)
+
+    cli_runner = minimal_app.test_cli_runner()
+    output_path = tmp_path / "strict-fail.json"
+
+    result = cli_runner.invoke(
+        args=["openapi", "generate", "--strict", "--output", str(output_path)]
+    )
+    assert result.exit_code != 0
+    assert "no response schema" in result.output

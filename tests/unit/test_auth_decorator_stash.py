@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from backend.api_common.auth_decorators import (
+    SESSION_AUTH_DECORATORS,
     email_validation_required,
     no_authenticated_users_allowed,
     url_adder_or_creator_required,
@@ -90,3 +91,22 @@ class TestNonAuthDecoratorLacksAttribute:
     def test_api_route_only_lacks_auth_decorator_attr(self):
         wrapped = api_route(tags=["test"])(_dummy_fn)
         assert not hasattr(wrapped, AUTH_DECORATOR_ATTR)
+
+
+class TestSessionAuthDecoratorRegistry:
+    """Verify SESSION_AUTH_DECORATORS registry stays in sync with decorators."""
+
+    def test_registry_excludes_no_authenticated_users(self):
+        assert "no_authenticated_users_allowed" not in SESSION_AUTH_DECORATORS
+
+    def test_registry_contains_all_session_auth_decorators(self):
+        expected = {
+            email_validation_required.__name__,
+            utub_membership_required.__name__,
+            utub_creator_required.__name__,
+            utub_membership_with_valid_url_in_utub_required.__name__,
+            utub_membership_with_valid_utub_tag.__name__,
+            utub_membership_with_valid_url_tag.__name__,
+            url_adder_or_creator_required.__name__,
+        }
+        assert SESSION_AUTH_DECORATORS == expected

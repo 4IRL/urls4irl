@@ -12,22 +12,11 @@ from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 from pydantic import BaseModel
 
+from backend.api_common.auth_decorators import SESSION_AUTH_DECORATORS
+
 openapi_cli = AppGroup(
     "openapi",
     help="OpenAPI spec generation for U4I.",
-)
-
-# Auth decorators that imply session-based login
-SESSION_AUTH_DECORATORS = frozenset(
-    {
-        "email_validation_required",
-        "utub_membership_required",
-        "utub_creator_required",
-        "utub_membership_with_valid_url_in_utub_required",
-        "utub_membership_with_valid_utub_tag",
-        "utub_membership_with_valid_url_tag",
-        "url_adder_or_creator_required",
-    }
 )
 
 # Methods that require CSRF protection (Flask-WTF global enforcement)
@@ -139,7 +128,7 @@ def _build_security(
     return []
 
 
-def generate_openapi_spec(app: Flask) -> dict[str, Any]:
+def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
     """Build an OpenAPI 3.1 spec dict from the Flask app's registered routes."""
     paths: defaultdict[str, dict] = defaultdict(dict)
     components_schemas: dict[str, Any] = {}
@@ -253,6 +242,11 @@ def generate_openapi_spec(app: Flask) -> dict[str, Any]:
                 }
             else:
                 operation["responses"] = {"200": {"description": "Success"}}
+                if strict:
+                    raise click.ClickException(
+                        f"Route {rule.endpoint!r} has no response schema — "
+                        f"add one to @api_route (use without --strict to warn instead)"
+                    )
                 warnings.warn(
                     f"Route {rule.endpoint!r} has no response schema — "
                     f"add one to @api_route"
@@ -300,8 +294,14 @@ def generate_openapi_spec(app: Flask) -> dict[str, Any]:
     default="openapi.json",
     help="Output file path",
 )
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Error on routes missing response schemas",
+)
 @with_appcontext
-def generate_openapi_command(output: str) -> None:
+def generate_openapi_command(output: str, strict: bool) -> None:
     """Generate an OpenAPI 3.1 JSON specification from registered API routes."""
     output_path = Path(output)
 
@@ -310,7 +310,7 @@ def generate_openapi_command(output: str) -> None:
         raise click.ClickException(f"Directory does not exist: {output_path.parent}")
 
     app = current_app._get_current_object()
-    spec = generate_openapi_spec(app)
+    spec = generate_openapi_spec(app, strict=strict)
 
     path_count = len(spec["paths"])
     schema_count = len(spec["components"]["schemas"])

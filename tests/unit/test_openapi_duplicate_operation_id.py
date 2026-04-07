@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import warnings
 
+import click
 import pytest
 from flask import Blueprint, Flask
 
@@ -60,7 +61,7 @@ def test_endpoint_to_operation_id_converts_snake_case():
 def test_no_response_schema_produces_success_fallback_and_warning():
     """
     GIVEN a Flask app with an @api_route that has no response schema
-    WHEN generate_openapi_spec is called
+    WHEN generate_openapi_spec is called (strict=False, the default)
     THEN the 200 response description is 'Success' and a UserWarning is raised
     """
     bp = Blueprint("test_bp", __name__)
@@ -83,6 +84,27 @@ def test_no_response_schema_produces_success_fallback_and_warning():
 
     warning_messages = [str(warning.message) for warning in caught_warnings]
     assert any("no response schema" in msg for msg in warning_messages)
+
+
+def test_no_response_schema_strict_raises_click_exception():
+    """
+    GIVEN a Flask app with an @api_route that has no response schema
+    WHEN generate_openapi_spec is called with strict=True
+    THEN a click.ClickException is raised mentioning the endpoint name
+    """
+    bp = Blueprint("strict_bp", __name__)
+
+    @bp.route("/no-schema-strict", methods=["POST"])
+    @api_route(tags=["test"])
+    def no_schema_strict_route() -> dict:
+        return {}
+
+    app = Flask(__name__)
+    app.register_blueprint(bp)
+
+    with app.app_context():
+        with pytest.raises(click.ClickException, match="no response schema"):
+            generate_openapi_spec(app, strict=True)
 
 
 def test_multi_method_endpoint_gets_method_suffix_on_operation_id():
