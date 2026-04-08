@@ -37,7 +37,7 @@ class TestSchemaHasStatusProperty:
         WHEN _schema_has_status_property is called
         THEN it returns True
         """
-        assert _schema_has_status_property(DirectStatusSchema) is True
+        assert _schema_has_status_property(DirectStatusSchema)
 
     def test_inherited_status_returns_true(self) -> None:
         """
@@ -45,7 +45,7 @@ class TestSchemaHasStatusProperty:
         WHEN _schema_has_status_property is called
         THEN it returns True
         """
-        assert _schema_has_status_property(InheritedStatusSchema) is True
+        assert _schema_has_status_property(InheritedStatusSchema)
 
     def test_no_status_returns_false(self) -> None:
         """
@@ -53,7 +53,7 @@ class TestSchemaHasStatusProperty:
         WHEN _schema_has_status_property is called
         THEN it returns False
         """
-        assert _schema_has_status_property(NoStatusSchema) is False
+        assert not _schema_has_status_property(NoStatusSchema)
 
 
 class TestSchemaIsEmpty:
@@ -65,7 +65,7 @@ class TestSchemaIsEmpty:
         WHEN _schema_is_empty is called
         THEN it returns True
         """
-        assert _schema_is_empty(EmptySchema) is True
+        assert _schema_is_empty(EmptySchema)
 
     def test_non_empty_schema_returns_false(self) -> None:
         """
@@ -73,4 +73,4 @@ class TestSchemaIsEmpty:
         WHEN _schema_is_empty is called
         THEN it returns False
         """
-        assert _schema_is_empty(NonEmptySchema) is False
+        assert not _schema_is_empty(NonEmptySchema)

@@ -156,13 +156,13 @@ def _build_response_schema_obj(schema_cls: Type[BaseModel]) -> dict[str, Any]:
         return {"$ref": _build_schema_ref(schema_cls)}
     elif _schema_is_empty(schema_cls):
         return {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"}
-    else:
-        return {
-            "allOf": [
-                {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"},
-                {"$ref": _build_schema_ref(schema_cls)},
-            ]
-        }
+
+    return {
+        "allOf": [
+            {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"},
+            {"$ref": _build_schema_ref(schema_cls)},
+        ]
+    }
 
 
 def _build_security(
