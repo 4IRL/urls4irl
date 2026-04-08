@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from enum import IntEnum
 
 import pytest
 from flask import Blueprint, Flask
@@ -8,16 +9,7 @@ from flask import Blueprint, Flask
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
 from backend.contact.constants import ContactErrorCodes
-from backend.members.constants import UTubMembersErrorCodes
-from backend.splash.constants import (
-    ForgotPasswordErrorCodes,
-    LoginErrorCodes,
-    RegisterErrorCodes,
-    ResetPasswordErrorCodes,
-)
-from backend.tags.constants import URLTagErrorCodes, UTubTagErrorCodes
 from backend.urls.constants import URLErrorCodes
-from backend.utubs.constants import UTubErrorCodes
 
 pytestmark = pytest.mark.cli
 
@@ -346,55 +338,65 @@ def test_strict_flag_fails_when_route_lacks_response_schema(tmp_path):
     assert "schemaless" in result.output
 
 
-ALL_ERROR_CODE_ENUMS = (
-    URLErrorCodes,
-    UTubErrorCodes,
-    UTubMembersErrorCodes,
-    UTubTagErrorCodes,
-    URLTagErrorCodes,
-    LoginErrorCodes,
-    RegisterErrorCodes,
-    ForgotPasswordErrorCodes,
-    ResetPasswordErrorCodes,
-    ContactErrorCodes,
-)
+def _collect_registered_error_code_enums(app: Flask) -> set[type]:
+    """Discover all IntEnum classes stashed on @api_route-decorated view functions.
+
+    Walks the app's url_map exactly like the spec generator does, returning
+    the set of unique enum classes. This means adding a new error_code enum
+    to any @api_route is automatically picked up by tests — no manual list.
+    """
+    enums: set[type] = set()
+    for rule in app.url_map.iter_rules():
+        view_fn = app.view_functions.get(rule.endpoint)
+        if view_fn is None:
+            continue
+        enum_cls = getattr(view_fn, "_api_route_error_code_enum", None)
+        if enum_cls is not None and issubclass(enum_cls, IntEnum):
+            enums.add(enum_cls)
+    return enums
 
 
 def test_operations_with_error_codes_have_x_error_codes_extension(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec
     WHEN we collect all operations containing x-error-codes
-    THEN every known error code enum class appears at least once, and
-         spot-checked enum values match {member.name: member.value}
+    THEN every error code enum registered on @api_route appears in the spec,
+         and spot-checked enum values match {member.name: member.value}
+
+    The set of expected enums is auto-discovered from the app's routes — no
+    hardcoded list to maintain. Adding a new IntEnum error_code to any
+    @api_route is automatically covered.
     """
+    app, _ = runner
     spec = _generate_spec(runner, tmp_path)
 
-    # Collect all operations that have x-error-codes
-    operations_with_error_codes: list[dict] = []
+    registered_enums = _collect_registered_error_code_enums(app)
+    assert len(registered_enums) > 0, "No error code enums found on any route"
+
+    # Collect all enum names found in x-error-codes across the spec
+    found_enum_names: set[str] = set()
     for path, path_item in spec["paths"].items():
         for method, operation in path_item.items():
             if isinstance(operation, dict) and "x-error-codes" in operation:
-                operations_with_error_codes.append(operation)
+                found_enum_names.update(operation["x-error-codes"].keys())
 
-    assert len(operations_with_error_codes) > 0, "No operations have x-error-codes"
-
-    # Build a set of all enum class names found across operations
-    found_enum_names: set[str] = set()
-    for operation in operations_with_error_codes:
-        found_enum_names.update(operation["x-error-codes"].keys())
-
-    # Every known enum class must appear at least once
-    for enum_cls in ALL_ERROR_CODE_ENUMS:
+    # Every registered enum class must appear in the spec
+    for enum_cls in registered_enums:
         assert (
             enum_cls.__name__ in found_enum_names
-        ), f"{enum_cls.__name__} not found in any x-error-codes extension"
+        ), f"{enum_cls.__name__} is registered on a route but missing from x-error-codes"
 
     # Spot-check: verify URLErrorCodes value format
     spot_check_operation = next(
-        op
-        for op in operations_with_error_codes
-        if "URLErrorCodes" in op["x-error-codes"]
+        (
+            op
+            for path_item in spec["paths"].values()
+            for op in path_item.values()
+            if isinstance(op, dict) and "URLErrorCodes" in op.get("x-error-codes", {})
+        ),
+        None,
     )
+    assert spot_check_operation is not None, "URLErrorCodes not found in any operation"
     expected_url_error_codes = {member.name: member.value for member in URLErrorCodes}
     assert (
         spot_check_operation["x-error-codes"]["URLErrorCodes"]
