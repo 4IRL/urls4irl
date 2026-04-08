@@ -411,7 +411,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/contact/routes.py:submit_contact_us` |
-| **Decorators** | `@api_route(request_schema=ContactRequest, response_schema=ContactResponseSchema, ajax_required=False, tags=["contact"], description="Submit a contact form", status_codes={200: ContactResponseSchema, 400: ErrorResponse})`, `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])` |
+| **Decorators** | `@api_route(request_schema=ContactRequest, error_message="Unable to submit contact form.", error_code=ContactErrorCodes.INVALID_FORM_INPUT, response_schema=ContactResponseSchema, ajax_required=False, tags=["contact"], description="Submit a contact form", status_codes={200: ContactResponseSchema, 400: ErrorResponse})`, `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])` |
 | **Schema** | `backend/schemas/requests/contact.py:ContactRequest` |
 | **Request** | JSON `{"subject": "...", "content": "..."}` |
 | **Response** | Success: JSON `{"status": "Success", "message": "..."}`, Failure: JSON `{"status": "Failure", "errors": {...}}` |

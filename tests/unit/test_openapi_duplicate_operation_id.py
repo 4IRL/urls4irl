@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import warnings
 
-import click
 import pytest
 from flask import Blueprint, Flask
 
@@ -86,11 +85,11 @@ def test_no_response_schema_produces_success_fallback_and_warning():
     assert any("no response schema" in msg for msg in warning_messages)
 
 
-def test_no_response_schema_strict_raises_click_exception():
+def test_no_response_schema_strict_raises_value_error():
     """
     GIVEN a Flask app with an @api_route that has no response schema
     WHEN generate_openapi_spec is called with strict=True
-    THEN a click.ClickException is raised mentioning the endpoint name
+    THEN a ValueError is raised mentioning the endpoint name
     """
     bp = Blueprint("strict_bp", __name__)
 
@@ -104,7 +103,7 @@ def test_no_response_schema_strict_raises_click_exception():
 
     with app.app_context():
         with pytest.raises(
-            click.ClickException,
+            ValueError,
             match=r"strict_bp\.no_schema_strict_route.*no response schema",
         ):
             generate_openapi_spec(app, strict=True)

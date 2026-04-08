@@ -1,7 +1,9 @@
 from __future__ import annotations
+
+from enum import IntEnum
+from functools import wraps
 import inspect
 import re
-from functools import wraps
 from typing import Callable, Type, TypeVar
 
 from flask import redirect, request, url_for
@@ -46,7 +48,7 @@ def api_route(
     request_schema: Type[SchemaT] | None = None,
     response_schema: Type[BaseSchema] | None = None,
     error_message: str | None = None,
-    error_code: int | None = None,
+    error_code: IntEnum | int | None = None,
     ajax_required: bool = True,
     tags: list[str] | None = None,
     description: str | None = None,
@@ -137,6 +139,15 @@ def api_route(
         wrapper._api_route_tags = tags
         wrapper._api_route_description = description
         wrapper._api_route_status_codes = status_codes
+        if isinstance(error_code, IntEnum):
+            wrapper._api_route_error_code_enum = type(error_code)
+        elif isinstance(error_code, int):
+            raise TypeError(
+                "error_code must be an IntEnum member, not a plain int. "
+                "Define an IntEnum class for your error codes."
+            )
+        else:
+            wrapper._api_route_error_code_enum = None
         return wrapper
 
     return decorator

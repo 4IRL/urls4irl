@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import json
-import re
-import warnings
 from collections import defaultdict
+from enum import IntEnum
+import json
 from pathlib import Path
+import re
 from typing import Any, Type
+import warnings
 
 import click
 from flask import Flask, current_app
@@ -159,6 +160,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
         description = view_fn._api_route_description
         status_codes = view_fn._api_route_status_codes
         auth_decorator = getattr(view_fn, "_auth_decorator", None)
+        error_code_enum = getattr(view_fn, "_api_route_error_code_enum", None)
 
         # Convert path
         openapi_path = _flask_path_to_openapi(rule.rule)
@@ -242,7 +244,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                 }
             else:
                 if strict:
-                    raise click.ClickException(
+                    raise ValueError(
                         f"Route {rule.endpoint!r} has no response schema — "
                         f"add one to @api_route (use without --strict to warn instead)"
                     )
@@ -252,6 +254,15 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                         f"Route {rule.endpoint!r} has no response schema — "
                         f"add one to @api_route"
                     )
+
+            # Error code enums are automatically discovered from the error_code
+            # kwarg stashed by @api_route — no manual registry needed.
+            if error_code_enum is not None and issubclass(error_code_enum, IntEnum):
+                operation["x-error-codes"] = {
+                    error_code_enum.__name__: {
+                        member.name: member.value for member in error_code_enum
+                    }
+                }
 
             paths[openapi_path][method.lower()] = operation
 
@@ -311,7 +322,10 @@ def generate_openapi_command(output: str, strict: bool) -> None:
         raise click.ClickException(f"Directory does not exist: {output_path.parent}")
 
     app = current_app._get_current_object()
-    spec = generate_openapi_spec(app, strict=strict)
+    try:
+        spec = generate_openapi_spec(app, strict=strict)
+    except ValueError as exc:
+        raise click.ClickException(str(exc))
 
     path_count = len(spec["paths"])
     schema_count = len(spec["components"]["schemas"])

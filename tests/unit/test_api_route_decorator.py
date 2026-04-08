@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from backend import limiter
 from backend.api_common.parse_request import _schema_name_to_kwarg, api_route
+from backend.contact.constants import ContactErrorCodes
 from backend.contact.routes import contact
 from backend.members.routes import members
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
@@ -93,7 +94,7 @@ def minimal_app():
     @api_route(
         request_schema=LoginRequest,
         error_message="Invalid input",
-        error_code=1,
+        error_code=ContactErrorCodes.INVALID_FORM_INPUT,
     )
     def test_with_body(login_request: LoginRequest):
         return {"username": login_request.username}, 200
@@ -108,7 +109,7 @@ def minimal_app():
         request_schema=LoginRequest,
         response_schema=LoginRedirectResponseSchema,
         error_message="Invalid input",
-        error_code=1,
+        error_code=ContactErrorCodes.INVALID_FORM_INPUT,
     )
     def test_with_response(login_request: LoginRequest):
         return {"username": login_request.username}, 200
@@ -123,7 +124,7 @@ def minimal_app():
         request_schema=LoginRequest,
         response_schema=LoginRedirectResponseSchema,
         error_message="Invalid input",
-        error_code=1,
+        error_code=ContactErrorCodes.INVALID_FORM_INPUT,
         tags=[OPEN_API.UTUBS],
         description="Test route with full metadata",
         status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse},
@@ -619,7 +620,7 @@ def test_api_route_raises_when_route_missing_derived_kwarg():
         @api_route(
             request_schema=LoginRequest,
             error_message="Invalid input",
-            error_code=1,
+            error_code=ContactErrorCodes.INVALID_FORM_INPUT,
         )
         def bad_route():
             pass
@@ -635,7 +636,7 @@ def test_api_route_succeeds_with_mixed_positional_and_injected_params():
     @api_route(
         request_schema=LoginRequest,
         error_message="Invalid input",
-        error_code=1,
+        error_code=ContactErrorCodes.INVALID_FORM_INPUT,
     )
     def route_with_path_params(utub_id: int, login_request: LoginRequest):
         pass
@@ -841,3 +842,55 @@ def test_api_route_description_without_other_metadata(minimal_app: Flask):
     assert view_fn._api_route_description == "A route with only a description"
     assert view_fn._api_route_tags is None
     assert view_fn._api_route_status_codes is None
+
+
+# --- Tests for _api_route_error_code_enum stashing ---
+
+
+def test_api_route_plain_int_error_code_raises_type_error():
+    """
+    GIVEN @api_route called with error_code=1 (a plain int)
+    WHEN the decorator is applied
+    THEN a TypeError is raised requiring an IntEnum member
+    """
+    with pytest.raises(TypeError, match="error_code must be an IntEnum member"):
+
+        @api_route(
+            request_schema=LoginRequest,
+            error_message="Invalid input",
+            error_code=1,
+        )
+        def route_with_plain_int(login_request: LoginRequest):
+            pass
+
+
+def test_api_route_intenum_error_code_stashes_enum_class():
+    """
+    GIVEN @api_route called with error_code=ContactErrorCodes.INVALID_FORM_INPUT
+    WHEN the decorator is applied
+    THEN _api_route_error_code_enum is set to ContactErrorCodes
+    """
+
+    @api_route(
+        request_schema=LoginRequest,
+        error_message="Invalid input",
+        error_code=ContactErrorCodes.INVALID_FORM_INPUT,
+    )
+    def route_with_enum_code(login_request: LoginRequest):
+        pass
+
+    assert route_with_enum_code._api_route_error_code_enum is ContactErrorCodes
+
+
+def test_api_route_no_error_code_stashes_none_enum():
+    """
+    GIVEN @api_route called without error_code (no request_schema either)
+    WHEN the decorator is applied
+    THEN _api_route_error_code_enum is set to None
+    """
+
+    @api_route()
+    def route_without_error_code():
+        pass
+
+    assert route_without_error_code._api_route_error_code_enum is None

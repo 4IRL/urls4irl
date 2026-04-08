@@ -5,7 +5,7 @@ from flask import (
 from backend import limiter
 from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
-from backend.contact.constants import CONTACT_FORM_CONSTANTS
+from backend.contact.constants import ContactErrorCodes, CONTACT_FORM_CONSTANTS
 from backend.contact.contact_us import load_contact_us_page, validate_and_contact
 from backend.schemas.contact import ContactResponseSchema
 from backend.schemas.errors import ErrorResponse
@@ -31,7 +31,7 @@ def contact_us() -> str:
     request_schema=ContactRequest,
     response_schema=ContactResponseSchema,
     error_message="Unable to submit contact form.",
-    error_code=1,
+    error_code=ContactErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
     tags=[OPEN_API.CONTACT],
     description="Submit a contact form",
