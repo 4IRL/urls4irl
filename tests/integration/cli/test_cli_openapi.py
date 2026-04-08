@@ -9,7 +9,6 @@ from pydantic import BaseModel
 
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
-from backend.contact.constants import ContactErrorCodes
 from backend.urls.constants import URLErrorCodes
 
 pytestmark = pytest.mark.cli
@@ -398,11 +397,9 @@ def test_operations_with_error_codes_have_x_error_codes_extension(runner, tmp_pa
         None,
     )
     assert spot_check_operation is not None, "URLErrorCodes not found in any operation"
-    expected_url_error_codes = {member.name: member.value for member in URLErrorCodes}
-    assert (
-        spot_check_operation["x-error-codes"]["URLErrorCodes"]
-        == expected_url_error_codes
-    )
+    assert spot_check_operation["x-error-codes"]["URLErrorCodes"] == {
+        "$ref": "#/components/schemas/URLErrorCodes"
+    }
 
 
 def test_routes_without_error_code_lack_x_error_codes(runner, tmp_path):
@@ -435,10 +432,9 @@ def test_post_contact_has_x_error_codes(runner, tmp_path):
     contact_post = spec["paths"]["/contact"]["post"]
     assert "x-error-codes" in contact_post
 
-    expected = {
-        "ContactErrorCodes": {member.name: member.value for member in ContactErrorCodes}
+    assert contact_post["x-error-codes"] == {
+        "ContactErrorCodes": {"$ref": "#/components/schemas/ContactErrorCodes"}
     }
-    assert contact_post["x-error-codes"] == expected
 
 
 def test_all_routes_with_request_schema_have_x_error_codes(runner, tmp_path):
@@ -739,3 +735,68 @@ def test_error_response_status_required_in_spec(runner, tmp_path):
     assert (
         "status" in error_schema["required"]
     ), "Expected 'status' in required fields but got: " + str(error_schema["required"])
+
+
+def test_error_code_enums_in_components_schemas(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect components/schemas
+    THEN at least one IntEnum (e.g., URLErrorCodes) appears with type: integer
+         and an enum list matching the Python enum member values
+    """
+    spec = _generate_spec(runner, tmp_path)
+    schemas = spec["components"]["schemas"]
+
+    assert "URLErrorCodes" in schemas, "URLErrorCodes not found in components/schemas"
+    url_error_schema = schemas["URLErrorCodes"]
+    assert url_error_schema["type"] == "integer"
+    expected_values = [member.value for member in URLErrorCodes]
+    assert url_error_schema["enum"] == expected_values
+
+
+def test_error_code_enum_has_varnames(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the URLErrorCodes component schema
+    THEN x-enum-varnames contains the expected member names for TS codegen
+    """
+    spec = _generate_spec(runner, tmp_path)
+    schemas = spec["components"]["schemas"]
+
+    assert "URLErrorCodes" in schemas, "URLErrorCodes not found in components/schemas"
+    url_error_schema = schemas["URLErrorCodes"]
+    expected_varnames = [
+        "UNKNOWN_ERROR",
+        "INVALID_FORM_INPUT",
+        "URL_WITH_CREDENTIALS_ERROR",
+        "INVALID_URL_ERROR",
+        "UNEXPECTED_VALIDATION_ERROR",
+        "URL_ALREADY_IN_UTUB_ERROR",
+        "EMPTY_URL",
+    ]
+    assert url_error_schema["x-enum-varnames"] == expected_varnames
+
+
+def test_x_error_codes_uses_ref(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect an operation with x-error-codes (e.g., one using URLErrorCodes)
+    THEN the extension contains a $ref pointer instead of an inline dict of values
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    spot_check_operation = next(
+        (
+            op
+            for path_item in spec["paths"].values()
+            for op in path_item.values()
+            if isinstance(op, dict) and "URLErrorCodes" in op.get("x-error-codes", {})
+        ),
+        None,
+    )
+    assert spot_check_operation is not None, "URLErrorCodes not found in any operation"
+    url_error_ref = spot_check_operation["x-error-codes"]["URLErrorCodes"]
+    assert (
+        "$ref" in url_error_ref
+    ), f"Expected $ref pointer in x-error-codes, got: {url_error_ref}"
+    assert url_error_ref["$ref"] == "#/components/schemas/URLErrorCodes"

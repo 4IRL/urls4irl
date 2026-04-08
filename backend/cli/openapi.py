@@ -165,6 +165,27 @@ def _build_response_schema_obj(schema_cls: Type[BaseModel]) -> dict[str, Any]:
     }
 
 
+def _collect_error_code_enum_schema(
+    enum_cls: Type[IntEnum],
+    components_schemas: dict[str, Any],
+) -> None:
+    """Add an IntEnum error code class to components/schemas (first-write wins).
+
+    Builds a schema with type: integer, enum values, and x-enum-varnames
+    for TypeScript codegen.
+    """
+    class_name = enum_cls.__name__
+    if class_name in components_schemas:
+        return
+
+    components_schemas[class_name] = {
+        "type": "integer",
+        "enum": [member.value for member in enum_cls],
+        "x-enum-varnames": [member.name for member in enum_cls],
+        "description": f"Error codes for {class_name}",
+    }
+
+
 def _build_security(
     auth_decorator: str | None,
     method: str,
@@ -331,9 +352,10 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
             if error_code_enum is not None and issubclass(error_code_enum, IntEnum):
                 operation["x-error-codes"] = {
                     error_code_enum.__name__: {
-                        member.name: member.value for member in error_code_enum
+                        "$ref": f"#/components/schemas/{error_code_enum.__name__}"
                     }
                 }
+                _collect_error_code_enum_schema(error_code_enum, components_schemas)
 
             paths[openapi_path][method.lower()] = operation
 
