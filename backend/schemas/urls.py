@@ -83,8 +83,10 @@ class UtubUrlDeleteSchema(BaseSchema):
         )
 
 
-# Same 3-field shape as UtubUrlDeleteSchema: utubUrlID, urlString, urlTitle
-UrlCreatedItemSchema = UtubUrlDeleteSchema
+class UrlCreatedItemSchema(UtubUrlDeleteSchema):
+    """URL item shape for creation responses (same fields as UtubUrlDeleteSchema)."""
+
+    pass
 
 
 class UrlCreatedResponseSchema(BaseSchema):

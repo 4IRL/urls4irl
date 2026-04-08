@@ -463,3 +463,201 @@ def test_all_routes_with_request_schema_have_x_error_codes(runner, tmp_path):
                 assert (
                     "x-error-codes" in operation
                 ), f"{method.upper()} {path} has requestBody but no x-error-codes"
+
+
+def test_success_responses_include_envelope_fields(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect a representative success response (POST /utubs -> 200)
+    THEN the response schema uses allOf composition with SuccessEnvelope and the data schema
+    """
+    spec = _generate_spec(runner, tmp_path)
+    post_utubs_200 = spec["paths"]["/utubs"]["post"]["responses"]["200"]
+    response_schema = post_utubs_200["content"]["application/json"]["schema"]
+
+    # Should use allOf composition
+    assert (
+        "allOf" in response_schema
+    ), "Expected allOf composition for success response, got: " + json.dumps(
+        response_schema
+    )
+
+    all_of_entries = response_schema["allOf"]
+
+    # One entry should be the SuccessEnvelope ref
+    envelope_ref = {"$ref": "#/components/schemas/SuccessEnvelope"}
+    assert (
+        envelope_ref in all_of_entries
+    ), f"SuccessEnvelope ref not found in allOf entries: {all_of_entries}"
+
+    # Another entry should be the data schema ref (UtubCreatedResponseSchema)
+    data_ref = {"$ref": "#/components/schemas/UtubCreatedResponseSchema"}
+    assert (
+        data_ref in all_of_entries
+    ), f"UtubCreatedResponseSchema ref not found in allOf entries: {all_of_entries}"
+
+
+def test_success_envelope_schema_exists_in_components(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the components/schemas
+    THEN SuccessEnvelope exists with the correct structure
+    """
+    spec = _generate_spec(runner, tmp_path)
+    schemas = spec["components"]["schemas"]
+
+    assert (
+        "SuccessEnvelope" in schemas
+    ), "SuccessEnvelope not found in components/schemas"
+
+    envelope = schemas["SuccessEnvelope"]
+
+    # Has properties.status with type string
+    assert "properties" in envelope
+    assert "status" in envelope["properties"]
+    assert envelope["properties"]["status"]["type"] == "string"
+
+    # Has properties.message with type string
+    assert "message" in envelope["properties"]
+    assert envelope["properties"]["message"]["type"] == "string"
+
+    # status is required
+    assert "required" in envelope
+    assert "status" in envelope["required"]
+
+    # message is NOT required
+    assert "message" not in envelope["required"]
+
+
+def test_schemas_with_existing_status_not_double_wrapped(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect a StatusMessageResponseSchema subclass (RegisterResponseSchema at 201)
+         and an ErrorResponse at 400
+    THEN they use a direct $ref, NOT allOf (no double-wrapping)
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    # RegisterResponseSchema at 201 on POST /register
+    register_responses = spec["paths"]["/register"]["post"]["responses"]
+    assert (
+        "201" in register_responses
+    ), "POST /register missing 201 response — key guard failed"
+    register_201_schema = register_responses["201"]["content"]["application/json"][
+        "schema"
+    ]
+    assert "$ref" in register_201_schema, (
+        "Expected direct $ref for RegisterResponseSchema (has status already), "
+        f"got: {json.dumps(register_201_schema)}"
+    )
+    assert (
+        "allOf" not in register_201_schema
+    ), "RegisterResponseSchema should not be wrapped with allOf"
+
+    # ErrorResponse at 400 on POST /register
+    register_400_schema = register_responses["400"]["content"]["application/json"][
+        "schema"
+    ]
+    assert (
+        "$ref" in register_400_schema
+    ), f"Expected direct $ref for ErrorResponse, got: {json.dumps(register_400_schema)}"
+    assert (
+        "allOf" not in register_400_schema
+    ), "ErrorResponse should not be wrapped with allOf"
+
+
+def test_error_responses_not_wrapped_with_envelope(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect all responses with status codes >= 400
+    THEN none of them use allOf wrapping (no SuccessEnvelope on error responses)
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    for path, path_item in spec["paths"].items():
+        for method, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+            responses = operation.get("responses", {})
+            for code, response_obj in responses.items():
+                if not code.isdigit() or int(code) < 400:
+                    continue
+                if "content" not in response_obj:
+                    continue
+                response_schema_dict = response_obj["content"]["application/json"][
+                    "schema"
+                ]
+                assert "allOf" not in response_schema_dict, (
+                    f"{method.upper()} {path} {code}: error response should not use "
+                    f"allOf wrapping, got: {json.dumps(response_schema_dict)}"
+                )
+
+
+def test_all_success_responses_have_envelope_or_own_status(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we iterate all paths and operations
+    THEN every success response (status < 400) either uses allOf with SuccessEnvelope
+         or directly references a schema that has its own 'status' property
+    """
+    spec = _generate_spec(runner, tmp_path)
+    envelope_ref = {"$ref": "#/components/schemas/SuccessEnvelope"}
+
+    for path, path_item in spec["paths"].items():
+        for method, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+            responses = operation.get("responses", {})
+            for code, response_obj in responses.items():
+                if not code.isdigit() or int(code) >= 400:
+                    continue
+                if "content" not in response_obj:
+                    continue
+
+                schema_obj = response_obj["content"]["application/json"]["schema"]
+
+                # Branch 1: allOf with SuccessEnvelope
+                has_envelope_allof = "allOf" in schema_obj and any(
+                    entry == envelope_ref for entry in schema_obj["allOf"]
+                )
+
+                # Branch 2: direct $ref to a component that has its own 'status'
+                has_own_status = False
+                if "$ref" in schema_obj:
+                    component_name = schema_obj["$ref"].split("/")[-1]
+                    assert component_name in spec["components"]["schemas"], (
+                        f"{method.upper()} {path} {code}: $ref component "
+                        f"'{component_name}' not in components/schemas"
+                    )
+                    component = spec["components"]["schemas"][component_name]
+                    has_own_status = "status" in component.get("properties", {})
+
+                assert has_envelope_allof or has_own_status, (
+                    f"{method.upper()} {path} {code}: success response has neither "
+                    f"allOf with SuccessEnvelope nor a schema with its own 'status' "
+                    f"property. Schema: {json.dumps(schema_obj)}"
+                )
+
+
+def test_success_envelope_has_correct_status_description(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the SuccessEnvelope schema's status property description
+    THEN it documents all three possible values: Success, Failure, and No change
+    """
+    spec = _generate_spec(runner, tmp_path)
+    envelope = spec["components"]["schemas"]["SuccessEnvelope"]
+    status_description = envelope["properties"]["status"]["description"]
+
+    assert "Success" in status_description, (
+        f"SuccessEnvelope.status.description should mention 'Success', "
+        f"got: {status_description}"
+    )
+    assert "Failure" in status_description, (
+        f"SuccessEnvelope.status.description should mention 'Failure', "
+        f"got: {status_description}"
+    )
+    assert "No change" in status_description, (
+        f"SuccessEnvelope.status.description should mention 'No change', "
+        f"got: {status_description}"
+    )
