@@ -220,7 +220,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:create_url` |
 | **Decorators** | `@utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, tags=["urls"], description="Add a URL to a UTub", status_codes={200: UrlCreatedResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/create_url.py:create_url_in_utub` |
-| **Schema** | `backend/schemas/requests/urls/create_url.py:CreateURLRequest` |
+| **Schema** | `backend/schemas/requests/urls/create_url.py:CreateURLRequest`, response: `UrlCreatedResponseSchema` embeds `UrlCreatedItemSchema` (subclass of `UtubUrlDeleteSchema` with title override for distinct OpenAPI component naming) |
 | **JS Module** | `frontend/home/urls/cards/create.js` — `JSON.stringify`, `application/json`, 35s timeout |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_add_url_to_utub_route.py` (marker: `urls`), `tests/functional/urls_ui/test_create_url_ui.py` (marker: `create_urls_ui`) |

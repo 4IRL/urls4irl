@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from enum import IntEnum
+import functools
 import json
 from pathlib import Path
 import re
@@ -32,6 +33,23 @@ CONVERTER_TYPE_MAP = {
     "float": "number",
     "string": "string",
 }
+
+
+SUCCESS_ENVELOPE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "status": {
+            "type": "string",
+            "description": "Response status: Success, Failure, or No change",
+        },
+        "message": {
+            "type": "string",
+            "description": "Human-readable response message, if applicable",
+        },
+    },
+    "required": ["status"],
+}
+SUCCESS_ENVELOPE_NAME = "SuccessEnvelope"
 
 
 def _flask_path_to_openapi(rule_path: str) -> str:
@@ -107,6 +125,46 @@ def _collect_schema(
         components_schemas[class_name] = schema_dict
 
 
+# NOTE: The lru_cache helpers below call model_json_schema() without ref_template,
+# unlike _collect_schema which uses ref_template='#/components/schemas/{model}'.
+# This is intentional — these helpers only inspect top-level 'properties' and never
+# follow $ref pointers, so the ref format is irrelevant to their results.
+
+
+@functools.lru_cache(maxsize=None)
+def _schema_has_status_property(schema_cls: Type[BaseModel]) -> bool:
+    """Check if the schema's JSON schema output has a 'status' property."""
+    json_schema = schema_cls.model_json_schema()
+    return "status" in json_schema.get("properties", {})
+
+
+@functools.lru_cache(maxsize=None)
+def _schema_is_empty(schema_cls: Type[BaseModel]) -> bool:
+    """Check if the schema's JSON schema output has no properties."""
+    return not schema_cls.model_json_schema().get("properties")
+
+
+def _build_response_schema_obj(schema_cls: Type[BaseModel]) -> dict[str, Any]:
+    """Build the OpenAPI response schema object for a success response.
+
+    Applies the three-way branching logic:
+    1. Schema already has 'status' property -> direct $ref (no envelope)
+    2. Schema has no properties -> direct $ref to SuccessEnvelope
+    3. Otherwise -> allOf composition with SuccessEnvelope + data schema
+    """
+    if _schema_has_status_property(schema_cls):
+        return {"$ref": _build_schema_ref(schema_cls)}
+    elif _schema_is_empty(schema_cls):
+        return {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"}
+
+    return {
+        "allOf": [
+            {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"},
+            {"$ref": _build_schema_ref(schema_cls)},
+        ]
+    }
+
+
 def _build_security(
     auth_decorator: str | None,
     method: str,
@@ -133,6 +191,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
     """Build an OpenAPI 3.1 spec dict from the Flask app's registered routes."""
     paths: defaultdict[str, dict] = defaultdict(dict)
     components_schemas: dict[str, Any] = {}
+    components_schemas[SUCCESS_ENVELOPE_NAME] = SUCCESS_ENVELOPE_SCHEMA
     # operation_id → endpoint (for collision detection)
     operation_ids: dict[str, str] = {}
 
@@ -221,23 +280,35 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                 responses: dict[str, Any] = {}
                 for code, schema_cls in status_codes.items():
                     _collect_schema(schema_cls, components_schemas)
+
+                    # Determine response schema representation
+                    if code >= 400:
+                        # Error responses: always direct $ref
+                        response_schema_obj = {"$ref": _build_schema_ref(schema_cls)}
+                    else:
+                        response_schema_obj = _build_response_schema_obj(schema_cls)
+
                     responses[str(code)] = {
                         "description": schema_cls.__name__,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": _build_schema_ref(schema_cls)},
+                                "schema": response_schema_obj,
                             }
                         },
                     }
                 operation["responses"] = responses
             elif response_schema is not None:
                 _collect_schema(response_schema, components_schemas)
+
+                # Determine response schema representation for code 200
+                fallback_schema_obj = _build_response_schema_obj(response_schema)
+
                 operation["responses"] = {
                     "200": {
                         "description": response_schema.__name__,
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": _build_schema_ref(response_schema)},
+                                "schema": fallback_schema_obj,
                             }
                         },
                     }

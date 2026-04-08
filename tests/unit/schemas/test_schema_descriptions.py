@@ -28,7 +28,7 @@ _request_schemas = [
 # ErrorResponse is not in __all__, add it explicitly
 _all_raw_schemas = _response_schemas + _request_schemas + [ErrorResponse]
 
-# Deduplicate by class identity (e.g., UrlCreatedItemSchema is an alias for UtubUrlDeleteSchema)
+# Deduplicate by class identity to handle any future aliases
 _seen: set[int] = set()
 ALL_SCHEMAS = [
     cls for cls in _all_raw_schemas if not (id(cls) in _seen or _seen.add(id(cls)))

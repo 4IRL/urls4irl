@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from pydantic import Field
+from pydantic import ConfigDict, Field
 
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagOnAddDeleteSchema
@@ -83,8 +83,10 @@ class UtubUrlDeleteSchema(BaseSchema):
         )
 
 
-# Same 3-field shape as UtubUrlDeleteSchema: utubUrlID, urlString, urlTitle
-UrlCreatedItemSchema = UtubUrlDeleteSchema
+class UrlCreatedItemSchema(UtubUrlDeleteSchema):
+    """URL item shape for creation responses (same fields as UtubUrlDeleteSchema)."""
+
+    model_config = ConfigDict(title="UrlCreatedItemSchema")
 
 
 class UrlCreatedResponseSchema(BaseSchema):
