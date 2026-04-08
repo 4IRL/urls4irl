@@ -765,15 +765,7 @@ def test_error_code_enum_has_varnames(runner, tmp_path):
 
     assert "URLErrorCodes" in schemas, "URLErrorCodes not found in components/schemas"
     url_error_schema = schemas["URLErrorCodes"]
-    expected_varnames = [
-        "UNKNOWN_ERROR",
-        "INVALID_FORM_INPUT",
-        "URL_WITH_CREDENTIALS_ERROR",
-        "INVALID_URL_ERROR",
-        "UNEXPECTED_VALIDATION_ERROR",
-        "URL_ALREADY_IN_UTUB_ERROR",
-        "EMPTY_URL",
-    ]
+    expected_varnames = [member.name for member in URLErrorCodes]
     assert url_error_schema["x-enum-varnames"] == expected_varnames
 
 

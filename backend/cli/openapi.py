@@ -47,13 +47,18 @@ HTTP_STATUS_DESCRIPTIONS: dict[int, str] = {
     503: "Service unavailable",
 }
 
-ACRONYM_MAP: dict[str, str] = {"Utub": "UTub", "Url": "URL"}
+ACRONYM_MAP: dict[str, str] = {
+    "Utub": "UTub",
+    "Url": "URL",
+    "Api": "API",
+    "Id": "ID",
+}
 
 
 def _humanize_class_name(name: str) -> str:
     """Convert a PascalCase schema class name to a human-readable description."""
     # Step 1: strip ResponseSchema or Schema suffix
-    stripped = re.sub(r"(ResponseSchema|Schema)$", "", name)
+    stripped = re.sub(r"(ResponseSchema|Response|Schema)$", "", name)
     # Step 2: insert a space before each uppercase letter that follows a lowercase letter
     spaced = re.sub(r"(?<=[a-z])([A-Z])", r" \1", stripped)
     # Step 3: split into tokens, apply acronym substitution, lowercase non-acronym tokens
