@@ -139,6 +139,7 @@ def api_route(
         wrapper._api_route_tags = tags
         wrapper._api_route_description = description
         wrapper._api_route_status_codes = status_codes
+        wrapper._api_route_error_code_enum = None
         if isinstance(error_code, IntEnum):
             wrapper._api_route_error_code_enum = type(error_code)
         elif isinstance(error_code, int):
@@ -146,8 +147,6 @@ def api_route(
                 "error_code must be an IntEnum member, not a plain int. "
                 "Define an IntEnum class for your error codes."
             )
-        else:
-            wrapper._api_route_error_code_enum = None
         return wrapper
 
     return decorator
