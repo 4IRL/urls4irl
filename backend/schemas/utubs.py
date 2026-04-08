@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class UtubDetailSchema(BaseSchema):
+    """Full UTub detail with members, URLs, and tags"""
+
     id: int = Field(
         alias=M.ID,
         description="Unique UTub ID",
@@ -138,6 +140,8 @@ class UtubNameUpdatedResponseSchema(BaseSchema):
 
 
 class UtubDescUpdatedResponseSchema(BaseSchema):
+    """UTub description updated"""
+
     utub_id: int = Field(
         alias=UTUB_ID,
         description="ID of the UTub whose description was updated",

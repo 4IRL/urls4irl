@@ -800,3 +800,68 @@ def test_x_error_codes_uses_ref(runner, tmp_path):
         "$ref" in url_error_ref
     ), f"Expected $ref pointer in x-error-codes, got: {url_error_ref}"
     assert url_error_ref["$ref"] == "#/components/schemas/URLErrorCodes"
+
+
+def test_error_response_descriptions_are_http_phrases(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect all responses with status codes >= 400
+    THEN none have "ErrorResponse" as the description — they should have
+         HTTP phrases like "Bad request", "Not found", etc.
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    for path, path_item in spec["paths"].items():
+        for method, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+            responses = operation.get("responses", {})
+            for code, response_obj in responses.items():
+                if not code.isdigit() or int(code) < 400:
+                    continue
+                description = response_obj.get("description", "")
+                assert description != "ErrorResponse", (
+                    f"{method.upper()} {path} {code}: error response description "
+                    f"should be an HTTP phrase, not 'ErrorResponse'"
+                )
+
+
+def test_success_response_descriptions_are_human_readable(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect all 200/201 success responses
+    THEN (1) none end with "Schema" or "ResponseSchema" (negative check), and
+         (2) each description either contains a space or matches a known
+         single-word allow-list (positive check to prevent stripped class names)
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    # Single-word descriptions that are genuinely human-readable
+    single_word_allowlist = {"Health", "Register", "Contact"}
+
+    for path, path_item in spec["paths"].items():
+        for method, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+            responses = operation.get("responses", {})
+            for code, response_obj in responses.items():
+                if not code.isdigit() or int(code) >= 400:
+                    continue
+                description = response_obj.get("description", "")
+
+                # Negative: must not end with Schema or ResponseSchema
+                assert not description.endswith("Schema"), (
+                    f"{method.upper()} {path} {code}: description "
+                    f"'{description}' ends with 'Schema'"
+                )
+                assert not description.endswith("ResponseSchema"), (
+                    f"{method.upper()} {path} {code}: description "
+                    f"'{description}' ends with 'ResponseSchema'"
+                )
+
+                # Positive: must contain a space or be in the allow-list
+                assert " " in description or description in single_word_allowlist, (
+                    f"{method.upper()} {path} {code}: description "
+                    f"'{description}' is a single word not in the allow-list "
+                    f"{single_word_allowlist}"
+                )
