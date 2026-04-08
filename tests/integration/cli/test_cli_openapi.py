@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-import json
 from enum import IntEnum
+import json
 
 import pytest
 from flask import Blueprint, Flask
+from pydantic import BaseModel
 
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
@@ -661,3 +662,65 @@ def test_success_envelope_has_correct_status_description(runner, tmp_path):
         f"SuccessEnvelope.status.description should mention 'No change', "
         f"got: {status_description}"
     )
+
+
+def test_empty_schema_uses_direct_envelope_ref(tmp_path):
+    """
+    GIVEN a Flask app with an @api_route whose response schema has no properties
+    WHEN the OpenAPI spec is generated
+    THEN the success response uses a direct $ref to SuccessEnvelope (not allOf)
+    """
+
+    class EmptyResponseSchema(BaseModel):
+        pass
+
+    bp = Blueprint("empty_bp", __name__)
+
+    @bp.route("/empty-response", methods=["POST"])
+    @api_route(
+        tags=["test"],
+        response_schema=EmptyResponseSchema,
+    )
+    def empty_response_route() -> dict:
+        return {}
+
+    minimal_app = Flask(__name__)
+    minimal_app.register_blueprint(bp)
+    register_openapi_cli(minimal_app)
+
+    cli_runner = minimal_app.test_cli_runner()
+    output_path = tmp_path / "empty-schema-spec.json"
+
+    result = cli_runner.invoke(
+        args=["openapi", "generate", "--output", str(output_path)]
+    )
+    assert result.exit_code == 0, f"CLI failed: {result.output}"
+
+    spec = json.loads(output_path.read_text())
+    response_schema = spec["paths"]["/empty-response"]["post"]["responses"]["200"][
+        "content"
+    ]["application/json"]["schema"]
+
+    # Should be a direct $ref to SuccessEnvelope, not allOf
+    assert (
+        "$ref" in response_schema
+    ), f"Expected direct $ref for empty schema, got: {json.dumps(response_schema)}"
+    assert response_schema["$ref"] == "#/components/schemas/SuccessEnvelope"
+    assert "allOf" not in response_schema
+
+
+def test_url_created_item_schema_is_distinct_component(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect components/schemas
+    THEN UrlCreatedItemSchema appears as a distinct key, separate from UtubUrlDeleteSchema
+    """
+    spec = _generate_spec(runner, tmp_path)
+    schemas = spec["components"]["schemas"]
+
+    assert (
+        "UrlCreatedItemSchema" in schemas
+    ), "UrlCreatedItemSchema not found as a distinct component in schemas"
+    assert "UtubUrlDeleteSchema" in schemas, "UtubUrlDeleteSchema not found in schemas"
+    # They should be separate entries (not aliases)
+    assert "UrlCreatedItemSchema" != "UtubUrlDeleteSchema"

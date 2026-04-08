@@ -125,6 +125,12 @@ def _collect_schema(
         components_schemas[class_name] = schema_dict
 
 
+# NOTE: The lru_cache helpers below call model_json_schema() without ref_template,
+# unlike _collect_schema which uses ref_template='#/components/schemas/{model}'.
+# This is intentional — these helpers only inspect top-level 'properties' and never
+# follow $ref pointers, so the ref format is irrelevant to their results.
+
+
 @functools.lru_cache(maxsize=None)
 def _schema_has_status_property(schema_cls: Type[BaseModel]) -> bool:
     """Check if the schema's JSON schema output has a 'status' property."""
@@ -136,6 +142,27 @@ def _schema_has_status_property(schema_cls: Type[BaseModel]) -> bool:
 def _schema_is_empty(schema_cls: Type[BaseModel]) -> bool:
     """Check if the schema's JSON schema output has no properties."""
     return not schema_cls.model_json_schema().get("properties")
+
+
+def _build_response_schema_obj(schema_cls: Type[BaseModel]) -> dict[str, Any]:
+    """Build the OpenAPI response schema object for a success response.
+
+    Applies the three-way branching logic:
+    1. Schema already has 'status' property -> direct $ref (no envelope)
+    2. Schema has no properties -> direct $ref to SuccessEnvelope
+    3. Otherwise -> allOf composition with SuccessEnvelope + data schema
+    """
+    if _schema_has_status_property(schema_cls):
+        return {"$ref": _build_schema_ref(schema_cls)}
+    elif _schema_is_empty(schema_cls):
+        return {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"}
+    else:
+        return {
+            "allOf": [
+                {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"},
+                {"$ref": _build_schema_ref(schema_cls)},
+            ]
+        }
 
 
 def _build_security(
@@ -258,24 +285,8 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                     if code >= 400:
                         # Error responses: always direct $ref
                         response_schema_obj = {"$ref": _build_schema_ref(schema_cls)}
-                    elif _schema_has_status_property(schema_cls):
-                        # Schema already has status — emit as-is
-                        response_schema_obj = {"$ref": _build_schema_ref(schema_cls)}
-                    elif _schema_is_empty(schema_cls):
-                        # Empty schema — envelope alone describes the response
-                        response_schema_obj = {
-                            "$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"
-                        }
                     else:
-                        # Wrap with SuccessEnvelope via allOf
-                        response_schema_obj = {
-                            "allOf": [
-                                {
-                                    "$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"
-                                },
-                                {"$ref": _build_schema_ref(schema_cls)},
-                            ]
-                        }
+                        response_schema_obj = _build_response_schema_obj(schema_cls)
 
                     responses[str(code)] = {
                         "description": schema_cls.__name__,
@@ -290,19 +301,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                 _collect_schema(response_schema, components_schemas)
 
                 # Determine response schema representation for code 200
-                if _schema_has_status_property(response_schema):
-                    fallback_schema_obj = {"$ref": _build_schema_ref(response_schema)}
-                elif _schema_is_empty(response_schema):
-                    fallback_schema_obj = {
-                        "$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"
-                    }
-                else:
-                    fallback_schema_obj = {
-                        "allOf": [
-                            {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"},
-                            {"$ref": _build_schema_ref(response_schema)},
-                        ]
-                    }
+                fallback_schema_obj = _build_response_schema_obj(response_schema)
 
                 operation["responses"] = {
                     "200": {
