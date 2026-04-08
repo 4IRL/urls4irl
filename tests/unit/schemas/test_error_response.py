@@ -7,6 +7,7 @@ from backend.schemas.errors import (
     build_message_error_response,
     build_url_conflict_error_response,
 )
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
 pytestmark = pytest.mark.unit
 
@@ -18,7 +19,7 @@ def test_error_response_message_only(app):
     THEN the JSON payload equals {"status": "Failure", "message": "Not allowed."}
         with no errors, details, errorCode, or urlString keys present
     """
-    error = ErrorResponse(message="Not allowed.")
+    error = ErrorResponse(status=STD_JSON.FAILURE, message="Not allowed.")
     with app.app_context():
         response, status_code = error.to_response(400)
         payload = response.get_json()
@@ -38,6 +39,7 @@ def test_error_response_with_field_errors(app):
     THEN the payload includes the errors dict under the "errors" key
     """
     error = ErrorResponse(
+        status=STD_JSON.FAILURE,
         message="Bad input.",
         field_errors={"username": ["User not found."]},
     )
@@ -55,6 +57,7 @@ def test_error_response_with_error_detail(app):
     THEN the payload includes the details string under the "details" key
     """
     error = ErrorResponse(
+        status=STD_JSON.FAILURE,
         message="Invalid URL",
         error_detail="URL contains credentials",
     )
@@ -71,7 +74,9 @@ def test_error_response_with_error_code(app):
     WHEN to_response() is called
     THEN the payload includes the errorCode integer under the "errorCode" key
     """
-    error = ErrorResponse(message="Error occurred.", error_code=2)
+    error = ErrorResponse(
+        status=STD_JSON.FAILURE, message="Error occurred.", error_code=2
+    )
     with app.app_context():
         response, status_code = error.to_response(400)
         payload = response.get_json()
@@ -86,6 +91,7 @@ def test_error_response_with_url_string(app):
     THEN the payload includes the urlString at the top level
     """
     error = ErrorResponse(
+        status=STD_JSON.FAILURE,
         message="URL conflict.",
         url_string="https://example.com",
     )
@@ -230,3 +236,17 @@ def test_build_url_conflict_error_response(app):
     assert payload["urlString"] == "https://example.com"
     assert payload["message"] == "URL in UTub"
     assert payload["errorCode"] == 6
+
+
+def test_error_response_status_is_required_in_json_schema():
+    """
+    GIVEN the ErrorResponse Pydantic model
+    WHEN model_json_schema() is called
+    THEN the "status" field appears in the "required" list, because status
+        has no default and must always be provided
+    """
+    schema = ErrorResponse.model_json_schema()
+    assert "required" in schema, "ErrorResponse schema has no 'required' list"
+    assert (
+        "status" in schema["required"]
+    ), "Expected 'status' in required fields but got: " + str(schema["required"])

@@ -724,3 +724,18 @@ def test_url_created_item_schema_is_distinct_component(runner, tmp_path):
     assert "UtubUrlDeleteSchema" in schemas, "UtubUrlDeleteSchema not found in schemas"
     # They should be separate entries (not aliases)
     assert "UrlCreatedItemSchema" != "UtubUrlDeleteSchema"
+
+
+def test_error_response_status_required_in_spec(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the ErrorResponse component schema
+    THEN "status" appears in the required list, matching runtime behavior
+        where status is always present
+    """
+    spec = _generate_spec(runner, tmp_path)
+    error_schema = spec["components"]["schemas"]["ErrorResponse"]
+    assert "required" in error_schema, "ErrorResponse schema has no 'required' list"
+    assert (
+        "status" in error_schema["required"]
+    ), "Expected 'status' in required fields but got: " + str(error_schema["required"])
