@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+from enum import IntEnum
 
 import pytest
 from flask import Blueprint, Flask
 
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
+from backend.contact.constants import ContactErrorCodes
+from backend.urls.constants import URLErrorCodes
 
 pytestmark = pytest.mark.cli
 
@@ -333,3 +336,130 @@ def test_strict_flag_fails_when_route_lacks_response_schema(tmp_path):
     assert result.exit_code != 0
     assert "no response schema" in result.output
     assert "schemaless" in result.output
+
+
+def _collect_registered_error_code_enums(app: Flask) -> set[type]:
+    """Discover all IntEnum classes stashed on @api_route-decorated view functions.
+
+    Walks the app's url_map exactly like the spec generator does, returning
+    the set of unique enum classes. This means adding a new error_code enum
+    to any @api_route is automatically picked up by tests — no manual list.
+    """
+    enums: set[type] = set()
+    for rule in app.url_map.iter_rules():
+        view_fn = app.view_functions.get(rule.endpoint)
+        if view_fn is None:
+            continue
+        enum_cls = getattr(view_fn, "_api_route_error_code_enum", None)
+        if enum_cls is not None and issubclass(enum_cls, IntEnum):
+            enums.add(enum_cls)
+    return enums
+
+
+def test_operations_with_error_codes_have_x_error_codes_extension(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we collect all operations containing x-error-codes
+    THEN every error code enum registered on @api_route appears in the spec,
+         and spot-checked enum values match {member.name: member.value}
+
+    The set of expected enums is auto-discovered from the app's routes — no
+    hardcoded list to maintain. Adding a new IntEnum error_code to any
+    @api_route is automatically covered.
+    """
+    app, _ = runner
+    spec = _generate_spec(runner, tmp_path)
+
+    registered_enums = _collect_registered_error_code_enums(app)
+    assert len(registered_enums) > 0, "No error code enums found on any route"
+
+    # Collect all enum names found in x-error-codes across the spec
+    found_enum_names: set[str] = set()
+    for path, path_item in spec["paths"].items():
+        for method, operation in path_item.items():
+            if isinstance(operation, dict) and "x-error-codes" in operation:
+                found_enum_names.update(operation["x-error-codes"].keys())
+
+    # Every registered enum class must appear in the spec
+    for enum_cls in registered_enums:
+        assert (
+            enum_cls.__name__ in found_enum_names
+        ), f"{enum_cls.__name__} is registered on a route but missing from x-error-codes"
+
+    # Spot-check: verify URLErrorCodes value format
+    spot_check_operation = next(
+        (
+            op
+            for path_item in spec["paths"].values()
+            for op in path_item.values()
+            if isinstance(op, dict) and "URLErrorCodes" in op.get("x-error-codes", {})
+        ),
+        None,
+    )
+    assert spot_check_operation is not None, "URLErrorCodes not found in any operation"
+    expected_url_error_codes = {member.name: member.value for member in URLErrorCodes}
+    assert (
+        spot_check_operation["x-error-codes"]["URLErrorCodes"]
+        == expected_url_error_codes
+    )
+
+
+def test_routes_without_error_code_lack_x_error_codes(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect routes that have no error_code kwarg (GET /health, DELETE /utubs/{utub_id})
+    THEN those operations do NOT contain x-error-codes
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    # GET /health should not have x-error-codes
+    assert "/health" in spec["paths"]
+    assert "get" in spec["paths"]["/health"]
+    get_operation = spec["paths"]["/health"]["get"]
+    assert "x-error-codes" not in get_operation
+
+    # DELETE /utubs/{utub_id} should not have x-error-codes
+    delete_operation = spec["paths"]["/utubs/{utub_id}"]["delete"]
+    assert "x-error-codes" not in delete_operation
+
+
+def test_post_contact_has_x_error_codes(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /contact
+    THEN x-error-codes is present and matches ContactErrorCodes exactly
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    contact_post = spec["paths"]["/contact"]["post"]
+    assert "x-error-codes" in contact_post
+
+    expected = {
+        "ContactErrorCodes": {member.name: member.value for member in ContactErrorCodes}
+    }
+    assert contact_post["x-error-codes"] == expected
+
+
+def test_all_routes_with_request_schema_have_x_error_codes(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we iterate all operations
+    THEN every operation with a requestBody also has x-error-codes
+
+    This is an intentional project invariant: all routes that accept a request
+    body must define their error codes using an IntEnum, not plain ints. The
+    @api_route decorator enforces IntEnum-only error_code at decoration time
+    (raising TypeError for plain ints), and this test serves as an additional
+    integration-level check that the convention is maintained across the entire
+    spec — every requestBody operation must produce x-error-codes.
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    for path, path_item in spec["paths"].items():
+        for method, operation in path_item.items():
+            if not isinstance(operation, dict):
+                continue
+            if "requestBody" in operation:
+                assert (
+                    "x-error-codes" in operation
+                ), f"{method.upper()} {path} has requestBody but no x-error-codes"

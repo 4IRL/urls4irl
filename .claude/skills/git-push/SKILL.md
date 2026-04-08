@@ -19,6 +19,36 @@ Before starting, check the current branch:
 
 ## Workflow
 
+### 0. Squash-Merge Staleness Guard (MANDATORY)
+
+**This check is REQUIRED before any other step. Never skip it.**
+
+Launch a **subagent** to detect if the branch contains commits already squash-merged into main. The subagent reads its full prompt from `.claude/skills/git-push/references/staleness-guard-prompt.md`.
+
+Subagent prompt:
+
+```
+Read .claude/skills/git-push/references/staleness-guard-prompt.md for your full instructions.
+Write your result to <tmp-dir>/staleness-check.md.
+```
+
+- Uses `model: sonnet` for speed
+
+After the subagent returns, read `<tmp-dir>/staleness-check.md`:
+
+- **`CLEAN`**: Delete `<tmp-dir>/staleness-check.md` and proceed to Step 1.
+- **`STALE`**: **STOP.** Do not proceed to Step 1 or any other step.
+  1. Inform the user: *"Found N commits on this branch that are already in main (likely squash-merged via a prior PR). This branch must be rebased before pushing, otherwise the PR will contain duplicate/stale changes."*
+  2. List the stale commits from the subagent output.
+  3. Use `AskUserQuestion` to offer the fix:
+     - question: "This branch has N commits already squash-merged into main. Rebase onto main to remove them? This requires a force-push."
+     - header: "Stale branch"
+     - options: `[{"label": "Rebase and force-push", "description": "Create backup branch, rebase onto main, force-push to update the PR"}, {"label": "Abort push", "description": "Stop here — I'll handle the rebase manually"}]`
+  4. If the user selects "Rebase and force-push":
+     - Create a backup branch: `git branch backup/<branch-name>`
+     - Create a new branch from main, apply the net diff (`git diff origin/main <branch> | git apply`), commit, and force-push
+  5. **Only proceed to Step 1 after a re-run of the subagent returns `CLEAN`.**
+
 ### 1. Gather the Diff
 
 Determine what code exists locally but not on the remote:
@@ -26,7 +56,6 @@ Determine what code exists locally but not on the remote:
 ```bash
 # Get branch name and remote tracking info
 BRANCH=$(git branch --show-current)
-git fetch origin
 
 # Check if remote branch exists
 if git rev-parse --verify origin/$BRANCH >/dev/null 2>&1; then

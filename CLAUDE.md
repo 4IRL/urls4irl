@@ -39,6 +39,18 @@ Review files are stored at the project root level (`reviews/`), NOT under the `p
 Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore` may be committed and pushed on **any branch**, regardless of the branch topic. Always include these changes alongside other work — never exclude them for being "unrelated."
 
 
+### Squash-Merge Branch Hygiene (CRITICAL)
+
+**After a PR is squash-merged into main, NEVER continue working on the same branch.** Squash merges create a new commit hash on main — the old branch commits become stale duplicates. Pushing the old branch creates a PR with a bloated diff that re-introduces already-merged code.
+
+**Required workflow after a squash-merge:**
+1. `git checkout main && git pull`
+2. Create a new branch: `git checkout -b feature/<next-topic>`
+3. Continue work on the new branch
+
+**Before any push (`/git-push`):** Run `git cherry origin/main HEAD`. If ANY commit shows `-` (already in main), **STOP** and rebase before pushing. This check is mandatory and enforced in the `/git-push` skill as Step 0.
+
+
 ## Development and Coding Practices
 
 Code should be concise, but readable. We are looking for maintainability and future proofing.

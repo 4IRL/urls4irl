@@ -68,7 +68,8 @@ Rules:
 - Every finding must cite a specific step number and file path where applicable
 - Do not fabricate findings — if the plan is clean for your area, return PASS with empty findings
 - **Verify before writing.** If you are about to write "the fix is X," read the file X touches first. A fix stated from memory or reasoning alone can introduce a new error worse than the original.
-- **Do not trust plan assertions.** Plans often state preconditions as fact ("CSRF is already handled," "this import exists"). For every such assertion in your review area, trace the claim to its source file and verify it holds.
+- **Do not trust plan assertions — including explanatory prose.** Plans often state preconditions as fact ("CSRF is already handled," "this import exists"). Plans also embed factual claims in rationale prose ("only X does Y," "no route uses Z"). For every such claim — whether it appears as a precondition or as justification for a design decision — trace it to the source file and verify it holds. A wrong prose claim will mislead implementers even if the code spec is correct.
+- **Verify anchors in source files, not just plan text.** When confirming a mechanical fix has been applied, do not stop at verifying plan text. For any fix that references a specific anchor in a source or reference file (import block, function body, registry row, config section), read that file and verify the anchor exists before accepting the fix as resolved.
 
 ---
 
@@ -228,6 +229,10 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 
 **Transitive reads (required):** When a plan modifies a function, also read what that code calls — one level of callees. Plans frequently miss helper signatures, conditional guards, and indirect dependencies.
 
+- **New symbol reference → verify import (required):** When a plan instructs adding any symbol reference (`isinstance`, `issubclass`, type hint, function call) to an existing file, read that file's import block and confirm the symbol is already imported. If it is not, flag the missing import as **Major**. Do NOT assume the plan would have mentioned it.
+
+When a plan instructs inserting code into an existing function, read the full function body — not just the lines the plan cites. This surfaces: (a) existing imports the new code depends on, (b) established defensive patterns already in use nearby, (c) variable names or parameter types the new code must match.
+
 ---
 
 ## Subagent 2: Full-Stack Trace
@@ -235,6 +240,8 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 **Role:** For every endpoint the plan modifies, trace the complete request/response cycle by reading actual code.
 
 **What to read:** For each touched endpoint: the route handler, its decorators, the service function + private helpers (one level deep), the frontend JS that calls the endpoint (read ALL JS files in the module directory, not just ones the plan names), and the HTML template that renders the form/page.
+
+When a plan instructs inserting code into an existing function, read the full function body — not just the lines the plan cites. This surfaces: (a) existing imports the new code depends on, (b) established defensive patterns already in use nearby, (c) variable names or parameter types the new code must match.
 
 **Review checklist — Request path (check each link):**
 
@@ -250,13 +257,15 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 
 4. **Service function + private helpers**: For every helper the service calls, if the public function's signature changes, does the plan also update the helper's signature and internal uses? Flag any missed helper as **Major**.
 
+5. **Established defensive patterns (required):** When a plan adds an attribute read (`obj.attr`, `dict[key]`) to an existing function, read the full body of that function to identify whether similar reads already use defensive patterns (e.g., `getattr(obj, 'attr', None)`, `dict.get(key)`). If the established pattern in that function is defensive and the plan uses direct access, flag as **Major** — inconsistency invites `AttributeError`/`KeyError` on edge cases.
+
 **Review checklist — Response path (check each link):**
 
-5. **Status codes after migration**: List every status code the endpoint can return after migration. Compare to before.
+6. **Status codes after migration**: List every status code the endpoint can return after migration. Compare to before.
 
-6. **JS failure handler dispatch**: For each status code, does the JS failure handler branch correctly? A handler still checking an old status code after the backend changes falls to the `else` branch and silently discards errors. Flag as **Major**.
+7. **JS failure handler dispatch**: For each status code, does the JS failure handler branch correctly? A handler still checking an old status code after the backend changes falls to the `else` branch and silently discards errors. Flag as **Major**.
 
-7. **`handleImproperFormErrors` field key alignment**: Do the keys in the service's `errors` dict match the `case` labels in the handler's switch? Those keys must match `id` attributes on `<input>` elements (camelCase). A mismatch silently discards the error.
+8. **`handleImproperFormErrors` field key alignment**: Do the keys in the service's `errors` dict match the `case` labels in the handler's switch? Those keys must match `id` attributes on `<input>` elements (camelCase). A mismatch silently discards the error.
 
 ---
 
@@ -288,7 +297,9 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 
 **Role:** Verify the plan follows project patterns and CLAUDE.md rules.
 
-**What to read:** CLAUDE.md, ARCHITECTURE.md (if referenced), and a sample of files in the same module as the plan's changes to confirm pattern alignment. Also read requirements files if the plan adds packages.
+**What to read:** CLAUDE.md, ARCHITECTURE.md (if referenced), ENDPOINT_REGISTRY.md (if the plan references it), and a sample of files in the same module as the plan's changes to confirm pattern alignment. Also read requirements files if the plan adds packages.
+
+- **Anchor verification for reference documents (required):** When the plan instructs inserting text at a specific anchor location within a reference document (ENDPOINT_REGISTRY.md, README, config file), read that document and verify the anchor string exists at the stated location. If the anchor does not exist, flag as **Major** — the implementer cannot follow the instruction.
 
 **Review checklist:**
 
@@ -300,6 +311,7 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
   - Never use quoted type hints (files use `from __future__ import annotations`)
   - Never use single-letter variable names — all variables must be descriptively named
   - No relative imports — always use absolute paths like `from backend.schemas.requests._sanitize import ...`
+  - **Import discipline in test prose (required):** Scan ALL test sub-step bullets (not just code blocks) for wording implying local imports: 'dynamically import', 'import inside the test', 'import at call time', `importlib.import_module`. Any such phrasing violates the top-level-imports-only rule. Flag as **Minor** and specify the replacement wording ('reference the top-level import', 'use the module-level import').
 
 - **Import ordering**: Three groups (stdlib, third-party, project), each alphabetized internally, separated by blank lines.
 
@@ -332,9 +344,13 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 
 - **Test coverage**: Happy path, sad path, and edge case tests exist for every changed endpoint? Missing edge case coverage?
 
+- **Route path verification in tests (required):** When a test example names a specific route path (e.g., `spec['paths']['/utubs/{utub_id}/urls/{utub_url_id}']`), read the corresponding route file and confirm (a) the path is registered, and (b) all HTTP methods registered at that path are known. A path claimed to be GET-only that also has PATCH/DELETE will cause assertions like 'x-key absent on this path' to fail. Flag as **Major** if the test example path has methods the plan doesn't account for.
+
 - **Final test suite phase (required)**: The last phase must include `make test-integration-parallel` and `make test-ui-parallel-built`. Flag as **Critical** if either is missing.
 
 - **Verification sufficiency**: Are the verification steps actually sufficient to catch regressions?
+
+- **Test assertion falsifiability (required):** For each negative test assertion (e.g., `assert key not in dict`), verify that the assertion targets the exact dict/field that the implementation would populate — not a parent container. An assertion on a parent dict passes trivially if the key is only ever inserted at a child level. Flag as **Major** if a negative assertion would pass even if the implementation is broken.
 
 ---
 
@@ -358,3 +374,5 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 - **Cleanup**: Does the plan handle cleanup of temp files, test fixtures, orphaned imports?
 
 - **Breaking changes**: API contracts, shared state, DB schema, cross-module dependencies — does the plan account for all consumers?
+
+- **Single-instance conversion completeness (required):** When a plan fixes only one known instance of a broader pattern (e.g., 'convert this one raw int to an enum'), grep the codebase for all call sites of the same pattern and verify no other instances exist. If others are found, flag as **Major** — the plan must either convert all instances or explicitly acknowledge the remaining ones as intentional.
