@@ -966,6 +966,24 @@ def test_typed_error_responses_narrow_error_code(runner, tmp_path):
     ), f"Expected errorCode $ref to UTubErrorCodes, got: {error_code_ref}"
 
 
+def test_utub_detail_created_at_has_datetime_format(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the UtubDetailSchema component
+    THEN the createdAt property has type "string" and format "date-time"
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
+    created_at_prop = utub_detail["properties"]["createdAt"]
+    assert (
+        created_at_prop["type"] == "string"
+    ), f"Expected createdAt type 'string', got: {created_at_prop.get('type')}"
+    assert (
+        created_at_prop["format"] == "date-time"
+    ), f"Expected createdAt format 'date-time', got: {created_at_prop.get('format')}"
+
+
 def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec

@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
-from pydantic import Field
+from pydantic import Field, field_serializer
 
 from backend.schemas.base import BaseSchema
 from backend.schemas.tags import UtubTagSchema
@@ -30,7 +31,7 @@ class UtubDetailSchema(BaseSchema):
         alias=M.CREATED_BY,
         description="User ID of the UTub creator",
     )
-    created_at: str = Field(
+    created_at: datetime = Field(
         alias=M.CREATED_AT,
         description="Creation timestamp of the UTub",
     )
@@ -59,6 +60,10 @@ class UtubDetailSchema(BaseSchema):
         description="ID of the currently authenticated user",
     )
 
+    @field_serializer("created_at")
+    def serialize_created_at(self, value: datetime) -> str:
+        return value.isoformat()
+
     @classmethod
     def from_utub(cls, utub: Utubs, current_user_id: int) -> UtubDetailSchema:
         urls = [
@@ -76,7 +81,7 @@ class UtubDetailSchema(BaseSchema):
             id=utub.id,
             name=utub.name,
             created_by=utub.utub_creator,
-            created_at=utub.created_at.strftime("%m/%d/%Y %H:%M:%S"),
+            created_at=utub.created_at,
             description=(
                 utub.utub_description if utub.utub_description is not None else ""
             ),

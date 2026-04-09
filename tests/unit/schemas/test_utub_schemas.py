@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
 
@@ -19,7 +21,7 @@ _UTUB_DICT = {
     M.ID: 42,
     M.NAME: "My UTub",
     M.CREATED_BY: 1,
-    M.CREATED_AT: "01/01/2025 00:00:00",
+    M.CREATED_AT: datetime(2025, 1, 1, 0, 0, 0),
     M.DESCRIPTION: "A test UTub",
     M.MEMBERS: [_MEMBER],
     M.URLS: [_URL],
@@ -35,7 +37,7 @@ def test_utub_detail_schema_dump():
     assert dumped[M.ID] == 42
     assert dumped[M.NAME] == "My UTub"
     assert dumped[M.CREATED_BY] == 1
-    assert dumped[M.CREATED_AT] == "01/01/2025 00:00:00"
+    assert dumped[M.CREATED_AT] == "2025-01-01T00:00:00"
     assert dumped[M.DESCRIPTION] == "A test UTub"
     assert dumped[M.IS_CREATOR] is True
     assert dumped[M.CURRENT_USER] == 1
