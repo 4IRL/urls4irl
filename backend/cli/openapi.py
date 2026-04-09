@@ -236,6 +236,37 @@ def _collect_error_code_enum_schema(
     }
 
 
+def _build_typed_error_response_schema(
+    enum_cls: type[IntEnum],
+    components_schemas: dict[str, Any],
+) -> str:
+    """Build a per-operation typed error response schema using allOf composition.
+
+    Creates a schema like ``ErrorResponse_UTubErrorCodes`` that narrows the
+    ``errorCode`` field to the specific IntEnum, while inheriting everything
+    else from the base ``ErrorResponse``.
+
+    Returns the schema name for ``$ref`` usage.  First-write wins — if the
+    schema already exists in *components_schemas* it is not overwritten.
+    """
+    schema_name = f"ErrorResponse_{enum_cls.__name__}"
+    if schema_name not in components_schemas:
+        components_schemas[schema_name] = {
+            "allOf": [
+                {"$ref": "#/components/schemas/ErrorResponse"},
+                {
+                    "type": "object",
+                    "properties": {
+                        "errorCode": {
+                            "$ref": f"#/components/schemas/{enum_cls.__name__}"
+                        }
+                    },
+                },
+            ]
+        }
+    return schema_name
+
+
 def _build_security(
     auth_decorator: str | None,
     method: str,
@@ -354,8 +385,19 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
                     # Determine response schema representation
                     if code >= 400:
-                        # Error responses: always direct $ref
-                        response_schema_obj = {"$ref": _build_schema_ref(schema_cls)}
+                        if error_code_enum is not None and issubclass(
+                            error_code_enum, IntEnum
+                        ):
+                            typed_name = _build_typed_error_response_schema(
+                                error_code_enum, components_schemas
+                            )
+                            response_schema_obj = {
+                                "$ref": f"#/components/schemas/{typed_name}"
+                            }
+                        else:
+                            response_schema_obj = {
+                                "$ref": _build_schema_ref(schema_cls)
+                            }
                     else:
                         response_schema_obj = _build_response_schema_obj(schema_cls)
 

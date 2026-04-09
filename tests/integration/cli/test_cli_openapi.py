@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
 from backend.urls.constants import URLErrorCodes
+from backend.utubs.constants import UTubErrorCodes
 
 pytestmark = pytest.mark.cli
 
@@ -196,7 +197,9 @@ def test_error_responses_reference_error_response_schema(runner, tmp_path):
     resp_400 = post_op["responses"].get("400")
     assert resp_400 is not None, "POST /utubs missing 400 response"
     schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
-    assert schema_ref == "#/components/schemas/ErrorResponse"
+    assert schema_ref.startswith(
+        "#/components/schemas/ErrorResponse"
+    ), f"Expected ErrorResponse or typed variant, got: {schema_ref}"
 
 
 def test_output_flag_writes_to_specified_path(runner, tmp_path):
@@ -922,3 +925,64 @@ def test_utub_detail_current_user_is_integer(runner, tmp_path):
     assert (
         current_user_prop["type"] == "integer"
     ), f"Expected currentUser type 'integer', got: {current_user_prop}"
+
+
+def test_typed_error_responses_narrow_error_code(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect a 400 response on an operation with x-error-codes
+         (e.g., POST /utubs which uses UTubErrorCodes)
+    THEN the response references ErrorResponse_UTubErrorCodes, and the
+         component schema uses allOf with base ErrorResponse and narrows
+         errorCode to $ref: UTubErrorCodes
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    post_utubs = spec["paths"]["/utubs"]["post"]
+    resp_400 = post_utubs["responses"]["400"]
+    schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
+
+    expected_typed_name = f"ErrorResponse_{UTubErrorCodes.__name__}"
+    assert (
+        schema_ref == f"#/components/schemas/{expected_typed_name}"
+    ), f"Expected typed error ref for POST /utubs 400, got: {schema_ref}"
+
+    typed_component = spec["components"]["schemas"][expected_typed_name]
+    assert "allOf" in typed_component, (
+        f"Expected allOf composition in {expected_typed_name}, "
+        f"got: {json.dumps(typed_component)}"
+    )
+
+    all_of = typed_component["allOf"]
+    assert all_of[0] == {
+        "$ref": "#/components/schemas/ErrorResponse"
+    }, f"First allOf entry should reference ErrorResponse, got: {all_of[0]}"
+
+    narrowed_props = all_of[1]
+    assert narrowed_props["type"] == "object"
+    error_code_ref = narrowed_props["properties"]["errorCode"]["$ref"]
+    assert (
+        error_code_ref == f"#/components/schemas/{UTubErrorCodes.__name__}"
+    ), f"Expected errorCode $ref to UTubErrorCodes, got: {error_code_ref}"
+
+
+def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect error responses on operations without error_code_enum
+         (e.g., DELETE /utubs/{utub_id} which has 403 and 404 but no error_code)
+    THEN those responses reference the plain ErrorResponse schema
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    delete_op = spec["paths"]["/utubs/{utub_id}"]["delete"]
+    for error_code in ("403", "404"):
+        resp = delete_op["responses"].get(error_code)
+        assert (
+            resp is not None
+        ), f"DELETE /utubs/{{utub_id}} missing {error_code} response"
+        schema_ref = resp["content"]["application/json"]["schema"]["$ref"]
+        assert schema_ref == "#/components/schemas/ErrorResponse", (
+            f"Expected plain ErrorResponse for DELETE /utubs/{{utub_id}} "
+            f"{error_code}, got: {schema_ref}"
+        )
