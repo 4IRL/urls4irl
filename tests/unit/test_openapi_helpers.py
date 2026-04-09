@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+from enum import IntEnum
+
 import pytest
 from pydantic import BaseModel
 
 from backend.cli.openapi import (
+    _build_typed_error_response_schema,
     _humanize_class_name,
     _response_description,
     _schema_has_status_property,
@@ -289,3 +292,103 @@ class TestStripAutoTitles:
         schema: dict[str, object] = {}
         _strip_auto_titles(schema)
         assert schema == {}
+
+    def test_strip_auto_titles_recurses_into_nested_object_properties(self) -> None:
+        """
+        GIVEN a schema dict where a property is itself an object with
+              sub-properties containing title keys
+        WHEN _strip_auto_titles is called
+        THEN nested property titles are also removed
+        """
+        schema = {
+            "title": "RootTitle",
+            "type": "object",
+            "properties": {
+                "address": {
+                    "title": "Address",
+                    "type": "object",
+                    "properties": {
+                        "street": {"title": "Street", "type": "string"},
+                        "city": {"title": "City", "type": "string"},
+                    },
+                },
+                "name": {"title": "Name", "type": "string"},
+            },
+        }
+
+        _strip_auto_titles(schema)
+
+        # Root title removed
+        assert "title" not in schema
+
+        # Top-level property titles removed
+        assert "title" not in schema["properties"]["address"]
+        assert "title" not in schema["properties"]["name"]
+
+        # Nested sub-property titles removed via recursion
+        assert "title" not in schema["properties"]["address"]["properties"]["street"]
+        assert "title" not in schema["properties"]["address"]["properties"]["city"]
+
+
+class _TestErrorCodes(IntEnum):
+    """Test error codes for _build_typed_error_response_schema tests."""
+
+    INVALID_INPUT = 1
+    NOT_FOUND = 2
+
+
+class _TestOtherErrorCodes(IntEnum):
+    """Different error codes for multi-enum tests."""
+
+    DUPLICATE = 10
+
+
+class TestBuildTypedErrorResponseSchema:
+    """Tests for _build_typed_error_response_schema helper."""
+
+    def test_returns_name_and_allof_structure(self) -> None:
+        """
+        GIVEN an IntEnum error code class and an empty components dict
+        WHEN _build_typed_error_response_schema is called
+        THEN it returns the expected schema name and creates an allOf entry
+             referencing ErrorResponse and the enum class
+        """
+        components_schemas: dict[str, object] = {}
+        schema_name = _build_typed_error_response_schema(
+            _TestErrorCodes, components_schemas
+        )
+
+        assert schema_name == "ErrorResponse__TestErrorCodes"
+        assert schema_name in components_schemas
+
+        schema = components_schemas[schema_name]
+        assert "allOf" in schema
+        assert len(schema["allOf"]) == 2
+        assert schema["allOf"][0] == {"$ref": "#/components/schemas/ErrorResponse"}
+        assert schema["allOf"][1] == {
+            "type": "object",
+            "properties": {
+                "errorCode": {"$ref": "#/components/schemas/_TestErrorCodes"}
+            },
+        }
+
+    def test_first_write_wins_preserves_existing_entry(self) -> None:
+        """
+        GIVEN a components dict that already contains an entry for the schema name
+        WHEN _build_typed_error_response_schema is called a second time
+        THEN the existing entry is not overwritten
+        """
+        components_schemas: dict[str, object] = {}
+        first_name = _build_typed_error_response_schema(
+            _TestErrorCodes, components_schemas
+        )
+        # Mutate to verify it's not replaced
+        sentinel = {"sentinel": True}
+        components_schemas[first_name] = sentinel
+
+        second_name = _build_typed_error_response_schema(
+            _TestErrorCodes, components_schemas
+        )
+
+        assert first_name == second_name
+        assert components_schemas[first_name] is sentinel

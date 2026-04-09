@@ -89,6 +89,9 @@ SUCCESS_ENVELOPE_SCHEMA: dict[str, Any] = {
     "properties": {
         "status": {
             "type": "string",
+            # This enum must stay in sync with
+            # StatusMessageResponseSchema.status Literal and the STD_JSON
+            # constants. If new status values are added, update all three.
             "enum": [STD_JSON.SUCCESS, STD_JSON.FAILURE, STD_JSON.NO_CHANGE],
             "description": "Response status: Success, Failure, or No change",
         },
@@ -163,7 +166,7 @@ def _strip_auto_titles(schema: dict[str, Any]) -> None:
     schema.pop("title", None)
 
     for prop in schema.get("properties", {}).values():
-        prop.pop("title", None)
+        _strip_auto_titles(prop)
 
     for def_schema in schema.get("$defs", {}).values():
         _strip_auto_titles(def_schema)
@@ -409,10 +412,17 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                 for code, schema_cls in status_codes.items():
                     _collect_schema(schema_cls, components_schemas)
 
-                    # Determine response schema representation
+                    # Determine response schema representation.
+                    # Typed error schemas (narrowing errorCode to the
+                    # operation's IntEnum) only apply to 400/409 where
+                    # application-specific error codes are meaningful.
+                    # Other error codes (401, 403, 404, 429) use the
+                    # plain ErrorResponse reference.
                     if code >= 400:
-                        if error_code_enum is not None and issubclass(
-                            error_code_enum, IntEnum
+                        if (
+                            code in (400, 409)
+                            and error_code_enum is not None
+                            and issubclass(error_code_enum, IntEnum)
                         ):
                             typed_name = _build_typed_error_response_schema(
                                 error_code_enum, components_schemas

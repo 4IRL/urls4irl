@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
 from backend.urls.constants import URLErrorCodes
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utubs.constants import UTubErrorCodes
 
 pytestmark = pytest.mark.cli
@@ -517,7 +518,11 @@ def test_success_envelope_schema_exists_in_components(runner, tmp_path):
     assert "status" in envelope["properties"]
     status_prop = envelope["properties"]["status"]
     assert status_prop["type"] == "string"
-    assert status_prop["enum"] == ["Success", "Failure", "No change"]
+    assert status_prop["enum"] == [
+        STD_JSON.SUCCESS,
+        STD_JSON.FAILURE,
+        STD_JSON.NO_CHANGE,
+    ]
 
     # Has properties.message with type string
     assert "message" in envelope["properties"]
@@ -887,7 +892,7 @@ def test_register_response_status_has_literal_enum(runner, tmp_path):
     """
     GIVEN a generated OpenAPI spec
     WHEN we inspect POST /register's 201 response schema (RegisterResponseSchema)
-    THEN the status property has enum: ["Success", "Failure"],
+    THEN the status property has enum: ["Success", "Failure", "No change"],
         matching the Literal annotation inherited from StatusMessageResponseSchema
     """
     spec = _generate_spec(runner, tmp_path)
@@ -910,7 +915,8 @@ def test_register_response_status_has_literal_enum(runner, tmp_path):
     assert status_prop.get("enum") == [
         "Success",
         "Failure",
-    ], f"Expected status enum ['Success', 'Failure'], got: {status_prop}"
+        "No change",
+    ], f"Expected status enum ['Success', 'Failure', 'No change'], got: {status_prop}"
 
 
 def test_utub_detail_current_user_is_integer(runner, tmp_path):
@@ -1004,6 +1010,40 @@ def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp
             f"Expected plain ErrorResponse for DELETE /utubs/{{utub_id}} "
             f"{error_code}, got: {schema_ref}"
         )
+
+
+def test_typed_error_response_scoped_to_400_and_409_only(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect PATCH /utubs/{utub_id}/urls/{utub_url_id} which has
+         error_code_enum=URLErrorCodes and status codes 400, 403, 404, 409
+    THEN 400 and 409 reference the typed ErrorResponse_URLErrorCodes,
+         while 403 and 404 reference the plain ErrorResponse
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    patch_op = spec["paths"]["/utubs/{utub_id}/urls/{utub_url_id}"]["patch"]
+    expected_typed_name = f"ErrorResponse_{URLErrorCodes.__name__}"
+
+    # 400 and 409 should use typed error response
+    for typed_code in ("400", "409"):
+        resp = patch_op["responses"].get(typed_code)
+        assert resp is not None, f"PATCH update_url missing {typed_code} response"
+        resp_schema = resp["content"]["application/json"]["schema"]
+        schema_ref = resp_schema["$ref"]
+        assert (
+            schema_ref == f"#/components/schemas/{expected_typed_name}"
+        ), f"Expected typed error ref for {typed_code}, got: {schema_ref}"
+
+    # 403 and 404 should use plain ErrorResponse
+    for plain_code in ("403", "404"):
+        resp = patch_op["responses"].get(plain_code)
+        assert resp is not None, f"PATCH update_url missing {plain_code} response"
+        resp_schema = resp["content"]["application/json"]["schema"]
+        schema_ref = resp_schema["$ref"]
+        assert (
+            schema_ref == "#/components/schemas/ErrorResponse"
+        ), f"Expected plain ErrorResponse for {plain_code}, got: {schema_ref}"
 
 
 def test_component_schemas_have_no_title_fields(runner, tmp_path):

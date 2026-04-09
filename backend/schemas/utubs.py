@@ -33,7 +33,7 @@ class UtubDetailSchema(BaseSchema):
     )
     created_at: datetime = Field(
         alias=M.CREATED_AT,
-        description="Creation timestamp of the UTub",
+        description="Creation timestamp of the UTub (ISO 8601)",
     )
     description: str = Field(
         alias=M.DESCRIPTION,
