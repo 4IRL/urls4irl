@@ -878,3 +878,33 @@ def test_error_response_status_is_literal_failure(runner, tmp_path):
         f"Expected status to have const: 'Failure' or enum: ['Failure'], "
         f"got: {status_prop}"
     )
+
+
+def test_register_response_status_has_literal_enum(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /register's 201 response schema (RegisterResponseSchema)
+    THEN the status property has enum: ["Success", "Failure"],
+        matching the Literal annotation inherited from StatusMessageResponseSchema
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    register_responses = spec["paths"]["/register"]["post"]["responses"]
+    assert "201" in register_responses, "POST /register missing 201 response"
+
+    register_201_schema = register_responses["201"]["content"]["application/json"][
+        "schema"
+    ]
+    assert "$ref" in register_201_schema, (
+        f"Expected direct $ref for RegisterResponseSchema, "
+        f"got: {json.dumps(register_201_schema)}"
+    )
+
+    component_name = register_201_schema["$ref"].split("/")[-1]
+    component = spec["components"]["schemas"][component_name]
+    status_prop = component["properties"]["status"]
+
+    assert status_prop.get("enum") == [
+        "Success",
+        "Failure",
+    ], f"Expected status enum ['Success', 'Failure'], got: {status_prop}"
