@@ -859,3 +859,22 @@ def test_success_response_descriptions_are_human_readable(runner, tmp_path):
                     f"'{description}' is a single word not in the allow-list "
                     f"{single_word_allowlist}"
                 )
+
+
+def test_error_response_status_is_literal_failure(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the ErrorResponse component schema's status property
+    THEN it has a const or enum constraint narrowing it to "Failure",
+        matching the Literal["Failure"] annotation on ErrorResponse.status
+    """
+    spec = _generate_spec(runner, tmp_path)
+    error_schema = spec["components"]["schemas"]["ErrorResponse"]
+    status_prop = error_schema["properties"]["status"]
+
+    has_const = status_prop.get("const") == "Failure"
+    has_enum = status_prop.get("enum") == ["Failure"]
+    assert has_const or has_enum, (
+        f"Expected status to have const: 'Failure' or enum: ['Failure'], "
+        f"got: {status_prop}"
+    )
