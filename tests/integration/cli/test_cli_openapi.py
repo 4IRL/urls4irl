@@ -509,10 +509,12 @@ def test_success_envelope_schema_exists_in_components(runner, tmp_path):
 
     envelope = schemas["SuccessEnvelope"]
 
-    # Has properties.status with type string
+    # Has properties.status with type string and enum constraint
     assert "properties" in envelope
     assert "status" in envelope["properties"]
-    assert envelope["properties"]["status"]["type"] == "string"
+    status_prop = envelope["properties"]["status"]
+    assert status_prop["type"] == "string"
+    assert status_prop["enum"] == ["Success", "Failure", "No change"]
 
     # Has properties.message with type string
     assert "message" in envelope["properties"]

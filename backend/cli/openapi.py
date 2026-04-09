@@ -15,6 +15,7 @@ from flask.cli import AppGroup, with_appcontext
 from pydantic import BaseModel
 
 from backend.api_common.auth_decorators import SESSION_AUTH_DECORATORS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
 openapi_cli = AppGroup(
     "openapi",
@@ -88,6 +89,7 @@ SUCCESS_ENVELOPE_SCHEMA: dict[str, Any] = {
     "properties": {
         "status": {
             "type": "string",
+            "enum": [STD_JSON.SUCCESS, STD_JSON.FAILURE, STD_JSON.NO_CHANGE],
             "description": "Response status: Success, Failure, or No change",
         },
         "message": {
