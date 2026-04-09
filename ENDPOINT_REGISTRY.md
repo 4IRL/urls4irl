@@ -158,6 +158,7 @@ Base path: `/utubs` (some routes served at `/home`)
 |---|---|
 | **Handler** | `backend/utubs/routes.py:get_single_utub` |
 | **Decorators** | `@utub_membership_required`, `@api_route(response_schema=UtubDetailSchema, tags=["utubs"], description="Retrieve data for a single UTub", status_codes={200: UtubDetailSchema, 404: ErrorResponse})` |
+| **Schema** | `backend/schemas/utubs.py:UtubDetailSchema` — `currentUser: int` (integer, not string), `createdAt: str` (ISO 8601 datetime via `field_serializer`) |
 | **Service** | `backend/utubs/services/get_utub.py:get_single_utub_for_user` |
 | **JS Module** | `frontend/home/utubs/selectors.js` |
 | **Tests** | `tests/integration/utubs/test_get_detailed_utub_info.py` (marker: `utubs`), `tests/functional/utubs_ui/test_select_utub_ui.py` (marker: `utubs_ui`) |

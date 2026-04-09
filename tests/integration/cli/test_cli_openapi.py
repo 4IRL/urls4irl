@@ -908,3 +908,17 @@ def test_register_response_status_has_literal_enum(runner, tmp_path):
         "Success",
         "Failure",
     ], f"Expected status enum ['Success', 'Failure'], got: {status_prop}"
+
+
+def test_utub_detail_current_user_is_integer(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the UtubDetailSchema component schema's currentUser property
+    THEN its type is "integer", confirming the schema emits int (not string)
+    """
+    spec = _generate_spec(runner, tmp_path)
+    utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
+    current_user_prop = utub_detail["properties"]["currentUser"]
+    assert (
+        current_user_prop["type"] == "integer"
+    ), f"Expected currentUser type 'integer', got: {current_user_prop}"

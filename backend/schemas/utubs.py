@@ -54,7 +54,7 @@ class UtubDetailSchema(BaseSchema):
         alias=M.IS_CREATOR,
         description="Whether the current user is the creator of the UTub",
     )
-    current_user: str = Field(
+    current_user: int = Field(
         alias=M.CURRENT_USER,
         description="ID of the currently authenticated user",
     )
@@ -87,7 +87,7 @@ class UtubDetailSchema(BaseSchema):
             urls=urls,
             tags=tags,
             is_creator=utub.utub_creator == current_user_id,
-            current_user=str(current_user_id),
+            current_user=current_user_id,
         )
 
 
