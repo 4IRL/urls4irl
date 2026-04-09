@@ -1004,3 +1004,26 @@ def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp
             f"Expected plain ErrorResponse for DELETE /utubs/{{utub_id}} "
             f"{error_code}, got: {schema_ref}"
         )
+
+
+def test_component_schemas_have_no_title_fields(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect all component schemas
+    THEN no schema or property has a "title" key, confirming
+        _strip_auto_titles removed Pydantic's auto-generated titles
+    """
+    spec = _generate_spec(runner, tmp_path)
+    schemas = spec["components"]["schemas"]
+
+    violations = []
+    for schema_name, schema_obj in schemas.items():
+        if "title" in schema_obj:
+            violations.append(f"{schema_name} has root-level 'title'")
+        for prop_name, prop_obj in schema_obj.get("properties", {}).items():
+            if isinstance(prop_obj, dict) and "title" in prop_obj:
+                violations.append(f"{schema_name}.{prop_name} has 'title'")
+
+    assert (
+        not violations
+    ), f"Found {len(violations)} schema(s) with 'title' keys:\n" + "\n".join(violations)

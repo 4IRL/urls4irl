@@ -8,6 +8,7 @@ from backend.cli.openapi import (
     _response_description,
     _schema_has_status_property,
     _schema_is_empty,
+    _strip_auto_titles,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
@@ -200,3 +201,91 @@ class TestResponseDescription:
         """
         result = _response_description(200, SchemaWithoutDocstring)
         assert result == "Schema without docstring"
+
+
+class TestStripAutoTitles:
+    """Tests for _strip_auto_titles helper."""
+
+    def test_strip_auto_titles_removes_property_titles(self) -> None:
+        """
+        GIVEN a schema dict with title keys at root, property, nested $defs,
+              allOf/anyOf/oneOf sub-schemas, and array items
+        WHEN _strip_auto_titles is called
+        THEN all title keys are removed
+        """
+        schema = {
+            "title": "RootTitle",
+            "type": "object",
+            "properties": {
+                "name": {"title": "Name", "type": "string"},
+                "age": {"title": "Age", "type": "integer"},
+            },
+            "$defs": {
+                "Nested": {
+                    "title": "Nested",
+                    "type": "object",
+                    "properties": {
+                        "value": {"title": "Value", "type": "string"},
+                    },
+                }
+            },
+            "allOf": [{"title": "AllOfEntry", "type": "object"}],
+            "anyOf": [{"title": "AnyOfEntry", "type": "string"}],
+            "oneOf": [{"title": "OneOfEntry", "type": "integer"}],
+            "items": {"title": "ItemTitle", "type": "string"},
+        }
+
+        _strip_auto_titles(schema)
+
+        # Root title removed
+        assert "title" not in schema
+
+        # Property titles removed
+        for prop in schema["properties"].values():
+            assert "title" not in prop
+
+        # $defs titles removed (recursively)
+        nested = schema["$defs"]["Nested"]
+        assert "title" not in nested
+        for prop in nested["properties"].values():
+            assert "title" not in prop
+
+        # allOf/anyOf/oneOf titles removed
+        assert "title" not in schema["allOf"][0]
+        assert "title" not in schema["anyOf"][0]
+        assert "title" not in schema["oneOf"][0]
+
+        # items title removed
+        assert "title" not in schema["items"]
+
+    def test_strip_auto_titles_preserves_non_title_keys(self) -> None:
+        """
+        GIVEN a schema dict with various non-title keys
+        WHEN _strip_auto_titles is called
+        THEN non-title keys are preserved unchanged
+        """
+        schema = {
+            "title": "Root",
+            "type": "object",
+            "description": "A description",
+            "properties": {
+                "name": {"title": "Name", "type": "string", "minLength": 1},
+            },
+        }
+
+        _strip_auto_titles(schema)
+
+        assert schema["type"] == "object"
+        assert schema["description"] == "A description"
+        assert schema["properties"]["name"]["type"] == "string"
+        assert schema["properties"]["name"]["minLength"] == 1
+
+    def test_strip_auto_titles_handles_empty_schema(self) -> None:
+        """
+        GIVEN an empty schema dict
+        WHEN _strip_auto_titles is called
+        THEN it completes without error
+        """
+        schema: dict[str, object] = {}
+        _strip_auto_titles(schema)
+        assert schema == {}

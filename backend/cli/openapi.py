@@ -154,6 +154,28 @@ def _build_schema_ref(schema_cls: Type[BaseModel]) -> str:
     return f"#/components/schemas/{schema_cls.__name__}"
 
 
+def _strip_auto_titles(schema: dict[str, Any]) -> None:
+    """Recursively remove auto-generated 'title' keys from a JSON schema dict.
+
+    Pydantic adds a 'title' key to every schema and property by default.
+    These bloat the OpenAPI spec and are ignored by openapi-typescript.
+    """
+    schema.pop("title", None)
+
+    for prop in schema.get("properties", {}).values():
+        prop.pop("title", None)
+
+    for def_schema in schema.get("$defs", {}).values():
+        _strip_auto_titles(def_schema)
+
+    for keyword in ("allOf", "anyOf", "oneOf"):
+        for sub_schema in schema.get(keyword, []):
+            _strip_auto_titles(sub_schema)
+
+    if "items" in schema and isinstance(schema["items"], dict):
+        _strip_auto_titles(schema["items"])
+
+
 def _collect_schema(
     schema_cls: Type[BaseModel],
     components_schemas: dict[str, Any],
@@ -167,7 +189,11 @@ def _collect_schema(
     defs = schema_dict.pop("$defs", {})
     for def_name, def_schema in defs.items():
         if def_name not in components_schemas:
+            _strip_auto_titles(def_schema)
             components_schemas[def_name] = def_schema
+
+    # Strip auto-generated titles from the root schema
+    _strip_auto_titles(schema_dict)
 
     # Add root schema under its class name
     class_name = schema_cls.__name__
