@@ -11,7 +11,6 @@ from backend.utils.strings.url_strs import URL_FAILURE
 
 class ErrorResponse(BaseSchema):
     status: str = Field(
-        default=STD_JSON.FAILURE,
         alias=STD_JSON.STATUS,
         description="Error status, always Failure",
     )
@@ -52,7 +51,10 @@ def build_field_error_response(
     status_code: int = 400,
 ) -> FlaskResponse:
     return ErrorResponse(
-        message=message, error_code=error_code, field_errors=errors
+        status=STD_JSON.FAILURE,
+        message=message,
+        error_code=error_code,
+        field_errors=errors,
     ).to_response(status_code)
 
 
@@ -61,9 +63,9 @@ def build_message_error_response(
     error_code: int | None = None,
     status_code: int = 400,
 ) -> FlaskResponse:
-    return ErrorResponse(message=message, error_code=error_code).to_response(
-        status_code
-    )
+    return ErrorResponse(
+        status=STD_JSON.FAILURE, message=message, error_code=error_code
+    ).to_response(status_code)
 
 
 def build_detail_error_response(
@@ -73,7 +75,10 @@ def build_detail_error_response(
     status_code: int = 400,
 ) -> FlaskResponse:
     return ErrorResponse(
-        message=message, error_code=error_code, error_detail=details
+        status=STD_JSON.FAILURE,
+        message=message,
+        error_code=error_code,
+        error_detail=details,
     ).to_response(status_code)
 
 
@@ -84,5 +89,8 @@ def build_url_conflict_error_response(
     status_code: int = 409,
 ) -> FlaskResponse:
     return ErrorResponse(
-        message=message, error_code=error_code, url_string=url_string
+        status=STD_JSON.FAILURE,
+        message=message,
+        error_code=error_code,
+        url_string=url_string,
     ).to_response(status_code)

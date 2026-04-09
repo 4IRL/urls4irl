@@ -10,6 +10,8 @@ class BaseSchema(BaseModel):
 
 
 class StatusMessageResponseSchema(BaseSchema):
+    """Status and message response"""
+
     status: str = Field(
         alias=STD_JSON.STATUS,
         description="Response status, typically Success or Failure",

@@ -31,6 +31,8 @@ class UtubSummaryItemSchema(BaseSchema):
 
 
 class UtubSummaryListSchema(BaseSchema):
+    """List of UTub summaries"""
+
     utubs: list[UtubSummaryItemSchema] = Field(
         alias=M.UTUBS,
         description="List of UTubs the user is a member of",
@@ -59,6 +61,8 @@ UtubSummaryListSchema.model_rebuild()
 
 
 class LoginRedirectResponseSchema(BaseSchema):
+    """Login successful with redirect URL"""
+
     redirect_url: str = Field(
         alias=REDIRECT_URL,
         description="URL to redirect to after login",

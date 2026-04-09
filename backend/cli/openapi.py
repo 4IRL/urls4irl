@@ -35,6 +35,54 @@ CONVERTER_TYPE_MAP = {
 }
 
 
+HTTP_STATUS_DESCRIPTIONS: dict[int, str] = {
+    200: "Success",
+    201: "Created",
+    400: "Bad request",
+    401: "Unauthorized",
+    403: "Forbidden",
+    404: "Not found",
+    409: "Conflict",
+    429: "Too many requests",
+    503: "Service unavailable",
+}
+
+ACRONYM_MAP: dict[str, str] = {
+    "Utub": "UTub",
+    "Url": "URL",
+    "Api": "API",
+    "Id": "ID",
+}
+
+
+def _humanize_class_name(name: str) -> str:
+    """Convert a PascalCase schema class name to a human-readable description."""
+    # Step 1: strip ResponseSchema or Schema suffix
+    stripped = re.sub(r"(ResponseSchema|Response|Schema)$", "", name)
+    # Step 2: insert a space before each uppercase letter that follows a lowercase letter
+    spaced = re.sub(r"(?<=[a-z])([A-Z])", r" \1", stripped)
+    # Step 3: split into tokens, apply acronym substitution, lowercase non-acronym tokens
+    tokens = spaced.split()
+    result_tokens = []
+    for index, token in enumerate(tokens):
+        if token in ACRONYM_MAP:
+            result_tokens.append(ACRONYM_MAP[token])
+        elif index == 0:
+            result_tokens.append(token)
+        else:
+            result_tokens.append(token.lower())
+    return " ".join(result_tokens)
+
+
+def _response_description(status_code: int, schema_cls: Type[BaseModel]) -> str:
+    """Build a human-readable response description for the OpenAPI spec."""
+    if status_code >= 400:
+        return HTTP_STATUS_DESCRIPTIONS.get(status_code, "Error")
+    if schema_cls.__doc__ is not None:
+        return schema_cls.__doc__.strip()
+    return _humanize_class_name(schema_cls.__name__)
+
+
 SUCCESS_ENVELOPE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -165,6 +213,27 @@ def _build_response_schema_obj(schema_cls: Type[BaseModel]) -> dict[str, Any]:
     }
 
 
+def _collect_error_code_enum_schema(
+    enum_cls: Type[IntEnum],
+    components_schemas: dict[str, Any],
+) -> None:
+    """Add an IntEnum error code class to components/schemas (first-write wins).
+
+    Builds a schema with type: integer, enum values, and x-enum-varnames
+    for TypeScript codegen.
+    """
+    class_name = enum_cls.__name__
+    if class_name in components_schemas:
+        return
+
+    components_schemas[class_name] = {
+        "type": "integer",
+        "enum": [member.value for member in enum_cls],
+        "x-enum-varnames": [member.name for member in enum_cls],
+        "description": f"Error codes for {class_name}",
+    }
+
+
 def _build_security(
     auth_decorator: str | None,
     method: str,
@@ -289,7 +358,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                         response_schema_obj = _build_response_schema_obj(schema_cls)
 
                     responses[str(code)] = {
-                        "description": schema_cls.__name__,
+                        "description": _response_description(code, schema_cls),
                         "content": {
                             "application/json": {
                                 "schema": response_schema_obj,
@@ -305,7 +374,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
                 operation["responses"] = {
                     "200": {
-                        "description": response_schema.__name__,
+                        "description": _response_description(200, response_schema),
                         "content": {
                             "application/json": {
                                 "schema": fallback_schema_obj,
@@ -331,9 +400,10 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
             if error_code_enum is not None and issubclass(error_code_enum, IntEnum):
                 operation["x-error-codes"] = {
                     error_code_enum.__name__: {
-                        member.name: member.value for member in error_code_enum
+                        "$ref": f"#/components/schemas/{error_code_enum.__name__}"
                     }
                 }
+                _collect_error_code_enum_schema(error_code_enum, components_schemas)
 
             paths[openapi_path][method.lower()] = operation
 

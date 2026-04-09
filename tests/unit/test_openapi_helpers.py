@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 from pydantic import BaseModel
 
-from backend.cli.openapi import _schema_has_status_property, _schema_is_empty
+from backend.cli.openapi import (
+    _humanize_class_name,
+    _response_description,
+    _schema_has_status_property,
+    _schema_is_empty,
+)
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
 
@@ -74,3 +79,124 @@ class TestSchemaIsEmpty:
         THEN it returns False
         """
         assert not _schema_is_empty(NonEmptySchema)
+
+
+class SchemaWithDocstring(BaseModel):
+    """Summary of this schema."""
+
+    name: str
+
+
+class SchemaWithoutDocstring(BaseModel):
+    __doc__ = None
+    name: str
+
+
+class TestHumanizeClassName:
+    """Tests for _humanize_class_name helper."""
+
+    def test_strips_response_schema_suffix(self) -> None:
+        """
+        GIVEN a class name ending in 'ResponseSchema'
+        WHEN _humanize_class_name is called
+        THEN the suffix is stripped and the result is humanized
+        """
+        assert (
+            _humanize_class_name("UtubSummaryListResponseSchema") == "UTub summary list"
+        )
+
+    def test_strips_schema_suffix(self) -> None:
+        """
+        GIVEN a class name ending in 'Schema' (but not 'ResponseSchema')
+        WHEN _humanize_class_name is called
+        THEN the 'Schema' suffix is stripped
+        """
+        assert _humanize_class_name("UtubSummarySchema") == "UTub summary"
+
+    def test_strips_bare_response_suffix(self) -> None:
+        """
+        GIVEN a class name ending in bare 'Response'
+        WHEN _humanize_class_name is called
+        THEN the 'Response' suffix is stripped
+        """
+        assert _humanize_class_name("UtubSummaryResponse") == "UTub summary"
+
+    def test_acronym_map_applied_mid_name(self) -> None:
+        """
+        GIVEN a class name containing tokens in the ACRONYM_MAP
+        WHEN _humanize_class_name is called
+        THEN acronyms are uppercased correctly
+        """
+        assert _humanize_class_name("UrlValidationSchema") == "URL validation"
+
+    def test_api_acronym_applied(self) -> None:
+        """
+        GIVEN a class name containing 'Api'
+        WHEN _humanize_class_name is called
+        THEN 'Api' is replaced with 'API'
+        """
+        assert _humanize_class_name("ApiKeySchema") == "API key"
+
+    def test_id_acronym_applied(self) -> None:
+        """
+        GIVEN a class name containing 'Id'
+        WHEN _humanize_class_name is called
+        THEN 'Id' is replaced with 'ID'
+        """
+        assert _humanize_class_name("UserIdSchema") == "User ID"
+
+    def test_single_word_no_suffix(self) -> None:
+        """
+        GIVEN a single-word class name with no recognized suffix
+        WHEN _humanize_class_name is called
+        THEN the name is returned as-is
+        """
+        assert _humanize_class_name("Summary") == "Summary"
+
+    def test_first_token_capitalized_rest_lowercased(self) -> None:
+        """
+        GIVEN a multi-token PascalCase name with no acronyms
+        WHEN _humanize_class_name is called
+        THEN the first token stays capitalized and later tokens are lowercased
+        """
+        assert _humanize_class_name("MemberListResponseSchema") == "Member list"
+
+
+class TestResponseDescription:
+    """Tests for _response_description helper."""
+
+    def test_error_status_returns_http_phrase(self) -> None:
+        """
+        GIVEN a status code >= 400 that is in HTTP_STATUS_DESCRIPTIONS
+        WHEN _response_description is called
+        THEN the HTTP phrase is returned
+        """
+        result = _response_description(400, NonEmptySchema)
+        assert result == "Bad request"
+
+    def test_unmapped_error_status_returns_error(self) -> None:
+        """
+        GIVEN a status code >= 400 that is NOT in HTTP_STATUS_DESCRIPTIONS
+        WHEN _response_description is called
+        THEN 'Error' is returned as fallback
+        """
+        result = _response_description(418, NonEmptySchema)
+        assert result == "Error"
+
+    def test_success_with_docstring_returns_docstring(self) -> None:
+        """
+        GIVEN a success status code and a schema with a __doc__
+        WHEN _response_description is called
+        THEN the stripped docstring is returned
+        """
+        result = _response_description(200, SchemaWithDocstring)
+        assert result == "Summary of this schema."
+
+    def test_success_without_docstring_delegates_to_humanize(self) -> None:
+        """
+        GIVEN a success status code and a schema without a __doc__
+        WHEN _response_description is called
+        THEN it delegates to _humanize_class_name
+        """
+        result = _response_description(200, SchemaWithoutDocstring)
+        assert result == "Schema without docstring"
