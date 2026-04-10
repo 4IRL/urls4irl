@@ -8,7 +8,7 @@ FROM node:22-bookworm-slim AS frontend-builder
 WORKDIR /build
 
 # Copy package files to project root for installation
-COPY frontend/package.json frontend/package-lock.json ./
+COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 
 # Copy vite config from frontend/ to project root (required for proper __dirname resolution)
 COPY frontend/vite.config.js ./

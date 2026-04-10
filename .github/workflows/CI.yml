@@ -27,6 +27,11 @@ jobs:
             MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
             BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
 
+    types-staleness:
+        needs: 'lint'
+        name: 'Generated Types Freshness'
+        uses: ./.github/workflows/types-staleness.yml
+
     build-image-test:
         needs: 'lint'
         name: 'Test Build Docker Container'

@@ -5,8 +5,8 @@ WORKDIR /app
 # Install curl for healthcheck
 RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Copy package files
-COPY ./frontend/package.json ./frontend/package-lock.json ./
+# Copy package files and npm config
+COPY ./frontend/package.json ./frontend/package-lock.json ./frontend/.npmrc ./
 
 # Install dependencies
 RUN npm ci
