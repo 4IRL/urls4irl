@@ -12,7 +12,6 @@
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
     "types": ["jquery", "vitest/globals"]
   },
   "include": [
