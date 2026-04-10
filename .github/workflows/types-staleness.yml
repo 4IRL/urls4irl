@@ -4,13 +4,6 @@ permissions:
 
 on:
   workflow_call:
-    secrets:
-      MAILJET_API_KEY:
-        required: true
-      MAILJET_SECRET_KEY:
-        required: true
-      BASE_EMAIL:
-        required: true
 
 jobs:
   types-staleness:
@@ -25,9 +18,9 @@ jobs:
       POSTGRES_USER: 'postgres'
       POSTGRES_PASSWORD: 'postgres'
       POSTGRES_DB: 'postgres'
-      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
-      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
-      BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
+      MAILJET_API_KEY: 'dummy-not-used'
+      MAILJET_SECRET_KEY: 'dummy-not-used'
+      BASE_EMAIL: 'noreply@example.com'
 
     steps:
       - name: Checkout code
