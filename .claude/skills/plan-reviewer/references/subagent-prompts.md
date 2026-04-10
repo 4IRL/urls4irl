@@ -71,6 +71,10 @@ Rules:
 - **Do not trust plan assertions — including explanatory prose.** Plans often state preconditions as fact ("CSRF is already handled," "this import exists"). Plans also embed factual claims in rationale prose ("only X does Y," "no route uses Z"). For every such claim — whether it appears as a precondition or as justification for a design decision — trace it to the source file and verify it holds. A wrong prose claim will mislead implementers even if the code spec is correct.
 - **Verify anchors in source files, not just plan text.** When confirming a mechanical fix has been applied, do not stop at verifying plan text. For any fix that references a specific anchor in a source or reference file (import block, function body, registry row, config section), read that file and verify the anchor exists before accepting the fix as resolved.
 
+**Fix verification rule (all subagents, Pass 2+):** When confirming a prior-pass fix has been applied, do not stop at verifying the plan text changed. For any fix that references a runtime behavior (path resolution, volume mount, import lookup, env var), read the source file or config that governs that behavior and verify the runtime claim is true. "The plan now says X" is not the same as "X is true."
+
+**Container execution context (all subagents):** When the plan runs any command inside a Docker container (npm script, pytest, shell command), read the compose file that defines that service and verify: (a) the container WORKDIR, (b) all bind-mount paths, (c) where the referenced file actually resolves given (a) and (b). Do not trust the plan's prose description of the container environment.
+
 ---
 
 ## Coordinator Subagent
@@ -239,7 +243,7 @@ When a plan instructs inserting code into an existing function, read the full fu
 
 **Role:** For every endpoint the plan modifies, trace the complete request/response cycle by reading actual code.
 
-**What to read:** For each touched endpoint: the route handler, its decorators, the service function + private helpers (one level deep), the frontend JS that calls the endpoint (read ALL JS files in the module directory, not just ones the plan names), and the HTML template that renders the form/page.
+**What to read:** For each touched endpoint: the route handler, its decorators, the service function + private helpers (one level deep), the frontend JS that calls the endpoint (read ALL JS files in the module directory, not just ones the plan names), and the HTML template that renders the form/page. **When the plan involves a command or script run inside a Docker container** (npm scripts, shell scripts, pytest invocations), also read the relevant docker/compose*.yaml file to verify: (a) the container WORKDIR, (b) all bind-mount paths, (c) where the referenced file actually resolves given (a) and (b). Do NOT trust the plan's prose description of the container environment.
 
 When a plan instructs inserting code into an existing function, read the full function body — not just the lines the plan cites. This surfaces: (a) existing imports the new code depends on, (b) established defensive patterns already in use nearby, (c) variable names or parameter types the new code must match.
 
@@ -297,7 +301,7 @@ When a plan instructs inserting code into an existing function, read the full fu
 
 **Role:** Verify the plan follows project patterns and CLAUDE.md rules.
 
-**What to read:** CLAUDE.md, ARCHITECTURE.md (if referenced), ENDPOINT_REGISTRY.md (if the plan references it), and a sample of files in the same module as the plan's changes to confirm pattern alignment. Also read requirements files if the plan adds packages.
+**What to read:** CLAUDE.md, ARCHITECTURE.md (if referenced), ENDPOINT_REGISTRY.md (if the plan references it), and a sample of files in the same module as the plan's changes to confirm pattern alignment. Also read requirements files if the plan adds packages. **When the plan creates or modifies a build artifact** (config file, output directory, package manifest), also read `.github/workflows/*.yml` to verify whether existing CI jobs copy or reference that artifact — omissions that are silent during the first run become maintenance hazards.
 
 - **Anchor verification for reference documents (required):** When the plan instructs inserting text at a specific anchor location within a reference document (ENDPOINT_REGISTRY.md, README, config file), read that document and verify the anchor string exists at the stated location. If the anchor does not exist, flag as **Major** — the implementer cannot follow the instruction.
 
@@ -319,8 +323,9 @@ When a plan instructs inserting code into an existing function, read the full fu
   - Use exact pin (`==`) not ranges (`>=`, `~=`, `<`)
   - Pin transitive dependencies
   - Place in correct requirements file: runtime in `requirements-prod.txt`, test-only in `requirements-test.txt`, dev/tooling in `requirements-dev.txt`
+  - **TypeScript types sub-path validation (required for JS/TS plans):** When a plan adds an entry to a tsconfig types array (e.g., "vitest/globals", "@testing-library/jest-dom"), verify that the sub-path is a documented TypeScript types entry point for the pinned version. Flag as **Minor** if unverifiable at review time, with a suggested runtime verification command.
 
-- **Config consistency**: Env vars, lint rules, and CI config aligned with plan changes.
+- **Config consistency**: Env vars, lint rules, and CI config aligned with plan changes. When the plan adds or modifies a build/test tool invocation, compare the CI job command (in .github/workflows/*.yml) against the local Makefile target for the same tool — confirm flags, working directories, and config file paths are consistent or note documented divergences. Undocumented divergences between CI and local invocations are a **Minor** finding.
 
 - **Test markers**: Are markers correct per `pytest.ini`? Are new markers needed?
 
@@ -350,6 +355,8 @@ When a plan instructs inserting code into an existing function, read the full fu
 
 - **Verification sufficiency**: Are the verification steps actually sufficient to catch regressions?
 
+- **Failure path guidance (required for non-trivial verification commands):** When a verification step runs a command that can fail (typecheck, build, test run) and the step says 'if it fails, investigate', verify that at least 2-3 concrete failure modes are listed (e.g., wrong config path, missing exclude entry, unexpected file in include glob). A bare 'investigate and fix' is a **Minor** finding — add specific troubleshooting hints.
+
 - **Test assertion falsifiability (required):** For each negative test assertion (e.g., `assert key not in dict`), verify that the assertion targets the exact dict/field that the implementation would populate — not a parent container. An assertion on a parent dict passes trivially if the key is only ever inserted at a child level. Flag as **Major** if a negative assertion would pass even if the implementation is broken.
 
 ---
@@ -368,10 +375,13 @@ When a plan instructs inserting code into an existing function, read the full fu
   - Does the plan provide enough detail (exact field definitions, method bodies, variable extraction instructions, explicit code patterns) for an implementer to execute without additional research?
   - Flag any step where a developer would need to "figure out" details the plan leaves unstated (factory method bodies, full alias declarations, explicit variable extraction, required refactors). These are **Major** findings.
   - Partial specifications are not acceptable: if a schema has five fields and only one has `Field(alias=...)`, the other four are underspecified even if "derivable."
+  - **Config file option coverage (required when a plan proposes a new config file):** For every option listed in a proposed config file (tsconfig.json, vite.config.js, pyproject.toml, etc.), verify that the plan's rationale section explains WHY that option is present. Any option with no rationale bullet is a **Minor** finding — either the rationale must be added or the option must be removed.
 
 - **Risk & reversibility**: Which steps are hard to undo (file deletions, DB migrations, API contract changes)? Steps that could break CI or affect shared infrastructure?
 
 - **Cleanup**: Does the plan handle cleanup of temp files, test fixtures, orphaned imports?
+
+- **Config file scope correctness (required when a plan creates a shared config file):** When a plan proposes a new tsconfig.json, jest.config, or similar config that applies to all source files, check whether any types, globals, plugins, or include entries expose test-only APIs (e.g., vitest/globals, @types/jest) to production code. If so, flag the missing scope boundary (e.g., a separate tsconfig.test.json) as **Minor** and note the trade-off.
 
 - **Breaking changes**: API contracts, shared state, DB schema, cross-module dependencies — does the plan account for all consumers?
 
