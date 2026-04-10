@@ -12,7 +12,7 @@
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
-    "types": ["jquery", "vitest/globals"]
+    "types": ["jquery"]
   },
   "include": [
     "**/*.ts",

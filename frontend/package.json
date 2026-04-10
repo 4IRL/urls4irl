@@ -9,7 +9,7 @@
     "test": "vitest run --config ./frontend/vitest.config.js",
     "test:watch": "vitest --config ./frontend/vitest.config.js",
     "test:coverage": "vitest run --coverage --config ./frontend/vitest.config.js",
-    "typecheck": "tsc --noEmit --project frontend/tsconfig.json"
+    "typecheck": "tsc --noEmit --project frontend/tsconfig.json && tsc --noEmit --project frontend/tsconfig.test.json"
   },
   "devDependencies": {
     "@types/jquery": "3.5.34",
