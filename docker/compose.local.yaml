@@ -41,6 +41,7 @@ services:
       - ./migrations:/code/u4i/migrations
       - ./migrations/versions:/code/u4i/migrations/versions
       - ./scripts:/code/u4i/scripts
+      - ./frontend/types:/code/u4i/frontend/types
       - app_logs:/app/volume
 
   vite:
