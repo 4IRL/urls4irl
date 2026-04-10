@@ -171,7 +171,7 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     # Wait for the async logout AJAX + window.location.replace("/") to reload the page.
     # staleness_of detects when the DOM element is destroyed by the page navigation,
     # which is a structural signal (not a timing guess) that the redirect completed.
-    wait_for_element_to_be_removed(browser, modal_element, timeout=10)
+    assert wait_for_element_to_be_removed(browser, modal_element, timeout=10)
 
     # After logout, user should be redirected to splash page as anonymous
     welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=5)
