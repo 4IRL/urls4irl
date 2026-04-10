@@ -224,11 +224,11 @@ The subagent reads the files, makes all edits, and returns a summary of what was
 After applying DD choices, evaluate:
 
 1. **Early exit check**: Did this pass produce 0 critical + 0 major findings?
-   - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation." Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7 if prior reviews exist.
+   - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension, e.g. `openapi-type-generation-pipeline`). Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7 if prior reviews exist.
    - **No** → Continue to next pass.
 
 2. **Hard cap check**: Is this Pass 3?
-   - **Yes** → Stop reviewing. If any unresolved issues remain, append a `### Resolve During Implementation` section to the review document listing them. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation." Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7.
+   - **Yes** → Stop reviewing. If any unresolved issues remain, append a `### Resolve During Implementation` section to the review document listing them. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension). Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7.
    - **No** → Print: "Pass N complete. Starting Pass N+1..." and loop back to **Step 2**.
 
 ### Step 6: Root-Cause Analysis of Missed Findings (when prior reviews exist)

@@ -1,0 +1,3023 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "urls4irl API",
+    "version": "1.0.0"
+  },
+  "x-non-json-responses": "Known non-JSON responses not documented in this spec: 302 redirects from @no_authenticated_users_allowed and @email_validation_required auth decorators, and HTML 404s from abort()/get_or_404().",
+  "paths": {
+    "/contact": {
+      "post": {
+        "operationId": "submitContactUs",
+        "tags": [
+          "contact"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Submit a contact form",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContactRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Contact",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContactResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ContactErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ContactErrorCodes": {
+            "$ref": "#/components/schemas/ContactErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/members/{user_id}": {
+      "delete": {
+        "operationId": "removeMember",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Remove a member from a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/members": {
+      "post": {
+        "operationId": "createMember",
+        "tags": [
+          "members"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Add a member to a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubMembersErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubMembersErrorCodes": {
+            "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
+      }
+    },
+    "/register": {
+      "post": {
+        "operationId": "registerUser",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Register a new user account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Register",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegisterResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_RegisterErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "RegisterErrorCodes": {
+            "$ref": "#/components/schemas/RegisterErrorCodes"
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "operationId": "login",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Log in to an existing account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful with redirect URL",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LoginRedirectResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_LoginErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "LoginErrorCodes": {
+            "$ref": "#/components/schemas/LoginErrorCodes"
+          }
+        }
+      }
+    },
+    "/send-validation-email": {
+      "post": {
+        "operationId": "sendValidationEmail",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Send an email validation link to the current user",
+        "responses": {
+          "200": {
+            "description": "Email validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailValidationResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/forgot-password": {
+      "post": {
+        "operationId": "forgotPassword",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Send a password reset email",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Forgot password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ForgotPasswordErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ForgotPasswordErrorCodes": {
+            "$ref": "#/components/schemas/ForgotPasswordErrorCodes"
+          }
+        }
+      }
+    },
+    "/reset-password/{token}": {
+      "post": {
+        "operationId": "resetPassword",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Reset a user password with a valid token",
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reset password",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ResetPasswordErrorCodes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ResetPasswordErrorCodes": {
+            "$ref": "#/components/schemas/ResetPasswordErrorCodes"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health",
+        "tags": [
+          "system"
+        ],
+        "security": [],
+        "description": "Health check endpoint. Pass ?db=true to verify all database tables exist.",
+        "responses": {
+          "200": {
+            "description": "Health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponseSchema"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls": {
+      "post": {
+        "operationId": "createUrl",
+        "tags": [
+          "urls"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Add a URL to a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateURLRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlCreatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}": {
+      "get": {
+        "operationId": "getUrl",
+        "tags": [
+          "urls"
+        ],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Retrieve a URL from a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "URL read",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlReadResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateUrl",
+        "tags": [
+          "urls"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Update a URL string in a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateURLStringRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUrl",
+        "tags": [
+          "urls"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Delete a URL from a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "URL deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlDeletedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}/title": {
+      "patch": {
+        "operationId": "updateUrlTitle",
+        "tags": [
+          "urls"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Update a URL title in a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateURLTitleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL title updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlTitleUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLErrorCodes": {
+            "$ref": "#/components/schemas/URLErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs": {
+      "post": {
+        "operationId": "createUtub",
+        "tags": [
+          "utubs"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Create a new UTub",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUTubRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubCreatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      },
+      "get": {
+        "operationId": "getUtubs",
+        "tags": [
+          "utubs"
+        ],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Retrieve a summary of all UTubs for the current user",
+        "responses": {
+          "200": {
+            "description": "List of UTub summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubSummaryListSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}": {
+      "get": {
+        "operationId": "getSingleUtub",
+        "tags": [
+          "utubs"
+        ],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Retrieve data for a single UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full UTub detail with members, URLs, and tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDetailSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteUtub",
+        "tags": [
+          "utubs"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Delete a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTub deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDeletedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/name": {
+      "patch": {
+        "operationId": "updateUtubName",
+        "tags": [
+          "utubs"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Update a UTub name",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUTubNameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub name updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubNameUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/description": {
+      "patch": {
+        "operationId": "updateUtubDesc",
+        "tags": [
+          "utubs"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Update a UTub description",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUTubDescriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub description updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDescUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
+      "post": {
+        "operationId": "createUtubUrlTag",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Add a tag to a URL in a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTagRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL tag modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlTagModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLTagErrorCodes": {
+            "$ref": "#/components/schemas/URLTagErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}/tags/{utub_tag_id}": {
+      "delete": {
+        "operationId": "deleteUtubUrlTag",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Remove a tag from a URL in a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "URL tag modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlTagModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/tags": {
+      "post": {
+        "operationId": "createUtubTag",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Add a tag to a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTagRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub tag added to UTub",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubTagAddedToUtubResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubTagErrorCodes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubTagErrorCodes": {
+            "$ref": "#/components/schemas/UTubTagErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/tags/{utub_tag_id}": {
+      "delete": {
+        "operationId": "deleteUtubTag",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Delete a tag from a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_tag_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTub tag deleted from UTub",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubTagDeletedFromUtubResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SuccessEnvelope": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "description": "Response status: Success, Failure, or No change"
+          },
+          "message": {
+            "type": "string",
+            "description": "Human-readable response message, if applicable"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "ContactRequest": {
+        "properties": {
+          "subject": {
+            "description": "Subject line of the contact message",
+            "examples": [
+              "Bug report"
+            ],
+            "maxLength": 100,
+            "minLength": 5,
+            "type": "string"
+          },
+          "content": {
+            "description": "Body content of the contact message",
+            "maxLength": 1500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "content"
+        ],
+        "type": "object"
+      },
+      "ContactResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "status": {
+            "const": "Failure",
+            "description": "Error status, always Failure",
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable error message",
+            "type": "string"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Application-specific error code, if applicable"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Map of field names to lists of validation error messages, if applicable"
+          },
+          "details": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Additional error detail, if applicable"
+          },
+          "urlString": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "URL string involved in the error, if applicable"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_ContactErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ContactErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ContactErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1
+        ],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for ContactErrorCodes"
+      },
+      "UserSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique user ID",
+            "type": "integer"
+          },
+          "username": {
+            "description": "Username of the user",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "username"
+        ],
+        "type": "object"
+      },
+      "MemberModifiedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the member was added to or removed from",
+            "type": "integer"
+          },
+          "member": {
+            "$ref": "#/components/schemas/UserSchema",
+            "description": "User object for the member added or removed"
+          }
+        },
+        "required": [
+          "utubID",
+          "member"
+        ],
+        "type": "object"
+      },
+      "AddMemberRequest": {
+        "properties": {
+          "username": {
+            "description": "Username of the member to add",
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "username"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_UTubMembersErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/UTubMembersErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "UTubMembersErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ],
+        "x-enum-varnames": [
+          "UNKNOWN_EXCEPTION",
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for UTubMembersErrorCodes"
+      },
+      "RegisterRequest": {
+        "properties": {
+          "username": {
+            "description": "Username for the new account",
+            "examples": [
+              "john_doe"
+            ],
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          },
+          "email": {
+            "description": "Email address for the new account",
+            "examples": [
+              "user@example.com"
+            ],
+            "format": "email",
+            "type": "string"
+          },
+          "confirmEmail": {
+            "description": "Email confirmation, must match email",
+            "minLength": 1,
+            "type": "string"
+          },
+          "password": {
+            "description": "Password for the new account",
+            "maxLength": 64,
+            "minLength": 12,
+            "type": "string"
+          },
+          "confirmPassword": {
+            "description": "Password confirmation, must match password",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "email",
+          "confirmEmail",
+          "password",
+          "confirmPassword"
+        ],
+        "type": "object"
+      },
+      "RegisterResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_RegisterErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/RegisterErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "RegisterErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ],
+        "x-enum-varnames": [
+          "ACCOUNT_NOT_EMAIL_VALIDATED",
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for RegisterErrorCodes"
+      },
+      "LoginRequest": {
+        "properties": {
+          "username": {
+            "description": "Username for login",
+            "examples": [
+              "john_doe"
+            ],
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          },
+          "password": {
+            "description": "Password for login",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "username",
+          "password"
+        ],
+        "type": "object"
+      },
+      "LoginRedirectResponseSchema": {
+        "description": "Login successful with redirect URL",
+        "properties": {
+          "redirectUrl": {
+            "description": "URL to redirect to after login",
+            "type": "string"
+          }
+        },
+        "required": [
+          "redirectUrl"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_LoginErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/LoginErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "LoginErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ],
+        "x-enum-varnames": [
+          "ACCOUNT_NOT_EMAIL_VALIDATED",
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for LoginErrorCodes"
+      },
+      "EmailValidationResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "description": "Email address associated with the account",
+            "examples": [
+              "user@example.com"
+            ],
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "ForgotPasswordResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_ForgotPasswordErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ForgotPasswordErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ForgotPasswordErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          3
+        ],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "EMAIL_SEND_FAILURE"
+        ],
+        "description": "Error codes for ForgotPasswordErrorCodes"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "newPassword": {
+            "description": "New password for the account",
+            "maxLength": 64,
+            "minLength": 12,
+            "type": "string"
+          },
+          "confirmNewPassword": {
+            "description": "New password confirmation, must match new password",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "newPassword",
+          "confirmNewPassword"
+        ],
+        "type": "object"
+      },
+      "ResetPasswordResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_ResetPasswordErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ResetPasswordErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ResetPasswordErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1
+        ],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for ResetPasswordErrorCodes"
+      },
+      "HealthResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Service health status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "type": "object"
+      },
+      "StatusMessageResponseSchema": {
+        "description": "Status and message response",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": [
+              "Success",
+              "Failure",
+              "No change"
+            ],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "message"
+        ],
+        "type": "object"
+      },
+      "CreateURLRequest": {
+        "properties": {
+          "urlString": {
+            "description": "URL string to add",
+            "examples": [
+              "https://example.com"
+            ],
+            "maxLength": 8000,
+            "minLength": 1,
+            "type": "string"
+          },
+          "urlTitle": {
+            "description": "Display title for the URL",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "urlString",
+          "urlTitle"
+        ],
+        "type": "object"
+      },
+      "UrlCreatedItemSchema": {
+        "description": "URL item shape for creation responses (same fields as UtubUrlDeleteSchema).",
+        "properties": {
+          "utubUrlID": {
+            "description": "Unique ID of the URL within the UTub",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "urlTitle": {
+            "description": "Display title for the URL",
+            "type": "string"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlString",
+          "urlTitle"
+        ],
+        "type": "object"
+      },
+      "UrlCreatedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the URL was added to",
+            "type": "integer"
+          },
+          "addedByUserID": {
+            "description": "User ID of the user who added the URL",
+            "type": "integer"
+          },
+          "URL": {
+            "$ref": "#/components/schemas/UrlCreatedItemSchema",
+            "description": "URL item that was created"
+          }
+        },
+        "required": [
+          "utubID",
+          "addedByUserID",
+          "URL"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_URLErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/URLErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "URLErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "x-enum-varnames": [
+          "UNKNOWN_ERROR",
+          "INVALID_FORM_INPUT",
+          "URL_WITH_CREDENTIALS_ERROR",
+          "INVALID_URL_ERROR",
+          "UNEXPECTED_VALIDATION_ERROR",
+          "URL_ALREADY_IN_UTUB_ERROR",
+          "EMPTY_URL"
+        ],
+        "description": "Error codes for URLErrorCodes"
+      },
+      "UtubTagOnAddDeleteSchema": {
+        "properties": {
+          "utubTagID": {
+            "description": "Unique tag ID within the UTub",
+            "type": "integer"
+          },
+          "tagString": {
+            "description": "Tag label text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "utubTagID",
+          "tagString"
+        ],
+        "type": "object"
+      },
+      "UtubUrlDetailSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Unique ID of the URL within the UTub",
+            "type": "integer"
+          },
+          "urlTitle": {
+            "description": "Display title for the URL",
+            "type": "string"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "urlTags": {
+            "description": "List of tags applied to this URL",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagOnAddDeleteSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlTitle",
+          "urlString",
+          "urlTags"
+        ],
+        "type": "object"
+      },
+      "UrlReadResponseSchema": {
+        "properties": {
+          "URL": {
+            "$ref": "#/components/schemas/UtubUrlDetailSchema",
+            "description": "Detailed URL item retrieved"
+          }
+        },
+        "required": [
+          "URL"
+        ],
+        "type": "object"
+      },
+      "UpdateURLStringRequest": {
+        "properties": {
+          "urlString": {
+            "description": "New URL string to replace the existing one",
+            "examples": [
+              "https://example.com"
+            ],
+            "maxLength": 8000,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "urlString"
+        ],
+        "type": "object"
+      },
+      "UrlUpdatedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub containing the URL",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the UTub containing the URL",
+            "type": "string"
+          },
+          "URL": {
+            "$ref": "#/components/schemas/UtubUrlDetailSchema",
+            "description": "Detailed URL item with updated URL string"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubName",
+          "URL"
+        ],
+        "type": "object"
+      },
+      "UpdateURLTitleRequest": {
+        "properties": {
+          "urlTitle": {
+            "description": "New display title for the URL",
+            "maxLength": 100,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "urlTitle"
+        ],
+        "type": "object"
+      },
+      "UrlTitleUpdatedResponseSchema": {
+        "properties": {
+          "URL": {
+            "$ref": "#/components/schemas/UtubUrlDetailSchema",
+            "description": "Detailed URL item with updated title"
+          }
+        },
+        "required": [
+          "URL"
+        ],
+        "type": "object"
+      },
+      "UtubUrlDeleteSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Unique ID of the URL within the UTub",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "urlTitle": {
+            "description": "Display title for the URL",
+            "type": "string"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlString",
+          "urlTitle"
+        ],
+        "type": "object"
+      },
+      "UrlDeletedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the URL was deleted from",
+            "type": "integer"
+          },
+          "URL": {
+            "$ref": "#/components/schemas/UtubUrlDeleteSchema",
+            "description": "URL item that was deleted"
+          },
+          "tagCountsInUtub": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "description": "Map of tag ID to new applied count after deletion",
+            "type": "object"
+          }
+        },
+        "required": [
+          "utubID",
+          "URL",
+          "tagCountsInUtub"
+        ],
+        "type": "object"
+      },
+      "CreateUTubRequest": {
+        "properties": {
+          "utubName": {
+            "description": "Name of the UTub to create",
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional description for the UTub"
+          }
+        },
+        "required": [
+          "utubName"
+        ],
+        "type": "object"
+      },
+      "UtubCreatedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "Unique ID of the newly created UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the newly created UTub",
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the newly created UTub, or null if not set"
+          },
+          "utubCreatorID": {
+            "description": "User ID of the UTub creator",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubName",
+          "utubDescription",
+          "utubCreatorID"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_UTubErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/UTubErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "UTubErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ],
+        "x-enum-varnames": [
+          "UNKNOWN_ERROR",
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for UTubErrorCodes"
+      },
+      "UtubTagSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique tag ID within the UTub",
+            "type": "integer"
+          },
+          "tagString": {
+            "description": "Tag label text",
+            "type": "string"
+          },
+          "tagApplied": {
+            "default": 0,
+            "description": "Number of URLs in the UTub this tag is applied to",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "tagString"
+        ],
+        "type": "object"
+      },
+      "UtubUrlSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Unique ID of the URL within the UTub",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "utubUrlTagIDs": {
+            "description": "List of tag IDs applied to this URL",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "urlTitle": {
+            "description": "Display title for the URL",
+            "type": "string"
+          },
+          "canDelete": {
+            "description": "Whether the current user can delete this URL",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlString",
+          "utubUrlTagIDs",
+          "urlTitle",
+          "canDelete"
+        ],
+        "type": "object"
+      },
+      "UtubDetailSchema": {
+        "description": "Full UTub detail with members, URLs, and tags",
+        "properties": {
+          "id": {
+            "description": "Unique UTub ID",
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the UTub",
+            "type": "string"
+          },
+          "createdByUserID": {
+            "description": "User ID of the UTub creator",
+            "type": "integer"
+          },
+          "createdAt": {
+            "description": "Creation timestamp of the UTub (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the UTub",
+            "type": "string"
+          },
+          "members": {
+            "description": "List of members in the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UserSchema"
+            },
+            "type": "array"
+          },
+          "urls": {
+            "description": "List of URLs in the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UtubUrlSchema"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "List of tags used in the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          },
+          "isCreator": {
+            "description": "Whether the current user is the creator of the UTub",
+            "type": "boolean"
+          },
+          "currentUser": {
+            "description": "ID of the currently authenticated user",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdByUserID",
+          "createdAt",
+          "description",
+          "members",
+          "urls",
+          "tags",
+          "isCreator",
+          "currentUser"
+        ],
+        "type": "object"
+      },
+      "UtubSummaryItemSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique UTub ID",
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the UTub",
+            "type": "string"
+          },
+          "memberRole": {
+            "description": "Role of the current user in the UTub",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "memberRole"
+        ],
+        "type": "object"
+      },
+      "UtubSummaryListSchema": {
+        "description": "List of UTub summaries",
+        "properties": {
+          "utubs": {
+            "description": "List of UTubs the user is a member of",
+            "items": {
+              "$ref": "#/components/schemas/UtubSummaryItemSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "utubs"
+        ],
+        "type": "object"
+      },
+      "UpdateUTubNameRequest": {
+        "properties": {
+          "utubName": {
+            "description": "New name for the UTub",
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "utubName"
+        ],
+        "type": "object"
+      },
+      "UtubNameUpdatedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose name was updated",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "New name of the UTub",
+            "type": "string"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubName"
+        ],
+        "type": "object"
+      },
+      "UpdateUTubDescriptionRequest": {
+        "properties": {
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "New description for the UTub, or empty to clear"
+          }
+        },
+        "type": "object"
+      },
+      "UtubDescUpdatedResponseSchema": {
+        "description": "UTub description updated",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose description was updated",
+            "type": "integer"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "New description of the UTub, or null if cleared"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubDescription"
+        ],
+        "type": "object"
+      },
+      "UtubDeletedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the deleted UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the deleted UTub",
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the deleted UTub, or null if not set"
+          }
+        },
+        "required": [
+          "utubID",
+          "utubName",
+          "utubDescription"
+        ],
+        "type": "object"
+      },
+      "AddTagRequest": {
+        "properties": {
+          "tagString": {
+            "description": "Tag label to add",
+            "examples": [
+              "python"
+            ],
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": [
+          "tagString"
+        ],
+        "type": "object"
+      },
+      "UrlTagModifiedResponseSchema": {
+        "properties": {
+          "utubUrlTagIDs": {
+            "description": "Updated list of tag IDs applied to the URL",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "utubTag": {
+            "$ref": "#/components/schemas/UtubTagOnAddDeleteSchema",
+            "description": "Tag that was added or removed from the URL"
+          },
+          "tagCountsInUtub": {
+            "description": "New count of URLs this tag is applied to after modification",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "utubUrlTagIDs",
+          "utubTag",
+          "tagCountsInUtub"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_URLTagErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/URLTagErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "URLTagErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ],
+        "x-enum-varnames": [
+          "UNKNOWN_EXCEPTION",
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for URLTagErrorCodes"
+      },
+      "UtubTagAddedToUtubResponseSchema": {
+        "properties": {
+          "utubTag": {
+            "$ref": "#/components/schemas/UtubTagOnAddDeleteSchema",
+            "description": "Tag that was added to the UTub"
+          },
+          "tagCountsInUtub": {
+            "description": "New count of URLs this tag is applied to after addition",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "utubTag",
+          "tagCountsInUtub"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_UTubTagErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/UTubTagErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "UTubTagErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1,
+          2
+        ],
+        "x-enum-varnames": [
+          "UNKNOWN_EXCEPTION",
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for UTubTagErrorCodes"
+      },
+      "UtubTagDeletedFromUtubResponseSchema": {
+        "properties": {
+          "utubTag": {
+            "$ref": "#/components/schemas/UtubTagOnAddDeleteSchema",
+            "description": "Tag that was deleted from the UTub"
+          },
+          "utubUrlIDs": {
+            "description": "List of URL IDs that had this tag removed",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "utubTag",
+          "utubUrlIDs"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "session"
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRFToken"
+      }
+    }
+  }
+}
