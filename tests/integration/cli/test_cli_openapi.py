@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 import json
+from typing import get_args
 
 import pytest
 from flask import Blueprint, Flask
@@ -9,7 +10,9 @@ from pydantic import BaseModel
 
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
+from backend.schemas.base import StatusMessageResponseSchema
 from backend.urls.constants import URLErrorCodes
+from backend.utubs.constants import UTubErrorCodes
 
 pytestmark = pytest.mark.cli
 
@@ -196,7 +199,9 @@ def test_error_responses_reference_error_response_schema(runner, tmp_path):
     resp_400 = post_op["responses"].get("400")
     assert resp_400 is not None, "POST /utubs missing 400 response"
     schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
-    assert schema_ref == "#/components/schemas/ErrorResponse"
+    assert schema_ref.startswith(
+        "#/components/schemas/ErrorResponse"
+    ), f"Expected ErrorResponse or typed variant, got: {schema_ref}"
 
 
 def test_output_flag_writes_to_specified_path(runner, tmp_path):
@@ -509,10 +514,14 @@ def test_success_envelope_schema_exists_in_components(runner, tmp_path):
 
     envelope = schemas["SuccessEnvelope"]
 
-    # Has properties.status with type string
+    # Has properties.status with type string and enum constraint
     assert "properties" in envelope
     assert "status" in envelope["properties"]
-    assert envelope["properties"]["status"]["type"] == "string"
+    status_prop = envelope["properties"]["status"]
+    assert status_prop["type"] == "string"
+    assert status_prop["enum"] == list(
+        get_args(StatusMessageResponseSchema.model_fields["status"].annotation)
+    )
 
     # Has properties.message with type string
     assert "message" in envelope["properties"]
@@ -857,3 +866,203 @@ def test_success_response_descriptions_are_human_readable(runner, tmp_path):
                     f"'{description}' is a single word not in the allow-list "
                     f"{single_word_allowlist}"
                 )
+
+
+def test_error_response_status_is_literal_failure(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the ErrorResponse component schema's status property
+    THEN it has a const or enum constraint narrowing it to "Failure",
+        matching the Literal["Failure"] annotation on ErrorResponse.status
+    """
+    spec = _generate_spec(runner, tmp_path)
+    error_schema = spec["components"]["schemas"]["ErrorResponse"]
+    status_prop = error_schema["properties"]["status"]
+
+    has_const = status_prop.get("const") == "Failure"
+    has_enum = status_prop.get("enum") == ["Failure"]
+    assert has_const or has_enum, (
+        f"Expected status to have const: 'Failure' or enum: ['Failure'], "
+        f"got: {status_prop}"
+    )
+
+
+def test_register_response_status_has_literal_enum(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect POST /register's 201 response schema (RegisterResponseSchema)
+    THEN the status property has enum: ["Success", "Failure", "No change"],
+        matching the Literal annotation inherited from StatusMessageResponseSchema
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    register_responses = spec["paths"]["/register"]["post"]["responses"]
+    assert "201" in register_responses, "POST /register missing 201 response"
+
+    register_201_schema = register_responses["201"]["content"]["application/json"][
+        "schema"
+    ]
+    assert "$ref" in register_201_schema, (
+        f"Expected direct $ref for RegisterResponseSchema, "
+        f"got: {json.dumps(register_201_schema)}"
+    )
+
+    component_name = register_201_schema["$ref"].split("/")[-1]
+    component = spec["components"]["schemas"][component_name]
+    status_prop = component["properties"]["status"]
+
+    assert status_prop.get("enum") == [
+        "Success",
+        "Failure",
+        "No change",
+    ], f"Expected status enum ['Success', 'Failure', 'No change'], got: {status_prop}"
+
+
+def test_utub_detail_current_user_is_integer(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the UtubDetailSchema component schema's currentUser property
+    THEN its type is "integer", confirming the schema emits int (not string)
+    """
+    spec = _generate_spec(runner, tmp_path)
+    utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
+    current_user_prop = utub_detail["properties"]["currentUser"]
+    assert (
+        current_user_prop["type"] == "integer"
+    ), f"Expected currentUser type 'integer', got: {current_user_prop}"
+
+
+def test_typed_error_responses_narrow_error_code(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect a 400 response on an operation with x-error-codes
+         (e.g., POST /utubs which uses UTubErrorCodes)
+    THEN the response references ErrorResponse_UTubErrorCodes, and the
+         component schema uses allOf with base ErrorResponse and narrows
+         errorCode to $ref: UTubErrorCodes
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    post_utubs = spec["paths"]["/utubs"]["post"]
+    resp_400 = post_utubs["responses"]["400"]
+    schema_ref = resp_400["content"]["application/json"]["schema"]["$ref"]
+
+    expected_typed_name = f"ErrorResponse_{UTubErrorCodes.__name__}"
+    assert (
+        schema_ref == f"#/components/schemas/{expected_typed_name}"
+    ), f"Expected typed error ref for POST /utubs 400, got: {schema_ref}"
+
+    typed_component = spec["components"]["schemas"][expected_typed_name]
+    assert "allOf" in typed_component, (
+        f"Expected allOf composition in {expected_typed_name}, "
+        f"got: {json.dumps(typed_component)}"
+    )
+
+    all_of = typed_component["allOf"]
+    assert all_of[0] == {
+        "$ref": "#/components/schemas/ErrorResponse"
+    }, f"First allOf entry should reference ErrorResponse, got: {all_of[0]}"
+
+    narrowed_props = all_of[1]
+    assert narrowed_props["type"] == "object"
+    error_code_ref = narrowed_props["properties"]["errorCode"]["$ref"]
+    assert (
+        error_code_ref == f"#/components/schemas/{UTubErrorCodes.__name__}"
+    ), f"Expected errorCode $ref to UTubErrorCodes, got: {error_code_ref}"
+
+
+def test_utub_detail_created_at_has_datetime_format(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect the UtubDetailSchema component
+    THEN the createdAt property has type "string" and format "date-time"
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    utub_detail = spec["components"]["schemas"]["UtubDetailSchema"]
+    created_at_prop = utub_detail["properties"]["createdAt"]
+    assert (
+        created_at_prop["type"] == "string"
+    ), f"Expected createdAt type 'string', got: {created_at_prop.get('type')}"
+    assert (
+        created_at_prop["format"] == "date-time"
+    ), f"Expected createdAt format 'date-time', got: {created_at_prop.get('format')}"
+
+
+def test_error_responses_without_enum_still_use_plain_error_response(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect error responses on operations without error_code_enum
+         (e.g., DELETE /utubs/{utub_id} which has 403 and 404 but no error_code)
+    THEN those responses reference the plain ErrorResponse schema
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    delete_op = spec["paths"]["/utubs/{utub_id}"]["delete"]
+    for error_code in ("403", "404"):
+        resp = delete_op["responses"].get(error_code)
+        assert (
+            resp is not None
+        ), f"DELETE /utubs/{{utub_id}} missing {error_code} response"
+        schema_ref = resp["content"]["application/json"]["schema"]["$ref"]
+        assert schema_ref == "#/components/schemas/ErrorResponse", (
+            f"Expected plain ErrorResponse for DELETE /utubs/{{utub_id}} "
+            f"{error_code}, got: {schema_ref}"
+        )
+
+
+def test_typed_error_response_scoped_to_400_and_409_only(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect PATCH /utubs/{utub_id}/urls/{utub_url_id} which has
+         error_code_enum=URLErrorCodes and status codes 400, 403, 404, 409
+    THEN 400 and 409 reference the typed ErrorResponse_URLErrorCodes,
+         while 403 and 404 reference the plain ErrorResponse
+    """
+    spec = _generate_spec(runner, tmp_path)
+
+    patch_op = spec["paths"]["/utubs/{utub_id}/urls/{utub_url_id}"]["patch"]
+    expected_typed_name = f"ErrorResponse_{URLErrorCodes.__name__}"
+
+    # 400 and 409 should use typed error response
+    for typed_code in ("400", "409"):
+        resp = patch_op["responses"].get(typed_code)
+        assert resp is not None, f"PATCH update_url missing {typed_code} response"
+        resp_schema = resp["content"]["application/json"]["schema"]
+        schema_ref = resp_schema["$ref"]
+        assert (
+            schema_ref == f"#/components/schemas/{expected_typed_name}"
+        ), f"Expected typed error ref for {typed_code}, got: {schema_ref}"
+
+    # 403 and 404 should use plain ErrorResponse
+    for plain_code in ("403", "404"):
+        resp = patch_op["responses"].get(plain_code)
+        assert resp is not None, f"PATCH update_url missing {plain_code} response"
+        resp_schema = resp["content"]["application/json"]["schema"]
+        schema_ref = resp_schema["$ref"]
+        assert (
+            schema_ref == "#/components/schemas/ErrorResponse"
+        ), f"Expected plain ErrorResponse for {plain_code}, got: {schema_ref}"
+
+
+def test_component_schemas_have_no_title_fields(runner, tmp_path):
+    """
+    GIVEN a generated OpenAPI spec
+    WHEN we inspect all component schemas
+    THEN no schema or property has a "title" key, confirming
+        _strip_auto_titles removed Pydantic's auto-generated titles
+    """
+    spec = _generate_spec(runner, tmp_path)
+    schemas = spec["components"]["schemas"]
+
+    violations = []
+    for schema_name, schema_obj in schemas.items():
+        if "title" in schema_obj:
+            violations.append(f"{schema_name} has root-level 'title'")
+        for prop_name, prop_obj in schema_obj.get("properties", {}).items():
+            if isinstance(prop_obj, dict) and "title" in prop_obj:
+                violations.append(f"{schema_name}.{prop_name} has 'title'")
+
+    assert (
+        not violations
+    ), f"Found {len(violations)} schema(s) with 'title' keys:\n" + "\n".join(violations)

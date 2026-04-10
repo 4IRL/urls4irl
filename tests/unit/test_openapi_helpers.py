@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+from enum import IntEnum
+
 import pytest
 from pydantic import BaseModel
 
 from backend.cli.openapi import (
+    _build_typed_error_response_schema,
     _humanize_class_name,
     _response_description,
     _schema_has_status_property,
     _schema_is_empty,
+    _strip_auto_titles,
 )
 
 pytestmark = [pytest.mark.unit, pytest.mark.cli]
@@ -200,3 +204,191 @@ class TestResponseDescription:
         """
         result = _response_description(200, SchemaWithoutDocstring)
         assert result == "Schema without docstring"
+
+
+class TestStripAutoTitles:
+    """Tests for _strip_auto_titles helper."""
+
+    def test_strip_auto_titles_removes_property_titles(self) -> None:
+        """
+        GIVEN a schema dict with title keys at root, property, nested $defs,
+              allOf/anyOf/oneOf sub-schemas, and array items
+        WHEN _strip_auto_titles is called
+        THEN all title keys are removed
+        """
+        schema = {
+            "title": "RootTitle",
+            "type": "object",
+            "properties": {
+                "name": {"title": "Name", "type": "string"},
+                "age": {"title": "Age", "type": "integer"},
+            },
+            "$defs": {
+                "Nested": {
+                    "title": "Nested",
+                    "type": "object",
+                    "properties": {
+                        "value": {"title": "Value", "type": "string"},
+                    },
+                }
+            },
+            "allOf": [{"title": "AllOfEntry", "type": "object"}],
+            "anyOf": [{"title": "AnyOfEntry", "type": "string"}],
+            "oneOf": [{"title": "OneOfEntry", "type": "integer"}],
+            "items": {"title": "ItemTitle", "type": "string"},
+        }
+
+        _strip_auto_titles(schema)
+
+        # Root title removed
+        assert "title" not in schema
+
+        # Property titles removed
+        for prop in schema["properties"].values():
+            assert "title" not in prop
+
+        # $defs titles removed (recursively)
+        nested = schema["$defs"]["Nested"]
+        assert "title" not in nested
+        for prop in nested["properties"].values():
+            assert "title" not in prop
+
+        # allOf/anyOf/oneOf titles removed
+        assert "title" not in schema["allOf"][0]
+        assert "title" not in schema["anyOf"][0]
+        assert "title" not in schema["oneOf"][0]
+
+        # items title removed
+        assert "title" not in schema["items"]
+
+    def test_strip_auto_titles_preserves_non_title_keys(self) -> None:
+        """
+        GIVEN a schema dict with various non-title keys
+        WHEN _strip_auto_titles is called
+        THEN non-title keys are preserved unchanged
+        """
+        schema = {
+            "title": "Root",
+            "type": "object",
+            "description": "A description",
+            "properties": {
+                "name": {"title": "Name", "type": "string", "minLength": 1},
+            },
+        }
+
+        _strip_auto_titles(schema)
+
+        assert schema["type"] == "object"
+        assert schema["description"] == "A description"
+        assert schema["properties"]["name"]["type"] == "string"
+        assert schema["properties"]["name"]["minLength"] == 1
+
+    def test_strip_auto_titles_handles_empty_schema(self) -> None:
+        """
+        GIVEN an empty schema dict
+        WHEN _strip_auto_titles is called
+        THEN it completes without error
+        """
+        schema: dict[str, object] = {}
+        _strip_auto_titles(schema)
+        assert schema == {}
+
+    def test_strip_auto_titles_recurses_into_nested_object_properties(self) -> None:
+        """
+        GIVEN a schema dict where a property is itself an object with
+              sub-properties containing title keys
+        WHEN _strip_auto_titles is called
+        THEN nested property titles are also removed
+        """
+        schema = {
+            "title": "RootTitle",
+            "type": "object",
+            "properties": {
+                "address": {
+                    "title": "Address",
+                    "type": "object",
+                    "properties": {
+                        "street": {"title": "Street", "type": "string"},
+                        "city": {"title": "City", "type": "string"},
+                    },
+                },
+                "name": {"title": "Name", "type": "string"},
+            },
+        }
+
+        _strip_auto_titles(schema)
+
+        # Root title removed
+        assert "title" not in schema
+
+        # Top-level property titles removed
+        assert "title" not in schema["properties"]["address"]
+        assert "title" not in schema["properties"]["name"]
+
+        # Nested sub-property titles removed via recursion
+        assert "title" not in schema["properties"]["address"]["properties"]["street"]
+        assert "title" not in schema["properties"]["address"]["properties"]["city"]
+
+
+class _TestErrorCodes(IntEnum):
+    """Test error codes for _build_typed_error_response_schema tests."""
+
+    INVALID_INPUT = 1
+    NOT_FOUND = 2
+
+
+class _TestOtherErrorCodes(IntEnum):
+    """Different error codes for multi-enum tests."""
+
+    DUPLICATE = 10
+
+
+class TestBuildTypedErrorResponseSchema:
+    """Tests for _build_typed_error_response_schema helper."""
+
+    def test_returns_name_and_allof_structure(self) -> None:
+        """
+        GIVEN an IntEnum error code class and an empty components dict
+        WHEN _build_typed_error_response_schema is called
+        THEN it returns the expected schema name and creates an allOf entry
+             referencing ErrorResponse and the enum class
+        """
+        components_schemas: dict[str, object] = {}
+        schema_name = _build_typed_error_response_schema(
+            _TestErrorCodes, components_schemas
+        )
+
+        assert schema_name == "ErrorResponse__TestErrorCodes"
+        assert schema_name in components_schemas
+
+        schema = components_schemas[schema_name]
+        assert "allOf" in schema
+        assert len(schema["allOf"]) == 2
+        assert schema["allOf"][0] == {"$ref": "#/components/schemas/ErrorResponse"}
+        assert schema["allOf"][1] == {
+            "type": "object",
+            "properties": {
+                "errorCode": {"$ref": "#/components/schemas/_TestErrorCodes"}
+            },
+        }
+
+    def test_first_write_wins_preserves_existing_entry(self) -> None:
+        """
+        GIVEN a components dict that already contains an entry for the schema name
+        WHEN _build_typed_error_response_schema is called a second time
+        THEN the existing entry is not overwritten
+        """
+        components_schemas: dict[str, object] = {}
+        first_name = _build_typed_error_response_schema(
+            _TestErrorCodes, components_schemas
+        )
+        # Mutate to verify it's not replaced
+        sentinel = {"sentinel": True}
+        components_schemas[first_name] = sentinel
+
+        second_name = _build_typed_error_response_schema(
+            _TestErrorCodes, components_schemas
+        )
+
+        assert first_name == second_name
+        assert components_schemas[first_name] is sentinel

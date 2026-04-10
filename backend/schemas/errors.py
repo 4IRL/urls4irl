@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from flask import jsonify
 from pydantic import Field
 
@@ -10,7 +12,7 @@ from backend.utils.strings.url_strs import URL_FAILURE
 
 
 class ErrorResponse(BaseSchema):
-    status: str = Field(
+    status: Literal["Failure"] = Field(
         alias=STD_JSON.STATUS,
         description="Error status, always Failure",
     )

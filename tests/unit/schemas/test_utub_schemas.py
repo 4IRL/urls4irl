@@ -1,6 +1,9 @@
+from datetime import datetime
+
 import pytest
 from pydantic import ValidationError
 
+from backend.schemas.utubs import UtubDetailSchema
 from backend.utils.strings.model_strs import MODELS as M
 
 pytestmark = pytest.mark.unit
@@ -18,33 +21,29 @@ _UTUB_DICT = {
     M.ID: 42,
     M.NAME: "My UTub",
     M.CREATED_BY: 1,
-    M.CREATED_AT: "01/01/2025 00:00:00",
+    M.CREATED_AT: datetime(2025, 1, 1, 0, 0, 0),
     M.DESCRIPTION: "A test UTub",
     M.MEMBERS: [_MEMBER],
     M.URLS: [_URL],
     M.TAGS: [_TAG],
     M.IS_CREATOR: True,
-    M.CURRENT_USER: "1",
+    M.CURRENT_USER: 1,
 }
 
 
 def test_utub_detail_schema_dump():
-    from backend.schemas.utubs import UtubDetailSchema
-
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)
     assert dumped[M.ID] == 42
     assert dumped[M.NAME] == "My UTub"
     assert dumped[M.CREATED_BY] == 1
-    assert dumped[M.CREATED_AT] == "01/01/2025 00:00:00"
+    assert dumped[M.CREATED_AT] == "2025-01-01T00:00:00"
     assert dumped[M.DESCRIPTION] == "A test UTub"
     assert dumped[M.IS_CREATOR] is True
-    assert dumped[M.CURRENT_USER] == "1"
+    assert dumped[M.CURRENT_USER] == 1
 
 
 def test_utub_detail_schema_nested_members():
-    from backend.schemas.utubs import UtubDetailSchema
-
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)
     assert len(dumped[M.MEMBERS]) == 1
@@ -52,8 +51,6 @@ def test_utub_detail_schema_nested_members():
 
 
 def test_utub_detail_schema_nested_urls():
-    from backend.schemas.utubs import UtubDetailSchema
-
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)
     assert len(dumped[M.URLS]) == 1
@@ -65,8 +62,6 @@ def test_utub_detail_schema_nested_urls():
 
 
 def test_utub_detail_schema_nested_tags():
-    from backend.schemas.utubs import UtubDetailSchema
-
     schema = UtubDetailSchema.model_validate(_UTUB_DICT)
     dumped = schema.model_dump(by_alias=True)
     assert len(dumped[M.TAGS]) == 1
@@ -77,15 +72,11 @@ def test_utub_detail_schema_nested_tags():
 
 
 def test_utub_detail_schema_missing_required_fields():
-    from backend.schemas.utubs import UtubDetailSchema
-
     with pytest.raises(ValidationError):
         UtubDetailSchema.model_validate({})
 
 
 def test_utub_detail_schema_empty_lists():
-    from backend.schemas.utubs import UtubDetailSchema
-
     data = {**_UTUB_DICT, M.MEMBERS: [], M.URLS: [], M.TAGS: []}
     schema = UtubDetailSchema.model_validate(data)
     assert schema.members == []

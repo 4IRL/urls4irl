@@ -6,7 +6,7 @@ import functools
 import json
 from pathlib import Path
 import re
-from typing import Any, Type
+from typing import Any, Type, get_args
 import warnings
 
 import click
@@ -15,6 +15,7 @@ from flask.cli import AppGroup, with_appcontext
 from pydantic import BaseModel
 
 from backend.api_common.auth_decorators import SESSION_AUTH_DECORATORS
+from backend.schemas.base import StatusMessageResponseSchema
 
 openapi_cli = AppGroup(
     "openapi",
@@ -83,11 +84,16 @@ def _response_description(status_code: int, schema_cls: Type[BaseModel]) -> str:
     return _humanize_class_name(schema_cls.__name__)
 
 
+_STATUS_LITERAL_VALUES: list[str] = list(
+    get_args(StatusMessageResponseSchema.model_fields["status"].annotation)
+)
+
 SUCCESS_ENVELOPE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "status": {
             "type": "string",
+            "enum": _STATUS_LITERAL_VALUES,
             "description": "Response status: Success, Failure, or No change",
         },
         "message": {
@@ -152,6 +158,28 @@ def _build_schema_ref(schema_cls: Type[BaseModel]) -> str:
     return f"#/components/schemas/{schema_cls.__name__}"
 
 
+def _strip_auto_titles(schema: dict[str, Any]) -> None:
+    """Recursively remove auto-generated 'title' keys from a JSON schema dict.
+
+    Pydantic adds a 'title' key to every schema and property by default.
+    These bloat the OpenAPI spec and are ignored by openapi-typescript.
+    """
+    schema.pop("title", None)
+
+    for prop in schema.get("properties", {}).values():
+        _strip_auto_titles(prop)
+
+    for def_schema in schema.get("$defs", {}).values():
+        _strip_auto_titles(def_schema)
+
+    for keyword in ("allOf", "anyOf", "oneOf"):
+        for sub_schema in schema.get(keyword, []):
+            _strip_auto_titles(sub_schema)
+
+    if "items" in schema and isinstance(schema["items"], dict):
+        _strip_auto_titles(schema["items"])
+
+
 def _collect_schema(
     schema_cls: Type[BaseModel],
     components_schemas: dict[str, Any],
@@ -165,7 +193,11 @@ def _collect_schema(
     defs = schema_dict.pop("$defs", {})
     for def_name, def_schema in defs.items():
         if def_name not in components_schemas:
+            _strip_auto_titles(def_schema)
             components_schemas[def_name] = def_schema
+
+    # Strip auto-generated titles from the root schema
+    _strip_auto_titles(schema_dict)
 
     # Add root schema under its class name
     class_name = schema_cls.__name__
@@ -232,6 +264,37 @@ def _collect_error_code_enum_schema(
         "x-enum-varnames": [member.name for member in enum_cls],
         "description": f"Error codes for {class_name}",
     }
+
+
+def _build_typed_error_response_schema(
+    enum_cls: type[IntEnum],
+    components_schemas: dict[str, Any],
+) -> str:
+    """Build a per-operation typed error response schema using allOf composition.
+
+    Creates a schema like ``ErrorResponse_UTubErrorCodes`` that narrows the
+    ``errorCode`` field to the specific IntEnum, while inheriting everything
+    else from the base ``ErrorResponse``.
+
+    Returns the schema name for ``$ref`` usage.  First-write wins — if the
+    schema already exists in *components_schemas* it is not overwritten.
+    """
+    schema_name = f"ErrorResponse_{enum_cls.__name__}"
+    if schema_name not in components_schemas:
+        components_schemas[schema_name] = {
+            "allOf": [
+                {"$ref": "#/components/schemas/ErrorResponse"},
+                {
+                    "type": "object",
+                    "properties": {
+                        "errorCode": {
+                            "$ref": f"#/components/schemas/{enum_cls.__name__}"
+                        }
+                    },
+                },
+            ]
+        }
+    return schema_name
 
 
 def _build_security(
@@ -350,10 +413,28 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                 for code, schema_cls in status_codes.items():
                     _collect_schema(schema_cls, components_schemas)
 
-                    # Determine response schema representation
+                    # Determine response schema representation.
+                    # Typed error schemas (narrowing errorCode to the
+                    # operation's IntEnum) only apply to 400/409 where
+                    # application-specific error codes are meaningful.
+                    # Other error codes (401, 403, 404, 429) use the
+                    # plain ErrorResponse reference.
                     if code >= 400:
-                        # Error responses: always direct $ref
-                        response_schema_obj = {"$ref": _build_schema_ref(schema_cls)}
+                        if (
+                            code in (400, 409)
+                            and error_code_enum is not None
+                            and issubclass(error_code_enum, IntEnum)
+                        ):
+                            typed_name = _build_typed_error_response_schema(
+                                error_code_enum, components_schemas
+                            )
+                            response_schema_obj = {
+                                "$ref": f"#/components/schemas/{typed_name}"
+                            }
+                        else:
+                            response_schema_obj = {
+                                "$ref": _build_schema_ref(schema_cls)
+                            }
                     else:
                         response_schema_obj = _build_response_schema_obj(schema_cls)
 
