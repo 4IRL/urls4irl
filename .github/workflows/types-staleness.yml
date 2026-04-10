@@ -12,6 +12,7 @@ jobs:
     timeout-minutes: 5
 
     env:
+      FLASK_APP: 'backend:create_app'
       FLASK_DEBUG: 'false'
       PRODUCTION: 'false'
       SECRET_KEY: 'ABCDEFGH12345678'

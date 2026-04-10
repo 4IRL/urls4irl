@@ -104,59 +104,142 @@ After the CI Log Reader finishes writing the failure analysis, it must launch a 
    - Document the issue and recommended approach in the CI failures file
    - Flag it for user intervention
 
-**Important**: The CI subagent chain (1a → 1b → 1c) runs independently of the PR comment workflow (Steps 2-8). If the CI fix investigator makes code changes, those changes will be picked up by the next `/git-commit` invocation.
+**Important**: The CI subagent chain (1a → 1b → 1c) runs independently of the PR comment workflow (Steps 2-6). If the CI fix investigator makes code changes, those changes will be picked up by the next `/git-commit` invocation.
 
 All `gh` commands in CI subagents must:
 - Be prefixed with `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)`
 - Use `dangerouslyDisableSandbox: true`
 
-### 2. Fetch All Review Comments
+### 2. Fetch and Analyze Review Comments (Comment Analyzer Subagent)
 
-Fetch both inline code comments and top-level review bodies:
+Launch a **foreground subagent** to fetch, filter, analyze, and group PR review comments. The orchestrator does NOT fetch or process comments directly — it delegates entirely to this subagent and acts on its structured output.
+
+#### Subagent prompt template:
+
+```
+You are a PR comment analyzer for PR #<PR_NUMBER> on repo 4IRL/urls4irl (branch: <BRANCH>).
+
+Your job: fetch all review comments, filter out resolved ones, extract memory-worthy patterns, and group unresolved comments by root cause.
+
+## Step 1: Fetch unresolved review threads via GraphQL
+
+Use the GraphQL API to get review threads with resolution status. The REST API does NOT expose resolution — GraphQL is required.
 
 ```bash
-# Inline review comments (code-level)
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api repos/4IRL/urls4irl/pulls/<PR_NUMBER>/comments
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='
+{
+  repository(owner: "4IRL", name: "urls4irl") {
+    pullRequest(number: <PR_NUMBER>) {
+      reviewThreads(first: 100) {
+        nodes {
+          isResolved
+          isOutdated
+          path
+          line
+          startLine
+          comments(first: 10) {
+            nodes {
+              body
+              author { login }
+              url
+              createdAt
+              diffHunk
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+```
 
-# Top-level review bodies
+Use `dangerouslyDisableSandbox: true` for all gh commands.
+
+Also fetch top-level review bodies:
+```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view <PR_NUMBER> --json reviews
 ```
 
-All `gh` commands must:
-- Be prefixed with `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)`
-- Use `dangerouslyDisableSandbox: true`
+## Step 2: Filter to unresolved comments only
 
-Parse comments extracting: `body`, `path`, `line`, `diff_hunk`, `user.login`, `created_at`.
+From the GraphQL response, keep ONLY threads where `isResolved == false`. Discard all resolved threads entirely — they have already been addressed and acknowledged by the reviewer.
 
-If no comments exist, inform the user and stop.
+If ALL threads are resolved and there are no actionable top-level review bodies, write the output file with `"status": "all_resolved"` and stop.
 
-### 3. Extract Memory-Worthy Patterns
+## Step 3: Extract memory-worthy patterns
 
-Scan all review comments for patterns the reviewer wants remembered — phrases like:
+Scan ALL comments (including resolved ones) for patterns the reviewer wants remembered:
 - "always...", "never...", "we should...", "from now on...", "remember to..."
-- Comments that reference coding conventions, project rules, or recurring mistakes
-- Comments that reinforce or correct existing CLAUDE.md rules
+- Comments referencing coding conventions, project rules, or recurring mistakes
+- Comments reinforcing or correcting existing CLAUDE.md rules
 
-For each memory-worthy comment:
-1. Determine the appropriate memory type (`feedback`, `project`, or `reference`)
-2. Save to the memory system following the standard memory format
-3. If the pattern should also be in CLAUDE.md, update CLAUDE.md
+For each memory-worthy comment, save to the memory system following the standard memory format (determine type: feedback, project, or reference). If the pattern should also be in CLAUDE.md, update CLAUDE.md.
 
-### 4. Group Comments by Root Cause
+## Step 4: Group unresolved comments by root cause
 
-Analyze all comments and group them by identical or closely related root causes. Examples:
+Analyze unresolved comments and group by identical or closely related root causes. Examples:
 - Multiple comments about relative imports → one group: "Use absolute imports"
 - Multiple comments about missing type hints → one group: "Add type hints"
 - A single unique comment → its own group
 
-For each group, record:
-- **Cause**: The underlying issue
-- **Comments**: List of all comments in the group (with file, line, body)
-- **Fix description**: What needs to change
+## Step 5: Write structured output
 
-### 5. Fix All Groups in Parallel
+Write output to `<tmp-dir>/comment-analysis.md` as JSON:
 
-Launch one subagent per group using the Agent tool. All subagents launch in a **single message** for true parallelism.
+```json
+{
+  "status": "has_unresolved",
+  "total_threads": <number>,
+  "resolved_threads": <number>,
+  "unresolved_threads": <number>,
+  "memory_patterns_saved": <number>,
+  "groups": [
+    {
+      "cause": "<root cause description>",
+      "fix_description": "<what needs to change>",
+      "comments": [
+        {
+          "path": "<file path>",
+          "line": <line number>,
+          "body": "<comment body>",
+          "diff_hunk": "<diff context>",
+          "author": "<login>",
+          "url": "<comment URL>"
+        }
+      ]
+    }
+  ]
+}
+```
+
+If no unresolved comments exist:
+```json
+{
+  "status": "all_resolved",
+  "total_threads": <number>,
+  "resolved_threads": <number>,
+  "unresolved_threads": 0,
+  "memory_patterns_saved": <number>,
+  "groups": []
+}
+```
+```
+
+Use `model: sonnet` for this subagent. Set `<tmp-dir>` to `plans/<topic>/tmp/` (infer topic from branch name) or `$TMPDIR` if topic cannot be inferred.
+
+#### Orchestrator actions after subagent returns:
+
+1. Read `<tmp-dir>/comment-analysis.md`
+2. If `status` is `"all_resolved"`:
+   - Inform the user: "All N review threads are resolved. No unresolved comments to address."
+   - **Stop the comment workflow** (CI monitor may still be running independently)
+3. If `status` is `"has_unresolved"`:
+   - Report to user: "Found N unresolved threads (M resolved, skipped). Fixing N groups..."
+   - Proceed to Step 3
+
+### 3. Fix All Groups in Parallel
+
+Using the `groups` array from the comment analysis output, launch **one subagent per group** in a **single message** for true parallelism.
 
 Each subagent receives:
 - The group's cause and fix description
@@ -189,14 +272,14 @@ Instructions:
 
 Use `model: sonnet` for subagents.
 
-### 6. Review Subagent Results
+### 4. Review Subagent Results
 
 Collect all subagent results. If any subagent reports issues requiring user input (behavioral or design changes), **stop and inform the user**:
 - Explain which comment(s) need user guidance
 - Explain why the fix cannot be automated
 - Do NOT proceed until the user responds
 
-### 6a. Run Related Tests Before Committing
+### 4a. Run Related Tests Before Committing
 
 **If any changes were made to code-containing files** (Python `.py`, JavaScript `.js`, HTML templates `.html`, CSS `.css`), you **must** run related tests locally before committing.
 
@@ -216,15 +299,15 @@ Collect all subagent results. If any subagent reports issues requiring user inpu
    - Investigate the failure and fix if straightforward
    - If the fix requires design decisions, stop and inform the user
    - Re-run tests after fixing to confirm they pass
-5. Only proceed to commit (Step 7) after all related tests pass
+5. Only proceed to commit (Step 5) after all related tests pass
 
 **Skip this step** if the only changes are to non-code files (e.g., documentation, config, `.claude/` skill files).
 
-### 7. Commit
+### 5. Commit
 
 Invoke the `/git-commit` skill via the Skill tool. This handles staging, message generation, and pre-commit hooks automatically.
 
-### 8. Push and Review Loop
+### 6. Push and Review Loop
 
 Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review and pushes if approved.
 
@@ -257,5 +340,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 - Follow existing commit message style (check `git log -3 --oneline`)
 - All subagent launches in a single step must be in one message for parallelism
 - If a subagent fails or returns unclear results, treat as needing user intervention
-- The CI monitor chain (1a → 1b → 1c) is a sequential pipeline but runs in the background, independent of Steps 2-8
+- The CI monitor chain (1a → 1b → 1c) is a sequential pipeline but runs in the background, independent of Steps 2-6
 - CI fixes from subagent 1c will be included in the next commit cycle
+- **Comment resolution check is mandatory**: The Comment Analyzer subagent (Step 2) uses the GraphQL API to check `isResolved` on each review thread. The REST API does NOT expose resolution status — always use GraphQL. If all threads are resolved, the workflow stops early with no changes.
+- The orchestrator never fetches or processes comments directly — it delegates to the Comment Analyzer subagent and acts on the structured JSON output
