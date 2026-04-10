@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from enum import IntEnum
 import json
+from typing import get_args
 
 import pytest
 from flask import Blueprint, Flask
@@ -9,8 +10,8 @@ from pydantic import BaseModel
 
 from backend.api_common.parse_request import api_route
 from backend.cli.openapi import register_openapi_cli
+from backend.schemas.base import StatusMessageResponseSchema
 from backend.urls.constants import URLErrorCodes
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utubs.constants import UTubErrorCodes
 
 pytestmark = pytest.mark.cli
@@ -518,11 +519,9 @@ def test_success_envelope_schema_exists_in_components(runner, tmp_path):
     assert "status" in envelope["properties"]
     status_prop = envelope["properties"]["status"]
     assert status_prop["type"] == "string"
-    assert status_prop["enum"] == [
-        STD_JSON.SUCCESS,
-        STD_JSON.FAILURE,
-        STD_JSON.NO_CHANGE,
-    ]
+    assert status_prop["enum"] == list(
+        get_args(StatusMessageResponseSchema.model_fields["status"].annotation)
+    )
 
     # Has properties.message with type string
     assert "message" in envelope["properties"]

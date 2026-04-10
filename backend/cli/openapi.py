@@ -6,7 +6,7 @@ import functools
 import json
 from pathlib import Path
 import re
-from typing import Any, Type
+from typing import Any, Type, get_args
 import warnings
 
 import click
@@ -15,7 +15,7 @@ from flask.cli import AppGroup, with_appcontext
 from pydantic import BaseModel
 
 from backend.api_common.auth_decorators import SESSION_AUTH_DECORATORS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.schemas.base import StatusMessageResponseSchema
 
 openapi_cli = AppGroup(
     "openapi",
@@ -84,15 +84,16 @@ def _response_description(status_code: int, schema_cls: Type[BaseModel]) -> str:
     return _humanize_class_name(schema_cls.__name__)
 
 
+_STATUS_LITERAL_VALUES: list[str] = list(
+    get_args(StatusMessageResponseSchema.model_fields["status"].annotation)
+)
+
 SUCCESS_ENVELOPE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "status": {
             "type": "string",
-            # This enum must stay in sync with
-            # StatusMessageResponseSchema.status Literal and the STD_JSON
-            # constants. If new status values are added, update all three.
-            "enum": [STD_JSON.SUCCESS, STD_JSON.FAILURE, STD_JSON.NO_CHANGE],
+            "enum": _STATUS_LITERAL_VALUES,
             "description": "Response status: Success, Failure, or No change",
         },
         "message": {
