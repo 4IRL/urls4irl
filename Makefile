@@ -5,7 +5,7 @@ EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker vite-build prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker vite-build prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types
 
 .DEFAULT_GOAL := help
 
@@ -69,6 +69,12 @@ test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker
 
 vite-build: ## Build Vite to verify no import/syntax errors
 	$(EXEC_VITE) npx vite build
+
+generate-types: ## Generate TypeScript API types from backend OpenAPI spec
+	@mkdir -p frontend/types
+	$(EXEC_WEB) "source /code/venv/bin/activate && flask openapi generate --output /code/u4i/backend/openapi.json --strict"
+	@mv backend/openapi.json frontend/types/openapi.json
+	$(EXEC_VITE) npx openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 
 prune: ## Prune Docker build cache to free disk space
 	docker builder prune -f
