@@ -16,6 +16,7 @@ from tests.functional.splash_ui.selenium_utils import register_user_ui
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
     login_user_ui,
+    wait_for_element_to_be_removed,
     wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
@@ -166,6 +167,11 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     email_validation_btn_close = f"{SPL.EMAIL_VALIDATION_MODAL} .btn-close"
     wait_then_click_element(browser, email_validation_btn_close)
     wait_until_hidden(browser, SPL.EMAIL_VALIDATION_MODAL)
+
+    # Wait for the async logout AJAX + window.location.replace("/") to reload the page.
+    # staleness_of detects when the DOM element is destroyed by the page navigation,
+    # which is a structural signal (not a timing guess) that the redirect completed.
+    wait_for_element_to_be_removed(browser, modal_element, timeout=10)
 
     # After logout, user should be redirected to splash page as anonymous
     welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=5)
