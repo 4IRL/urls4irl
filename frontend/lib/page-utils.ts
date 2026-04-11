@@ -10,7 +10,7 @@ import { $ } from "./globals.js";
  * Used for rate limiting pages and full-page redirects
  * @param {string} htmlText - Full HTML document to display
  */
-export function showNewPageOnAJAXHTMLResponse(htmlText) {
+export function showNewPageOnAJAXHTMLResponse(htmlText: string): void {
   $("body").fadeOut(150, function () {
     document.open();
     document.write(htmlText);
