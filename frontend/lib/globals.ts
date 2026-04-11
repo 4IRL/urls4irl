@@ -5,4 +5,4 @@
 
 export const $: JQueryStatic = window.jQuery;
 export const jQuery: JQueryStatic = window.jQuery;
-export const bootstrap: typeof Bootstrap = window.bootstrap;
+export const bootstrap: typeof window.bootstrap = window.bootstrap;

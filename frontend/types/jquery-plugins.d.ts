@@ -3,16 +3,16 @@ interface JQuery<TElement = HTMLElement> {
   disableTab(): this;
   offAndOn(
     eventName: string,
-    callback: JQuery.EventHandler<HTMLElement>,
+    callback: JQuery.EventHandler<TElement>,
   ): this;
   onExact(
     events: string,
-    callback: JQuery.EventHandler<HTMLElement>,
+    callback: JQuery.EventHandler<TElement>,
     options?: { except?: string | string[] },
   ): this;
   offAndOnExact(
     eventName: string,
-    callback: JQuery.EventHandler<HTMLElement>,
+    callback: JQuery.EventHandler<TElement>,
     options?: { except?: string | string[] },
   ): this;
   removeClassStartingWith(filter: string): this;

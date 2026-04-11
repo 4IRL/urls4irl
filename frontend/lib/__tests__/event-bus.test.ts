@@ -36,9 +36,19 @@ describe("event-bus", () => {
   it("on + emit calls handler with the correct payload", () => {
     const handler = vi.fn<(payload: AppEventMap["utub:selected"]) => void>();
     track(AppEvents.UTUB_SELECTED, handler);
-    emit(AppEvents.UTUB_SELECTED, { utubID: 42 } as UtubSelectedPayload);
+    const payload: UtubSelectedPayload = {
+      utubID: 42,
+      utubName: "Test UTub",
+      urls: [],
+      tags: [],
+      members: [],
+      utubOwnerID: 1,
+      isCurrentUserOwner: true,
+      currentUserID: 1,
+    };
+    emit(AppEvents.UTUB_SELECTED, payload);
     expect(handler).toHaveBeenCalledOnce();
-    expect(handler).toHaveBeenCalledWith({ utubID: 42 });
+    expect(handler).toHaveBeenCalledWith(payload);
   });
 
   it("multiple handlers for the same event all fire", () => {
@@ -92,7 +102,17 @@ describe("event-bus", () => {
     const h2 = vi.fn<(payload: AppEventMap["utub:deleted"]) => void>();
     track(AppEvents.UTUB_SELECTED, h1);
     track(AppEvents.UTUB_DELETED, h2);
-    emit(AppEvents.UTUB_SELECTED, {} as UtubSelectedPayload);
+    const selectedPayload: UtubSelectedPayload = {
+      utubID: 1,
+      utubName: "Isolation UTub",
+      urls: [],
+      tags: [],
+      members: [],
+      utubOwnerID: 1,
+      isCurrentUserOwner: false,
+      currentUserID: 2,
+    };
+    emit(AppEvents.UTUB_SELECTED, selectedPayload);
     expect(h1).toHaveBeenCalledOnce();
     expect(h2).not.toHaveBeenCalled();
   });
