@@ -6,15 +6,24 @@
 import { $ } from "./globals.js";
 import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
 
+interface RateLimitedXHR extends JQuery.jqXHR {
+  _429Handled: boolean;
+}
+
 /**
  * Makes an AJAX request with global 429 rate limit handling
  * @param {string} type - HTTP method (GET, POST, etc.)
  * @param {string} url - Target URL
- * @param {Object} data - Request data
+ * @param {Record<string, unknown> | unknown[] | null | undefined} data - Request data
  * @param {number} timeout - Request timeout in ms (default: 1000)
- * @returns {jqXHR} jQuery AJAX promise
+ * @returns {JQuery.jqXHR} jQuery AJAX promise
  */
-export function ajaxCall(type, url, data, timeout = 1000) {
+export function ajaxCall(
+  type: string,
+  url: string,
+  data: Record<string, unknown> | unknown[] | null | undefined,
+  timeout: number = 1000,
+): JQuery.jqXHR {
   const isJsonBody =
     data !== null &&
     typeof data === "object" &&
@@ -30,13 +39,14 @@ export function ajaxCall(type, url, data, timeout = 1000) {
     timeout: timeout,
   });
 
-  request.fail(function (xhr) {
+  request.fail(function (xhr: JQuery.jqXHR) {
+    const rateLimitedXhr = xhr as RateLimitedXHR;
     // Global 429 HTML handler
-    xhr._429Handled = false;
+    rateLimitedXhr._429Handled = false;
     if (xhr.status === 429) {
       let contentType = xhr.getResponseHeader("Content-Type");
       if (contentType && contentType.includes("text/html")) {
-        xhr._429Handled = true;
+        rateLimitedXhr._429Handled = true;
         showNewPageOnAJAXHTMLResponse(xhr.responseText);
       }
     }
@@ -49,7 +59,7 @@ export function ajaxCall(type, url, data, timeout = 1000) {
  * Sends a debug message to the server (dev only)
  * @param {string} msg - Debug message
  */
-export function debugCall(msg) {
+export function debugCall(msg: string): void {
   $.ajax({
     type: "POST",
     url: "/debug",
