@@ -53,24 +53,3 @@ export function setupCSRF(): void {
     };
   });
 }
-
-/**
- * Global beforeSend callback for manual AJAX requests
- */
-export const globalBeforeSend = function (
-  this: JQuery.AjaxSettings,
-  xhr: JQuery.jqXHR,
-  settings: JQuery.AjaxSettings,
-): void {
-  const csrftoken: string | undefined = $(
-    "meta[name=csrf-token]",
-  ).attr("content");
-  if (
-    !/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type ?? "") &&
-    !this.crossDomain
-  ) {
-    if (csrftoken !== undefined) {
-      xhr.setRequestHeader("X-CSRFToken", csrftoken);
-    }
-  }
-};

@@ -62,7 +62,7 @@ const configScript: HTMLElement | null = document.getElementById("app-config");
 if (!configScript) {
   throw new Error("App configuration not found in DOM");
 }
-const raw: {
+const rawConfig: {
   routes: Record<string, string>;
   constants: Record<string, unknown>;
   strings: Record<string, string>;
@@ -75,70 +75,70 @@ const raw: {
 
 export const APP_CONFIG: AppConfig = Object.freeze({
   routes: Object.freeze({
-    home: raw.routes.home,
-    createUTub: raw.routes.createUTub,
-    getUTubs: raw.routes.getUTubs,
-    login: raw.routes.login,
-    register: raw.routes.register,
-    confirmEmailAfterRegister: raw.routes.confirmEmailAfterRegister,
-    sendValidationEmail: raw.routes.sendValidationEmail,
-    forgotPassword: raw.routes.forgotPassword,
-    errorPage: raw.routes.errorPage,
-    logout: raw.routes.logout,
+    home: rawConfig.routes.home,
+    createUTub: rawConfig.routes.createUTub,
+    getUTubs: rawConfig.routes.getUTubs,
+    login: rawConfig.routes.login,
+    register: rawConfig.routes.register,
+    confirmEmailAfterRegister: rawConfig.routes.confirmEmailAfterRegister,
+    sendValidationEmail: rawConfig.routes.sendValidationEmail,
+    forgotPassword: rawConfig.routes.forgotPassword,
+    errorPage: rawConfig.routes.errorPage,
+    logout: rawConfig.routes.logout,
 
-    getUTub: (id: number) => raw.routes.getUTub.replace("-1", String(id)),
+    getUTub: (id: number) => rawConfig.routes.getUTub.replace("-1", String(id)),
     deleteUTub: (id: number) =>
-      raw.routes.deleteUTub.replace("-1", String(id)),
+      rawConfig.routes.deleteUTub.replace("-1", String(id)),
     updateUTubName: (id: number) =>
-      raw.routes.updateUTubName.replace("-1", String(id)),
+      rawConfig.routes.updateUTubName.replace("-1", String(id)),
     updateUTubDescription: (id: number) =>
-      raw.routes.updateUTubDescription.replace("-1", String(id)),
+      rawConfig.routes.updateUTubDescription.replace("-1", String(id)),
 
     getURL: (utubId: number, urlId: number) =>
-      raw.routes.getURL
+      rawConfig.routes.getURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
     createURL: (id: number) =>
-      raw.routes.createURL.replace("-1", String(id)),
+      rawConfig.routes.createURL.replace("-1", String(id)),
     deleteURL: (utubId: number, urlId: number) =>
-      raw.routes.deleteURL
+      rawConfig.routes.deleteURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
     updateURL: (utubId: number, urlId: number) =>
-      raw.routes.updateURL
+      rawConfig.routes.updateURL
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
     updateURLTitle: (utubId: number, urlId: number) =>
-      raw.routes.updateURLTitle
+      rawConfig.routes.updateURLTitle
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
 
     createURLTag: (utubId: number, urlId: number) =>
-      raw.routes.createURLTag
+      rawConfig.routes.createURLTag
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
     deleteURLTag: (utubId: number, urlId: number, tagId: number) =>
-      raw.routes.deleteURLTag
+      rawConfig.routes.deleteURLTag
         .replace("-1", String(utubId))
         .replace("-2", String(urlId))
         .replace("-3", String(tagId)),
 
     createUTubTag: (id: number) =>
-      raw.routes.createUTubTag.replace("-1", String(id)),
+      rawConfig.routes.createUTubTag.replace("-1", String(id)),
     deleteUTubTag: (utubId: number, tagId: number) =>
-      raw.routes.deleteUTubTag
+      rawConfig.routes.deleteUTubTag
         .replace("-1", String(utubId))
         .replace("-2", String(tagId)),
 
     createMember: (id: number) =>
-      raw.routes.createMember.replace("-1", String(id)),
+      rawConfig.routes.createMember.replace("-1", String(id)),
     removeMember: (utubId: number, userId: number) =>
-      raw.routes.removeMember
+      rawConfig.routes.removeMember
         .replace("-1", String(utubId))
         .replace("-4", String(userId)),
 
-    contactUs: raw.routes.contactUs,
+    contactUs: rawConfig.routes.contactUs,
   }),
-  constants: Object.freeze(raw.constants),
-  strings: Object.freeze(raw.strings),
+  constants: Object.freeze(rawConfig.constants),
+  strings: Object.freeze(rawConfig.strings),
 }) as AppConfig;
