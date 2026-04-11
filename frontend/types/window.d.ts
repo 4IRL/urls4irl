@@ -38,11 +38,7 @@ declare namespace Bootstrap {
   }
 }
 
-declare global {
-  interface Window {
-    bootstrap: typeof Bootstrap;
-  }
+interface Window {
+  bootstrap: typeof Bootstrap;
+  jQuery: JQueryStatic;
 }
-
-// Required to make this file a module — enables 'declare global { }' augmentation syntax.
-export {};
