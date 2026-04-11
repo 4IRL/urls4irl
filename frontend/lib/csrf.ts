@@ -36,7 +36,7 @@ export function setupCSRF(): void {
   // Global ajaxPrefilter for 429 rate limit handling
   $.ajaxPrefilter(function (
     options: JQuery.AjaxSettings,
-    originalOptions: JQuery.AjaxSettings,
+    _originalOptions: JQuery.AjaxSettings,
     jqXHR: JQuery.jqXHR,
   ): string | void {
     let originalError: typeof options.error = options.error;
@@ -44,7 +44,7 @@ export function setupCSRF(): void {
     options.error = function (jqXHR, textStatus, errorThrown) {
       if (jqXHR.status === 429) {
         showNewPageOnAJAXHTMLResponse(jqXHR.responseText);
-        return; // Prevents both .error and .fail() from being called
+        return; // Intercepts 429 to show rate-limit page; .fail() handlers still fire separately
       }
 
       if (typeof originalError === "function") {

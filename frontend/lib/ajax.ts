@@ -41,10 +41,11 @@ export function ajaxCall(
 
   request.fail(function (xhr: JQuery.jqXHR) {
     const rateLimitedXhr = xhr as RateLimitedXHR;
-    // Global 429 HTML handler
+    // Initialize _429Handled to false on every .fail() invocation so callers can
+    // safely read the flag for any error response, not just 429s.
     rateLimitedXhr._429Handled = false;
     if (xhr.status === 429) {
-      let contentType = xhr.getResponseHeader("Content-Type");
+      const contentType = xhr.getResponseHeader("Content-Type");
       if (contentType && contentType.includes("text/html")) {
         rateLimitedXhr._429Handled = true;
         showNewPageOnAJAXHTMLResponse(xhr.responseText);

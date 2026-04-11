@@ -50,9 +50,6 @@ export interface AppRoutes {
 
   // Dynamic three-param routes
   deleteURLTag: (utubId: number, urlId: number, tagId: number) => string;
-
-  // Index signature for dynamic key access (navbar-shared uses APP_CONFIG.routes[route])
-  [key: string]: string | ((...args: number[]) => string);
 }
 
 export interface AppConfig {
@@ -69,7 +66,12 @@ const raw: {
   routes: Record<string, string>;
   constants: Record<string, unknown>;
   strings: Record<string, string>;
-} = JSON.parse(configScript.textContent!);
+} = (() => {
+  if (!configScript.textContent) {
+    throw new Error("App configuration script element is empty");
+  }
+  return JSON.parse(configScript.textContent);
+})();
 
 export const APP_CONFIG: AppConfig = Object.freeze({
   routes: Object.freeze({

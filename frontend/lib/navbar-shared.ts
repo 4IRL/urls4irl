@@ -1,5 +1,6 @@
 import { $ } from "./globals.js";
 import { APP_CONFIG } from "./config.js";
+import type { RouteId } from "./config.js";
 
 /**
  * Initialize navigation buttons with data-route attributes
@@ -8,7 +9,7 @@ import { APP_CONFIG } from "./config.js";
 export function initNavbarRouting(): void {
   $("[data-route]").each(function () {
     const $btn = $(this);
-    const route = $btn.data("route") as string;
+    const route = $btn.data("route") as RouteId;
     $btn.on("click", () => {
       window.location.assign(APP_CONFIG.routes[route] as string);
     });
