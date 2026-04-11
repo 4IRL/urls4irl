@@ -9,5 +9,6 @@
     "**/*.spec.ts",
     "**/*.spec.js",
     "types/**/*.d.ts"
-  ]
+  ],
+  "exclude": ["node_modules", "../backend/static/dist"]
 }

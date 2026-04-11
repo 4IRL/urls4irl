@@ -1,4 +1,4 @@
-interface JQuery {
+interface JQuery<TElement = HTMLElement> {
   enableTab(): this;
   disableTab(): this;
   offAndOn(

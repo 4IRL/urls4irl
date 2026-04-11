@@ -32,5 +32,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Install frontend dependencies
+        run: cd frontend && npm ci
+
       - name: Verify JavaScript with ESLint
         run: npx eslint "frontend/**/*.js" --no-config-lookup --ignore-pattern "node_modules"
+
+      - name: Verify TypeScript with ESLint
+        run: cd frontend && npx eslint "**/*.ts"
