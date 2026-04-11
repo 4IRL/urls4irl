@@ -30,6 +30,11 @@ export function computeURLVisibility(
 /**
  * Given a list of tag-ID arrays (one per visible URL) and all tag IDs in
  * the deck, returns a Map of tagID (string) -> visible URL count.
+ *
+ * TODO: `visibleURLTagIDsList` uses `string[][]` and `allTagIDs` uses `number[]`
+ * because the caller splits raw DOM attribute strings. Once the call site is
+ * migrated to pass typed `number[][]` / `number[]` uniformly, these parameter
+ * and return types can be tightened to use numeric IDs throughout.
  */
 export function computeVisibleTagCounts(
   visibleURLTagIDsList: string[][],
