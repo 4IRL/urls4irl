@@ -68,7 +68,7 @@ Rules:
 - Every finding must cite a specific step number and file path where applicable
 - Do not fabricate findings — if the plan is clean for your area, return PASS with empty findings
 - **Verify before writing.** If you are about to write "the fix is X," read the file X touches first. A fix stated from memory or reasoning alone can introduce a new error worse than the original.
-- **Do not trust plan assertions — including explanatory prose.** Plans often state preconditions as fact ("CSRF is already handled," "this import exists"). Plans also embed factual claims in rationale prose ("only X does Y," "no route uses Z"). For every such claim — whether it appears as a precondition or as justification for a design decision — trace it to the source file and verify it holds. A wrong prose claim will mislead implementers even if the code spec is correct.
+- **Do not trust plan assertions — including explanatory prose.** For any plan assertion about the current state of a file, directory, or package manifest, the reviewing subagent MUST read the actual file/directory to confirm. Never accept state assertions from plan prose alone. This applies to: file/directory existence, package versions, config field values, and import paths. Plans also embed factual claims in rationale prose ("only X does Y," "no route uses Z"). For every such claim — whether it appears as a precondition or as justification for a design decision — trace it to the source file and verify it holds. A wrong prose claim will mislead implementers even if the code spec is correct.
 - **Verify anchors in source files, not just plan text.** When confirming a mechanical fix has been applied, do not stop at verifying plan text. For any fix that references a specific anchor in a source or reference file (import block, function body, registry row, config section), read that file and verify the anchor exists before accepting the fix as resolved.
 
 **Fix verification rule (all subagents, Pass 2+):** When confirming a prior-pass fix has been applied, do not stop at verifying the plan text changed. For any fix that references a runtime behavior (path resolution, volume mount, import lookup, env var), read the source file or config that governs that behavior and verify the runtime claim is true. "The plan now says X" is not the same as "X is true."
@@ -233,6 +233,8 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 
 **Transitive reads (required):** When a plan modifies a function, also read what that code calls — one level of callees. Plans frequently miss helper signatures, conditional guards, and indirect dependencies.
 
+- **Config inheritance chains**: When a plan modifies a parent config (tsconfig, eslint, etc.), trace `extends` references to child configs and verify the change doesn't silently break inherited behavior.
+
 - **New symbol reference → verify import (required):** When a plan instructs adding any symbol reference (`isinstance`, `issubclass`, type hint, function call) to an existing file, read that file's import block and confirm the symbol is already imported. If it is not, flag the missing import as **Major**. Do NOT assume the plan would have mentioned it.
 
 When a plan instructs inserting code into an existing function, read the full function body — not just the lines the plan cites. This surfaces: (a) existing imports the new code depends on, (b) established defensive patterns already in use nearby, (c) variable names or parameter types the new code must match.
@@ -323,6 +325,7 @@ When a plan instructs inserting code into an existing function, read the full fu
   - Use exact pin (`==`) not ranges (`>=`, `~=`, `<`)
   - Pin transitive dependencies
   - Place in correct requirements file: runtime in `requirements-prod.txt`, test-only in `requirements-test.txt`, dev/tooling in `requirements-dev.txt`
+  - **Peer dependency verification**: When a plan adds packages that depend on a peer (e.g., `@typescript-eslint/parser` requires `eslint`), read the actual `package.json` to confirm the peer is present. Never assume from plan text.
   - **TypeScript types sub-path validation (required for JS/TS plans):** When a plan adds an entry to a tsconfig types array (e.g., "vitest/globals", "@testing-library/jest-dom"), verify that the sub-path is a documented TypeScript types entry point for the pinned version. Flag as **Minor** if unverifiable at review time, with a suggested runtime verification command.
 
 - **Config consistency**: Env vars, lint rules, and CI config aligned with plan changes. When the plan adds or modifies a build/test tool invocation, compare the CI job command (in .github/workflows/*.yml) against the local Makefile target for the same tool — confirm flags, working directories, and config file paths are consistent or note documented divergences. Undocumented divergences between CI and local invocations are a **Minor** finding.
@@ -355,7 +358,9 @@ When a plan instructs inserting code into an existing function, read the full fu
 
 - **Verification sufficiency**: Are the verification steps actually sufficient to catch regressions?
 
-- **Failure path guidance (required for non-trivial verification commands):** When a verification step runs a command that can fail (typecheck, build, test run) and the step says 'if it fails, investigate', verify that at least 2-3 concrete failure modes are listed (e.g., wrong config path, missing exclude entry, unexpected file in include glob). A bare 'investigate and fix' is a **Minor** finding — add specific troubleshooting hints.
+- **Deferred verification gaps**: When a step's verification depends on a file that can only be deployed manually (e.g., CI workflow files), flag the gap and require a local verification alternative.
+
+- **Failure path guidance**: Every verification command in the plan — including intermediate checks AND final test suites — must have at least one concrete failure-mode hint (likely error message + resolution). Flag any verification step that lacks this.
 
 - **Test assertion falsifiability (required):** For each negative test assertion (e.g., `assert key not in dict`), verify that the assertion targets the exact dict/field that the implementation would populate — not a parent container. An assertion on a parent dict passes trivially if the key is only ever inserted at a child level. Flag as **Major** if a negative assertion would pass even if the implementation is broken.
 
@@ -380,6 +385,8 @@ When a plan instructs inserting code into an existing function, read the full fu
 - **Risk & reversibility**: Which steps are hard to undo (file deletions, DB migrations, API contract changes)? Steps that could break CI or affect shared infrastructure?
 
 - **Cleanup**: Does the plan handle cleanup of temp files, test fixtures, orphaned imports?
+
+- **Pre-existing path collision**: When a plan says "Create directory/file X", read the filesystem to check if X already exists. If it does, flag that the plan should acknowledge pre-existing contents and specify merge/overwrite behavior.
 
 - **Config file scope correctness (required when a plan creates a shared config file):** When a plan proposes a new tsconfig.json, jest.config, or similar config that applies to all source files, check whether any types, globals, plugins, or include entries expose test-only APIs (e.g., vitest/globals, @types/jest) to production code. If so, flag the missing scope boundary (e.g., a separate tsconfig.test.json) as **Minor** and note the trade-off.
 
