@@ -35,10 +35,10 @@ export const INPUT_TYPES = Object.freeze({
  * Responsive breakpoint for tablet/mobile
  * Matches Bootstrap's lg breakpoint (992px)
  */
-export const TABLET_WIDTH = 992 as const;
+export const TABLET_WIDTH = 992;
 
 /**
  * Delay before showing loading icons (ms)
  * Prevents flicker for fast operations
  */
-export const SHOW_LOADING_ICON_AFTER_MS = 50 as const;
+export const SHOW_LOADING_ICON_AFTER_MS = 50;

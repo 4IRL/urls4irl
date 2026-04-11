@@ -32,7 +32,7 @@ export const AppEvents = Object.freeze({
   STALE_DATA_DETECTED: "stale-data:detected",
 } as const);
 
-const _handlers: Map<string, Set<(payload: unknown) => void>> = new Map();
+const _handlers = new Map<string, Set<(payload: unknown) => void>>();
 
 export function on<K extends keyof AppEventMap>(
   event: K,

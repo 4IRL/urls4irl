@@ -78,9 +78,9 @@ export function registerJQueryPlugins(): void {
 }
 
 export function enableTabbableChildElements(parent: string | HTMLElement | JQuery): void {
-  $(parent as string & HTMLElement).find(".tabbable").enableTab();
+  $(parent as string | HTMLElement).find(".tabbable").enableTab();
 }
 
 export function disableTabbableChildElements(parent: string | HTMLElement | JQuery): void {
-  $(parent as string & HTMLElement).find(".tabbable").disableTab();
+  $(parent as string | HTMLElement).find(".tabbable").disableTab();
 }

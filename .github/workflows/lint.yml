@@ -36,7 +36,7 @@ jobs:
         run: cd frontend && npm ci
 
       - name: Verify JavaScript with ESLint
-        run: npx eslint "frontend/**/*.js" --no-config-lookup --ignore-pattern "node_modules"
+        run: cd frontend && npx eslint "**/*.js" --no-config-lookup --ignore-pattern "node_modules"
 
       - name: Verify TypeScript with ESLint
         run: cd frontend && npx eslint "**/*.ts"

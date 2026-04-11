@@ -1,4 +1,8 @@
-import type { AppEventMap, UtubSelectedPayload } from "../event-bus.js";
+import type {
+  AppEventMap,
+  StaleDataDetectedPayload,
+  UtubSelectedPayload,
+} from "../event-bus.js";
 import { on, emit, AppEvents } from "../event-bus.js";
 
 describe("event-bus", () => {
@@ -66,6 +70,21 @@ describe("event-bus", () => {
     unsubscribe();
     emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [2] });
     expect(handler).toHaveBeenCalledTimes(1);
+  });
+
+  it("STALE_DATA_DETECTED handler receives correct payload", () => {
+    const handler =
+      vi.fn<(payload: AppEventMap["stale-data:detected"]) => void>();
+    track(AppEvents.STALE_DATA_DETECTED, handler);
+    const payload: StaleDataDetectedPayload = {
+      utubID: 99,
+      urls: [{ id: 1 }],
+      tags: [{ id: 2 }],
+      members: [{ id: 3 }],
+    };
+    emit(AppEvents.STALE_DATA_DETECTED, payload);
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenCalledWith(payload);
   });
 
   it("handlers for different events do not interfere", () => {
