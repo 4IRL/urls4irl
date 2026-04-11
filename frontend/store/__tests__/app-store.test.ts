@@ -74,9 +74,11 @@ describe("store as data source", () => {
         },
       ],
     });
-    const result = getState().urls.map((u) => ({
-      urlId: u.utubUrlID,
-      tagIDs: u.utubUrlTagIDs,
+    const result = (
+      getState().urls as { utubUrlID: number; utubUrlTagIDs: number[] }[]
+    ).map((url) => ({
+      urlId: url.utubUrlID,
+      tagIDs: url.utubUrlTagIDs,
     }));
     expect(result).toEqual([
       { urlId: 1, tagIDs: [10, 20] },

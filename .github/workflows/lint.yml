@@ -10,6 +10,10 @@ jobs:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: frontend
+
     steps:
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -32,5 +36,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Install frontend dependencies
+        run: npm ci
+
       - name: Verify JavaScript with ESLint
-        run: npx eslint "frontend/**/*.js" --no-config-lookup --ignore-pattern "node_modules"
+        run: npx eslint "**/*.js" --no-config-lookup --ignore-pattern "node_modules"
+
+      - name: Verify TypeScript with ESLint
+        run: npx eslint "**/*.ts"

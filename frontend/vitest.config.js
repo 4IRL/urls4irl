@@ -8,12 +8,18 @@ export default defineConfig({
     root: __dirname,
     environment: "happy-dom",
     globals: true,
-    include: ["**/*.test.js"],
+    include: ["**/*.test.{js,ts}"],
     setupFiles: ["./test-setup.js"],
     coverage: {
       provider: "v8",
-      include: ["home/**/*.js", "splash/**/*.js", "lib/**/*.js"],
-      exclude: ["**/*.test.js", "test-setup.js", "vitest.config.js"],
+      include: [
+        "home/**/*.{js,ts}",
+        "splash/**/*.{js,ts}",
+        "lib/**/*.{js,ts}",
+        "store/**/*.{js,ts}",
+        "logic/**/*.{js,ts}",
+      ],
+      exclude: ["**/*.test.{js,ts}", "test-setup.js", "vitest.config.js"],
     },
   },
 });

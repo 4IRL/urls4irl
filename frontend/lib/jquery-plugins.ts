@@ -9,7 +9,7 @@ import { $ } from "./globals.js";
  * Registers all custom jQuery plugins
  * Must be called once after jQuery is loaded
  */
-export function registerJQueryPlugins() {
+export function registerJQueryPlugins(): void {
   $.fn.enableTab = function () {
     this.attr({ tabindex: 0 });
     return this;
@@ -77,10 +77,10 @@ export function registerJQueryPlugins() {
   };
 }
 
-export function enableTabbableChildElements(parent) {
-  $(parent).find(".tabbable").enableTab();
+export function enableTabbableChildElements(parent: string | HTMLElement | JQuery): void {
+  $(parent as string | HTMLElement).find(".tabbable").enableTab();
 }
 
-export function disableTabbableChildElements(parent) {
-  $(parent).find(".tabbable").disableTab();
+export function disableTabbableChildElements(parent: string | HTMLElement | JQuery): void {
+  $(parent as string | HTMLElement).find(".tabbable").disableTab();
 }

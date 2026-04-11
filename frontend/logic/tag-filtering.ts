@@ -3,15 +3,24 @@
  * DOM adapters live in home/urls/cards/filtering.js.
  */
 
+interface UrlWithTagIDs {
+  urlId: number;
+  tagIDs: number[];
+}
+
+interface UrlVisibility {
+  urlId: number;
+  visible: boolean;
+}
+
 /**
  * Given selected tag IDs and a list of URL-to-tag mappings, returns
  * visibility for each URL (true = all selected tags present on URL).
- *
- * @param {number[]} selectedTagIDs
- * @param {{ urlId: number, tagIDs: number[] }[]} urlsWithTagIDs
- * @returns {{ urlId: number, visible: boolean }[]}
  */
-export function computeURLVisibility(selectedTagIDs, urlsWithTagIDs) {
+export function computeURLVisibility(
+  selectedTagIDs: number[],
+  urlsWithTagIDs: UrlWithTagIDs[],
+): UrlVisibility[] {
   return urlsWithTagIDs.map(({ urlId, tagIDs }) => ({
     urlId,
     visible: selectedTagIDs.every((id) => tagIDs.includes(id)),
@@ -22,12 +31,16 @@ export function computeURLVisibility(selectedTagIDs, urlsWithTagIDs) {
  * Given a list of tag-ID arrays (one per visible URL) and all tag IDs in
  * the deck, returns a Map of tagID (string) -> visible URL count.
  *
- * @param {string[][]} visibleURLTagIDsList  Array of comma-split tag ID arrays
- * @param {number[]} allTagIDs
- * @returns {Map<string, number>}
+ * TODO: `visibleURLTagIDsList` uses `string[][]` and `allTagIDs` uses `number[]`
+ * because the caller splits raw DOM attribute strings. Once the call site is
+ * migrated to pass typed `number[][]` / `number[]` uniformly, these parameter
+ * and return types can be tightened to use numeric IDs throughout.
  */
-export function computeVisibleTagCounts(visibleURLTagIDsList, allTagIDs) {
-  const tagIDsMap = new Map();
+export function computeVisibleTagCounts(
+  visibleURLTagIDsList: string[][],
+  allTagIDs: number[],
+): Map<string, number> {
+  const tagIDsMap = new Map<string, number>();
   allTagIDs.forEach((tagID) => tagIDsMap.set(`${tagID}`, 0));
 
   visibleURLTagIDsList.forEach((tagIDs) => {
@@ -42,10 +55,9 @@ export function computeVisibleTagCounts(visibleURLTagIDsList, allTagIDs) {
 /**
  * Given an array of tag objects with a `visibleCount` property, returns
  * a new array sorted descending by visibleCount.
- *
- * @param {{ visibleCount: number }[]} tags
- * @returns {{ visibleCount: number }[]}
  */
-export function sortTagsByCount(tags) {
+export function sortTagsByCount<T extends { visibleCount: number }>(
+  tags: T[],
+): T[] {
   return [...tags].sort((a, b) => b.visibleCount - a.visibleCount);
 }
