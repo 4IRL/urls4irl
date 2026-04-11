@@ -4,7 +4,7 @@ const $ = window.jQuery;
 const COOKIE_BANNER_SEEN = "cookie_banner_seen=true";
 
 describe("initCookieBanner", () => {
-  let fakeCookie;
+  let fakeCookie: string;
 
   beforeEach(() => {
     fakeCookie = "";
@@ -55,22 +55,22 @@ describe("initCookieBanner", () => {
     });
 
     it("clicking a button removes is-visible", () => {
-      document.getElementById("testBtn").click();
+      document.getElementById("testBtn")!.click();
       expect($("#CookieBanner").hasClass("is-visible")).toBe(false);
     });
 
     it("clicking an a element removes is-visible", () => {
-      document.getElementById("testLink").click();
+      document.getElementById("testLink")!.click();
       expect($("#CookieBanner").hasClass("is-visible")).toBe(false);
     });
 
     it("clicking a .clickable element removes is-visible", () => {
-      document.getElementById("testClickable").click();
+      document.getElementById("testClickable")!.click();
       expect($("#CookieBanner").hasClass("is-visible")).toBe(false);
     });
 
     it("sets COOKIE_BANNER_SEEN cookie after hiding via click", () => {
-      document.getElementById("testBtn").click();
+      document.getElementById("testBtn")!.click();
       expect(fakeCookie).toContain(COOKIE_BANNER_SEEN);
     });
   });
@@ -86,7 +86,7 @@ describe("initCookieBanner", () => {
     });
 
     it("Enter keyup on a .clickable element removes is-visible", () => {
-      const el = document.getElementById("testClickable");
+      const el = document.getElementById("testClickable")!;
       el.dispatchEvent(
         new KeyboardEvent("keyup", { key: "Enter", bubbles: true }),
       );
