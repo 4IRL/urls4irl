@@ -235,6 +235,8 @@ Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
 
+**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI per the cap above; n=8+ for integration). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., Selenium session idle-timeout reaps) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
+
 UI/functional tests require Selenium (`SELENIUM_URL` env var pointing to a Selenium grid).
 
 ### Linting & Formatting

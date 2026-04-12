@@ -1,6 +1,6 @@
 ---
 name: master-plan-creator
-description: Creates a high-level master plan that decomposes a multi-PR initiative into numbered phases, each with a **Branch:** field, and pre-creates sub-plan folders so /plan-creator has a deterministic home for each sub-plan. Use when the user asks to create a "master plan", "migration plan", "multi-PR plan", "umbrella plan", or a plan that "spans multiple branches/PRs/phases". Not for single-PR plans — use /plan-creator for those.
+description: Creates a high-level master plan that decomposes a multi-PR initiative into numbered phases, each with a **Branch:** field. Use when the user asks to create a "master plan", "migration plan", "multi-PR plan", "umbrella plan", or a plan that "spans multiple branches/PRs/phases". Not for single-PR plans — use /plan-creator for those.
 ---
 
 ## Relationship to `/plan-creator`
@@ -16,7 +16,6 @@ Authoritative sources (read these verbatim when the step below says "reuse"):
 What this skill **adds** on top:
 - A master-scope research prompt set (broader than plan-creator's deep-dive)
 - A `**Branch:**` field required on every non-verification step
-- Pre-creation of sub-plan folders derived from each step's branch name
 - Coarser to-do granularity (sub-plan territory, not detailed implementation)
 
 ## Step 1: Branch Guard
@@ -107,30 +106,22 @@ finished: false
 - Do NOT include a Final Verification inside each phase — only the umbrella one as the last step.
 - Separate steps with `---` horizontal rules for readability.
 
-## Step 6: Pre-create Sub-plan Folders
-
-For each non-verification step in the written plan:
-1. Parse the `**Branch:**` line's backtick-quoted value.
-2. Derive the folder name: last path segment after the final `/` (e.g. `ts/feature-splash` → `feature-splash`, `infra/openapi-typescript-codegen` → `openapi-typescript-codegen`).
-3. Run `mkdir -p plans/<derived>/`.
-
-Do NOT create `.gitkeep` files — `plans/` is gitignored, so git visibility is irrelevant. Local presence is the sole goal.
-
-## Step 7: Validation
+## Step 6: Validation
 
 Before reporting success, verify:
 1. Every non-verification step has a `**Branch:**` line matching the pattern `\*\*Branch:\*\* \`[^\`]+\``. Use Grep on the master plan file.
-2. Every derived sub-plan folder from Step 6 exists on disk. Use Glob.
-3. The `## Status` block is present with `finished: false`.
+2. The `## Status` block is present with `finished: false`.
 
-If any check fails, fix the plan file or re-run the missing `mkdir`. Do not proceed to Step 8 until all three pass.
+If any check fails, fix the plan file. Do not proceed to Step 7 until both pass.
 
-## Step 8: Cleanup & Summary
+## Step 7: Cleanup & Summary
 
 1. Delete all `plans/<parent-topic>/tmp/research-*-master.md` files.
 2. Report to the user:
    - Master plan path
-   - Number of phases created + list of pre-created sub-plan folders (one per line)
+   - Number of phases created
    - Suggested next command: `/plan-creator "Step 1 of <master-plan-name>"`
 
-Append a changelog entry per user-level CLAUDE.md rules (`master-plan-creator: Created plans/<parent-topic>/<name>-master.md with N phases; pre-created N sub-plan folders`).
+Note: Sub-plan folders are created on-demand by `/plan-creator` when each phase's sub-plan is written.
+
+Append a changelog entry per user-level CLAUDE.md rules (`master-plan-creator: Created plans/<parent-topic>/<name>-master.md with N phases`).
