@@ -42,7 +42,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=RegisterRequest, response_schema=RegisterResponseSchema, ajax_required=False, tags=["auth"], description="Register a new user account", status_codes={201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse})` |
 | **Service** | `backend/splash/services/register.py:register_new_user` |
 | **Schema** | `backend/schemas/requests/splash/register.py:RegisterRequest` |
-| **JS Module** | `frontend/splash/register-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/register-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_register_user.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_register_user_ui.py` (marker: `splash_ui`), `tests/unit/schemas/test_splash_schemas.py` (marker: `unit`) |
 
