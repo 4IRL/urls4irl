@@ -1,3 +1,4 @@
+import type { components, operations } from "../types/api.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -9,11 +10,16 @@ import {
   switchModal,
 } from "./init.js";
 
+type LoginRequest = components["schemas"]["LoginRequest"];
+type LoginSuccess =
+  operations["login"]["responses"][200]["content"]["application/json"];
+type LoginError = components["schemas"]["ErrorResponse_LoginErrorCodes"];
+
 /**
  * Initialize login form handlers
  * Must be called after login form HTML is loaded into the modal
  */
-export function initLoginForm($modal) {
+export function initLoginForm($modal: JQuery): void {
   $modal
     .find("#ToRegisterFromLogin")
     .offAndOn("click", () => switchModal($modal, "#RegisterModal"));
@@ -29,25 +35,26 @@ export function initLoginForm($modal) {
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
 }
 
-function handleLogin(event, $modal) {
+function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
 
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
-  let url = APP_CONFIG.routes.login;
+  let url: string = APP_CONFIG.routes.login;
   const searchParams = new URLSearchParams(window.location.search);
   const nextQueryParam = searchParams.get("next");
   if (searchParams.size === 1 && nextQueryParam !== null) {
     url = `${url}?${searchParams.toString()}`;
   }
 
-  const username = $modal.find("#username").val();
-  const password = $modal.find("#password").val();
+  const username: string = String($modal.find("#username").val() ?? "");
+  const password: string = String($modal.find("#password").val() ?? "");
 
-  const loginRequest = $.ajax({
+  const payload: LoginRequest = { username, password };
+  const loginRequest: JQuery.jqXHR = $.ajax({
     url: url,
     type: "POST",
-    data: JSON.stringify({ username, password }),
+    data: JSON.stringify(payload),
     contentType: "application/json",
   });
 
@@ -59,7 +66,11 @@ function handleLogin(event, $modal) {
   );
 }
 
-function handleLoginSuccess(response, _, xhr) {
+function handleLoginSuccess(
+  response: LoginSuccess,
+  _: string,
+  xhr: JQuery.jqXHR,
+): void {
   if (xhr.status === 200) {
     bootstrap.Modal.getOrCreateInstance("#LoginModal").hide();
     // Use redirectUrl from JSON response
@@ -68,7 +79,12 @@ function handleLoginSuccess(response, _, xhr) {
   }
 }
 
-function handleLoginFailure(xhr, _, error, $modal) {
+function handleLoginFailure(
+  xhr: JQuery.jqXHR,
+  _: string,
+  error: string,
+  $modal: JQuery,
+): void {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -87,15 +103,16 @@ function handleLoginFailure(xhr, _, error, $modal) {
     (xhr.status === 400 || xhr.status === 401) &&
     xhr.responseJSON.hasOwnProperty("errorCode")
   ) {
-    switch (xhr.responseJSON.errorCode) {
+    const errorJson = xhr.responseJSON as LoginError;
+    switch (errorJson.errorCode) {
       case 1: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated($modal, xhr.responseJSON.message);
-        $modal.find("input").attr("disabled", true);
+        handleUserHasAccountNotEmailValidated($modal, errorJson.message);
+        $modal.find("input").attr("disabled", "disabled");
         break;
       }
       case 2: {
-        handleImproperFormErrors($modal, xhr.responseJSON);
+        handleImproperFormErrors($modal, errorJson);
         break;
       }
     }

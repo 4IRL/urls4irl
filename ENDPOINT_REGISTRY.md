@@ -30,7 +30,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=LoginRequest, response_schema=LoginRedirectResponseSchema, ajax_required=False, tags=["auth"], description="Log in to an existing account", status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse})` |
 | **Service** | `backend/splash/services/login.py:login_user_to_u4i` |
 | **Schema** | `backend/schemas/requests/splash/login.py:LoginRequest` |
-| **JS Module** | `frontend/splash/login-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/login-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag `<meta name="csrf-token">` via `components/head/meta.html` |
 | **Tests** | `tests/integration/splash/test_login_user.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_login_user_ui.py` (marker: `splash_ui`) |
 
