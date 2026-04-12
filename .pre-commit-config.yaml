@@ -24,7 +24,7 @@ repos:
     - id: eslint
       name: eslint (js)
       args: [--no-config-lookup]
-      types_or: [javascript]
+      types: [javascript]
     - id: eslint
       name: eslint (ts)
       args: [--config, frontend/eslint.config.js]
