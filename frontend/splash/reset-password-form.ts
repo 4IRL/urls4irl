@@ -1,3 +1,4 @@
+import type { components, operations } from "../types/api.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -7,32 +8,42 @@ import {
   handleImproperFormErrors,
 } from "./init.js";
 
+type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
+type ResetPasswordSuccess =
+  operations["resetPassword"]["responses"][200]["content"]["application/json"];
+type ResetPasswordError =
+  components["schemas"]["ErrorResponse_ResetPasswordErrorCodes"];
+
 /**
  * Initialize reset password form handlers
  * Must be called after reset password form HTML is loaded into the modal
- * @param {jQuery} $modal - The modal container element
  */
-export function initResetPasswordForm($modal) {
+export function initResetPasswordForm($modal: JQuery): void {
   $modal
     .find("#submit")
     .offAndOn("click", (event) => handleResetPassword(event, $modal));
 
-  $modal.on("hide.bs.modal", function (_) {
+  $modal.on("hide.bs.modal", function () {
     $modal.off("hide.bs.modal");
     window.location.replace("/");
   });
 }
 
-function handleResetPassword(event, $modal) {
+function handleResetPassword(
+  event: JQuery.TriggeredEvent,
+  $modal: JQuery,
+): void {
   event.preventDefault();
 
-  const newPassword = $modal.find("#newPassword").val();
-  const confirmNewPassword = $modal.find("#confirmNewPassword").val();
+  const payload: ResetPasswordRequest = {
+    newPassword: String($modal.find("#newPassword").val() ?? ""),
+    confirmNewPassword: String($modal.find("#confirmNewPassword").val() ?? ""),
+  };
 
-  const resetPasswordRequest = $.ajax({
+  const resetPasswordRequest: JQuery.jqXHR = $.ajax({
     url: window.location.pathname,
     type: "POST",
-    data: JSON.stringify({ newPassword, confirmNewPassword }),
+    data: JSON.stringify(payload),
     contentType: "application/json",
   });
 
@@ -45,18 +56,24 @@ function handleResetPassword(event, $modal) {
   });
 }
 
-function handleResetPasswordSuccess(response, _, xhr, $modal) {
+function handleResetPasswordSuccess(
+  response: ResetPasswordSuccess,
+  _: string,
+  xhr: JQuery.jqXHR,
+  $modal: JQuery,
+): void {
   if (xhr.status === 200) {
     // Password changed!
     $modal.find(".form-control").removeClass("is-invalid");
     $modal.find(".invalid-feedback").remove();
     hideSplashModalAlertBanner($modal);
-    showSplashModalAlertBanner($modal, xhr.responseJSON.message, "success");
+    const successJson = xhr.responseJSON as ResetPasswordSuccess;
+    showSplashModalAlertBanner($modal, successJson.message, "success");
     handleUserChangedPassword($modal);
   }
 }
 
-function handleUserChangedPassword($modal) {
+function handleUserChangedPassword($modal: JQuery): void {
   $modal.find("#submit").removeClass("login-register-buttons");
   $modal
     .find("#submit")
@@ -64,12 +81,17 @@ function handleUserChangedPassword($modal) {
     .val("Close")
     .removeClass("btn-success")
     .addClass("btn-warning")
-    .offAndOn("click", function (_) {
+    .offAndOn("click", function () {
       bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
     });
 }
 
-function handleResetPasswordFailure(xhr, _, error, $modal) {
+function handleResetPasswordFailure(
+  xhr: JQuery.jqXHR,
+  _: string,
+  error: string,
+  $modal: JQuery,
+): void {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -85,11 +107,12 @@ function handleResetPasswordFailure(xhr, _, error, $modal) {
   }
 
   if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
-    switch (xhr.responseJSON.errorCode) {
+    const errorJson = xhr.responseJSON as ResetPasswordError;
+    switch (errorJson.errorCode) {
       case 1:
         $modal.find(".form-control").removeClass("is-invalid");
         $modal.find(".invalid-feedback").remove();
-        handleImproperFormErrors($modal, xhr.responseJSON);
+        handleImproperFormErrors($modal, errorJson);
         break;
     }
   } else {

@@ -108,7 +108,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | None |
 | **Service** | `backend/splash/services/reset_password.py:get_reset_password_page` |
 | **Template** | `components/splash/reset_password.html` |
-| **JS Module** | `frontend/splash/reset-password-form.js` |
+| **JS Module** | `frontend/splash/reset-password-form.ts` |
 | **Tests** | `tests/integration/splash/test_reset_password.py` (marker: `splash`), `tests/functional/splash_ui/test_reset_password_ui.py` (marker: `splash_ui`) |
 
 ### POST /reset-password/\<token\>
@@ -119,7 +119,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@api_route(request_schema=ResetPasswordRequest, response_schema=ResetPasswordResponseSchema, ajax_required=False, tags=["auth"], description="Reset a user password with a valid token", status_codes={200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/splash/services/reset_password.py:reset_password_for_user` |
 | **Schema** | `backend/schemas/requests/splash/reset_password.py:ResetPasswordRequest` |
-| **JS Module** | `frontend/splash/reset-password-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/reset-password-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_reset_password.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_reset_password_ui.py` (marker: `splash_ui`) |
 
