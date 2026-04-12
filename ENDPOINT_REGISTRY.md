@@ -96,7 +96,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ForgotPasswordRequest, response_schema=ForgotPasswordResponseSchema, ajax_required=False, tags=["auth"], description="Send a password reset email", status_codes={200: ForgotPasswordResponseSchema, 400: ErrorResponse})` |
 | **Service** | `backend/splash/services/forgot_password.py:send_forgot_password_email_to_user` |
 | **Schema** | `backend/schemas/requests/splash/forgot_password.py:ForgotPasswordRequest` |
-| **JS Module** | `frontend/splash/forgot-password-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/forgot-password-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_forgot_password.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_forgot_password_ui.py` (marker: `splash_ui`) |
 

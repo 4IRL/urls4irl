@@ -1,3 +1,4 @@
+import type { components, operations } from "../types/api.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -8,11 +9,17 @@ import {
   switchModal,
 } from "./init.js";
 
+type ForgotPasswordRequest = components["schemas"]["ForgotPasswordRequest"];
+type ForgotPasswordSuccess =
+  operations["forgotPassword"]["responses"][200]["content"]["application/json"];
+type ForgotPasswordError =
+  components["schemas"]["ErrorResponse_ForgotPasswordErrorCodes"];
+
 /**
  * Initialize forgot password form handlers
  * Must be called after forgot password form HTML is loaded into the modal
  */
-export function initForgotPasswordForm($modal) {
+export function initForgotPasswordForm($modal: JQuery): void {
   $modal
     .find("#ToLoginFromForgotPassword")
     .offAndOn("click", () => switchModal($modal, "#LoginModal"));
@@ -24,14 +31,21 @@ export function initForgotPasswordForm($modal) {
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
 }
 
-function handleForgotPassword(event, $modal) {
+function handleForgotPassword(
+  event: JQuery.TriggeredEvent,
+  $modal: JQuery,
+): void {
   event.preventDefault();
   $modal.find("#submit").attr("disabled", "disabled");
 
-  const forgotPasswordRequest = $.ajax({
+  const payload: ForgotPasswordRequest = {
+    email: String($modal.find("#email").val() ?? ""),
+  };
+
+  const forgotPasswordRequest: JQuery.jqXHR = $.ajax({
     url: APP_CONFIG.routes.forgotPassword,
     type: "POST",
-    data: JSON.stringify({ email: $modal.find("#email").val() }),
+    data: JSON.stringify(payload),
     contentType: "application/json",
   });
 
@@ -43,26 +57,37 @@ function handleForgotPassword(event, $modal) {
   );
 }
 
-function handleForgotPasswordSuccess(response, _, xhr, $modal) {
+function handleForgotPasswordSuccess(
+  response: ForgotPasswordSuccess,
+  _: string,
+  xhr: JQuery.jqXHR,
+  $modal: JQuery,
+): void {
   if (xhr.status === 200) {
     $modal.find(".form-control").removeClass("is-invalid");
     $modal.find(".invalid-feedback").remove();
-    showSplashModalAlertBanner($modal, xhr.responseJSON.message, "success");
+    const successJson = xhr.responseJSON as ForgotPasswordSuccess;
+    showSplashModalAlertBanner($modal, successJson.message, "success");
     disableSendPasswordResetEmailButton($modal);
   }
 }
 
-function disableSendPasswordResetEmailButton($modal) {
+function disableSendPasswordResetEmailButton($modal: JQuery): void {
   const submitButton = $modal.find("#submit");
   submitButton
     .prop("type", "button")
     .prop("disabled", true)
-    .offAndOn("click", function (_) {
+    .offAndOn("click", function () {
       submitButton.prop("disabled", true);
     });
 }
 
-function handleForgotPasswordFailure(xhr, _, error, $modal) {
+function handleForgotPasswordFailure(
+  xhr: JQuery.jqXHR,
+  _: string,
+  error: string,
+  $modal: JQuery,
+): void {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -78,9 +103,10 @@ function handleForgotPasswordFailure(xhr, _, error, $modal) {
   }
 
   if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
-    switch (xhr.responseJSON.errorCode) {
+    const errorJson = xhr.responseJSON as ForgotPasswordError;
+    switch (errorJson.errorCode) {
       case 1: {
-        handleImproperFormErrors($modal, xhr.responseJSON);
+        handleImproperFormErrors($modal, errorJson);
         $modal.find("#submit").removeAttr("disabled");
         break;
       }
