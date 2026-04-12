@@ -245,6 +245,48 @@ describe("handleImproperFormErrors", () => {
     // Returns undefined (void)
     expect(result).toBeUndefined();
   });
+
+  it("calls displayFormErrors with the first message for a known form field", () => {
+    const $modal = $("#LoginModal");
+
+    const errorResponse = {
+      status: "Failure" as const,
+      message: "Validation failed",
+      errorCode: null,
+      errors: {
+        username: ["Username is required", "Secondary error"],
+      },
+      details: null,
+    };
+
+    handleImproperFormErrors($modal, errorResponse);
+
+    const usernameInput = $modal.find("#username");
+    expect(usernameInput.hasClass("is-invalid")).toBe(true);
+
+    const feedback = $modal.find("#username + .invalid-feedback");
+    expect(feedback.length).toBe(1);
+    expect(feedback.text()).toBe("Username is required");
+  });
+
+  it("skips keys that are not in FORM_FIELD_NAMES without inserting invalid-feedback", () => {
+    const $modal = $("#LoginModal");
+
+    const errorResponse = {
+      status: "Failure" as const,
+      message: "Validation failed",
+      errorCode: null,
+      errors: {
+        nonExistentField: ["Should be ignored"],
+      },
+      details: null,
+    };
+
+    handleImproperFormErrors($modal, errorResponse);
+
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+  });
 });
 
 describe("showSplashModalAlertBanner", () => {

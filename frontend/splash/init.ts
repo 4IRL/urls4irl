@@ -178,6 +178,7 @@ export function handleImproperFormErrors(
   for (const key in errorResponse.errors) {
     if (!isFormFieldName(key)) continue;
     const errorMessage: string = errorResponse.errors[key][0];
+    if (!errorMessage) continue;
     displayFormErrors($modal, key, errorMessage);
   }
 }
