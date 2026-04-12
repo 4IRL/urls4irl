@@ -19,7 +19,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | None |
 | **Service** | `render_template()` direct |
 | **Template** | `pages/splash.html` |
-| **JS Module** | `frontend/splash/init.js` |
+| **JS Module** | `frontend/splash/init.ts` |
 | **Tests** | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`) |
 
 ### POST /login
@@ -63,7 +63,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Handler** | `backend/splash/routes.py:send_validation_email` |
 | **Decorators** | `@api_route(response_schema=EmailValidationResponseSchema, ajax_required=False, tags=["auth"], description="Send an email validation link to the current user", status_codes={200: EmailValidationResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 429: ErrorResponse})` |
 | **Service** | `backend/splash/services/email_validation.py:send_validation_email_to_user` |
-| **JS Module** | `frontend/splash/email-validation-form.js` — form serialize |
+| **JS Module** | `frontend/splash/email-validation-form.ts` — form serialize |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_email_validation.py` (marker: `splash`), `tests/functional/splash_ui/test_validate_email_ui.py` (marker: `splash_ui`) |
 
@@ -75,7 +75,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | None |
 | **Service** | DB query + `login_user()` |
 | **Template** | `pages/splash.html` (with `email_token_is_expired=True`) |
-| **JS Module** | `frontend/splash/email-validation-form.js` |
+| **JS Module** | `frontend/splash/email-validation-form.ts` |
 | **Tests** | `tests/integration/splash/test_email_validation.py` (marker: `splash`), `tests/functional/splash_ui/test_validate_email_ui.py` (marker: `splash_ui`) |
 
 ### GET /validate/\<token\>
@@ -370,7 +370,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators** | None |
 | **Service** | `logout_user()` |
 | **Template** | Redirect to splash |
-| **JS Module** | `frontend/splash/email-validation-form.js`, `frontend/splash/init.js` |
+| **JS Module** | `frontend/splash/email-validation-form.ts`, `frontend/splash/init.ts` |
 | **Tests** | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`) |
 
 ### GET /privacy-policy
