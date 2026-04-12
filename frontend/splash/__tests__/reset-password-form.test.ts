@@ -18,8 +18,8 @@ vi.mock("../../lib/globals.js", () => ({
 }));
 
 vi.mock("../../lib/config.js", () => {
-  const configScript = document.getElementById("app-config");
-  const config = JSON.parse(configScript.textContent);
+  const configScript = document.getElementById("app-config")!;
+  const config = JSON.parse(configScript.textContent!);
   return { APP_CONFIG: config };
 });
 
@@ -36,8 +36,6 @@ const RESET_PASSWORD_MODAL_HTML = `
 `;
 
 describe("reset-password-form 429 HTML response", () => {
-  let ajaxSpy;
-
   beforeEach(() => {
     document.body.innerHTML = RESET_PASSWORD_MODAL_HTML;
     vi.clearAllMocks();
@@ -49,7 +47,7 @@ describe("reset-password-form 429 HTML response", () => {
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 429 with HTML content", () => {
     const mockDeferred = $.Deferred();
-    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#ResetPasswordModal");
     initResetPasswordForm($modal);
@@ -70,7 +68,7 @@ describe("reset-password-form 429 HTML response", () => {
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 403 with HTML content", () => {
     const mockDeferred = $.Deferred();
-    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#ResetPasswordModal");
     initResetPasswordForm($modal);
