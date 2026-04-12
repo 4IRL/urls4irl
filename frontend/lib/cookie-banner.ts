@@ -2,7 +2,7 @@ import { $ } from "./globals.js";
 import { APP_CONFIG } from "./config.js";
 import { KEYS } from "./constants.js";
 
-export function initCookieBanner() {
+export function initCookieBanner(): void {
   const $banner = $("#CookieBanner");
   if (!$banner.length) return;
 
@@ -13,7 +13,7 @@ export function initCookieBanner() {
     }
   }, 0);
 
-  function setCookieBannerSeenCookie() {
+  function setCookieBannerSeenCookie(): void {
     const date = new Date();
     date.setTime(date.getTime() + 365 * 24 * 60 * 60 * 1000);
     const expires = "expires=" + date.toUTCString();
@@ -21,14 +21,14 @@ export function initCookieBanner() {
     document.cookie = `${APP_CONFIG.strings.COOKIE_BANNER_SEEN};${expires}; path=/; SameSite=Lax${secureFlag}`;
   }
 
-  function hideBanner() {
+  function hideBanner(): void {
     setCookieBannerSeenCookie();
     $banner.removeClass("is-visible");
     $(document).off("click.clickOutsideBanner keyup.clickOutsideBanner");
   }
 
   // Click handler for interactive elements
-  const interactiveClickSelectors = [
+  const interactiveClickSelectors: string[] = [
     "a",
     "button",
     ".UTubSelector",
@@ -38,23 +38,25 @@ export function initCookieBanner() {
     ".urlRow",
   ];
   $(document).on("click.clickOutsideBanner", (e) => {
-    if ($(e.target.closest(interactiveClickSelectors.join(","))).length > 0) {
+    const target = e.target as HTMLElement;
+    if ($(target.closest(interactiveClickSelectors.join(","))!).length > 0) {
       hideBanner();
     }
   });
 
   // Keyboard handler for Enter key
-  const interactiveKeySelectors = [
+  const interactiveKeySelectors: string[] = [
     ".UTubSelector",
     ".clickable",
     ".tagFilter",
     ".urlRow",
   ];
   $(document).on("keyup.clickOutsideBanner", (e) => {
-    if (e.originalEvent.repeat) return;
+    if (e.originalEvent?.repeat) return;
+    const target = e.target as HTMLElement;
     if (
       e.key === KEYS.ENTER &&
-      $(e.target.closest(interactiveKeySelectors.join(","))).length > 0
+      $(target.closest(interactiveKeySelectors.join(","))!).length > 0
     ) {
       hideBanner();
     }

@@ -15,11 +15,21 @@ repos:
     rev: "v4.0.0-alpha.8"
     hooks:
     - id: prettier
-      types: [javascript]
+      types_or: [javascript, ts]
       exclude: ^(backend/static/dist/|backend/static/vendor/|frontend/public/vendor/)
 
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: "v9.21.0"
     hooks:
     - id: eslint
+      name: eslint (js)
       args: [--no-config-lookup]
+      types: [javascript]
+    - id: eslint
+      name: eslint (ts)
+      args: [--config, frontend/eslint.config.js]
+      types: [ts]
+      additional_dependencies:
+        - eslint@9.39.4
+        - "@typescript-eslint/parser@8.58.1"
+        - "@typescript-eslint/eslint-plugin@8.58.1"
