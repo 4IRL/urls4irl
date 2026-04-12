@@ -12,6 +12,22 @@ import {
 
 type ErrorResponse = components["schemas"]["ErrorResponse"];
 
+const FORM_FIELD_NAMES = [
+  "username",
+  "password",
+  "email",
+  "confirmEmail",
+  "confirmPassword",
+  "newPassword",
+  "confirmNewPassword",
+] as const;
+
+type FormFieldName = (typeof FORM_FIELD_NAMES)[number];
+
+function isFormFieldName(key: string): key is FormFieldName {
+  return (FORM_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 /**
  * Initialize splash page
  * Sets up button handlers and rate limit error handling
@@ -160,22 +176,9 @@ export function handleImproperFormErrors(
     return;
   }
   for (const key in errorResponse.errors) {
-    switch (key) {
-      case "username":
-      case "password":
-      case "email":
-      case "confirmEmail":
-      case "confirmPassword":
-      case "newPassword":
-      case "confirmNewPassword": {
-        const errorMessage: string = errorResponse.errors[key][0];
-        displayFormErrors($modal, key, errorMessage);
-        break;
-      }
-      default:
-        // Error for a field that doesn't exist
-        console.log("No op.");
-    }
+    if (!isFormFieldName(key)) continue;
+    const errorMessage: string = errorResponse.errors[key][0];
+    displayFormErrors($modal, key, errorMessage);
   }
 }
 
