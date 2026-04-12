@@ -2,6 +2,7 @@ import { $, bootstrap } from "../lib/globals.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 
 // Navbar toggler object (shared state)
+/** @type {{ toggler: bootstrap.Collapse | null }} */
 export const NAVBAR_TOGGLER = { toggler: null };
 
 /**
