@@ -66,8 +66,7 @@ function handleForgotPasswordSuccess(
   if (xhr.status === 200) {
     $modal.find(".form-control").removeClass("is-invalid");
     $modal.find(".invalid-feedback").remove();
-    const successJson = xhr.responseJSON as ForgotPasswordSuccess;
-    showSplashModalAlertBanner($modal, successJson.message, "success");
+    showSplashModalAlertBanner($modal, response.message, "success");
     disableSendPasswordResetEmailButton($modal);
   }
 }

@@ -7,8 +7,8 @@ type EmailValidationSuccess =
   components["schemas"]["EmailValidationResponseSchema"];
 type EmailValidationError = components["schemas"]["ErrorResponse"];
 
-export const SEND_INITIAL_EMAIL = true as const;
-export const SKIP_INITIAL_EMAIL = false as const;
+export const SEND_INITIAL_EMAIL = true;
+export const SKIP_INITIAL_EMAIL = false;
 
 /**
  * Initialize email validation form handlers
@@ -65,8 +65,7 @@ function handleValidateEmailSuccess(
 ): void {
   if (xhr.status === 200) {
     // Email sent!
-    const successJson = xhr.responseJSON as EmailValidationSuccess;
-    showSplashModalAlertBanner($modal, successJson.message, "success");
+    showSplashModalAlertBanner($modal, response.message, "success");
   }
 }
 

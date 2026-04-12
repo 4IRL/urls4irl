@@ -67,8 +67,8 @@ function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
 }
 
 function handleRegisterSuccess(
-  _response: RegisterSuccess,
-  _textStatus: string,
+  _: RegisterSuccess,
+  __: string,
   xhr: JQuery.jqXHR,
   $modal: JQuery,
 ): void {
@@ -79,8 +79,8 @@ function handleRegisterSuccess(
 
 function handleRegisterFailure(
   xhr: JQuery.jqXHR,
-  _textStatus: string,
-  _error: string,
+  _: string,
+  __: string,
   $modal: JQuery,
 ): void {
   if (!xhr.hasOwnProperty("responseJSON")) {

@@ -67,8 +67,7 @@ function handleResetPasswordSuccess(
     $modal.find(".form-control").removeClass("is-invalid");
     $modal.find(".invalid-feedback").remove();
     hideSplashModalAlertBanner($modal);
-    const successJson = xhr.responseJSON as ResetPasswordSuccess;
-    showSplashModalAlertBanner($modal, successJson.message, "success");
+    showSplashModalAlertBanner($modal, response.message, "success");
     handleUserChangedPassword($modal);
   }
 }

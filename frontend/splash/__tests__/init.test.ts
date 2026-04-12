@@ -5,6 +5,7 @@ import {
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
   resetModalFormState,
+  handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
   emailValidationModalOpener,
 } from "../init.js";
@@ -211,6 +212,38 @@ describe("displayFormErrors", () => {
     }).not.toThrow();
 
     expect($modal.find(".invalid-feedback").length).toBe(0);
+  });
+});
+
+describe("handleImproperFormErrors", () => {
+  beforeEach(() => {
+    document.body.innerHTML = modalShell(
+      "LoginModal",
+      `<input id="username" class="form-control" />`,
+    );
+  });
+
+  it("returns early without inserting invalid-feedback when errors is null", () => {
+    const $modal = $("#LoginModal");
+    // Pre-populate DOM state that handleImproperFormErrors should still clear
+    $modal.find("#username").addClass("is-invalid");
+    $modal.find("#username").after('<div class="invalid-feedback">Stale</div>');
+
+    const errorResponse = {
+      status: "Failure" as const,
+      message: "Something went wrong",
+      errorCode: null,
+      errors: null,
+      details: null,
+    };
+
+    const result = handleImproperFormErrors($modal, errorResponse);
+
+    // The early-return still performs the cleanup at the top of the function
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+    // Returns undefined (void)
+    expect(result).toBeUndefined();
   });
 });
 
