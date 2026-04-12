@@ -19,7 +19,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | None |
 | **Service** | `render_template()` direct |
 | **Template** | `pages/splash.html` |
-| **JS Module** | `frontend/splash/init.js` |
+| **JS Module** | `frontend/splash/init.ts` |
 | **Tests** | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`) |
 
 ### POST /login
@@ -30,7 +30,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=LoginRequest, response_schema=LoginRedirectResponseSchema, ajax_required=False, tags=["auth"], description="Log in to an existing account", status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse})` |
 | **Service** | `backend/splash/services/login.py:login_user_to_u4i` |
 | **Schema** | `backend/schemas/requests/splash/login.py:LoginRequest` |
-| **JS Module** | `frontend/splash/login-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/login-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag `<meta name="csrf-token">` via `components/head/meta.html` |
 | **Tests** | `tests/integration/splash/test_login_user.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_login_user_ui.py` (marker: `splash_ui`) |
 
@@ -42,7 +42,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=RegisterRequest, response_schema=RegisterResponseSchema, ajax_required=False, tags=["auth"], description="Register a new user account", status_codes={201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse})` |
 | **Service** | `backend/splash/services/register.py:register_new_user` |
 | **Schema** | `backend/schemas/requests/splash/register.py:RegisterRequest` |
-| **JS Module** | `frontend/splash/register-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/register-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_register_user.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_register_user_ui.py` (marker: `splash_ui`), `tests/unit/schemas/test_splash_schemas.py` (marker: `unit`) |
 
@@ -63,7 +63,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Handler** | `backend/splash/routes.py:send_validation_email` |
 | **Decorators** | `@api_route(response_schema=EmailValidationResponseSchema, ajax_required=False, tags=["auth"], description="Send an email validation link to the current user", status_codes={200: EmailValidationResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 429: ErrorResponse})` |
 | **Service** | `backend/splash/services/email_validation.py:send_validation_email_to_user` |
-| **JS Module** | `frontend/splash/email-validation-form.js` — form serialize |
+| **JS Module** | `frontend/splash/email-validation-form.ts` — form serialize |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_email_validation.py` (marker: `splash`), `tests/functional/splash_ui/test_validate_email_ui.py` (marker: `splash_ui`) |
 
@@ -75,7 +75,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | None |
 | **Service** | DB query + `login_user()` |
 | **Template** | `pages/splash.html` (with `email_token_is_expired=True`) |
-| **JS Module** | `frontend/splash/email-validation-form.js` |
+| **JS Module** | `frontend/splash/email-validation-form.ts` |
 | **Tests** | `tests/integration/splash/test_email_validation.py` (marker: `splash`), `tests/functional/splash_ui/test_validate_email_ui.py` (marker: `splash_ui`) |
 
 ### GET /validate/\<token\>
@@ -96,7 +96,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ForgotPasswordRequest, response_schema=ForgotPasswordResponseSchema, ajax_required=False, tags=["auth"], description="Send a password reset email", status_codes={200: ForgotPasswordResponseSchema, 400: ErrorResponse})` |
 | **Service** | `backend/splash/services/forgot_password.py:send_forgot_password_email_to_user` |
 | **Schema** | `backend/schemas/requests/splash/forgot_password.py:ForgotPasswordRequest` |
-| **JS Module** | `frontend/splash/forgot-password-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/forgot-password-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_forgot_password.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_forgot_password_ui.py` (marker: `splash_ui`) |
 
@@ -108,7 +108,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | None |
 | **Service** | `backend/splash/services/reset_password.py:get_reset_password_page` |
 | **Template** | `components/splash/reset_password.html` |
-| **JS Module** | `frontend/splash/reset-password-form.js` |
+| **JS Module** | `frontend/splash/reset-password-form.ts` |
 | **Tests** | `tests/integration/splash/test_reset_password.py` (marker: `splash`), `tests/functional/splash_ui/test_reset_password_ui.py` (marker: `splash_ui`) |
 
 ### POST /reset-password/\<token\>
@@ -119,7 +119,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Decorators** | `@api_route(request_schema=ResetPasswordRequest, response_schema=ResetPasswordResponseSchema, ajax_required=False, tags=["auth"], description="Reset a user password with a valid token", status_codes={200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/splash/services/reset_password.py:reset_password_for_user` |
 | **Schema** | `backend/schemas/requests/splash/reset_password.py:ResetPasswordRequest` |
-| **JS Module** | `frontend/splash/reset-password-form.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/splash/reset-password-form.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/splash/test_reset_password.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_reset_password_ui.py` (marker: `splash_ui`) |
 
@@ -370,7 +370,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators** | None |
 | **Service** | `logout_user()` |
 | **Template** | Redirect to splash |
-| **JS Module** | `frontend/splash/email-validation-form.js`, `frontend/splash/init.js` |
+| **JS Module** | `frontend/splash/email-validation-form.ts`, `frontend/splash/init.ts` |
 | **Tests** | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`) |
 
 ### GET /privacy-policy

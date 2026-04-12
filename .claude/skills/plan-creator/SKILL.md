@@ -3,9 +3,30 @@ name: plan-creator
 description: Creates structured planning documents for new features or tasks in the @plans directory. Use when the user asks to create, write, or draft a plan for a feature, task, or implementation. Performs deep codebase research using parallel subagents before writing the plan to ensure accuracy.
 ---
 
+## Step 0: Sub-Plan Detection
+
+Before Branch Guard, check whether this is a sub-plan of an existing master plan. A sub-plan inherits its branch and topic folder from a specific step in the master — it does NOT get inferred or asked about.
+
+### Triggers (any one is sufficient)
+
+- User's request contains patterns like `step N of <master>`, `sub-plan (of|for) <master>`, `phase N of <master>`, `next step of <master>`, or explicitly references a file path matching `plans/*/*-master.md`.
+- The current branch matches a `**Branch:**` value in any `plans/*/*-master.md`. Grep for `^\*\*Branch:\*\* \`<current-branch>\`` across master files.
+
+### If triggered
+
+1. **Locate the master.** Glob `plans/*/*-master.md`. Disambiguate by filename match to user's reference first, then by branch match; if still ambiguous use `AskUserQuestion` to let the user pick.
+2. **Resolve the target step.** If the user said "Step N", extract the number. Else match by description or by `**Branch:**` equal to the current branch.
+3. **Require a `**Branch:**` field** on that step (backtick-quoted). If missing, error out:
+   > "Master plan `<path>` Step N has no `**Branch:**` field. Regenerate with `/master-plan-creator` or add the field manually before creating the sub-plan."
+4. **Extract `<target-branch>`** from the backticks.
+5. **Derive `<topic>`** — the last path segment of `<target-branch>` (e.g., `ts/feature-splash` → `feature-splash`, `infra/openapi-typescript-codegen` → `openapi-typescript-codegen`).
+6. **Store** `<sub-plan-mode>=true`, `<target-branch>`, `<topic>`, `<master-path>`, `<step-number>` for use in later steps.
+
+When sub-plan mode is active, Branch Guard and Step 1 use the overrides below; otherwise follow the normal flow.
+
 ## Branch Guard
 
-Before starting, check the current branch:
+**Default behavior** (not sub-plan mode):
 1. If on `main` or `master`:
    - Run `gmas` to ensure main is up to date with remote
    - Create and switch to a suggested feature branch based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`) — do NOT ask for confirmation, just do it
@@ -16,11 +37,20 @@ Before starting, check the current branch:
      - **Stay on current branch** — proceed with plan creation on the current working branch without switching
    - Follow the user's choice before proceeding
 
+**Sub-plan mode override** (when Step 0 set `<sub-plan-mode>=true`):
+1. If already on `<target-branch>`: stay — proceed.
+2. If on `main`/`master`: run `gmas`, then `git checkout -b <target-branch>`. No confirmation needed.
+3. If on a different branch: use `AskUserQuestion` — "Switch to `<target-branch>` (checkout from main), or stay on current branch?"
+
 ## Step 1: Determine Topic Folder
 
-Before creating any files, determine the `<topic>` folder for this plan:
-- Infer it from the user's request (e.g., request about URL model changes → `urls`, about API decorators → `api-route`, about OpenAPI → `openapi`)
-- If the topic is not obvious, ask: "Which topic folder should this plan go in? (api-route, urls, openapi, or a new name)"
+**Default behavior** (not sub-plan mode):
+- Infer `<topic>` from the user's request (e.g., request about URL model changes → `urls`, about API decorators → `api-route`, about OpenAPI → `openapi`).
+- If the topic is not obvious, ask: "Which topic folder should this plan go in? (api-route, urls, openapi, or a new name)".
+
+**Sub-plan mode override** (when Step 0 set `<sub-plan-mode>=true`):
+- `<topic>` is already set (derived from `<target-branch>`). Do NOT infer or ask.
+- If `plans/<topic>/` does not exist, run `mkdir -p plans/<topic>/` (this folder should already exist if the master was generated via `/master-plan-creator`, but create it defensively).
 
 Store the result as `<topic>` for use in all subsequent file paths.
 
@@ -116,6 +146,14 @@ finished: false
 - **No forward references within a step.** If a step's to-do item calls or imports a function, that function must either already exist in the codebase or have been created earlier in the same step. If a function is first defined in step N, no to-do in steps 1–(N-1) may reference it. Check this before finalising step order.
 
 **Cleanup:** After the plan file is written, delete all files matching `plans/<topic>/tmp/research-*.md`.
+
+**Sub-plan cross-link** (sub-plan mode only): after writing the sub-plan file, append a cross-link line to the master's Step N. Locate the step's `**To-do:**` block in `<master-path>` and insert a line immediately after the step header (before `**Branch:**`) of the form:
+
+```markdown
+**Sub-plan:** [<sub-plan-name>](../<topic>/<sub-plan-name>.md)
+```
+
+This makes the master → sub-plan relationship navigable from the master file. Do not create this link in default (non-sub-plan) mode.
 
 ## End-to-End Chain Tracing
 

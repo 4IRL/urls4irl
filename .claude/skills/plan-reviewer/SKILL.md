@@ -47,13 +47,13 @@ Before launching subagents, create `plans/<topic>/tmp/` if it does not already e
 
 ### Step 2: Launch 6 Parallel Review Subagents
 
-Launch **all 6 subagents in parallel** using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from the reference file — the orchestrator does NOT inline the full checklist or response format.
+Launch **all 6 subagents in parallel** using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from individual reference files — the orchestrator does NOT inline the full checklist or response format.
 
 **Subagent prompt template** (send this to each, filling in the blanks):
 
 > You are Subagent #N (<Role Name>) reviewing the plan at `plans/<topic>/<plan-name>.md`.
 >
-> 1. Read `.claude/skills/plan-reviewer/references/subagent-prompts.md` — find the "Response Format" section and your specific subagent section ("Subagent N: <Role Name>"). Follow those instructions exactly.
+> 1. Read `.claude/skills/plan-reviewer/references/common-response-format.md` for the response format and rules, then read `.claude/skills/plan-reviewer/references/<sa-file>` for your specific review checklist. Follow those instructions exactly.
 > 2. Read the plan in full, then read the source files relevant to your review area.
 > 3. Write your complete JSON response to `plans/<topic>/tmp/<role>.md`.
 > 4. Return only: `Written to <path>`.
@@ -68,14 +68,14 @@ Launch **all 6 subagents in parallel** using the Agent tool with **minimal promp
 
 Subagents (all launched in a single message):
 
-| # | Name | Role filename |
-|---|---|---|
-| 1 | Correctness & Accuracy | `correctness.md` |
-| 2 | Full-Stack Trace | `full-stack-trace.md` |
-| 3 | Ordering, Dependencies & Cleanup | `ordering.md` |
-| 4 | Codebase Integration & Conventions | `integration.md` |
-| 5 | Verification & Test Coverage | `verification.md` |
-| 6 | Completeness, Risk & Specificity | `completeness.md` |
+| # | Name | SA reference file | Output filename |
+|---|---|---|---|
+| 1 | Correctness & Accuracy | `sa1-correctness.md` | `correctness.md` |
+| 2 | Full-Stack Trace | `sa2-full-stack-trace.md` | `full-stack-trace.md` |
+| 3 | Ordering, Dependencies & Cleanup | `sa3-ordering.md` | `ordering.md` |
+| 4 | Codebase Integration & Conventions | `sa4-integration.md` | `integration.md` |
+| 5 | Verification & Test Coverage | `sa5-verification.md` | `verification.md` |
+| 6 | Completeness, Risk & Specificity | `sa6-completeness.md` | `completeness.md` |
 
 ### Step 3: Collect and Validate Results
 
@@ -90,7 +90,7 @@ After confirming all 6 files are present, launch a **single coordinator subagent
 
 The coordinator subagent prompt:
 
-> Read `.claude/skills/plan-reviewer/references/subagent-prompts.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/{correctness,full-stack-trace,ordering,integration,verification,completeness}.md`. Follow the coordinator workflow, then write TWO files:
+> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/{correctness,full-stack-trace,ordering,integration,verification,completeness}.md`. Follow the coordinator workflow, then write TWO files:
 >
 > 1. **`plans/<topic>/tmp/coordinator.md`** — the full JSON output (verdicts, summaries, files_read, findings) as specified in the reference file.
 > 2. **`plans/<topic>/tmp/coordinator-summary.md`** — a short summary for the orchestrator containing ONLY:
@@ -231,138 +231,11 @@ After applying DD choices, evaluate:
    - **Yes** → Stop reviewing. If any unresolved issues remain, append a `### Resolve During Implementation` section to the review document listing them. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension). Delete all files in `plans/<topic>/tmp/`. Proceed to Steps 6-7.
    - **No** → Print: "Pass N complete. Starting Pass N+1..." and loop back to **Step 2**.
 
-### Step 6: Root-Cause Analysis of Missed Findings (when prior reviews exist)
+### Steps 6-7: Root-Cause Analysis & Skill Self-Improvement (conditional)
 
 **Skip if this is the first review for the plan.**
 
-When appending a new review pass and the current pass found findings that prior passes missed, add a `### Missed-Finding Root Causes` section. For each new finding, answer:
-
-1. **What was missed?** — One-line summary.
-2. **Why was it missed?** — Classify:
-   - **Trusted plan assertion**: Plan stated something as fact, reviewer accepted without tracing
-   - **Incomplete file reads**: Issue lives in a file the plan never references but is on the critical path
-   - **Fix verification stopped at plan text**: Prior round confirmed the plan "says X" but nobody re-read the source file
-   - **Scoped too narrowly**: Review dimension applied only to plan-referenced files, not the broader system
-   - **Other**: Describe
-3. **Skill gap**: Does the miss reveal a gap in the plan-reviewer skill's instructions?
-
-Format:
-
-```markdown
-### Missed-Finding Root Causes
-| Finding | Root cause | Skill gap? |
-|---|---|---|
-| <finding> | <root cause + details> | <gap or "Instructions already cover this"> |
-```
-
-After writing, check if the same root cause recurs across reviews. If so, flag it for Step 7.
-
-### Step 7: Skill Self-Improvement (when prior reviews exist)
-
-**Skip if this is the first review for the plan or if Step 6 found zero missed findings.**
-
-After mechanical fixes are applied and the root-cause table is written, launch a **single skill-improvement subagent** that cross-references the current review's findings with prior reviews to identify and fix gaps in the reviewer skill itself.
-
-#### 7a: Launch the skill-improvement subagent
-
-The subagent receives:
-- The review file path (`plans/<topic>/reviews/<plan-name>-review.md`)
-- The plan file path
-- The `### Missed-Finding Root Causes` table from Step 6
-- Paths to skill files: `.claude/skills/plan-reviewer/SKILL.md`, `.claude/skills/plan-reviewer/references/subagent-prompts.md`
-- Path to project CLAUDE.md
-- Path to memory index: `.claude/projects/-Users-ggpropersi-code-urls4irl/memory/MEMORY.md`
-
-The subagent:
-
-1. **Reads all inputs**: review file (all passes), skill files, CLAUDE.md, memory index + any referenced memory files
-2. **For each missed finding from Step 6**, determines:
-   - **Which subagent (1-6) should have caught it** — based on the finding's category and the subagent checklists
-   - **Why that subagent missed it** — maps to one of:
-     - `prompt_gap`: The subagent's checklist doesn't cover this class of issue
-     - `prompt_ambiguity`: The checklist covers it but the wording is too vague to enforce
-     - `missing_context`: The subagent lacks awareness of a project convention or pattern
-     - `scope_limitation`: The subagent's "what to read" section doesn't include the relevant files
-     - `no_skill_gap`: The subagent's instructions already cover this; it was an execution miss (no fix needed)
-   - **Concrete improvement** — exactly what to change and where:
-     - For `prompt_gap`: exact checklist item to add to the subagent's section in `.claude/skills/plan-reviewer/references/subagent-prompts.md`
-     - For `prompt_ambiguity`: exact rewrite of the ambiguous checklist item
-     - For `missing_context`: either a CLAUDE.md addition or a new memory file
-     - For `scope_limitation`: exact edit to the subagent's "What to read" section
-     - For `no_skill_gap`: no change proposed
-
-3. **Checks for recurring patterns**: If the same root cause (`prompt_gap`, `prompt_ambiguity`, etc.) appears 2+ times across the same subagent, proposes a **structural improvement** (new checklist section, expanded scope) rather than individual line additions.
-
-4. **Returns a JSON response**:
-
-```json
-{
-  "improvements": [
-    {
-      "finding_title": "The missed finding from Step 6",
-      "responsible_subagent": 3,
-      "gap_type": "prompt_gap | prompt_ambiguity | missing_context | scope_limitation | no_skill_gap",
-      "explanation": "Why this subagent missed it and how the improvement prevents recurrence",
-      "target_file": "path to file being modified",
-      "change_type": "add_checklist_item | rewrite_checklist_item | add_to_what_to_read | add_claude_md_rule | add_memory | no_change",
-      "old_text": "existing text to replace (null for additions)",
-      "new_text": "new or replacement text",
-      "location_hint": "section name or after which existing item to insert"
-    }
-  ],
-  "recurring_patterns": [
-    {
-      "pattern": "Description of recurring gap",
-      "affected_subagents": [2, 5],
-      "structural_proposal": "Description of structural improvement"
-    }
-  ],
-  "summary": "One-line summary of proposed improvements"
-}
-```
-
-#### 7b: Present improvements for user approval
-
-Present each proposed improvement concisely:
-
-```
-**Improvement 1** — Subagent #3 (Ordering & Cleanup)
-Gap: prompt_gap — checklist doesn't verify X
-Proposed: Add checklist item to .claude/skills/plan-reviewer/references/subagent-prompts.md
-> "- **New check**: <exact text>"
-Apply? [y/n]
-```
-
-If recurring patterns were found, present structural proposals separately:
-
-```
-**Recurring pattern**: <description>
-Affects: Subagents #2, #5
-Structural proposal: <description>
-Apply? [y/n]
-```
-
-**Do NOT apply any improvement without explicit user approval.** Each improvement is approved or rejected independently.
-
-#### 7c: Apply approved improvements
-
-For each approved improvement:
-1. Apply the edit to the target file (`.claude/skills/plan-reviewer/references/subagent-prompts.md`, `CLAUDE.md`, or a memory file)
-2. If adding a memory file, also update the memory index at `MEMORY.md`
-3. After all edits, verify the modified files are syntactically coherent (no broken markdown, no orphaned references)
-
-#### 7d: Write improvements to review document
-
-Append a `### Skill Improvements Applied` section to the current review pass:
-
-```markdown
-### Skill Improvements Applied
-| # | Finding | Subagent | Gap type | Change | Status |
-|---|---|---|---|---|---|
-| 1 | <finding> | #N | prompt_gap | Added checklist item to subagent-prompts.md | Applied |
-| 2 | <finding> | #N | no_skill_gap | — | Skipped (no gap) |
-| 3 | <finding> | #N | prompt_ambiguity | Rewrote checklist item | Rejected by user |
-```
+If prior reviews exist and the current pass found findings that prior passes missed, read `.claude/skills/plan-reviewer/references/self-improvement-workflow.md` and follow Steps 6 and 7 from that file.
 
 ## Important Notes
 

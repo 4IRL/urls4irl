@@ -11,6 +11,10 @@ Reference plan may have files in the @plans directory - please reference these i
 
 Always delegate work to subagents when a skill/workflow specifies subagent delegation. Never perform the work directly in the parent context.
 
+### Asking the User Questions
+
+Whenever you present the user with 2+ discrete options — approval, strategy choice, file selection, branching decisions, etc. — always use the `AskUserQuestion` tool. Never use a plain-text numbered list or `[y/n]` prompt for enumerable choices. If the tool schema is not loaded, load it via `ToolSearch query: "select:AskUserQuestion"` first. Open-ended questions without enumerable options (e.g. "What should I name this branch?") are the only exception.
+
 ## Project Overview
 
 urls4irl is a full-stack web app for managing shared collections of URLs called "UTubs". Flask backend with Jinja2 templates and a vanilla JS frontend currently transitioning to Vite/ES6 modules.
@@ -104,6 +108,8 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 
 Always use top-level (global) imports. Never use local imports (inside functions, methods, or conditional blocks) unless the user explicitly requests it as a design decision — no exceptions.
 
+**Standing exemption — `vi.importActual()` inside vitest `it(...)` blocks**: vitest's `vi.mock()` hoisting runs before module-level code, so `vi.importActual()` calls used for partial mocking cannot be moved to module scope. Local usage inside `it(...)` closures is permitted for this specific pattern only.
+
 ### Import Ordering
 
 Imports are sorted into three groups, each alphabetized internally, separated by a blank line:
@@ -115,6 +121,8 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 ### General
 
 1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
+2. **Never use Bash to write files** — use the `Write` tool instead of `cat >`, `cat <<`, `echo >`, `tee`, or `printf >`. Heredocs and redirects with JSON/code content trigger security prompts due to brace+quote detection. The `Write` tool bypasses this entirely.
+3. **Never use inline `python3 -c` with braces** — write the script to a temp file and execute it. Inline Python with `{}` (dicts, f-strings, sets) triggers the same brace+quote security check.
 
 ### Test Output Location
 
@@ -226,6 +234,8 @@ pytest -k "test_name"         # single test by name
 Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`, `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
+
+**Always minimize wall-clock time**: use the highest safe `n` value (n=8 for UI per the cap above; n=8+ for integration). Never default to `n=2` for "quick" or "smoke" runs — low parallelism on the full suite just means paying the full test cost at slower cadence, and can expose latent timing flakes (e.g., Selenium session idle-timeout reaps) that never occur at production cadence. A true "smoke" test is scoped by marker (`m=splash_ui`) or test path, NOT lowered parallelism on the full suite.
 
 UI/functional tests require Selenium (`SELENIUM_URL` env var pointing to a Selenium grid).
 

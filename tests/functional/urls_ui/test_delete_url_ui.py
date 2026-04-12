@@ -39,6 +39,7 @@ from tests.functional.selenium_utils import (
     force_next_delete_ajax_failure_no_navigate,
     get_num_url_rows,
     invalidate_csrf_token_on_page,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -481,6 +482,9 @@ def test_delete_url_submit_button_enabled_on_second_modal_open(
     # Select the second URL and open its delete modal
     second_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{second_utub_url_id}"]'
     wait_then_click_element(browser, second_url_row_selector, time=3)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
     wait_then_click_element(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=3
     )

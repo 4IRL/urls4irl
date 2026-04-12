@@ -29,7 +29,17 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); first=$(echo \"$cmd\" | awk '{print $1}' | sed 's|.*/||'); case \"$first\" in ls|find) tool=\"Glob\" ;; cat|head|tail) tool=\"Read\" ;; grep|rg) tool=\"Grep\" ;; sed|awk) tool=\"Edit\" ;; echo) echo \"$cmd\" | grep -qE '>>?|tee' && tool=\"Write\" || exit 0 ;; *) exit 0 ;; esac; jq -n --arg f \"$first\" --arg t \"$tool\" '{\"systemMessage\":\"⚠ Bash(\\($f)) — use the \\($t) tool instead\",\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"TOOL USAGE REMINDER: You ran `\\($f)` via Bash. Per absolute project rules, ALWAYS use the dedicated \\($t) tool instead of Bash when available. Rewrite this action using \\($t).\"}}'"
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); first=$(echo \"$cmd\" | awk '{print $1}' | sed 's|.*/||'); case \"$first\" in date) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"date commands are always safe\"}}' ;; rm) if echo \"$cmd\" | grep -qP '^rm\\s+(-[rf]+\\s+)?(/tmp/claude/|/private/tmp/claude/)' && ! echo \"$cmd\" | grep -qE '\\.\\.|\\.\\*|[;|&]'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"rm within /tmp/claude/ is safe for test cleanup\"}}'; fi ;; mkdir) if echo \"$cmd\" | grep -qP '^mkdir\\s+-p\\s+(plans/|changelog/)'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\",\"permissionDecisionReason\":\"mkdir for plans/changelog dirs is safe\"}}'; fi ;; esac",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); first=$(echo \"$cmd\" | awk '{print $1}' | sed 's|.*/||'); case \"$first\" in cat) if echo \"$cmd\" | grep -qE 'cat\\s+(>|>>|<<)'; then echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of cat heredocs/redirects. Heredocs with JSON/code trigger security prompts.\"}'; fi ;; echo) if echo \"$cmd\" | grep -qE '>>?\\s|tee\\s'; then echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of echo redirects.\"}'; fi ;; tee) echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of tee. Tee with structured content triggers security prompts.\"}' ;; printf) if echo \"$cmd\" | grep -qE '>>?\\s'; then echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of printf redirects.\"}'; fi ;; python3|python) if echo \"$cmd\" | grep -qE '\\s-c\\s' && echo \"$cmd\" | grep -qE '[{}]'; then echo '{\"decision\":\"block\",\"reason\":\"Inline python -c with braces triggers security prompts. Write the script to a temp file and execute it instead.\"}'; fi ;; esac",
+            "timeout": 5
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); first=$(echo \"$cmd\" | awk '{print $1}' | sed 's|.*/||'); case \"$first\" in ls|find) tool=\"Glob\" ;; cat) if echo \"$cmd\" | grep -qE 'cat\\s+(>|>>|<<)'; then exit 0; else tool=\"Read\"; fi ;; head|tail) tool=\"Read\" ;; grep|rg) tool=\"Grep\" ;; sed|awk) tool=\"Edit\" ;; *) exit 0 ;; esac; jq -n --arg f \"$first\" --arg t \"$tool\" '{\"systemMessage\":\"⚠ Bash(\\($f)) — use the \\($t) tool instead\",\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"TOOL USAGE REMINDER: You ran `\\($f)` via Bash. Per absolute project rules, ALWAYS use the dedicated \\($t) tool instead of Bash when available. Rewrite this action using \\($t).\"}}'"
           }
         ]
       }

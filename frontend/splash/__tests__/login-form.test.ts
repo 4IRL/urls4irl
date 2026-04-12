@@ -1,5 +1,5 @@
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
-import { initForgotPasswordForm } from "../forgot-password-form.js";
+import { initLoginForm } from "../login-form.js";
 
 vi.mock("../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
@@ -9,6 +9,7 @@ vi.mock("../init.js", () => ({
   showSplashModalAlertBanner: vi.fn(),
   resetModalFormState: vi.fn(),
   handleImproperFormErrors: vi.fn(),
+  handleUserHasAccountNotEmailValidated: vi.fn(),
   switchModal: vi.fn(),
 }));
 
@@ -19,8 +20,8 @@ vi.mock("../../lib/globals.js", () => ({
 }));
 
 vi.mock("../../lib/config.js", () => {
-  const configScript = document.getElementById("app-config");
-  const config = JSON.parse(configScript.textContent);
+  const configScript = document.getElementById("app-config")!;
+  const config = JSON.parse(configScript.textContent!);
   return { APP_CONFIG: config };
 });
 
@@ -28,18 +29,19 @@ const $ = window.jQuery;
 
 // Minimal HTML — only the DOM nodes the function under test actually queries.
 // This decouples tests from template markup and avoids maintaining HTML in two places.
-const FORGOT_PASSWORD_MODAL_HTML = `
-  <div class="modal fade" id="ForgotPasswordModal">
-    <input id="email" class="form-control" value="test@test.com" />
+const LOGIN_MODAL_HTML = `
+  <div class="modal fade" id="LoginModal">
+    <div id="ToRegisterFromLogin"></div>
+    <div class="to-forgot-password"></div>
+    <input id="username" class="form-control" value="testuser" />
+    <input id="password" class="form-control" value="testpass" />
     <button id="submit" type="submit"></button>
   </div>
 `;
 
-describe("forgot-password-form 429 HTML response", () => {
-  let ajaxSpy;
-
+describe("login-form 429 HTML response", () => {
   beforeEach(() => {
-    document.body.innerHTML = FORGOT_PASSWORD_MODAL_HTML;
+    document.body.innerHTML = LOGIN_MODAL_HTML;
     vi.clearAllMocks();
   });
 
@@ -49,10 +51,10 @@ describe("forgot-password-form 429 HTML response", () => {
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 429 with HTML content", () => {
     const mockDeferred = $.Deferred();
-    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
-    const $modal = $("#ForgotPasswordModal");
-    initForgotPasswordForm($modal);
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
     $modal.find("#submit").trigger("click");
 
     // Simulate 429 HTML response
@@ -70,10 +72,10 @@ describe("forgot-password-form 429 HTML response", () => {
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 403 with HTML content", () => {
     const mockDeferred = $.Deferred();
-    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
-    const $modal = $("#ForgotPasswordModal");
-    initForgotPasswordForm($modal);
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
     $modal.find("#submit").trigger("click");
 
     const fakeXhr = {

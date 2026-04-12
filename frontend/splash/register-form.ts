@@ -1,3 +1,4 @@
+import type { components, operations } from "../types/api.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -10,11 +11,16 @@ import {
   emailValidationModalOpener,
 } from "./init.js";
 
+type RegisterRequest = components["schemas"]["RegisterRequest"];
+type RegisterSuccess =
+  operations["registerUser"]["responses"][201]["content"]["application/json"];
+type RegisterError = components["schemas"]["ErrorResponse_RegisterErrorCodes"];
+
 /**
  * Initialize register form handlers
  * Must be called after register form HTML is loaded into the modal
  */
-export function initRegisterForm($modal) {
+export function initRegisterForm($modal: JQuery): void {
   $modal
     .find("#ToLoginFromRegister")
     .offAndOn("click", () => switchModal($modal, "#LoginModal"));
@@ -26,26 +32,29 @@ export function initRegisterForm($modal) {
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
 }
 
-function handleRegister(event, $modal) {
+function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
   $modal.find("#submit").attr("disabled", "disabled");
 
-  const username = $modal.find("#username").val();
-  const email = $modal.find("#email").val();
-  const confirmEmail = $modal.find("#confirmEmail").val();
-  const password = $modal.find("#password").val();
-  const confirmPassword = $modal.find("#confirmPassword").val();
+  const username: string = String($modal.find("#username").val() ?? "");
+  const email: string = String($modal.find("#email").val() ?? "");
+  const confirmEmail: string = String($modal.find("#confirmEmail").val() ?? "");
+  const password: string = String($modal.find("#password").val() ?? "");
+  const confirmPassword: string = String(
+    $modal.find("#confirmPassword").val() ?? "",
+  );
 
-  const registerRequest = $.ajax({
+  const payload: RegisterRequest = {
+    username,
+    email,
+    confirmEmail,
+    password,
+    confirmPassword,
+  };
+  const registerRequest: JQuery.jqXHR = $.ajax({
     url: APP_CONFIG.routes.register,
     type: "POST",
-    data: JSON.stringify({
-      username,
-      email,
-      confirmEmail,
-      password,
-      confirmPassword,
-    }),
+    data: JSON.stringify(payload),
     contentType: "application/json",
   });
 
@@ -57,13 +66,23 @@ function handleRegister(event, $modal) {
   );
 }
 
-function handleRegisterSuccess(response, _, xhr, $modal) {
+function handleRegisterSuccess(
+  _: RegisterSuccess,
+  __: string,
+  xhr: JQuery.jqXHR,
+  $modal: JQuery,
+): void {
   if (xhr.status === 201) {
     emailValidationModalOpener($modal);
   }
 }
 
-function handleRegisterFailure(xhr, _, error, $modal) {
+function handleRegisterFailure(
+  xhr: JQuery.jqXHR,
+  _: string,
+  __: string,
+  $modal: JQuery,
+): void {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -79,16 +98,17 @@ function handleRegisterFailure(xhr, _, error, $modal) {
   }
 
   if (xhr.responseJSON.hasOwnProperty("errorCode")) {
+    const errorJson = xhr.responseJSON as RegisterError;
     switch (xhr.status) {
       case 400: {
-        handleImproperFormErrors($modal, xhr.responseJSON);
+        handleImproperFormErrors($modal, errorJson);
         $modal.find("#submit").removeAttr("disabled");
         break;
       }
       case 401: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated($modal, xhr.responseJSON.message);
-        $modal.find("input").attr("disabled", true);
+        handleUserHasAccountNotEmailValidated($modal, errorJson.message);
+        $modal.find("input").attr("disabled", "disabled");
         break;
       }
     }

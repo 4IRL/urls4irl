@@ -5,6 +5,7 @@ import {
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
   resetModalFormState,
+  handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
   emailValidationModalOpener,
 } from "../init.js";
@@ -43,8 +44,8 @@ vi.mock("../../lib/globals.js", () => ({
 }));
 
 vi.mock("../../lib/config.js", () => {
-  const configScript = document.getElementById("app-config");
-  const config = JSON.parse(configScript.textContent);
+  const configScript = document.getElementById("app-config")!;
+  const config = JSON.parse(configScript.textContent!);
   return { APP_CONFIG: config };
 });
 
@@ -54,14 +55,19 @@ const $ = window.jQuery;
 // under test actually queries, rather than replicating full modal templates.
 // This decouples tests from template markup and avoids maintaining HTML in two places.
 
-function modalShell(id, innerHTML = "") {
+function modalShell(id: string, innerHTML: string = ""): string {
   return `<div class="modal fade" id="${id}">${innerHTML}</div>`;
 }
 
 const ALERT_BANNER = `<div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>`;
 
+interface MockBootstrapModal {
+  show: ReturnType<typeof vi.fn>;
+  hide: ReturnType<typeof vi.fn>;
+}
+
 describe("createLogoutOnExit", () => {
-  let ajaxGetSpy;
+  let ajaxGetSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
@@ -94,8 +100,8 @@ describe("createLogoutOnExit", () => {
 });
 
 describe("switchModal", () => {
-  let mockFromModal;
-  let mockToModal;
+  let mockFromModal: MockBootstrapModal;
+  let mockToModal: MockBootstrapModal;
 
   beforeEach(() => {
     document.body.innerHTML =
@@ -209,6 +215,80 @@ describe("displayFormErrors", () => {
   });
 });
 
+describe("handleImproperFormErrors", () => {
+  beforeEach(() => {
+    document.body.innerHTML = modalShell(
+      "LoginModal",
+      `<input id="username" class="form-control" />`,
+    );
+  });
+
+  it("returns early without inserting invalid-feedback when errors is null", () => {
+    const $modal = $("#LoginModal");
+    // Pre-populate DOM state that handleImproperFormErrors should still clear
+    $modal.find("#username").addClass("is-invalid");
+    $modal.find("#username").after('<div class="invalid-feedback">Stale</div>');
+
+    const errorResponse = {
+      status: "Failure" as const,
+      message: "Something went wrong",
+      errorCode: null,
+      errors: null,
+      details: null,
+    };
+
+    const result = handleImproperFormErrors($modal, errorResponse);
+
+    // The early-return still performs the cleanup at the top of the function
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+    // Returns undefined (void)
+    expect(result).toBeUndefined();
+  });
+
+  it("calls displayFormErrors with the first message for a known form field", () => {
+    const $modal = $("#LoginModal");
+
+    const errorResponse = {
+      status: "Failure" as const,
+      message: "Validation failed",
+      errorCode: null,
+      errors: {
+        username: ["Username is required", "Secondary error"],
+      },
+      details: null,
+    };
+
+    handleImproperFormErrors($modal, errorResponse);
+
+    const usernameInput = $modal.find("#username");
+    expect(usernameInput.hasClass("is-invalid")).toBe(true);
+
+    const feedback = $modal.find("#username + .invalid-feedback");
+    expect(feedback.length).toBe(1);
+    expect(feedback.text()).toBe("Username is required");
+  });
+
+  it("skips keys that are not in FORM_FIELD_NAMES without inserting invalid-feedback", () => {
+    const $modal = $("#LoginModal");
+
+    const errorResponse = {
+      status: "Failure" as const,
+      message: "Validation failed",
+      errorCode: null,
+      errors: {
+        nonExistentField: ["Should be ignored"],
+      },
+      details: null,
+    };
+
+    handleImproperFormErrors($modal, errorResponse);
+
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+  });
+});
+
 describe("showSplashModalAlertBanner", () => {
   beforeEach(() => {
     document.body.innerHTML =
@@ -306,7 +386,9 @@ describe("initEmailValidationForm", () => {
 
   it("does NOT bind a hide.bs.modal logout handler", async () => {
     const { initEmailValidationForm: realInitEmailValidationForm } =
-      await vi.importActual("../email-validation-form.js");
+      await vi.importActual<typeof import("../email-validation-form.js")>(
+        "../email-validation-form.js",
+      );
     const $modal = $("#EmailValidationModal");
     const ajaxGetSpy = vi.spyOn($, "get");
 
@@ -320,7 +402,7 @@ describe("initEmailValidationForm", () => {
 });
 
 describe("handleUserHasAccountNotEmailValidated", () => {
-  let ajaxGetSpy;
+  let ajaxGetSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     document.body.innerHTML =
@@ -545,7 +627,10 @@ describe("show.bs.modal reset handlers", () => {
   });
 
   it("login form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
-    const { initLoginForm } = await vi.importActual("../login-form.js");
+    const { initLoginForm } =
+      await vi.importActual<typeof import("../login-form.js")>(
+        "../login-form.js",
+      );
     const $modal = $("#LoginModal");
 
     // Add some invalid state
@@ -566,7 +651,9 @@ describe("show.bs.modal reset handlers", () => {
   });
 
   it("register form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
-    const { initRegisterForm } = await vi.importActual("../register-form.js");
+    const { initRegisterForm } = await vi.importActual<
+      typeof import("../register-form.js")
+    >("../register-form.js");
     const $modal = $("#RegisterModal");
 
     $modal.find(".form-control").addClass("is-invalid");
@@ -586,9 +673,9 @@ describe("show.bs.modal reset handlers", () => {
   });
 
   it("forgot password form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
-    const { initForgotPasswordForm } = await vi.importActual(
-      "../forgot-password-form.js",
-    );
+    const { initForgotPasswordForm } = await vi.importActual<
+      typeof import("../forgot-password-form.js")
+    >("../forgot-password-form.js");
     const $modal = $("#ForgotPasswordModal");
 
     $modal.find(".form-control").addClass("is-invalid");
@@ -608,9 +695,9 @@ describe("show.bs.modal reset handlers", () => {
   });
 
   it("email validation form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
-    const { initEmailValidationForm: realInit } = await vi.importActual(
-      "../email-validation-form.js",
-    );
+    const { initEmailValidationForm: realInit } = await vi.importActual<
+      typeof import("../email-validation-form.js")
+    >("../email-validation-form.js");
     const $modal = $("#EmailValidationModal");
 
     const banner = $modal.find("#SplashModalAlertBanner");
