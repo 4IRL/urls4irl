@@ -11,9 +11,9 @@ import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
  * Must be called after DOM is ready
  */
 export function setupCSRF(): void {
-  const csrftoken: string | undefined = $(
-    "meta[name=csrf-token]",
-  ).attr("content");
+  const csrftoken: string | undefined = $("meta[name=csrf-token]").attr(
+    "content",
+  );
 
   // Global ajaxSetup for non-modal requests
   $.ajaxSetup({
@@ -34,11 +34,7 @@ export function setupCSRF(): void {
   });
 
   // Global ajaxPrefilter for 429 rate limit handling
-  $.ajaxPrefilter(function (
-    options: JQuery.AjaxSettings,
-    _originalOptions: JQuery.AjaxSettings,
-    jqXHR: JQuery.jqXHR,
-  ): string | void {
+  $.ajaxPrefilter(function (options: JQuery.AjaxSettings): string | void {
     let originalError: typeof options.error = options.error;
 
     options.error = function (jqXHR, textStatus, errorThrown) {
