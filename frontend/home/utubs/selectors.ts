@@ -1,3 +1,5 @@
+import type { components, operations } from "../../types/api.d.ts";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { setState } from "../../store/app-store.js";
@@ -14,16 +16,23 @@ import {
   allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty,
 } from "../urls/update-description.js";
 
+type UtubDetail = components["schemas"]["SuccessEnvelope"] &
+  components["schemas"]["UtubDetailSchema"];
+type GetSingleUtubResponse =
+  operations["getSingleUtub"]["responses"][200]["content"]["application/json"];
+
 // Streamline the AJAX call to db for updated info
-export function getUTubInfo(selectedUTubID) {
+export function getUTubInfo(
+  selectedUTubID: number,
+): JQuery.Promise<UtubDetail | null> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  const deferred = $.Deferred();
+  const deferred = $.Deferred<UtubDetail | null>();
 
   $.getJSON(APP_CONFIG.routes.getUTub(selectedUTubID))
-    .done(function (data) {
+    .done((data: GetSingleUtubResponse) => {
       deferred.resolve(data);
     })
-    .fail(function (xhr) {
+    .fail((xhr: JQuery.jqXHR) => {
       switch (xhr.status) {
         case 429: {
           showNewPageOnAJAXHTMLResponse(xhr.responseText);
@@ -36,13 +45,13 @@ export function getUTubInfo(selectedUTubID) {
         }
       }
     })
-    .always(function () {
+    .always(() => {
       hideUTubLoadingIconAndClearTimeout(timeoutID);
     });
   return deferred.promise();
 }
 
-export function buildSelectedUTub(selectedUTub) {
+export function buildSelectedUTub(selectedUTub: UtubDetail): void {
   const utubDescription = selectedUTub.description;
   const isCurrentUserOwner = selectedUTub.isCreator;
 
@@ -102,9 +111,9 @@ export function buildSelectedUTub(selectedUTub) {
     $("#UTubDescriptionSubheaderWrap").showClassFlex();
     $("#URLDeckSubheaderCreateDescription").disableTab();
   } else {
-    isCurrentUserOwner
-      ? allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(selectedUTub.id)
-      : null;
+    if (isCurrentUserOwner) {
+      allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(selectedUTub.id);
+    }
     utubDescriptionHeader.text(null);
     $("#UTubDescriptionSubheaderWrap").hideClass();
   }
@@ -127,7 +136,7 @@ export function buildSelectedUTub(selectedUTub) {
 }
 
 // Handles progagating changes across page related to a UTub selection
-export function selectUTub(selectedUTubID, utubSelector) {
+export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   const currentlySelected = $(".UTubSelector.active");
 
   // Avoid reselecting if choosing the same UTub selector
@@ -138,7 +147,7 @@ export function selectUTub(selectedUTubID, utubSelector) {
   getSelectedUTubInfo(selectedUTubID);
 }
 
-export function getSelectedUTubInfo(selectedUTubID) {
+export function getSelectedUTubInfo(selectedUTubID: number): void {
   getUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
       if (!selectedUTub) return;
@@ -152,7 +161,12 @@ export function getSelectedUTubInfo(selectedUTubID) {
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
-export function createUTubSelector(utubName, utubID, memberRole, index) {
+export function createUTubSelector(
+  utubName: string,
+  utubID: number,
+  memberRole: string,
+  index: number,
+): JQuery<HTMLElement> {
   const utubSelector = $(document.createElement("span"));
   const utubSelectorText = $(document.createElement("b"));
 
@@ -166,15 +180,15 @@ export function createUTubSelector(utubName, utubID, memberRole, index) {
       tabindex: 0,
     })
     // Bind display state change function on click
-    .onExact("click.selectUTub", function (e) {
+    .onExact("click.selectUTub", function () {
       selectUTub(utubID, utubSelector);
     })
-    .offAndOnExact("focus.selectUTub", function (e) {
-      utubSelector.on("keyup.selectUTub", function (e) {
-        if (e.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
+    .offAndOnExact("focus.selectUTub", function () {
+      utubSelector.on("keyup.selectUTub", function (event) {
+        if (event.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
       });
     })
-    .offAndOnExact("blur.selectUTub", function (e) {
+    .offAndOnExact("blur.selectUTub", function () {
       utubSelector.off("keyup.selectUTub");
     })
     .append(utubSelectorText)
@@ -183,25 +197,25 @@ export function createUTubSelector(utubName, utubID, memberRole, index) {
   return utubSelector;
 }
 
-export function setUTubSelectorEventListeners(utub) {
+export function setUTubSelectorEventListeners(utub: HTMLElement): void {
   const utubSelector = $(utub);
-  const utubID = utubSelector.attr("utubid");
+  const utubID = parseInt(utubSelector.attr("utubid")!);
   utubSelector
     // Bind display state change function on click
-    .onExact("click.selectUTub", function (e) {
+    .onExact("click.selectUTub", function () {
       selectUTub(utubID, utubSelector);
     })
-    .offAndOnExact("focus.selectUTub", function (e) {
-      utubSelector.on("keyup.selectUTub", function (e) {
-        if (e.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
+    .offAndOnExact("focus.selectUTub", function () {
+      utubSelector.on("keyup.selectUTub", function (event) {
+        if (event.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
       });
     })
-    .offAndOnExact("blur.selectUTub", function (e) {
+    .offAndOnExact("blur.selectUTub", function () {
       utubSelector.off("keyup.selectUTub");
     });
 }
 
-function makeUTubRoleIcon(memberRole) {
+function makeUTubRoleIcon(memberRole: string): string {
   let icon = "";
 
   switch (memberRole) {
@@ -225,9 +239,9 @@ function makeUTubRoleIcon(memberRole) {
   return icon;
 }
 
-export function makeUTubSelectableAgainIfMobile(utub) {
-  $(utub).offAndOnExact("click.selectUTubMobile", function (e) {
-    getSelectedUTubInfo($(this).attr("utubid"));
+export function makeUTubSelectableAgainIfMobile(utub: JQuery): void {
+  $(utub).offAndOnExact("click.selectUTubMobile", function () {
+    getSelectedUTubInfo(parseInt($(this).attr("utubid")!));
     $(this).off("click.selectUTubMobile");
   });
 }
