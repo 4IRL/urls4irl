@@ -38,7 +38,7 @@ Single findings with no co-located finding from another reviewer on the same ste
 
 ## Step 4 — Write output
 
-Write TWO files:
+Write TWO files **using the `Write` tool** — NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. JSON content containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this.
 
 ### File 1: `plans/<topic>/tmp/coordinator.md` (full findings)
 
@@ -122,6 +122,10 @@ Write a short summary JSON that the orchestrator reads instead of the full findi
   }
 }
 ```
+
+**`design_decision_options` is REQUIRED.** The orchestrator presents DDs to the user via AskUserQuestion using only `coordinator-summary.md` — it never reads `coordinator.md` directly. Every DD title in `design_decision_titles` must have a corresponding entry in `design_decision_options`.
+
+**On Pass 2+: Merge prior-fix regressions.** If `plans/<topic>/tmp/prior-fix-regressions.md` exists, read it and merge each regression into the `findings` array of `coordinator.md` as a critical finding with `sources: ["Prior-Fix Verifier"]` and `fix_type: "mechanical"`. Update the `counts.critical` in both output files accordingly. If the file does not exist (Pass 1 or verifier failed), skip this merge silently.
 
 Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summary.md`
 

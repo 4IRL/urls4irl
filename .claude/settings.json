@@ -34,7 +34,7 @@
           },
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command // empty'); first=$(echo \"$cmd\" | awk '{print $1}' | sed 's|.*/||'); case \"$first\" in cat) if echo \"$cmd\" | grep -qE 'cat\\s+(>|>>|<<)'; then echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of cat heredocs/redirects. Heredocs with JSON/code trigger security prompts.\"}'; fi ;; echo) if echo \"$cmd\" | grep -qE '>>?\\s|tee\\s'; then echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of echo redirects.\"}'; fi ;; tee) echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of tee. Tee with structured content triggers security prompts.\"}' ;; printf) if echo \"$cmd\" | grep -qE '>>?\\s'; then echo '{\"decision\":\"block\",\"reason\":\"Use the Write tool instead of printf redirects.\"}'; fi ;; python3|python) if echo \"$cmd\" | grep -qE '\\s-c\\s' && echo \"$cmd\" | grep -qE '[{}]'; then echo '{\"decision\":\"block\",\"reason\":\"Inline python -c with braces triggers security prompts. Write the script to a temp file and execute it instead.\"}'; fi ;; esac",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/block-bash-writes.sh\"",
             "timeout": 5
           },
           {

@@ -3,15 +3,17 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { filterUTubsByName } from "../../logic/utub-search.js";
 
-function readUTubsFromDOM() {
-  return $.map($(".UTubSelector"), (el) => ({
-    id: parseInt($(el).attr("utubid")),
+type UTubSelectorEntry = { id: number; name: string };
+
+function readUTubsFromDOM(): UTubSelectorEntry[] {
+  return $.map($(".UTubSelector"), (el: HTMLElement) => ({
+    id: parseInt($(el).attr("utubid")!),
     name: $(el).find(".UTubName").text(),
   }));
 }
 
 // Updates displayed UTub selectors based on the provided array
-function updatedUTubSelectorDisplay(filteredUTubIDsToHide) {
+function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
   if (filteredUTubIDsToHide.length === 0) {
     $(".UTubSelector").removeClass("hidden");
     return;
@@ -19,23 +21,24 @@ function updatedUTubSelectorDisplay(filteredUTubIDsToHide) {
   const hideSet = new Set(filteredUTubIDsToHide);
   const utubSelectors = $(".UTubSelector");
 
-  let utubName;
-  let utubID;
-  for (let i = 0; i < utubSelectors.length; i++) {
-    utubID = parseInt($(utubSelectors[i]).attr("utubid"));
-    hideSet.has(utubID)
-      ? $(utubSelectors[i]).addClass("hidden")
-      : $(utubSelectors[i]).removeClass("hidden");
+  let utubID: number;
+  for (let index = 0; index < utubSelectors.length; index++) {
+    utubID = parseInt($(utubSelectors[index]).attr("utubid")!);
+    if (hideSet.has(utubID)) {
+      $(utubSelectors[index]).addClass("hidden");
+    } else {
+      $(utubSelectors[index]).removeClass("hidden");
+    }
   }
 }
 
-export function setUTubSelectorSearchEventListener() {
+export function setUTubSelectorSearchEventListener(): void {
   const wrapper = $("#SearchUTubWrap");
   const searchIcon = $("#UTubSearchFilterIcon");
   const searchIconClose = $("#UTubSearchFilterIconClose");
   const searchInput = $("#UTubNameSearch");
 
-  searchIcon.offAndOnExact("click.searchInputShow", function (e) {
+  searchIcon.offAndOnExact("click.searchInputShow", function () {
     wrapper.addClass("visible").removeClass("hidden");
     $("#UTubDeckSubheader").addClass("hidden");
     searchIcon.addClass("hidden");
@@ -48,26 +51,29 @@ export function setUTubSelectorSearchEventListener() {
     searchInput.focus();
   });
 
-  searchIconClose.offAndOnExact("click.searchInputClose", function (e) {
+  searchIconClose.offAndOnExact("click.searchInputClose", function () {
     closeUTubSearchAndEraseInput();
     searchInput.removeClass("utub-search-expanded");
   });
 
   searchInput
-    .offAndOn("focus.searchInputEsc", function (e) {
-      searchInput.offAndOn("keydown.searchInputEsc", function (e) {
-        if (e.key === KEYS.ESCAPE) {
-          searchInput.blur();
-          closeUTubSearchAndEraseInput();
-          searchInput.removeClass("utub-search-expanded");
-        }
-      });
+    .offAndOn("focus.searchInputEsc", function () {
+      searchInput.offAndOn(
+        "keydown.searchInputEsc",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ESCAPE) {
+            searchInput.blur();
+            closeUTubSearchAndEraseInput();
+            searchInput.removeClass("utub-search-expanded");
+          }
+        },
+      );
     })
     .offAndOn("blur.searchInputEsc", function () {
       searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
-      const searchTerm = searchInput.val().toLowerCase();
+      const searchTerm = (searchInput.val() as string).toLowerCase();
       if (searchTerm.length < APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH) {
         updatedUTubSelectorDisplay([]);
         return;
@@ -80,7 +86,7 @@ export function setUTubSelectorSearchEventListener() {
     });
 }
 
-export function closeUTubSearchAndEraseInput() {
+export function closeUTubSearchAndEraseInput(): void {
   $("#UTubSearchFilterIconClose").addClass("hidden");
   $("#UTubSearchFilterIcon").removeClass("hidden");
   $("#SearchUTubWrap").addClass("hidden").removeClass("visible");

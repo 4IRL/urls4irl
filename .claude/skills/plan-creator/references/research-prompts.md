@@ -4,7 +4,7 @@ Each subagent receives the user's feature/task description and a list of affecte
 
 ## Response Format (all subagents)
 
-> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/tmp/research-<focus>.md`), then return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
+> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/tmp/research-<focus>.md`) **using the `Write` tool** — NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. JSON content containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
 
 ```json
 {

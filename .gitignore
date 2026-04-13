@@ -28,6 +28,7 @@ changelog/
 tmp/
 .playwright-mcp
 .claude/worktrees/
+.claude/scheduled_tasks.lock
 
 # Vendor JS bundles (download via frontend/setup-vendor.sh)
 frontend/public/vendor/
