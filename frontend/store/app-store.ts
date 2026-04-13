@@ -1,5 +1,9 @@
+import type { components } from "../types/api.d.ts";
+
+type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
+
 export interface AppState {
-  utubs: unknown[];
+  utubs: UtubSummaryItem[]; // narrowed in Phase 6
   activeUTubID: number | null;
   activeUTubName: string | null;
   activeUTubDescription: string | null;
@@ -8,9 +12,9 @@ export interface AppState {
   utubOwnerID: number | null;
   selectedURLCardID: number | null;
   selectedTagIDs: number[];
-  urls: unknown[];
-  tags: unknown[];
-  members: unknown[];
+  urls: unknown[]; // narrow in Phase 7
+  tags: unknown[]; // narrow in Phase 9
+  members: unknown[]; // narrow in Phase 8
 }
 
 function createInitialState(): AppState {

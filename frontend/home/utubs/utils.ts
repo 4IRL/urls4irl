@@ -1,3 +1,5 @@
+import type { components, operations } from "../../types/api.d.ts";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { getState } from "../../store/app-store.js";
@@ -6,9 +8,13 @@ import {
   hideUTubLoadingIconAndClearTimeout,
 } from "./deck.js";
 
+type GetUtubsResponse =
+  operations["getUtubs"]["responses"][200]["content"]["application/json"];
+type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
+
 // Verify UTubID is valid
-export function isValidUTubID(utubIdStr) {
-  const utubId = parseInt(utubIdStr);
+export function isValidUTubID(utubIdStr: string | null): boolean {
+  const utubId = parseInt(utubIdStr as string);
   const isANumber = !isNaN(utubId);
   const isPositive = utubId > 0;
   const isValidIntegerFormat = String(utubId) === utubIdStr;
@@ -16,41 +22,41 @@ export function isValidUTubID(utubIdStr) {
   return isANumber && isPositive && isValidIntegerFormat;
 }
 
-export function isUtubIdValidOnPageLoad(utubId) {
+export function isUtubIdValidOnPageLoad(utubId: string): boolean {
   return isUtubIdValidFromStateAccess(utubId);
 }
 
-export function isUtubIdValidFromStateAccess(utubId) {
+export function isUtubIdValidFromStateAccess(utubId: number | string): boolean {
   return $(`.UTubSelector[utubid='${utubId}']`).length === 1;
 }
 
 // Function to count number of UTubs current user has access to
-export function getNumOfUTubs() {
+export function getNumOfUTubs(): number {
   return $("#listUTubs > .UTubSelector").length;
 }
 
 // Streamline extraction of UTub ID
-export function getActiveUTubID() {
+export function getActiveUTubID(): number | null {
   return getState().activeUTubID;
 }
 
 // Check if a UTub is selected
-export function isUTubSelected() {
+export function isUTubSelected(): boolean {
   return getState().activeUTubID !== null;
 }
 
 // Streamline the jQuery selector extraction of UTub name.
-export function getCurrentUTubName() {
+export function getCurrentUTubName(): string | null {
   return getState().activeUTubName;
 }
 
 // Quickly extracts all UTub names and returns an array.
-export function getAllAccessibleUTubNames() {
-  return getState().utubs.map((u) => u.name);
+export function getAllAccessibleUTubNames(): string[] {
+  return getState().utubs.map((utub: UtubSummaryItem) => utub.name);
 }
 
 // Utility route to get all UTub summaries
-export function getAllUTubs() {
+export function getAllUTubs(): JQuery.Promise<GetUtubsResponse> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   return $.getJSON(APP_CONFIG.routes.getUTubs).always(function () {
     hideUTubLoadingIconAndClearTimeout(timeoutID);
@@ -58,6 +64,6 @@ export function getAllUTubs() {
 }
 
 // Hides modal for UTub same name action confirmation
-export function sameNameWarningHideModal() {
+export function sameNameWarningHideModal(): void {
   $("#confirmModal").modal("hide");
 }
