@@ -86,7 +86,12 @@ setupCSRF();
 // Initialize on DOM ready
 $(document).ready(() => {
   const utubsScript = document.getElementById("utubs-data");
-  if (utubsScript) setState({ utubs: JSON.parse(utubsScript.textContent) });
+  if (utubsScript)
+    setState({
+      utubs: /** @type {import("./types/utub.js").UtubSummaryItem[]} */ (
+        JSON.parse(utubsScript.textContent)
+      ),
+    });
 
   btnsForms.initBtnsForms();
   visibility.initVisibilityHandlers();

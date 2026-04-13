@@ -1,7 +1,10 @@
+import type { components, operations } from "../../types/api.d.ts";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { highlightInput } from "../btns-forms.js";
 import {
   getAllAccessibleUTubNames,
@@ -12,7 +15,12 @@ import { closeUTubSearchAndEraseInput } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
-function checkSameNameUTubOnCreate(name) {
+type CreateUtubRequest = components["schemas"]["CreateUTubRequest"];
+type CreateUtubResponse =
+  operations["createUtub"]["responses"][200]["content"]["application/json"];
+type CreateUtubError = components["schemas"]["ErrorResponse_UTubErrorCodes"];
+
+function checkSameNameUTubOnCreate(name: string): void {
   if (getAllAccessibleUTubNames().includes(name)) {
     // UTub with same name exists. Confirm action with user
     sameUTubNameOnNewUTubWarningShowModal();
@@ -22,35 +30,38 @@ function checkSameNameUTubOnCreate(name) {
   }
 }
 
-export function setCreateUTubEventListeners() {
+export function setCreateUTubEventListeners(): void {
   // Create new UTub
   const utubBtnCreate = $("#utubBtnCreate");
-  utubBtnCreate.offAndOnExact("click.createUTub", function (e) {
+  utubBtnCreate.offAndOnExact("click.createUTub", function () {
     createUTubShowInput();
     closeUTubSearchAndEraseInput();
   });
 }
 
 // Attaches appropriate event listeners to the add UTub and cancel add UTub buttons
-function createNewUTubEventListeners() {
+function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
-  utubSubmitBtnCreate.offAndOnExact("click.createUTub", function (e) {
-    checkSameNameUTubOnCreate($("#utubNameCreate").val());
+  utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
+    checkSameNameUTubOnCreate($("#utubNameCreate").val() as string);
   });
 
-  utubCancelBtnCreate.offAndOnExact("click.createUTub", function (e) {
+  utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
     createUTubHideInput();
   });
 
   const utubNameInput = $("#utubNameCreate");
   const utubDescriptionInput = $("#utubDescriptionCreate");
 
-  utubNameInput.on("focus.createUTub", function (e) {
-    utubNameInput.on("keydown.createUTubName", function (e) {
-      if (e.originalEvent.repeat) return;
-      handleOnFocusEventListenersForCreateUTub(e);
-    });
+  utubNameInput.on("focus.createUTub", function () {
+    utubNameInput.on(
+      "keydown.createUTubName",
+      function (event: JQuery.TriggeredEvent) {
+        if ((event.originalEvent as KeyboardEvent).repeat) return;
+        handleOnFocusEventListenersForCreateUTub(event);
+      },
+    );
   });
 
   utubNameInput.on("blur.createUTub", function () {
@@ -58,9 +69,12 @@ function createNewUTubEventListeners() {
   });
 
   utubDescriptionInput.on("focus.createUTub", function () {
-    utubDescriptionInput.on("keydown.createUTubDescription", function (e) {
-      handleOnFocusEventListenersForCreateUTub(e);
-    });
+    utubDescriptionInput.on(
+      "keydown.createUTubDescription",
+      function (event: JQuery.TriggeredEvent) {
+        handleOnFocusEventListenersForCreateUTub(event);
+      },
+    );
   });
 
   utubDescriptionInput.on("blur.createUTub", function () {
@@ -68,7 +82,7 @@ function createNewUTubEventListeners() {
   });
 }
 
-function removeNewUTubEventListeners() {
+function removeNewUTubEventListeners(): void {
   $("#utubNameCreate").off("keydown.createUTubName");
   $("#utubDescriptionCreate").off("keydown.createUTubDescription");
   $("#utubNameCreate").off(".createUTub");
@@ -77,11 +91,13 @@ function removeNewUTubEventListeners() {
   $("#utubCancelBtnCreate").off(".createUTub");
 }
 
-function handleOnFocusEventListenersForCreateUTub(e) {
-  switch (e.key) {
+function handleOnFocusEventListenersForCreateUTub(
+  event: JQuery.TriggeredEvent,
+): void {
+  switch (event.key) {
     case KEYS.ENTER:
       // Handle enter key pressed
-      checkSameNameUTubOnCreate($("#utubNameCreate").val());
+      checkSameNameUTubOnCreate($("#utubNameCreate").val() as string);
       break;
     case KEYS.ESCAPE:
       // Handle escape key pressed
@@ -94,7 +110,7 @@ function handleOnFocusEventListenersForCreateUTub(e) {
   }
 }
 
-function sameUTubNameOnNewUTubWarningShowModal() {
+function sameUTubNameOnNewUTubWarningShowModal(): void {
   const modalTitle = "Create a new UTub with this name?";
   const modalBody = `${APP_CONFIG.strings.UTUB_CREATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
@@ -107,8 +123,8 @@ function sameUTubNameOnNewUTubWarningShowModal() {
   $("#modalDismiss")
     .addClass("btn btn-secondary")
     .text(buttonTextDismiss)
-    .offAndOnExact("click", function (e) {
-      e.preventDefault();
+    .offAndOnExact("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       sameNameWarningHideModal();
       highlightInput($("#utubNameCreate"));
     });
@@ -120,22 +136,22 @@ function sameUTubNameOnNewUTubWarningShowModal() {
     .removeClass()
     .addClass("btn btn-success")
     .text(buttonTextSubmit)
-    .offAndOnExact("click", function (e) {
-      e.preventDefault();
+    .offAndOnExact("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       createUTub();
-      $("#utubNameCreate").val(null);
-      $("#utubDescriptionCreate").val(null);
+      $("#utubNameCreate").val("");
+      $("#utubDescriptionCreate").val("");
     });
 
   $("#confirmModal").modal("show");
-  $("#confirmModal").on("hidden.bs.modal", function (e) {
+  $("#confirmModal").on("hidden.bs.modal", function () {
     // Refocus on the name's input box
     highlightInput($("#utubNameCreate"));
   });
 }
 
 // Shows new UTub input fields
-function createUTubShowInput() {
+function createUTubShowInput(): void {
   $("#createUTubWrap").showClassFlex();
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");
@@ -145,11 +161,11 @@ function createUTubShowInput() {
 }
 
 // Hides new UTub input fields
-export function createUTubHideInput() {
+export function createUTubHideInput(): void {
   $("#createUTubWrap").hideClass();
   $("#listUTubs").showClassFlex();
-  $("#utubNameCreate").val(null);
-  $("#utubDescriptionCreate").val(null);
+  $("#utubNameCreate").val("");
+  $("#utubDescriptionCreate").val("");
   removeNewUTubEventListeners();
   resetUTubFailErrors();
   $("#UTubDeck").find(".button-container").showClassFlex();
@@ -157,39 +173,47 @@ export function createUTubHideInput() {
 }
 
 // Handles preparation for post request to create a new UTub
-function createUTubSetup() {
+function createUTubSetup(): [string, CreateUtubRequest] {
   const postURL = APP_CONFIG.routes.createUTub;
-  const newUTubName = $("#utubNameCreate").val();
-  const newUTubDescription = $("#utubDescriptionCreate").val();
-  let data = { utubName: newUTubName, utubDescription: newUTubDescription };
+  const newUTubName = $("#utubNameCreate").val() as string;
+  const newUTubDescription = ($("#utubDescriptionCreate").val() || null) as
+    | string
+    | null;
+  const data: CreateUtubRequest = {
+    utubName: newUTubName,
+    utubDescription: newUTubDescription,
+  };
 
   return [postURL, data];
 }
 
 // Handles post request and response for adding a new UTub
-function createUTub() {
+function createUTub(): void {
   // Extract data to submit in POST request
-  let postURL, data;
-  [postURL, data] = createUTubSetup();
+  const [postURL, data] = createUTubSetup();
   resetUTubFailErrors();
 
-  let request = ajaxCall("post", postURL, data);
+  const request = ajaxCall("post", postURL, data);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (
+    response: CreateUtubResponse,
+    _textStatus: JQuery.Ajax.SuccessTextStatus,
+    xhr: JQuery.jqXHR,
+  ) {
     if (xhr.status === 200) {
       createUTubSuccess(response);
       $("#listUTubs").showClassNormal();
     }
   });
 
-  request.fail(function (xhr, _, textStatus) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     createUTubFail(xhr);
   });
 }
 
 // Handle creation of new UTub
-function createUTubSuccess(response) {
+function createUTubSuccess(response: CreateUtubResponse): void {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
   const utubID = response.utubID;
 
@@ -207,10 +231,10 @@ function createUTubSuccess(response) {
   $("#confirmModal").modal("hide");
 
   // Remove createDiv; Reattach after addition of new UTub
-  createUTubHideInput(utubID);
+  createUTubHideInput();
 
   // Create and append newly created UTub selector
-  const index = parseInt($(".UTubSelector").first().attr("position"));
+  const index = parseInt($(".UTubSelector").first().attr("position") as string);
   const newUTubSelector = createUTubSelector(
     response.utubName,
     utubID,
@@ -223,8 +247,8 @@ function createUTubSuccess(response) {
 }
 
 // Handle error response display to user
-function createUTubFail(xhr) {
-  if (xhr._429Handled) return;
+function createUTubFail(xhr: JQuery.jqXHR): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -239,13 +263,21 @@ function createUTubFail(xhr) {
     return;
   }
   switch (xhr.status) {
-    case 400:
-      const responseJSON = xhr.responseJSON;
+    case 400: {
+      const responseJSON = xhr.responseJSON as CreateUtubError;
       if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors"))
-          createUTubFailErrors(responseJSON.errors);
+        if (responseJSON.hasOwnProperty("errors")) {
+          if (!responseJSON.errors) break;
+          createUTubFailErrors(
+            responseJSON.errors as Partial<
+              Record<"utubName" | "utubDescription", string[]>
+            >,
+          );
+        }
         break;
       }
+    }
+    // falls through
     case 404:
     default:
       window.location.assign(APP_CONFIG.routes.errorPage);
@@ -253,26 +285,29 @@ function createUTubFail(xhr) {
 }
 
 // Cycle through the valid errors for adding a UTub
-function createUTubFailErrors(errors) {
-  for (let key in errors) {
+function createUTubFailErrors(
+  errors: Partial<Record<"utubName" | "utubDescription", string[]>>,
+): void {
+  for (const key in errors) {
     switch (key) {
       case "utubName":
-      case "utubDescription":
-        let errorMessage = errors[key][0];
+      case "utubDescription": {
+        const errorMessage = errors[key]![0];
         displayUTubFailErrors(key, errorMessage);
+      }
     }
   }
 }
 
 // Show the error message and highlight the input box border red on error of field
-function displayUTubFailErrors(key, errorMessage) {
+function displayUTubFailErrors(key: string, errorMessage: string): void {
   $("#" + key + "Create-error")
     .addClass("visible")
     .text(errorMessage);
   $("#" + key + "Create").addClass("invalid-field");
 }
 
-function resetUTubFailErrors() {
+function resetUTubFailErrors(): void {
   const newUTubFields = ["utubName", "utubDescription"];
   newUTubFields.forEach((fieldName) => {
     $("#" + fieldName + "Create").removeClass("invalid-field");

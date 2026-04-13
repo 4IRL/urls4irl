@@ -1,6 +1,9 @@
+import type { operations } from "../../types/api.d.ts";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall } from "../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { hideInputs } from "../btns-forms.js";
 import {
   isMobile,
@@ -16,7 +19,10 @@ import { getNumOfUTubs } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { closeUTubSearchAndEraseInput } from "./search.js";
 
-export function setDeleteEventListeners(utubID) {
+type DeleteUtubResponse =
+  operations["deleteUtub"]["responses"][200]["content"]["application/json"];
+
+export function setDeleteEventListeners(utubID: number): void {
   const utubBtnDelete = $("#utubBtnDelete");
 
   // Delete UTub
@@ -31,12 +37,12 @@ export function setDeleteEventListeners(utubID) {
 }
 
 // Hide confirmation modal for deletion of the current UTub
-function deleteUTubHideModal() {
+function deleteUTubHideModal(): void {
   $("#confirmModal").modal("hide");
 }
 
 // Show confirmation modal for deletion of the current UTub
-function deleteUTubShowModal(utubID) {
+function deleteUTubShowModal(utubID: number): void {
   const modalTitle = "Are you sure you want to delete this UTub?";
   const modalBody = `${APP_CONFIG.strings.UTUB_DELETE_WARNING}`;
   const buttonTextDismiss = "Nevermind...";
@@ -49,8 +55,8 @@ function deleteUTubShowModal(utubID) {
   $("#modalDismiss")
     .removeClass()
     .addClass("btn btn-secondary")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       deleteUTubHideModal();
     })
     .text(buttonTextDismiss);
@@ -59,8 +65,8 @@ function deleteUTubShowModal(utubID) {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       deleteUTub(utubID);
       closeUTubSearchAndEraseInput();
     });
@@ -71,34 +77,31 @@ function deleteUTubShowModal(utubID) {
 }
 
 // Handles deletion of a current UTub
-function deleteUTub(utubID) {
+function deleteUTub(utubID: number): void {
   $("#modalSubmit").prop("disabled", true);
 
   // Extract data to submit in POST request
-  let postURL = deleteUTubSetup(utubID);
+  const postURL = APP_CONFIG.routes.deleteUTub(utubID);
 
   const request = ajaxCall("delete", postURL, []);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (
+    _response: DeleteUtubResponse,
+    _textStatus: JQuery.Ajax.SuccessTextStatus,
+    xhr: JQuery.jqXHR,
+  ) {
     if (xhr.status === 200) {
       deleteUTubSuccess(utubID);
     }
   });
 
-  request.fail(function (xhr, textStatus, errorThrown) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     deleteUTubFail(xhr);
   });
 }
 
-// Prepares post request inputs to delete the current UTub
-function deleteUTubSetup(utubID) {
-  let postURL = APP_CONFIG.routes.deleteUTub(utubID);
-
-  return postURL;
-}
-
-function deleteUTubSuccess(utubID) {
+function deleteUTubSuccess(utubID: number): void {
   hideInputs();
 
   // Close modal
@@ -117,7 +120,7 @@ function deleteUTubSuccess(utubID) {
     utubSelector.remove();
 
     setState({
-      utubs: getState().utubs.filter((u) => u.id !== utubID),
+      utubs: getState().utubs.filter((utub) => utub.id !== utubID),
       activeUTubID: null,
       activeUTubName: null,
       activeUTubDescription: null,
@@ -140,13 +143,13 @@ function deleteUTubSuccess(utubID) {
       $("#utubTagBtnCreate").hideClass();
     }
 
-    isMobile() ? setMobileUIWhenUTubNotSelectedOrUTubDeleted() : null;
+    if (isMobile()) setMobileUIWhenUTubNotSelectedOrUTubDeleted();
   });
 }
 
-function deleteUTubFail(xhr) {
+function deleteUTubFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
-  if (xhr._429Handled) return;
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (
     xhr.status === 403 &&

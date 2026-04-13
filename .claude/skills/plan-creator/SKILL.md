@@ -82,7 +82,7 @@ Include this preamble in every subagent prompt:
 
 > You are researching the codebase to inform a detailed implementation plan. The task is: `<user's task description>`. Affected modules/files: `<list from 2a>`.
 >
-> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/tmp/research-<focus>.md`, then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
+> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/tmp/research-<focus>.md` **using the `Write` tool** (NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash redirect — JSON content with `{` and quotes trips the brace+quote security prompt). Then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
 
 | # | Subagent | Focus | Launch condition |
 |---|---|---|---|
@@ -147,13 +147,25 @@ finished: false
 
 **Cleanup:** After the plan file is written, delete all files matching `plans/<topic>/tmp/research-*.md`.
 
-**Sub-plan cross-link** (sub-plan mode only): after writing the sub-plan file, append a cross-link line to the master's Step N. Locate the step's `**To-do:**` block in `<master-path>` and insert a line immediately after the step header (before `**Branch:**`) of the form:
+**Sub-plan cross-link** (sub-plan mode only): after writing the sub-plan file, perform two cross-link operations:
 
-```markdown
-**Sub-plan:** [<sub-plan-name>](../<topic>/<sub-plan-name>.md)
-```
+1. **Master → sub-plan link:** Append a cross-link line to the master's Step N. Locate the step's `**To-do:**` block in `<master-path>` and insert a line immediately after the step header (before `**Branch:**`) of the form:
 
-This makes the master → sub-plan relationship navigable from the master file. Do not create this link in default (non-sub-plan) mode.
+   ```markdown
+   **Sub-plan:** [<sub-plan-name>](../<topic>/<sub-plan-name>.md)
+   ```
+
+   This makes the master → sub-plan relationship navigable from the master file.
+
+2. **Sub-plan → master backref:** Insert a `**Master plan:**` field into the sub-plan file, immediately after the `## Summary` heading (before the summary text). Derive `<master-parent-topic>` from the master file's parent directory (the directory the master lives in). Format:
+
+   ```markdown
+   **Master plan:** [<master-name>](../<master-parent-topic>/<master-name>.md)
+   ```
+
+   Where `<master-name>` is the master file's basename without `.md`. This is the inverse of the forward-link in the master, and allows the plan-reviewer to auto-detect the master plan via primary signal.
+
+Do not create either link in default (non-sub-plan) mode.
 
 ## End-to-End Chain Tracing
 

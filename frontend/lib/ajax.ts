@@ -6,7 +6,7 @@
 import { $ } from "./globals.js";
 import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
 
-interface RateLimitedXHR extends JQuery.jqXHR {
+export interface RateLimitedXHR extends JQuery.jqXHR {
   _429Handled: boolean;
 }
 
