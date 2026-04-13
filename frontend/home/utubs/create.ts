@@ -4,6 +4,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { highlightInput } from "../btns-forms.js";
 import {
   getAllAccessibleUTubNames,
@@ -247,7 +248,7 @@ function createUTubSuccess(response: CreateUtubResponse): void {
 
 // Handle error response display to user
 function createUTubFail(xhr: JQuery.jqXHR): void {
-  if ((xhr as JQuery.jqXHR & { _429Handled?: boolean })._429Handled) return;
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (

@@ -21,9 +21,8 @@ function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
   const hideSet = new Set(filteredUTubIDsToHide);
   const utubSelectors = $(".UTubSelector");
 
-  let utubID: number;
   for (let index = 0; index < utubSelectors.length; index++) {
-    utubID = parseInt($(utubSelectors[index]).attr("utubid")!);
+    const utubID = parseInt($(utubSelectors[index]).attr("utubid")!);
     if (hideSet.has(utubID)) {
       $(utubSelectors[index]).addClass("hidden");
     } else {

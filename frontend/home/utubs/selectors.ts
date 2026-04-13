@@ -184,9 +184,12 @@ export function createUTubSelector(
       selectUTub(utubID, utubSelector);
     })
     .offAndOnExact("focus.selectUTub", function () {
-      utubSelector.on("keyup.selectUTub", function (event) {
-        if (event.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
-      });
+      utubSelector.on(
+        "keyup.selectUTub",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
+        },
+      );
     })
     .offAndOnExact("blur.selectUTub", function () {
       utubSelector.off("keyup.selectUTub");
@@ -206,9 +209,12 @@ export function setUTubSelectorEventListeners(utub: HTMLElement): void {
       selectUTub(utubID, utubSelector);
     })
     .offAndOnExact("focus.selectUTub", function () {
-      utubSelector.on("keyup.selectUTub", function (event) {
-        if (event.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
-      });
+      utubSelector.on(
+        "keyup.selectUTub",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
+        },
+      );
     })
     .offAndOnExact("blur.selectUTub", function () {
       utubSelector.off("keyup.selectUTub");

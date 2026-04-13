@@ -3,6 +3,7 @@ import type { operations } from "../../types/api.d.ts";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall } from "../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { hideInputs } from "../btns-forms.js";
 import {
   isMobile,
@@ -80,7 +81,7 @@ function deleteUTub(utubID: number): void {
   $("#modalSubmit").prop("disabled", true);
 
   // Extract data to submit in POST request
-  const postURL = deleteUTubSetup(utubID);
+  const postURL = APP_CONFIG.routes.deleteUTub(utubID);
 
   const request = ajaxCall("delete", postURL, []);
 
@@ -98,13 +99,6 @@ function deleteUTub(utubID: number): void {
   request.fail(function (xhr: JQuery.jqXHR) {
     deleteUTubFail(xhr);
   });
-}
-
-// Prepares post request inputs to delete the current UTub
-function deleteUTubSetup(utubID: number): string {
-  const postURL = APP_CONFIG.routes.deleteUTub(utubID);
-
-  return postURL;
 }
 
 function deleteUTubSuccess(utubID: number): void {
@@ -155,7 +149,7 @@ function deleteUTubSuccess(utubID: number): void {
 
 function deleteUTubFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
-  if ((xhr as JQuery.jqXHR & { _429Handled?: boolean })._429Handled) return;
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (
     xhr.status === 403 &&

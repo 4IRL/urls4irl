@@ -14,7 +14,8 @@ type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
 
 // Verify UTubID is valid
 export function isValidUTubID(utubIdStr: string | null): boolean {
-  const utubId = parseInt(utubIdStr as string);
+  if (utubIdStr === null) return false;
+  const utubId = parseInt(utubIdStr);
   const isANumber = !isNaN(utubId);
   const isPositive = utubId > 0;
   const isValidIntegerFormat = String(utubId) === utubIdStr;

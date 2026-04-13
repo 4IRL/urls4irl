@@ -1,9 +1,10 @@
 import type { components } from "../../types/api.d.ts";
 
-import { $ } from "../../lib/globals.js";
-import { getUTubInfo } from "./selectors.js";
-import { setState } from "../../store/app-store.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
+import { $ } from "../../lib/globals.js";
+
+import { setState } from "../../store/app-store.js";
+import { getUTubInfo } from "./selectors.js";
 
 type UtubDetail = components["schemas"]["SuccessEnvelope"] &
   components["schemas"]["UtubDetailSchema"];
