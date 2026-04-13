@@ -1,6 +1,4 @@
-import type { components } from "../types/api.d.ts";
-
-type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
+import type { UtubSummaryItem } from "../types/utub.js";
 
 export interface AppState {
   utubs: UtubSummaryItem[]; // narrowed in Phase 6

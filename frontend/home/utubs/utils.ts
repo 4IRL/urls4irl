@@ -1,4 +1,5 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { operations } from "../../types/api.d.ts";
+import type { UtubSummaryItem } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -10,7 +11,6 @@ import {
 
 type GetUtubsResponse =
   operations["getUtubs"]["responses"][200]["content"]["application/json"];
-type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
 
 // Verify UTubID is valid
 export function isValidUTubID(utubIdStr: string | null): boolean {

@@ -1,4 +1,5 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { operations } from "../../types/api.d.ts";
+import type { UtubDetail } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -16,8 +17,6 @@ import {
   allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty,
 } from "../urls/update-description.js";
 
-type UtubDetail = components["schemas"]["SuccessEnvelope"] &
-  components["schemas"]["UtubDetailSchema"];
 type GetSingleUtubResponse =
   operations["getSingleUtub"]["responses"][200]["content"]["application/json"];
 

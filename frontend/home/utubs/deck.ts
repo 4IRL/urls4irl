@@ -1,4 +1,5 @@
-import type { components } from "../../types/api.d.ts";
+import type { UtubSummaryItem } from "../../types/utub.js";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../lib/constants.js";
@@ -11,8 +12,6 @@ import {
 import { getNumOfUTubs } from "./utils.js";
 import { setUTubSelectorSearchEventListener } from "./search.js";
 import { setDeleteEventListeners } from "./delete.js";
-
-type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
 
 // Utility function to show a loading icon when loading UTubs
 export function showUTubLoadingIconAndSetTimeout(): number {

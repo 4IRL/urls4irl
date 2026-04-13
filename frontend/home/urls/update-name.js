@@ -262,10 +262,12 @@ function updateUTubNameSetup(utubID) {
 function updateUTubNameSuccess(response) {
   const utubName = response.utubName;
 
+  /** @type {import("../../types/utub.js").UtubSummaryItem[]} */
+  const utubs = getState().utubs;
   setState({
     activeUTubName: response.utubName,
-    utubs: getState().utubs.map((u) =>
-      u.id === response.utubID ? { ...u, name: response.utubName } : u,
+    utubs: utubs.map((utub) =>
+      utub.id === response.utubID ? { ...utub, name: response.utubName } : utub,
     ),
   });
 

@@ -1,13 +1,10 @@
-import type { components } from "../../types/api.d.ts";
+import type { UtubDetail } from "../../types/utub.js";
 
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 
 import { setState } from "../../store/app-store.js";
 import { getUTubInfo } from "./selectors.js";
-
-type UtubDetail = components["schemas"]["SuccessEnvelope"] &
-  components["schemas"]["UtubDetailSchema"];
 
 // Handles updating a UTub if found to include stale data
 // For example, a user decides to update a URL string to a new URL, but it returns
