@@ -1,42 +1,47 @@
+import type { components } from "../../types/api.d.ts";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
-import { SHOW_LOADING_ICON_AFTER_MS, KEYS } from "../../lib/constants.js";
+import { SHOW_LOADING_ICON_AFTER_MS } from "../../lib/constants.js";
 import { setState } from "../../store/app-store.js";
 import { hideInputs } from "../btns-forms.js";
 import {
   createUTubSelector,
   setUTubSelectorEventListeners,
-  getSelectedUTubInfo,
 } from "./selectors.js";
 import { getNumOfUTubs } from "./utils.js";
 import { setUTubSelectorSearchEventListener } from "./search.js";
 import { setDeleteEventListeners } from "./delete.js";
 
+type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
+
 // Utility function to show a loading icon when loading UTubs
-export function showUTubLoadingIconAndSetTimeout() {
+export function showUTubLoadingIconAndSetTimeout(): number {
   return setTimeout(function () {
     $("#UTubSelectDualLoadingRing").addClass("dual-loading-ring");
   }, SHOW_LOADING_ICON_AFTER_MS);
 }
 
-export function hideUTubLoadingIconAndClearTimeout(timeoutID) {
+export function hideUTubLoadingIconAndClearTimeout(timeoutID: number): void {
   clearTimeout(timeoutID);
   $("#UTubSelectDualLoadingRing").removeClass("dual-loading-ring");
 }
 
 // Remove event listeners for add and delete UTubs
-export function removeCreateUTubEventListeners() {
+export function removeCreateUTubEventListeners(): void {
   $(document).off(".createUTub");
 }
 
 // Clear the UTub Deck
-export function resetUTubDeck() {
+export function resetUTubDeck(): void {
   $("#listUTubs").empty();
   $("#utubBtnDelete").hideClass();
 }
 
 // Assembles components of the UTubDeck (top left panel)
-export function buildUTubDeck(utubs, timeoutID) {
+export function buildUTubDeck(
+  utubs: UtubSummaryItem[],
+  timeoutID?: number,
+): void {
   setState({ utubs });
   resetUTubDeck();
   const parent = $("#listUTubs");
@@ -44,9 +49,14 @@ export function buildUTubDeck(utubs, timeoutID) {
 
   if (numOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
-    for (let i = 0; i < numOfUTubs; i++) {
+    for (let index = 0; index < numOfUTubs; index++) {
       parent.append(
-        createUTubSelector(utubs[i].name, utubs[i].id, utubs[i].memberRole, i),
+        createUTubSelector(
+          utubs[index].name,
+          utubs[index].id,
+          utubs[index].memberRole,
+          index,
+        ),
       );
     }
 
@@ -58,15 +68,15 @@ export function buildUTubDeck(utubs, timeoutID) {
   if (timeoutID) hideUTubLoadingIconAndClearTimeout(timeoutID);
 }
 
-export function setUTubEventListenersOnInitialPageLoad() {
+export function setUTubEventListenersOnInitialPageLoad(): void {
   const utubs = $(".UTubSelector");
-  for (let i = 0; i < utubs.length; i++) {
-    setUTubSelectorEventListeners(utubs[i]);
+  for (let index = 0; index < utubs.length; index++) {
+    setUTubSelectorEventListeners(utubs[index]);
   }
   setUTubSelectorSearchEventListener();
 }
 
-export function resetUTubDeckIfNoUTubs() {
+export function resetUTubDeckIfNoUTubs(): void {
   // Subheader to prompt user to create a UTub shown
   $("#UTubDeckSubheader").text(`${APP_CONFIG.strings.UTUB_CREATE_MSG}`);
 
@@ -74,7 +84,7 @@ export function resetUTubDeckIfNoUTubs() {
   $("#utubBtnDelete").hideClass();
 }
 
-export function hideInputsAndSetUTubDeckSubheader() {
+export function hideInputsAndSetUTubDeckSubheader(): void {
   hideInputs();
   const numOfUTubs = getNumOfUTubs();
   const subheaderText =
@@ -84,7 +94,10 @@ export function hideInputsAndSetUTubDeckSubheader() {
   $("#UTubDeckSubheader").text(subheaderText);
 }
 
-export function setUTubDeckOnUTubSelected(selectedUTubID, isCurrentUserOwner) {
+export function setUTubDeckOnUTubSelected(
+  selectedUTubID: number,
+  isCurrentUserOwner: boolean,
+): void {
   hideInputsAndSetUTubDeckSubheader();
 
   if (isCurrentUserOwner) {
