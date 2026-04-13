@@ -1,5 +1,4 @@
 import type { operations } from "../../types/api.d.ts";
-import type { UtubSummaryItem } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -53,7 +52,7 @@ export function getCurrentUTubName(): string | null {
 
 // Quickly extracts all UTub names and returns an array.
 export function getAllAccessibleUTubNames(): string[] {
-  return getState().utubs.map((utub: UtubSummaryItem) => utub.name);
+  return getState().utubs.map((utub) => utub.name);
 }
 
 // Utility route to get all UTub summaries

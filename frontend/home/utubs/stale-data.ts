@@ -1,8 +1,7 @@
-import type { UtubDetail } from "../../types/utub.js";
-
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 
+import type { UtubDetail } from "../../types/utub.js";
 import { setState } from "../../store/app-store.js";
 import { getUTubInfo } from "./selectors.js";
 
