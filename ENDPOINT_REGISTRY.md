@@ -222,7 +222,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Decorators** | `@utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, tags=["urls"], description="Add a URL to a UTub", status_codes={200: UrlCreatedResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/create_url.py:create_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/create_url.py:CreateURLRequest`, response: `UrlCreatedResponseSchema` embeds `UrlCreatedItemSchema` (subclass of `UtubUrlDeleteSchema` with title override for distinct OpenAPI component naming) |
-| **JS Module** | `frontend/home/urls/cards/create.js` — `JSON.stringify`, `application/json`, 35s timeout |
+| **JS Module** | `frontend/home/urls/cards/create.ts` — `JSON.stringify`, `application/json`, 35s timeout |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_add_url_to_utub_route.py` (marker: `urls`), `tests/functional/urls_ui/test_create_url_ui.py` (marker: `create_urls_ui`) |
 
@@ -233,7 +233,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:get_url` |
 | **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, tags=["urls"], description="Retrieve a URL from a UTub", status_codes={200: UrlReadResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
-| **JS Module** | `frontend/home/urls/cards/get.js`, also called from `update-string.js`, `update-title.js`, `delete.js`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
+| **JS Module** | `frontend/home/urls/cards/get.ts`, also called from `update-string.js`, `update-title.js`, `delete.ts`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
 | **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
 
 ### PATCH /utubs/\<utub_id\>/urls/\<utub_url_id\>
@@ -267,7 +267,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:delete_url` |
 | **Decorators** | `@url_adder_or_creator_required`, `@api_route(response_schema=UrlDeletedResponseSchema, tags=["urls"], description="Delete a URL from a UTub", status_codes={200: UrlDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/delete_url.py:delete_url_in_utub` |
-| **JS Module** | `frontend/home/urls/cards/delete.js` |
+| **JS Module** | `frontend/home/urls/cards/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_remove_url_from_utub_route.py` (marker: `urls`), `tests/functional/urls_ui/test_delete_url_ui.py` (marker: `urls_ui`) |
 

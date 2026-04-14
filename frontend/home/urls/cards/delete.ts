@@ -1,17 +1,28 @@
+import type { operations } from "../../../types/api.d.ts";
+import type { UtubUrlItem } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
+type DeleteUrlResponse =
+  operations["deleteUrl"]["responses"][200]["content"]["application/json"];
+
 // Hide confirmation modal for removal of the selected URL
-export function deleteURLHideModal() {
+export function deleteURLHideModal(): void {
   $("#confirmModal").modal("hide").removeClass("deleteUrlModal");
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
-export function deleteURLShowModal(utubUrlID, urlCard, utubID) {
+export function deleteURLShowModal(
+  utubUrlID: number,
+  urlCard: JQuery,
+  utubID: number,
+): void {
   const modalTitle = "Are you sure you want to delete this URL from the UTub?";
   const modalText = `${APP_CONFIG.strings.DELETE_URL_WARNING}`;
   const buttonTextDismiss = "Just kidding";
@@ -21,15 +32,15 @@ export function deleteURLShowModal(utubUrlID, urlCard, utubID) {
   $("#confirmModalBody").text(modalText);
 
   $("#modalDismiss")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       deleteURLHideModal();
     })
     .text(buttonTextDismiss);
 
   $("#modalSubmit")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       deleteURL(utubUrlID, urlCard, utubID);
     })
     .text(buttonTextSubmit);
@@ -46,13 +57,17 @@ export function deleteURLShowModal(utubUrlID, urlCard, utubID) {
 }
 
 // Prepares post request inputs for removal of a URL
-function deleteURLSetup(utubID, utubUrlID) {
+function deleteURLSetup(utubID: number, utubUrlID: number): string {
   const deleteURL = APP_CONFIG.routes.deleteURL(utubID, utubUrlID);
   return deleteURL;
 }
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
-async function deleteURL(utubUrlID, urlCard, utubID) {
+async function deleteURL(
+  utubUrlID: number,
+  urlCard: JQuery,
+  utubID: number,
+): Promise<void> {
   $("#modalSubmit").prop("disabled", true);
 
   try {
@@ -64,35 +79,45 @@ async function deleteURL(utubUrlID, urlCard, utubID) {
     const request = ajaxCall("delete", deleteURL, []);
 
     // Handle response
-    request.done(function (response, textStatus, xhr) {
+    request.done(function (
+      response: DeleteUrlResponse,
+      _: JQuery.Ajax.SuccessTextStatus,
+      xhr: JQuery.jqXHR,
+    ) {
       if (xhr.status === 200) {
         deleteURLSuccess(response, urlCard);
       }
     });
 
-    request.fail(function (xhr, _, textStatus) {
+    request.fail(function (xhr: JQuery.jqXHR) {
       // Reroute to custom U4I 404 error page
       deleteURLFail(xhr);
     });
   } catch (error) {
     $("#modalSubmit").prop("disabled", false);
-    handleRejectFromGetURL(error, urlCard, { showError: false });
+    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
+      showError: false,
+    });
   }
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteURLSuccess(response, urlCard) {
+function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
   // Close modal
   $("#confirmModal").modal("hide");
   setState({
-    urls: getState().urls.filter((u) => u.utubUrlID !== response.URL.utubUrlID),
+    urls: getState().urls.filter(
+      (url: UtubUrlItem) => url.utubUrlID !== response.URL.utubUrlID,
+    ),
   });
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
   if (currentURLTagIDs.trim()) {
-    let tagIDs = currentURLTagIDs.split(",").map((s) => s.trim());
-    let tagCountElem, tagID, tagCountText;
-    for (let i = 0; i < tagIDs.length; i++) {
-      tagID = tagIDs[i];
+    const tagIDs = currentURLTagIDs.split(",").map((part) => part.trim());
+    let tagCountElem: JQuery;
+    let tagID: string;
+    let tagCountText: string[];
+    for (let tagIdIndex = 0; tagIdIndex < tagIDs.length; tagIdIndex++) {
+      tagID = tagIDs[tagIdIndex];
       tagCountElem = $(
         `.tagFilter[data-utub-tag-id=${tagID}]` + " .tagAppliedToUrlsCount",
       );
@@ -119,9 +144,9 @@ function deleteURLSuccess(response, urlCard) {
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
-function deleteURLFail(xhr) {
+function deleteURLFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
-  if (xhr._429Handled) return;
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (
     xhr.status === 403 &&

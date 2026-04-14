@@ -1,7 +1,11 @@
+import type { components, operations } from "../../../types/api.d.ts";
+import type { UtubUrlItem } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../../lib/ajax.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";
@@ -17,15 +21,20 @@ import { isATagSelected } from "../../tags/utils.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 
+type CreateUrlRequest = components["schemas"]["CreateURLRequest"];
+type CreateUrlResponse =
+  operations["createUrl"]["responses"][200]["content"]["application/json"];
+type CreateUrlError = components["schemas"]["ErrorResponse_URLErrorCodes"];
+
 export function bindCreateURLFocusEventListeners(
-  inputElem,
-  createURLInput,
-  createURLTitleInput,
-  utubID,
-) {
-  $(inputElem).on("keydown.createURL", function (e) {
-    if (e.originalEvent.repeat) return;
-    switch (e.key) {
+  inputElem: JQuery,
+  createURLInput: JQuery,
+  createURLTitleInput: JQuery,
+  utubID: number,
+): void {
+  $(inputElem).on("keydown.createURL", function (event: JQuery.TriggeredEvent) {
+    if ((event.originalEvent as KeyboardEvent).repeat) return;
+    switch (event.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
         createURL(createURLTitleInput, createURLInput, utubID);
@@ -40,20 +49,20 @@ export function bindCreateURLFocusEventListeners(
   });
 }
 
-export function unbindCreateURLFocusEventListeners(inputElem) {
+export function unbindCreateURLFocusEventListeners(inputElem: JQuery): void {
   $(inputElem).off(".createURL");
 }
 
 // Clear new URL Form
-export function resetNewURLForm() {
-  $("#urlTitleCreate").val(null);
-  $("#urlStringCreate").val(null);
+export function resetNewURLForm(): void {
+  $("#urlTitleCreate").val("");
+  $("#urlStringCreate").val("");
   $("#createURLWrap").hideClass();
   newURLInputRemoveEventListeners();
   $("#urlBtnCreate").showClassNormal();
 }
 // Displays new URL input prompt
-export function createURLHideInput() {
+export function createURLHideInput(): void {
   resetNewURLForm();
   if (!getNumOfURLs()) {
     $("#NoURLsSubheader").showClassNormal();
@@ -62,7 +71,7 @@ export function createURLHideInput() {
 }
 
 // Hides new URL input prompt
-export function createURLShowInput(utubID) {
+export function createURLShowInput(utubID: number): void {
   if (!getNumOfURLs()) {
     $("#NoURLsSubheader").hideClass();
     $("#urlBtnDeckCreateWrap").hideClass();
@@ -76,26 +85,37 @@ export function createURLShowInput(utubID) {
 }
 
 // Prepares post request inputs for addition of a new URL
-function createURLSetup(createURLTitleInput, createURLInput, utubID) {
+function createURLSetup(
+  createURLTitleInput: JQuery,
+  createURLInput: JQuery,
+  utubID: number,
+): [string, CreateUrlRequest] {
   // Assemble post request route
   const postURL = APP_CONFIG.routes.createURL(utubID);
 
   // Assemble submission data
-  const newURLTitle = createURLTitleInput.val();
-  const newURL = createURLInput.val();
-  const data = {
-    urlString: newURL,
-    urlTitle: newURLTitle,
+  const urlTitle = createURLTitleInput.val() as string;
+  const urlString = createURLInput.val() as string;
+  const data: CreateUrlRequest = {
+    urlString,
+    urlTitle,
   };
 
   return [postURL, data];
 }
 
 // Handles addition of new URL after user submission
-export function createURL(createURLTitleInput, createURLInput, utubID) {
+export function createURL(
+  createURLTitleInput: JQuery,
+  createURLInput: JQuery,
+  utubID: number,
+): void {
   // Extract data to submit in POST request
-  let postURL, data;
-  [postURL, data] = createURLSetup(createURLTitleInput, createURLInput, utubID);
+  const [postURL, data] = createURLSetup(
+    createURLTitleInput,
+    createURLInput,
+    utubID,
+  );
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
     createURLShowFormErrors({
@@ -110,13 +130,17 @@ export function createURL(createURLTitleInput, createURLInput, utubID) {
   }, SHOW_LOADING_ICON_AFTER_MS);
   const request = ajaxCall("post", postURL, data, 35000);
 
-  request.done(function (response, _, xhr) {
+  request.done(function (
+    response: CreateUrlResponse,
+    _: JQuery.Ajax.SuccessTextStatus,
+    xhr: JQuery.jqXHR,
+  ) {
     if (xhr.status === 200) {
       createURLSuccess(response, utubID);
     }
   });
 
-  request.fail(function (xhr, _, textStatus) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     resetCreateURLFailErrors();
     createURLFail(xhr, utubID);
   });
@@ -129,29 +153,26 @@ export function createURL(createURLTitleInput, createURLInput, utubID) {
 }
 
 // Displays changes related to a successful addition of a new URL
-function createURLSuccess(response, utubID) {
+function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   resetNewURLForm();
   const url = response.URL;
-  url.utubUrlTagIDs = [];
-  url.canDelete = true;
+
+  const newUrl: UtubUrlItem = {
+    utubUrlID: url.utubUrlID,
+    urlString: url.urlString,
+    urlTitle: url.urlTitle,
+    utubUrlTagIDs: [],
+    canDelete: true,
+  };
 
   setState({
-    urls: [
-      ...getState().urls,
-      {
-        utubUrlID: url.utubUrlID,
-        urlString: url.urlString,
-        urlTitle: url.urlTitle,
-        utubUrlTagIDs: [],
-        canDelete: true,
-      },
-    ],
+    urls: [...getState().urls, newUrl],
   });
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
   const currentNumOfURLs = getNumOfVisibleURLs();
   const newUrlCard = createURLBlock(
-    url,
+    newUrl,
     [], // Mimics an empty array of tags to match against
     utubID,
   ).addClass("even");
@@ -160,20 +181,22 @@ function createURLSuccess(response, utubID) {
 
   newUrlCard.insertAfter($("#createURLWrap"));
 
-  currentNumOfURLs === 0
-    ? null
-    : updateColorOfFollowingURLCardsAfterURLCreated();
+  if (currentNumOfURLs !== 0) {
+    updateColorOfFollowingURLCardsAfterURLCreated();
+  }
 
   // Only select the URL when no tags are selected
   // If a tag is selected, new URLs have no Tags associated, so they should be hidden after added
-  isATagSelected()
-    ? newUrlCard.attr({ filterable: false })
-    : selectURLCard(newUrlCard);
+  if (isATagSelected()) {
+    newUrlCard.attr({ filterable: false });
+  } else {
+    selectURLCard(newUrlCard);
+  }
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function createURLFail(xhr, utubID) {
-  if (xhr._429Handled) return;
+function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -190,29 +213,43 @@ function createURLFail(xhr, utubID) {
     );
     return;
   }
-  const responseJSON = xhr.responseJSON;
+  const responseJSON = xhr.responseJSON as CreateUrlError;
   const hasErrors = responseJSON.hasOwnProperty("errors");
   const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      if (responseJSON !== undefined && hasMessage) {
-        hasErrors
-          ? createURLShowFormErrors(responseJSON.errors)
-          : displayCreateUrlFailErrors("urlString", responseJSON.message);
+      if (hasMessage) {
+        if (hasErrors) {
+          createURLShowFormErrors(
+            responseJSON.errors as Partial<
+              Record<"urlString" | "urlTitle", string[]>
+            >,
+          );
+        } else {
+          displayCreateUrlFailErrors(
+            "urlString",
+            responseJSON.message as string,
+          );
+        }
       }
       break;
-    case 409:
+    case 409: {
       // Indicates duplicate URL error
       // If duplicate URL is not currently visible, indicates another user has added this URL
       // or updated another card to the new URL
       // Reload UTub and add/modify differences
-      if (responseJSON.hasOwnProperty("urlString")) {
-        if (!isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)) {
-          updateUTubOnFindingStaleData(utubID);
-        }
+      const duplicateUrlString = (
+        responseJSON as CreateUrlError & { urlString?: string }
+      ).urlString;
+      if (
+        duplicateUrlString !== undefined &&
+        !isURLCurrentlyVisibleInURLDeck(duplicateUrlString)
+      ) {
+        updateUTubOnFindingStaleData(utubID);
       }
-      displayCreateUrlFailErrors("urlString", responseJSON.message);
+      displayCreateUrlFailErrors("urlString", responseJSON.message as string);
       break;
+    }
     case 403:
     case 404:
     default:
@@ -220,26 +257,29 @@ function createURLFail(xhr, utubID) {
   }
 }
 
-function createURLShowFormErrors(errors) {
-  for (let key in errors) {
+function createURLShowFormErrors(
+  errors: Partial<Record<"urlString" | "urlTitle", string[]>>,
+): void {
+  for (const key in errors) {
     switch (key) {
       case "urlString":
-      case "urlTitle":
-        let errorMessage = errors[key][0];
+      case "urlTitle": {
+        const errorMessage = errors[key]![0];
         displayCreateUrlFailErrors(key, errorMessage);
+      }
     }
   }
 }
 
 // Show the error message and highlight the input box border red on error of field
-function displayCreateUrlFailErrors(key, errorMessage) {
+function displayCreateUrlFailErrors(key: string, errorMessage: string): void {
   $("#" + key + "Create-error")
     .addClass("visible")
     .text(errorMessage);
   $("#" + key + "Create").addClass("invalid-field");
 }
 
-export function resetCreateURLFailErrors() {
+export function resetCreateURLFailErrors(): void {
   const newUrlFields = ["urlString", "urlTitle"];
   newUrlFields.forEach((fieldName) => {
     $("#" + fieldName + "Create").removeClass("invalid-field");
