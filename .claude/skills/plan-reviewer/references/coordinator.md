@@ -38,7 +38,7 @@ Single findings with no co-located finding from another reviewer on the same ste
 
 ## Step 4 — Write output
 
-Write TWO files **using the `Write` tool** — NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. JSON content containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this.
+Write TWO files **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this.
 
 ### File 1: `plans/<topic>/tmp/coordinator.md` (full findings)
 
