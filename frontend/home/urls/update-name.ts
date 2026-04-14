@@ -1,7 +1,11 @@
+import type { components, operations } from "../../types/api.d.ts";
+import type { UtubSummaryItem } from "../../types/utub.js";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../lib/ajax.js";
 import {
   getCurrentUTubName,
   getAllAccessibleUTubNames,
@@ -15,7 +19,13 @@ import {
 } from "./update-description.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
-function checkSameNameUTubOnUpdate(name, utubID) {
+type UpdateUtubNameRequest = components["schemas"]["UpdateUTubNameRequest"];
+type UpdateUtubNameResponse =
+  operations["updateUtubName"]["responses"][200]["content"]["application/json"];
+type UpdateUtubNameError =
+  components["schemas"]["ErrorResponse_UTubErrorCodes"];
+
+function checkSameNameUTubOnUpdate(name: string, utubID: number): void {
   if (getAllAccessibleUTubNames().includes(name)) {
     // UTub with same name exists. Confirm action with user
     sameUTubNameOnUpdateUTubNameWarningShowModal(utubID);
@@ -25,41 +35,41 @@ function checkSameNameUTubOnUpdate(name, utubID) {
   }
 }
 
-export function setupUpdateUTubNameEventListeners(utubID) {
+export function setupUpdateUTubNameEventListeners(utubID: number): void {
   // Update UTub name
-  $("#utubNameBtnUpdate").offAndOn("click", function (e) {
+  $("#utubNameBtnUpdate").offAndOn("click", function (clickEvent) {
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
     // Prevent this event from bubbling up to the window to allow event listener creation
-    if (!$(e.target).is(this)) return;
+    if (!$(clickEvent.target).is(this)) return;
   });
 
   const utubNameSubmitBtnUpdate = $("#utubNameSubmitBtnUpdate");
   const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
 
-  utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function (e) {
+  utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function () {
     // Skip if update is identical to original
     if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
       updateUTubNameHideInput();
       return;
     }
-    checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
+    checkSameNameUTubOnUpdate($("#utubNameUpdate").val() as string, utubID);
   });
 
-  utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function (e) {
+  utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function () {
     updateUTubNameHideInput();
   });
 }
 
 // Create event listeners to escape from updating UTub name
-function setEventListenersToEscapeUpdateUTubName(utubID) {
+function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
   // Allow user to still click in the text box
   $("#utubNameUpdate")
     .offAndOn("focus.updateUTubname", function () {
-      $("#utubNameUpdate").on("keydown.updateUTubname", function (e) {
-        if (e.originalEvent.repeat) return;
-        switch (e.key) {
+      $("#utubNameUpdate").on("keydown.updateUTubname", function (keyEvent) {
+        if (keyEvent.originalEvent.repeat) return;
+        switch (keyEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
             // Skip if update is identical
@@ -67,7 +77,10 @@ function setEventListenersToEscapeUpdateUTubName(utubID) {
               updateUTubNameHideInput();
               return;
             }
-            checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
+            checkSameNameUTubOnUpdate(
+              $("#utubNameUpdate").val() as string,
+              utubID,
+            );
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
@@ -83,30 +96,40 @@ function setEventListenersToEscapeUpdateUTubName(utubID) {
     });
 
   // Bind clicking outside the window
-  $(window).offAndOn("click.updateUTubname", function (e) {
+  $(window).offAndOn("click.updateUTubname", function (windowClickEvent) {
     // Ignore clicks on the creation object
-    if ($(e.target).closest("#utubNameBtnUpdate").length) return;
+    if ($(windowClickEvent.target).closest("#utubNameBtnUpdate").length) return;
 
     // Ignore clicks on the input box
-    if ($(e.target).is($("#utubNameUpdate"))) return;
+    if ($(windowClickEvent.target).is($("#utubNameUpdate"))) return;
 
     // Ignore clicks on the submit button
-    if ($(e.target).closest($("#utubNameSubmitBtnUpdate").length)) return;
+    if (
+      $(windowClickEvent.target).closest(
+        $("#utubNameSubmitBtnUpdate").length as unknown as string,
+      )
+    )
+      return;
 
     // Ignore clicks on the cancel button
-    if ($(e.target).closest($("#utubNameCancelBtnUpdate").length)) return;
+    if (
+      $(windowClickEvent.target).closest(
+        $("#utubNameCancelBtnUpdate").length as unknown as string,
+      )
+    )
+      return;
 
     // Hide UTub name update fields
     updateUTubNameHideInput();
   });
 }
 
-function removeEventListenersToEscapeUpdateUTubName() {
+function removeEventListenersToEscapeUpdateUTubName(): void {
   $(window).off(".updateUTubname");
   $("#utubNameUpdate").off(".updateUTubname");
 }
 
-function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
+function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID: number): void {
   const modalTitle = "Continue with this UTub name?";
   const modalBody = `${APP_CONFIG.strings.UTUB_UPDATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
@@ -122,8 +145,8 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
   $("#modalDismiss")
     .addClass("btn btn-secondary")
     .text(buttonTextDismiss)
-    .offAndOnExact("click", function (e) {
-      e.preventDefault();
+    .offAndOnExact("click", function (dismissClickEvent) {
+      dismissClickEvent.preventDefault();
       sameNameWarningHideModal();
       setEventListenersToEscapeUpdateUTubName(utubID);
       setTimeout(function () {
@@ -138,23 +161,25 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
     .removeClass()
     .addClass("btn btn-success")
     .text(buttonTextSubmit)
-    .offAndOnExact("click", function (e) {
+    .offAndOnExact("click", function () {
       isSubmitting = true;
       updateUTubName(utubID);
     });
 
   $("#confirmModal").modal("show");
-  $("#confirmModal").offAndOn("hidden.bs.modal", function (e) {
-    e.stopPropagation();
+  $("#confirmModal").offAndOn("hidden.bs.modal", function (modalHiddenEvent) {
+    modalHiddenEvent.stopPropagation();
     setEventListenersToEscapeUpdateUTubName(utubID);
     if (!isSubmitting) highlightInput($("#utubNameUpdate"));
   });
 }
 
-function allowUserToCreateDescriptionIfEmptyOnTitleUpdate(utubID) {
+function allowUserToCreateDescriptionIfEmptyOnTitleUpdate(
+  utubID: number,
+): void {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   clickToCreateDesc.showClassNormal();
-  clickToCreateDesc.offAndOnExact("click.createUTubdescription", function (e) {
+  clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0");
@@ -165,7 +190,7 @@ function allowUserToCreateDescriptionIfEmptyOnTitleUpdate(utubID) {
 }
 
 // Shows input fields for updating an exiting UTub's name
-function updateUTubNameShowInput(utubID) {
+function updateUTubNameShowInput(utubID: number): void {
   // Setup event listeners on window and escape/enter keys to escape the input box
   setEventListenersToEscapeUpdateUTubName(utubID);
 
@@ -191,7 +216,7 @@ function updateUTubNameShowInput(utubID) {
 }
 
 // Hides input fields for updating an existing UTub's name
-export function updateUTubNameHideInput() {
+export function updateUTubNameHideInput(): void {
   // Hide update fields
   hideInput("#utubNameUpdate");
   const utubNameUpdate = $("#utubNameUpdate");
@@ -223,7 +248,7 @@ export function updateUTubNameHideInput() {
 }
 
 // Handles post request and response for updating an existing UTub's name
-function updateUTubName(utubID) {
+function updateUTubName(utubID: number): void {
   // Skip if update is identical
   if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
     updateUTubNameHideInput();
@@ -231,39 +256,37 @@ function updateUTubName(utubID) {
   }
 
   // Extract data to submit in POST request
-  let postURL, data;
-  [postURL, data] = updateUTubNameSetup(utubID);
+  const [postURL, data] = updateUTubNameSetup(utubID);
 
-  let request = ajaxCall("patch", postURL, data);
+  const request = ajaxCall("patch", postURL, data);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (response: UpdateUtubNameResponse, _textStatus, xhr) {
     if (xhr.status === 200) {
       updateUTubNameSuccess(response);
     }
   });
 
-  request.fail(function (xhr, _, textStatus) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     updateUTubNameFail(xhr);
   });
 }
 
 // Handles preparation for post request to update an existing UTub
-function updateUTubNameSetup(utubID) {
+function updateUTubNameSetup(utubID: number): [string, UpdateUtubNameRequest] {
   const postURL = APP_CONFIG.routes.updateUTubName(utubID);
 
-  const updatedUTubName = $("#utubNameUpdate").val();
-  let data = { utubName: updatedUTubName };
+  const updatedUTubName = $("#utubNameUpdate").val() as string;
+  const data: UpdateUtubNameRequest = { utubName: updatedUTubName };
 
   return [postURL, data];
 }
 
 // Handle update of UTub's name
-function updateUTubNameSuccess(response) {
+function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
   const utubName = response.utubName;
 
-  /** @type {import("../../types/utub.js").UtubSummaryItem[]} */
-  const utubs = getState().utubs;
+  const utubs: UtubSummaryItem[] = getState().utubs;
   setState({
     activeUTubName: response.utubName,
     utubs: utubs.map((utub) =>
@@ -282,8 +305,8 @@ function updateUTubNameSuccess(response) {
 }
 
 // Handle error response display to user
-function updateUTubNameFail(xhr) {
-  if (xhr._429Handled) return;
+function updateUTubNameFail(xhr: JQuery.jqXHR): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -298,13 +321,16 @@ function updateUTubNameFail(xhr) {
   }
 
   switch (xhr.status) {
-    case 400:
-      const responseJSON = xhr.responseJSON;
+    case 400: {
+      const responseJSON = xhr.responseJSON as UpdateUtubNameError;
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
-          updateUTubNameFailErrors(responseJSON.errors);
+          updateUTubNameFailErrors(
+            responseJSON.errors as Partial<Record<"utubName", string[]>>,
+          );
         break;
       }
+    }
     case 404:
     default:
       window.location.assign(APP_CONFIG.routes.errorPage);
@@ -312,26 +338,32 @@ function updateUTubNameFail(xhr) {
 }
 
 // Cycle through the valid errors for updating a UTub name
-function updateUTubNameFailErrors(errors) {
-  for (let key in errors) {
-    switch (key) {
-      case "utubName":
-        let errorMessage = errors[key][0];
-        displayUpdateUTubNameFailErrors(key, errorMessage);
+function updateUTubNameFailErrors(
+  errors: Partial<Record<"utubName", string[]>>,
+): void {
+  for (const errorFieldName in errors) {
+    switch (errorFieldName) {
+      case "utubName": {
+        const errorMessage = errors[errorFieldName]![0];
+        displayUpdateUTubNameFailErrors(errorFieldName, errorMessage);
         return;
+      }
     }
   }
 }
 
 // Show the error message and highlight the input box border red on error of field
-function displayUpdateUTubNameFailErrors(key, errorMessage) {
+function displayUpdateUTubNameFailErrors(
+  key: string,
+  errorMessage: string,
+): void {
   $("#" + key + "Update-error")
     .addClass("visible")
     .text(errorMessage);
   $("#" + key + "Update").addClass("invalid-field");
 }
 
-function resetUpdateUTubNameFailErrors() {
+function resetUpdateUTubNameFailErrors(): void {
   const updateUTubNameFields = ["utubName"];
   updateUTubNameFields.forEach((fieldName) => {
     $("#" + fieldName + "Update-error").removeClass("visible");
@@ -339,7 +371,7 @@ function resetUpdateUTubNameFailErrors() {
   });
 }
 
-export function setUTubNameAndDescription(utubName) {
+export function setUTubNameAndDescription(utubName: string): void {
   $("#URLDeckHeader").text(utubName);
   $("#utubNameUpdate").val(utubName);
   updateUTubNameHideInput();

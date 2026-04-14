@@ -1,43 +1,53 @@
+import type { components, operations } from "../../types/api.d.ts";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { showInput, hideInput } from "../btns-forms.js";
 import { setState } from "../../store/app-store.js";
 import { isHidden } from "../visibility.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
-export function setupUpdateUTubDescriptionEventListeners(utubID) {
+type UpdateUtubDescRequest =
+  components["schemas"]["UpdateUTubDescriptionRequest"];
+type UpdateUtubDescResponse =
+  operations["updateUtubDesc"]["responses"][200]["content"]["application/json"];
+type UpdateUtubDescError =
+  components["schemas"]["ErrorResponse_UTubErrorCodes"];
+
+export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
   const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
 
   // Update UTub description
-  $("#updateUTubDescriptionBtn").offAndOnExact("click", function (e) {
+  $("#updateUTubDescriptionBtn").offAndOnExact("click", function () {
     deselectAllURLs();
     updateUTubNameHideInput();
     updateUTubDescriptionShowInput(utubID);
   });
 
-  utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function (e) {
+  utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
     updateUTubDescription(utubID);
   });
 
-  utubDescriptionCancelBtnUpdate.onExact("click", function (e) {
+  utubDescriptionCancelBtnUpdate.onExact("click", function () {
     updateUTubDescriptionHideInput(utubID);
   });
 }
 
 // Create event listeners to escape from updating UTub name
-function setEventListenersToEscapeUpdateUTubDescription(utubID) {
+function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
   // Allow user to still click in the text box
   $("#utubDescriptionUpdate")
     .offAndOn("focus.updateUTubDescription", function () {
       $("#utubDescriptionUpdate").on(
         "keyup.updateUTubDescription",
-        function (e) {
-          if (e.originalEvent.repeat) return;
-          switch (e.key) {
+        function (keyEvent) {
+          if (keyEvent.originalEvent.repeat) return;
+          switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed
               updateUTubDescription(utubID);
@@ -57,70 +67,68 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID) {
     });
 
   // Bind clicking outside the window
-  $(window).offAndOn("click.updateUTubDescription", function (e) {
-    // Ignore clicks on the creation object
-    if ($(e.target).closest("#updateUTubDescriptionBtn").length) return;
+  $(window).offAndOn(
+    "click.updateUTubDescription",
+    function (windowClickEvent) {
+      // Ignore clicks on the creation object
+      if (
+        $(windowClickEvent.target).closest("#updateUTubDescriptionBtn").length
+      )
+        return;
 
-    if (
-      $(e.target).is($("#utubDescriptionUpdate")) ||
-      $(e.target).is($("#URLDeckSubheaderCreateDescription")) ||
-      $(e.target).closest($("#utubDescriptionSubmitBtnUpdate").length) ||
-      $(e.target).closest($("#utubDescriptionCancelBtnUpdate").length)
-    )
-      return;
+      if (
+        $(windowClickEvent.target).is($("#utubDescriptionUpdate")) ||
+        $(windowClickEvent.target).is(
+          $("#URLDeckSubheaderCreateDescription"),
+        ) ||
+        $(windowClickEvent.target).closest(
+          $("#utubDescriptionSubmitBtnUpdate").length as unknown as string,
+        ) ||
+        $(windowClickEvent.target).closest(
+          $("#utubDescriptionCancelBtnUpdate").length as unknown as string,
+        )
+      )
+        return;
 
-    // Hide UTub description update fields
-    updateUTubDescriptionHideInput(utubID);
-  });
+      // Hide UTub description update fields
+      updateUTubDescriptionHideInput(utubID);
+    },
+  );
 }
 
-function removeEventListenersToEscapeUpdateUTubDescription() {
+function removeEventListenersToEscapeUpdateUTubDescription(): void {
   $(window).off(".updateUTubDescription");
   $(document).off(".updateUTubDescription");
 }
 
-function allowUserToCreateDescriptionIfEmptyOnTitleUpdate(utubID) {
-  const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
-  clickToCreateDesc.showClassNormal();
-  clickToCreateDesc.offAndOnExact("click.createUTubdescription", function (e) {
-    clickToCreateDesc
-      .removeClass("opa-1 height-2rem")
-      .addClass("opa-0 height-0");
-    updateUTubNameHideInput();
-    updateUTubDescriptionShowInput(utubID);
-    clickToCreateDesc.off("click.createUTubdescription");
-  });
-}
-
-export function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(utubID) {
+export function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(
+  utubID: number,
+): void {
   const utubTitle = $("#URLDeckHeader");
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   clickToCreateDesc.enableTab();
 
-  utubTitle.offAndOn("mouseenter.createUTubdescription", function (e) {
+  utubTitle.offAndOn("mouseenter.createUTubdescription", function () {
     clickToCreateDesc
       .removeClass("opa-0 height-0")
       .addClass("opa-1 height-2rem");
-    clickToCreateDesc.offAndOnExact(
-      "click.createUTubdescription",
-      function (e) {
-        clickToCreateDesc
-          .removeClass("opa-1 height-2rem")
-          .addClass("opa-0 height-0 width-0");
+    clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
+      clickToCreateDesc
+        .removeClass("opa-1 height-2rem")
+        .addClass("opa-0 height-0 width-0");
 
-        updateUTubDescriptionShowInput(utubID);
-        clickToCreateDesc.off("click.createUTubdescription");
-      },
-    );
+      updateUTubDescriptionShowInput(utubID);
+      clickToCreateDesc.off("click.createUTubdescription");
+    });
 
     hideCreateUTubDescriptionButtonOnMouseExit();
   });
 }
 
-function hideCreateUTubDescriptionButtonOnMouseExit() {
+function hideCreateUTubDescriptionButtonOnMouseExit(): void {
   const urlHeaderWrap = $("#URLDeckHeaderWrap");
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
-  urlHeaderWrap.offAndOn("mouseleave.createUTubdescription", function (e) {
+  urlHeaderWrap.offAndOn("mouseleave.createUTubdescription", function () {
     if (!isHidden($(clickToCreateDesc))) {
       clickToCreateDesc
         .removeClass("opa-1 height-2rem")
@@ -131,7 +139,7 @@ function hideCreateUTubDescriptionButtonOnMouseExit() {
   });
 }
 
-export function removeEventListenersForShowCreateUTubDescIfEmptyDesc() {
+export function removeEventListenersForShowCreateUTubDescIfEmptyDesc(): void {
   const utubTitle = $("#URLDeckHeader");
   utubTitle.off("mouseenter.createUTubdescription");
   const urlHeaderWrap = $("#URLDeckHeaderWrap");
@@ -139,7 +147,7 @@ export function removeEventListenersForShowCreateUTubDescIfEmptyDesc() {
 }
 
 // Shows input fields for updating an exiting UTub's description
-export function updateUTubDescriptionShowInput(utubID) {
+export function updateUTubDescriptionShowInput(utubID: number): void {
   // Setup event listeners for window click and escape/enter keys
   setEventListenersToEscapeUpdateUTubDescription(utubID);
 
@@ -163,7 +171,9 @@ export function updateUTubDescriptionShowInput(utubID) {
 }
 
 // Hides input fields for updating an exiting UTub's description
-export function updateUTubDescriptionHideInput(utubID = null) {
+export function updateUTubDescriptionHideInput(
+  utubID: number | null = null,
+): void {
   // Hide update fields
   hideInput("#utubDescriptionUpdate");
   $("#utubDescriptionSubmitBtnUpdate").hideClass();
@@ -187,7 +197,7 @@ export function updateUTubDescriptionHideInput(utubID = null) {
 }
 
 // Handles post request and response for updating an existing UTub's description
-function updateUTubDescription(utubID) {
+function updateUTubDescription(utubID: number): void {
   // Skip if identical
   if ($("#URLDeckSubheader").text() === $("#utubDescriptionUpdate").val()) {
     updateUTubDescriptionHideInput(utubID);
@@ -195,35 +205,41 @@ function updateUTubDescription(utubID) {
   }
 
   // Extract data to submit in POST request
-  let postURL, data;
-  [postURL, data] = updateUTubDescriptionSetup(utubID);
+  const [postURL, data] = updateUTubDescriptionSetup(utubID);
 
   const request = ajaxCall("patch", postURL, data);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (response: UpdateUtubDescResponse, _textStatus, xhr) {
     if (xhr.status === 200) {
       updateUTubDescriptionSuccess(response, utubID);
     }
   });
 
-  request.fail(function (xhr, _, textStatus) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     updateUTubDescriptionFail(xhr);
   });
 }
 
 // Handles preparation for post request to update an existing UTub
-function updateUTubDescriptionSetup(utubID) {
+function updateUTubDescriptionSetup(
+  utubID: number,
+): [string, UpdateUtubDescRequest] {
   const postURL = APP_CONFIG.routes.updateUTubDescription(utubID);
 
-  const updatedUTubDescription = $("#utubDescriptionUpdate").val();
-  let data = { utubDescription: updatedUTubDescription };
+  const updatedDescription = ($("#utubDescriptionUpdate").val() || null) as
+    | string
+    | null;
+  const data: UpdateUtubDescRequest = { utubDescription: updatedDescription };
 
   return [postURL, data];
 }
 
 // Handle updateion of UTub's description
-function updateUTubDescriptionSuccess(response, utubID) {
+function updateUTubDescriptionSuccess(
+  response: UpdateUtubDescResponse,
+  utubID: number,
+): void {
   const utubDescription = response.utubDescription ?? "";
 
   setState({ activeUTubDescription: response.utubDescription });
@@ -251,8 +267,8 @@ function updateUTubDescriptionSuccess(response, utubID) {
 }
 
 // Handle error response display to user
-function updateUTubDescriptionFail(xhr) {
-  if (xhr._429Handled) return;
+function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -267,13 +283,16 @@ function updateUTubDescriptionFail(xhr) {
   }
 
   switch (xhr.status) {
-    case 400:
-      const responseJSON = xhr.responseJSON;
+    case 400: {
+      const responseJSON = xhr.responseJSON as UpdateUtubDescError;
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
-          updateUTubDescriptionFailErrors(responseJSON.errors);
+          updateUTubDescriptionFailErrors(
+            responseJSON.errors as Partial<Record<"utubDescription", string[]>>,
+          );
         break;
       }
+    }
     case 404:
     default:
       window.location.assign(APP_CONFIG.routes.errorPage);
@@ -281,25 +300,31 @@ function updateUTubDescriptionFail(xhr) {
 }
 
 // Cycle through the valid errors for updating a UTub name
-function updateUTubDescriptionFailErrors(errors) {
-  for (let key in errors) {
-    switch (key) {
-      case "utubDescription":
-        let errorMessage = errors[key][0];
-        displayUpdateUTubDescriptionFailErrors(key, errorMessage);
+function updateUTubDescriptionFailErrors(
+  errors: Partial<Record<"utubDescription", string[]>>,
+): void {
+  for (const errorFieldName in errors) {
+    switch (errorFieldName) {
+      case "utubDescription": {
+        const errorMessage = errors[errorFieldName]![0];
+        displayUpdateUTubDescriptionFailErrors(errorFieldName, errorMessage);
+      }
     }
   }
 }
 
 // Show the error message and highlight the input box border red on error of field
-function displayUpdateUTubDescriptionFailErrors(key, errorMessage) {
+function displayUpdateUTubDescriptionFailErrors(
+  key: string,
+  errorMessage: string,
+): void {
   $("#" + key + "Update-error")
     .addClass("visible")
     .text(errorMessage);
   $("#" + key + "Update").addClass("invalid-field");
 }
 
-function resetUpdateUTubDescriptionFailErrors() {
+function resetUpdateUTubDescriptionFailErrors(): void {
   const updateUTubNameFields = ["utubDescription"];
   updateUTubNameFields.forEach((fieldName) => {
     $("#" + fieldName + "Update-error").removeClass("visible");

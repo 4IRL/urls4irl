@@ -181,7 +181,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubNameRequest, response_schema=UtubNameUpdatedResponseSchema, tags=["utubs"], description="Update a UTub name", status_codes={200: UtubNameUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/update_utub.py:update_utub_name_if_new` |
 | **Schema** | `backend/schemas/requests/utubs/update_utub.py:UpdateUTubNameRequest` |
-| **JS Module** | `frontend/home/urls/update-name.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/update-name.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/utubs/test_update_utub_name_route.py` (marker: `utubs`), `tests/functional/utubs_ui/test_update_utub_name_ui.py` (marker: `utubs_ui`) |
 
@@ -193,7 +193,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubDescriptionRequest, response_schema=UtubDescUpdatedResponseSchema, tags=["utubs"], description="Update a UTub description", status_codes={200: UtubDescUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/update_utub.py:update_utub_desc_if_new` |
 | **Schema** | `backend/schemas/requests/utubs/update_utub.py:UpdateUTubDescriptionRequest` |
-| **JS Module** | `frontend/home/urls/update-description.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/update-description.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/utubs/test_update_utub_desc_route.py` (marker: `utubs`), `tests/functional/utubs_ui/test_update_utub_description_ui.py` (marker: `utubs_ui`) |
 
