@@ -88,8 +88,16 @@ describe("event-bus", () => {
     track(AppEvents.STALE_DATA_DETECTED, handler);
     const payload: StaleDataDetectedPayload = {
       utubID: 99,
-      urls: [{ id: 1 }],
-      tags: [{ id: 2 }],
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          utubUrlTagIDs: [],
+          urlTitle: "Example",
+          canDelete: true,
+        },
+      ],
+      tags: [{ id: 2, tagString: "sample", tagApplied: 0 }],
       members: [{ id: 3 }],
     };
     emit(AppEvents.STALE_DATA_DETECTED, payload);

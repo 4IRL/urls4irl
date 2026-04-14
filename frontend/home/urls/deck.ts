@@ -11,7 +11,6 @@ import {
 } from "./update-description.js";
 import {
   setupUpdateUTubNameEventListeners,
-  updateUTubNameHideInput,
   setUTubNameAndDescription,
 } from "./update-name.js";
 import { createURLShowInputEventListeners } from "./create-btns.js";
@@ -21,9 +20,10 @@ import {
   newURLInputRemoveEventListeners,
 } from "./cards/cards.js";
 import { resetNewURLForm } from "./cards/create.js";
+import type { UtubUrlItem, UtubTag } from "../../types/url.js";
 
 // Clear the URL Deck
-export function resetURLDeck() {
+export function resetURLDeck(): void {
   // Empty URL Deck
   // Detach NO URLs text and reattach after emptying
   resetNewURLForm();
@@ -33,7 +33,7 @@ export function resetURLDeck() {
   updateUTubDescriptionHideInput();
 }
 
-export function resetURLDeckOnDeleteUTub() {
+export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
   $("#NoURLsSubheader").hideClass();
   $("#urlBtnDeckCreateWrap").hideClass();
@@ -42,7 +42,7 @@ export function resetURLDeckOnDeleteUTub() {
     .addClass("hiddenBtn");
 }
 
-export function showURLDeckBannerError(errorMessage) {
+export function showURLDeckBannerError(errorMessage: string): void {
   const SECONDS_TO_SHOW_ERROR = 3.5;
   const errorBanner = $("#URLDeckErrorIndicator");
   const CLASS_TO_SHOW = "URLDeckErrorIndicatorShow";
@@ -54,8 +54,12 @@ export function showURLDeckBannerError(errorMessage) {
 }
 
 // Update URLs in center panel based on asynchronous updates or stale data
-export function updateURLDeck(updatedUTubUrls, updatedUTubTags, utubID) {
-  const oldURLIDs = getState().urls.map((u) => u.utubUrlID);
+export function updateURLDeck(
+  updatedUTubUrls: UtubUrlItem[],
+  updatedUTubTags: UtubTag[],
+  utubID: number,
+): void {
+  const oldURLIDs = getState().urls.map((url) => url.utubUrlID);
   const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
 
   const { toRemove, toAdd, toUpdate } = diffIDLists(oldURLIDs, newURLIDs);
@@ -71,21 +75,19 @@ export function updateURLDeck(updatedUTubUrls, updatedUTubTags, utubID) {
   // Add any URLs that are in new that aren't in old
   const urlDeck = $("#listURLs");
   toAdd.forEach((urlID) => {
-    urlDeck.append(
-      createURLBlock(
-        updatedUTubUrls.find((url) => url.utubUrlID === urlID),
-        updatedUTubTags,
-        utubID,
-      ),
-    );
+    const urlToAdd = updatedUTubUrls.find((url) => url.utubUrlID === urlID);
+    if (!urlToAdd) return;
+    urlDeck.append(createURLBlock(urlToAdd, updatedUTubTags, utubID));
   });
 
   // Update any URLs in both old/new that might have new data from new
   toUpdate.forEach((urlID) => {
     const urlToUpdate = $(".urlRow[utuburlid=" + urlID + "]");
+    const newUrl = updatedUTubUrls.find((url) => url.utubUrlID === urlID);
+    if (!newUrl) return;
     updateURLAfterFindingStaleData(
       urlToUpdate,
-      updatedUTubUrls.find((url) => url.utubUrlID === urlID),
+      newUrl,
       updatedUTubTags,
       utubID,
     );
@@ -93,7 +95,12 @@ export function updateURLDeck(updatedUTubUrls, updatedUTubTags, utubID) {
 }
 
 // Build center panel URL list for selectedUTub
-export function setURLDeckOnUTubSelected(utubID, utubName, dictURLs, dictTags) {
+export function setURLDeckOnUTubSelected(
+  utubID: number,
+  utubName: string,
+  dictURLs: UtubUrlItem[],
+  dictTags: UtubTag[],
+): void {
   resetURLDeck();
   createURLShowInputEventListeners(utubID);
   setupUpdateUTubDescriptionEventListeners(utubID);
@@ -104,10 +111,10 @@ export function setURLDeckOnUTubSelected(utubID, utubName, dictURLs, dictTags) {
 
   if (numOfURLs !== 0) {
     // Instantiate deck with list of URLs stored in current UTub
-    for (let i = 0; i < dictURLs.length; i++) {
+    for (let urlIndex = 0; urlIndex < dictURLs.length; urlIndex++) {
       parent.append(
-        createURLBlock(dictURLs[i], dictTags, utubID).addClass(
-          i % 2 === 0 ? "even" : "odd",
+        createURLBlock(dictURLs[urlIndex], dictTags, utubID).addClass(
+          urlIndex % 2 === 0 ? "even" : "odd",
         ),
       );
     }
@@ -126,7 +133,7 @@ export function setURLDeckOnUTubSelected(utubID, utubName, dictURLs, dictTags) {
   setUTubNameAndDescription(utubName);
 }
 
-export function setURLDeckWhenNoUTubSelected() {
+export function setURLDeckWhenNoUTubSelected(): void {
   $(".urlRow").remove();
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hideClass();
@@ -147,7 +154,7 @@ export function setURLDeckWhenNoUTubSelected() {
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
 }
 
-export function initURLDeck() {
+export function initURLDeck(): void {
   bindSwitchURLKeyboardEventListeners();
 }
 

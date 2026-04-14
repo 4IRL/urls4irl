@@ -1,8 +1,10 @@
+import type { UtubUrlItem, UtubTag } from "../types/url.js";
+
 export interface UtubSelectedPayload {
   utubID: number;
   utubName: string;
-  urls: unknown[];
-  tags: unknown[];
+  urls: UtubUrlItem[];
+  tags: UtubTag[];
   members: unknown[];
   utubOwnerID: number;
   isCurrentUserOwner: boolean;
@@ -11,8 +13,8 @@ export interface UtubSelectedPayload {
 
 export interface StaleDataDetectedPayload {
   utubID: number;
-  urls: unknown[];
-  tags: unknown[];
+  urls: UtubUrlItem[];
+  tags: UtubTag[];
   members: unknown[];
 }
 

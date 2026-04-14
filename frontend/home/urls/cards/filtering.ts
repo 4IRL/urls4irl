@@ -7,8 +7,6 @@ import {
   computeVisibleTagCounts,
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
-import type { UtubTag } from "../../../types/url.js";
-
 export const TagCountOperation = Object.freeze({
   INCREMENT: 1,
   DECREMENT: -1,
@@ -151,11 +149,9 @@ export function updateTagFilteringOnURLOrURLTagDeletion(): void {
 on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());
 
 on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
-  // TODO: remove cast when Phase 9 narrows AppState.tags / STALE_DATA_DETECTED payload
-  const tagList = tags as UtubTag[];
   setState({
     selectedTagIDs: getState().selectedTagIDs.filter((id) =>
-      tagList.some((tag) => tag.id === id),
+      tags.some((tag) => tag.id === id),
     ),
   });
   updateTagFilteringOnURLOrURLTagDeletion();
