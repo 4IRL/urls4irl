@@ -3,8 +3,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { ajaxCall } from "../../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -140,7 +139,7 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function deleteURLFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (
     xhr.status === 403 &&

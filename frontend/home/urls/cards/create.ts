@@ -4,8 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
-import { ajaxCall } from "../../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";
@@ -204,7 +203,7 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (

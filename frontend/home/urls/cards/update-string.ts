@@ -3,8 +3,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { ajaxCall } from "../../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import {
   enableTabbableChildElements,
   disableTabbableChildElements,
@@ -288,7 +287,7 @@ function updateURLFail(
   urlCard: JQuery,
   utubID: number,
 ): void {
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (

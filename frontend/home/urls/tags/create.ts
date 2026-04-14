@@ -3,8 +3,7 @@ import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { ajaxCall } from "../../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { METHOD_TYPES } from "../../../lib/constants.js";
 import {
   makeTextInput,
@@ -285,7 +284,7 @@ function createURLTagSuccess(
         ? { ...existingUrl, utubUrlTagIDs: response.utubUrlTagIDs }
         : existingUrl,
     ),
-    // TODO: remove cast when Phase 9 narrows AppState.tags
+    // TODO(phase-9, plans/feature-urls/home-urls-typescript-migration.md): remove cast when AppState.tags is narrowed to UtubTag[]
     tags: (getState().tags as UtubTag[]).map((tag) =>
       tag.id === response.utubTag.utubTagID
         ? { ...tag, tagApplied: response.tagCountsInUtub }
@@ -334,7 +333,7 @@ function createURLTagSuccess(
  * Displays appropriate prompts and options to user following a failed addition of a new Tag
  */
 function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (

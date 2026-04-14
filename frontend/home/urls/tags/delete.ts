@@ -3,8 +3,7 @@ import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { ajaxCall } from "../../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { isTagInURL } from "./tags.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -107,7 +106,7 @@ function deleteURLTagSuccess(
         ? { ...existingUrl, utubUrlTagIDs: response.utubUrlTagIDs }
         : existingUrl,
     ),
-    // TODO: remove cast when Phase 9 narrows AppState.tags
+    // TODO(phase-9, plans/feature-urls/home-urls-typescript-migration.md): remove cast when AppState.tags is narrowed to UtubTag[]
     tags: (getState().tags as UtubTag[]).map((tag) =>
       tag.id === tagID ? { ...tag, tagApplied: response.tagCountsInUtub } : tag,
     ),
@@ -144,7 +143,7 @@ function deleteURLTagSuccess(
  * Displays appropriate prompts and options to user following a failed removal of a URL
  */
 function deleteURLTagFail(xhr: JQuery.jqXHR): void {
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (
     xhr.status === 403 &&

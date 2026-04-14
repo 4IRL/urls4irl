@@ -4,9 +4,11 @@ import {
   hideAndResetUpdateURLStringForm,
 } from "../update-string.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
+import { getState, setState } from "../../../../store/app-store.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
+  is429Handled: vi.fn(() => false),
 }));
 
 vi.mock("../loading.js", () => ({
@@ -55,6 +57,11 @@ vi.mock("../access.js", () => ({
 
 vi.mock("../copy.js", () => ({
   copyURLString: vi.fn(),
+}));
+
+vi.mock("../../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ urls: [] })),
+  setState: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -136,5 +143,65 @@ describe("updateURL - client-side validation", () => {
         expect(ajaxCall).not.toHaveBeenCalled();
       },
     );
+  });
+});
+
+describe("updateURLSuccess - tag ID mapping regression guard", () => {
+  let urlCard, urlStringInput;
+
+  beforeEach(() => {
+    document.body.innerHTML = URL_CARD_HTML;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    vi.clearAllMocks();
+
+    getState.mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "Old Title",
+          utubUrlTagIDs: [],
+        },
+      ],
+    });
+  });
+
+  // Regression guard for the `.tagID` -> `.utubTagID` fix in updateURLSuccess.
+  // If the mapping reverts, utubUrlTagIDs would become `[undefined, undefined]`
+  // instead of the expected `[10, 20]`.
+  it("maps response.URL.urlTags via utubTagID (not legacy tagID) into setState", async () => {
+    urlStringInput.val("https://new-example.com");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://new-example.com",
+        urlTitle: "New Title",
+        urlTags: [
+          { utubTagID: 10, tagString: "t10" },
+          { utubTagID: 20, tagString: "t20" },
+        ],
+      },
+    };
+
+    const chainable = {
+      done: vi.fn().mockImplementation((cb) => {
+        cb(response, "success", { status: 200 });
+        return chainable;
+      }),
+      fail: vi.fn().mockReturnThis(),
+      always: vi.fn().mockReturnThis(),
+    };
+    ajaxCall.mockReturnValue(chainable);
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(setState).toHaveBeenCalled();
+    const setStateArg = setState.mock.calls[0][0];
+    const updatedUrl = setStateArg.urls.find(
+      (existingUrl) => existingUrl.utubUrlID === 1,
+    );
+    expect(updatedUrl.utubUrlTagIDs).toEqual([10, 20]);
   });
 });

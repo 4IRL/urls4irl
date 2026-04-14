@@ -4,8 +4,7 @@ import type { UtubSummaryItem } from "../../types/utub.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { ajaxCall } from "../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import {
   getCurrentUTubName,
   getAllAccessibleUTubNames,
@@ -308,7 +307,7 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
 
 // Handle error response display to user
 function updateUTubNameFail(xhr: JQuery.jqXHR): void {
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (

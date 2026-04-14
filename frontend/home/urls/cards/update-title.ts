@@ -3,8 +3,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { ajaxCall } from "../../../lib/ajax.js";
-import type { RateLimitedXHR } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -169,7 +168,7 @@ function updateURLTitleSuccess(
 
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
-  if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
