@@ -1,8 +1,9 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { accessLink } from "../access.js";
+import type { UtubUrlItem } from "../../../../types/url.js";
 
-function createAccessLinkIcon() {
+function createAccessLinkIcon(): JQuery<HTMLElement> {
   const WIDTH_HEIGHT_PX = "20px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const accessURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -49,7 +50,7 @@ function createAccessLinkIcon() {
   return accessURLOuterIconSvg;
 }
 
-export function createAccessLinkBtn(url) {
+export function createAccessLinkBtn(url: UtubUrlItem): JQuery<HTMLElement> {
   const urlBtnAccess = $(document.createElement("button"));
 
   urlBtnAccess
@@ -66,7 +67,7 @@ export function createAccessLinkBtn(url) {
       "data-bs-title": `${APP_CONFIG.strings.ACCESS_URL_TOOLTIP}`,
     })
     .disableTab()
-    .onExact("click", function (e) {
+    .onExact("click", function (this: HTMLElement) {
       const tooltip = bootstrap.Tooltip.getInstance(this);
       if (tooltip) tooltip.hide();
       accessLink(url.urlString);

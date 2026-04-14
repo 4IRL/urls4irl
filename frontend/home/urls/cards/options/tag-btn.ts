@@ -2,7 +2,7 @@ import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { showCreateURLTagForm } from "../../tags/create.js";
 
-export function createAddTagIcon() {
+export function createAddTagIcon(): JQuery<HTMLElement> {
   const WIDTH_HEIGHT_PX = "24px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const addTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -41,7 +41,7 @@ export function createAddTagIcon() {
   return addTagOuterIconSvg;
 }
 
-export function createAddTagBtn(urlCard) {
+export function createAddTagBtn(urlCard: JQuery): JQuery<HTMLElement> {
   const urlTagBtnCreate = $(document.createElement("button"));
 
   // Add a tag button
@@ -58,7 +58,7 @@ export function createAddTagBtn(urlCard) {
       "data-bs-title": `${APP_CONFIG.strings.ADD_URL_TAG_TOOLTIP}`,
     })
     .disableTab()
-    .onExact("click", function (e) {
+    .onExact("click", function () {
       showCreateURLTagForm(urlCard, urlTagBtnCreate);
     })
     .append(createAddTagIcon());

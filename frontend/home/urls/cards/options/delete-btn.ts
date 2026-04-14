@@ -1,8 +1,9 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { deleteURLShowModal } from "../delete.js";
+import type { UtubUrlItem } from "../../../../types/url.js";
 
-function createDeleteURLIcon() {
+function createDeleteURLIcon(): JQuery<HTMLElement> {
   const WIDTH_HEIGHT_PX = "28px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const deleteURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -39,7 +40,11 @@ function createDeleteURLIcon() {
   return deleteURLOuterIconSvg;
 }
 
-export function createDeleteURLBtn(url, urlCard, utubID) {
+export function createDeleteURLBtn(
+  url: UtubUrlItem,
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   const urlBtnDelete = $(document.createElement("button"));
   urlBtnDelete
     .addClass(
@@ -54,7 +59,7 @@ export function createDeleteURLBtn(url, urlCard, utubID) {
       "data-bs-title": `${APP_CONFIG.strings.DELETE_URL_TOOLTIP}`,
     })
     .disableTab()
-    .onExact("click", function (e) {
+    .onExact("click", function () {
       deleteURLShowModal(url.utubUrlID, urlCard, utubID);
     })
     .append(createDeleteURLIcon());

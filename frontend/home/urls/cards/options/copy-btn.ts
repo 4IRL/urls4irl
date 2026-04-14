@@ -1,8 +1,9 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { copyURLString } from "../copy.js";
+import type { UtubUrlItem } from "../../../../types/url.js";
 
-function createCopyURLIcon() {
+function createCopyURLIcon(): JQuery<HTMLElement> {
   const WIDTH_HEIGHT_PX = "16px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const editURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -34,7 +35,7 @@ function createCopyURLIcon() {
   return editURLOuterIconSvg;
 }
 
-export function createCopyURLBtn(url) {
+export function createCopyURLBtn(url: UtubUrlItem): JQuery<HTMLElement> {
   const urlBtnCopy = $(document.createElement("button"));
 
   urlBtnCopy
@@ -49,7 +50,7 @@ export function createCopyURLBtn(url) {
       "data-bs-title": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
     })
     .disableTab()
-    .onExact("click", function (e) {
+    .onExact("click", function (this: HTMLElement) {
       copyURLString(url.urlString, this);
     })
     .append(createCopyURLIcon())
