@@ -1,3 +1,4 @@
+import type { UtubUrlItem } from "../types/url.js";
 import type { UtubSummaryItem } from "../types/utub.js";
 
 export interface AppState {
@@ -10,7 +11,7 @@ export interface AppState {
   utubOwnerID: number | null;
   selectedURLCardID: number | null;
   selectedTagIDs: number[];
-  urls: unknown[]; // narrow in Phase 7
+  urls: UtubUrlItem[]; // narrowed in Phase 7
   tags: unknown[]; // narrow in Phase 9
   members: unknown[]; // narrow in Phase 8
 }

@@ -11,6 +11,15 @@ export interface RateLimitedXHR extends JQuery.jqXHR {
 }
 
 /**
+ * Returns true if the jqXHR failure has already been handled by the global
+ * 429 rate-limit handler in `ajaxCall`. Callers can early-return on this to
+ * avoid double-dispatching user-visible error UI for rate-limited responses.
+ */
+export function is429Handled(xhr: JQuery.jqXHR): boolean {
+  return !!(xhr as RateLimitedXHR)._429Handled;
+}
+
+/**
  * Makes an AJAX request with global 429 rate limit handling
  * @param {string} type - HTTP method (GET, POST, etc.)
  * @param {string} url - Target URL

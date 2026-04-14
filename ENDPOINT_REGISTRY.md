@@ -181,7 +181,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubNameRequest, response_schema=UtubNameUpdatedResponseSchema, tags=["utubs"], description="Update a UTub name", status_codes={200: UtubNameUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/update_utub.py:update_utub_name_if_new` |
 | **Schema** | `backend/schemas/requests/utubs/update_utub.py:UpdateUTubNameRequest` |
-| **JS Module** | `frontend/home/urls/update-name.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/update-name.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/utubs/test_update_utub_name_route.py` (marker: `utubs`), `tests/functional/utubs_ui/test_update_utub_name_ui.py` (marker: `utubs_ui`) |
 
@@ -193,7 +193,7 @@ Base path: `/utubs` (some routes served at `/home`)
 | **Decorators** | `@utub_creator_required`, `@api_route(request_schema=UpdateUTubDescriptionRequest, response_schema=UtubDescUpdatedResponseSchema, tags=["utubs"], description="Update a UTub description", status_codes={200: UtubDescUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/utubs/services/update_utub.py:update_utub_desc_if_new` |
 | **Schema** | `backend/schemas/requests/utubs/update_utub.py:UpdateUTubDescriptionRequest` |
-| **JS Module** | `frontend/home/urls/update-description.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/update-description.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/utubs/test_update_utub_desc_route.py` (marker: `utubs`), `tests/functional/utubs_ui/test_update_utub_description_ui.py` (marker: `utubs_ui`) |
 
@@ -222,7 +222,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Decorators** | `@utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, tags=["urls"], description="Add a URL to a UTub", status_codes={200: UrlCreatedResponseSchema, 400: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/create_url.py:create_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/create_url.py:CreateURLRequest`, response: `UrlCreatedResponseSchema` embeds `UrlCreatedItemSchema` (subclass of `UtubUrlDeleteSchema` with title override for distinct OpenAPI component naming) |
-| **JS Module** | `frontend/home/urls/cards/create.js` — `JSON.stringify`, `application/json`, 35s timeout |
+| **JS Module** | `frontend/home/urls/cards/create.ts` — `JSON.stringify`, `application/json`, 35s timeout |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_add_url_to_utub_route.py` (marker: `urls`), `tests/functional/urls_ui/test_create_url_ui.py` (marker: `create_urls_ui`) |
 
@@ -233,7 +233,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:get_url` |
 | **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, tags=["urls"], description="Retrieve a URL from a UTub", status_codes={200: UrlReadResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
-| **JS Module** | `frontend/home/urls/cards/get.js`, also called from `update-string.js`, `update-title.js`, `delete.js`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
+| **JS Module** | `frontend/home/urls/cards/get.ts`, also called from `update-string.ts`, `update-title.ts`, `delete.ts`, `frontend/home/urls/tags/create.ts`, `frontend/home/urls/tags/delete.ts` |
 | **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
 
 ### PATCH /utubs/\<utub_id\>/urls/\<utub_url_id\>
@@ -244,7 +244,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema, tags=["urls"], description="Update a URL string in a UTub", status_codes={200: UrlUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/update_url.py:update_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLStringRequest` |
-| **JS Module** | `frontend/home/urls/cards/update-string.js` — `JSON.stringify`, `application/json`, 35s timeout |
+| **JS Module** | `frontend/home/urls/cards/update-string.ts` — `JSON.stringify`, `application/json`, 35s timeout |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_update_url_route.py` (marker: `urls`), `tests/functional/urls_ui/test_update_url_ui.py` (marker: `update_urls_ui`) |
 
@@ -256,7 +256,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema, tags=["urls"], description="Update a URL title in a UTub", status_codes={200: UrlTitleUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/update_url_title.py:update_url_title_if_new` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLTitleRequest` |
-| **JS Module** | `frontend/home/urls/cards/update-title.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/cards/update-title.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_update_url_title_route.py` (marker: `urls`), `tests/functional/urls_ui/test_update_url_ui.py` (marker: `update_urls_ui`) |
 
@@ -267,7 +267,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:delete_url` |
 | **Decorators** | `@url_adder_or_creator_required`, `@api_route(response_schema=UrlDeletedResponseSchema, tags=["urls"], description="Delete a URL from a UTub", status_codes={200: UrlDeletedResponseSchema, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/delete_url.py:delete_url_in_utub` |
-| **JS Module** | `frontend/home/urls/cards/delete.js` |
+| **JS Module** | `frontend/home/urls/cards/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_remove_url_from_utub_route.py` (marker: `urls`), `tests/functional/urls_ui/test_delete_url_ui.py` (marker: `urls_ui`) |
 
@@ -343,7 +343,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagRequest, response_schema=UrlTagModifiedResponseSchema, tags=["tags"], description="Add a tag to a URL in a UTub", status_codes={200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/create_url_tag.py:add_tag_to_url_if_valid` |
 | **Schema** | `backend/schemas/requests/tags/add_tag.py:AddTagRequest` |
-| **JS Module** | `frontend/home/urls/tags/create.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/tags/create.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_add_tag_to_url_route.py` (marker: `tags`), `tests/functional/tags_ui/test_create_tag_ui.py` (marker: `tags_ui`) |
 
@@ -354,7 +354,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler** | `backend/tags/url_tag_routes.py:delete_utub_url_tag` |
 | **Decorators** | `@utub_membership_with_valid_url_tag`, `@api_route(response_schema=UrlTagModifiedResponseSchema, tags=["tags"], description="Remove a tag from a URL in a UTub", status_codes={200: UrlTagModifiedResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/delete_url_tag.py:delete_url_tag` |
-| **JS Module** | `frontend/home/urls/tags/delete.js` |
+| **JS Module** | `frontend/home/urls/tags/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_delete_tag_from_url_route.py` (marker: `tags`), `tests/functional/tags_ui/test_delete_tag_ui.py` (marker: `tags_ui`) |
 
