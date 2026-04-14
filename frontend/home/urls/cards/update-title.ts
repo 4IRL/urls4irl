@@ -87,8 +87,7 @@ export async function updateURLTitle(
 ): Promise<void> {
   // Extract data to submit in POST request
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
-  const timeoutID: ReturnType<typeof setTimeout> =
-    setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 

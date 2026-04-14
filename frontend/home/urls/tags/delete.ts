@@ -21,23 +21,6 @@ type DeleteUrlTagResponse =
   operations["deleteUtubUrlTag"]["responses"][200]["content"]["application/json"];
 
 /**
- * Prepares post request inputs for removal of a URL - tag
- */
-function deleteURLTagSetup(
-  utubID: number,
-  utubUrlID: number,
-  utubTagID: number,
-): string {
-  const deleteURLTag = APP_CONFIG.routes.deleteURLTag(
-    utubID,
-    utubUrlID,
-    utubTagID,
-  );
-
-  return deleteURLTag;
-}
-
-/**
  * Remove tag from selected URL
  */
 export async function deleteURLTag(
@@ -47,8 +30,7 @@ export async function deleteURLTag(
   utubID: number,
 ): Promise<void> {
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
-  const timeoutID: ReturnType<typeof setTimeout> =
-    setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
@@ -59,7 +41,11 @@ export async function deleteURLTag(
     }
 
     // Extract data to submit in POST request
-    const deleteURL = deleteURLTagSetup(utubID, utubUrlID, utubTagID);
+    const deleteURL = APP_CONFIG.routes.deleteURLTag(
+      utubID,
+      utubUrlID,
+      utubTagID,
+    );
 
     const request = ajaxCall("delete", deleteURL, []);
 

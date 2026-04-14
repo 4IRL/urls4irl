@@ -177,8 +177,7 @@ export async function updateURL(
   utubID: number,
 ): Promise<void> {
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
-  const timeoutID: ReturnType<typeof setTimeout> =
-    setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
@@ -381,9 +380,6 @@ function displayUpdateURLErrors(
 }
 
 function resetUpdateURLFailErrors(urlCard: JQuery): void {
-  const urlStringUpdateFields = ["urlString"];
-  urlStringUpdateFields.forEach((fieldName) => {
-    urlCard.find("." + fieldName + "Update").removeClass("invalid-field");
-    urlCard.find("." + fieldName + "Update-error").removeClass("visible");
-  });
+  urlCard.find(".urlStringUpdate").removeClass("invalid-field");
+  urlCard.find(".urlStringUpdate-error").removeClass("visible");
 }

@@ -231,8 +231,7 @@ export async function createURLTag(
     utubUrlID,
   );
 
-  const timeoutID: ReturnType<typeof setTimeout> =
-    setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
@@ -402,9 +401,6 @@ function displayCreateURLTagErrors(
 }
 
 function resetCreateURLTagFailErrors(urlCard: JQuery): void {
-  const urlTagCreateFields = ["urlTag"];
-  urlTagCreateFields.forEach((fieldName) => {
-    urlCard.find("." + fieldName + "Create").removeClass("invalid-field");
-    urlCard.find("." + fieldName + "Create-error").removeClass("visible");
-  });
+  urlCard.find(".urlTagCreate").removeClass("invalid-field");
+  urlCard.find(".urlTagCreate-error").removeClass("visible");
 }
