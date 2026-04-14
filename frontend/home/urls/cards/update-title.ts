@@ -1,7 +1,10 @@
+import type { components, operations } from "../../../types/api.d.ts";
+import type { UtubUrlItem } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { KEYS } from "../../../lib/constants.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -13,8 +16,16 @@ import {
 } from "./selection.js";
 import { getState, setState } from "../../../store/app-store.js";
 
+type UpdateUrlTitleRequest = components["schemas"]["UpdateURLTitleRequest"];
+type UpdateUrlTitleResponse =
+  operations["updateUrlTitle"]["responses"][200]["content"]["application/json"];
+type UpdateUrlTitleError = components["schemas"]["ErrorResponse_URLErrorCodes"];
+
 // Shows the update URL title form
-export function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
+export function showUpdateURLTitleForm(
+  urlTitleAndShowUpdateIconWrap: JQuery,
+  urlCard: JQuery,
+): void {
   urlTitleAndShowUpdateIconWrap.hideClass();
   const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
     ".updateUrlTitleWrap",
@@ -29,7 +40,7 @@ export function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
-export function hideAndResetUpdateURLTitleForm(urlCard) {
+export function hideAndResetUpdateURLTitleForm(urlCard: JQuery): void {
   urlCard.find(".updateUrlTitleWrap").hideClass();
   urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
@@ -38,30 +49,36 @@ export function hideAndResetUpdateURLTitleForm(urlCard) {
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
 
   resetUpdateURLTitleFailErrors(urlCard);
-  if (
-    typeof urlCard.attr("urlSelected") === "string" &&
-    urlCard.attr("urlSelected").toLowerCase() === "true"
-  ) {
+  const selected = urlCard.attr("urlSelected");
+  if (typeof selected === "string" && selected.toLowerCase() === "true") {
     enableClickOnSelectedURLCardToHide(urlCard);
   }
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLTitleSetup(urlTitleInput, utubID, utubUrlID) {
+function updateURLTitleSetup(
+  urlTitleInput: JQuery,
+  utubID: number,
+  utubUrlID: number,
+): [string, UpdateUrlTitleRequest] {
   const patchURL = APP_CONFIG.routes.updateURLTitle(utubID, utubUrlID);
 
-  const updatedURLTitle = urlTitleInput.val();
+  const updatedURLTitle = urlTitleInput.val() as string;
 
-  const data = { urlTitle: updatedURLTitle };
+  const data: UpdateUrlTitleRequest = { urlTitle: updatedURLTitle };
 
   return [patchURL, data];
 }
 
 // Handles update of an existing URL
-export async function updateURLTitle(urlTitleInput, urlCard, utubID) {
+export async function updateURLTitle(
+  urlTitleInput: JQuery,
+  urlCard: JQuery,
+  utubID: number,
+): Promise<void> {
   // Extract data to submit in POST request
-  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
-  let timeoutID;
+  const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
+  let timeoutID: number = 0;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
@@ -72,13 +89,20 @@ export async function updateURLTitle(urlTitleInput, urlCard, utubID) {
       return;
     }
 
-    let patchURL, data;
-    [patchURL, data] = updateURLTitleSetup(urlTitleInput, utubID, utubUrlID);
+    const [patchURL, data] = updateURLTitleSetup(
+      urlTitleInput,
+      utubID,
+      utubUrlID,
+    );
 
     const request = ajaxCall("patch", patchURL, data);
 
     // Handle response
-    request.done(function (response, _, xhr) {
+    request.done(function (
+      response: UpdateUrlTitleResponse,
+      _: JQuery.Ajax.SuccessTextStatus,
+      xhr: JQuery.jqXHR,
+    ) {
       if (xhr.status === 200) {
         resetUpdateURLTitleFailErrors(urlCard);
         if (
@@ -89,7 +113,7 @@ export async function updateURLTitle(urlTitleInput, urlCard, utubID) {
       }
     });
 
-    request.fail(function (xhr, _, textStatus) {
+    request.fail(function (xhr: JQuery.jqXHR) {
       updateURLTitleFail(xhr, urlCard);
     });
 
@@ -98,7 +122,7 @@ export async function updateURLTitle(urlTitleInput, urlCard, utubID) {
     });
   } catch (error) {
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
-    handleRejectFromGetURL(error, urlCard, {
+    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
       message: "Another user has deleted this URL",
     });
@@ -106,20 +130,25 @@ export async function updateURLTitle(urlTitleInput, urlCard, utubID) {
 }
 
 // Displays changes related to a successful update of a URL
-function updateURLTitleSuccess(response, urlCard) {
+function updateURLTitleSuccess(
+  response: UpdateUrlTitleResponse,
+  urlCard: JQuery,
+): void {
   // Extract response data
   const updatedURLTitle = response.URL.urlTitle;
 
   setState({
-    urls: getState().urls.map((u) =>
-      u.utubUrlID === response.URL.utubUrlID
+    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
+      existingUrl.utubUrlID === response.URL.utubUrlID
         ? {
-            ...u,
+            ...existingUrl,
             urlString: response.URL.urlString,
             urlTitle: response.URL.urlTitle,
-            utubUrlTagIDs: response.URL.urlTags.map((t) => t.tagID),
+            utubUrlTagIDs: response.URL.urlTags.map(
+              (urlTag) => urlTag.utubTagID,
+            ),
           }
-        : u,
+        : existingUrl,
     ),
   });
 
@@ -129,8 +158,8 @@ function updateURLTitleSuccess(response, urlCard) {
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLTitleFail(xhr, urlCard) {
-  if (xhr._429Handled) return;
+function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -146,13 +175,17 @@ function updateURLTitleFail(xhr, urlCard) {
   }
 
   switch (xhr.status) {
-    case 400:
-      const responseJSON = xhr.responseJSON;
+    case 400: {
+      const responseJSON = xhr.responseJSON as UpdateUrlTitleError;
       const hasErrors = responseJSON.hasOwnProperty("errors");
       if (hasErrors) {
-        updateURLTitleFailErrors(responseJSON.errors, urlCard);
+        updateURLTitleFailErrors(
+          responseJSON.errors as Partial<Record<"urlTitle", string[]>>,
+          urlCard,
+        );
         break;
       }
+    }
     case 403:
     case 404:
     default:
@@ -160,18 +193,26 @@ function updateURLTitleFail(xhr, urlCard) {
   }
 }
 
-function updateURLTitleFailErrors(errors, urlCard) {
-  for (let key in errors) {
-    switch (key) {
-      case "urlTitle":
-        let errorMessage = errors[key][0];
-        displayUpdateURLTitleErrors(key, errorMessage, urlCard);
+function updateURLTitleFailErrors(
+  errors: Partial<Record<"urlTitle", string[]>>,
+  urlCard: JQuery,
+): void {
+  for (const errorFieldName in errors) {
+    switch (errorFieldName) {
+      case "urlTitle": {
+        const errorMessage = errors[errorFieldName]![0];
+        displayUpdateURLTitleErrors(errorFieldName, errorMessage, urlCard);
         return;
+      }
     }
   }
 }
 
-function displayUpdateURLTitleErrors(key, errorMessage, urlCard) {
+function displayUpdateURLTitleErrors(
+  key: string,
+  errorMessage: string,
+  urlCard: JQuery,
+): void {
   urlCard
     .find("." + key + "Update-error")
     .addClass("visible")
@@ -179,7 +220,7 @@ function displayUpdateURLTitleErrors(key, errorMessage, urlCard) {
   urlCard.find("." + key + "Update").addClass("invalid-field");
 }
 
-function resetUpdateURLTitleFailErrors(urlCard) {
+function resetUpdateURLTitleFailErrors(urlCard: JQuery): void {
   const urlTitleUpdateFields = ["urlTitle"];
   urlTitleUpdateFields.forEach((fieldName) => {
     urlCard.find("." + fieldName + "Update").removeClass("invalid-field");

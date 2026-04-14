@@ -1,7 +1,10 @@
+import type { components, operations } from "../../../types/api.d.ts";
+import type { UtubUrlItem } from "../../../types/url.js";
+
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { KEYS, METHOD_TYPES, INPUT_TYPES } from "../../../lib/constants.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../../lib/ajax.js";
 import {
   enableTabbableChildElements,
   disableTabbableChildElements,
@@ -30,8 +33,17 @@ import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 
+type UpdateUrlStringRequest = components["schemas"]["UpdateURLStringRequest"];
+type UpdateUrlStringResponse =
+  operations["updateUrl"]["responses"][200]["content"]["application/json"];
+type UpdateUrlStringError =
+  components["schemas"]["ErrorResponse_URLErrorCodes"];
+
 // Shows update URL inputs
-export function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
+export function showUpdateURLStringForm(
+  urlCard: JQuery,
+  urlStringBtnUpdate: JQuery,
+): void {
   urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
@@ -59,7 +71,10 @@ export function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
-  const tooltip = bootstrap.Tooltip.getInstance(urlStringBtnUpdate);
+  const tooltipElement = urlStringBtnUpdate.get(0);
+  const tooltip = tooltipElement
+    ? bootstrap.Tooltip.getInstance(tooltipElement)
+    : null;
   if (tooltip) {
     tooltip.hide();
     tooltip.disable();
@@ -70,7 +85,7 @@ export function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
     .removeClass("urlStringBtnUpdate fourty-p-width")
     .addClass("urlStringCancelBigBtnUpdate")
     .text("Cancel")
-    .offAndOnExact("click", function (e) {
+    .offAndOnExact("click", function () {
       hideAndResetUpdateURLStringForm(urlCard);
       if (tooltip) tooltip.enable();
     });
@@ -80,7 +95,7 @@ export function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
-export function hideAndResetUpdateURLStringForm(urlCard) {
+export function hideAndResetUpdateURLStringForm(urlCard: JQuery): void {
   // Toggle input form and display of URL
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   updateURLStringWrap.hideClass();
@@ -89,14 +104,14 @@ export function hideAndResetUpdateURLStringForm(urlCard) {
   urlStringElem.showClassNormal();
 
   // Update the input with current value of url string element
-  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href"));
+  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href") as string);
 
   // Make the Update URL button now allow updating again
   const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
   urlStringBtnUpdate
     .removeClass("urlStringCancelBigBtnUpdate")
     .addClass("urlStringBtnUpdate")
-    .offAndOnExact("click", function (e) {
+    .offAndOnExact("click", function () {
       showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
     })
     .text("")
@@ -122,36 +137,48 @@ export function hideAndResetUpdateURLStringForm(urlCard) {
 
   resetUpdateURLFailErrors(urlCard);
   enableTagRemovalInURLCard(urlCard);
+  const selectedAgain = urlCard.attr("urlSelected");
   if (
-    typeof urlCard.attr("urlSelected") === "string" &&
-    urlCard.attr("urlSelected").toLowerCase() === "true"
+    typeof selectedAgain === "string" &&
+    selectedAgain.toLowerCase() === "true"
   ) {
     enableClickOnSelectedURLCardToHide(urlCard);
   }
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLSetup(urlStringUpdateInput, utubID, utubUrlID) {
+function updateURLSetup(
+  urlStringUpdateInput: JQuery,
+  utubID: number,
+  utubUrlID: number,
+): [string, UpdateUrlStringRequest] {
   const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
-  const updatedURL = urlStringUpdateInput.val().trim();
+  const updatedURL = (urlStringUpdateInput.val() as string).trim();
 
-  const data = { urlString: updatedURL };
+  const data: UpdateUrlStringRequest = { urlString: updatedURL };
 
   return [postURL, data];
 }
 
 // Handles update of an existing URL
-export async function updateURL(urlStringUpdateInput, urlCard, utubID) {
-  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
-  let timeoutID;
+export async function updateURL(
+  urlStringUpdateInput: JQuery,
+  urlCard: JQuery,
+  utubID: number,
+): Promise<void> {
+  const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
+  let timeoutID: number = 0;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    const update = await getUpdatedURL(utubID, utubUrlID, urlCard);
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // Extract data to submit in POST request
-    let patchURL, data;
-    [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, utubUrlID);
+    const [patchURL, data] = updateURLSetup(
+      urlStringUpdateInput,
+      utubID,
+      utubUrlID,
+    );
 
     if (data.urlString === urlCard.find(".urlString").attr("href")) {
       hideAndResetUpdateURLStringForm(urlCard);
@@ -171,13 +198,17 @@ export async function updateURL(urlStringUpdateInput, urlCard, utubID) {
 
     const request = ajaxCall("patch", patchURL, data, 35000);
 
-    request.done(function (response, _, xhr) {
+    request.done(function (
+      response: UpdateUrlStringResponse,
+      _: JQuery.Ajax.SuccessTextStatus,
+      xhr: JQuery.jqXHR,
+    ) {
       if (xhr.status === 200) {
         updateURLSuccess(response, urlCard);
       }
     });
 
-    request.fail(function (xhr, _, textStatus) {
+    request.fail(function (xhr: JQuery.jqXHR) {
       resetUpdateURLFailErrors(urlCard);
       updateURLFail(xhr, urlCard, utubID);
     });
@@ -187,7 +218,7 @@ export async function updateURL(urlStringUpdateInput, urlCard, utubID) {
     });
   } catch (error) {
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
-    handleRejectFromGetURL(error, urlCard, {
+    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
       message: "Another user has deleted this URL",
     });
@@ -195,20 +226,25 @@ export async function updateURL(urlStringUpdateInput, urlCard, utubID) {
 }
 
 // Displays changes related to a successful update of a URL
-function updateURLSuccess(response, urlCard) {
+function updateURLSuccess(
+  response: UpdateUrlStringResponse,
+  urlCard: JQuery,
+): void {
   // Extract response data
   const updatedURLString = response.URL.urlString;
 
   setState({
-    urls: getState().urls.map((u) =>
-      u.utubUrlID === response.URL.utubUrlID
+    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
+      existingUrl.utubUrlID === response.URL.utubUrlID
         ? {
-            ...u,
+            ...existingUrl,
             urlString: response.URL.urlString,
             urlTitle: response.URL.urlTitle,
-            utubUrlTagIDs: response.URL.urlTags.map((t) => t.tagID),
+            utubUrlTagIDs: response.URL.urlTags.map(
+              (urlTag) => urlTag.utubTagID,
+            ),
           }
-        : u,
+        : existingUrl,
     ),
   });
 
@@ -219,24 +255,30 @@ function updateURLSuccess(response, urlCard) {
     .text(updatedURLString);
 
   // Update URL options
-  urlCard.find(".urlBtnAccess").offAndOnExact("click", function (e) {
+  urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
     accessLink(updatedURLString);
   });
 
-  urlCard.find(".goToUrlIcon").offAndOnExact("click", function (e) {
+  urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
     accessLink(updatedURLString);
   });
 
-  urlCard.find(".urlBtnCopy").offAndOnExact("click", function (e) {
-    copyURLString(updatedURLString, this);
-  });
+  urlCard
+    .find(".urlBtnCopy")
+    .offAndOnExact("click", function (this: HTMLElement) {
+      copyURLString(updatedURLString, this);
+    });
 
   hideAndResetUpdateURLStringForm(urlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLFail(xhr, urlCard, utubID) {
-  if (xhr._429Handled) return;
+function updateURLFail(
+  xhr: JQuery.jqXHR,
+  urlCard: JQuery,
+  utubID: number,
+): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -250,34 +292,51 @@ function updateURLFail(xhr, urlCard, utubID) {
     displayUpdateURLErrors(
       "urlString",
       "Server timed out while validating URL. Try again later.",
+      urlCard,
     );
     return;
   }
-  const responseJSON = xhr.responseJSON;
+  const responseJSON = xhr.responseJSON as UpdateUrlStringError;
   const hasErrors = responseJSON.hasOwnProperty("errors");
   const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
       if (hasErrors) {
-        updateURLFailErrors(responseJSON.errors, urlCard);
+        updateURLFailErrors(
+          responseJSON.errors as Partial<Record<"urlString", string[]>>,
+          urlCard,
+        );
         break;
       }
       if (hasMessage) {
-        displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
+        displayUpdateURLErrors(
+          "urlString",
+          responseJSON.message as string,
+          urlCard,
+        );
         break;
       }
-    case 409:
+    case 409: {
       // Indicates duplicate URL error
       // If duplicate URL is not currently visible, indicates another user has added this URL
       // or updated another card to the new URL
       // Reload UTub and add/modify differences
-      if (responseJSON.hasOwnProperty("urlString")) {
-        if (!isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)) {
-          updateUTubOnFindingStaleData(utubID);
-        }
+      const duplicateUrlString = (
+        responseJSON as UpdateUrlStringError & { urlString?: string }
+      ).urlString;
+      if (
+        duplicateUrlString !== undefined &&
+        !isURLCurrentlyVisibleInURLDeck(duplicateUrlString)
+      ) {
+        updateUTubOnFindingStaleData(utubID);
       }
-      displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
+      displayUpdateURLErrors(
+        "urlString",
+        responseJSON.message as string,
+        urlCard,
+      );
       break;
+    }
     case 403:
     case 404:
     default:
@@ -285,18 +344,26 @@ function updateURLFail(xhr, urlCard, utubID) {
   }
 }
 
-function updateURLFailErrors(errors, urlCard) {
-  for (let key in errors) {
-    switch (key) {
-      case "urlString":
-        let errorMessage = errors[key][0];
-        displayUpdateURLErrors(key, errorMessage, urlCard);
+function updateURLFailErrors(
+  errors: Partial<Record<"urlString", string[]>>,
+  urlCard: JQuery,
+): void {
+  for (const errorFieldName in errors) {
+    switch (errorFieldName) {
+      case "urlString": {
+        const errorMessage = errors[errorFieldName]![0];
+        displayUpdateURLErrors(errorFieldName, errorMessage, urlCard);
         return;
+      }
     }
   }
 }
 
-function displayUpdateURLErrors(key, errorMessage, urlCard) {
+function displayUpdateURLErrors(
+  key: string,
+  errorMessage: string,
+  urlCard: JQuery,
+): void {
   urlCard
     .find("." + key + "Update-error")
     .addClass("visible")
@@ -304,7 +371,7 @@ function displayUpdateURLErrors(key, errorMessage, urlCard) {
   urlCard.find("." + key + "Update").addClass("invalid-field");
 }
 
-function resetUpdateURLFailErrors(urlCard) {
+function resetUpdateURLFailErrors(urlCard: JQuery): void {
   const urlStringUpdateFields = ["urlString"];
   urlStringUpdateFields.forEach((fieldName) => {
     urlCard.find("." + fieldName + "Update").removeClass("invalid-field");

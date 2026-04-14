@@ -233,7 +233,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:get_url` |
 | **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, tags=["urls"], description="Retrieve a URL from a UTub", status_codes={200: UrlReadResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
-| **JS Module** | `frontend/home/urls/cards/get.ts`, also called from `update-string.js`, `update-title.js`, `delete.ts`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
+| **JS Module** | `frontend/home/urls/cards/get.ts`, also called from `update-string.ts`, `update-title.ts`, `delete.ts`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
 | **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
 
 ### PATCH /utubs/\<utub_id\>/urls/\<utub_url_id\>
@@ -244,7 +244,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema, tags=["urls"], description="Update a URL string in a UTub", status_codes={200: UrlUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse, 409: ErrorResponse})` |
 | **Service** | `backend/urls/services/update_url.py:update_url_in_utub` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLStringRequest` |
-| **JS Module** | `frontend/home/urls/cards/update-string.js` — `JSON.stringify`, `application/json`, 35s timeout |
+| **JS Module** | `frontend/home/urls/cards/update-string.ts` — `JSON.stringify`, `application/json`, 35s timeout |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_update_url_route.py` (marker: `urls`), `tests/functional/urls_ui/test_update_url_ui.py` (marker: `update_urls_ui`) |
 
@@ -256,7 +256,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Decorators** | `@url_adder_or_creator_required`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema, tags=["urls"], description="Update a URL title in a UTub", status_codes={200: UrlTitleUpdatedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/update_url_title.py:update_url_title_if_new` |
 | **Schema** | `backend/schemas/requests/urls/update_url.py:UpdateURLTitleRequest` |
-| **JS Module** | `frontend/home/urls/cards/update-title.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/cards/update-title.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/urls/test_update_url_title_route.py` (marker: `urls`), `tests/functional/urls_ui/test_update_url_ui.py` (marker: `update_urls_ui`) |
 
