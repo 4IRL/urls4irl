@@ -233,7 +233,7 @@ Base path: `/utubs/<utub_id>/urls`
 | **Handler** | `backend/urls/routes.py:get_url` |
 | **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, tags=["urls"], description="Retrieve a URL from a UTub", status_codes={200: UrlReadResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/urls/services/read_urls.py:get_url_in_utub` |
-| **JS Module** | `frontend/home/urls/cards/get.ts`, also called from `update-string.ts`, `update-title.ts`, `delete.ts`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
+| **JS Module** | `frontend/home/urls/cards/get.ts`, also called from `update-string.ts`, `update-title.ts`, `delete.ts`, `frontend/home/urls/tags/create.ts`, `frontend/home/urls/tags/delete.ts` |
 | **Tests** | `tests/integration/utuburls/test_get_url_in_utub_route.py` (marker: `urls`) |
 
 ### PATCH /utubs/\<utub_id\>/urls/\<utub_url_id\>
@@ -343,7 +343,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators** | `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagRequest, response_schema=UrlTagModifiedResponseSchema, tags=["tags"], description="Add a tag to a URL in a UTub", status_codes={200: UrlTagModifiedResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/create_url_tag.py:add_tag_to_url_if_valid` |
 | **Schema** | `backend/schemas/requests/tags/add_tag.py:AddTagRequest` |
-| **JS Module** | `frontend/home/urls/tags/create.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/urls/tags/create.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_add_tag_to_url_route.py` (marker: `tags`), `tests/functional/tags_ui/test_create_tag_ui.py` (marker: `tags_ui`) |
 
@@ -354,7 +354,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler** | `backend/tags/url_tag_routes.py:delete_utub_url_tag` |
 | **Decorators** | `@utub_membership_with_valid_url_tag`, `@api_route(response_schema=UrlTagModifiedResponseSchema, tags=["tags"], description="Remove a tag from a URL in a UTub", status_codes={200: UrlTagModifiedResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/delete_url_tag.py:delete_url_tag` |
-| **JS Module** | `frontend/home/urls/tags/delete.js` |
+| **JS Module** | `frontend/home/urls/tags/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_delete_tag_from_url_route.py` (marker: `tags`), `tests/functional/tags_ui/test_delete_tag_ui.py` (marker: `tags_ui`) |
 

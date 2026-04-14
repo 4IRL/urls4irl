@@ -1,6 +1,10 @@
+import type { operations } from "../../../types/api.d.ts";
+import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../../lib/ajax.js";
 import { isTagInURL } from "./tags.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -14,10 +18,17 @@ import {
 } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
+type DeleteUrlTagResponse =
+  operations["deleteUtubUrlTag"]["responses"][200]["content"]["application/json"];
+
 /**
  * Prepares post request inputs for removal of a URL - tag
  */
-function deleteURLTagSetup(utubID, utubUrlID, utubTagID) {
+function deleteURLTagSetup(
+  utubID: number,
+  utubUrlID: number,
+  utubTagID: number,
+): string {
   const deleteURLTag = APP_CONFIG.routes.deleteURLTag(
     utubID,
     utubUrlID,
@@ -30,9 +41,14 @@ function deleteURLTagSetup(utubID, utubUrlID, utubTagID) {
 /**
  * Remove tag from selected URL
  */
-export async function deleteURLTag(utubTagID, tagBadge, urlCard, utubID) {
-  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
-  let timeoutID;
+export async function deleteURLTag(
+  utubTagID: number,
+  tagBadge: JQuery,
+  urlCard: JQuery,
+  utubID: number,
+): Promise<void> {
+  const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
+  let timeoutID: number = 0;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
@@ -49,13 +65,17 @@ export async function deleteURLTag(utubTagID, tagBadge, urlCard, utubID) {
     const request = ajaxCall("delete", deleteURL, []);
 
     // Handle response
-    request.done(function (response, _, xhr) {
+    request.done(function (
+      response: DeleteUrlTagResponse,
+      _: JQuery.Ajax.SuccessTextStatus,
+      xhr: JQuery.jqXHR,
+    ) {
       if (xhr.status === 200) {
         deleteURLTagSuccess(response, tagBadge, urlCard);
       }
     });
 
-    request.fail(function (xhr, _, textStatus) {
+    request.fail(function (xhr: JQuery.jqXHR) {
       deleteURLTagFail(xhr);
     });
 
@@ -64,7 +84,7 @@ export async function deleteURLTag(utubTagID, tagBadge, urlCard, utubID) {
     });
   } catch (error) {
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
-    handleRejectFromGetURL(error, urlCard, {
+    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
       message: "Another user has deleted this URL",
     });
@@ -74,17 +94,22 @@ export async function deleteURLTag(utubTagID, tagBadge, urlCard, utubID) {
 /**
  * Displays changes related to a successful removal of a URL
  */
-function deleteURLTagSuccess(response, tagBadge, urlCard) {
+function deleteURLTagSuccess(
+  response: DeleteUrlTagResponse,
+  tagBadge: JQuery,
+  urlCard: JQuery,
+): void {
   const tagID = response.utubTag.utubTagID;
-  const urlID = parseInt(urlCard.attr("utuburlid"));
+  const urlID = parseInt(urlCard.attr("utuburlid") as string);
   setState({
-    urls: getState().urls.map((u) =>
-      u.utubUrlID === urlID
-        ? { ...u, utubUrlTagIDs: response.utubUrlTagIDs }
-        : u,
+    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
+      existingUrl.utubUrlID === urlID
+        ? { ...existingUrl, utubUrlTagIDs: response.utubUrlTagIDs }
+        : existingUrl,
     ),
-    tags: getState().tags.map((t) =>
-      t.id === tagID ? { ...t, tagApplied: response.tagCountsInUtub } : t,
+    // TODO: remove cast when Phase 9 narrows AppState.tags
+    tags: (getState().tags as UtubTag[]).map((tag) =>
+      tag.id === tagID ? { ...tag, tagApplied: response.tagCountsInUtub } : tag,
     ),
   });
 
@@ -97,8 +122,10 @@ function deleteURLTagSuccess(response, tagBadge, urlCard) {
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
 
   if (currentURLTagIDs.trim()) {
-    let tagIDs = currentURLTagIDs.split(",").map((s) => s.trim());
-    const index = tagIDs.findIndex((num) => parseInt(num) === tagID);
+    const tagIDs = currentURLTagIDs.split(",").map((part) => part.trim());
+    const index = tagIDs.findIndex(
+      (tagIdString) => parseInt(tagIdString) === tagID,
+    );
 
     if (index !== -1) {
       tagIDs.splice(index, 1);
@@ -116,8 +143,8 @@ function deleteURLTagSuccess(response, tagBadge, urlCard) {
 /**
  * Displays appropriate prompts and options to user following a failed removal of a URL
  */
-function deleteURLTagFail(xhr) {
-  if (xhr._429Handled) return;
+function deleteURLTagFail(xhr: JQuery.jqXHR): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (
     xhr.status === 403 &&

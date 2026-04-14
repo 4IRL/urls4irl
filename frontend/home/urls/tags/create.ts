@@ -1,6 +1,10 @@
+import type { components, operations } from "../../../types/api.d.ts";
+import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
+
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import type { RateLimitedXHR } from "../../../lib/ajax.js";
 import { METHOD_TYPES } from "../../../lib/constants.js";
 import {
   makeTextInput,
@@ -39,7 +43,15 @@ import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-export function createTagInputBlock(urlCard, utubID) {
+type AddTagRequest = components["schemas"]["AddTagRequest"];
+type UrlTagModifiedResponse =
+  operations["createUtubUrlTag"]["responses"][200]["content"]["application/json"];
+type UrlTagError = components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+
+export function createTagInputBlock(
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
     METHOD_TYPES.CREATE.description,
@@ -60,7 +72,7 @@ export function createTagInputBlock(urlCard, utubID) {
     "urlTagSubmitBtnCreate",
   );
 
-  urlTagSubmitBtnCreate.onExact("click.createURLTag", function (e) {
+  urlTagSubmitBtnCreate.onExact("click.createURLTag", function () {
     createURLTag(urlTagTextInput, urlCard, utubID);
   });
 
@@ -69,7 +81,7 @@ export function createTagInputBlock(urlCard, utubID) {
     "urlTagCancelBtnCreate",
   );
 
-  urlTagCancelBtnCreate.onExact("click.createURLTag", function (e) {
+  urlTagCancelBtnCreate.onExact("click.createURLTag", function () {
     hideAndResetCreateURLTagForm(urlCard);
   });
 
@@ -83,7 +95,10 @@ export function createTagInputBlock(urlCard, utubID) {
 /**
  * Displays new Tag input prompt on selected URL
  */
-export function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
+export function showCreateURLTagForm(
+  urlCard: JQuery,
+  urlTagBtnCreate: JQuery,
+): void {
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);
@@ -108,7 +123,10 @@ export function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
-  const tooltip = bootstrap.Tooltip.getInstance(urlTagBtnCreate);
+  const tooltipElement = urlTagBtnCreate.get(0);
+  const tooltip = tooltipElement
+    ? bootstrap.Tooltip.getInstance(tooltipElement)
+    : null;
   if (tooltip) {
     tooltip.hide();
     tooltip.disable();
@@ -119,7 +137,7 @@ export function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
     .removeClass("fourty-p-width")
     .addClass("cancel urlTagCancelBigBtnCreate")
     .text("Cancel")
-    .offAndOnExact("click", function (e) {
+    .offAndOnExact("click", function () {
       hideAndResetCreateURLTagForm(urlCard);
       if (tooltip) tooltip.enable();
     });
@@ -129,7 +147,7 @@ export function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   disableClickOnSelectedURLCardToHide(urlCard);
 }
 
-export function hideAndResetCreateURLTagForm(urlCard) {
+export function hideAndResetCreateURLTagForm(urlCard: JQuery): void {
   resetCreateURLTagFailErrors(urlCard);
 
   // Modify add tag button
@@ -137,7 +155,7 @@ export function hideAndResetCreateURLTagForm(urlCard) {
   urlTagBtnCreate
     .removeClass("cancel urlTagCancelBigBtnCreate")
     .addClass("fourty-p-width")
-    .offAndOnExact("click", function (e) {
+    .offAndOnExact("click", function () {
       showCreateURLTagForm(urlCard, urlTagBtnCreate);
     })
     .text("")
@@ -149,7 +167,7 @@ export function hideAndResetCreateURLTagForm(urlCard) {
   tagInputFormContainer.hideClass();
 
   // Reset input form
-  tagInputFormContainer.find("input").val(null);
+  tagInputFormContainer.find("input").val("");
 
   // Enable URL Buttons as url Tag creation form is hidden
   urlCard.find(".urlBtnAccess").showClassFlex();
@@ -162,9 +180,10 @@ export function hideAndResetCreateURLTagForm(urlCard) {
 
   enableTagRemovalInURLCard(urlCard);
   enableEditingURLTitle(urlCard);
+  const selectedAttr = urlCard.attr("urlSelected");
   if (
-    typeof urlCard.attr("urlSelected") === "string" &&
-    urlCard.attr("urlSelected").toLowerCase() === "true"
+    typeof selectedAttr === "string" &&
+    selectedAttr.toLowerCase() === "true"
   ) {
     enableClickOnSelectedURLCardToHide(urlCard);
   }
@@ -173,13 +192,17 @@ export function hideAndResetCreateURLTagForm(urlCard) {
 /**
  * Prepares post request inputs for addition of a new Tag to URL
  */
-function createURLTagSetup(urlTagCreateInput, utubID, utubUrlID) {
+function createURLTagSetup(
+  urlTagCreateInput: JQuery,
+  utubID: number,
+  utubUrlID: number,
+): [string, AddTagRequest] {
   // Assemble post request route
   const postURL = APP_CONFIG.routes.createURLTag(utubID, utubUrlID);
 
   // Assemble submission data
-  const data = {
-    tagString: urlTagCreateInput.val(),
+  const data: AddTagRequest = {
+    tagString: urlTagCreateInput.val() as string,
   };
 
   return [postURL, data];
@@ -188,13 +211,20 @@ function createURLTagSetup(urlTagCreateInput, utubID, utubUrlID) {
 /**
  * Handles addition of new Tag to URL after user submission
  */
-export async function createURLTag(urlTagCreateInput, urlCard, utubID) {
-  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
+export async function createURLTag(
+  urlTagCreateInput: JQuery,
+  urlCard: JQuery,
+  utubID: number,
+): Promise<void> {
+  const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
   // Extract data to submit in POST request
-  let postURL, data;
-  [postURL, data] = createURLTagSetup(urlTagCreateInput, utubID, utubUrlID);
+  const [postURL, data] = createURLTagSetup(
+    urlTagCreateInput,
+    utubID,
+    utubUrlID,
+  );
 
-  let timeoutID;
+  let timeoutID: number = 0;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
@@ -202,14 +232,18 @@ export async function createURLTag(urlTagCreateInput, urlCard, utubID) {
     const request = ajaxCall("post", postURL, data);
 
     // Handle response
-    request.done(function (response, _, xhr) {
+    request.done(function (
+      response: UrlTagModifiedResponse,
+      _: JQuery.Ajax.SuccessTextStatus,
+      xhr: JQuery.jqXHR,
+    ) {
       if (xhr.status === 200) {
         resetCreateURLTagFailErrors(urlCard);
         createURLTagSuccess(response, urlCard, utubID);
       }
     });
 
-    request.fail(function (xhr, _, textStatus) {
+    request.fail(function (xhr: JQuery.jqXHR) {
       createURLTagFail(xhr, urlCard);
     });
 
@@ -218,7 +252,7 @@ export async function createURLTag(urlTagCreateInput, urlCard, utubID) {
     });
   } catch (error) {
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
-    handleRejectFromGetURL(error, urlCard, {
+    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
       message: "Another user has deleted this URL",
     });
@@ -228,49 +262,58 @@ export async function createURLTag(urlTagCreateInput, urlCard, utubID) {
 /**
  * Displays changes related to a successful addition of a new Tag
  */
-function createURLTagSuccess(response, urlCard, utubID) {
+function createURLTagSuccess(
+  response: UrlTagModifiedResponse,
+  urlCard: JQuery,
+  utubID: number,
+): void {
   // Clear and reset input field
   hideAndResetCreateURLTagForm(urlCard);
 
-  const urlID = parseInt(urlCard.attr("utuburlid"));
+  const urlID = parseInt(urlCard.attr("utuburlid") as string);
   setState({
-    urls: getState().urls.map((u) =>
-      u.utubUrlID === urlID
-        ? { ...u, utubUrlTagIDs: response.utubUrlTagIDs }
-        : u,
+    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
+      existingUrl.utubUrlID === urlID
+        ? { ...existingUrl, utubUrlTagIDs: response.utubUrlTagIDs }
+        : existingUrl,
     ),
-    tags: getState().tags.map((t) =>
-      t.id === response.utubTag.utubTagID
-        ? { ...t, tagApplied: response.tagCountsInUtub }
-        : t,
+    // TODO: remove cast when Phase 9 narrows AppState.tags
+    tags: (getState().tags as UtubTag[]).map((tag) =>
+      tag.id === response.utubTag.utubTagID
+        ? { ...tag, tagApplied: response.tagCountsInUtub }
+        : tag,
     ),
   });
 
   // Extract response data
   const utubTagID = response.utubTag.utubTagID;
-  const string = response.utubTag.tagString;
+  const tagString = response.utubTag.tagString;
   const tagCount = response.tagCountsInUtub;
 
   // Update tags in URL
   urlCard
     .find(".urlTagsContainer")
-    .append(createTagBadgeInURL(utubTagID, string, urlCard, utubID));
+    .append(createTagBadgeInURL(utubTagID, tagString, urlCard, utubID));
 
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
 
-  currentURLTagIDs.trim()
-    ? urlCard.attr("data-utub-url-tag-ids", currentURLTagIDs + `,${utubTagID}`)
-    : urlCard.attr("data-utub-url-tag-ids", utubTagID);
+  if (currentURLTagIDs.trim()) {
+    urlCard.attr("data-utub-url-tag-ids", currentURLTagIDs + `,${utubTagID}`);
+  } else {
+    urlCard.attr("data-utub-url-tag-ids", String(utubTagID));
+  }
 
   // Add SelectAll button if not yet there
   $("#unselectAllTagFilters").showClassNormal();
 
   if (!isTagInUTubTagDeck(utubTagID)) {
-    const newTag = buildTagFilterInDeck(utubID, utubTagID, string, tagCount);
+    const newTag = buildTagFilterInDeck(utubID, utubTagID, tagString, tagCount);
     // If max number of tags already selected
-    $(".tagFilter.selected").length === APP_CONFIG.constants.TAGS_MAX_ON_URL
-      ? newTag.addClass("disabled").off(".tagFilterSelected")
-      : null;
+    if (
+      $(".tagFilter.selected").length === APP_CONFIG.constants.TAGS_MAX_ON_URL
+    ) {
+      newTag.addClass("disabled").off(".tagFilterSelected");
+    }
     $("#listTags").append(newTag);
     $("#utubTagBtnUpdateAllOpen").showClassNormal();
   } else {
@@ -282,8 +325,8 @@ function createURLTagSuccess(response, urlCard, utubID) {
 /**
  * Displays appropriate prompts and options to user following a failed addition of a new Tag
  */
-function createURLTagFail(xhr, urlCard) {
-  if (xhr._429Handled) return;
+function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
+  if ((xhr as RateLimitedXHR)._429Handled) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -299,14 +342,24 @@ function createURLTagFail(xhr, urlCard) {
   }
 
   switch (xhr.status) {
-    case 400:
-      const responseJSON = xhr.responseJSON;
+    case 400: {
+      const responseJSON = xhr.responseJSON as UrlTagError;
       if (responseJSON.hasOwnProperty("message")) {
-        responseJSON.hasOwnProperty("errors")
-          ? createURLTagFailErrors(responseJSON.errors, urlCard)
-          : displayCreateURLTagErrors("urlTag", responseJSON.message, urlCard);
+        if (responseJSON.hasOwnProperty("errors")) {
+          createURLTagFailErrors(
+            responseJSON.errors as Partial<Record<"tagString", string[]>>,
+            urlCard,
+          );
+        } else {
+          displayCreateURLTagErrors(
+            "urlTag",
+            responseJSON.message as string,
+            urlCard,
+          );
+        }
       }
       break;
+    }
     case 403:
     case 404:
     default:
@@ -314,18 +367,26 @@ function createURLTagFail(xhr, urlCard) {
   }
 }
 
-function createURLTagFailErrors(errors, urlCard) {
-  for (let key in errors) {
-    switch (key) {
-      case "tagString":
-        let errorMessage = errors[key][0];
+function createURLTagFailErrors(
+  errors: Partial<Record<"tagString", string[]>>,
+  urlCard: JQuery,
+): void {
+  for (const errorFieldName in errors) {
+    switch (errorFieldName) {
+      case "tagString": {
+        const errorMessage = errors[errorFieldName]![0];
         displayCreateURLTagErrors("urlTag", errorMessage, urlCard);
         return;
+      }
     }
   }
 }
 
-function displayCreateURLTagErrors(key, errorMessage, urlCard) {
+function displayCreateURLTagErrors(
+  key: string,
+  errorMessage: string,
+  urlCard: JQuery,
+): void {
   urlCard
     .find("." + key + "Create-error")
     .addClass("visible")
@@ -333,7 +394,7 @@ function displayCreateURLTagErrors(key, errorMessage, urlCard) {
   urlCard.find("." + key + "Create").addClass("invalid-field");
 }
 
-function resetCreateURLTagFailErrors(urlCard) {
+function resetCreateURLTagFailErrors(urlCard: JQuery): void {
   const urlTagCreateFields = ["urlTag"];
   urlTagCreateFields.forEach((fieldName) => {
     urlCard.find("." + fieldName + "Create").removeClass("invalid-field");

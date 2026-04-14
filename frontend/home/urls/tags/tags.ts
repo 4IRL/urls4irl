@@ -1,3 +1,5 @@
+import type { UtubTag } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
 import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
@@ -6,24 +8,32 @@ import { deleteURLTag } from "./delete.js";
 /**
  * Hide tag deletion button when needed
  */
-export function disableTagRemovalInURLCard(urlCard) {
+export function disableTagRemovalInURLCard(urlCard: JQuery): void {
   const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
-  for (let i = 0; i < allTagsDelBtns.length; i++) {
-    $(allTagsDelBtns[i]).addClass("hidden");
+  for (
+    let delBtnIndex = 0;
+    delBtnIndex < allTagsDelBtns.length;
+    delBtnIndex++
+  ) {
+    $(allTagsDelBtns[delBtnIndex]).addClass("hidden");
   }
 }
 
 /**
  * Show tag deletion when needed
  */
-export function enableTagRemovalInURLCard(urlCard) {
+export function enableTagRemovalInURLCard(urlCard: JQuery): void {
   const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
-  for (let i = 0; i < allTagsDelBtns.length; i++) {
-    $(allTagsDelBtns[i]).removeClass("hidden");
+  for (
+    let delBtnIndex = 0;
+    delBtnIndex < allTagsDelBtns.length;
+    delBtnIndex++
+  ) {
+    $(allTagsDelBtns[delBtnIndex]).removeClass("hidden");
   }
 }
 
-export function isTagInURL(utubTagID, urlCard) {
+export function isTagInURL(utubTagID: number, urlCard: JQuery): boolean {
   return (
     urlCard.find(
       ".urlTagsContainer > .tagBadge[data-utub-tag-id=" + utubTagID + "]",
@@ -34,20 +44,27 @@ export function isTagInURL(utubTagID, urlCard) {
 /**
  * Create the outer container for the tag badges
  */
-export function createTagBadgesAndWrap(dictTags, tagArray, urlCard, utubID) {
+export function createTagBadgesAndWrap(
+  dictTags: UtubTag[],
+  tagArray: number[],
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   const tagBadgesWrap = $(document.createElement("div")).addClass(
     "urlTagsContainer flex-row flex-start",
   );
 
-  for (let j in tagArray) {
+  for (const tagArrayIndex in tagArray) {
     // Find applicable tags in dictionary to apply to URL card
-    let tag = dictTags.find(function (e) {
-      if (e.id === tagArray[j]) {
-        return e;
+    const tag = dictTags.find(function (candidateTag) {
+      if (candidateTag.id === tagArray[tagArrayIndex]) {
+        return candidateTag;
       }
     });
 
-    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString, urlCard, utubID);
+    if (!tag) continue;
+
+    const tagSpan = createTagBadgeInURL(tag.id, tag.tagString, urlCard, utubID);
 
     $(tagBadgesWrap).append(tagSpan);
   }
@@ -56,25 +73,28 @@ export function createTagBadgesAndWrap(dictTags, tagArray, urlCard, utubID) {
 }
 
 export function setFocusEventListenersOnCreateURLTagInput(
-  urlTagInput,
-  urlCard,
-  utubID,
-) {
+  urlTagInput: JQuery,
+  urlCard: JQuery,
+  utubID: number,
+): void {
   urlTagInput.offAndOn("focus.createURLTagFocus", function () {
-    $(document).offAndOn("keyup.createURLTagFocus", function (e) {
-      switch (e.key) {
-        case KEYS.ENTER:
-          // Handle enter key pressed
-          createURLTag(urlTagInput, urlCard, utubID);
-          break;
-        case KEYS.ESCAPE:
-          // Handle escape key pressed
-          hideAndResetCreateURLTagForm(urlCard);
-          break;
-        default:
-        /* no-op */
-      }
-    });
+    $(document).offAndOn(
+      "keyup.createURLTagFocus",
+      function (keyupEvent: JQuery.TriggeredEvent) {
+        switch (keyupEvent.key) {
+          case KEYS.ENTER:
+            // Handle enter key pressed
+            createURLTag(urlTagInput, urlCard, utubID);
+            break;
+          case KEYS.ESCAPE:
+            // Handle escape key pressed
+            hideAndResetCreateURLTagForm(urlCard);
+            break;
+          default:
+          /* no-op */
+        }
+      },
+    );
   });
 
   urlTagInput.offAndOn("blur.createURLTagFocus", function () {
@@ -85,7 +105,12 @@ export function setFocusEventListenersOnCreateURLTagInput(
 /**
  * Handle URL deck display changes related to creating a new tag
  */
-export function createTagBadgeInURL(utubTagID, tagString, urlCard, utubID) {
+export function createTagBadgeInURL(
+  utubTagID: number,
+  tagString: string,
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   const tagSpan = $(document.createElement("span"));
   const removeButton = $(document.createElement("button"));
   const tagText = $(document.createElement("span"))
@@ -100,7 +125,7 @@ export function createTagBadgeInURL(utubTagID, tagString, urlCard, utubID) {
 
   removeButton
     .addClass("urlTagBtnDelete flex-row align-center pointerable tabbable")
-    .onExact("click", function (e) {
+    .onExact("click", function () {
       deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
     });
 
@@ -114,7 +139,7 @@ export function createTagBadgeInURL(utubTagID, tagString, urlCard, utubID) {
 /**
  * Dynamically generates the delete URL-Tag icon when needed
  */
-export function createTagDeleteIcon(pixelSize = 15) {
+export function createTagDeleteIcon(pixelSize: number = 15): JQuery<Element> {
   const WIDTH_HEIGHT_PX = pixelSize + "px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const deleteURLTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
