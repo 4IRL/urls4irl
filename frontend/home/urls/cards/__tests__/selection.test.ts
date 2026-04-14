@@ -2,7 +2,6 @@ import {
   getSelectedURLCard,
   selectURLCard,
   deselectAllURLs,
-  enableClickOnSelectedURLCardToHide,
   disableClickOnSelectedURLCardToHide,
 } from "../selection.js";
 import { enableTabbingOnURLCardElements } from "../utils.js";
