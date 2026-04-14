@@ -39,6 +39,16 @@ type UpdateUrlStringResponse =
 type UpdateUrlStringError =
   components["schemas"]["ErrorResponse_URLErrorCodes"];
 
+const UPDATE_URL_STRING_FIELD_NAMES = ["urlString"] as const;
+
+type UpdateUrlStringFieldName = (typeof UPDATE_URL_STRING_FIELD_NAMES)[number];
+
+function isUpdateUrlStringFieldName(
+  key: string,
+): key is UpdateUrlStringFieldName {
+  return (UPDATE_URL_STRING_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 // Shows update URL inputs
 export function showUpdateURLStringForm(
   urlCard: JQuery,
@@ -168,9 +178,9 @@ export async function updateURL(
   utubID: number,
 ): Promise<void> {
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
-  let timeoutID: number = 0;
+  const timeoutID: ReturnType<typeof setTimeout> =
+    setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
-    timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // Extract data to submit in POST request
@@ -303,7 +313,9 @@ function updateURLFail(
     case 400:
       if (hasErrors) {
         updateURLFailErrors(
-          responseJSON.errors as Partial<Record<"urlString", string[]>>,
+          responseJSON.errors as Partial<
+            Record<UpdateUrlStringFieldName, string[]>
+          >,
           urlCard,
         );
         break;
@@ -345,16 +357,14 @@ function updateURLFail(
 }
 
 function updateURLFailErrors(
-  errors: Partial<Record<"urlString", string[]>>,
+  errors: Partial<Record<UpdateUrlStringFieldName, string[]>>,
   urlCard: JQuery,
 ): void {
   for (const errorFieldName in errors) {
-    switch (errorFieldName) {
-      case "urlString": {
-        const errorMessage = errors[errorFieldName]![0];
-        displayUpdateURLErrors(errorFieldName, errorMessage, urlCard);
-        return;
-      }
+    if (isUpdateUrlStringFieldName(errorFieldName)) {
+      const errorMessage = errors[errorFieldName]![0];
+      displayUpdateURLErrors(errorFieldName, errorMessage, urlCard);
+      return;
     }
   }
 }

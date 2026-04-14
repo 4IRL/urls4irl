@@ -26,6 +26,14 @@ type CreateUrlResponse =
   operations["createUrl"]["responses"][200]["content"]["application/json"];
 type CreateUrlError = components["schemas"]["ErrorResponse_URLErrorCodes"];
 
+const CREATE_URL_FIELD_NAMES = ["urlString", "urlTitle"] as const;
+
+type CreateUrlFieldName = (typeof CREATE_URL_FIELD_NAMES)[number];
+
+function isCreateUrlFieldName(key: string): key is CreateUrlFieldName {
+  return (CREATE_URL_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 export function bindCreateURLFocusEventListeners(
   inputElem: JQuery,
   createURLInput: JQuery,
@@ -222,7 +230,7 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
         if (hasErrors) {
           createURLShowFormErrors(
             responseJSON.errors as Partial<
-              Record<"urlString" | "urlTitle", string[]>
+              Record<CreateUrlFieldName, string[]>
             >,
           );
         } else {
@@ -258,15 +266,12 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
 }
 
 function createURLShowFormErrors(
-  errors: Partial<Record<"urlString" | "urlTitle", string[]>>,
+  errors: Partial<Record<CreateUrlFieldName, string[]>>,
 ): void {
   for (const key in errors) {
-    switch (key) {
-      case "urlString":
-      case "urlTitle": {
-        const errorMessage = errors[key]![0];
-        displayCreateUrlFailErrors(key, errorMessage);
-      }
+    if (isCreateUrlFieldName(key)) {
+      const errorMessage = errors[key]![0];
+      displayCreateUrlFailErrors(key, errorMessage);
     }
   }
 }

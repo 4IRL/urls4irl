@@ -48,9 +48,9 @@ export async function deleteURLTag(
   utubID: number,
 ): Promise<void> {
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
-  let timeoutID: number = 0;
+  const timeoutID: ReturnType<typeof setTimeout> =
+    setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
-    timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // If tag was already deleted on update of URL, exit early

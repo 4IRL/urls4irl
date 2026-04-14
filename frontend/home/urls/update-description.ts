@@ -18,6 +18,19 @@ type UpdateUtubDescResponse =
 type UpdateUtubDescError =
   components["schemas"]["ErrorResponse_UTubErrorCodes"];
 
+const UPDATE_UTUB_DESCRIPTION_FIELD_NAMES = ["utubDescription"] as const;
+
+type UpdateUtubDescriptionFieldName =
+  (typeof UPDATE_UTUB_DESCRIPTION_FIELD_NAMES)[number];
+
+function isUpdateUtubDescriptionFieldName(
+  key: string,
+): key is UpdateUtubDescriptionFieldName {
+  return (UPDATE_UTUB_DESCRIPTION_FIELD_NAMES as readonly string[]).includes(
+    key,
+  );
+}
+
 export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
   const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
@@ -81,12 +94,10 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
         $(windowClickEvent.target).is(
           $("#URLDeckSubheaderCreateDescription"),
         ) ||
-        $(windowClickEvent.target).closest(
-          $("#utubDescriptionSubmitBtnUpdate").length as unknown as string,
-        ) ||
-        $(windowClickEvent.target).closest(
-          $("#utubDescriptionCancelBtnUpdate").length as unknown as string,
-        )
+        $(windowClickEvent.target).closest("#utubDescriptionSubmitBtnUpdate")
+          .length ||
+        $(windowClickEvent.target).closest("#utubDescriptionCancelBtnUpdate")
+          .length
       )
         return;
 
@@ -227,9 +238,7 @@ function updateUTubDescriptionSetup(
 ): [string, UpdateUtubDescRequest] {
   const postURL = APP_CONFIG.routes.updateUTubDescription(utubID);
 
-  const updatedDescription = ($("#utubDescriptionUpdate").val() || null) as
-    | string
-    | null;
+  const updatedDescription = $("#utubDescriptionUpdate").val() as string;
   const data: UpdateUtubDescRequest = { utubDescription: updatedDescription };
 
   return [postURL, data];
@@ -288,7 +297,9 @@ function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
           updateUTubDescriptionFailErrors(
-            responseJSON.errors as Partial<Record<"utubDescription", string[]>>,
+            responseJSON.errors as Partial<
+              Record<UpdateUtubDescriptionFieldName, string[]>
+            >,
           );
         break;
       }
@@ -301,14 +312,12 @@ function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
 
 // Cycle through the valid errors for updating a UTub name
 function updateUTubDescriptionFailErrors(
-  errors: Partial<Record<"utubDescription", string[]>>,
+  errors: Partial<Record<UpdateUtubDescriptionFieldName, string[]>>,
 ): void {
   for (const errorFieldName in errors) {
-    switch (errorFieldName) {
-      case "utubDescription": {
-        const errorMessage = errors[errorFieldName]![0];
-        displayUpdateUTubDescriptionFailErrors(errorFieldName, errorMessage);
-      }
+    if (isUpdateUtubDescriptionFieldName(errorFieldName)) {
+      const errorMessage = errors[errorFieldName]![0];
+      displayUpdateUTubDescriptionFailErrors(errorFieldName, errorMessage);
     }
   }
 }
@@ -325,9 +334,6 @@ function displayUpdateUTubDescriptionFailErrors(
 }
 
 function resetUpdateUTubDescriptionFailErrors(): void {
-  const updateUTubNameFields = ["utubDescription"];
-  updateUTubNameFields.forEach((fieldName) => {
-    $("#" + fieldName + "Update-error").removeClass("visible");
-    $("#" + fieldName + "Update").removeClass("invalid-field");
-  });
+  $("#utubDescriptionUpdate-error").removeClass("visible");
+  $("#utubDescriptionUpdate").removeClass("invalid-field");
 }

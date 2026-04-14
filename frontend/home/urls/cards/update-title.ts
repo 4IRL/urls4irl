@@ -21,6 +21,16 @@ type UpdateUrlTitleResponse =
   operations["updateUrlTitle"]["responses"][200]["content"]["application/json"];
 type UpdateUrlTitleError = components["schemas"]["ErrorResponse_URLErrorCodes"];
 
+const UPDATE_URL_TITLE_FIELD_NAMES = ["urlTitle"] as const;
+
+type UpdateUrlTitleFieldName = (typeof UPDATE_URL_TITLE_FIELD_NAMES)[number];
+
+function isUpdateUrlTitleFieldName(
+  key: string,
+): key is UpdateUrlTitleFieldName {
+  return (UPDATE_URL_TITLE_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 // Shows the update URL title form
 export function showUpdateURLTitleForm(
   urlTitleAndShowUpdateIconWrap: JQuery,
@@ -78,9 +88,9 @@ export async function updateURLTitle(
 ): Promise<void> {
   // Extract data to submit in POST request
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
-  let timeoutID: number = 0;
+  const timeoutID: ReturnType<typeof setTimeout> =
+    setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
-    timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
@@ -180,7 +190,9 @@ function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
       const hasErrors = responseJSON.hasOwnProperty("errors");
       if (hasErrors) {
         updateURLTitleFailErrors(
-          responseJSON.errors as Partial<Record<"urlTitle", string[]>>,
+          responseJSON.errors as Partial<
+            Record<UpdateUrlTitleFieldName, string[]>
+          >,
           urlCard,
         );
         break;
@@ -194,16 +206,14 @@ function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
 }
 
 function updateURLTitleFailErrors(
-  errors: Partial<Record<"urlTitle", string[]>>,
+  errors: Partial<Record<UpdateUrlTitleFieldName, string[]>>,
   urlCard: JQuery,
 ): void {
   for (const errorFieldName in errors) {
-    switch (errorFieldName) {
-      case "urlTitle": {
-        const errorMessage = errors[errorFieldName]![0];
-        displayUpdateURLTitleErrors(errorFieldName, errorMessage, urlCard);
-        return;
-      }
+    if (isUpdateUrlTitleFieldName(errorFieldName)) {
+      const errorMessage = errors[errorFieldName]![0];
+      displayUpdateURLTitleErrors(errorFieldName, errorMessage, urlCard);
+      return;
     }
   }
 }
@@ -221,9 +231,6 @@ function displayUpdateURLTitleErrors(
 }
 
 function resetUpdateURLTitleFailErrors(urlCard: JQuery): void {
-  const urlTitleUpdateFields = ["urlTitle"];
-  urlTitleUpdateFields.forEach((fieldName) => {
-    urlCard.find("." + fieldName + "Update").removeClass("invalid-field");
-    urlCard.find("." + fieldName + "Update-error").removeClass("visible");
-  });
+  urlCard.find(".urlTitleUpdate").removeClass("invalid-field");
+  urlCard.find(".urlTitleUpdate-error").removeClass("visible");
 }

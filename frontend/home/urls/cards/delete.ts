@@ -56,12 +56,6 @@ export function deleteURLShowModal(
   $("#modalRedirect").hideClass();
 }
 
-// Prepares post request inputs for removal of a URL
-function deleteURLSetup(utubID: number, utubUrlID: number): string {
-  const deleteURL = APP_CONFIG.routes.deleteURL(utubID, utubUrlID);
-  return deleteURL;
-}
-
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
 async function deleteURL(
   utubUrlID: number,
@@ -74,7 +68,7 @@ async function deleteURL(
     // Check for stale data
     await getUpdatedURL(utubID, utubUrlID, urlCard);
     // Extract data to submit in POST request
-    const deleteURL = deleteURLSetup(utubID, utubUrlID);
+    const deleteURL = APP_CONFIG.routes.deleteURL(utubID, utubUrlID);
 
     const request = ajaxCall("delete", deleteURL, []);
 

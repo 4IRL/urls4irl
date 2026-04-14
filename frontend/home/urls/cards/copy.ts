@@ -24,12 +24,11 @@ export async function copyURLString(
         });
       }, 200);
     }, 1500);
-  } catch (err) {
+  } catch {
     urlBtnCopyTooltip.setContent({
       ".tooltip-inner": `${APP_CONFIG.strings.COPIED_URL_FAILURE_TOOLIP}`,
     });
     urlBtnCopyTooltip.show();
-    console.log("Couldn't copy url", err);
 
     setTimeout(() => {
       urlBtnCopyTooltip.hide();

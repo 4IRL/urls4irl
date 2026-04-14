@@ -15,10 +15,10 @@ export const TagCountOperation = Object.freeze({
 type TagCountOperationValue =
   (typeof TagCountOperation)[keyof typeof TagCountOperation];
 
-interface UrlVisibility {
+type UrlVisibility = {
   urlId: number;
   visible: boolean;
-}
+};
 
 function applyURLVisibilityToDOM(visibility: UrlVisibility[]): void {
   visibility.forEach(({ urlId, visible }) => {

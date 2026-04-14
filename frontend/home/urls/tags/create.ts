@@ -48,6 +48,14 @@ type UrlTagModifiedResponse =
   operations["createUtubUrlTag"]["responses"][200]["content"]["application/json"];
 type UrlTagError = components["schemas"]["ErrorResponse_URLTagErrorCodes"];
 
+const CREATE_URL_TAG_FIELD_NAMES = ["tagString"] as const;
+
+type CreateUrlTagFieldName = (typeof CREATE_URL_TAG_FIELD_NAMES)[number];
+
+function isCreateUrlTagFieldName(key: string): key is CreateUrlTagFieldName {
+  return (CREATE_URL_TAG_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 export function createTagInputBlock(
   urlCard: JQuery,
   utubID: number,
@@ -224,9 +232,9 @@ export async function createURLTag(
     utubUrlID,
   );
 
-  let timeoutID: number = 0;
+  const timeoutID: ReturnType<typeof setTimeout> =
+    setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
-    timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     const request = ajaxCall("post", postURL, data);
@@ -347,7 +355,9 @@ function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors")) {
           createURLTagFailErrors(
-            responseJSON.errors as Partial<Record<"tagString", string[]>>,
+            responseJSON.errors as Partial<
+              Record<CreateUrlTagFieldName, string[]>
+            >,
             urlCard,
           );
         } else {
@@ -368,16 +378,14 @@ function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
 }
 
 function createURLTagFailErrors(
-  errors: Partial<Record<"tagString", string[]>>,
+  errors: Partial<Record<CreateUrlTagFieldName, string[]>>,
   urlCard: JQuery,
 ): void {
   for (const errorFieldName in errors) {
-    switch (errorFieldName) {
-      case "tagString": {
-        const errorMessage = errors[errorFieldName]![0];
-        displayCreateURLTagErrors("urlTag", errorMessage, urlCard);
-        return;
-      }
+    if (isCreateUrlTagFieldName(errorFieldName)) {
+      const errorMessage = errors[errorFieldName]![0];
+      displayCreateURLTagErrors("urlTag", errorMessage, urlCard);
+      return;
     }
   }
 }

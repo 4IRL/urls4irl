@@ -25,6 +25,16 @@ type UpdateUtubNameResponse =
 type UpdateUtubNameError =
   components["schemas"]["ErrorResponse_UTubErrorCodes"];
 
+const UPDATE_UTUB_NAME_FIELD_NAMES = ["utubName"] as const;
+
+type UpdateUtubNameFieldName = (typeof UPDATE_UTUB_NAME_FIELD_NAMES)[number];
+
+function isUpdateUtubNameFieldName(
+  key: string,
+): key is UpdateUtubNameFieldName {
+  return (UPDATE_UTUB_NAME_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 function checkSameNameUTubOnUpdate(name: string, utubID: number): void {
   if (getAllAccessibleUTubNames().includes(name)) {
     // UTub with same name exists. Confirm action with user
@@ -104,19 +114,11 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
     if ($(windowClickEvent.target).is($("#utubNameUpdate"))) return;
 
     // Ignore clicks on the submit button
-    if (
-      $(windowClickEvent.target).closest(
-        $("#utubNameSubmitBtnUpdate").length as unknown as string,
-      )
-    )
+    if ($(windowClickEvent.target).closest("#utubNameSubmitBtnUpdate").length)
       return;
 
     // Ignore clicks on the cancel button
-    if (
-      $(windowClickEvent.target).closest(
-        $("#utubNameCancelBtnUpdate").length as unknown as string,
-      )
-    )
+    if ($(windowClickEvent.target).closest("#utubNameCancelBtnUpdate").length)
       return;
 
     // Hide UTub name update fields
@@ -326,7 +328,9 @@ function updateUTubNameFail(xhr: JQuery.jqXHR): void {
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
           updateUTubNameFailErrors(
-            responseJSON.errors as Partial<Record<"utubName", string[]>>,
+            responseJSON.errors as Partial<
+              Record<UpdateUtubNameFieldName, string[]>
+            >,
           );
         break;
       }
@@ -339,15 +343,13 @@ function updateUTubNameFail(xhr: JQuery.jqXHR): void {
 
 // Cycle through the valid errors for updating a UTub name
 function updateUTubNameFailErrors(
-  errors: Partial<Record<"utubName", string[]>>,
+  errors: Partial<Record<UpdateUtubNameFieldName, string[]>>,
 ): void {
   for (const errorFieldName in errors) {
-    switch (errorFieldName) {
-      case "utubName": {
-        const errorMessage = errors[errorFieldName]![0];
-        displayUpdateUTubNameFailErrors(errorFieldName, errorMessage);
-        return;
-      }
+    if (isUpdateUtubNameFieldName(errorFieldName)) {
+      const errorMessage = errors[errorFieldName]![0];
+      displayUpdateUTubNameFailErrors(errorFieldName, errorMessage);
+      return;
     }
   }
 }
@@ -364,11 +366,8 @@ function displayUpdateUTubNameFailErrors(
 }
 
 function resetUpdateUTubNameFailErrors(): void {
-  const updateUTubNameFields = ["utubName"];
-  updateUTubNameFields.forEach((fieldName) => {
-    $("#" + fieldName + "Update-error").removeClass("visible");
-    $("#" + fieldName + "Update").removeClass("invalid-field");
-  });
+  $("#utubNameUpdate-error").removeClass("visible");
+  $("#utubNameUpdate").removeClass("invalid-field");
 }
 
 export function setUTubNameAndDescription(utubName: string): void {

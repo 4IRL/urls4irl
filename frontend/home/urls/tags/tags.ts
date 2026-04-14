@@ -9,28 +9,14 @@ import { deleteURLTag } from "./delete.js";
  * Hide tag deletion button when needed
  */
 export function disableTagRemovalInURLCard(urlCard: JQuery): void {
-  const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
-  for (
-    let delBtnIndex = 0;
-    delBtnIndex < allTagsDelBtns.length;
-    delBtnIndex++
-  ) {
-    $(allTagsDelBtns[delBtnIndex]).addClass("hidden");
-  }
+  urlCard.find(".urlTagBtnDelete").addClass("hidden");
 }
 
 /**
  * Show tag deletion when needed
  */
 export function enableTagRemovalInURLCard(urlCard: JQuery): void {
-  const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
-  for (
-    let delBtnIndex = 0;
-    delBtnIndex < allTagsDelBtns.length;
-    delBtnIndex++
-  ) {
-    $(allTagsDelBtns[delBtnIndex]).removeClass("hidden");
-  }
+  urlCard.find(".urlTagBtnDelete").removeClass("hidden");
 }
 
 export function isTagInURL(utubTagID: number, urlCard: JQuery): boolean {
@@ -54,13 +40,9 @@ export function createTagBadgesAndWrap(
     "urlTagsContainer flex-row flex-start",
   );
 
-  for (const tagArrayIndex in tagArray) {
+  for (const tagID of tagArray) {
     // Find applicable tags in dictionary to apply to URL card
-    const tag = dictTags.find(function (candidateTag) {
-      if (candidateTag.id === tagArray[tagArrayIndex]) {
-        return candidateTag;
-      }
-    });
+    const tag = dictTags.find((candidateTag) => candidateTag.id === tagID);
 
     if (!tag) continue;
 
