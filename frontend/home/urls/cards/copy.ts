@@ -1,7 +1,10 @@
 import { bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 
-export async function copyURLString(url, urlBtnCopy) {
+export async function copyURLString(
+  url: string,
+  urlBtnCopy: Element,
+): Promise<void> {
   const urlBtnCopyTooltip = bootstrap.Tooltip.getOrCreateInstance(urlBtnCopy);
   try {
     await navigator.clipboard.writeText(url);

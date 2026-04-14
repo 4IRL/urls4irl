@@ -1,4 +1,4 @@
-export function isValidURL(inputURL) {
+export function isValidURL(inputURL: string): boolean {
   if (!inputURL || typeof inputURL !== "string") {
     return false;
   }
@@ -28,7 +28,7 @@ export function isValidURL(inputURL) {
   return true;
 }
 
-export function generateURLObj(inputURL) {
+export function generateURLObj(inputURL: string): URL | null {
   try {
     return new URL(inputURL);
   } catch {
