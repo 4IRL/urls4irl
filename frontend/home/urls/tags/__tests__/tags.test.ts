@@ -16,10 +16,6 @@ describe("createTagBadgesAndWrap - missing tag ID guard", () => {
     document.body.innerHTML = `<div class="urlRow"></div>`;
   });
 
-  // Regression guard for the `if (!tag) continue` defensive branch added
-  // during the TypeScript migration. If the guard is removed, passing a
-  // tag ID that is absent from `dictTags` would throw when trying to read
-  // properties off `undefined`.
   it("skips tag IDs that are not present in dictTags and throws no error", () => {
     const urlCard = $(".urlRow");
     const dictTags = [{ id: 1, tagString: "exists" }];

@@ -167,9 +167,6 @@ describe("updateURLSuccess - tag ID mapping regression guard", () => {
     });
   });
 
-  // Regression guard for the `.tagID` -> `.utubTagID` fix in updateURLSuccess.
-  // If the mapping reverts, utubUrlTagIDs would become `[undefined, undefined]`
-  // instead of the expected `[10, 20]`.
   it("maps response.URL.urlTags via utubTagID (not legacy tagID) into setState", async () => {
     urlStringInput.val("https://new-example.com");
 
