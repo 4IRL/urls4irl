@@ -1,5 +1,6 @@
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
+import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {
   selectURLCard,
   setURLCardSelectionEventListener,
@@ -22,30 +23,39 @@ import {
 } from "./create.js";
 
 export function updateURLAfterFindingStaleData(
-  urlCard,
-  newUrl,
-  updatedUTubTags,
-  utubID,
-) {
+  urlCard: JQuery,
+  newUrl: UtubUrlItem,
+  updatedUTubTags: UtubTag[],
+  utubID: number,
+): void {
   const urlTitle = urlCard.find(".urlTitle");
   const urlString = urlCard.find(".urlString");
 
-  urlTitle.text() !== newUrl.urlTitle ? urlTitle.text(newUrl.urlTitle) : null;
+  if (urlTitle.text() !== newUrl.urlTitle) {
+    urlTitle.text(newUrl.urlTitle);
+  }
 
-  urlString.attr("href") !== newUrl.urlString
-    ? urlString.text(newUrl.urlString).attr({ href: newUrl.urlString })
-    : null;
+  if (urlString.attr("href") !== newUrl.urlString) {
+    urlString.text(newUrl.urlString).attr({ href: newUrl.urlString });
+  }
 
   const currentURLTags = urlCard.find(".tagBadge");
   const currentURLTagIDs = $.map(currentURLTags, (tag) =>
-    parseInt($(tag).attr("data-utub-tag-id")),
+    parseInt($(tag).attr("data-utub-tag-id")!),
   );
 
   // Find tag IDs that are in old and not in new and remove them
-  for (let i = 0; i < currentURLTagIDs.length; i++) {
-    if (!newUrl.utubUrlTagIDs.includes(currentURLTagIDs[i])) {
+  for (
+    let currentTagIndex = 0;
+    currentTagIndex < currentURLTagIDs.length;
+    currentTagIndex++
+  ) {
+    if (!newUrl.utubUrlTagIDs.includes(currentURLTagIDs[currentTagIndex])) {
       currentURLTags.each(function (_, tag) {
-        if (parseInt($(tag).attr("data-utub-tag-id")) === currentURLTagIDs[i]) {
+        if (
+          parseInt($(tag).attr("data-utub-tag-id")!) ===
+          currentURLTagIDs[currentTagIndex]
+        ) {
           $(tag).remove();
           return false;
         }
@@ -55,21 +65,31 @@ export function updateURLAfterFindingStaleData(
 
   // Find tag IDs that are in new and not old and add them
   const urlTagContainer = urlCard.find(".urlTagsContainer");
-  let tagToAdd;
-  for (let i = 0; i < newUrl.utubUrlTagIDs.length; i++) {
-    if (!currentURLTagIDs.includes(newUrl.utubUrlTagIDs[i])) {
+  let tagToAdd: UtubTag | undefined;
+  for (
+    let newTagIndex = 0;
+    newTagIndex < newUrl.utubUrlTagIDs.length;
+    newTagIndex++
+  ) {
+    if (!currentURLTagIDs.includes(newUrl.utubUrlTagIDs[newTagIndex])) {
       tagToAdd = updatedUTubTags.find(
-        (tag) => tag.id === newUrl.utubUrlTagIDs[i],
+        (tag) => tag.id === newUrl.utubUrlTagIDs[newTagIndex],
       );
-      urlTagContainer.append(
-        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard, utubID),
-      );
+      if (tagToAdd) {
+        urlTagContainer.append(
+          createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard, utubID),
+        );
+      }
     }
   }
 }
 
 // Create a URL block to add to current UTub/URLDeck
-export function createURLBlock(url, tagArray, utubID) {
+export function createURLBlock(
+  url: UtubUrlItem,
+  dictTags: UtubTag[],
+  utubID: number,
+): JQuery<HTMLElement> {
   const urlCard = $(document.createElement("div"))
     .addClass("urlRow flex-column full-width pad-in-15p pointerable")
     .enableTab(); // Holds everything in the URL
@@ -79,11 +99,13 @@ export function createURLBlock(url, tagArray, utubID) {
   );
 
   // Append update URL title form if user can edit the URL
-  url.canDelete
-    ? urlTitleGoToURLWrap.append(
-        createURLTitleAndUpdateBlock(url.urlTitle, urlCard, utubID),
-      )
-    : urlTitleGoToURLWrap.append(createURLTitle(url.urlTitle));
+  if (url.canDelete) {
+    urlTitleGoToURLWrap.append(
+      createURLTitleAndUpdateBlock(url.urlTitle, urlCard, utubID),
+    );
+  } else {
+    urlTitleGoToURLWrap.append(createURLTitle(url.urlTitle));
+  }
 
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
@@ -95,14 +117,16 @@ export function createURLBlock(url, tagArray, utubID) {
   });
 
   // Append update URL form if user can edit the URL
-  url.canDelete
-    ? urlCard.append(
-        createURLStringAndUpdateBlock(url.urlString, urlCard, utubID),
-      )
-    : urlCard.append(createURLString(url.urlString));
+  if (url.canDelete) {
+    urlCard.append(
+      createURLStringAndUpdateBlock(url.urlString, urlCard, utubID),
+    );
+  } else {
+    urlCard.append(createURLString(url.urlString));
+  }
 
   urlCard.append(
-    createTagsAndOptionsForUrlBlock(url, tagArray, urlCard, utubID),
+    createTagsAndOptionsForUrlBlock(url, dictTags, urlCard, utubID),
   );
 
   setURLCardSelectionEventListener(urlCard);
@@ -112,31 +136,42 @@ export function createURLBlock(url, tagArray, utubID) {
 }
 
 // Add focus and blur on URL card when tabbing through URLs
-export function setFocusEventListenersOnURLCard(urlCard) {
+export function setFocusEventListenersOnURLCard(urlCard: JQuery): void {
   const utubUrlID = urlCard.attr("utuburlid");
   urlCard.offAndOn("focus.focusURLCard" + utubUrlID, function () {
     urlCard.find(".goToUrlIcon").addClass("visible-on-focus");
-    $(document).on("keyup.focusURLCard" + utubUrlID, function (e) {
-      if (e.key === KEYS.ENTER) {
-        selectURLCard(urlCard);
-        urlCard.trigger("focusout");
-      }
-    });
+    $(document).on(
+      "keyup.focusURLCard" + utubUrlID,
+      function (event: JQuery.TriggeredEvent) {
+        if (event.key === KEYS.ENTER) {
+          selectURLCard(urlCard);
+          urlCard.trigger("focusout");
+        }
+      },
+    );
   });
 
-  urlCard.offAndOn("focusout.focusURLCard" + utubUrlID, function (e) {
-    const target = $(e.target);
-    if (target.closest(".urlRow").is(urlCard)) {
-      if (target.hasClass("goToUrlIcon")) {
-        urlCard.find(".goToUrlIcon").removeClass("visible-on-focus");
+  urlCard.offAndOn(
+    "focusout.focusURLCard" + utubUrlID,
+    function (event: JQuery.TriggeredEvent) {
+      const target = $(event.target);
+      if (target.closest(".urlRow").is(urlCard)) {
+        if (target.hasClass("goToUrlIcon")) {
+          urlCard.find(".goToUrlIcon").removeClass("visible-on-focus");
+        }
+        $(document).off("keyup.focusURLCard" + utubUrlID);
       }
-      $(document).off("keyup.focusURLCard" + utubUrlID);
-    }
-  });
+    },
+  );
 }
 
 // Create both the tag container and the button container for a URL
-function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard, utubID) {
+function createTagsAndOptionsForUrlBlock(
+  url: UtubUrlItem,
+  dictTags: UtubTag[],
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   const tagsAndButtonsWrap = $(document.createElement("div")).addClass(
     "tagsAndButtonsWrap full-width",
   );
@@ -144,7 +179,7 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard, utubID) {
     "urlTags flex-column",
   );
   const tagBadgesWrap = createTagBadgesAndWrap(
-    tagArray,
+    dictTags,
     url.utubUrlTagIDs,
     urlCard,
     utubID,
@@ -161,39 +196,42 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard, utubID) {
 }
 
 // New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
-export function newURLInputAddEventListeners(urlInputForm, utubID) {
+export function newURLInputAddEventListeners(
+  urlInputForm: JQuery,
+  utubID: number,
+): void {
   const urlBtnCreate = urlInputForm.find("#urlSubmitBtnCreate");
   const urlBtnDelete = urlInputForm.find("#urlCancelBtnCreate");
   const createURLTitleInput = urlInputForm.find("#urlTitleCreate");
   const createURLInput = urlInputForm.find("#urlStringCreate");
 
-  $(urlBtnCreate).onExact("click.createURL", function (e) {
+  $(urlBtnCreate).onExact("click.createURL", function () {
     createURL(createURLTitleInput, createURLInput, utubID);
   });
 
-  $(urlBtnDelete).onExact("click.createURL", function (e) {
+  $(urlBtnDelete).onExact("click.createURL", function () {
     createURLHideInput();
   });
 
   const inputArr = [createURLInput, createURLTitleInput];
 
-  for (let i = 0; i < inputArr.length; i++) {
-    $(inputArr[i]).on("focus.createURL", function () {
+  for (let inputIndex = 0; inputIndex < inputArr.length; inputIndex++) {
+    $(inputArr[inputIndex]).on("focus.createURL", function () {
       bindCreateURLFocusEventListeners(
-        $(inputArr[i]),
+        $(inputArr[inputIndex]),
         createURLInput,
         createURLTitleInput,
         utubID,
       );
     });
 
-    $(inputArr[i]).on("blur.createURL", function () {
-      unbindCreateURLFocusEventListeners($(inputArr[i]));
+    $(inputArr[inputIndex]).on("blur.createURL", function () {
+      unbindCreateURLFocusEventListeners($(inputArr[inputIndex]));
     });
   }
 }
 
-export function newURLInputRemoveEventListeners() {
+export function newURLInputRemoveEventListeners(): void {
   resetCreateURLFailErrors();
   $("#urlSubmitBtnCreate").off();
   $("#urlCancelBtnCreate").off();
