@@ -4,10 +4,10 @@ import { APP_CONFIG } from "../../../lib/config.js";
 const ACCESS_URL_MODAL_STRING_ID = "AccessURLModalURLString";
 
 // Opens new tab
-export function accessLink(urlString) {
+export function accessLink(urlString: string): void {
   // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
   if (urlString.startsWith("http")) {
-    window.open(urlString, "_blank").focus();
+    window.open(urlString, "_blank")?.focus();
     return;
   }
 
@@ -16,13 +16,13 @@ export function accessLink(urlString) {
 }
 
 // Hide confirmation modal for removal of the selected URL
-function accessURLHideModal() {
+function accessURLHideModal(): void {
   $("#confirmModal").modal("hide").removeClass("accessExternalURLModal");
   $("#confirmModalBody").removeClass("white-space-pre-line");
   $("#" + ACCESS_URL_MODAL_STRING_ID).remove();
 }
 
-function urlStringInAccessModal(urlString) {
+function urlStringInAccessModal(urlString: string): JQuery<HTMLElement> {
   const urlSpan = $(document.createElement("strong"));
   urlSpan.attr("id", ACCESS_URL_MODAL_STRING_ID).text(urlString);
 
@@ -30,7 +30,7 @@ function urlStringInAccessModal(urlString) {
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
-function accessURLWarningShowModal(urlString) {
+function accessURLWarningShowModal(urlString: string): void {
   const modalTitle = "🚦 Caution! 🚦";
   const modalText = `${APP_CONFIG.strings.ACCESS_URL_WARNING}\n\n`;
   const buttonTextDismiss = "Nevermind";
@@ -43,16 +43,16 @@ function accessURLWarningShowModal(urlString) {
     .append(urlStringInAccessModal(urlString));
 
   $("#modalDismiss")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       accessURLHideModal();
     })
     .text(buttonTextDismiss);
 
   $("#modalSubmit")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
-      window.open(urlString, "_blank").focus();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
+      window.open(urlString, "_blank")?.focus();
     })
     .text(buttonTextSubmit);
 

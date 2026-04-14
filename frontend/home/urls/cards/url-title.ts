@@ -14,14 +14,18 @@ import {
 } from "../../btns-forms.js";
 
 // Element to display the URL title
-export function createURLTitle(urlTitleText) {
+export function createURLTitle(urlTitleText: string): JQuery<HTMLElement> {
   return $(document.createElement("h6"))
     .addClass("urlTitle long-text-ellipsis")
     .text(urlTitleText);
 }
 
 // Creates a container that allows editing of the URL title for member with valid permissions
-export function createURLTitleAndUpdateBlock(urlTitleText, urlCard, utubID) {
+export function createURLTitleAndUpdateBlock(
+  urlTitleText: string,
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   // Overall container for title and updating title
   const urlTitleAndUpdateWrap = $(document.createElement("div")).addClass(
     "flex-row ninetyfive-width",
@@ -51,17 +55,26 @@ export function createURLTitleAndUpdateBlock(urlTitleText, urlCard, utubID) {
 }
 
 // Create the icon that will show the update URL title form
-function createShowUpdateURLTitleIcon(urlCard) {
+function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
   return makeUpdateButton(20)
     .addClass("urlTitleBtnUpdate")
-    .onExact("click.showUpdateURLTitle", function (e) {
-      const urlTitleAndIcon = $(e.target).closest(".urlTitleAndUpdateIconWrap");
-      showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
-    });
+    .onExact(
+      "click.showUpdateURLTitle",
+      function (event: JQuery.TriggeredEvent) {
+        const urlTitleAndIcon = $(event.target).closest(
+          ".urlTitleAndUpdateIconWrap",
+        );
+        showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+      },
+    );
 }
 
 // Create the form to update the URL Title
-function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
+function createUpdateURLTitleInput(
+  urlTitleText: string,
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   // Create the update title text box
   const urlTitleUpdateInputContainer = makeTextInput(
     "urlTitle",
@@ -79,19 +92,22 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
     .val(urlTitleText);
 
   urlTitleTextInput.offAndOn("focus.updateURLTitleInputFocus", function () {
-    urlTitleTextInput.on("keydown.updateURLTitleSubmitEscape", function (e) {
-      if (e.originalEvent.repeat) return;
-      switch (e.key) {
-        case KEYS.ENTER:
-          updateURLTitle(urlTitleTextInput, urlCard, utubID);
-          break;
-        case KEYS.ESCAPE:
-          hideAndResetUpdateURLTitleForm(urlCard);
-          break;
-        default:
-        /* no-op */
-      }
-    });
+    urlTitleTextInput.on(
+      "keydown.updateURLTitleSubmitEscape",
+      function (event: JQuery.TriggeredEvent) {
+        if ((event.originalEvent as KeyboardEvent).repeat) return;
+        switch (event.key) {
+          case KEYS.ENTER:
+            updateURLTitle(urlTitleTextInput, urlCard, utubID);
+            break;
+          case KEYS.ESCAPE:
+            hideAndResetUpdateURLTitleForm(urlCard);
+            break;
+          default:
+          /* no-op */
+        }
+      },
+    );
   });
 
   urlTitleTextInput.offAndOn("blur.updateURLTitleInputFocus", function () {
@@ -103,7 +119,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
     "urlTitleSubmitBtnUpdate",
   );
 
-  urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function (e) {
+  urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
     updateURLTitle(urlTitleTextInput, urlCard, utubID);
   });
 
@@ -112,7 +128,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
     "urlTitleCancelBtnUpdate tabbable",
   );
 
-  urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function (e) {
+  urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function () {
     hideAndResetUpdateURLTitleForm(urlCard);
   });
 

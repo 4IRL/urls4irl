@@ -1,4 +1,4 @@
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, METHOD_TYPES, INPUT_TYPES } from "../../../lib/constants.js";
 import { accessLink } from "./access.js";
@@ -10,7 +10,7 @@ import {
 } from "../../btns-forms.js";
 
 // Element to displayu the URL string
-export function createURLString(urlStringText) {
+export function createURLString(urlStringText: string): JQuery<HTMLElement> {
   const displayURL = modifyURLStringForDisplay(urlStringText);
   return $(document.createElement("a"))
     .addClass("urlString long-text-ellipsis tabbable")
@@ -19,17 +19,24 @@ export function createURLString(urlStringText) {
       target: "_blank",
     })
     .text(displayURL)
-    .offAndOn("click.defaultlinkbehavior", function (e) {
-      // Only allow a URL to be clickable when the Card is selected
-      e.preventDefault();
-      if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") {
-        accessLink(urlStringText);
-      }
-    });
+    .offAndOn(
+      "click.defaultlinkbehavior",
+      function (event: JQuery.TriggeredEvent) {
+        // Only allow a URL to be clickable when the Card is selected
+        event.preventDefault();
+        if ($(event.target).closest(".urlRow").attr("urlSelected") === "true") {
+          accessLink(urlStringText);
+        }
+      },
+    );
 }
 
 // Create the container for both displaying URL string, and updating the URL string
-export function createURLStringAndUpdateBlock(urlStringText, urlCard, utubID) {
+export function createURLStringAndUpdateBlock(
+  urlStringText: string,
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   // Overall container for string and updating string
   const urlStringAndUpdateWrap = $(document.createElement("div")).addClass(
     "flex-row ninetyfive-width",
@@ -43,7 +50,11 @@ export function createURLStringAndUpdateBlock(urlStringText, urlCard, utubID) {
 }
 
 // Create form to update the URL
-function createUpdateURLStringInput(urlStringText, urlCard, utubID) {
+function createUpdateURLStringInput(
+  urlStringText: string,
+  urlCard: JQuery,
+  utubID: number,
+): JQuery<HTMLElement> {
   const urlStringUpdateTextInputContainer = makeTextInput(
     "urlString",
     METHOD_TYPES.UPDATE.description,
@@ -79,7 +90,7 @@ function createUpdateURLStringInput(urlStringText, urlCard, utubID) {
     "urlStringCancelBtnUpdate",
   );
 
-  urlStringCancelBtnUpdate.onExact("click.updateUrlString", function (e) {
+  urlStringCancelBtnUpdate.onExact("click.updateUrlString", function () {
     hideAndResetUpdateURLStringForm(urlCard);
   });
 
@@ -91,25 +102,28 @@ function createUpdateURLStringInput(urlStringText, urlCard, utubID) {
 }
 
 function setFocusEventListenersOnUpdateURLStringInput(
-  urlStringInput,
-  urlCard,
-  utubID,
-) {
+  urlStringInput: JQuery,
+  urlCard: JQuery,
+  utubID: number,
+): void {
   urlStringInput.offAndOn("focus.updateURLStringFocus", function () {
-    $(document).offAndOn("keyup.updateURLStringFocus", function (e) {
-      switch (e.key) {
-        case KEYS.ENTER:
-          // Handle enter key pressed
-          updateURL(urlStringInput, urlCard, utubID);
-          break;
-        case KEYS.ESCAPE:
-          // Handle escape key pressed
-          hideAndResetUpdateURLStringForm(urlCard);
-          break;
-        default:
-        /* no-op */
-      }
-    });
+    $(document).offAndOn(
+      "keyup.updateURLStringFocus",
+      function (event: JQuery.TriggeredEvent) {
+        switch (event.key) {
+          case KEYS.ENTER:
+            // Handle enter key pressed
+            updateURL(urlStringInput, urlCard, utubID);
+            break;
+          case KEYS.ESCAPE:
+            // Handle escape key pressed
+            hideAndResetUpdateURLStringForm(urlCard);
+            break;
+          default:
+          /* no-op */
+        }
+      },
+    );
   });
 
   urlStringInput.offAndOn("blur.updateURLStringFocus", function () {
@@ -117,7 +131,7 @@ function setFocusEventListenersOnUpdateURLStringInput(
   });
 }
 
-export function modifyURLStringForDisplay(urlString) {
+export function modifyURLStringForDisplay(urlString: string): string {
   // Remove https://, http://, and www. (in any combination) from the start
   return urlString.replace(/^(?:https?:\/\/)?(?:www\.)?/, "");
 }

@@ -2,7 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { accessLink } from "./access.js";
 
 // Icon to visit URL, situated in top right corner of URL card
-export function createGoToURLIcon(urlString) {
+export function createGoToURLIcon(urlString: string): JQuery<HTMLElement> {
   const WIDTH_HEIGHT_PX = "20px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const goToUrlOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -29,7 +29,7 @@ export function createGoToURLIcon(urlString) {
     .append(goToUrlOuterIconSvg)
     .addClass("self-start goToUrlIcon")
     .enableTab()
-    .onExact("click", (e) => {
+    .onExact("click", () => {
       accessLink(urlString);
     });
 
