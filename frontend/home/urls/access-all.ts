@@ -3,12 +3,12 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { getNumOfURLs, getNumOfVisibleURLs } from "./utils.js";
 import { accessLink } from "./cards/access.js";
 
-function hideAccessAllWarningShowModal() {
+function hideAccessAllWarningShowModal(): void {
   $("#confirmModal").removeClass("accessAllUrlModal");
 }
 
 // Show confirmation modal for opening all URLs in UTub
-function accessAllWarningShowModal() {
+function accessAllWarningShowModal(): void {
   const modalTitle =
     "Are you sure you want to open all " +
     getNumOfURLs() +
@@ -20,8 +20,8 @@ function accessAllWarningShowModal() {
   $("#confirmModalBody").text(modalText);
 
   $("#modalDismiss")
-    .on("click", function (e) {
-      e.preventDefault();
+    .on("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       $("#confirmModal").modal("hide");
     })
     .removeClass()
@@ -31,8 +31,8 @@ function accessAllWarningShowModal() {
   $("#modalSubmit")
     .removeClass()
     .addClass("btn btn-success")
-    .on("click", function (e) {
-      e.preventDefault();
+    .on("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       accessAllURLsInUTub();
       $("#confirmModal").modal("hide");
     })
@@ -48,21 +48,21 @@ function accessAllWarningShowModal() {
 }
 
 // Opens all visible URLs in UTub in separate tabs
-function accessAllURLsInUTub() {
+function accessAllURLsInUTub(): void {
   const visibleSelector = ".urlRow[filterable=true] .urlString";
   const visibleURLs = $(visibleSelector);
   if (visibleURLs.length === 0) return;
 
   const visibleURLsToAccess = $.map(visibleURLs, (url) => $(url).attr("href"));
 
-  for (let i = 0; i < visibleURLsToAccess.length; i++) {
-    accessLink(visibleURLsToAccess[i]);
+  for (let urlIndex = 0; urlIndex < visibleURLsToAccess.length; urlIndex++) {
+    accessLink(visibleURLsToAccess[urlIndex]);
   }
 }
 
-export function initAccessAllURLsBtn() {
+export function initAccessAllURLsBtn(): void {
   // Open all URLs in UTub in separate tabs
-  $("#accessAllURLsBtn").on("click", function (_) {
+  $("#accessAllURLsBtn").on("click", function () {
     const ACCESS_ALL_URLS_LIMIT_WARNING =
       APP_CONFIG.constants.MAX_NUM_OF_URLS_TO_ACCESS;
     if (getNumOfVisibleURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
