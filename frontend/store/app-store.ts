@@ -1,3 +1,4 @@
+import type { MemberItem } from "../types/member.js";
 import type { UtubUrlItem } from "../types/url.js";
 import type { UtubSummaryItem } from "../types/utub.js";
 
@@ -13,7 +14,7 @@ export interface AppState {
   selectedTagIDs: number[];
   urls: UtubUrlItem[]; // narrowed in Phase 7
   tags: unknown[]; // narrow in Phase 9
-  members: unknown[]; // narrow in Phase 8
+  members: MemberItem[]; // narrowed in Phase 8
 }
 
 function createInitialState(): AppState {

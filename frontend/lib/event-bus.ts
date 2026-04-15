@@ -1,3 +1,4 @@
+import type { MemberItem } from "../types/member.js";
 import type { UtubUrlItem, UtubTag } from "../types/url.js";
 
 export interface UtubSelectedPayload {
@@ -5,7 +6,7 @@ export interface UtubSelectedPayload {
   utubName: string;
   urls: UtubUrlItem[];
   tags: UtubTag[];
-  members: unknown[];
+  members: MemberItem[];
   utubOwnerID: number;
   isCurrentUserOwner: boolean;
   currentUserID: number;
@@ -15,7 +16,7 @@ export interface StaleDataDetectedPayload {
   utubID: number;
   urls: UtubUrlItem[];
   tags: UtubTag[];
-  members: unknown[];
+  members: MemberItem[];
 }
 
 export interface AppEventMap {
