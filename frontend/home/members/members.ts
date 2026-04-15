@@ -4,7 +4,10 @@ import { hideInputs } from "../btns-forms.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
 
 // Creates member list item
-export function createOwnerBadge(utubOwnerUserID, utubMemberUsername) {
+export function createOwnerBadge(
+  utubOwnerUserID: number,
+  utubMemberUsername: string,
+): HTMLSpanElement {
   const memberSpan = document.createElement("span");
 
   $(memberSpan)
@@ -16,11 +19,11 @@ export function createOwnerBadge(utubOwnerUserID, utubMemberUsername) {
 }
 
 export function createMemberBadge(
-  utubMemberUserID,
-  utubMemberUsername,
-  isCurrentUserOwner,
-  utubID,
-) {
+  utubMemberUserID: number,
+  utubMemberUsername: string,
+  isCurrentUserOwner: boolean,
+  utubID: number,
+): JQuery<HTMLSpanElement> {
   const memberSpan = $(document.createElement("span"));
 
   $(memberSpan)
@@ -30,13 +33,13 @@ export function createMemberBadge(
 
   if (isCurrentUserOwner) {
     const removeIcon = createMemberRemoveBtn();
-    removeIcon.offAndOnExact("click.removeMember", function (e) {
+    removeIcon.offAndOnExact("click.removeMember", function () {
       removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
     });
     $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
-    $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function (e) {
+    $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function () {
       hideInputs();
       deselectAllURLs();
       removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
