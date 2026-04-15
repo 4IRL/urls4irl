@@ -98,7 +98,7 @@ Store `<tmp-dir>` for use in all subagent prompts below.
 
 Read `.claude/skills/git-push/references/subagent-prompts.md` for the full prompt definitions and expected response format.
 
-Launch **all 7 subagents in parallel** using the Agent tool. Each subagent:
+Launch **all 7 subagents in parallel** using the Agent tool with **no `subagent_type`** (defaults to general-purpose — NEVER use `subagent_type: "Explore"`, which cannot use the Write tool). Each subagent:
 - Receives the full diff output from Step 1
 - Receives its specific review focus area from the reference file
 - Receives `<tmp-dir>` and its assigned output filename (see table below)

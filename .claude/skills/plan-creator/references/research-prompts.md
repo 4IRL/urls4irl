@@ -1,10 +1,12 @@
 # Research Subagent Prompts
 
-Each subagent receives the user's feature/task description and a list of affected modules, files, or endpoints identified by the main agent. All subagents return structured JSON and must independently read source files — the main agent does NOT pre-read files for them.
+Each subagent is a **research-only** general-purpose agent that explores the codebase using Glob, Grep, and Read. It receives the user's feature/task description and a list of affected modules, files, or endpoints identified by the main agent. All subagents return structured JSON and must independently discover and read source files — the main agent does NOT pre-read files for them.
+
+**Research workflow:** Use Glob to find files by pattern (e.g., `**/*members*.py`, `src/home/**/*.ts`), Grep to search for symbols/usages/imports, and Read to examine file contents. Search broadly first, then read specific files. Do NOT guess file paths — always discover them via Glob or Grep first. Do NOT use the Bash tool for file discovery (no `find`, `grep`, `cat`, etc.) — use the dedicated Glob, Grep, and Read tools.
 
 ## Response Format (all subagents)
 
-> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/tmp/research-<focus>.md`) **using the `Write` tool** — NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. JSON content containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
+> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/tmp/research-<focus>.md`) **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
 
 ```json
 {

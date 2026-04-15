@@ -4,7 +4,7 @@ Each subagent receives the diff output and a focused review prompt. All subagent
 
 ## Response Format (all subagents)
 
-**File delivery:** Write your complete JSON response to the file path provided in your prompt (`<tmp-dir>/<role>.md`), then return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The JSON structure below is unchanged.
+**File delivery:** Write your complete JSON response to the file path provided in your prompt (`<tmp-dir>/<role>.md`) **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The JSON structure below is unchanged.
 
 ```json
 {

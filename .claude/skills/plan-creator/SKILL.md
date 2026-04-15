@@ -72,7 +72,7 @@ Read `references/research-prompts.md` for the full prompt definitions and expect
 
 Before launching subagents, create the `plans/<topic>/tmp/` directory.
 
-Launch subagents **in parallel** using the Agent tool. Each subagent:
+Launch subagents **in parallel** using the Agent tool with **no `subagent_type`** (defaults to general-purpose). NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool. Each subagent:
 - Receives the user's task description, the research targets from 2a, and the path it must write its output to
 - Reads source files independently (the main agent does NOT pre-read files)
 - Writes its full findings JSON to `plans/<topic>/tmp/research-<focus>.md` (where `<focus>` describes the research area, e.g., `research-architecture.md`, `research-dependencies.md`, `research-request-chain.md`, `research-tests.md`, `research-schemas.md`)
@@ -80,9 +80,13 @@ Launch subagents **in parallel** using the Agent tool. Each subagent:
 
 Include this preamble in every subagent prompt:
 
-> You are researching the codebase to inform a detailed implementation plan. The task is: `<user's task description>`. Affected modules/files: `<list from 2a>`.
+> You are a **research-only** subagent exploring the codebase to inform a detailed implementation plan. Your job is to discover, read, and catalog code — not to edit or create application code.
 >
-> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/tmp/research-<focus>.md` **using the `Write` tool** (NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash redirect — JSON content with `{` and quotes trips the brace+quote security prompt). Then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
+> **How to explore:** Use Glob to find files by pattern, Grep to search for symbols/usages/imports, and Read to examine file contents. Search broadly first (Glob/Grep), then read the specific files you find. Do NOT guess file paths — discover them.
+>
+> **Task:** `<user's task description>`. Affected modules/files: `<list from 2a>`.
+>
+> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/tmp/research-<focus>.md` **using the `Write` tool** (NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect — any heredoc or inline script containing `{` and quotes trips the brace+quote security prompt). Then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
 
 | # | Subagent | Focus | Launch condition |
 |---|---|---|---|
@@ -247,7 +251,7 @@ When a plan touches form submission, authentication, or CSRF:
 
 Any plan step that adds a new Python package **must**:
 
-1. Pin it to the **latest stable version** (check PyPI: `curl -s https://pypi.org/pypi/<package>/json | python3 -c "import sys,json,re; d=json.load(sys.stdin); vs=[v for v in d['releases'] if re.match(r'^\d+\.\d+\.\d+$',v)]; print(sorted(vs,key=lambda v:tuple(int(x) for x in v.split('.')))[-1])"`)
+1. Pin it to the **latest stable version** (check PyPI: write a temp script to `$TMPDIR/check_version.py` using the `Write` tool, then run `curl -s https://pypi.org/pypi/<package>/json | python3 $TMPDIR/check_version.py` — NEVER use inline `python3 -c` with braces)
 2. If stable is incompatible with the existing stack, use the latest working version instead — document why in the to-do item.
 3. Pin **all transitive dependencies** introduced by the new package to exact versions as well. Run `pip install <package>==<version>` in the container, then `pip show <package>` and inspect the `Requires:` field. Add each unlisted dependency at its installed version.
 

@@ -29,7 +29,7 @@ This is the master plan's home (e.g. `openapi-typescript`). Sub-plan folders wil
 
 ## Step 3: Deep Research — Master Scope
 
-Follow the subagent harness pattern in `.claude/skills/plan-creator/SKILL.md` § Step 2, with two differences:
+Follow the subagent harness pattern in `.claude/skills/plan-creator/SKILL.md` § Step 2 (including: NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool; omit `subagent_type` to get general-purpose), with two differences:
 
 1. Use master-level research prompts from `references/research-prompts-master.md` — NOT plan-creator's `references/research-prompts.md`. Master prompts focus on breadth (scope enumeration, phase boundaries, ordering, branch-naming conventions) rather than depth (signatures, data shapes).
 2. Before launching, create `plans/<parent-topic>/tmp/` (same as plan-creator).

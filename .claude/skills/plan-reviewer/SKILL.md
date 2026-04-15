@@ -70,7 +70,7 @@ Launch **all 6 subagents in parallel** using the Agent tool with **minimal promp
 > 1. Read `.claude/skills/plan-reviewer/references/common-response-format.md` for the response format and rules, then read `.claude/skills/plan-reviewer/references/<sa-file>` for your specific review checklist. Follow those instructions exactly.
 > 2. <If master plan detected:> Read the master plan at `<master-plan-path>` FIRST to understand cross-phase context — which phases precede/follow this one, and what shared invariants (types, contracts, data shapes) are staged across phases. Every finding about a "type that's too wide" or "shared module change" must be evaluated against the master's staging plan before being classified as a regression vs. intentional.
 > 3. Read the plan in full, then read the source files relevant to your review area.
-> 4. Write your complete JSON response to `plans/<topic>/tmp/<role>.md` **using the `Write` tool** — NEVER `cat <<EOF`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect (JSON with `{` + quotes trips the brace+quote security prompt).
+> 4. Write your complete JSON response to `plans/<topic>/tmp/<role>.md` **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect (any heredoc or inline script with `{` + quotes trips the brace+quote security prompt).
 > 5. Return only: `Written to <path>`.
 >
 > **Do not defer any dimension to a follow-up pass.** Every checklist item must be evaluated.
@@ -80,6 +80,7 @@ Launch **all 6 subagents in parallel** using the Agent tool with **minimal promp
 - Each subagent reads source files independently — the main agent does NOT pre-read files
 - All 6 launches must be in a **single message** for true parallelism
 - Use `model: sonnet` for all review subagents
+- NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool. Omit `subagent_type` (defaults to general-purpose)
 
 Subagents (all launched in a single message):
 
@@ -105,7 +106,7 @@ Prompt template:
 > 3. For each item, re-read the current plan (`plans/<topic>/<plan-name>.md`) and confirm the fix is present and correctly addresses the root cause described in the original finding.
 > 4. Write a JSON response to `plans/<topic>/tmp/prior-fix-regressions.md` listing ANY regressions as critical findings. Each regression has: `{ id, prior_pass, fix_type (mechanical|dd), title, expected, actual, severity: "critical" }`. Empty array if none.
 >
-> Use the Write tool — NEVER cat <<EOF, cat >, tee, printf >, echo >, or any Bash heredoc/redirect.
+> Use the Write tool — NEVER cat <<EOF, python3 << 'EOF', cat >, tee, printf >, echo >, or any Bash heredoc/redirect.
 > Return only: `Written to <path>`
 
 ### Step 3: Collect and Validate Results

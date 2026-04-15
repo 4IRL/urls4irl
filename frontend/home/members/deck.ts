@@ -1,3 +1,5 @@
+import type { MemberItem } from "../../types/member.js";
+
 import { $ } from "../../lib/globals.js";
 import { diffIDLists } from "../../logic/deck-diffing.js";
 import { getState } from "../../store/app-store.js";
@@ -7,14 +9,18 @@ import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
 
 // Clear the Member Deck
-export function resetMemberDeck() {
+export function resetMemberDeck(): void {
   $("#UTubOwner").empty();
   $("#listMembers").empty();
 }
 
 // Update member deck on asynchronous update, either due to stale data or refresh
-export function updateMemberDeck(newMembers, isCurrentUserOwner, utubID) {
-  const currentMemberIDs = getState().members.map((m) => m.id);
+export function updateMemberDeck(
+  newMembers: MemberItem[],
+  isCurrentUserOwner: boolean,
+  utubID: number,
+): void {
+  const currentMemberIDs = getState().members.map((member) => member.id);
   const newMemberIDs = $.map(newMembers, (member) => member.id);
 
   const { toRemove, toAdd } = diffIDLists(currentMemberIDs, newMemberIDs);
@@ -28,6 +34,7 @@ export function updateMemberDeck(newMembers, isCurrentUserOwner, utubID) {
   const memberDeck = $("#listMembers");
   toAdd.forEach((memberID) => {
     const memberData = newMembers.find((member) => member.id === memberID);
+    if (!memberData) return;
     memberDeck.append(
       createMemberBadge(
         memberData.id,
@@ -41,26 +48,21 @@ export function updateMemberDeck(newMembers, isCurrentUserOwner, utubID) {
 
 // Build center panel URL list for selectedUTub
 export function setMemberDeckOnUTubSelected(
-  dictMembers,
-  utubOwnerUserID,
-  isCurrentUserOwner,
-  currentUserID,
-  utubID,
-) {
+  dictMembers: MemberItem[],
+  utubOwnerUserID: number,
+  isCurrentUserOwner: boolean,
+  currentUserID: number,
+  utubID: number,
+): void {
   resetMemberDeck();
   const parent = $("#listMembers");
-  const numOfMembers = dictMembers.length;
-  let utubMember;
-  let utubMemberUsername;
-  let utubMemberUserID;
 
-  isCurrentUserOwner ? setupShowCreateMemberFormEventListeners(utubID) : null;
+  if (isCurrentUserOwner) setupShowCreateMemberFormEventListeners(utubID);
 
   // Instantiate deck with list of members with access to current UTub
-  for (let i = 0; i < numOfMembers; i++) {
-    utubMember = dictMembers[i];
-    utubMemberUsername = utubMember.username;
-    utubMemberUserID = utubMember.id;
+  for (const utubMember of dictMembers) {
+    const utubMemberUsername = utubMember.username;
+    const utubMemberUserID = utubMember.id;
 
     if (utubMemberUserID === utubOwnerUserID) {
       $("#UTubOwner").append(
@@ -80,15 +82,15 @@ export function setMemberDeckOnUTubSelected(
 
   // TODO: Move leaving of UTub badge creation here so that createMemberBadge does one thing
   // VERIFY where it is being used first
-  isCurrentUserOwner
-    ? null
-    : createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID, utubID);
+  if (!isCurrentUserOwner) {
+    createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID, utubID);
+  }
 
   // Subheader prompt
   setMemberDeckForUTub(isCurrentUserOwner);
 }
 
-export function setMemberDeckWhenNoUTubSelected() {
+export function setMemberDeckWhenNoUTubSelected(): void {
   resetMemberDeck();
 
   $("#memberBtnCreate").hideClass();
@@ -98,7 +100,7 @@ export function setMemberDeckWhenNoUTubSelected() {
   $("#MemberDeckSubheader").text(null);
 }
 
-export function setMemberDeckForUTub(isCurrentUserOwner = true) {
+export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
   const memberDeckSubheader = $("#MemberDeckSubheader");
   memberDeckSubheader.parent().addClass("height-2rem");
@@ -106,9 +108,11 @@ export function setMemberDeckForUTub(isCurrentUserOwner = true) {
   if (isCurrentUserOwner) {
     $("#memberSelfBtnDelete").hideClass();
     $("#memberBtnCreate").showClassNormal();
-    numOfMembers === 1
-      ? memberDeckSubheader.text("Add a member")
-      : memberDeckSubheader.text(numOfMembers + " members");
+    if (numOfMembers === 1) {
+      memberDeckSubheader.text("Add a member");
+    } else {
+      memberDeckSubheader.text(numOfMembers + " members");
+    }
   } else {
     $("#memberBtnCreate").hideClass();
     $("#memberSelfBtnDelete").showClassNormal();

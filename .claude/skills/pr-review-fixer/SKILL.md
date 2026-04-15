@@ -184,7 +184,7 @@ Analyze unresolved comments and group by identical or closely related root cause
 
 ## Step 5: Write structured output
 
-Write output to `<tmp-dir>/comment-analysis.md` as JSON:
+Write output to `<tmp-dir>/comment-analysis.md` **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect (any heredoc or inline script with `{` + quotes trips the brace+quote security prompt). Write as JSON:
 
 ```json
 {
