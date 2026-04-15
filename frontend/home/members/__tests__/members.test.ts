@@ -1,6 +1,5 @@
 import { createOwnerBadge, createMemberBadge } from "../members.js";
-import { createMemberRemoveBtn } from "../delete.js";
-import { removeMemberShowModal } from "../delete.js";
+import { createMemberRemoveBtn, removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
 import { updateMemberDeck } from "../deck.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
