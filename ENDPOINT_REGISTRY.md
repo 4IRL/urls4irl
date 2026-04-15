@@ -296,7 +296,7 @@ Base path: `/utubs/<utub_id>/members`
 | **Handler** | `backend/members/routes.py:remove_member` |
 | **Decorators** | `@utub_membership_required`, `@api_route(response_schema=MemberModifiedResponseSchema, tags=["members"], description="Remove a member from a UTub", status_codes={200: MemberModifiedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/members/services/remove_member.py:remove_member_or_self_from_utub` |
-| **JS Module** | `frontend/home/members/delete.js` |
+| **JS Module** | `frontend/home/members/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/members/test_remove_member_from_utub_route.py` (marker: `members`), `tests/functional/members_ui/test_delete_member_ui.py` (marker: `members_ui`), `tests/functional/members_ui/test_leave_utub.py` (marker: `members_ui`) |
 

@@ -1,6 +1,8 @@
+import type { MemberModifiedResponse } from "../../types/member.js";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
-import { ajaxCall } from "../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -13,7 +15,7 @@ import {
 import { setUIWhenNoUTubSelected } from "../init.js";
 
 // Dynamically generates the remove member icon when needed
-export function createMemberRemoveBtn() {
+export function createMemberRemoveBtn(): JQuery<HTMLButtonElement> {
   const WIDTH_HEIGHT_PX = "24px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const removeMemberOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -47,11 +49,11 @@ export function createMemberRemoveBtn() {
 }
 
 export function createLeaveUTubAsMemberIcon(
-  isCurrentUserOwner,
-  currentUserID,
-  utubID,
-) {
-  $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function (e) {
+  isCurrentUserOwner: boolean,
+  currentUserID: number,
+  utubID: number,
+): void {
+  $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function () {
     hideInputs();
     deselectAllURLs();
     removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);
@@ -59,12 +61,16 @@ export function createLeaveUTubAsMemberIcon(
 }
 
 // Hide confirmation modal for removal of the selected member
-function removeMemberHideModal() {
+function removeMemberHideModal(): void {
   $("#confirmModal").modal("hide");
 }
 
 // Show confirmation modal for removal of the selected member from current UTub
-export function removeMemberShowModal(memberID, isCreator, utubID) {
+export function removeMemberShowModal(
+  memberID: number,
+  isCreator: boolean,
+  utubID: number,
+): void {
   const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
@@ -80,8 +86,8 @@ export function removeMemberShowModal(memberID, isCreator, utubID) {
 
   $("#modalDismiss")
     .addClass("btn btn-secondary")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       removeMemberHideModal();
     })
     .text(buttonTextDismiss);
@@ -90,8 +96,8 @@ export function removeMemberShowModal(memberID, isCreator, utubID) {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       removeMember(memberID, isCreator, utubID);
     })
     .text(buttonTextSubmit);
@@ -102,23 +108,31 @@ export function removeMemberShowModal(memberID, isCreator, utubID) {
 }
 
 // This function will extract the current selection data needed for POST request (member ID)
-function removeMemberSetup(memberID, utubID) {
-  let postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
+function removeMemberSetup(memberID: number, utubID: number): string {
+  const postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
 
   return postURL;
 }
 
 // Handles post request and response for removing a member from current UTub, after confirmation
-function removeMember(memberID, isCreator, utubID) {
+function removeMember(
+  memberID: number,
+  isCreator: boolean,
+  utubID: number,
+): void {
   $("#modalSubmit").prop("disabled", true);
 
   // Extract data to submit in POST request
-  let postURL = removeMemberSetup(memberID, utubID);
+  const postURL = removeMemberSetup(memberID, utubID);
 
-  let request = ajaxCall("delete", postURL, []);
+  const request = ajaxCall("delete", postURL, []);
 
   // Handle response
-  request.done(function (_, textStatus, xhr) {
+  request.done(function (
+    _response: MemberModifiedResponse,
+    _textStatus: JQuery.Ajax.SuccessTextStatus,
+    xhr: JQuery.jqXHR,
+  ) {
     if (xhr.status === 200) {
       if (isCreator) {
         removeMemberSuccess(memberID);
@@ -128,16 +142,18 @@ function removeMember(memberID, isCreator, utubID) {
     }
   });
 
-  request.fail(function (xhr, _, textStatus) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     removeMemberFail(xhr);
   });
 }
 
-function removeMemberSuccess(memberID) {
+function removeMemberSuccess(memberID: number): void {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  setState({ members: getState().members.filter((m) => m.id !== memberID) });
+  setState({
+    members: getState().members.filter((member) => member.id !== memberID),
+  });
 
   const memberListItem = $("span[memberid=" + memberID + "]");
   memberListItem.fadeOut("slow", function () {
@@ -151,7 +167,7 @@ function removeMemberSuccess(memberID) {
   }
 }
 
-function leaveUTubSuccess(utubID) {
+function leaveUTubSuccess(utubID: number): void {
   // Close modal
   $("#confirmModal").modal("hide");
 
@@ -173,9 +189,9 @@ function leaveUTubSuccess(utubID) {
   }, 0);
 }
 
-function removeMemberFail(xhr) {
+function removeMemberFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
-  if (xhr._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (
     xhr.status === 403 &&
