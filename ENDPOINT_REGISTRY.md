@@ -285,7 +285,7 @@ Base path: `/utubs/<utub_id>/members`
 | **Decorators** | `@utub_creator_required`, `@api_route(request_schema=AddMemberRequest, response_schema=MemberModifiedResponseSchema, tags=["members"], description="Add a member to a UTub", status_codes={200: MemberModifiedResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/members/services/create_member.py:create_utub_member` |
 | **Schema** | `backend/schemas/requests/members/add_member.py:AddMemberRequest` |
-| **JS Module** | `frontend/home/members/create.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/members/create.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/members/test_add_member_to_utub_route.py` (marker: `members`), `tests/functional/members_ui/test_create_member_ui.py` (marker: `members_ui`) |
 

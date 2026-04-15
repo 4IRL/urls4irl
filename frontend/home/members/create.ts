@@ -1,12 +1,17 @@
+import type {
+  AddMemberRequest,
+  MemberModifiedResponse,
+} from "../../types/member.js";
+
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { ajaxCall } from "../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
-export function setupShowCreateMemberFormEventListeners(utubID) {
+export function setupShowCreateMemberFormEventListeners(utubID: number): void {
   /* Bind click functions */
   const memberBtnCreate = $("#memberBtnCreate");
 
@@ -16,9 +21,12 @@ export function setupShowCreateMemberFormEventListeners(utubID) {
   });
 
   memberBtnCreate.offAndOn("focus", function () {
-    memberBtnCreate.on("keydown.createMember", function (e) {
-      if (e.key === KEYS.ENTER) createMemberShowInput(utubID);
-    });
+    memberBtnCreate.on(
+      "keydown.createMember",
+      function (event: JQuery.TriggeredEvent) {
+        if (event.key === KEYS.ENTER) createMemberShowInput(utubID);
+      },
+    );
   });
 
   memberBtnCreate.offAndOn("blur", function () {
@@ -26,15 +34,15 @@ export function setupShowCreateMemberFormEventListeners(utubID) {
   });
 }
 
-function setupCreateMemberEventListeners(utubID) {
+function setupCreateMemberEventListeners(utubID: number): void {
   const memberSubmitBtnCreate = $("#memberSubmitBtnCreate");
   const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
-  memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function (e) {
+  memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function () {
     createMember(utubID);
   });
 
-  memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function (e) {
+  memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function () {
     createMemberHideInput();
   });
 
@@ -47,40 +55,46 @@ function setupCreateMemberEventListeners(utubID) {
   });
 }
 
-function removeCreateMemberEventListeners() {
+function removeCreateMemberEventListeners(): void {
   $("#memberCreate").off(".createMemberSubmitEscape");
 }
 
-function bindCreateMemberFocusEventListeners(utubID, memberInput) {
+function bindCreateMemberFocusEventListeners(
+  utubID: number,
+  memberInput: JQuery,
+): void {
   // Allow closing by pressing escape key
-  memberInput.on("keydown.createMemberSubmitEscape", function (e) {
-    if (e.originalEvent.repeat) return;
-    switch (e.key) {
-      case KEYS.ENTER:
-        // Handle enter key pressed
-        createMember(utubID);
-        break;
-      case KEYS.ESCAPE:
-        // Handle escape  key pressed
-        createMemberHideInput();
-        break;
-      default:
-      /* no-op */
-    }
-  });
+  memberInput.on(
+    "keydown.createMemberSubmitEscape",
+    function (event: JQuery.TriggeredEvent) {
+      if ((event.originalEvent as KeyboardEvent).repeat) return;
+      switch (event.key) {
+        case KEYS.ENTER:
+          // Handle enter key pressed
+          createMember(utubID);
+          break;
+        case KEYS.ESCAPE:
+          // Handle escape  key pressed
+          createMemberHideInput();
+          break;
+        default:
+        /* no-op */
+      }
+    },
+  );
 }
 
-function unbindCreateMemberFocusEventListeners() {
+function unbindCreateMemberFocusEventListeners(): void {
   $("#memberCreate").off(".createMemberSubmitEscape");
 }
 
 // Clear member creation
-function resetNewMemberForm() {
-  $("#memberCreate").val(null);
+function resetNewMemberForm(): void {
+  $("#memberCreate").val("");
 }
 
 // Shows new Member input fields
-function createMemberShowInput(utubID) {
+function createMemberShowInput(utubID: number): void {
   $("#createMemberWrap").showClassFlex();
   $("#displayMemberWrap").hideClass();
   $("#memberBtnCreate").hideClass();
@@ -89,7 +103,7 @@ function createMemberShowInput(utubID) {
 }
 
 // Hides new Member input fields
-export function createMemberHideInput() {
+export function createMemberHideInput(): void {
   $("#createMemberWrap").hideClass();
   $("#displayMemberWrap").showClassFlex();
   $("#memberBtnCreate").showClassNormal();
@@ -99,39 +113,43 @@ export function createMemberHideInput() {
 }
 
 // This function will extract the current selection data needed for POST request (member ID)
-function createMemberSetup(utubID) {
+function createMemberSetup(utubID: number): [string, AddMemberRequest] {
   const postURL = APP_CONFIG.routes.createMember(utubID);
 
-  const newMemberUsername = $("#memberCreate").val();
-  const data = {
-    username: newMemberUsername,
-  };
+  const username = $("#memberCreate").val() as string;
+  const data: AddMemberRequest = { username };
 
   return [postURL, data];
 }
 
-function createMember(utubID) {
+function createMember(utubID: number): void {
   // Extract data to submit in POST request
-  let postURL, data;
-  [postURL, data] = createMemberSetup(utubID);
+  const [postURL, data] = createMemberSetup(utubID);
   resetCreateMemberFailErrors();
 
   const request = ajaxCall("post", postURL, data);
 
   // Handle response
-  request.done(function (response, _, xhr) {
+  request.done(function (
+    response: MemberModifiedResponse,
+    _textStatus: JQuery.Ajax.SuccessTextStatus,
+    xhr: JQuery.jqXHR,
+  ) {
     if (xhr.status === 200) {
       createMemberSuccess(response, utubID);
     }
   });
 
-  request.fail(function (xhr, _, textStatus) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     createMemberFail(xhr);
   });
 }
 
 // Perhaps update a scrollable/searchable list of members?
-function createMemberSuccess(response, utubID) {
+function createMemberSuccess(
+  response: MemberModifiedResponse,
+  utubID: number,
+): void {
   resetNewMemberForm();
 
   setState({ members: [...getState().members, response.member] });
@@ -150,8 +168,8 @@ function createMemberSuccess(response, utubID) {
   setMemberDeckForUTub(true);
 }
 
-function createMemberFail(xhr) {
-  if (xhr._429Handled) return;
+function createMemberFail(xhr: JQuery.jqXHR): void {
+  if (is429Handled(xhr)) return;
 
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
@@ -166,7 +184,7 @@ function createMemberFail(xhr) {
   }
 
   switch (xhr.status) {
-    case 400:
+    case 400: {
       const responseJSON = xhr.responseJSON;
       const hasErrors = responseJSON.hasOwnProperty("errors");
       const hasMessage = responseJSON.hasOwnProperty("message");
@@ -179,6 +197,7 @@ function createMemberFail(xhr) {
         displayCreateMemberFailErrors("username", responseJSON.message);
         break;
       }
+    }
     case 403:
     case 404:
     default:
@@ -186,23 +205,27 @@ function createMemberFail(xhr) {
   }
 }
 
-function createMemberFailErrors(errors) {
-  for (let key in errors) {
+function createMemberFailErrors(errors: Record<string, string[]>): void {
+  for (const key in errors) {
     switch (key) {
-      case "username":
-        let errorMessage = errors[key][0];
+      case "username": {
+        const errorMessage = errors[key][0];
         displayCreateMemberFailErrors(key, errorMessage);
         return;
+      }
     }
   }
 }
 
-function displayCreateMemberFailErrors(_, errorMessage) {
+function displayCreateMemberFailErrors(
+  _fieldName: string,
+  errorMessage: string,
+): void {
   $("#memberCreate-error").addClass("visible").text(errorMessage);
   $("#memberCreate").addClass("invalid-field");
 }
 
-function resetCreateMemberFailErrors() {
+function resetCreateMemberFailErrors(): void {
   const createMemberFields = ["member"];
   createMemberFields.forEach((fieldName) => {
     $("#" + fieldName + "Create-error").removeClass("visible");
