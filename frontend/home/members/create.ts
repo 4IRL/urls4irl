@@ -11,6 +11,14 @@ import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
+const MEMBER_FIELD_NAMES = ["username"] as const;
+
+type MemberFieldName = (typeof MEMBER_FIELD_NAMES)[number];
+
+function isMemberFieldName(key: string): key is MemberFieldName {
+  return (MEMBER_FIELD_NAMES as readonly string[]).includes(key);
+}
+
 export function setupShowCreateMemberFormEventListeners(utubID: number): void {
   /* Bind click functions */
   const memberBtnCreate = $("#memberBtnCreate");
@@ -194,9 +202,12 @@ function createMemberFail(xhr: JQuery.jqXHR): void {
         break;
       } else if (hasMessage) {
         // Show message
-        displayCreateMemberFailErrors("username", responseJSON.message);
+        displayCreateMemberFailErrors(responseJSON.message);
         break;
       }
+      // Intentional fall-through: an unexpected 400 body shape (neither
+      // `errors` nor `message`) is treated as an unrecoverable error and
+      // falls through to the default error-page redirect below.
     }
     case 403:
     case 404:
@@ -207,20 +218,14 @@ function createMemberFail(xhr: JQuery.jqXHR): void {
 
 function createMemberFailErrors(errors: Record<string, string[]>): void {
   for (const key in errors) {
-    switch (key) {
-      case "username": {
-        const errorMessage = errors[key][0];
-        displayCreateMemberFailErrors(key, errorMessage);
-        return;
-      }
-    }
+    if (!isMemberFieldName(key)) continue;
+    const errorMessage = errors[key][0];
+    displayCreateMemberFailErrors(errorMessage);
+    return;
   }
 }
 
-function displayCreateMemberFailErrors(
-  _fieldName: string,
-  errorMessage: string,
-): void {
+function displayCreateMemberFailErrors(errorMessage: string): void {
   $("#memberCreate-error").addClass("visible").text(errorMessage);
   $("#memberCreate").addClass("invalid-field");
 }

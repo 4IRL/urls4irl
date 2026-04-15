@@ -107,13 +107,6 @@ export function removeMemberShowModal(
   $("#modalRedirect").hide();
 }
 
-// This function will extract the current selection data needed for POST request (member ID)
-function removeMemberSetup(memberID: number, utubID: number): string {
-  const postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
-
-  return postURL;
-}
-
 // Handles post request and response for removing a member from current UTub, after confirmation
 function removeMember(
   memberID: number,
@@ -122,8 +115,7 @@ function removeMember(
 ): void {
   $("#modalSubmit").prop("disabled", true);
 
-  // Extract data to submit in POST request
-  const postURL = removeMemberSetup(memberID, utubID);
+  const postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
 
   const request = ajaxCall("delete", postURL, []);
 

@@ -56,18 +56,13 @@ export function setMemberDeckOnUTubSelected(
 ): void {
   resetMemberDeck();
   const parent = $("#listMembers");
-  const numOfMembers = dictMembers.length;
-  let utubMember: MemberItem;
-  let utubMemberUsername: string;
-  let utubMemberUserID: number;
 
   if (isCurrentUserOwner) setupShowCreateMemberFormEventListeners(utubID);
 
   // Instantiate deck with list of members with access to current UTub
-  for (let i = 0; i < numOfMembers; i++) {
-    utubMember = dictMembers[i];
-    utubMemberUsername = utubMember.username;
-    utubMemberUserID = utubMember.id;
+  for (const utubMember of dictMembers) {
+    const utubMemberUsername = utubMember.username;
+    const utubMemberUserID = utubMember.id;
 
     if (utubMemberUserID === utubOwnerUserID) {
       $("#UTubOwner").append(
