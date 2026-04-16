@@ -325,7 +325,7 @@ Base path: `/utubs/<utub_id>/tags`
 | **Handler** | `backend/tags/utub_tag_routes.py:delete_utub_tag` |
 | **Decorators** | `@utub_membership_with_valid_utub_tag`, `@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema, tags=["tags"], description="Delete a tag from a UTub", status_codes={200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/delete_utub_tag.py:delete_utub_tag_from_utub_and_utub_urls` |
-| **JS Module** | `frontend/home/tags/delete.js` |
+| **JS Module** | `frontend/home/tags/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_delete_tag_from_utub_route.py` (marker: `tags`), `tests/functional/tags_ui/test_delete_utub_tag_ui.py` (marker: `tags_ui`) |
 
