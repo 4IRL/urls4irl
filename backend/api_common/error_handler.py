@@ -1,5 +1,6 @@
 from flask import render_template, request
 from flask_login import current_user
+from flask_wtf.csrf import CSRFError
 from werkzeug.exceptions import NotFound
 
 from backend.app_logger import warning_log
@@ -9,9 +10,9 @@ from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 
-def handle_403_response_from_csrf(_):
+def handle_403_response_from_csrf(csrf_error: CSRFError):
     user_id = -1 if not current_user.is_authenticated else current_user.id
-    warning_log(f"CSRF token expired for User={user_id}")
+    warning_log(f"CSRF validation failed for User={user_id}: {csrf_error.description}")
     return (
         render_template(
             "error_pages/error_response.html",

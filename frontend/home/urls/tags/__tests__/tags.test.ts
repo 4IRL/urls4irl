@@ -18,7 +18,7 @@ describe("createTagBadgesAndWrap - missing tag ID guard", () => {
 
   it("skips tag IDs that are not present in dictTags and throws no error", () => {
     const urlCard = $(".urlRow");
-    const dictTags = [{ id: 1, tagString: "exists" }];
+    const dictTags = [{ id: 1, tagString: "exists", tagApplied: 0 }];
     const tagArray = [999]; // 999 is absent from dictTags
 
     let wrap;
@@ -34,8 +34,8 @@ describe("createTagBadgesAndWrap - missing tag ID guard", () => {
   it("appends a badge only for tag IDs that exist in dictTags", () => {
     const urlCard = $(".urlRow");
     const dictTags = [
-      { id: 1, tagString: "exists" },
-      { id: 2, tagString: "other" },
+      { id: 1, tagString: "exists", tagApplied: 0 },
+      { id: 2, tagString: "other", tagApplied: 0 },
     ];
     const tagArray = [1, 999, 2]; // 999 missing; 1 and 2 present
 

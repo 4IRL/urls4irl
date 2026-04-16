@@ -1,5 +1,5 @@
 import type { MemberItem } from "../types/member.js";
-import type { UtubUrlItem } from "../types/url.js";
+import type { UtubTag, UtubUrlItem } from "../types/url.js";
 import type { UtubSummaryItem } from "../types/utub.js";
 
 export interface AppState {
@@ -13,7 +13,7 @@ export interface AppState {
   selectedURLCardID: number | null;
   selectedTagIDs: number[];
   urls: UtubUrlItem[]; // narrowed in Phase 7
-  tags: unknown[]; // narrow in Phase 9
+  tags: UtubTag[]; // narrowed in Phase 9
   members: MemberItem[]; // narrowed in Phase 8
 }
 

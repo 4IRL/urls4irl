@@ -1,5 +1,5 @@
 import type { operations } from "../../../types/api.d.ts";
-import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
+import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
@@ -92,8 +92,7 @@ function deleteURLTagSuccess(
         ? { ...existingUrl, utubUrlTagIDs: response.utubUrlTagIDs }
         : existingUrl,
     ),
-    // TODO(phase-9, plans/feature-urls/home-urls-typescript-migration.md): remove cast when AppState.tags is narrowed to UtubTag[]
-    tags: (getState().tags as UtubTag[]).map((tag) =>
+    tags: getState().tags.map((tag) =>
       tag.id === tagID ? { ...tag, tagApplied: response.tagCountsInUtub } : tag,
     ),
   });

@@ -784,5 +784,5 @@ def test_csrf_expiration_log(app, login_first_user_with_register, caplog):
         )
         assert invalid_utub_response_with_csrf.status_code == 403
         assert is_string_in_logs(
-            f"CSRF token expired for User={user.id}", caplog.records
+            f"CSRF validation failed for User={user.id}", caplog.records
         )
