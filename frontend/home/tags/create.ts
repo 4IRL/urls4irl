@@ -1,25 +1,17 @@
 import type { components, operations } from "../../types/api.d.ts";
 import type { UtubTag } from "../../types/url.js";
 
-import { $ } from "../../lib/globals.js";
+import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { ajaxCall, is429Handled } from "../../lib/ajax.js";
-import { buildTagFilterInDeck } from "./tags.js";
-import { getNumOfUTubs } from "../utubs/utils.js";
+import { $ } from "../../lib/globals.js";
 import { getState, setState } from "../../store/app-store.js";
+import { getNumOfUTubs } from "../utubs/utils.js";
+import { buildTagFilterInDeck } from "./tags.js";
 
 type AddTagRequest = components["schemas"]["AddTagRequest"];
 type CreateUtubTagResponse =
   operations["createUtubTag"]["responses"][200]["content"]["application/json"];
-
-const CREATE_UTUB_TAG_FIELD_NAMES = ["tagString"] as const;
-
-type CreateUtubTagFieldName = (typeof CREATE_UTUB_TAG_FIELD_NAMES)[number];
-
-function isCreateUtubTagFieldName(key: string): key is CreateUtubTagFieldName {
-  return (CREATE_UTUB_TAG_FIELD_NAMES as readonly string[]).includes(key);
-}
 
 export function setupOpenCreateUTubTagEventListeners(utubID: number): void {
   const utubTagBtnCreate = $("#utubTagBtnCreate");
@@ -219,7 +211,7 @@ function createUTubTagFail(xhr: JQuery.jqXHR): void {
 
 function createUTubTagFailErrors(errors: Record<string, string[]>): void {
   for (const key in errors) {
-    if (!isCreateUtubTagFieldName(key)) continue;
+    if (key !== "tagString") continue;
     const errorMessage = errors[key][0];
     displayCreateUTubTagFailErrors(key, errorMessage);
     return;
@@ -227,7 +219,7 @@ function createUTubTagFailErrors(errors: Record<string, string[]>): void {
 }
 
 function displayCreateUTubTagFailErrors(
-  _fieldName: CreateUtubTagFieldName | "utubTag",
+  _fieldName: "tagString" | "utubTag",
   message: string,
 ): void {
   $("#utubTagCreate-error").addClass("visible").text(message);
@@ -235,9 +227,6 @@ function displayCreateUTubTagFailErrors(
 }
 
 export function resetCreateUTubTagFailErrors(): void {
-  const createUTubTagFields = ["utubTag"];
-  createUTubTagFields.forEach((fieldName) => {
-    $("#" + fieldName + "Create-error").removeClass("visible");
-    $("#" + fieldName + "Create").removeClass("invalid-field");
-  });
+  $("#utubTagCreate-error").removeClass("visible");
+  $("#utubTagCreate").removeClass("invalid-field");
 }

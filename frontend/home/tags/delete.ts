@@ -1,9 +1,9 @@
 import type { operations } from "../../types/api.d.ts";
 
-import { $ } from "../../lib/globals.js";
-import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { APP_CONFIG } from "../../lib/config.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
+import { $ } from "../../lib/globals.js";
 import { getState, setState } from "../../store/app-store.js";
 
 type DeleteUtubTagResponse =
@@ -54,16 +54,10 @@ export function deleteUTubTagShowModal(
   $("#modalRedirect").hide();
 }
 
-function deleteUTubTagSetup(utubID: number, utubTagID: number): string {
-  const deleteURL = APP_CONFIG.routes.deleteUTubTag(utubID, utubTagID);
-
-  return deleteURL;
-}
-
 function deleteUTubTag(utubID: number, utubTagID: number): void {
   $("#modalSubmit").prop("disabled", true);
 
-  const deleteUTubTagURL = deleteUTubTagSetup(utubID, utubTagID);
+  const deleteUTubTagURL = APP_CONFIG.routes.deleteUTubTag(utubID, utubTagID);
 
   const request = ajaxCall("delete", deleteUTubTagURL, []);
 
