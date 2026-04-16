@@ -150,7 +150,7 @@
     pointer-events: none;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .tagBadgeHoverable:hover .urlTagBtnDelete {
         width: 100%;
         opacity: 100%;

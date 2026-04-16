@@ -10,7 +10,7 @@
     background: var(--pageBackgroundColor);
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
         background-color: rgba(61, 71, 71, 1.0);
     }
@@ -65,7 +65,7 @@
     visibility: visible;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="false"]:hover .goToUrlIcon {
         visibility: visible;
     }
@@ -334,7 +334,7 @@ a.urlString {
     border: 2px solid var(--removeMemberColor);
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .goToUrlIcon:hover {
         color: var(--deckSelectionGreen);
     }

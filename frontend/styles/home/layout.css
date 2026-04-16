@@ -231,7 +231,7 @@ button {
     cursor: pointer;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .btn-text-on-hvr:hover {
         color: white;
     }

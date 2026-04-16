@@ -74,7 +74,7 @@
     width: 65%;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .UTubSelector:hover {
         cursor: pointer;
         border-color: var(--deckSelectionGreenHover);

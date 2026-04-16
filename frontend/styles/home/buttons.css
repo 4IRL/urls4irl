@@ -51,7 +51,7 @@
     justify-content: flex-end;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .green-clickable:hover {
         cursor: pointer;
         color: var(--darkSplashGreen);

@@ -40,7 +40,7 @@
     align-items: center;
 }
 
-@media (hover: hover) and (pointer: fine) {
+@media not all and (any-pointer: coarse) {
     .member:hover>.memberOtherBtnDelete {
         opacity: 1;
     }
