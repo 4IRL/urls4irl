@@ -174,6 +174,7 @@ function createUTubTagFail(xhr: JQuery.jqXHR): void {
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
     ) {
       // Handle invalid CSRF token error response
+      // Anti-pattern kept for consistency with 14 CSRF 403 callers in frontend/home/ (members/, utubs/, urls/, tags/).
       $("body").html(xhr.responseText);
       return;
     }
