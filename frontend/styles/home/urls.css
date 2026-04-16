@@ -10,12 +10,14 @@
     background: var(--pageBackgroundColor);
 }
 
-#listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
-    background-color: rgba(61, 71, 71, 1.0);
-}
+@media (hover: hover) and (pointer: fine) {
+    #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
+        background-color: rgba(61, 71, 71, 1.0);
+    }
 
-#listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
-    background-color: rgba(51, 61, 61, 1.0);
+    #listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
+        background-color: rgba(51, 61, 61, 1.0);
+    }
 }
 
 #listURLs .urlRow[filterable="true"]:last-child {
@@ -27,6 +29,7 @@
     border-top: 1px solid var(--borderColor);
     transition: background-color 0.15s ease, padding 0.2s ease-in-out;
     padding: 5px 15px;
+    touch-action: manipulation;
 }
 
 .urlTitle {
@@ -58,15 +61,16 @@
 }
 
 .urlRow[filterable="true"][urlSelected="false"]:focus .goToUrlIcon,
-.urlRow[filterable="true"][urlSelected="false"]:hover .goToUrlIcon,
 .urlRow[filterable="true"][urlSelected="true"] .goToUrlIcon {
     visibility: visible;
 }
 
-
-.goToUrlIcon:hover {
-    color: var(--deckSelectionGreen);
+@media (hover: hover) and (pointer: fine) {
+    .urlRow[filterable="true"][urlSelected="false"]:hover .goToUrlIcon {
+        visibility: visible;
+    }
 }
+
 
 .outerTagsAndButtonsWrap {
     display: grid;
@@ -104,6 +108,10 @@
     border-bottom: 1px solid var(--focusedUrlBorder) !important;
 }
 
+.urlRow[filterable="true"]:not([urlSelected="true"]) {
+    cursor: pointer;
+}
+
 .urlRow[filterable="true"][urlSelected="true"] {
     border-top: 1px solid var(--selectedUrlBorder);
     border-bottom: 1px solid var(--selectedUrlBorder) !important;
@@ -138,28 +146,14 @@ a.urlString {
     text-decoration: none;
 }
 
-a.urlString:hover {
-    color: var(--cardURLTextColor);
-}
-
-
 .urlRow[filterable="true"][urlSelected="true"] .urlString {
     overflow-wrap: break-word;
     white-space: normal;
     width: fit-content;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .urlString:hover {
-    text-decoration: underline;
-    cursor: pointer;
-}
-
 .urlTitleBtnUpdate {
     display: none;
-}
-
-.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover>.urlTitleBtnUpdate {
-    display: flex;
 }
 
 .urlRow[filterable="true"][urlSelected=false] .urlTitle {
@@ -238,13 +232,6 @@ a.urlString:hover {
     border-color: var(--accessLinkColor);
 }
 
-#accessAllURLsBtn:hover,
-.urlBtnAccess:hover {
-    background-color: var(--accessLinkColorHover);
-    border-color: var(--accessLinkColorBorderHover);
-    transition: background-color 0.3s ease;
-}
-
 #accessAllURLsBtn:active,
 .urlBtnAccess:active {
     background-color: var(--accessLinkColor) !important;
@@ -258,12 +245,6 @@ a.urlString:hover {
     border-color: var(--copyURLColor);
 }
 
-.urlBtnCopy:hover {
-    background-color: var(--copyURLColorHover);
-    border-color: var(--copyURLColorBorderHover);
-    transition: background-color 0.1s ease;
-}
-
 .urlBtnCopy:active {
     background-color: var(--copyURLColor) !important;
     border-color: var(--copyURLColor) !important;
@@ -275,34 +256,16 @@ a.urlString:hover {
     border-color: var(--addTagColor);
 }
 
-.urlTagBtnCreate:hover {
-    background-color: var(--addTagColorHover);
-    border-color: var(--addTagColorBorderHover);
-}
-
 .urlStringBtnUpdate {
     background-color: var(--editURLColor);
     border-width: 1px;
     border-color: var(--editURLColor);
 }
 
-.urlStringBtnUpdate:hover {
-    background-color: var(--editURLColorHover);
-    border-width: 1px;
-    border-color: var(--editURLColorBorderHover);
-}
-
 .urlStringCancelBigBtnUpdate {
     background-color: var(--editURLColor);
     border-width: 1px;
     border-color: var(--editURLColor);
-    transition: background-color 0.1s ease;
-}
-
-.urlStringCancelBigBtnUpdate:hover {
-    background-color: var(--editURLColorHover) !important;
-    border-width: 1px;
-    border-color: var(--editURLColorBorderHover) !important;
     transition: background-color 0.1s ease;
 }
 
@@ -318,10 +281,6 @@ a.urlString:hover {
 }
 
 .urlBtnDelete {
-    color: black;
-}
-
-.urlBtnDelete:hover {
     color: black;
 }
 
@@ -350,11 +309,6 @@ a.urlString:hover {
     color: var(--cardURLTextColor);
 }
 
-#URLDeckSubheaderCreateDescription:hover {
-    cursor: pointer;
-    text-decoration: underline;
-}
-
 #URLDeckSubheader {
     word-break: break-all;
     margin: 0;
@@ -378,4 +332,63 @@ a.urlString:hover {
     font-size: larger !important;
     border-radius: 5px;
     border: 2px solid var(--removeMemberColor);
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .goToUrlIcon:hover {
+        color: var(--deckSelectionGreen);
+    }
+
+    a.urlString:hover {
+        color: var(--cardURLTextColor);
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlString:hover {
+        text-decoration: underline;
+        cursor: pointer;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover>.urlTitleBtnUpdate {
+        display: flex;
+    }
+
+    #accessAllURLsBtn:hover,
+    .urlBtnAccess:hover {
+        background-color: var(--accessLinkColorHover);
+        border-color: var(--accessLinkColorBorderHover);
+        transition: background-color 0.3s ease;
+    }
+
+    .urlBtnCopy:hover {
+        background-color: var(--copyURLColorHover);
+        border-color: var(--copyURLColorBorderHover);
+        transition: background-color 0.1s ease;
+    }
+
+    .urlTagBtnCreate:hover {
+        background-color: var(--addTagColorHover);
+        border-color: var(--addTagColorBorderHover);
+    }
+
+    .urlStringBtnUpdate:hover {
+        background-color: var(--editURLColorHover);
+        border-width: 1px;
+        border-color: var(--editURLColorBorderHover);
+    }
+
+    .urlStringCancelBigBtnUpdate:hover {
+        background-color: var(--editURLColorHover) !important;
+        border-width: 1px;
+        border-color: var(--editURLColorBorderHover) !important;
+        transition: background-color 0.1s ease;
+    }
+
+    .urlBtnDelete:hover {
+        color: black;
+    }
+
+    #URLDeckSubheaderCreateDescription:hover {
+        cursor: pointer;
+        text-decoration: underline;
+    }
 }

@@ -13,18 +13,13 @@
 }
 
 
-.urlTagBtnDelete:focus,
-.tagBadgeHoverable:hover .urlTagBtnDelete {
+.urlTagBtnDelete:focus {
     width: 100%;
     opacity: 100%;
 }
 
 .tagText {
     transition: padding 0.1s ease-in;
-}
-
-.tagBadgeHoverable:hover>.tagText {
-    padding-right: 6px;
 }
 
 .urlTagBtnDelete:focus~.tagText {
@@ -37,10 +32,6 @@
     padding: 0;
     color: var(--tagBadgeDeleteBtnColor);
     transition: width 0.1s ease-in, opacity 0.1s ease-in, color 0.1s ease-in, padding 0.1s ease-in;
-}
-
-.urlTagBtnDelete:hover {
-    color: var(--tagBadgeDeleteBtnColorHover);
 }
 
 .red-icon-disabled {
@@ -65,16 +56,8 @@
     border-radius: 4px;
 }
 
-#utubTagBtnUpdateAllClose>svg:hover {
-    background: var(--updateUTubTagBtnColorHover);
-}
-
 #utubTagBtnUpdateAllOpen {
     background: var(--updateUTubTagBtnColor);
-}
-
-#utubTagBtnUpdateAllOpen:hover {
-    background: var(--updateUTubTagBtnColorHover);
 }
 
 .tagFilter {
@@ -91,15 +74,6 @@
         border-color 0.3s ease-in-out, color 0.3s ease-in-out;
     border: 2px solid var(--tagBorderColor);
     background-color: var(--tagBackgroundColorSelected);
-}
-
-.tagFilter:hover {
-    border-color: var(--grayBadgeSelection);
-}
-
-.tagFilter.unselected:hover {
-    background-color: var(--tagBackgroundColorHover);
-    border-color: var(--tagBorderColor);
 }
 
 .tagFilter.unselected:active,
@@ -165,10 +139,6 @@
   color: var(--tagBadgeDeleteBtnColor);
 }
 
-.utubTagBtnDelete:hover {
-    color: var(--tagBadgeDeleteBtnColorHover);
-}
-
 .urlTags:has(.tagBadge) {
     gap: 2rem;
 }
@@ -180,6 +150,42 @@
     pointer-events: none;
 }
 
-.unselected.disabled:hover {
-    background-color: var(--tagBackgroundColor) !important;
+@media (hover: hover) and (pointer: fine) {
+    .tagBadgeHoverable:hover .urlTagBtnDelete {
+        width: 100%;
+        opacity: 100%;
+    }
+
+    .tagBadgeHoverable:hover>.tagText {
+        padding-right: 6px;
+    }
+
+    .urlTagBtnDelete:hover {
+        color: var(--tagBadgeDeleteBtnColorHover);
+    }
+
+    #utubTagBtnUpdateAllClose>svg:hover {
+        background: var(--updateUTubTagBtnColorHover);
+    }
+
+    #utubTagBtnUpdateAllOpen:hover {
+        background: var(--updateUTubTagBtnColorHover);
+    }
+
+    .tagFilter:hover {
+        border-color: var(--grayBadgeSelection);
+    }
+
+    .tagFilter.unselected:hover {
+        background-color: var(--tagBackgroundColorHover);
+        border-color: var(--tagBorderColor);
+    }
+
+    .utubTagBtnDelete:hover {
+        color: var(--tagBadgeDeleteBtnColorHover);
+    }
+
+    .unselected.disabled:hover {
+        background-color: var(--tagBackgroundColor) !important;
+    }
 }

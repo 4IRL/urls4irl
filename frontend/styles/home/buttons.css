@@ -7,27 +7,10 @@
     background: var(--splashGreen);
 }
 
-.green-clickable:hover {
-    cursor: pointer;
-    color: var(--darkSplashGreen);
-}
-
-.green-clickable-wide:hover {
-    cursor: pointer;
-    background: var(--darkSplashGreen);
-}
-
 .trash-fill,
 .funnel-x {
     background: var(--removeIconColor);
     border-radius: 4px;
-}
-
-.cancelButton-wide:hover,
-.trash-fill:hover,
-.funnel-x:hover {
-    cursor: pointer;
-    background: var(--removeIconColorHover);
 }
 
 .clickable {
@@ -60,23 +43,42 @@
     fill: var(--grayBadgeSelection);
 }
 
-#UTubSearchFilterIcon:hover>svg {
-    fill: var(--deckSelectionGreenHover);
-}
-
 #UTubSearchFilterIconClose>svg {
     fill: var(--spanRemoveColor);
 }
 
-#UTubSearchFilterIconClose:hover>svg {
-    fill: var(--spanRemoveColorHover);
-}
-
-.cancelButton:hover {
-    cursor: pointer;
-    color: var(--removeIconColorHover);
-}
-
 .button-container {
     justify-content: flex-end;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .green-clickable:hover {
+        cursor: pointer;
+        color: var(--darkSplashGreen);
+    }
+
+    .green-clickable-wide:hover {
+        cursor: pointer;
+        background: var(--darkSplashGreen);
+    }
+
+    .cancelButton-wide:hover,
+    .trash-fill:hover,
+    .funnel-x:hover {
+        cursor: pointer;
+        background: var(--removeIconColorHover);
+    }
+
+    #UTubSearchFilterIcon:hover>svg {
+        fill: var(--deckSelectionGreenHover);
+    }
+
+    #UTubSearchFilterIconClose:hover>svg {
+        fill: var(--spanRemoveColorHover);
+    }
+
+    .cancelButton:hover {
+        cursor: pointer;
+        color: var(--removeIconColorHover);
+    }
 }

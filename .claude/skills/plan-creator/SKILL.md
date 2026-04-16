@@ -297,3 +297,7 @@ For any plan involving a **new feature or bug fix** (not pure refactoring or cle
 - **Frontend – logic/state:** Use Vitest with JSDOM (fast, isolated).
 - **Frontend – navigation/critical flows:** Use Selenium (end-to-end verification).
 - **Philosophy:** Tests are the contract; code is the fulfillment. Never write tests to fit existing feature code.
+
+## Handoff Message
+
+After the plan file is written, cross-linked, and the `tmp/research-*.md` files are cleaned up, the final user-facing message must suggest `/plan-reviewer` as the next step — never `/next-step-taker`. A freshly-written plan must be reviewed before execution begins. Use phrasing like: "Ready for review with `/plan-reviewer <plan-name>`."

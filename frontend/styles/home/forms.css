@@ -47,9 +47,11 @@
     display: none;
 }
 
-.text-input[type="url"]:hover,
-.text-input[type="text"]:hover {
-    border-color: var(--deckSelectionGreenHover);
+@media (hover: hover) and (pointer: fine) {
+    .text-input[type="url"]:hover,
+    .text-input[type="text"]:hover {
+        border-color: var(--deckSelectionGreenHover);
+    }
 }
 
 .text-input[type="url"]:focus,
