@@ -1,11 +1,11 @@
-import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { $ } from "../../lib/globals.js";
 import { setState } from "../../store/app-store.js";
-import { toggleTagFilterSelected } from "./tags.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
+import { toggleTagFilterSelected } from "./tags.js";
 
-export function initUnselectAllTags() {
+export function initUnselectAllTags(): void {
   /* Bind click functions */
   const utubTagBtnUnselectAll = $("#unselectAllTagFilters");
   utubTagBtnUnselectAll.on("click.unselectAllTags", function () {
@@ -13,7 +13,7 @@ export function initUnselectAllTags() {
   });
 }
 
-export function enableUnselectAllButtonAfterTagFilterApplied() {
+export function enableUnselectAllButtonAfterTagFilterApplied(): void {
   $("#unselectAllTagFilters")
     .removeClass("red-icon-disabled")
     .on("click.unselectAllTags", function () {
@@ -22,32 +22,35 @@ export function enableUnselectAllButtonAfterTagFilterApplied() {
     .attr({ tabindex: 0 });
 }
 
-export function disableUnselectAllButtonAfterTagFilterRemoved() {
+export function disableUnselectAllButtonAfterTagFilterRemoved(): void {
   $("#unselectAllTagFilters")
     .addClass("red-icon-disabled")
     .off(".unselectAllTags")
     .attr({ tabindex: -1 });
 }
 
-export function resetCountOfTagFiltersApplied() {
+export function resetCountOfTagFiltersApplied(): void {
   $("#TagDeckSubheader").text(
     "0 of " + APP_CONFIG.constants.TAGS_MAX_ON_URLS + " tag filters applied",
   );
 }
 
-function unselectAllTags() {
+function unselectAllTags(): void {
   $(".tagFilter")
     .removeClass("selected unselected disabled")
     .addClass("unselected")
-    .each((_, tag) => {
+    .each((_index, tag) => {
       $(tag)
         .offAndOn("click.tagFilterSelected", function () {
           toggleTagFilterSelected($(tag));
         })
         .offAndOn("focus.tagFilterSelected", function () {
-          $(document).on("keyup.tagFilterSelected", function (e) {
-            if (e.key === KEYS.ENTER) toggleTagFilterSelected($(tag));
-          });
+          $(document).on(
+            "keyup.tagFilterSelected",
+            function (event: JQuery.TriggeredEvent) {
+              if (event.key === KEYS.ENTER) toggleTagFilterSelected($(tag));
+            },
+          );
         })
         .offAndOn("blur.tagFilterSelected", function () {
           $(document).off("keyup.tagFilterSelected");
