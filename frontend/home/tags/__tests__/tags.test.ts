@@ -9,8 +9,6 @@ vi.mock("../../urls/cards/filtering.js", () => ({
   updateURLsAndTagSubheaderWhenTagSelected: vi.fn(),
 }));
 
-const $ = window.jQuery;
-
 describe("buildTagFilterInDeck", () => {
   describe("element structure", () => {
     it("returns a jQuery element", () => {
