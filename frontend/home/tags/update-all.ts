@@ -1,12 +1,12 @@
-import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
+import { $ } from "../../lib/globals.js";
 import {
-  enableTabbableChildElements,
   disableTabbableChildElements,
+  enableTabbableChildElements,
 } from "../../lib/jquery-plugins.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 
-export function initUpdateAllTags() {
+export function initUpdateAllTags(): void {
   const utubTagBtnUnselectAll = $("#utubTagBtnUpdateAllOpen");
   utubTagBtnUnselectAll
     .on("click.openUTubTagUpdate", function () {
@@ -14,12 +14,15 @@ export function initUpdateAllTags() {
       openUTubTagBtnMenuOnUTubTags();
     })
     .offAndOn("focus.openUTubTagUpdate", function () {
-      $(document).offAndOn("keyup.openUTubTagUpdate", function (e) {
-        if (e.key === KEYS.ENTER) {
-          setTagDeckBtnsOnUpdateAllUTubTagsOpened();
-          openUTubTagBtnMenuOnUTubTags();
-        }
-      });
+      $(document).offAndOn(
+        "keyup.openUTubTagUpdate",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ENTER) {
+            setTagDeckBtnsOnUpdateAllUTubTagsOpened();
+            openUTubTagBtnMenuOnUTubTags();
+          }
+        },
+      );
     })
     .offAndOn("blur.openUTubTagUpdate", function () {
       $(document).off("keyup.openUTubTagUpdate");
@@ -32,19 +35,22 @@ export function initUpdateAllTags() {
       closeUTubTagBtnMenuOnUTubTags();
     })
     .offAndOn("focus.closeUTubTagUpdate", function () {
-      $(document).offAndOn("keyup.closeUTubTagUpdate", function (e) {
-        if (e.key === KEYS.ENTER) {
-          setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-          closeUTubTagBtnMenuOnUTubTags();
-        }
-      });
+      $(document).offAndOn(
+        "keyup.closeUTubTagUpdate",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ENTER) {
+            setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+            closeUTubTagBtnMenuOnUTubTags();
+          }
+        },
+      );
     })
     .offAndOn("blur.closeUTubTagUpdate", function () {
       $(document).off("keyup.closeUTubTagUpdate");
     });
 }
 
-export function setUnselectUpdateUTubTagEventListeners() {
+export function setUnselectUpdateUTubTagEventListeners(): void {
   const utubTagBtnUnselectAll = $("#utubTagBtnUpdateAllOpen");
   utubTagBtnUnselectAll
     .offAndOn("click.openUTubTagUpdate", function () {
@@ -52,12 +58,15 @@ export function setUnselectUpdateUTubTagEventListeners() {
       openUTubTagBtnMenuOnUTubTags();
     })
     .offAndOn("focus.openUTubTagUpdate", function () {
-      $(document).offAndOn("keyup.openUTubTagUpdate", function (e) {
-        if (e.key === KEYS.ENTER) {
-          setTagDeckBtnsOnUpdateAllUTubTagsOpened();
-          openUTubTagBtnMenuOnUTubTags();
-        }
-      });
+      $(document).offAndOn(
+        "keyup.openUTubTagUpdate",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ENTER) {
+            setTagDeckBtnsOnUpdateAllUTubTagsOpened();
+            openUTubTagBtnMenuOnUTubTags();
+          }
+        },
+      );
     })
     .offAndOn("blur.openUTubTagUpdate", function () {
       $(document).off("keyup.openUTubTagUpdate");
@@ -71,37 +80,40 @@ export function setUnselectUpdateUTubTagEventListeners() {
       updateURLsAndTagSubheaderWhenTagSelected();
     })
     .offAndOn("focus.closeUTubTagUpdate", function () {
-      $(document).offAndOn("keyup.closeUTubTagUpdate", function (e) {
-        if (e.key === KEYS.ENTER) {
-          setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-          closeUTubTagBtnMenuOnUTubTags();
-          updateURLsAndTagSubheaderWhenTagSelected();
-        }
-      });
+      $(document).offAndOn(
+        "keyup.closeUTubTagUpdate",
+        function (event: JQuery.TriggeredEvent) {
+          if (event.key === KEYS.ENTER) {
+            setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+            closeUTubTagBtnMenuOnUTubTags();
+            updateURLsAndTagSubheaderWhenTagSelected();
+          }
+        },
+      );
     })
     .offAndOn("blur.closeUTubTagUpdate", function () {
       $(document).off("keyup.closeUTubTagUpdate");
     });
 }
 
-export function setTagDeckBtnsOnUpdateAllUTubTagsOpened() {
+export function setTagDeckBtnsOnUpdateAllUTubTagsOpened(): void {
   $("#utubTagStandardBtns").hideClass();
   $("#utubTagCloseUpdateTagBtnContainer").showClassNormal();
 }
 
-export function setTagDeckBtnsOnUpdateAllUTubTagsClosed() {
+export function setTagDeckBtnsOnUpdateAllUTubTagsClosed(): void {
   $("#utubTagStandardBtns").showClassFlex();
   $("#utubTagCloseUpdateTagBtnContainer").hideClass();
 }
 
-export function openUTubTagBtnMenuOnUTubTags() {
+export function openUTubTagBtnMenuOnUTubTags(): void {
   $(".tagCountWrap").hideClass();
   $(".tagMenuWrap").showClassNormal();
   $(".tagFilter").addClass("disabled").disableTab();
   enableTabbableChildElements($("#listTags"));
 }
 
-export function closeUTubTagBtnMenuOnUTubTags() {
+export function closeUTubTagBtnMenuOnUTubTags(): void {
   disableTabbableChildElements($("#listTags"));
   $(".tagCountWrap").showClassNormal();
   $(".tagMenuWrap").hideClass();
