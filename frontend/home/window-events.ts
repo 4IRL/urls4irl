@@ -20,26 +20,29 @@ import { setTagDeckSubheaderWhenNoUTubSelected } from "./tags/deck.js";
 /**
  * Initialize browser history (popstate) and page load (pageshow) event handlers
  */
-export function initWindowEvents() {
+export function initWindowEvents(): void {
   window.addEventListener("popstate", handlePopState);
   window.addEventListener("pageshow", handlePageShow);
 }
 
-function handlePopState(e) {
-  if (e.state && e.state.hasOwnProperty("UTubID")) {
-    if (!isUtubIdValidFromStateAccess(e.state.UTubID)) {
+function handlePopState(event: PopStateEvent): void {
+  const state = event.state as { UTubID: number } | null;
+
+  if (state !== null && "UTubID" in state) {
+    if (!isUtubIdValidFromStateAccess(state.UTubID)) {
       // Handle when a user previously went back to a now deleted UTub
-      window.history.replaceState(null, null, "/home");
+      window.history.replaceState(null, "", "/home");
       resetHomePageToInitialState();
       return;
     }
 
     // State will contain property UTub if URL contains query parameter UTubID
-    getUTubInfo(e.state.UTubID).then(
+    getUTubInfo(state.UTubID).then(
       (selectedUTub) => {
+        if (!selectedUTub) return;
         buildSelectedUTub(selectedUTub);
         // If mobile, go straight to URL deck
-        if ($(window).width() < TABLET_WIDTH) {
+        if (($(window).width() ?? 0) < TABLET_WIDTH) {
           setMobileUIWhenUTubSelectedOrURLNavSelected();
         }
       },
@@ -53,16 +56,17 @@ function handlePopState(e) {
   }
 }
 
-function handlePageShow(e) {
+function handlePageShow(): void {
   setUTubEventListenersOnInitialPageLoad();
   setCreateUTubEventListeners();
 
   if (history.state && history.state.UTubID) {
     getUTubInfo(history.state.UTubID).then(
       (selectedUTub) => {
+        if (!selectedUTub) return;
         buildSelectedUTub(selectedUTub);
         // If mobile, go straight to URL deck
-        if ($(window).width() < TABLET_WIDTH) {
+        if (($(window).width() ?? 0) < TABLET_WIDTH) {
           setMobileUIWhenUTubSelectedOrURLNavSelected();
         }
         return;
@@ -90,21 +94,26 @@ function handlePageShow(e) {
   const utubId = searchParams.get(APP_CONFIG.strings.UTUB_QUERY_PARAM);
   if (searchParams.size > 1 || utubId === null) {
     window.location.assign(APP_CONFIG.routes.errorPage);
+    return;
   }
 
-  if (!isValidUTubID(utubId))
+  if (!isValidUTubID(utubId)) {
     window.location.assign(APP_CONFIG.routes.errorPage);
+    return;
+  }
 
-  if (!isUtubIdValidOnPageLoad(parseInt(utubId))) {
-    window.history.replaceState(null, null, "/home");
+  if (!isUtubIdValidOnPageLoad(utubId)) {
+    window.history.replaceState(null, "", "/home");
     window.location.assign(APP_CONFIG.routes.errorPage);
+    return;
   }
 
   getUTubInfo(parseInt(utubId)).then(
     (selectedUTub) => {
+      if (!selectedUTub) return;
       buildSelectedUTub(selectedUTub);
       // If mobile, go straight to URL deck
-      if ($(window).width() < TABLET_WIDTH) {
+      if (($(window).width() ?? 0) < TABLET_WIDTH) {
         setMobileUIWhenUTubSelectedOrURLNavSelected();
       }
     },

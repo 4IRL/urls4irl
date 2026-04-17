@@ -371,24 +371,19 @@ Evaluate re-review results:
 
 **CRITICAL: Never use bare `git push`.** The repo remote uses SSH, which attributes the push to the user's personal account. This breaks branch protection rules that block self-approval from the last pusher.
 
-**Always push via HTTPS with the GitHub App token** so the push is attributed to the bot:
+**Always push via `.claude/scripts/gh-app-push.sh`.** The script:
+- Generates a fresh GitHub App installation token on every invocation.
+- Stores the token in a locally-scoped variable (not `GH_TOKEN`), avoiding any chance of a stale env-var PAT shadowing it at URL-expansion time.
+- Refuses to push to `main`/`master` and refuses force-push flags.
+- Sets upstream tracking after a successful push.
 
 ```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
-git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
+.claude/scripts/gh-app-push.sh $BRANCH
 ```
 
-This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
+**MANDATORY: Run with `dangerouslyDisableSandbox: true` every time.** The script writes to `.git/config` to persist upstream tracking, which the sandbox blocks. Without `dangerouslyDisableSandbox`, the push itself still succeeds but tracking won't stick — breaking `gmas` / `git cleanup` workflows that rely on `git fetch -p` to detect merged branches.
 
-**CRITICAL: Set upstream tracking after push.** The sandbox blocks `.git/config` writes, so `push -u` silently fails to save the tracking ref. After every successful push, run:
-
-```bash
-git branch --set-upstream-to=origin/$BRANCH $BRANCH
-```
-
-This command **must** use `dangerouslyDisableSandbox: true` because it writes to `.git/config`. Without this, `git fetch -p` cannot detect merged/deleted remote branches as "gone", breaking branch cleanup workflows.
-
-After setting upstream, proceed to Step 9 (PR creation).
+After a successful push, proceed to Step 9 (PR creation).
 
 After a successful push, delete all files in `<tmp-dir>/` if a topic was inferred and the tmp dir was used (i.e., `<tmp-dir>` is `plans/<topic>/tmp/`).
 

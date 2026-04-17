@@ -7,12 +7,14 @@ import {
   setMobileUIWhenTagDeckSelected,
 } from "./mobile.js";
 
-export const NAVBAR_TOGGLER = { toggler: null };
+export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
+  toggler: null,
+};
 
 /**
  * Initialize navbar and mobile navigation buttons
  */
-export function initNavbar() {
+export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
     setMobileUIWhenMemberDeckSelected();
   });
@@ -44,13 +46,13 @@ export function initNavbar() {
     });
 }
 
-export function onMobileNavbarOpened() {
+export function onMobileNavbarOpened(): void {
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
 
   navbarBackdrop.on("click", function () {
-    NAVBAR_TOGGLER.toggler.hide();
+    NAVBAR_TOGGLER.toggler?.hide();
   });
 
   setTimeout(function () {
@@ -64,7 +66,7 @@ export function onMobileNavbarOpened() {
   $("#mainNavbar").append(navbarBackdrop);
 }
 
-export function onMobileNavbarClosed() {
+export function onMobileNavbarClosed(): void {
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
 

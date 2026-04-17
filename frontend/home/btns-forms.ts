@@ -1,5 +1,5 @@
 import { $ } from "../lib/globals.js";
-import { KEYS, METHOD_TYPES, INPUT_TYPES } from "../lib/constants.js";
+import { INPUT_TYPES } from "../lib/constants.js";
 import { isHidden } from "./visibility.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { updateUTubNameHideInput } from "./urls/update-name.js";
@@ -7,17 +7,19 @@ import { updateUTubDescriptionHideInput } from "./urls/update-description.js";
 import { createMemberHideInput } from "./members/create.js";
 
 // Handle focus for the text input box
-function handleFocus(event) {
-  const label = event.target.nextElementSibling;
+function handleFocus(event: JQuery.TriggeredEvent): void {
+  const label = (event.target as HTMLInputElement)
+    .nextElementSibling as HTMLElement;
   label.style.top = "0px";
   label.style.left = "10px";
   label.style.fontSize = "14px";
 }
 
 // Handle blur for the text input box
-function handleBlur(event) {
-  if (event.target.value === "") {
-    const label = event.target.nextElementSibling;
+function handleBlur(event: JQuery.TriggeredEvent): void {
+  if ((event.target as HTMLInputElement).value === "") {
+    const label = (event.target as HTMLInputElement)
+      .nextElementSibling as HTMLElement;
     label.style.top = "50%";
     label.style.left = "10px";
     label.style.fontSize = "16px";
@@ -25,20 +27,24 @@ function handleBlur(event) {
 }
 
 // Handle blur for the search text input boxes
-function handleSearchInputBlur(event) {
-  const label = event.target.nextElementSibling;
-  event.target.value === "" ? $(label).show() : $(label).hide();
+function handleSearchInputBlur(event: JQuery.TriggeredEvent): void {
+  const label = (event.target as HTMLInputElement).nextElementSibling;
+  if ((event.target as HTMLInputElement).value === "") {
+    $(label!).show();
+  } else {
+    $(label!).hide();
+  }
 }
 
 // Request user text input by showing the appropriate text input element and await valid input
-function showInput(handle) {
+function showInput(handle: string): void {
   const inputEl = $(handle);
   const inputDiv = inputEl.closest(".createDiv");
   $(inputDiv).showClassFlex();
 }
 
 // Highlight the input field. Typically if user requests action that is already displayed
-export function highlightInput(inputEl) {
+export function highlightInput(inputEl: JQuery<HTMLInputElement>): void {
   $(inputEl).trigger("focus");
   $(inputEl).focus();
   if (inputEl[0].value) {
@@ -47,7 +53,7 @@ export function highlightInput(inputEl) {
 }
 
 // Hides any active input fields
-export function hideInputs() {
+export function hideInputs(): void {
   // Show UTub creation instead of UTub form
   if (!isHidden($("#createUTubWrap"))) createUTubHideInput();
   // Show UTub name instead of update UTub name form
@@ -63,14 +69,14 @@ export function hideInputs() {
 }
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
-function hideInput(handle) {
+function hideInput(handle: string): void {
   const inputEl = $(handle);
   const inputDiv = inputEl.closest(".createDiv");
   $(inputDiv).hideClass();
 }
 
 // Creates update button
-export function makeUpdateButton(wh) {
+export function makeUpdateButton(wh: string): JQuery<HTMLElement> {
   const updateBtn = $(document.createElement("button"));
 
   // update icon box
@@ -94,7 +100,7 @@ export function makeUpdateButton(wh) {
 }
 
 // Creates submit button
-export function makeSubmitButton(wh) {
+export function makeSubmitButton(wh: string): JQuery<HTMLElement> {
   const submitBtn = $(document.createElement("button"));
 
   // Submit checkbox
@@ -113,7 +119,7 @@ export function makeSubmitButton(wh) {
 }
 
 // Creates cancel button
-export function makeCancelButton(wh) {
+export function makeCancelButton(wh: string): JQuery<HTMLElement> {
   const cancelBtn = $(document.createElement("button"));
 
   // Cancel x-box
@@ -133,10 +139,10 @@ export function makeCancelButton(wh) {
 
 // Fancy text box creation
 export function makeTextInput(
-  textInputID,
-  method,
-  type = INPUT_TYPES.TEXT.description,
-) {
+  textInputID: string,
+  method: string,
+  type: string = INPUT_TYPES.TEXT.description,
+): JQuery<HTMLElement> {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
     "createDiv flex-row full-width pad-top-5p",
   );
@@ -177,17 +183,17 @@ export function makeTextInput(
 }
 
 // Disables buttons
-function disable(jqueryObj) {
+function disable(jqueryObj: JQuery<HTMLElement>): void {
   $(jqueryObj).prop("disabled", true);
 }
 
 // Enables buttons
-function enable(jqueryObj) {
+function enable(jqueryObj: JQuery<HTMLElement>): void {
   $(jqueryObj).prop("disabled", false);
 }
 
 // Initialize btns/forms (wrapping the $(document).ready logic from original)
-export function initBtnsForms() {
+export function initBtnsForms(): void {
   // Prevent form refresh of page on submittal
   $("form").on("submit", function () {
     return false;
@@ -195,7 +201,7 @@ export function initBtnsForms() {
 
   // Provide responsiveness to the custom text input boxes
   const textInputs = $(".text-input");
-  let textInput;
+  let textInput: JQuery<HTMLElement>;
   for (let i = 0; i < textInputs.length; i++) {
     textInput = $(textInputs[i]);
     textInput.val("");

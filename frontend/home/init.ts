@@ -15,7 +15,7 @@ import { buildUTubDeck } from "./utubs/deck.js";
 /**
  * Sets UI state when no UTub is selected
  */
-export function setUIWhenNoUTubSelected() {
+export function setUIWhenNoUTubSelected(): void {
   hideInputs();
   setTagDeckSubheaderWhenNoUTubSelected();
   resetTagDeckIfNoUTubSelected();
@@ -33,7 +33,7 @@ export function setUIWhenNoUTubSelected() {
 /**
  * Resets the home page to its initial state with no UTub selected
  */
-export function resetHomePageToInitialState() {
+export function resetHomePageToInitialState(): void {
   setUIWhenNoUTubSelected();
   getAllUTubs().then((utubData) => {
     buildUTubDeck(utubData.utubs);

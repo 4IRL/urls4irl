@@ -2,12 +2,13 @@ import { $ } from "../lib/globals.js";
 import { enableTabbableChildElements } from "../lib/jquery-plugins.js";
 
 // Where el is the DOM element you'd like to test for visibility
-export function isHidden(el) {
-  return el.offsetParent === null || $(el).get(0).offsetParent === null;
+export function isHidden(el: JQuery<HTMLElement>): boolean {
+  const domEl = $(el).get(0);
+  return domEl ? domEl.offsetParent === null : true;
 }
 
 // Initialize visibility handlers (wrapping the $(window) handlers from original)
-export function initVisibilityHandlers() {
+export function initVisibilityHandlers(): void {
   $(window).on("focus", () => {
     const prevFocusedElem = $(".focus");
     if (prevFocusedElem.length === 0) return;

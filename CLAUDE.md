@@ -123,6 +123,7 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
 2. **Never use Bash to write files** — use the `Write` tool instead of `cat >`, `cat <<`, `echo >`, `tee`, or `printf >`. Heredocs and redirects with JSON/code content trigger security prompts due to brace+quote detection. The `Write` tool bypasses this entirely.
 3. **Never use inline `python3 -c` with braces** — write the script to a temp file and execute it. Inline Python with `{}` (dicts, f-strings, sets) triggers the same brace+quote security check.
+4. **Never use Bash brace expansion** — `{a,b,c}` in shell commands triggers the same brace+quote security check. Use Glob tool, wildcards (`*.md`), or list files individually instead.
 
 ### Test Output Location
 

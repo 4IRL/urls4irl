@@ -113,6 +113,8 @@ Prompt template:
 
 After all 6 subagents return their one-line confirmations, verify each `plans/<topic>/tmp/<role>.md` file exists. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`.
 
+**Use the Glob tool** (`Glob(pattern: "plans/<topic>/tmp/*.md")`) to check for the files — **never use Bash `ls` with brace expansion** (`{a,b,c}`) as it triggers sandbox security prompts.
+
 For each file:
 - If a file is missing or contains invalid JSON, note it — the coordinator (Step 3b) will treat that reviewer as FAIL with a parse error finding
 
@@ -122,7 +124,7 @@ After confirming all 6 files are present, launch a **single coordinator subagent
 
 The coordinator subagent prompt:
 
-> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/{correctness,full-stack-trace,ordering,integration,verification,completeness}.md`. Follow the coordinator workflow, then write TWO files:
+> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/` — specifically: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`. Follow the coordinator workflow, then write TWO files:
 >
 > 1. **`plans/<topic>/tmp/coordinator.md`** — the full JSON output (verdicts, summaries, files_read, findings) as specified in the reference file.
 > 2. **`plans/<topic>/tmp/coordinator-summary.md`** — a short summary for the orchestrator containing ONLY:

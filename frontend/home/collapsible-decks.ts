@@ -9,7 +9,7 @@ import { createUTubTagHideInput } from "./tags/create.js";
 const UTUB_DECK_CSS_SELECTOR = ".deck#UTubDeck";
 const MEMBER_DECK_CSS_SELECTOR = ".deck#MemberDeck";
 const UTUB_TAG_DECK_CSS_SELECTOR = ".deck#TagDeck";
-const LHS_DECKS = [
+const LHS_DECKS: readonly string[] = [
   UTUB_DECK_CSS_SELECTOR,
   MEMBER_DECK_CSS_SELECTOR,
   UTUB_TAG_DECK_CSS_SELECTOR,
@@ -18,7 +18,7 @@ const LHS_DECKS = [
 /**
  * Initialize collapsible deck functionality
  */
-export function initCollapsibleDecks() {
+export function initCollapsibleDecks(): void {
   if (!isMobile()) {
     setupCollapsibleLeftDecks();
   } else {
@@ -26,13 +26,13 @@ export function initCollapsibleDecks() {
   }
 }
 
-export function removeCollapsibleClickableHeaderClass() {
+export function removeCollapsibleClickableHeaderClass(): void {
   $("#UTubDeckHeaderAndCaret").removeClass("clickable");
   $("#MemberDeckHeaderAndCaret").removeClass("clickable");
   $("#TagDeckHeaderAndCaret").removeClass("clickable");
 }
 
-export function addCollapsibleClickableHeaderClass() {
+export function addCollapsibleClickableHeaderClass(): void {
   $("#UTubDeckHeaderAndCaret").addClass("clickable");
   $("#MemberDeckHeaderAndCaret").addClass("clickable");
   $("#TagDeckHeaderAndCaret").addClass("clickable");
@@ -44,7 +44,7 @@ function setupCollapsibleLeftDecks() {
   setupTagHeaderForMaximizeMinimize();
 }
 
-export function resetAllDecksIfCollapsed() {
+export function resetAllDecksIfCollapsed(): void {
   const caretUTubDeck = $("#UTubDeckHeaderAndCaret .title-caret");
   if (caretUTubDeck.hasClass("closed")) {
     caretUTubDeck.removeClass("closed");
@@ -55,9 +55,9 @@ export function resetAllDecksIfCollapsed() {
   if (caretMemberDeck.hasClass("closed")) {
     caretMemberDeck.removeClass("closed");
     $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
-    !isUTubSelected()
-      ? $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
-      : null;
+    if (!isUTubSelected()) {
+      $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
+    }
     return;
   }
 
@@ -65,9 +65,9 @@ export function resetAllDecksIfCollapsed() {
   if (caretTagDeck.hasClass("closed")) {
     caretTagDeck.removeClass("closed");
     $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
-    !isUTubSelected()
-      ? $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
-      : null;
+    if (!isUTubSelected()) {
+      $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
+    }
     return;
   }
 }
@@ -91,10 +91,10 @@ function setupUTubHeaderForMaximizeMinimize() {
     $(UTUB_DECK_CSS_SELECTOR).addClass("collapsed");
 
     closeUTubSearchAndEraseInput();
-    isUTubSelected() ? createUTubHideInput() : null;
+    if (isUTubSelected()) createUTubHideInput();
 
     if (numDecksAlreadyCollapsed >= 2) {
-      ensureOnlyTwoDecksCollapsedAtOnce(UTUB_DECK_CSS_SELECTOR);
+      ensureOnlyTwoDecksCollapsedAtOnce();
     }
     setLastCollapsed(UTUB_DECK_CSS_SELECTOR);
   });
@@ -111,9 +111,9 @@ function setupMemberHeaderForMaximizeMinimize() {
     if (caret.hasClass("closed")) {
       caret.removeClass("closed");
       $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
-      !isUTubSelected()
-        ? $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
-        : null;
+      if (!isUTubSelected()) {
+        $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
+      }
       return;
     }
 
@@ -121,11 +121,11 @@ function setupMemberHeaderForMaximizeMinimize() {
     caret.addClass("closed");
     $(MEMBER_DECK_CSS_SELECTOR).addClass("collapsed");
 
-    isUTubSelected() ? createMemberHideInput() : null;
+    if (isUTubSelected()) createMemberHideInput();
     $("#MemberDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 
     if (numDecksAlreadyCollapsed >= 2) {
-      ensureOnlyTwoDecksCollapsedAtOnce(MEMBER_DECK_CSS_SELECTOR);
+      ensureOnlyTwoDecksCollapsedAtOnce();
     }
     setLastCollapsed(MEMBER_DECK_CSS_SELECTOR);
   });
@@ -142,9 +142,9 @@ function setupTagHeaderForMaximizeMinimize() {
     if (caret.hasClass("closed")) {
       caret.removeClass("closed");
       $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
-      !isUTubSelected()
-        ? $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
-        : null;
+      if (!isUTubSelected()) {
+        $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem");
+      }
       return;
     }
 
@@ -152,17 +152,17 @@ function setupTagHeaderForMaximizeMinimize() {
     caret.addClass("closed");
     $(UTUB_TAG_DECK_CSS_SELECTOR).addClass("collapsed");
 
-    isUTubSelected() ? createUTubTagHideInput() : null;
+    if (isUTubSelected()) createUTubTagHideInput();
     $("#TagDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 
     if (numDecksAlreadyCollapsed >= 2) {
-      ensureOnlyTwoDecksCollapsedAtOnce(UTUB_TAG_DECK_CSS_SELECTOR);
+      ensureOnlyTwoDecksCollapsedAtOnce();
     }
     setLastCollapsed(UTUB_TAG_DECK_CSS_SELECTOR);
   });
 }
 
-function getNumDecksAlreadyCollapsed() {
+function getNumDecksAlreadyCollapsed(): number {
   let collapsedDecksCount = 0;
 
   for (let i = 0; i < LHS_DECKS.length; i++) {
@@ -172,8 +172,8 @@ function getNumDecksAlreadyCollapsed() {
   return collapsedDecksCount;
 }
 
-function ensureOnlyTwoDecksCollapsedAtOnce(collapsingDeck) {
-  let deckToExpandSelector;
+function ensureOnlyTwoDecksCollapsedAtOnce(): void {
+  let deckToExpandSelector: string | undefined;
   for (let i = 0; i < LHS_DECKS.length; i++) {
     if ($(LHS_DECKS[i]).attr("data-last-collapsed") === "true") {
       deckToExpandSelector = LHS_DECKS[i];
@@ -181,15 +181,18 @@ function ensureOnlyTwoDecksCollapsedAtOnce(collapsingDeck) {
     }
   }
 
+  if (!deckToExpandSelector) return;
   const deckToExpand = $(deckToExpandSelector);
   deckToExpand.find(".title-caret").first().removeClass("closed");
   deckToExpand.removeClass("collapsed");
 }
 
-function setLastCollapsed(collapsingDeck) {
+function setLastCollapsed(collapsingDeck: string): void {
   for (let i = 0; i < LHS_DECKS.length; i++) {
-    collapsingDeck === LHS_DECKS[i]
-      ? $(collapsingDeck).attr("data-last-collapsed", "true")
-      : $(LHS_DECKS[i]).attr("data-last-collapsed", "false");
+    if (collapsingDeck === LHS_DECKS[i]) {
+      $(collapsingDeck).attr("data-last-collapsed", "true");
+    } else {
+      $(LHS_DECKS[i]).attr("data-last-collapsed", "false");
+    }
   }
 }
