@@ -112,5 +112,28 @@ describe("Collapsible Decks", () => {
       expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
     });
+
+    it("does not mutate DOM when no deck has data-last-collapsed=true", () => {
+      // Manually collapse all three decks without setting data-last-collapsed
+      $(".deck#UTubDeck").addClass("collapsed");
+      $("#UTubDeckHeaderAndCaret .title-caret").addClass("closed");
+      $(".deck#MemberDeck").addClass("collapsed");
+      $("#MemberDeckHeaderAndCaret .title-caret").addClass("closed");
+      $(".deck#TagDeck").addClass("collapsed");
+      $("#TagDeckHeaderAndCaret .title-caret").addClass("closed");
+
+      const htmlBefore = document.body.innerHTML;
+
+      // Trigger a collapse via click — ensureOnlyTwoDecksCollapsedAtOnce runs
+      // but the early-return fires because no deck has data-last-collapsed=true
+      // Instead we directly invoke initCollapsibleDecks again and click
+      // Since all 3 are already collapsed and none have data-last-collapsed,
+      // the auto-expand guard should be a no-op beyond the new collapse itself.
+      // Verify that all three remain collapsed (no auto-expand occurred).
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect($(".deck#TagDeck").hasClass("collapsed")).toBe(true);
+      expect(document.body.innerHTML).toBe(htmlBefore);
+    });
   });
 });

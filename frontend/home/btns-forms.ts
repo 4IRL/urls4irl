@@ -141,7 +141,7 @@ export function makeCancelButton(wh: string): JQuery<HTMLElement> {
 export function makeTextInput(
   textInputID: string,
   method: string,
-  type: string | undefined = INPUT_TYPES.TEXT.description,
+  type: string = INPUT_TYPES.TEXT.description,
 ): JQuery<HTMLElement> {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
     "createDiv flex-row full-width pad-top-5p",

@@ -28,7 +28,7 @@ export function initWindowEvents(): void {
 function handlePopState(event: PopStateEvent): void {
   const state = event.state as { UTubID: number } | null;
 
-  if (state !== null) {
+  if (state !== null && "UTubID" in state) {
     if (!isUtubIdValidFromStateAccess(state.UTubID)) {
       // Handle when a user previously went back to a now deleted UTub
       window.history.replaceState(null, "", "/home");

@@ -3,7 +3,8 @@ import { enableTabbableChildElements } from "../lib/jquery-plugins.js";
 
 // Where el is the DOM element you'd like to test for visibility
 export function isHidden(el: JQuery<HTMLElement>): boolean {
-  return $(el).get(0)!.offsetParent === null;
+  const domEl = $(el).get(0);
+  return domEl ? domEl.offsetParent === null : true;
 }
 
 // Initialize visibility handlers (wrapping the $(window) handlers from original)
