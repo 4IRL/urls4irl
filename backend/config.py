@@ -94,9 +94,10 @@ class Config:
         SESSION_REDIS = Redis.from_url(REDIS_URI)
     SESSION_SERIALIZATION_FORMAT = "json"
     SESSION_COOKIE_SAMESITE = "lax"
-    SESSION_COOKIE_SECURE = (
-        True  # TODO: Implement Remember Me feature and set this to default False
-    )
+    # Secure flag required on any HTTPS-served origin (prod behind TLS-terminating proxy,
+    # staging/dev-server, or local HTTPS via ENABLE_SSL). Disabled only for plaintext-HTTP
+    # local dev, where browsers otherwise silently drop the session cookie.
+    SESSION_COOKIE_SECURE = IS_PRODUCTION or IS_DEV_SERVER or ENABLE_SSL
     WTF_CSRF_TIME_LIMIT = (
         CONFIG_CONSTANTS.SESSION_LIFETIME
     )  # Same as session lifetime to avoid CSRF token expiring in middle of user's session

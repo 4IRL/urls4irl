@@ -1,16 +1,18 @@
+import type { UtubTag } from "../../types/url.js";
+
+import { APP_CONFIG } from "../../lib/config.js";
+import { on, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 import { diffIDLists } from "../../logic/deck-diffing.js";
 import { getState } from "../../store/app-store.js";
-import { APP_CONFIG } from "../../lib/config.js";
-import { on, off, AppEvents } from "../../lib/event-bus.js";
-import { buildTagFilterInDeck } from "./tags.js";
 import {
   createUTubTagHideInput,
-  setupOpenCreateUTubTagEventListeners,
   removeCreateUTubTagEventListeners,
   resetCreateUTubTagFailErrors,
   resetNewUTubTagForm,
+  setupOpenCreateUTubTagEventListeners,
 } from "./create.js";
+import { buildTagFilterInDeck } from "./tags.js";
 import {
   closeUTubTagBtnMenuOnUTubTags,
   setTagDeckBtnsOnUpdateAllUTubTagsClosed,
@@ -22,9 +24,12 @@ import {
 } from "./unselect-all.js";
 
 // Tracks the off-function for the per-UTub TAG_FILTER_CHANGED listener
-let _tagFilterChangedOff = null;
+let _tagFilterChangedOff: (() => void) | null = null;
 
-export function setTagDeckOnUTubSelected(dictTags, utubID) {
+export function setTagDeckOnUTubSelected(
+  dictTags: UtubTag[],
+  utubID: number,
+): void {
   resetTagDeck();
   setupOpenCreateUTubTagEventListeners(utubID);
   setUnselectUpdateUTubTagEventListeners();
@@ -62,7 +67,7 @@ export function setTagDeckOnUTubSelected(dictTags, utubID) {
   $("#TagDeck > .dynamic-subheader").addClass("height-2p5rem");
 }
 
-export function resetTagDeck() {
+export function resetTagDeck(): void {
   if (_tagFilterChangedOff) {
     _tagFilterChangedOff();
     _tagFilterChangedOff = null;
@@ -79,7 +84,7 @@ export function resetTagDeck() {
   setTagDeckBtnsOnUpdateAllUTubTagsClosed();
 }
 
-export function resetTagDeckIfNoUTubSelected() {
+export function resetTagDeckIfNoUTubSelected(): void {
   $("#listTags").empty();
   $("#createUTubTagWrap").hideClass();
   $("#utubTagBtnCreate").hideClass();
@@ -92,8 +97,8 @@ export function resetTagDeckIfNoUTubSelected() {
 }
 
 // Update tags in LH panel based on asynchronous updates or stale data
-export function updateTagDeck(updatedTags, utubID) {
-  const oldTagIDs = getState().tags.map((t) => t.id);
+export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
+  const oldTagIDs = getState().tags.map((tag) => tag.id);
   const newTagIDs = $.map(updatedTags, (tag) => tag.id);
 
   const { toRemove, toAdd } = diffIDLists(oldTagIDs, newTagIDs);
@@ -107,15 +112,16 @@ export function updateTagDeck(updatedTags, utubID) {
   const tagDeck = $("#listTags");
   toAdd.forEach((tagID) => {
     const tagData = updatedTags.find((tag) => tag.id === tagID);
+    if (!tagData) return;
     tagDeck.append(buildTagFilterInDeck(utubID, tagData.id, tagData.tagString));
   });
 }
 
-export function setTagDeckSubheaderWhenNoUTubSelected() {
+export function setTagDeckSubheaderWhenNoUTubSelected(): void {
   $("#TagDeckSubheader").text(null);
 }
 
-export function updateCountOfTagFiltersApplied(selectedTagCount) {
+export function updateCountOfTagFiltersApplied(selectedTagCount: number): void {
   $("#TagDeckSubheader").text(
     selectedTagCount +
       " of " +
@@ -124,7 +130,7 @@ export function updateCountOfTagFiltersApplied(selectedTagCount) {
   );
 }
 
-export function removeTagFromTagDeckGivenTagID(tagID) {
+export function removeTagFromTagDeckGivenTagID(tagID: number): void {
   $(".tagFilter[data-utub-tag-id=" + tagID + "]").remove();
 }
 

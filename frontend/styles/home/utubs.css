@@ -10,12 +10,6 @@
     transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 
-.UTubSelector:hover {
-    cursor: pointer;
-    border-color: var(--deckSelectionGreenHover);
-    background-color: var(--selectedUTubColorBackground);
-}
-
 .active:active,
 .UTubSelector:active {
     border-color: var(--deckSelectionGreen);
@@ -27,16 +21,10 @@
     border: 2px solid var(--deckSelectionGreenHover);
 }
 
-.active,
-.active:hover .UTubName {
+.active {
     color: var(--deckSelectionGreen);
     border-color: var(--deckSelectionGreenHover);
     background-color: var(--selectedUTubColorBackground);
-}
-
-.updateIcon:hover {
-    cursor: pointer;
-    color: white;
 }
 
 .UTubSelector .memberRole {
@@ -56,11 +44,6 @@
 #UTubNameUpdateWrap>.visibleBtn {
     display: flex;
     opacity: 0;
-}
-
-#UTubDescriptionSubheaderWrap.visible-flex:hover>.visibleBtn,
-#UTubNameUpdateWrap:hover>.visibleBtn {
-    opacity: 1;
 }
 
 #updateUTubDescriptionBtn:focus,
@@ -89,4 +72,28 @@
 
 #UTubDescriptionInnerUpdateWrap {
     width: 65%;
+}
+
+@media not all and (any-pointer: coarse) {
+    .UTubSelector:hover {
+        cursor: pointer;
+        border-color: var(--deckSelectionGreenHover);
+        background-color: var(--selectedUTubColorBackground);
+    }
+
+    .active:hover .UTubName {
+        color: var(--deckSelectionGreen);
+        border-color: var(--deckSelectionGreenHover);
+        background-color: var(--selectedUTubColorBackground);
+    }
+
+    .updateIcon:hover {
+        cursor: pointer;
+        color: white;
+    }
+
+    #UTubDescriptionSubheaderWrap.visible-flex:hover>.visibleBtn,
+    #UTubNameUpdateWrap:hover>.visibleBtn {
+        opacity: 1;
+    }
 }

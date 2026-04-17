@@ -1,24 +1,25 @@
-import { $ } from "../../lib/globals.js";
+import type { operations } from "../../types/api.d.ts";
+
+import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
-import { ajaxCall } from "../../lib/ajax.js";
-import {
-  setTagDeckBtnsOnUpdateAllUTubTagsOpened,
-  openUTubTagBtnMenuOnUTubTags,
-  setTagDeckBtnsOnUpdateAllUTubTagsClosed,
-  closeUTubTagBtnMenuOnUTubTags,
-  setUnselectUpdateUTubTagEventListeners,
-} from "./update-all.js";
-import { KEYS } from "../../lib/constants.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
+import { $ } from "../../lib/globals.js";
 import { getState, setState } from "../../store/app-store.js";
 
-function deleteUTubTagHideModal() {
+type DeleteUtubTagResponse =
+  operations["deleteUtubTag"]["responses"][200]["content"]["application/json"];
+
+function deleteUTubTagHideModal(): void {
   $("#confirmModal").modal("hide");
 }
 
-export function deleteUTubTagShowModal(utubID, utubTagID, string) {
+export function deleteUTubTagShowModal(
+  utubID: number,
+  utubTagID: number,
+  tagString: string,
+): void {
   const modalTitle = "Are you sure you want to delete this Tag?";
-  const $strong = $("<strong>").text(`'${string}'`);
+  const $strong = $("<strong>").text(`'${tagString}'`);
   const modalBody = `${APP_CONFIG.strings.UTUB_TAG_DELETE_WARNING}`.replace(
     "{{ tag_string }}",
     $strong.prop("outerHTML"),
@@ -33,8 +34,8 @@ export function deleteUTubTagShowModal(utubID, utubTagID, string) {
   $("#modalDismiss")
     .removeClass()
     .addClass("btn btn-secondary")
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       deleteUTubTagHideModal();
     })
     .text(buttonTextDismiss);
@@ -43,8 +44,8 @@ export function deleteUTubTagShowModal(utubID, utubTagID, string) {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOn("click", function (event: JQuery.TriggeredEvent) {
+      event.preventDefault();
       deleteUTubTag(utubID, utubTagID);
     });
 
@@ -53,56 +54,61 @@ export function deleteUTubTagShowModal(utubID, utubTagID, string) {
   $("#modalRedirect").hide();
 }
 
-function deleteUTubTagSetup(utubID, utubTagID) {
-  let deleteURL = APP_CONFIG.routes.deleteUTubTag(utubID, utubTagID);
-
-  return deleteURL;
-}
-
-function deleteUTubTag(utubID, utubTagID) {
+function deleteUTubTag(utubID: number, utubTagID: number): void {
   $("#modalSubmit").prop("disabled", true);
 
-  let deleteUTubTagURL = deleteUTubTagSetup(utubID, utubTagID);
+  const deleteUTubTagURL = APP_CONFIG.routes.deleteUTubTag(utubID, utubTagID);
 
   const request = ajaxCall("delete", deleteUTubTagURL, []);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (
+    response: DeleteUtubTagResponse,
+    _textStatus: JQuery.Ajax.SuccessTextStatus,
+    xhr: JQuery.jqXHR,
+  ) {
     if (xhr.status === 200) {
       deleteUTubTagSuccess(response);
     }
   });
 
-  request.fail(function (xhr, textStatus, errorThrown) {
+  request.fail(function (xhr: JQuery.jqXHR) {
     deleteUTubTagFail(xhr);
   });
 }
 
-function deleteUTubTagSuccess(response) {
+function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
   // Close the modal
   $("#confirmModal").modal("hide");
 
   // Remove the UTub Tag
-  const utubTagID = response.utubTag.utubTagID;
-  const affectedURLIDs = new Set(response.utubUrlIDs);
+  const deletedTagID = response.utubTag.utubTagID;
+  const affectedUrlIDs = new Set(response.utubUrlIDs);
+  const filteredTags = getState().tags.filter((tag) => tag.id !== deletedTagID);
+  const updatedUrls = getState().urls.map((url) =>
+    affectedUrlIDs.has(url.utubUrlID)
+      ? {
+          ...url,
+          utubUrlTagIDs: url.utubUrlTagIDs.filter((id) => id !== deletedTagID),
+        }
+      : url,
+  );
+  const filteredSelected = getState().selectedTagIDs.filter(
+    (id) => id !== deletedTagID,
+  );
   setState({
-    tags: getState().tags.filter((t) => t.id !== utubTagID),
-    urls: getState().urls.map((u) =>
-      affectedURLIDs.has(u.utubUrlID)
-        ? {
-            ...u,
-            utubUrlTagIDs: u.utubUrlTagIDs.filter((id) => id !== utubTagID),
-          }
-        : u,
-    ),
-    selectedTagIDs: getState().selectedTagIDs.filter((id) => id !== utubTagID),
+    tags: filteredTags,
+    urls: updatedUrls,
+    selectedTagIDs: filteredSelected,
   });
 
-  const utubTagSelector = $(".tagFilter[data-utub-tag-id=" + utubTagID + "]");
+  const utubTagSelector = $(
+    ".tagFilter[data-utub-tag-id=" + deletedTagID + "]",
+  );
 
   utubTagSelector.fadeOut("fast", () => {
     // Remove the tag from associated URLs
-    const urlTagBadges = $(".tagBadge[data-utub-tag-id=" + utubTagID + "]");
+    const urlTagBadges = $(".tagBadge[data-utub-tag-id=" + deletedTagID + "]");
     urlTagBadges.remove();
 
     utubTagSelector.remove();
@@ -115,13 +121,13 @@ function deleteUTubTagSuccess(response) {
       $("#utubTagStandardBtns").showClassFlex();
     }
 
-    emit(AppEvents.TAG_DELETED, { utubTagID });
+    emit(AppEvents.TAG_DELETED, { utubTagID: deletedTagID });
   });
 }
 
-function deleteUTubTagFail(xhr) {
+function deleteUTubTagFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
-  if (xhr._429Handled) return;
+  if (is429Handled(xhr)) return;
 
   if (
     xhr.status === 403 &&
@@ -146,8 +152,8 @@ function deleteUTubTagFail(xhr) {
     )
     .append(" to reload the UTub.");
 
-  $("#Reloader").offAndOn("click", (e) => {
-    e.preventDefault();
+  $("#Reloader").offAndOn("click", (event: JQuery.TriggeredEvent) => {
+    event.preventDefault();
     window.location.reload();
   });
 

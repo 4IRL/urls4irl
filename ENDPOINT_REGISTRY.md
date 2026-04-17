@@ -314,7 +314,7 @@ Base path: `/utubs/<utub_id>/tags`
 | **Decorators** | `@utub_membership_required`, `@api_route(request_schema=AddTagRequest, response_schema=UtubTagAddedToUtubResponseSchema, tags=["tags"], description="Add a tag to a UTub", status_codes={200: UtubTagAddedToUtubResponseSchema, 400: ErrorResponse, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/create_utub_tag.py:create_tag_in_utub` |
 | **Schema** | `backend/schemas/requests/tags/add_tag.py:AddTagRequest` |
-| **JS Module** | `frontend/home/tags/create.js` — `JSON.stringify`, `application/json` |
+| **JS Module** | `frontend/home/tags/create.ts` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_add_tags_to_utub_route.py` (marker: `tags`), `tests/functional/tags_ui/test_create_utub_tag_ui.py` (marker: `tags_ui`) |
 
@@ -325,7 +325,7 @@ Base path: `/utubs/<utub_id>/tags`
 | **Handler** | `backend/tags/utub_tag_routes.py:delete_utub_tag` |
 | **Decorators** | `@utub_membership_with_valid_utub_tag`, `@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema, tags=["tags"], description="Delete a tag from a UTub", status_codes={200: UtubTagDeletedFromUtubResponseSchema, 404: ErrorResponse})` |
 | **Service** | `backend/tags/services/delete_utub_tag.py:delete_utub_tag_from_utub_and_utub_urls` |
-| **JS Module** | `frontend/home/tags/delete.js` |
+| **JS Module** | `frontend/home/tags/delete.ts` |
 | **CSRF** | Meta tag |
 | **Tests** | `tests/integration/tags/test_delete_tag_from_utub_route.py` (marker: `tags`), `tests/functional/tags_ui/test_delete_utub_tag_ui.py` (marker: `tags_ui`) |
 

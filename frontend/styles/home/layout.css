@@ -231,8 +231,10 @@ button {
     cursor: pointer;
 }
 
-.btn-text-on-hvr:hover {
-    color: white;
+@media not all and (any-pointer: coarse) {
+    .btn-text-on-hvr:hover {
+        color: white;
+    }
 }
 
 .long-text-ellipsis {

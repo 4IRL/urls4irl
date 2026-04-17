@@ -783,6 +783,20 @@ def test_csrf_expiration_log(app, login_first_user_with_register, caplog):
             headers={"X-CSRFToken": csrf_token},
         )
         assert invalid_utub_response_with_csrf.status_code == 403
-        assert is_string_in_logs(
-            f"CSRF token expired for User={user.id}", caplog.records
-        )
+        csrf_log_prefix = f"CSRF validation failed for User={user.id}: "
+        assert is_string_in_logs(csrf_log_prefix, caplog.records)
+
+        # The log line should include a non-empty csrf_error.description fragment
+        # appended after the ': ' separator (behaviour added in handle_403_response_from_csrf).
+        matching_messages = [
+            record.getMessage()
+            for record in caplog.records
+            if csrf_log_prefix in record.getMessage()
+        ]
+        assert matching_messages
+        for message in matching_messages:
+            description_fragment = message.split(csrf_log_prefix, 1)[1]
+            assert description_fragment, (
+                "Expected non-empty csrf_error.description fragment "
+                f"after '{csrf_log_prefix}' in log message: {message!r}"
+            )
