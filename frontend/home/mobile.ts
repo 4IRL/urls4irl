@@ -13,14 +13,14 @@ import { makeUTubSelectableAgainIfMobile } from "./utubs/selectors.js";
 /**
  * Check if current viewport is mobile/tablet size
  */
-export function isMobile() {
-  return $(window).width() < TABLET_WIDTH;
+export function isMobile(): boolean {
+  return ($(window).width() ?? 0) < TABLET_WIDTH;
 }
 
 /**
  * Initialize mobile layout event listeners
  */
-export function initMobileLayout() {
+export function initMobileLayout(): void {
   on(AppEvents.UTUB_SELECTED, () => {
     if (isMobile()) setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
@@ -30,7 +30,7 @@ export function initMobileLayout() {
   // https://webdevetc.com/blog/matchmedia-events-for-window-resizes/
   const query = matchMedia("(max-width: " + TABLET_WIDTH + "px)");
   query.addEventListener("change", function () {
-    const width = $(window).width();
+    const width = $(window).width() ?? 0;
 
     // Handle size changes when tablet or smaller
     if (width < TABLET_WIDTH) {
@@ -53,7 +53,7 @@ export function initMobileLayout() {
   });
 }
 
-export function setMobileUIWhenUTubSelectedOrURLNavSelected() {
+export function setMobileUIWhenUTubSelectedOrURLNavSelected(): void {
   $(".panel#leftPanel").addClass("hidden");
   $(".panel#centerPanel").addClass("visible-flex");
   $("button#toUTubs").removeClass("hidden");
@@ -64,10 +64,10 @@ export function setMobileUIWhenUTubSelectedOrURLNavSelected() {
   $(".deck#MemberDeck").removeClass("visible-flex");
   $(".deck#TagDeck").removeClass("visible-flex");
 
-  NAVBAR_TOGGLER.toggler.hide();
+  NAVBAR_TOGGLER.toggler?.hide();
 }
 
-export function setMobileUIWhenUTubNotSelectedOrUTubDeleted() {
+export function setMobileUIWhenUTubNotSelectedOrUTubDeleted(): void {
   $("button#toUTubs").addClass("hidden");
   $("button#toMembers").addClass("hidden");
   $("button#toTags").addClass("hidden");
@@ -79,10 +79,10 @@ export function setMobileUIWhenUTubNotSelectedOrUTubDeleted() {
 
   $(".deck#UTubDeck").removeClass("hidden");
 
-  NAVBAR_TOGGLER.toggler.hide();
+  NAVBAR_TOGGLER.toggler?.hide();
 }
 
-export function setMobileUIWhenUTubDeckSelected() {
+export function setMobileUIWhenUTubDeckSelected(): void {
   $("button#toUTubs").addClass("hidden");
   $("button#toMembers").removeClass("hidden");
   $("button#toTags").removeClass("hidden");
@@ -96,13 +96,13 @@ export function setMobileUIWhenUTubDeckSelected() {
 
   $(".deck#UTubDeck").removeClass("hidden");
 
-  NAVBAR_TOGGLER.toggler.hide();
+  NAVBAR_TOGGLER.toggler?.hide();
   if ($(".UTubSelector.active").length) {
     makeUTubSelectableAgainIfMobile($(".UTubSelector.active"));
   }
 }
 
-export function setMobileUIWhenMemberDeckSelected() {
+export function setMobileUIWhenMemberDeckSelected(): void {
   $("button#toMembers").addClass("hidden");
   $(".deck#MemberDeck").addClass("visible-flex").removeClass("hidden");
 
@@ -115,10 +115,10 @@ export function setMobileUIWhenMemberDeckSelected() {
   $("button#toTags").removeClass("hidden");
   $("button#toURLs").removeClass("hidden");
 
-  NAVBAR_TOGGLER.toggler.hide();
+  NAVBAR_TOGGLER.toggler?.hide();
 }
 
-export function setMobileUIWhenTagDeckSelected() {
+export function setMobileUIWhenTagDeckSelected(): void {
   $("button#toTags").addClass("hidden");
   $(".deck#TagDeck").addClass("visible-flex").removeClass("hidden");
 
@@ -132,11 +132,11 @@ export function setMobileUIWhenTagDeckSelected() {
   $("button#toURLs").removeClass("hidden");
   $("button#toMembers").removeClass("hidden");
 
-  NAVBAR_TOGGLER.toggler.hide();
+  NAVBAR_TOGGLER.toggler?.hide();
 }
 
-export function revertMobileUIToFullScreenUI() {
-  NAVBAR_TOGGLER.toggler.hide();
+export function revertMobileUIToFullScreenUI(): void {
+  NAVBAR_TOGGLER.toggler?.hide();
 
   $("button#toUTubs").addClass("hidden");
   $("button#toMembers").addClass("hidden");
