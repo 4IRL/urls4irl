@@ -24,6 +24,7 @@ import { initAccessAllURLsBtn } from "./home/urls/access-all.js";
 import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import "./home/urls/cards/filtering.js";
+
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
 setupCSRF();

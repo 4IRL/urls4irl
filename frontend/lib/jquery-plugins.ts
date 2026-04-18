@@ -77,24 +77,20 @@ export function registerJQueryPlugins(): void {
   };
 }
 
-function toJQuery(parent: string | HTMLElement | JQuery): JQuery {
-  if (typeof parent === "string") {
-    return $(parent);
-  }
-  if (parent instanceof HTMLElement) {
-    return $(parent);
-  }
-  return parent;
-}
-
 export function enableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  toJQuery(parent).find(".tabbable").enableTab();
+  // jQuery $() natively accepts string, HTMLElement, and JQuery — cast
+  // through unknown to satisfy TS overload resolution without runtime branching
+  $(parent as unknown as HTMLElement)
+    .find(".tabbable")
+    .enableTab();
 }
 
 export function disableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  toJQuery(parent).find(".tabbable").disableTab();
+  $(parent as unknown as HTMLElement)
+    .find(".tabbable")
+    .disableTab();
 }
