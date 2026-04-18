@@ -29,7 +29,7 @@ vi.mock("../lib/globals.js", () => ({
 
 vi.mock("../lib/config.js", () => {
   const configScript = document.getElementById("app-config");
-  const config = JSON.parse(configScript.textContent);
+  const config = JSON.parse(configScript?.textContent ?? "{}");
   return { APP_CONFIG: config };
 });
 
@@ -47,7 +47,7 @@ const CONTACT_FORM_HTML = `
 `;
 
 describe("contact form AJAX submission", () => {
-  let ajaxSpy;
+  let ajaxSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     document.body.innerHTML = CONTACT_FORM_HTML;
@@ -63,7 +63,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     expect(fakeEvent.preventDefault).toHaveBeenCalled();
@@ -98,7 +98,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     mockDeferred.resolve({ message: "Sent! Thanks for reaching out." });
@@ -122,7 +122,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     const fakeXhr = {
@@ -152,7 +152,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     const fakeXhr = {
@@ -176,7 +176,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     const fakeXhr = {
@@ -196,7 +196,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     const fakeXhr = {
@@ -218,7 +218,7 @@ describe("contact form AJAX submission", () => {
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
-    const fakeEvent = { preventDefault: vi.fn() };
+    const fakeEvent = { preventDefault: vi.fn() } as unknown as Event;
     handleContactSubmit(fakeEvent, $form);
 
     const fakeXhr = {

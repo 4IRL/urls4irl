@@ -4,11 +4,9 @@ import jquery from "jquery";
 window.jQuery = jquery;
 window.$ = jquery;
 
-// Register jQuery plugins via dynamic import so window.jQuery is already set.
-// Static `import` statements are hoisted and evaluated before any module-body
-// code runs, so lib/globals.js (`export const $ = window.jQuery`) would see
-// undefined if we used a static import here.  A dynamic import runs after the
-// lines above, so window.jQuery is guaranteed to be set first.
+// Approved exception to top-level-imports rule: window.jQuery must be assigned
+// before jquery-plugins evaluates, requiring deferred loading that cannot be
+// moved to module scope.
 const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
 registerJQueryPlugins();
 
@@ -63,7 +61,8 @@ window.bootstrap = {
       return new window.bootstrap.Collapse();
     }
   },
-};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
+} as any;
 
 // Inject app-config script element for lib/config.js
 const appConfig = {

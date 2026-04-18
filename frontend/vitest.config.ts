@@ -9,7 +9,7 @@ export default defineConfig({
     environment: "happy-dom",
     globals: true,
     include: ["**/*.test.{js,ts}"],
-    setupFiles: ["./test-setup.js"],
+    setupFiles: ["./test-setup.ts"],
     coverage: {
       provider: "v8",
       include: [
@@ -19,7 +19,7 @@ export default defineConfig({
         "store/**/*.{js,ts}",
         "logic/**/*.{js,ts}",
       ],
-      exclude: ["**/*.test.{js,ts}", "test-setup.js", "vitest.config.js"],
+      exclude: ["**/*.test.{js,ts}", "test-setup.ts", "vitest.config.ts"],
     },
   },
 });
