@@ -13,7 +13,7 @@ registerJQueryPlugins();
 // Factory for Bootstrap component mocks — each component shares the same
 // constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
 function makeBootstrapClass(
-  name: string,
+  componentName: string,
   extra?: Record<string, () => void>,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
 ): any {
@@ -27,18 +27,13 @@ function makeBootstrapClass(
     }
     static getOrCreateInstance() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic bootstrap mock access
-      return new (window.bootstrap as any)[name]();
+      return new (window.bootstrap as any)[componentName]();
     }
   };
   if (extra) {
-    for (const [methodName, methodFn] of Object.entries(extra)) {
-      Object.defineProperty(ComponentClass.prototype, methodName, {
-        value: methodFn,
-        writable: true,
-      });
-    }
+    Object.assign(ComponentClass.prototype, extra);
   }
-  Object.defineProperty(ComponentClass, "name", { value: name });
+  Object.defineProperty(ComponentClass, "name", { value: componentName });
   return ComponentClass;
 }
 

@@ -41,7 +41,8 @@ describe("getInputValue", () => {
     expect(getInputValue("#empty-input")).toBe("");
   });
 
-  it("returns empty string when selector matches no elements", () => {
-    expect(getInputValue("#nonexistent")).toBe("");
+  it("returns undefined when selector matches no elements", () => {
+    // jQuery .val() returns undefined for empty result sets; callers must pass a valid selector
+    expect(getInputValue("#nonexistent")).toBeUndefined();
   });
 });
