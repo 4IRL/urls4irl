@@ -1,3 +1,4 @@
+// Partial mocks require `as unknown as` because jqXHR/Modal have ~30 required properties we don't need in tests.
 type AjaxCallback = (...args: unknown[]) => unknown;
 
 interface MockJqXHRDeferred extends JQuery.jqXHR {
