@@ -1,6 +1,5 @@
-import type { components } from "./api.d.ts";
+import type { Schema } from "./api-helpers.d.ts";
 
-export type UtubDetail = components["schemas"]["SuccessEnvelope"] &
-  components["schemas"]["UtubDetailSchema"];
+export type UtubDetail = Schema<"SuccessEnvelope"> & Schema<"UtubDetailSchema">;
 
-export type UtubSummaryItem = components["schemas"]["UtubSummaryItemSchema"];
+export type UtubSummaryItem = Schema<"UtubSummaryItemSchema">;

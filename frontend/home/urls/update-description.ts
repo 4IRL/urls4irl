@@ -1,4 +1,4 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -10,12 +10,9 @@ import { isHidden } from "../visibility.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
-type UpdateUtubDescRequest =
-  components["schemas"]["UpdateUTubDescriptionRequest"];
-type UpdateUtubDescResponse =
-  operations["updateUtubDesc"]["responses"][200]["content"]["application/json"];
-type UpdateUtubDescError =
-  components["schemas"]["ErrorResponse_UTubErrorCodes"];
+type UpdateUtubDescRequest = Schema<"UpdateUTubDescriptionRequest">;
+type UpdateUtubDescResponse = SuccessResponse<"updateUtubDesc">;
+type UpdateUtubDescError = Schema<"ErrorResponse_UTubErrorCodes">;
 
 const UPDATE_UTUB_DESCRIPTION_FIELD_NAMES = ["utubDescription"] as const;
 

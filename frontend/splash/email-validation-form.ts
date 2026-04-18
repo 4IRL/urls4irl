@@ -1,11 +1,10 @@
-import type { components } from "../types/api.d.ts";
+import type { Schema } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showSplashModalAlertBanner, resetModalFormState } from "./init.js";
 
-type EmailValidationSuccess =
-  components["schemas"]["EmailValidationResponseSchema"];
-type EmailValidationError = components["schemas"]["ErrorResponse"];
+type EmailValidationSuccess = Schema<"EmailValidationResponseSchema">;
+type EmailValidationError = Schema<"ErrorResponse">;
 
 export const SEND_INITIAL_EMAIL = true;
 export const SKIP_INITIAL_EMAIL = false;

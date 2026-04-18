@@ -8,11 +8,10 @@ import { removeTagFromTagDeckGivenTagID } from "../../tags/deck.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
 import { showURLDeckBannerError } from "../deck.js";
-import type { operations } from "../../../types/api.d.ts";
+import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlDetail, UtubTagOnAddDelete } from "../../../types/url.js";
 
-type GetUrlResponse =
-  operations["getUrl"]["responses"][200]["content"]["application/json"];
+type GetUrlResponse = SuccessResponse<"getUrl">;
 
 export async function getUpdatedURL(
   utubID: number,

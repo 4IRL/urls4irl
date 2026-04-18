@@ -1,4 +1,4 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap } from "../../../lib/globals.js";
@@ -32,11 +32,9 @@ import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type UpdateUrlStringRequest = components["schemas"]["UpdateURLStringRequest"];
-type UpdateUrlStringResponse =
-  operations["updateUrl"]["responses"][200]["content"]["application/json"];
-type UpdateUrlStringError =
-  components["schemas"]["ErrorResponse_URLErrorCodes"];
+type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
+type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
+type UpdateUrlStringError = Schema<"ErrorResponse_URLErrorCodes">;
 
 const UPDATE_URL_STRING_FIELD_NAMES = ["urlString"] as const;
 

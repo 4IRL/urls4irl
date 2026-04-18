@@ -1,4 +1,4 @@
-import type { components, operations } from "../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -8,11 +8,9 @@ import {
   handleImproperFormErrors,
 } from "./init.js";
 
-type ResetPasswordRequest = components["schemas"]["ResetPasswordRequest"];
-type ResetPasswordSuccess =
-  operations["resetPassword"]["responses"][200]["content"]["application/json"];
-type ResetPasswordError =
-  components["schemas"]["ErrorResponse_ResetPasswordErrorCodes"];
+type ResetPasswordRequest = Schema<"ResetPasswordRequest">;
+type ResetPasswordSuccess = SuccessResponse<"resetPassword">;
+type ResetPasswordError = Schema<"ErrorResponse_ResetPasswordErrorCodes">;
 
 /**
  * Initialize reset password form handlers

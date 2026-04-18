@@ -1,4 +1,4 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { UtubSummaryItem } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
@@ -18,11 +18,9 @@ import {
 } from "./update-description.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
-type UpdateUtubNameRequest = components["schemas"]["UpdateUTubNameRequest"];
-type UpdateUtubNameResponse =
-  operations["updateUtubName"]["responses"][200]["content"]["application/json"];
-type UpdateUtubNameError =
-  components["schemas"]["ErrorResponse_UTubErrorCodes"];
+type UpdateUtubNameRequest = Schema<"UpdateUTubNameRequest">;
+type UpdateUtubNameResponse = SuccessResponse<"updateUtubName">;
+type UpdateUtubNameError = Schema<"ErrorResponse_UTubErrorCodes">;
 
 const UPDATE_UTUB_NAME_FIELD_NAMES = ["utubName"] as const;
 

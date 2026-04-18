@@ -1,4 +1,4 @@
-import type { components, operations } from "../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -11,10 +11,9 @@ import {
   emailValidationModalOpener,
 } from "./init.js";
 
-type RegisterRequest = components["schemas"]["RegisterRequest"];
-type RegisterSuccess =
-  operations["registerUser"]["responses"][201]["content"]["application/json"];
-type RegisterError = components["schemas"]["ErrorResponse_RegisterErrorCodes"];
+type RegisterRequest = Schema<"RegisterRequest">;
+type RegisterSuccess = SuccessResponse<"registerUser", 201>;
+type RegisterError = Schema<"ErrorResponse_RegisterErrorCodes">;
 
 /**
  * Initialize register form handlers

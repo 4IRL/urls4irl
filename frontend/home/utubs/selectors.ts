@@ -1,4 +1,4 @@
-import type { operations } from "../../types/api.d.ts";
+import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { UtubDetail } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
@@ -17,8 +17,7 @@ import {
   allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty,
 } from "../urls/update-description.js";
 
-type GetSingleUtubResponse =
-  operations["getSingleUtub"]["responses"][200]["content"]["application/json"];
+type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 
 // Streamline the AJAX call to db for updated info
 export function getUTubInfo(

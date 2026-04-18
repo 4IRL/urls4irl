@@ -1,4 +1,4 @@
-import type { operations } from "../../types/api.d.ts";
+import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -19,8 +19,7 @@ import { getNumOfUTubs } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { closeUTubSearchAndEraseInput } from "./search.js";
 
-type DeleteUtubResponse =
-  operations["deleteUtub"]["responses"][200]["content"]["application/json"];
+type DeleteUtubResponse = SuccessResponse<"deleteUtub">;
 
 export function setDeleteEventListeners(utubID: number): void {
   const utubBtnDelete = $("#utubBtnDelete");

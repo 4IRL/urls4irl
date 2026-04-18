@@ -1,4 +1,4 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
@@ -15,10 +15,9 @@ import {
 } from "./selection.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type UpdateUrlTitleRequest = components["schemas"]["UpdateURLTitleRequest"];
-type UpdateUrlTitleResponse =
-  operations["updateUrlTitle"]["responses"][200]["content"]["application/json"];
-type UpdateUrlTitleError = components["schemas"]["ErrorResponse_URLErrorCodes"];
+type UpdateUrlTitleRequest = Schema<"UpdateURLTitleRequest">;
+type UpdateUrlTitleResponse = SuccessResponse<"updateUrlTitle">;
+type UpdateUrlTitleError = Schema<"ErrorResponse_URLErrorCodes">;
 
 const UPDATE_URL_TITLE_FIELD_NAMES = ["urlTitle"] as const;
 

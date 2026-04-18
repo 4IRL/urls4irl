@@ -1,7 +1,6 @@
-import type { components } from "./api.d.ts";
+import type { Schema } from "./api-helpers.d.ts";
 
-export type UtubUrlItem = components["schemas"]["UtubUrlSchema"];
-export type UtubUrlDetail = components["schemas"]["UtubUrlDetailSchema"];
-export type UtubTagOnAddDelete =
-  components["schemas"]["UtubTagOnAddDeleteSchema"];
-export type UtubTag = components["schemas"]["UtubTagSchema"];
+export type UtubUrlItem = Schema<"UtubUrlSchema">;
+export type UtubUrlDetail = Schema<"UtubUrlDetailSchema">;
+export type UtubTagOnAddDelete = Schema<"UtubTagOnAddDeleteSchema">;
+export type UtubTag = Schema<"UtubTagSchema">;

@@ -1,4 +1,4 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
@@ -20,10 +20,9 @@ import { isATagSelected } from "../../tags/utils.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type CreateUrlRequest = components["schemas"]["CreateURLRequest"];
-type CreateUrlResponse =
-  operations["createUrl"]["responses"][200]["content"]["application/json"];
-type CreateUrlError = components["schemas"]["ErrorResponse_URLErrorCodes"];
+type CreateUrlRequest = Schema<"CreateURLRequest">;
+type CreateUrlResponse = SuccessResponse<"createUrl">;
+type CreateUrlError = Schema<"ErrorResponse_URLErrorCodes">;
 
 const CREATE_URL_FIELD_NAMES = ["urlString", "urlTitle"] as const;
 

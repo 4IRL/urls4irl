@@ -1,4 +1,4 @@
-import type { operations } from "../../types/api.d.ts";
+import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -8,8 +8,7 @@ import {
   hideUTubLoadingIconAndClearTimeout,
 } from "./deck.js";
 
-type GetUtubsResponse =
-  operations["getUtubs"]["responses"][200]["content"]["application/json"];
+type GetUtubsResponse = SuccessResponse<"getUtubs">;
 
 // Verify UTubID is valid
 export function isValidUTubID(utubIdStr: string | null): boolean {

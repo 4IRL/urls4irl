@@ -1,4 +1,4 @@
-import type { components } from "../types/api.d.ts";
+import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
@@ -10,7 +10,7 @@ import {
   SEND_INITIAL_EMAIL,
 } from "./email-validation-form.js";
 
-type ErrorResponse = components["schemas"]["ErrorResponse"];
+type ErrorResponse = Schema<"ErrorResponse">;
 
 const FORM_FIELD_NAMES = [
   "username",

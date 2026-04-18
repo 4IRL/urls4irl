@@ -1,4 +1,4 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $, bootstrap } from "../../../lib/globals.js";
@@ -42,10 +42,9 @@ import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type AddTagRequest = components["schemas"]["AddTagRequest"];
-type UrlTagModifiedResponse =
-  operations["createUtubUrlTag"]["responses"][200]["content"]["application/json"];
-type UrlTagError = components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+type AddTagRequest = Schema<"AddTagRequest">;
+type UrlTagModifiedResponse = SuccessResponse<"createUtubUrlTag">;
+type UrlTagError = Schema<"ErrorResponse_URLTagErrorCodes">;
 
 const CREATE_URL_TAG_FIELD_NAMES = ["tagString"] as const;
 

@@ -1,4 +1,4 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -15,10 +15,9 @@ import { closeUTubSearchAndEraseInput } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
-type CreateUtubRequest = components["schemas"]["CreateUTubRequest"];
-type CreateUtubResponse =
-  operations["createUtub"]["responses"][200]["content"]["application/json"];
-type CreateUtubError = components["schemas"]["ErrorResponse_UTubErrorCodes"];
+type CreateUtubRequest = Schema<"CreateUTubRequest">;
+type CreateUtubResponse = SuccessResponse<"createUtub">;
+type CreateUtubError = Schema<"ErrorResponse_UTubErrorCodes">;
 
 function checkSameNameUTubOnCreate(name: string): void {
   if (getAllAccessibleUTubNames().includes(name)) {

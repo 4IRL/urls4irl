@@ -1,4 +1,4 @@
-import type { components, operations } from "../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -10,10 +10,9 @@ import {
   switchModal,
 } from "./init.js";
 
-type LoginRequest = components["schemas"]["LoginRequest"];
-type LoginSuccess =
-  operations["login"]["responses"][200]["content"]["application/json"];
-type LoginError = components["schemas"]["ErrorResponse_LoginErrorCodes"];
+type LoginRequest = Schema<"LoginRequest">;
+type LoginSuccess = SuccessResponse<"login">;
+type LoginError = Schema<"ErrorResponse_LoginErrorCodes">;
 
 /**
  * Initialize login form handlers

@@ -1,4 +1,4 @@
-import type { operations } from "../../../types/api.d.ts";
+import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
@@ -17,8 +17,7 @@ import {
 } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type DeleteUrlTagResponse =
-  operations["deleteUtubUrlTag"]["responses"][200]["content"]["application/json"];
+type DeleteUrlTagResponse = SuccessResponse<"deleteUtubUrlTag">;
 
 /**
  * Remove tag from selected URL

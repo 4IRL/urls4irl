@@ -1,6 +1,6 @@
-import type { components } from "./api.d.ts";
+import type { Schema } from "./api-helpers.d.ts";
 
-export type MemberItem = components["schemas"]["UserSchema"];
-export type MemberModifiedResponse = components["schemas"]["SuccessEnvelope"] &
-  components["schemas"]["MemberModifiedResponseSchema"];
-export type AddMemberRequest = components["schemas"]["AddMemberRequest"];
+export type MemberItem = Schema<"UserSchema">;
+export type MemberModifiedResponse = Schema<"SuccessEnvelope"> &
+  Schema<"MemberModifiedResponseSchema">;
+export type AddMemberRequest = Schema<"AddMemberRequest">;

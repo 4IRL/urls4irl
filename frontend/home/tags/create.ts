@@ -1,4 +1,4 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { UtubTag } from "../../types/url.js";
 
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
@@ -9,9 +9,8 @@ import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import { buildTagFilterInDeck } from "./tags.js";
 
-type AddTagRequest = components["schemas"]["AddTagRequest"];
-type CreateUtubTagResponse =
-  operations["createUtubTag"]["responses"][200]["content"]["application/json"];
+type AddTagRequest = Schema<"AddTagRequest">;
+type CreateUtubTagResponse = SuccessResponse<"createUtubTag">;
 
 export function setupOpenCreateUTubTagEventListeners(utubID: number): void {
   const utubTagBtnCreate = $("#utubTagBtnCreate");
