@@ -6,29 +6,29 @@ pytestmark = pytest.mark.unit
 
 
 def test_collect_css_entrypoint_not_in_manifest():
-    assert _collect_css_from_manifest({}, "frontend/main.js") == []
+    assert _collect_css_from_manifest({}, "frontend/main.ts") == []
 
 
 def test_collect_css_no_css_key():
-    manifest = {"frontend/main.js": {"file": "assets/main-abc.js"}}
-    assert _collect_css_from_manifest(manifest, "frontend/main.js") == []
+    manifest = {"frontend/main.ts": {"file": "assets/main-abc.js"}}
+    assert _collect_css_from_manifest(manifest, "frontend/main.ts") == []
 
 
 def test_collect_css_returns_css_paths():
     manifest = {
-        "frontend/main.js": {
+        "frontend/main.ts": {
             "file": "assets/main-abc.js",
             "css": ["assets/main-abc.css"],
         }
     }
-    assert _collect_css_from_manifest(manifest, "frontend/main.js") == [
+    assert _collect_css_from_manifest(manifest, "frontend/main.ts") == [
         "assets/main-abc.css"
     ]
 
 
 def test_collect_css_traverses_imports():
     manifest = {
-        "frontend/main.js": {
+        "frontend/main.ts": {
             "file": "assets/main-abc.js",
             "css": ["assets/main-abc.css"],
             "imports": ["_shared-chunk.js"],
@@ -38,13 +38,13 @@ def test_collect_css_traverses_imports():
             "css": ["assets/shared-abc.css"],
         },
     }
-    result = _collect_css_from_manifest(manifest, "frontend/main.js")
+    result = _collect_css_from_manifest(manifest, "frontend/main.ts")
     assert result == ["assets/shared-abc.css", "assets/main-abc.css"]
 
 
 def test_collect_css_cycle_guard():
     manifest = {
-        "frontend/main.js": {
+        "frontend/main.ts": {
             "file": "assets/main-abc.js",
             "css": ["assets/main-abc.css"],
             "imports": ["_chunk-a.js"],
@@ -52,10 +52,10 @@ def test_collect_css_cycle_guard():
         "_chunk-a.js": {
             "file": "assets/_chunk-a.js",
             "css": ["assets/chunk-a.css"],
-            "imports": ["frontend/main.js"],  # cycle back
+            "imports": ["frontend/main.ts"],  # cycle back
         },
     }
-    result = _collect_css_from_manifest(manifest, "frontend/main.js")
+    result = _collect_css_from_manifest(manifest, "frontend/main.ts")
     assert "assets/main-abc.css" in result
     assert "assets/chunk-a.css" in result
     assert len(result) == 2  # no duplicates from the cycle
