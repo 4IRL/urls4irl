@@ -29,7 +29,7 @@ export async function getUpdatedURL(
         _: JQuery.Ajax.SuccessTextStatus,
         xhr: JQuery.jqXHR,
       ) => {
-        if (xhr.status === 200 && response.hasOwnProperty("URL")) {
+        if (xhr.status === 200 && "URL" in response) {
           updateURLBasedOnGetData(response.URL, urlCard, utubID);
           resolve();
         }

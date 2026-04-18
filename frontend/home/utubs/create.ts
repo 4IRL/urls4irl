@@ -1,6 +1,6 @@
 import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
@@ -43,7 +43,7 @@ function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
   utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
-    checkSameNameUTubOnCreate($("#utubNameCreate").val() as string);
+    checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
   });
 
   utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
@@ -96,7 +96,7 @@ function handleOnFocusEventListenersForCreateUTub(
   switch (event.key) {
     case KEYS.ENTER:
       // Handle enter key pressed
-      checkSameNameUTubOnCreate($("#utubNameCreate").val() as string);
+      checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
       break;
     case KEYS.ESCAPE:
       // Handle escape key pressed
@@ -174,10 +174,8 @@ export function createUTubHideInput(): void {
 // Handles preparation for post request to create a new UTub
 function createUTubSetup(): [string, CreateUtubRequest] {
   const postURL = APP_CONFIG.routes.createUTub;
-  const newUTubName = $("#utubNameCreate").val() as string;
-  const newUTubDescription = ($("#utubDescriptionCreate").val() || null) as
-    | string
-    | null;
+  const newUTubName = getInputValue("#utubNameCreate");
+  const newUTubDescription = getInputValue("#utubDescriptionCreate") || null;
   const data: CreateUtubRequest = {
     utubName: newUTubName,
     utubDescription: newUTubDescription,
@@ -249,7 +247,7 @@ function createUTubSuccess(response: CreateUtubResponse): void {
 function createUTubFail(xhr: JQuery.jqXHR): void {
   if ((xhr as RateLimitedXHR)._429Handled) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -264,8 +262,8 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as CreateUtubError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors")) {
+      if (responseJSON.message) {
+        if (responseJSON.errors) {
           if (!responseJSON.errors) break;
           createUTubFailErrors(
             responseJSON.errors as Partial<

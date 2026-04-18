@@ -1,7 +1,7 @@
 import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
@@ -208,7 +208,7 @@ function createURLTagSetup(
 
   // Assemble submission data
   const data: AddTagRequest = {
-    tagString: urlTagCreateInput.val() as string,
+    tagString: getInputValue(urlTagCreateInput),
   };
 
   return [postURL, data];
@@ -332,7 +332,7 @@ function createURLTagSuccess(
 function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -348,21 +348,19 @@ function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UrlTagError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors")) {
-          createURLTagFailErrors(
-            responseJSON.errors as Partial<
-              Record<CreateUrlTagFieldName, string[]>
-            >,
-            urlCard,
-          );
-        } else {
-          displayCreateURLTagErrors(
-            "urlTag",
-            responseJSON.message as string,
-            urlCard,
-          );
-        }
+      if (responseJSON.errors) {
+        createURLTagFailErrors(
+          responseJSON.errors as Partial<
+            Record<CreateUrlTagFieldName, string[]>
+          >,
+          urlCard,
+        );
+      } else if (responseJSON.message) {
+        displayCreateURLTagErrors(
+          "urlTag",
+          responseJSON.message as string,
+          urlCard,
+        );
       }
       break;
     }

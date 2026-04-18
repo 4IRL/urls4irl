@@ -85,7 +85,7 @@ function handleForgotPasswordFailure(
   error: string,
   $modal: JQuery,
 ): void {
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -99,7 +99,7 @@ function handleForgotPasswordFailure(
     return;
   }
 
-  if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+  if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ForgotPasswordError;
     switch (errorJson.errorCode) {
       case 1: {

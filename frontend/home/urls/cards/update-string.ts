@@ -1,7 +1,7 @@
 import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import {
@@ -161,7 +161,7 @@ function updateURLSetup(
 ): [string, UpdateUrlStringRequest] {
   const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
-  const updatedURL = (urlStringUpdateInput.val() as string).trim();
+  const updatedURL = getInputValue(urlStringUpdateInput).trim();
 
   const data: UpdateUrlStringRequest = { urlString: updatedURL };
 
@@ -286,7 +286,7 @@ function updateURLFail(
 ): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -303,8 +303,8 @@ function updateURLFail(
     return;
   }
   const responseJSON = xhr.responseJSON as UpdateUrlStringError;
-  const hasErrors = responseJSON.hasOwnProperty("errors");
-  const hasMessage = responseJSON.hasOwnProperty("message");
+  const hasErrors = !!responseJSON.errors;
+  const hasMessage = !!responseJSON.message;
   switch (xhr.status) {
     case 400:
       if (hasErrors) {

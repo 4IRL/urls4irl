@@ -1,7 +1,7 @@
 import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { UtubSummaryItem } from "../../types/utub.js";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
@@ -61,7 +61,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
       updateUTubNameHideInput();
       return;
     }
-    checkSameNameUTubOnUpdate($("#utubNameUpdate").val() as string, utubID);
+    checkSameNameUTubOnUpdate(getInputValue("#utubNameUpdate"), utubID);
   });
 
   utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function () {
@@ -84,10 +84,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
               updateUTubNameHideInput();
               return;
             }
-            checkSameNameUTubOnUpdate(
-              $("#utubNameUpdate").val() as string,
-              utubID,
-            );
+            checkSameNameUTubOnUpdate(getInputValue("#utubNameUpdate"), utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
@@ -275,7 +272,7 @@ function updateUTubName(utubID: number): void {
 function updateUTubNameSetup(utubID: number): [string, UpdateUtubNameRequest] {
   const postURL = APP_CONFIG.routes.updateUTubName(utubID);
 
-  const updatedUTubName = $("#utubNameUpdate").val() as string;
+  const updatedUTubName = getInputValue("#utubNameUpdate");
   const data: UpdateUtubNameRequest = { utubName: updatedUTubName };
 
   return [postURL, data];
@@ -307,7 +304,7 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
 function updateUTubNameFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -322,8 +319,8 @@ function updateUTubNameFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UpdateUtubNameError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors"))
+      if (responseJSON.message) {
+        if (responseJSON.errors)
           updateUTubNameFailErrors(
             responseJSON.errors as Partial<
               Record<UpdateUtubNameFieldName, string[]>

@@ -82,7 +82,7 @@ function handleRegisterFailure(
   __: string,
   $modal: JQuery,
 ): void {
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -96,7 +96,7 @@ function handleRegisterFailure(
     return;
   }
 
-  if (xhr.responseJSON.hasOwnProperty("errorCode")) {
+  if ("errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as RegisterError;
     switch (xhr.status) {
       case 400: {

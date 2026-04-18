@@ -84,7 +84,7 @@ function handleLoginFailure(
   error: string,
   $modal: JQuery,
 ): void {
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -100,7 +100,7 @@ function handleLoginFailure(
 
   if (
     (xhr.status === 400 || xhr.status === 401) &&
-    xhr.responseJSON.hasOwnProperty("errorCode")
+    "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
     switch (errorJson.errorCode) {

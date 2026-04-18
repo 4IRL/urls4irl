@@ -79,12 +79,12 @@ function handleValidateEmailFailure(
     return;
   }
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
-  if (!xhr.responseJSON.hasOwnProperty("errorCode")) {
+  if (!("errorCode" in xhr.responseJSON)) {
     // Handle other errors here
     showSplashModalAlertBanner(
       $modal,

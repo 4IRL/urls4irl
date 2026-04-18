@@ -1,6 +1,6 @@
 import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
@@ -234,7 +234,7 @@ function updateUTubDescriptionSetup(
 ): [string, UpdateUtubDescRequest] {
   const postURL = APP_CONFIG.routes.updateUTubDescription(utubID);
 
-  const updatedDescription = $("#utubDescriptionUpdate").val() as string;
+  const updatedDescription = getInputValue("#utubDescriptionUpdate");
   const data: UpdateUtubDescRequest = { utubDescription: updatedDescription };
 
   return [postURL, data];
@@ -275,7 +275,7 @@ function updateUTubDescriptionSuccess(
 function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -290,8 +290,8 @@ function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UpdateUtubDescError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors"))
+      if (responseJSON.message) {
+        if (responseJSON.errors)
           updateUTubDescriptionFailErrors(
             responseJSON.errors as Partial<
               Record<UpdateUtubDescriptionFieldName, string[]>
