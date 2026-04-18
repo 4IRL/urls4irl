@@ -1,4 +1,8 @@
 import {
+  createImmediateAlwaysJqXHR,
+  createMockModal,
+} from "../../__tests__/helpers/mock-jquery.js";
+import {
   createLogoutOnExit,
   switchModal,
   displayFormErrors,
@@ -61,7 +65,7 @@ function modalShell(id: string, innerHTML: string = ""): string {
 
 const ALERT_BANNER = `<div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>`;
 
-interface MockBootstrapModal {
+interface MockBootstrapModal extends bootstrap.Modal {
   show: ReturnType<typeof vi.fn>;
   hide: ReturnType<typeof vi.fn>;
 }
@@ -70,12 +74,9 @@ describe("createLogoutOnExit", () => {
   let ajaxGetSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
-      always: vi.fn((callback) => {
-        callback();
-        return { always: vi.fn() };
-      }),
-    } as unknown as JQuery.jqXHR);
+    ajaxGetSpy = vi
+      .spyOn($, "get")
+      .mockReturnValue(createImmediateAlwaysJqXHR());
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
   });
 
@@ -106,14 +107,8 @@ describe("switchModal", () => {
   beforeEach(() => {
     document.body.innerHTML =
       modalShell("LoginModal") + modalShell("RegisterModal");
-    mockFromModal = {
-      show: vi.fn(),
-      hide: vi.fn(),
-    };
-    mockToModal = {
-      show: vi.fn(),
-      hide: vi.fn(),
-    };
+    mockFromModal = createMockModal() as MockBootstrapModal;
+    mockToModal = createMockModal() as MockBootstrapModal;
     vi.clearAllMocks();
   });
 
@@ -123,10 +118,10 @@ describe("switchModal", () => {
 
   it("hides from-modal and shows to-modal after hidden.bs.modal event", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal as unknown as bootstrap.Modal,
+      mockFromModal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal as unknown as bootstrap.Modal,
+      mockToModal,
     );
 
     switchModal($("#LoginModal"), "#RegisterModal");
@@ -143,7 +138,7 @@ describe("switchModal", () => {
   it("shows to-modal directly when from-modal has no Bootstrap instance", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal as unknown as bootstrap.Modal,
+      mockToModal,
     );
 
     switchModal($("#LoginModal"), "#RegisterModal");
@@ -153,10 +148,10 @@ describe("switchModal", () => {
 
   it("registers a one-time hidden.bs.modal listener on from-modal", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal as unknown as bootstrap.Modal,
+      mockFromModal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal as unknown as bootstrap.Modal,
+      mockToModal,
     );
 
     switchModal($("#LoginModal"), "#RegisterModal");
@@ -416,12 +411,9 @@ describe("handleUserHasAccountNotEmailValidated", () => {
           `<div class="register-to-login-footer"></div>` +
           `<div class="modal-footer"></div>`,
       ) + modalShell("EmailValidationModal");
-    ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
-      always: vi.fn((callback) => {
-        callback();
-        return { always: vi.fn() };
-      }),
-    } as unknown as JQuery.jqXHR);
+    ajaxGetSpy = vi
+      .spyOn($, "get")
+      .mockReturnValue(createImmediateAlwaysJqXHR());
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
     vi.clearAllMocks();
   });
@@ -483,14 +475,14 @@ describe("handleUserHasAccountNotEmailValidated", () => {
   });
 
   it("clicking validate-my-email unbinds logoutOnExit from source, switches to email validation modal", () => {
-    const mockFromModal = { hide: vi.fn() };
-    const mockToModal = { show: vi.fn() };
+    const localFromModal = createMockModal();
+    const localToModal = createMockModal();
 
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal as unknown as bootstrap.Modal,
+      localFromModal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal as unknown as bootstrap.Modal,
+      localToModal,
     );
 
     handleUserHasAccountNotEmailValidated(
@@ -503,7 +495,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     $modal.find("#SplashModalAlertBanner button").trigger("click");
 
     // switchModal was called — from-modal should be hidden
-    expect(mockFromModal.hide).toHaveBeenCalled();
+    expect(localFromModal.hide).toHaveBeenCalled();
 
     // initEmailValidationForm should be called with #EmailValidationModal
     expect(initEmailValidationForm).toHaveBeenCalledWith(
@@ -514,9 +506,9 @@ describe("handleUserHasAccountNotEmailValidated", () => {
 
   it("after clicking validate-my-email, logoutOnExit is bound to EmailValidationModal", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
-    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
-      show: vi.fn(),
-    } as unknown as bootstrap.Modal);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      createMockModal(),
+    );
 
     handleUserHasAccountNotEmailValidated(
       $("#LoginModal"),
@@ -549,25 +541,25 @@ describe("emailValidationModalOpener", () => {
   });
 
   it("calls switchModal from source to EmailValidationModal", () => {
-    const mockFromModal = { hide: vi.fn() };
-    const mockToModal = { show: vi.fn() };
+    const localFromModal = createMockModal();
+    const localToModal = createMockModal();
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal as unknown as bootstrap.Modal,
+      localFromModal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal as unknown as bootstrap.Modal,
+      localToModal,
     );
 
     emailValidationModalOpener($("#RegisterModal"));
 
-    expect(mockFromModal.hide).toHaveBeenCalled();
+    expect(localFromModal.hide).toHaveBeenCalled();
   });
 
   it("calls initEmailValidationForm with EmailValidationModal and sendInitialEmail=true", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
-    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
-      show: vi.fn(),
-    } as unknown as bootstrap.Modal);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      createMockModal(),
+    );
 
     emailValidationModalOpener($("#RegisterModal"));
 
@@ -579,15 +571,12 @@ describe("emailValidationModalOpener", () => {
 
   it("registers a one-time hide.bs.modal logout handler on EmailValidationModal", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
-    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
-      show: vi.fn(),
-    } as unknown as bootstrap.Modal);
-    const ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
-      always: vi.fn((callback) => {
-        callback();
-        return { always: vi.fn() };
-      }),
-    } as unknown as JQuery.jqXHR);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      createMockModal(),
+    );
+    const ajaxGetSpy = vi
+      .spyOn($, "get")
+      .mockReturnValue(createImmediateAlwaysJqXHR());
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
 
     emailValidationModalOpener($("#RegisterModal"));

@@ -1,3 +1,4 @@
+import { createMockJqXHR } from "./helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   handleContactSubmit,
@@ -59,10 +60,8 @@ describe("contact form AJAX submission", () => {
   });
 
   it("sends JSON POST and shows success banner on 200 response", () => {
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {
@@ -98,10 +97,8 @@ describe("contact form AJAX submission", () => {
 
   it("disables submit button with countdown on success", () => {
     vi.useFakeTimers();
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {
@@ -126,10 +123,8 @@ describe("contact form AJAX submission", () => {
   });
 
   it("shows field-level errors on 400 validation failure", () => {
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {
@@ -160,10 +155,8 @@ describe("contact form AJAX submission", () => {
   });
 
   it("shows page-level error banner on 400 without field errors", () => {
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {
@@ -188,10 +181,8 @@ describe("contact form AJAX submission", () => {
   });
 
   it("calls showNewPageOnAJAXHTMLResponse on 403 CSRF failure", () => {
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {
@@ -212,10 +203,8 @@ describe("contact form AJAX submission", () => {
   });
 
   it("shows generic error banner when responseJSON is absent and Content-Type is not text/html", () => {
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {
@@ -238,10 +227,8 @@ describe("contact form AJAX submission", () => {
   });
 
   it("calls showNewPageOnAJAXHTMLResponse on 429 rate limit", () => {
-    const mockDeferred = $.Deferred();
-    ajaxSpy = vi
-      .spyOn($, "ajax")
-      .mockReturnValue(mockDeferred as unknown as JQuery.jqXHR);
+    const mockDeferred = createMockJqXHR();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $form = $("#ContactForm");
     const fakeEvent = {

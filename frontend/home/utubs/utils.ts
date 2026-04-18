@@ -59,7 +59,7 @@ export function getAllUTubs(): JQuery.Promise<GetUtubsResponse> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   return $.getJSON(APP_CONFIG.routes.getUTubs).always(() =>
     hideUTubLoadingIconAndClearTimeout(timeoutID),
-  ) as unknown as JQuery.Promise<GetUtubsResponse>;
+  ) as JQuery.jqXHR<GetUtubsResponse>;
 }
 
 // Hides modal for UTub same name action confirmation

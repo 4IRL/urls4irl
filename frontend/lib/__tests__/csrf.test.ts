@@ -1,3 +1,4 @@
+import { createMockXhr } from "../../__tests__/helpers/mock-jquery.js";
 import { setupCSRF } from "../csrf.js";
 
 const $ = window.jQuery;
@@ -30,7 +31,7 @@ describe("setupCSRF", () => {
       setupCSRF();
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
-      const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
+      const mockXhr = createMockXhr();
       const settings: JQuery.AjaxSettings = {
         type: "POST",
         crossDomain: false,
@@ -46,7 +47,7 @@ describe("setupCSRF", () => {
       setupCSRF();
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
-      const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
+      const mockXhr = createMockXhr();
       const settings: JQuery.AjaxSettings = {
         type: "POST",
         crossDomain: false,
@@ -65,7 +66,7 @@ describe("setupCSRF", () => {
       setupCSRF();
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
-      const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
+      const mockXhr = createMockXhr();
       const settings: JQuery.AjaxSettings = {
         type: undefined,
         crossDomain: false,
@@ -79,7 +80,7 @@ describe("setupCSRF", () => {
       setupCSRF();
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
-      const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
+      const mockXhr = createMockXhr();
       const settings: JQuery.AjaxSettings = { type: "GET", crossDomain: false };
 
       beforeSend.call(settings, mockXhr, settings);
@@ -92,7 +93,7 @@ describe("setupCSRF", () => {
       setupCSRF();
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
-      const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
+      const mockXhr = createMockXhr();
       const settings: JQuery.AjaxSettings = { type: "POST" };
 
       beforeSend.call({ ...settings, crossDomain: true }, mockXhr, settings);

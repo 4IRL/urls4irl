@@ -1,3 +1,4 @@
+import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import {
   hideAndResetUpdateURLTitleForm,
   updateURLTitle,
@@ -116,15 +117,13 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
       },
     };
 
-    const chainable = {
-      done: vi.fn().mockImplementation((cb) => {
-        cb(response, "success", { status: 200 });
-        return chainable;
-      }),
-      fail: vi.fn().mockReturnThis(),
-      always: vi.fn().mockReturnThis(),
-    };
-    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
+    const chainable = createMockJqXHRChainable({
+      done: (cb: unknown) =>
+        (cb as (...args: unknown[]) => void)(response, "success", {
+          status: 200,
+        }),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
 
     await updateURLTitle(urlTitleInput, urlCard, 1);
 

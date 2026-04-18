@@ -1,3 +1,7 @@
+import {
+  createMockJqXHRChainable,
+  createMockXhr,
+} from "../../../__tests__/helpers/mock-jquery.js";
 import { createOwnerBadge, createMemberBadge } from "../members.js";
 import { createMemberRemoveBtn, removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
@@ -143,16 +147,12 @@ describe("removeMemberFail - is429Handled early-return", () => {
 
     vi.mocked(is429Handled).mockReturnValueOnce(true);
 
-    const rateLimitedXhr = { status: 429 } as unknown as JQuery.jqXHR;
-    const chainable = {
-      done: vi.fn().mockReturnThis(),
-      fail: vi.fn().mockImplementation((cb) => {
-        cb(rateLimitedXhr);
-        return chainable;
-      }),
-      always: vi.fn().mockReturnThis(),
-    };
-    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
+    const rateLimitedXhr = createMockXhr({ status: 429 });
+    const chainable = createMockJqXHRChainable({
+      fail: (cb: unknown) =>
+        (cb as (xhr: JQuery.jqXHR) => void)(rateLimitedXhr),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
 
     removeMemberShowModal(5, true, 1);
     $("#modalSubmit").trigger("click");
