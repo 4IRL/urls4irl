@@ -33,3 +33,12 @@ repos:
         - eslint@9.39.4
         - "@typescript-eslint/parser@8.58.1"
         - "@typescript-eslint/eslint-plugin@8.58.1"
+
+  - repo: local
+    hooks:
+    - id: tsc-typecheck
+      name: TypeScript typecheck
+      entry: docker compose --project-directory . -f docker/compose.local.yaml exec -T vite npx tsc --noEmit --project frontend/tsconfig.json
+      language: system
+      types: [ts]
+      pass_filenames: false

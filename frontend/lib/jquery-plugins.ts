@@ -77,18 +77,24 @@ export function registerJQueryPlugins(): void {
   };
 }
 
+function toJQuery(parent: string | HTMLElement | JQuery): JQuery {
+  if (typeof parent === "string") {
+    return $(parent);
+  }
+  if (parent instanceof HTMLElement) {
+    return $(parent);
+  }
+  return parent;
+}
+
 export function enableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  $(parent as string | HTMLElement)
-    .find(".tabbable")
-    .enableTab();
+  toJQuery(parent).find(".tabbable").enableTab();
 }
 
 export function disableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  $(parent as string | HTMLElement)
-    .find(".tabbable")
-    .disableTab();
+  toJQuery(parent).find(".tabbable").disableTab();
 }
