@@ -1,3 +1,6 @@
+import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
+import type { UtubUrlDetail, UtubTagOnAddDelete } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../../lib/page-utils.js";
@@ -8,8 +11,6 @@ import { removeTagFromTagDeckGivenTagID } from "../../tags/deck.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
 import { showURLDeckBannerError } from "../deck.js";
-import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
-import type { UtubUrlDetail, UtubTagOnAddDelete } from "../../../types/url.js";
 
 type GetUrlResponse = SuccessResponse<"getUrl">;
 

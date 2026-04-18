@@ -6,7 +6,7 @@ export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
   toggler: null,
 };
 
-export function initNavbar() {
+export function initNavbar(): void {
   // Initialize data-route buttons (shared functionality)
   initNavbarRouting();
 
@@ -25,7 +25,7 @@ export function initNavbar() {
     });
 }
 
-function onMobileNavbarOpened() {
+function onMobileNavbarOpened(): void {
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -45,7 +45,7 @@ function onMobileNavbarOpened() {
   $("#mainNavbar").append(navbarBackdrop);
 }
 
-function onMobileNavbarClosed() {
+function onMobileNavbarClosed(): void {
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
 

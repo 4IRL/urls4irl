@@ -21,8 +21,6 @@
     "../backend/static/dist",
     "**/*.test.ts",
     "**/*.spec.ts",
-    "./postcss.config.js",
-    "./eslint.config.js",
     "./vite.config.ts",
     "./vitest.config.ts",
     "./test-setup.ts"
