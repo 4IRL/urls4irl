@@ -3,7 +3,7 @@ import { APP_CONFIG } from "../../../../lib/config.js";
 import { accessLink } from "../access.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
-function createAccessLinkIcon(): JQuery<HTMLElement> {
+function createAccessLinkIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "20px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const accessURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -74,6 +74,6 @@ export function createAccessLinkBtn(url: UtubUrlItem): JQuery<HTMLElement> {
     });
 
   urlBtnAccess.append(createAccessLinkIcon());
-  bootstrap.Tooltip.getOrCreateInstance(urlBtnAccess);
+  bootstrap.Tooltip.getOrCreateInstance(urlBtnAccess[0]);
   return urlBtnAccess;
 }

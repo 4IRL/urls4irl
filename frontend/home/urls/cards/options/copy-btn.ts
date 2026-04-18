@@ -3,7 +3,7 @@ import { APP_CONFIG } from "../../../../lib/config.js";
 import { copyURLString } from "../copy.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
-function createCopyURLIcon(): JQuery<HTMLElement> {
+function createCopyURLIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "16px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const editURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -58,6 +58,6 @@ export function createCopyURLBtn(url: UtubUrlItem): JQuery<HTMLElement> {
       urlBtnCopy.off("keyup.copyURL");
     });
 
-  bootstrap.Tooltip.getOrCreateInstance(urlBtnCopy);
+  bootstrap.Tooltip.getOrCreateInstance(urlBtnCopy[0]);
   return urlBtnCopy;
 }

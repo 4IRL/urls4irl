@@ -2,7 +2,7 @@ import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { showCreateURLTagForm } from "../../tags/create.js";
 
-export function createAddTagIcon(): JQuery<HTMLElement> {
+export function createAddTagIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "24px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const addTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -63,6 +63,6 @@ export function createAddTagBtn(urlCard: JQuery): JQuery<HTMLElement> {
     })
     .append(createAddTagIcon());
 
-  bootstrap.Tooltip.getOrCreateInstance(urlTagBtnCreate);
+  bootstrap.Tooltip.getOrCreateInstance(urlTagBtnCreate[0]);
   return urlTagBtnCreate;
 }

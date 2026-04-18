@@ -53,14 +53,14 @@ export function initSplash(): void {
 function setToRegisterButton(): void {
   $(".to-register").offAndOn("click", function () {
     registerModalOpener();
-    NAVBAR_TOGGLER.toggler.hide();
+    NAVBAR_TOGGLER.toggler?.hide();
   });
 }
 
 function setToLoginButton(): void {
   $(".to-login").offAndOn("click", function () {
     loginModalOpener();
-    NAVBAR_TOGGLER.toggler.hide();
+    NAVBAR_TOGGLER.toggler?.hide();
   });
 }
 

@@ -55,7 +55,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       $("#utubDescriptionUpdate").on(
         "keyup.updateUTubDescription",
         function (keyEvent) {
-          if (keyEvent.originalEvent.repeat) return;
+          if (keyEvent.originalEvent?.repeat) return;
           switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed

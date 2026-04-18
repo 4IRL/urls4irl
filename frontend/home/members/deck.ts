@@ -97,7 +97,7 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#memberSelfBtnDelete").hideClass();
 
   // Subheader prompt hidden
-  $("#MemberDeckSubheader").text(null);
+  $("#MemberDeckSubheader").text("");
 }
 
 export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {

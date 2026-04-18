@@ -6,7 +6,7 @@ import { filterUTubsByName } from "../../logic/utub-search.js";
 type UTubSelectorEntry = { id: number; name: string };
 
 function readUTubsFromDOM(): UTubSelectorEntry[] {
-  return $.map($(".UTubSelector"), (el: HTMLElement) => ({
+  return $.map($(".UTubSelector").toArray(), (el: HTMLElement) => ({
     id: parseInt($(el).attr("utubid")!),
     name: $(el).find(".UTubName").text(),
   }));

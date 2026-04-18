@@ -78,7 +78,7 @@ function createUpdateURLTitleInput(
   // Create the update title text box
   const urlTitleUpdateInputContainer = makeTextInput(
     "urlTitle",
-    METHOD_TYPES.UPDATE.description,
+    METHOD_TYPES.UPDATE.description!,
   ).addClass("updateUrlTitleWrap hidden");
 
   urlTitleUpdateInputContainer.find("label").text("URL Title");

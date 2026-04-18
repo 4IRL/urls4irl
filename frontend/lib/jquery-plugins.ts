@@ -77,10 +77,26 @@ export function registerJQueryPlugins(): void {
   };
 }
 
-export function enableTabbableChildElements(parent: string | HTMLElement | JQuery): void {
-  $(parent as string | HTMLElement).find(".tabbable").enableTab();
+export function enableTabbableChildElements(
+  parent: string | HTMLElement | JQuery,
+): void {
+  const $parent =
+    typeof parent === "string"
+      ? $(parent)
+      : parent instanceof HTMLElement
+        ? $(parent)
+        : parent;
+  $parent.find(".tabbable").enableTab();
 }
 
-export function disableTabbableChildElements(parent: string | HTMLElement | JQuery): void {
-  $(parent as string | HTMLElement).find(".tabbable").disableTab();
+export function disableTabbableChildElements(
+  parent: string | HTMLElement | JQuery,
+): void {
+  const $parent =
+    typeof parent === "string"
+      ? $(parent)
+      : parent instanceof HTMLElement
+        ? $(parent)
+        : parent;
+  $parent.find(".tabbable").disableTab();
 }

@@ -4,7 +4,7 @@ import {
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { getState, setState } from "../../../../store/app-store.js";
+import { getState, setState, AppState } from "../../../../store/app-store.js";
 
 vi.mock("../selection.js", () => ({
   disableClickOnSelectedURLCardToHide: vi.fn(),
@@ -82,7 +82,7 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
     </div>
   `;
 
-  let urlCard, urlTitleInput;
+  let urlCard: JQuery, urlTitleInput: JQuery;
 
   beforeEach(() => {
     document.body.innerHTML = UPDATE_TITLE_URL_CARD_HTML;
@@ -90,16 +90,17 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
     urlTitleInput = urlCard.find(".urlTitleUpdate");
     vi.clearAllMocks();
 
-    getState.mockReturnValue({
+    vi.mocked(getState).mockReturnValue({
       urls: [
         {
           utubUrlID: 1,
           urlString: "https://example.com",
           urlTitle: "Old Title",
           utubUrlTagIDs: [],
+          canDelete: true,
         },
       ],
-    });
+    } as unknown as AppState);
   });
 
   it("maps response.URL.urlTags via utubTagID (not legacy tagID) into setState", async () => {
@@ -123,15 +124,16 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
       fail: vi.fn().mockReturnThis(),
       always: vi.fn().mockReturnThis(),
     };
-    ajaxCall.mockReturnValue(chainable);
+    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
 
     await updateURLTitle(urlTitleInput, urlCard, 1);
 
     expect(setState).toHaveBeenCalled();
-    const setStateArg = setState.mock.calls[0][0];
-    const updatedUrl = setStateArg.urls.find(
-      (existingUrl) => existingUrl.utubUrlID === 1,
+    const setStateArg = vi.mocked(setState).mock.calls[0][0];
+    const updatedUrl = setStateArg.urls!.find(
+      (existingUrl: unknown) =>
+        (existingUrl as { utubUrlID: number }).utubUrlID === 1,
     );
-    expect(updatedUrl.utubUrlTagIDs).toEqual([11, 22]);
+    expect(updatedUrl!.utubUrlTagIDs).toEqual([11, 22]);
   });
 });

@@ -106,8 +106,10 @@ export function buildTagFilterInDeck(
 
 // Handle tag filtered selected - tags are filtered based on a URL having one tag AND another tag.. etc
 export function toggleTagFilterSelected(activeTagFilter: JQuery): void {
-  const currentSelectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
-    parseInt($(tagFilter).attr("data-utub-tag-id") as string),
+  const currentSelectedTagIDs = $.map(
+    $(".tagFilter.selected").toArray(),
+    (tagFilter: HTMLElement) =>
+      parseInt($(tagFilter).attr("data-utub-tag-id") as string),
   );
 
   // Prevent selecting more than tag limit
@@ -149,8 +151,10 @@ export function toggleTagFilterSelected(activeTagFilter: JQuery): void {
     }
   }
 
-  const selectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
-    parseInt($(tagFilter).attr("data-utub-tag-id") as string),
+  const selectedTagIDs = $.map(
+    $(".tagFilter.selected").toArray(),
+    (tagFilter: HTMLElement) =>
+      parseInt($(tagFilter).attr("data-utub-tag-id") as string),
   );
   setState({ selectedTagIDs });
   updateURLsAndTagSubheaderWhenTagSelected();

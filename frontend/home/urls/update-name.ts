@@ -75,7 +75,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
   $("#utubNameUpdate")
     .offAndOn("focus.updateUTubname", function () {
       $("#utubNameUpdate").on("keydown.updateUTubname", function (keyEvent) {
-        if (keyEvent.originalEvent.repeat) return;
+        if (keyEvent.originalEvent?.repeat) return;
         switch (keyEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
@@ -197,7 +197,7 @@ function updateUTubNameShowInput(utubID: number): void {
   const utubNameUpdate = $("#utubNameUpdate");
   const parentTitleElem = utubNameUpdate.closest(".titleElement");
   parentTitleElem.addClass("m-top-bot-0-5rem");
-  utubNameUpdate.val(getCurrentUTubName());
+  utubNameUpdate.val(getCurrentUTubName() ?? "");
   showInput("#utubNameUpdate");
   utubNameUpdate.trigger("focus");
 

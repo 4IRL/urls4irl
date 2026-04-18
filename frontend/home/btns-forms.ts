@@ -76,7 +76,7 @@ function hideInput(handle: string): void {
 }
 
 // Creates update button
-export function makeUpdateButton(wh: string): JQuery<HTMLElement> {
+export function makeUpdateButton(wh: number): JQuery<HTMLElement> {
   const updateBtn = $(document.createElement("button"));
 
   // update icon box
@@ -100,7 +100,7 @@ export function makeUpdateButton(wh: string): JQuery<HTMLElement> {
 }
 
 // Creates submit button
-export function makeSubmitButton(wh: string): JQuery<HTMLElement> {
+export function makeSubmitButton(wh: number): JQuery<HTMLElement> {
   const submitBtn = $(document.createElement("button"));
 
   // Submit checkbox
@@ -119,7 +119,7 @@ export function makeSubmitButton(wh: string): JQuery<HTMLElement> {
 }
 
 // Creates cancel button
-export function makeCancelButton(wh: string): JQuery<HTMLElement> {
+export function makeCancelButton(wh: number): JQuery<HTMLElement> {
   const cancelBtn = $(document.createElement("button"));
 
   // Cancel x-box
@@ -141,7 +141,7 @@ export function makeCancelButton(wh: string): JQuery<HTMLElement> {
 export function makeTextInput(
   textInputID: string,
   method: string,
-  type: string = INPUT_TYPES.TEXT.description,
+  type: string = INPUT_TYPES.TEXT.description ?? "text",
 ): JQuery<HTMLElement> {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
     "createDiv flex-row full-width pad-top-5p",

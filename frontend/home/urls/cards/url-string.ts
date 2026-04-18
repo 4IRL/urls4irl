@@ -57,8 +57,8 @@ function createUpdateURLStringInput(
 ): JQuery<HTMLElement> {
   const urlStringUpdateTextInputContainer = makeTextInput(
     "urlString",
-    METHOD_TYPES.UPDATE.description,
-    INPUT_TYPES.URL.description,
+    METHOD_TYPES.UPDATE.description!,
+    INPUT_TYPES.URL.description!,
   ).addClass("updateUrlStringWrap hidden gap-5p");
 
   urlStringUpdateTextInputContainer.find("label").text("URL");

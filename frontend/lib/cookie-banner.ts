@@ -38,7 +38,7 @@ export function initCookieBanner(): void {
     ".urlRow",
   ];
   $(document).on("click.clickOutsideBanner", (e) => {
-    const target = e.target as HTMLElement;
+    const target = e.target as unknown as HTMLElement;
     if ($(target.closest(interactiveClickSelectors.join(","))!).length > 0) {
       hideBanner();
     }
@@ -53,7 +53,7 @@ export function initCookieBanner(): void {
   ];
   $(document).on("keyup.clickOutsideBanner", (e) => {
     if (e.originalEvent?.repeat) return;
-    const target = e.target as HTMLElement;
+    const target = e.target as unknown as HTMLElement;
     if (
       e.key === KEYS.ENTER &&
       $(target.closest(interactiveKeySelectors.join(","))!).length > 0

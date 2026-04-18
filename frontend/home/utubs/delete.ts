@@ -111,8 +111,8 @@ function deleteUTubSuccess(utubID: number): void {
   const utubSelector = $(".UTubSelector[utubid=" + utubID + "]");
 
   setTimeout(function () {
-    window.history.pushState(null, null, "/home");
-    window.history.replaceState(null, null, "/home");
+    window.history.pushState(null, "", "/home");
+    window.history.replaceState(null, "", "/home");
   }, 0);
 
   utubSelector.fadeOut("slow", () => {

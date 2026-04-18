@@ -176,8 +176,8 @@ function leaveUTubSuccess(utubID: number): void {
   });
 
   setTimeout(function () {
-    window.history.pushState(null, null, "/home");
-    window.history.replaceState(null, null, "/home");
+    window.history.pushState(null, "", "/home");
+    window.history.replaceState(null, "", "/home");
   }, 0);
 }
 

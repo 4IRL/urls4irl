@@ -38,7 +38,7 @@ export function getUTubInfo(
           return;
         }
         default: {
-          window.history.replaceState(null, null, "/home");
+          window.history.replaceState(null, "", "/home");
           deferred.reject(xhr);
         }
       }
@@ -112,7 +112,7 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     if (isCurrentUserOwner) {
       allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(selectedUTub.id);
     }
-    utubDescriptionHeader.text(null);
+    utubDescriptionHeader.text("");
     $("#UTubDescriptionSubheaderWrap").hideClass();
   }
 

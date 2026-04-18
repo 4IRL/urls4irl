@@ -143,7 +143,7 @@ describe("btns-forms", () => {
 
   describe("makeUpdateButton", () => {
     it("creates a button with an SVG pencil icon at specified size", () => {
-      const btn = makeUpdateButton("20");
+      const btn = makeUpdateButton(20);
 
       expect(btn.is("button")).toBe(true);
       expect(btn.hasClass("mx-1")).toBe(true);
@@ -154,7 +154,7 @@ describe("btns-forms", () => {
 
   describe("makeSubmitButton", () => {
     it("creates a button with green-clickable class", () => {
-      const btn = makeSubmitButton("16");
+      const btn = makeSubmitButton(16);
 
       expect(btn.is("button")).toBe(true);
       expect(btn.hasClass("green-clickable")).toBe(true);
@@ -164,7 +164,7 @@ describe("btns-forms", () => {
 
   describe("makeCancelButton", () => {
     it("creates a button with cancel SVG", () => {
-      const btn = makeCancelButton("18");
+      const btn = makeCancelButton(18);
 
       expect(btn.is("button")).toBe(true);
       expect(btn.find("svg.cancelButton").length).toBe(1);

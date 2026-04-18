@@ -56,14 +56,17 @@ export function startSubmitCountdown(
     } else {
       clearInterval(interval);
       $submitBtn.prop("disabled", false);
-      $submitBtn.val(originalValue);
+      $submitBtn.val(originalValue ?? "");
     }
   }, 1000);
 
   return interval;
 }
 
-export function handleContactSubmit(event: Event, $form: JQuery): void {
+export function handleContactSubmit(
+  event: JQuery.TriggeredEvent,
+  $form: JQuery,
+): void {
   event.preventDefault();
 
   const $banner = $form.find("#Banner");

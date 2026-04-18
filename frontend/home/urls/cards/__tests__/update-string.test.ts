@@ -4,7 +4,7 @@ import {
   hideAndResetUpdateURLStringForm,
 } from "../update-string.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
-import { getState, setState } from "../../../../store/app-store.js";
+import { getState, setState, AppState } from "../../../../store/app-store.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -112,7 +112,7 @@ describe("hideAndResetUpdateURLStringForm - selection guard", () => {
 });
 
 describe("updateURL - client-side validation", () => {
-  let urlCard, urlStringInput;
+  let urlCard: JQuery, urlStringInput: JQuery;
 
   beforeEach(() => {
     document.body.innerHTML = URL_CARD_HTML;
@@ -147,7 +147,7 @@ describe("updateURL - client-side validation", () => {
 });
 
 describe("updateURLSuccess - tag ID mapping regression guard", () => {
-  let urlCard, urlStringInput;
+  let urlCard: JQuery, urlStringInput: JQuery;
 
   beforeEach(() => {
     document.body.innerHTML = URL_CARD_HTML;
@@ -155,16 +155,17 @@ describe("updateURLSuccess - tag ID mapping regression guard", () => {
     urlStringInput = urlCard.find(".urlStringUpdate");
     vi.clearAllMocks();
 
-    getState.mockReturnValue({
+    vi.mocked(getState).mockReturnValue({
       urls: [
         {
           utubUrlID: 1,
           urlString: "https://example.com",
           urlTitle: "Old Title",
           utubUrlTagIDs: [],
+          canDelete: true,
         },
       ],
-    });
+    } as unknown as AppState);
   });
 
   it("maps response.URL.urlTags via utubTagID (not legacy tagID) into setState", async () => {
@@ -190,15 +191,16 @@ describe("updateURLSuccess - tag ID mapping regression guard", () => {
       fail: vi.fn().mockReturnThis(),
       always: vi.fn().mockReturnThis(),
     };
-    ajaxCall.mockReturnValue(chainable);
+    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
 
     await updateURL(urlStringInput, urlCard, 1);
 
     expect(setState).toHaveBeenCalled();
-    const setStateArg = setState.mock.calls[0][0];
-    const updatedUrl = setStateArg.urls.find(
-      (existingUrl) => existingUrl.utubUrlID === 1,
+    const setStateArg = vi.mocked(setState).mock.calls[0][0];
+    const updatedUrl = setStateArg.urls!.find(
+      (existingUrl: unknown) =>
+        (existingUrl as { utubUrlID: number }).utubUrlID === 1,
     );
-    expect(updatedUrl.utubUrlTagIDs).toEqual([10, 20]);
+    expect(updatedUrl!.utubUrlTagIDs).toEqual([10, 20]);
   });
 });

@@ -19,7 +19,7 @@ export async function getUpdatedURL(
   utubUrlID: number,
   urlCard: JQuery,
 ): Promise<void | JQuery.jqXHR> {
-  return new Promise((resolve, reject) => {
+  return new Promise<void | JQuery.jqXHR>((resolve, reject) => {
     $.ajax({
       url: APP_CONFIG.routes.getURL(utubID, utubUrlID),
       type: "GET",
@@ -175,7 +175,7 @@ export function handleRejectFromGetURL(
       }
       // URL no longer exists
       if (errorMessage.showError) {
-        showURLDeckBannerError(errorMessage.message);
+        showURLDeckBannerError(errorMessage.message ?? "");
       }
       deleteURLOnStale(urlCard);
       break;

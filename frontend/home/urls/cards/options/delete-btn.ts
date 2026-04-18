@@ -3,7 +3,7 @@ import { APP_CONFIG } from "../../../../lib/config.js";
 import { deleteURLShowModal } from "../delete.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
-function createDeleteURLIcon(): JQuery<HTMLElement> {
+function createDeleteURLIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "28px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const deleteURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -64,6 +64,6 @@ export function createDeleteURLBtn(
     })
     .append(createDeleteURLIcon());
 
-  bootstrap.Tooltip.getOrCreateInstance(urlBtnDelete);
+  bootstrap.Tooltip.getOrCreateInstance(urlBtnDelete[0]);
   return urlBtnDelete;
 }

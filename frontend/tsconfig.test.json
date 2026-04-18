@@ -1,11 +1,13 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "types": ["jquery", "vitest/globals"]
+    "types": ["jquery", "vitest/globals", "bootstrap"]
   },
   "include": [
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "vite-env.d.ts",
+    "types/**/*.d.ts"
   ],
   "exclude": ["node_modules", "../backend/static/dist"]
 }

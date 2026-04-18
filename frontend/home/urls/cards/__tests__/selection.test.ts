@@ -35,7 +35,7 @@ const URL_CARD_HTML = `
 `;
 
 describe("URL Card Selection", () => {
-  let urlCard;
+  let urlCard: JQuery;
 
   beforeEach(() => {
     resetStore();
@@ -53,7 +53,7 @@ describe("URL Card Selection", () => {
       setState({ selectedURLCardID: 42 });
       const result = getSelectedURLCard();
       expect(result).not.toBeNull();
-      expect(result.hasClass("urlRow")).toBe(true);
+      expect(result!.hasClass("urlRow")).toBe(true);
     });
   });
 

@@ -13,7 +13,9 @@ describe("setupCSRF", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    document.head.querySelectorAll("meta[name=csrf-token]").forEach((el) => el.remove());
+    document.head
+      .querySelectorAll("meta[name=csrf-token]")
+      .forEach((el) => el.remove());
   });
 
   function injectCsrfMeta(token: string): void {
@@ -29,7 +31,10 @@ describe("setupCSRF", () => {
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
       const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
-      const settings: JQuery.AjaxSettings = { type: "POST", crossDomain: false };
+      const settings: JQuery.AjaxSettings = {
+        type: "POST",
+        crossDomain: false,
+      };
 
       beforeSend.call(settings, mockXhr, settings);
 
@@ -42,11 +47,17 @@ describe("setupCSRF", () => {
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
       const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
-      const settings: JQuery.AjaxSettings = { type: "POST", crossDomain: false };
+      const settings: JQuery.AjaxSettings = {
+        type: "POST",
+        crossDomain: false,
+      };
 
       beforeSend.call(settings, mockXhr, settings);
 
-      expect(mockXhr.setRequestHeader).toHaveBeenCalledWith("X-CSRFToken", "test-csrf-token");
+      expect(mockXhr.setRequestHeader).toHaveBeenCalledWith(
+        "X-CSRFToken",
+        "test-csrf-token",
+      );
     });
 
     it("does not cause a regex error when settings.type is undefined", () => {
@@ -55,7 +66,10 @@ describe("setupCSRF", () => {
 
       const beforeSend = ajaxSetupSpy.mock.calls[0][0].beforeSend!;
       const mockXhr = { setRequestHeader: vi.fn() } as unknown as JQuery.jqXHR;
-      const settings: JQuery.AjaxSettings = { type: undefined, crossDomain: false };
+      const settings: JQuery.AjaxSettings = {
+        type: undefined,
+        crossDomain: false,
+      };
 
       expect(() => beforeSend.call(settings, mockXhr, settings)).not.toThrow();
     });
@@ -92,7 +106,11 @@ describe("setupCSRF", () => {
       setupCSRF();
 
       const prefilterCallback = ajaxPrefilterSpy.mock.calls[0][0];
-      const options: JQuery.AjaxSettings = { error: vi.fn() };
+      const options: JQuery.AjaxSettings = {
+        error: vi.fn() as unknown as JQuery.TypeOrArray<
+          JQuery.Ajax.ErrorCallback<unknown>
+        >,
+      };
       const originalError = options.error;
       const mockJqXHR = {} as JQuery.jqXHR;
 

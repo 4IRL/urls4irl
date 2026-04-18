@@ -40,7 +40,7 @@ export function updateURLAfterFindingStaleData(
   }
 
   const currentURLTags = urlCard.find(".tagBadge");
-  const currentURLTagIDs = $.map(currentURLTags, (tag) =>
+  const currentURLTagIDs = $.map(currentURLTags.toArray(), (tag: HTMLElement) =>
     parseInt($(tag).attr("data-utub-tag-id")!),
   );
 

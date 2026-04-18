@@ -60,7 +60,7 @@ export function createTagInputBlock(
 ): JQuery<HTMLElement> {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
-    METHOD_TYPES.CREATE.description,
+    METHOD_TYPES.CREATE.description!,
   ).addClass("createUrlTagWrap hidden flex-start gap-5p");
 
   urlTagCreateTextInputContainer.find("label").text("Tag");

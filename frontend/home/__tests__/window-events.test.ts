@@ -74,7 +74,7 @@ describe("window-events", () => {
 
     addEventListenerSpy = vi
       .spyOn(window, "addEventListener")
-      .mockImplementation((type: string, listener: EventListener) => {
+      .mockImplementation((type: string, listener: unknown) => {
         if (type === "popstate") {
           popstateHandler = listener as (event: PopStateEvent) => void;
         }

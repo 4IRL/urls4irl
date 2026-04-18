@@ -57,9 +57,12 @@ export function getAllAccessibleUTubNames(): string[] {
 // Utility route to get all UTub summaries
 export function getAllUTubs(): JQuery.Promise<GetUtubsResponse> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON(APP_CONFIG.routes.getUTubs).always(function () {
-    hideUTubLoadingIconAndClearTimeout(timeoutID);
-  });
+  const deferred = $.Deferred<GetUtubsResponse>();
+  $.getJSON(APP_CONFIG.routes.getUTubs)
+    .done((data: GetUtubsResponse) => deferred.resolve(data))
+    .fail((xhr: JQuery.jqXHR) => deferred.reject(xhr))
+    .always(() => hideUTubLoadingIconAndClearTimeout(timeoutID));
+  return deferred.promise();
 }
 
 // Hides modal for UTub same name action confirmation

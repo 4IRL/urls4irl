@@ -51,7 +51,9 @@ describe("login-form 429 HTML response", () => {
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 429 with HTML content", () => {
     const mockDeferred = $.Deferred();
-    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+    vi.spyOn($, "ajax").mockReturnValue(
+      mockDeferred as unknown as JQuery.jqXHR,
+    );
 
     const $modal = $("#LoginModal");
     initLoginForm($modal);
@@ -72,7 +74,9 @@ describe("login-form 429 HTML response", () => {
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 403 with HTML content", () => {
     const mockDeferred = $.Deferred();
-    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+    vi.spyOn($, "ajax").mockReturnValue(
+      mockDeferred as unknown as JQuery.jqXHR,
+    );
 
     const $modal = $("#LoginModal");
     initLoginForm($modal);

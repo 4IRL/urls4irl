@@ -11,7 +11,7 @@
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
-    "types": ["jquery"]
+    "types": ["jquery", "bootstrap"]
   },
   "include": [
     "**/*.ts"

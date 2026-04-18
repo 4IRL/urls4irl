@@ -75,7 +75,7 @@ describe("createLogoutOnExit", () => {
         callback();
         return { always: vi.fn() };
       }),
-    });
+    } as unknown as JQuery.jqXHR);
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
   });
 
@@ -123,10 +123,10 @@ describe("switchModal", () => {
 
   it("hides from-modal and shows to-modal after hidden.bs.modal event", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal,
+      mockFromModal as unknown as bootstrap.Modal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal,
+      mockToModal as unknown as bootstrap.Modal,
     );
 
     switchModal($("#LoginModal"), "#RegisterModal");
@@ -143,7 +143,7 @@ describe("switchModal", () => {
   it("shows to-modal directly when from-modal has no Bootstrap instance", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal,
+      mockToModal as unknown as bootstrap.Modal,
     );
 
     switchModal($("#LoginModal"), "#RegisterModal");
@@ -153,10 +153,10 @@ describe("switchModal", () => {
 
   it("registers a one-time hidden.bs.modal listener on from-modal", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal,
+      mockFromModal as unknown as bootstrap.Modal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal,
+      mockToModal as unknown as bootstrap.Modal,
     );
 
     switchModal($("#LoginModal"), "#RegisterModal");
@@ -235,6 +235,7 @@ describe("handleImproperFormErrors", () => {
       errorCode: null,
       errors: null,
       details: null,
+      urlString: null,
     };
 
     const result = handleImproperFormErrors($modal, errorResponse);
@@ -257,6 +258,7 @@ describe("handleImproperFormErrors", () => {
         username: ["Username is required", "Secondary error"],
       },
       details: null,
+      urlString: null,
     };
 
     handleImproperFormErrors($modal, errorResponse);
@@ -280,6 +282,7 @@ describe("handleImproperFormErrors", () => {
         nonExistentField: ["Should be ignored"],
       },
       details: null,
+      urlString: null,
     };
 
     handleImproperFormErrors($modal, errorResponse);
@@ -418,7 +421,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
         callback();
         return { always: vi.fn() };
       }),
-    });
+    } as unknown as JQuery.jqXHR);
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
     vi.clearAllMocks();
   });
@@ -484,10 +487,10 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     const mockToModal = { show: vi.fn() };
 
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal,
+      mockFromModal as unknown as bootstrap.Modal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal,
+      mockToModal as unknown as bootstrap.Modal,
     );
 
     handleUserHasAccountNotEmailValidated(
@@ -513,7 +516,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
       show: vi.fn(),
-    });
+    } as unknown as bootstrap.Modal);
 
     handleUserHasAccountNotEmailValidated(
       $("#LoginModal"),
@@ -549,10 +552,10 @@ describe("emailValidationModalOpener", () => {
     const mockFromModal = { hide: vi.fn() };
     const mockToModal = { show: vi.fn() };
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
-      mockFromModal,
+      mockFromModal as unknown as bootstrap.Modal,
     );
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
-      mockToModal,
+      mockToModal as unknown as bootstrap.Modal,
     );
 
     emailValidationModalOpener($("#RegisterModal"));
@@ -564,7 +567,7 @@ describe("emailValidationModalOpener", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
       show: vi.fn(),
-    });
+    } as unknown as bootstrap.Modal);
 
     emailValidationModalOpener($("#RegisterModal"));
 
@@ -578,13 +581,13 @@ describe("emailValidationModalOpener", () => {
     vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
     vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
       show: vi.fn(),
-    });
+    } as unknown as bootstrap.Modal);
     const ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
       always: vi.fn((callback) => {
         callback();
         return { always: vi.fn() };
       }),
-    });
+    } as unknown as JQuery.jqXHR);
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
 
     emailValidationModalOpener($("#RegisterModal"));

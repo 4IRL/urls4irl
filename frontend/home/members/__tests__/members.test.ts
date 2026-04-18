@@ -129,7 +129,9 @@ describe("removeMemberFail - is429Handled early-return", () => {
     document.body.innerHTML = REMOVE_MODAL_HTML;
     vi.clearAllMocks();
     // Stub jQuery bootstrap-modal plugin used by removeMemberShowModal/hideModal
-    ($.fn as unknown as { modal: () => JQuery }).modal = function () {
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
       return this;
     };
   });
@@ -193,7 +195,7 @@ describe("updateMemberDeck - null-guard for missing member data", () => {
     vi.mocked(getState).mockReturnValue({
       members: [],
       isCurrentUserOwner: true,
-    } as ReturnType<typeof getState>);
+    } as unknown as ReturnType<typeof getState>);
   });
 
   it("skips appending a badge when the member ID in toAdd is not found in newMembers", () => {
