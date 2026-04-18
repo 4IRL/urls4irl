@@ -1,5 +1,5 @@
 import { $ } from "../lib/globals.js";
-import { INPUT_TYPES } from "../lib/constants.js";
+import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
 import { isHidden } from "./visibility.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { updateUTubNameHideInput } from "./urls/update-name.js";
@@ -76,7 +76,7 @@ function hideInput(handle: string): void {
 }
 
 // Creates update button
-export function makeUpdateButton(sizePx: number): JQuery<HTMLElement> {
+export function makeUpdateButton(sizePx: IconSize): JQuery<HTMLElement> {
   const updateBtn = $(document.createElement("button"));
 
   // update icon box
@@ -100,7 +100,7 @@ export function makeUpdateButton(sizePx: number): JQuery<HTMLElement> {
 }
 
 // Creates submit button
-export function makeSubmitButton(sizePx: number): JQuery<HTMLElement> {
+export function makeSubmitButton(sizePx: IconSize): JQuery<HTMLElement> {
   const submitBtn = $(document.createElement("button"));
 
   // Submit checkbox
@@ -119,7 +119,7 @@ export function makeSubmitButton(sizePx: number): JQuery<HTMLElement> {
 }
 
 // Creates cancel button
-export function makeCancelButton(sizePx: number): JQuery<HTMLElement> {
+export function makeCancelButton(sizePx: IconSize): JQuery<HTMLElement> {
   const cancelBtn = $(document.createElement("button"));
 
   // Cancel x-box

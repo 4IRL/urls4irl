@@ -43,5 +43,6 @@ export const TABLET_WIDTH = 992;
  */
 export const SHOW_LOADING_ICON_AFTER_MS = 50;
 
-export const ICON_SIZE_SM = 20;
-export const ICON_SIZE_LG = 30;
+export const ICON_SIZE_SM = 20 as const;
+export const ICON_SIZE_LG = 30 as const;
+export type IconSize = typeof ICON_SIZE_SM | typeof ICON_SIZE_LG;
