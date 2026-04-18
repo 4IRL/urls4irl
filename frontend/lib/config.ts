@@ -52,9 +52,29 @@ export interface AppRoutes {
   deleteURLTag: (utubId: number, urlId: number, tagId: number) => string;
 }
 
+export interface MemberRoles {
+  readonly CREATOR: string;
+  readonly CO_CREATOR: string;
+}
+
+export interface AppConstants {
+  readonly MEMBER_ROLES: MemberRoles;
+  readonly UTUBS_MIN_NAME_LENGTH: number;
+  readonly URLS_MIN_LENGTH: number;
+  readonly URLS_MAX_LENGTH: number;
+  readonly URLS_TITLE_MIN_LENGTH: number;
+  readonly URLS_TITLE_MAX_LENGTH: number;
+  readonly TAGS_MIN_LENGTH: number;
+  readonly TAGS_MAX_LENGTH: number;
+  readonly TAGS_MAX_ON_URLS: number;
+  readonly TAGS_MAX_ON_URL: number;
+  readonly MAX_NUM_OF_URLS_TO_ACCESS: number;
+  readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
+}
+
 export interface AppConfig {
   readonly routes: Readonly<AppRoutes>;
-  readonly constants: Readonly<Record<string, unknown>>;
+  readonly constants: Readonly<AppConstants>;
   readonly strings: Readonly<Record<string, string>>;
 }
 

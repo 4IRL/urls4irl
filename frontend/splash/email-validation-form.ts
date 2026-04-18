@@ -1,11 +1,10 @@
-import type { components } from "../types/api.d.ts";
+import type { Schema } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showSplashModalAlertBanner, resetModalFormState } from "./init.js";
 
-type EmailValidationSuccess =
-  components["schemas"]["EmailValidationResponseSchema"];
-type EmailValidationError = components["schemas"]["ErrorResponse"];
+type EmailValidationSuccess = Schema<"EmailValidationResponseSchema">;
+type EmailValidationError = Schema<"ErrorResponse">;
 
 export const SEND_INITIAL_EMAIL = true;
 export const SKIP_INITIAL_EMAIL = false;
@@ -80,12 +79,12 @@ function handleValidateEmailFailure(
     return;
   }
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
-  if (!xhr.responseJSON.hasOwnProperty("errorCode")) {
+  if (!("errorCode" in xhr.responseJSON)) {
     // Handle other errors here
     showSplashModalAlertBanner(
       $modal,

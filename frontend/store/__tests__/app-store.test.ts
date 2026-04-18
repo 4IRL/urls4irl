@@ -94,7 +94,15 @@ describe("resetStore", () => {
       activeUTubName: "Test",
       isCurrentUserOwner: true,
       selectedTagIDs: [1, 2],
-      urls: [{ utubUrlID: 1 }],
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "http://example.com",
+          utubUrlTagIDs: [],
+          urlTitle: "Example",
+          canDelete: false,
+        },
+      ],
     });
     resetStore();
     const state = getState();

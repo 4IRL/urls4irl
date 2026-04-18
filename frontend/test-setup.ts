@@ -4,66 +4,47 @@ import jquery from "jquery";
 window.jQuery = jquery;
 window.$ = jquery;
 
-// Register jQuery plugins via dynamic import so window.jQuery is already set.
-// Static `import` statements are hoisted and evaluated before any module-body
-// code runs, so lib/globals.js (`export const $ = window.jQuery`) would see
-// undefined if we used a static import here.  A dynamic import runs after the
-// lines above, so window.jQuery is guaranteed to be set first.
+// Approved exception to top-level-imports rule: window.jQuery must be assigned
+// before jquery-plugins evaluates, requiring deferred loading that cannot be
+// moved to module scope.
 const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
 registerJQueryPlugins();
 
+// Factory for Bootstrap component mocks — each component shares the same
+// constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
+function makeBootstrapClass(
+  componentName: string,
+  extra?: Record<string, () => void>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
+): any {
+  const ComponentClass = class {
+    constructor() {}
+    show() {}
+    hide() {}
+    dispose() {}
+    static getInstance() {
+      return null;
+    }
+    static getOrCreateInstance() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic bootstrap mock access
+      return new (window.bootstrap as any)[componentName]();
+    }
+  };
+  if (extra) {
+    Object.assign(ComponentClass.prototype, extra);
+  }
+  Object.defineProperty(ComponentClass, "name", { value: componentName });
+  return ComponentClass;
+}
+
 // Mock Bootstrap (mirrors global script tag)
 window.bootstrap = {
-  Modal: class Modal {
-    constructor() {}
-    show() {}
-    hide() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Modal();
-    }
-  },
-  Tooltip: class Tooltip {
-    constructor() {}
-    show() {}
-    hide() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Tooltip();
-    }
-  },
-  Toast: class Toast {
-    constructor() {}
-    show() {}
-    hide() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Toast();
-    }
-  },
-  Collapse: class Collapse {
-    constructor() {}
-    show() {}
-    hide() {}
-    toggle() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Collapse();
-    }
-  },
-};
+  Modal: makeBootstrapClass("Modal"),
+  Tooltip: makeBootstrapClass("Tooltip"),
+  Toast: makeBootstrapClass("Toast"),
+  Collapse: makeBootstrapClass("Collapse", { toggle() {} }),
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
+} as any;
 
 // Inject app-config script element for lib/config.js
 const appConfig = {

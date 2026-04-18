@@ -1,7 +1,7 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import {
@@ -32,11 +32,9 @@ import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type UpdateUrlStringRequest = components["schemas"]["UpdateURLStringRequest"];
-type UpdateUrlStringResponse =
-  operations["updateUrl"]["responses"][200]["content"]["application/json"];
-type UpdateUrlStringError =
-  components["schemas"]["ErrorResponse_URLErrorCodes"];
+type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
+type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
+type UpdateUrlStringError = Schema<"ErrorResponse_URLErrorCodes">;
 
 const UPDATE_URL_STRING_FIELD_NAMES = ["urlString"] as const;
 
@@ -163,7 +161,7 @@ function updateURLSetup(
 ): [string, UpdateUrlStringRequest] {
   const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
-  const updatedURL = (urlStringUpdateInput.val() as string).trim();
+  const updatedURL = getInputValue(urlStringUpdateInput).trim();
 
   const data: UpdateUrlStringRequest = { urlString: updatedURL };
 
@@ -288,7 +286,7 @@ function updateURLFail(
 ): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -305,11 +303,9 @@ function updateURLFail(
     return;
   }
   const responseJSON = xhr.responseJSON as UpdateUrlStringError;
-  const hasErrors = responseJSON.hasOwnProperty("errors");
-  const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      if (hasErrors) {
+      if (responseJSON.errors) {
         updateURLFailErrors(
           responseJSON.errors as Partial<
             Record<UpdateUrlStringFieldName, string[]>
@@ -318,7 +314,7 @@ function updateURLFail(
         );
         break;
       }
-      if (hasMessage) {
+      if (responseJSON.message) {
         displayUpdateURLErrors(
           "urlString",
           responseJSON.message as string,

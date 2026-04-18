@@ -75,6 +75,23 @@ describe("initCookieBanner", () => {
     });
   });
 
+  describe("non-HTMLElement target", () => {
+    it("does not hide banner when event target is not an HTMLElement", () => {
+      initCookieBanner();
+      vi.runAllTimers();
+      expect($("#CookieBanner").hasClass("is-visible")).toBe(true);
+
+      const syntheticEvent = new Event("click", { bubbles: true });
+      Object.defineProperty(syntheticEvent, "target", {
+        value: document,
+        writable: false,
+      });
+      document.dispatchEvent(syntheticEvent);
+
+      expect($("#CookieBanner").hasClass("is-visible")).toBe(true);
+    });
+  });
+
   describe("keyboard interaction", () => {
     beforeEach(() => {
       initCookieBanner();

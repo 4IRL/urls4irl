@@ -1,4 +1,4 @@
-import type { operations } from "../../../types/api.d.ts";
+import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
@@ -8,8 +8,7 @@ import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type DeleteUrlResponse =
-  operations["deleteUrl"]["responses"][200]["content"]["application/json"];
+type DeleteUrlResponse = SuccessResponse<"deleteUrl">;
 
 // Hide confirmation modal for removal of the selected URL
 export function deleteURLHideModal(): void {

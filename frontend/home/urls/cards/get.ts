@@ -1,3 +1,6 @@
+import type { SuccessResponse } from "../../../types/api-helpers.d.ts";
+import type { UtubUrlDetail, UtubTagOnAddDelete } from "../../../types/url.js";
+
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../../lib/page-utils.js";
@@ -8,18 +11,15 @@ import { removeTagFromTagDeckGivenTagID } from "../../tags/deck.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
 import { showURLDeckBannerError } from "../deck.js";
-import type { operations } from "../../../types/api.d.ts";
-import type { UtubUrlDetail, UtubTagOnAddDelete } from "../../../types/url.js";
 
-type GetUrlResponse =
-  operations["getUrl"]["responses"][200]["content"]["application/json"];
+type GetUrlResponse = SuccessResponse<"getUrl">;
 
 export async function getUpdatedURL(
   utubID: number,
   utubUrlID: number,
   urlCard: JQuery,
 ): Promise<void | JQuery.jqXHR> {
-  return new Promise((resolve, reject) => {
+  return new Promise<void | JQuery.jqXHR>((resolve, reject) => {
     $.ajax({
       url: APP_CONFIG.routes.getURL(utubID, utubUrlID),
       type: "GET",
@@ -29,7 +29,7 @@ export async function getUpdatedURL(
         _: JQuery.Ajax.SuccessTextStatus,
         xhr: JQuery.jqXHR,
       ) => {
-        if (xhr.status === 200 && response.hasOwnProperty("URL")) {
+        if (xhr.status === 200 && "URL" in response) {
           updateURLBasedOnGetData(response.URL, urlCard, utubID);
           resolve();
         }
@@ -175,7 +175,7 @@ export function handleRejectFromGetURL(
       }
       // URL no longer exists
       if (errorMessage.showError) {
-        showURLDeckBannerError(errorMessage.message);
+        showURLDeckBannerError(errorMessage.message ?? "");
       }
       deleteURLOnStale(urlCard);
       break;

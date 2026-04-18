@@ -1,4 +1,4 @@
-import type { operations } from "../../types/api.d.ts";
+import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -6,8 +6,7 @@ import { emit, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 import { getState, setState } from "../../store/app-store.js";
 
-type DeleteUtubTagResponse =
-  operations["deleteUtubTag"]["responses"][200]["content"]["application/json"];
+type DeleteUtubTagResponse = SuccessResponse<"deleteUtubTag">;
 
 function deleteUTubTagHideModal(): void {
   $("#confirmModal").modal("hide");

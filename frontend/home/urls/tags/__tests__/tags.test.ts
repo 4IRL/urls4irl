@@ -27,8 +27,8 @@ describe("createTagBadgesAndWrap - missing tag ID guard", () => {
     }).not.toThrow();
 
     // Wrap was created but no badges appended since the one tag ID was missing
-    expect(wrap.hasClass("urlTagsContainer")).toBe(true);
-    expect(wrap.children().length).toBe(0);
+    expect(wrap!.hasClass("urlTagsContainer")).toBe(true);
+    expect(wrap!.children().length).toBe(0);
   });
 
   it("appends a badge only for tag IDs that exist in dictTags", () => {

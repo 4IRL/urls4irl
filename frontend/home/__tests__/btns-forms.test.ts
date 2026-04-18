@@ -11,6 +11,7 @@ import {
   disable,
   enable,
 } from "../btns-forms.js";
+import { ICON_SIZE_SM, ICON_SIZE_LG } from "../../lib/constants.js";
 
 const mockCreateUTubHideInput = vi.fn();
 const mockUpdateUTubNameHideInput = vi.fn();
@@ -143,32 +144,32 @@ describe("btns-forms", () => {
 
   describe("makeUpdateButton", () => {
     it("creates a button with an SVG pencil icon at specified size", () => {
-      const btn = makeUpdateButton("20");
+      const btn = makeUpdateButton(ICON_SIZE_SM);
 
       expect(btn.is("button")).toBe(true);
       expect(btn.hasClass("mx-1")).toBe(true);
       expect(btn.find("svg.updateIcon").length).toBe(1);
-      expect(btn.find("svg").attr("width")).toBe("20");
+      expect(btn.find("svg").attr("width")).toBe(String(ICON_SIZE_SM));
     });
   });
 
   describe("makeSubmitButton", () => {
     it("creates a button with green-clickable class", () => {
-      const btn = makeSubmitButton("16");
+      const btn = makeSubmitButton(ICON_SIZE_LG);
 
       expect(btn.is("button")).toBe(true);
       expect(btn.hasClass("green-clickable")).toBe(true);
-      expect(btn.find("svg").attr("width")).toBe("16");
+      expect(btn.find("svg").attr("width")).toBe(String(ICON_SIZE_LG));
     });
   });
 
   describe("makeCancelButton", () => {
     it("creates a button with cancel SVG", () => {
-      const btn = makeCancelButton("18");
+      const btn = makeCancelButton(ICON_SIZE_LG);
 
       expect(btn.is("button")).toBe(true);
       expect(btn.find("svg.cancelButton").length).toBe(1);
-      expect(btn.find("svg").attr("width")).toBe("18");
+      expect(btn.find("svg").attr("width")).toBe(String(ICON_SIZE_LG));
     });
   });
 

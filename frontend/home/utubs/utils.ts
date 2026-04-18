@@ -1,4 +1,4 @@
-import type { operations } from "../../types/api.d.ts";
+import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
@@ -8,8 +8,7 @@ import {
   hideUTubLoadingIconAndClearTimeout,
 } from "./deck.js";
 
-type GetUtubsResponse =
-  operations["getUtubs"]["responses"][200]["content"]["application/json"];
+type GetUtubsResponse = SuccessResponse<"getUtubs">;
 
 // Verify UTubID is valid
 export function isValidUTubID(utubIdStr: string | null): boolean {
@@ -56,11 +55,11 @@ export function getAllAccessibleUTubNames(): string[] {
 }
 
 // Utility route to get all UTub summaries
-export function getAllUTubs(): JQuery.Promise<GetUtubsResponse> {
+export function getAllUTubs(): JQuery.jqXHR<GetUtubsResponse> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON(APP_CONFIG.routes.getUTubs).always(function () {
-    hideUTubLoadingIconAndClearTimeout(timeoutID);
-  });
+  return $.getJSON(APP_CONFIG.routes.getUTubs).always(() =>
+    hideUTubLoadingIconAndClearTimeout(timeoutID),
+  ) as JQuery.jqXHR<GetUtubsResponse>;
 }
 
 // Hides modal for UTub same name action confirmation

@@ -1,3 +1,7 @@
+import {
+  createMockJqXHRChainable,
+  createMockXhr,
+} from "../../../__tests__/helpers/mock-jquery.js";
 import { createOwnerBadge, createMemberBadge } from "../members.js";
 import { createMemberRemoveBtn, removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
@@ -129,7 +133,9 @@ describe("removeMemberFail - is429Handled early-return", () => {
     document.body.innerHTML = REMOVE_MODAL_HTML;
     vi.clearAllMocks();
     // Stub jQuery bootstrap-modal plugin used by removeMemberShowModal/hideModal
-    ($.fn as unknown as { modal: () => JQuery }).modal = function () {
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
       return this;
     };
   });
@@ -141,16 +147,12 @@ describe("removeMemberFail - is429Handled early-return", () => {
 
     vi.mocked(is429Handled).mockReturnValueOnce(true);
 
-    const rateLimitedXhr = { status: 429 } as unknown as JQuery.jqXHR;
-    const chainable = {
-      done: vi.fn().mockReturnThis(),
-      fail: vi.fn().mockImplementation((cb) => {
-        cb(rateLimitedXhr);
-        return chainable;
-      }),
-      always: vi.fn().mockReturnThis(),
-    };
-    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
+    const rateLimitedXhr = createMockXhr({ status: 429 });
+    const chainable = createMockJqXHRChainable({
+      fail: (cb: unknown) =>
+        (cb as (xhr: JQuery.jqXHR) => void)(rateLimitedXhr),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
 
     removeMemberShowModal(5, true, 1);
     $("#modalSubmit").trigger("click");
@@ -193,7 +195,7 @@ describe("updateMemberDeck - null-guard for missing member data", () => {
     vi.mocked(getState).mockReturnValue({
       members: [],
       isCurrentUserOwner: true,
-    } as ReturnType<typeof getState>);
+    } as unknown as ReturnType<typeof getState>);
   });
 
   it("skips appending a badge when the member ID in toAdd is not found in newMembers", () => {

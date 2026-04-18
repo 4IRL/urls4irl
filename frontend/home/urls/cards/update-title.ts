@@ -1,7 +1,7 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
-import { $ } from "../../../lib/globals.js";
+import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
@@ -15,10 +15,9 @@ import {
 } from "./selection.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type UpdateUrlTitleRequest = components["schemas"]["UpdateURLTitleRequest"];
-type UpdateUrlTitleResponse =
-  operations["updateUrlTitle"]["responses"][200]["content"]["application/json"];
-type UpdateUrlTitleError = components["schemas"]["ErrorResponse_URLErrorCodes"];
+type UpdateUrlTitleRequest = Schema<"UpdateURLTitleRequest">;
+type UpdateUrlTitleResponse = SuccessResponse<"updateUrlTitle">;
+type UpdateUrlTitleError = Schema<"ErrorResponse_URLErrorCodes">;
 
 const UPDATE_URL_TITLE_FIELD_NAMES = ["urlTitle"] as const;
 
@@ -72,7 +71,7 @@ function updateURLTitleSetup(
 ): [string, UpdateUrlTitleRequest] {
   const patchURL = APP_CONFIG.routes.updateURLTitle(utubID, utubUrlID);
 
-  const updatedURLTitle = urlTitleInput.val() as string;
+  const updatedURLTitle = getInputValue(urlTitleInput);
 
   const data: UpdateUrlTitleRequest = { urlTitle: updatedURLTitle };
 
@@ -113,10 +112,7 @@ export async function updateURLTitle(
     ) {
       if (xhr.status === 200) {
         resetUpdateURLTitleFailErrors(urlCard);
-        if (
-          response.hasOwnProperty("URL") &&
-          response.URL.hasOwnProperty("urlTitle")
-        )
+        if ("URL" in response && "urlTitle" in response.URL)
           updateURLTitleSuccess(response, urlCard);
       }
     });
@@ -169,7 +165,7 @@ function updateURLTitleSuccess(
 function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -185,8 +181,7 @@ function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UpdateUrlTitleError;
-      const hasErrors = responseJSON.hasOwnProperty("errors");
-      if (hasErrors) {
+      if (responseJSON.errors) {
         updateURLTitleFailErrors(
           responseJSON.errors as Partial<
             Record<UpdateUrlTitleFieldName, string[]>

@@ -1,17 +1,16 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { UtubTag } from "../../types/url.js";
 
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import { buildTagFilterInDeck } from "./tags.js";
 
-type AddTagRequest = components["schemas"]["AddTagRequest"];
-type CreateUtubTagResponse =
-  operations["createUtubTag"]["responses"][200]["content"]["application/json"];
+type AddTagRequest = Schema<"AddTagRequest">;
+type CreateUtubTagResponse = SuccessResponse<"createUtubTag">;
 
 export function setupOpenCreateUTubTagEventListeners(utubID: number): void {
   const utubTagBtnCreate = $("#utubTagBtnCreate");
@@ -107,7 +106,7 @@ export function createUTubTagHideInput(): void {
 function createUTubTagSetup(utubID: number): [string, AddTagRequest] {
   const postURL = APP_CONFIG.routes.createUTubTag(utubID);
 
-  const tagString = $("#utubTagCreate").val() as string;
+  const tagString = getInputValue("#utubTagCreate");
   const data: AddTagRequest = { tagString };
 
   return [postURL, data];
@@ -168,7 +167,7 @@ function createUTubTagSuccess(
 function createUTubTagFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"

@@ -24,11 +24,7 @@ setupCSRF();
 // Initialize cookie banner
 initCookieBanner();
 
-/**
- * Initialize reset password form if the modal is present on page load
- * This happens when user clicks a password reset link
- */
-function initResetPasswordIfPresent() {
+function initResetPasswordIfPresent(): void {
   const modalForm = $("#ModalForm[data-modal-type='reset-password']");
   if (modalForm.length) {
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
@@ -37,11 +33,7 @@ function initResetPasswordIfPresent() {
   }
 }
 
-/**
- * Initialize email validation form if the modal is present on page load
- * This happens when user clicks an expired email validation link
- */
-function initEmailValidationIfPresent() {
+function initEmailValidationIfPresent(): void {
   const modalForm = $("#ModalForm[data-modal-context='expired-token']");
   if (modalForm.length) {
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();

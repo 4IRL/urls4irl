@@ -118,7 +118,7 @@ export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
 }
 
 export function setTagDeckSubheaderWhenNoUTubSelected(): void {
-  $("#TagDeckSubheader").text(null);
+  $("#TagDeckSubheader").text("");
 }
 
 export function updateCountOfTagFiltersApplied(selectedTagCount: number): void {

@@ -2,6 +2,10 @@ import { $ } from "./globals.js";
 import { APP_CONFIG } from "./config.js";
 import { KEYS } from "./constants.js";
 
+function isHTMLElement(target: EventTarget | null): target is HTMLElement {
+  return target instanceof HTMLElement;
+}
+
 export function initCookieBanner(): void {
   const $banner = $("#CookieBanner");
   if (!$banner.length) return;
@@ -38,7 +42,8 @@ export function initCookieBanner(): void {
     ".urlRow",
   ];
   $(document).on("click.clickOutsideBanner", (e) => {
-    const target = e.target as HTMLElement;
+    const target: EventTarget | null = e.target;
+    if (!isHTMLElement(target)) return;
     if ($(target.closest(interactiveClickSelectors.join(","))!).length > 0) {
       hideBanner();
     }
@@ -53,7 +58,8 @@ export function initCookieBanner(): void {
   ];
   $(document).on("keyup.clickOutsideBanner", (e) => {
     if (e.originalEvent?.repeat) return;
-    const target = e.target as HTMLElement;
+    const target: EventTarget | null = e.target;
+    if (!isHTMLElement(target)) return;
     if (
       e.key === KEYS.ENTER &&
       $(target.closest(interactiveKeySelectors.join(","))!).length > 0

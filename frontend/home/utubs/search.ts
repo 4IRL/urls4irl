@@ -1,4 +1,4 @@
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { filterUTubsByName } from "../../logic/utub-search.js";
@@ -6,7 +6,7 @@ import { filterUTubsByName } from "../../logic/utub-search.js";
 type UTubSelectorEntry = { id: number; name: string };
 
 function readUTubsFromDOM(): UTubSelectorEntry[] {
-  return $.map($(".UTubSelector"), (el: HTMLElement) => ({
+  return $.map($(".UTubSelector").toArray(), (el: HTMLElement) => ({
     id: parseInt($(el).attr("utubid")!),
     name: $(el).find(".UTubName").text(),
   }));
@@ -72,7 +72,7 @@ export function setUTubSelectorSearchEventListener(): void {
       searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
-      const searchTerm = (searchInput.val() as string).toLowerCase();
+      const searchTerm = getInputValue(searchInput).toLowerCase();
       if (searchTerm.length < APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH) {
         updatedUTubSelectorDisplay([]);
         return;

@@ -2,7 +2,7 @@ import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { showUpdateURLStringForm } from "../update-string.js";
 
-export function createEditURLIcon(): JQuery<HTMLElement> {
+export function createEditURLIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "16px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const editURLOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
@@ -54,6 +54,6 @@ export function createEditURLBtn(urlCard: JQuery): JQuery<HTMLElement> {
     })
     .append(createEditURLIcon());
 
-  bootstrap.Tooltip.getOrCreateInstance(urlStringBtnUpdate);
+  bootstrap.Tooltip.getOrCreateInstance(urlStringBtnUpdate[0]);
   return urlStringBtnUpdate;
 }

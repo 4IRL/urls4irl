@@ -48,7 +48,7 @@ const CREATE_URL_FORM_HTML = `
 `;
 
 describe("createURL - client-side validation", () => {
-  let urlStringInput, urlTitleInput;
+  let urlStringInput: JQuery, urlTitleInput: JQuery;
 
   beforeEach(() => {
     document.body.innerHTML = CREATE_URL_FORM_HTML;

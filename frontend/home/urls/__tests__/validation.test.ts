@@ -7,15 +7,15 @@ describe("isValidURL", () => {
     });
 
     it("returns false for null", () => {
-      expect(isValidURL(null)).toBe(false);
+      expect(isValidURL(null as unknown as string)).toBe(false);
     });
 
     it("returns false for undefined", () => {
-      expect(isValidURL(undefined)).toBe(false);
+      expect(isValidURL(undefined as unknown as string)).toBe(false);
     });
 
     it("returns false for a number", () => {
-      expect(isValidURL(42)).toBe(false);
+      expect(isValidURL(42 as unknown as string)).toBe(false);
     });
 
     it("returns false for whitespace-only string", () => {
@@ -80,7 +80,7 @@ describe("generateURLObj", () => {
   it("returns a URL instance for a valid URL", () => {
     const url = generateURLObj("https://example.com");
     expect(url).toBeInstanceOf(URL);
-    expect(url.hostname).toBe("example.com");
+    expect(url!.hostname).toBe("example.com");
   });
 
   it("returns null for an invalid URL string", () => {
@@ -94,6 +94,6 @@ describe("generateURLObj", () => {
   it("returns URL with correct protocol for ftp:// input", () => {
     const url = generateURLObj("ftp://files.example.com");
     expect(url).toBeInstanceOf(URL);
-    expect(url.protocol).toBe("ftp:");
+    expect(url!.protocol).toBe("ftp:");
   });
 });

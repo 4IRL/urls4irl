@@ -1,3 +1,4 @@
+import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initForgotPasswordForm } from "../forgot-password-form.js";
 
@@ -46,7 +47,7 @@ describe("forgot-password-form 429 HTML response", () => {
   });
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 429 with HTML content", () => {
-    const mockDeferred = $.Deferred();
+    const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#ForgotPasswordModal");
@@ -67,7 +68,7 @@ describe("forgot-password-form 429 HTML response", () => {
   });
 
   it("calls showNewPageOnAJAXHTMLResponse when server returns 403 with HTML content", () => {
-    const mockDeferred = $.Deferred();
+    const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
     const $modal = $("#ForgotPasswordModal");

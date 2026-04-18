@@ -1,6 +1,6 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
@@ -10,12 +10,9 @@ import { isHidden } from "../visibility.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
-type UpdateUtubDescRequest =
-  components["schemas"]["UpdateUTubDescriptionRequest"];
-type UpdateUtubDescResponse =
-  operations["updateUtubDesc"]["responses"][200]["content"]["application/json"];
-type UpdateUtubDescError =
-  components["schemas"]["ErrorResponse_UTubErrorCodes"];
+type UpdateUtubDescRequest = Schema<"UpdateUTubDescriptionRequest">;
+type UpdateUtubDescResponse = SuccessResponse<"updateUtubDesc">;
+type UpdateUtubDescError = Schema<"ErrorResponse_UTubErrorCodes">;
 
 const UPDATE_UTUB_DESCRIPTION_FIELD_NAMES = ["utubDescription"] as const;
 
@@ -58,7 +55,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       $("#utubDescriptionUpdate").on(
         "keyup.updateUTubDescription",
         function (keyEvent) {
-          if (keyEvent.originalEvent.repeat) return;
+          if (keyEvent.originalEvent?.repeat) return;
           switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed
@@ -237,7 +234,7 @@ function updateUTubDescriptionSetup(
 ): [string, UpdateUtubDescRequest] {
   const postURL = APP_CONFIG.routes.updateUTubDescription(utubID);
 
-  const updatedDescription = $("#utubDescriptionUpdate").val() as string;
+  const updatedDescription = getInputValue("#utubDescriptionUpdate");
   const data: UpdateUtubDescRequest = { utubDescription: updatedDescription };
 
   return [postURL, data];
@@ -278,7 +275,7 @@ function updateUTubDescriptionSuccess(
 function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -293,8 +290,8 @@ function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UpdateUtubDescError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors"))
+      if (responseJSON.message) {
+        if (responseJSON.errors)
           updateUTubDescriptionFailErrors(
             responseJSON.errors as Partial<
               Record<UpdateUtubDescriptionFieldName, string[]>

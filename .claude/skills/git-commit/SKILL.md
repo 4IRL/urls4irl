@@ -53,13 +53,10 @@ Analyze the staged changes to craft a concise commit message (1-2 sentences) tha
 
 ### 3. Create Commit
 
-Use a HEREDOC for proper formatting:
+**CRITICAL:** Always run `git commit` with `dangerouslyDisableSandbox: true`. Pre-commit hooks invoke Docker-based checks (tsc typecheck via `docker compose exec`) that require Docker socket access, which the sandbox blocks.
 
 ```bash
-git commit -m "$(cat <<'EOF'
-Your commit message here.
-EOF
-)"
+git commit -m "Your commit message here."
 ```
 
 - Keep the git commit to a single line

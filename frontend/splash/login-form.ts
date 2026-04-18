@@ -1,4 +1,4 @@
-import type { components, operations } from "../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -10,10 +10,9 @@ import {
   switchModal,
 } from "./init.js";
 
-type LoginRequest = components["schemas"]["LoginRequest"];
-type LoginSuccess =
-  operations["login"]["responses"][200]["content"]["application/json"];
-type LoginError = components["schemas"]["ErrorResponse_LoginErrorCodes"];
+type LoginRequest = Schema<"LoginRequest">;
+type LoginSuccess = SuccessResponse<"login">;
+type LoginError = Schema<"ErrorResponse_LoginErrorCodes">;
 
 /**
  * Initialize login form handlers
@@ -85,7 +84,7 @@ function handleLoginFailure(
   error: string,
   $modal: JQuery,
 ): void {
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -101,7 +100,7 @@ function handleLoginFailure(
 
   if (
     (xhr.status === 400 || xhr.status === 401) &&
-    xhr.responseJSON.hasOwnProperty("errorCode")
+    "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
     switch (errorJson.errorCode) {

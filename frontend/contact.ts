@@ -11,21 +11,15 @@ import { initNavbarRouting } from "./lib/navbar-shared.js";
 // Setup CSRF for AJAX requests
 setupCSRF();
 
-/**
- * Clear all field-level validation errors from the contact form.
- * @param {jQuery} $form - The contact form jQuery element
- */
-export function clearFieldErrors($form) {
+export function clearFieldErrors($form: JQuery): void {
   $form.find(".form-control").removeClass("is-invalid");
   $form.find(".invalid-feedback").text("");
 }
 
-/**
- * Display field-level validation errors on the contact form.
- * @param {jQuery} $form - The contact form jQuery element
- * @param {Object} errors - Map of field name to array of error messages
- */
-export function showFieldErrors($form, errors) {
+export function showFieldErrors(
+  $form: JQuery,
+  errors: Record<string, string[]>,
+): void {
   clearFieldErrors($form);
   for (const field in errors) {
     const $input = $form.find(`#${field}`);
@@ -34,25 +28,21 @@ export function showFieldErrors($form, errors) {
   }
 }
 
-/**
- * Show a message in the banner element.
- * @param {jQuery} $banner - The banner jQuery element
- * @param {string} message - The message to display
- * @param {string} type - The alert type (e.g. "success", "danger")
- */
-export function showBanner($banner, message, type) {
+export function showBanner(
+  $banner: JQuery,
+  message: string,
+  type: string,
+): void {
   $banner
     .removeClass("hidden alert-success alert-danger")
     .addClass(`alert-${type}`)
     .text(message);
 }
 
-/**
- * Start a countdown timer on the submit button after successful submission.
- * @param {jQuery} $submitBtn - The submit button jQuery element
- * @param {number} seconds - The countdown duration in seconds
- */
-export function startSubmitCountdown($submitBtn, seconds) {
+export function startSubmitCountdown(
+  $submitBtn: JQuery,
+  seconds: number,
+): ReturnType<typeof setInterval> {
   const originalValue = $submitBtn.val();
   $submitBtn.prop("disabled", true);
   let timeLeft = seconds;
@@ -66,19 +56,17 @@ export function startSubmitCountdown($submitBtn, seconds) {
     } else {
       clearInterval(interval);
       $submitBtn.prop("disabled", false);
-      $submitBtn.val(originalValue);
+      $submitBtn.val(originalValue ?? "");
     }
   }, 1000);
 
   return interval;
 }
 
-/**
- * Handle the contact form submission via AJAX JSON POST.
- * @param {Event} event - The form submit event
- * @param {jQuery} $form - The contact form jQuery element
- */
-export function handleContactSubmit(event, $form) {
+export function handleContactSubmit(
+  event: JQuery.TriggeredEvent,
+  $form: JQuery,
+): void {
   event.preventDefault();
 
   const $banner = $form.find("#Banner");

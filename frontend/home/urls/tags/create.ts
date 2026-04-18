@@ -1,10 +1,10 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
-import { $, bootstrap } from "../../../lib/globals.js";
+import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
-import { METHOD_TYPES } from "../../../lib/constants.js";
+import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -42,10 +42,9 @@ import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type AddTagRequest = components["schemas"]["AddTagRequest"];
-type UrlTagModifiedResponse =
-  operations["createUtubUrlTag"]["responses"][200]["content"]["application/json"];
-type UrlTagError = components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+type AddTagRequest = Schema<"AddTagRequest">;
+type UrlTagModifiedResponse = SuccessResponse<"createUtubUrlTag">;
+type UrlTagError = Schema<"ErrorResponse_URLTagErrorCodes">;
 
 const CREATE_URL_TAG_FIELD_NAMES = ["tagString"] as const;
 
@@ -61,7 +60,7 @@ export function createTagInputBlock(
 ): JQuery<HTMLElement> {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
-    METHOD_TYPES.CREATE.description,
+    METHOD_TYPES.CREATE.description!,
   ).addClass("createUrlTagWrap hidden flex-start gap-5p");
 
   urlTagCreateTextInputContainer.find("label").text("Tag");
@@ -75,7 +74,7 @@ export function createTagInputBlock(
   setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard, utubID);
 
   // Create Url Title submit button
-  const urlTagSubmitBtnCreate = makeSubmitButton(30).addClass(
+  const urlTagSubmitBtnCreate = makeSubmitButton(ICON_SIZE_LG).addClass(
     "urlTagSubmitBtnCreate",
   );
 
@@ -84,7 +83,7 @@ export function createTagInputBlock(
   });
 
   // Create Url Title cancel button
-  const urlTagCancelBtnCreate = makeCancelButton(30).addClass(
+  const urlTagCancelBtnCreate = makeCancelButton(ICON_SIZE_LG).addClass(
     "urlTagCancelBtnCreate",
   );
 
@@ -209,7 +208,7 @@ function createURLTagSetup(
 
   // Assemble submission data
   const data: AddTagRequest = {
-    tagString: urlTagCreateInput.val() as string,
+    tagString: getInputValue(urlTagCreateInput),
   };
 
   return [postURL, data];
@@ -333,7 +332,7 @@ function createURLTagSuccess(
 function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -349,21 +348,20 @@ function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UrlTagError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors")) {
-          createURLTagFailErrors(
-            responseJSON.errors as Partial<
-              Record<CreateUrlTagFieldName, string[]>
-            >,
-            urlCard,
-          );
-        } else {
-          displayCreateURLTagErrors(
-            "urlTag",
-            responseJSON.message as string,
-            urlCard,
-          );
-        }
+      // Backend always sends both `message` and `errors` when validation fails
+      if (responseJSON.errors) {
+        createURLTagFailErrors(
+          responseJSON.errors as Partial<
+            Record<CreateUrlTagFieldName, string[]>
+          >,
+          urlCard,
+        );
+      } else if (responseJSON.message) {
+        displayCreateURLTagErrors(
+          "urlTag",
+          responseJSON.message as string,
+          urlCard,
+        );
       }
       break;
     }

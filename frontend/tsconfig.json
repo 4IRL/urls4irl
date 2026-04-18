@@ -5,23 +5,25 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "allowJs": true,
     "strict": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
     "forceConsistentCasingInFileNames": true,
     "esModuleInterop": true,
-    "types": ["jquery"]
+    "types": ["jquery", "bootstrap"]
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "../backend/static/dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "./vite.config.ts",
+    "./vitest.config.ts",
+    "./test-setup.ts",
+    "./__tests__/**/*.ts"
   ]
 }

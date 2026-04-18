@@ -1,6 +1,6 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
@@ -15,10 +15,9 @@ import { closeUTubSearchAndEraseInput } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
-type CreateUtubRequest = components["schemas"]["CreateUTubRequest"];
-type CreateUtubResponse =
-  operations["createUtub"]["responses"][200]["content"]["application/json"];
-type CreateUtubError = components["schemas"]["ErrorResponse_UTubErrorCodes"];
+type CreateUtubRequest = Schema<"CreateUTubRequest">;
+type CreateUtubResponse = SuccessResponse<"createUtub">;
+type CreateUtubError = Schema<"ErrorResponse_UTubErrorCodes">;
 
 function checkSameNameUTubOnCreate(name: string): void {
   if (getAllAccessibleUTubNames().includes(name)) {
@@ -44,7 +43,7 @@ function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
   utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
-    checkSameNameUTubOnCreate($("#utubNameCreate").val() as string);
+    checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
   });
 
   utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
@@ -97,7 +96,7 @@ function handleOnFocusEventListenersForCreateUTub(
   switch (event.key) {
     case KEYS.ENTER:
       // Handle enter key pressed
-      checkSameNameUTubOnCreate($("#utubNameCreate").val() as string);
+      checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
       break;
     case KEYS.ESCAPE:
       // Handle escape key pressed
@@ -175,10 +174,8 @@ export function createUTubHideInput(): void {
 // Handles preparation for post request to create a new UTub
 function createUTubSetup(): [string, CreateUtubRequest] {
   const postURL = APP_CONFIG.routes.createUTub;
-  const newUTubName = $("#utubNameCreate").val() as string;
-  const newUTubDescription = ($("#utubDescriptionCreate").val() || null) as
-    | string
-    | null;
+  const newUTubName = getInputValue("#utubNameCreate");
+  const newUTubDescription = getInputValue("#utubDescriptionCreate") || null;
   const data: CreateUtubRequest = {
     utubName: newUTubName,
     utubDescription: newUTubDescription,
@@ -250,7 +247,7 @@ function createUTubSuccess(response: CreateUtubResponse): void {
 function createUTubFail(xhr: JQuery.jqXHR): void {
   if ((xhr as RateLimitedXHR)._429Handled) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -264,10 +261,10 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
   }
   switch (xhr.status) {
     case 400: {
+      // Backend always sends non-empty values for message/errors when present
       const responseJSON = xhr.responseJSON as CreateUtubError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors")) {
-          if (!responseJSON.errors) break;
+      if (responseJSON.message) {
+        if (responseJSON.errors) {
           createUTubFailErrors(
             responseJSON.errors as Partial<
               Record<"utubName" | "utubDescription", string[]>

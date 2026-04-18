@@ -1,4 +1,4 @@
-import type { components, operations } from "../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
@@ -9,11 +9,9 @@ import {
   switchModal,
 } from "./init.js";
 
-type ForgotPasswordRequest = components["schemas"]["ForgotPasswordRequest"];
-type ForgotPasswordSuccess =
-  operations["forgotPassword"]["responses"][200]["content"]["application/json"];
-type ForgotPasswordError =
-  components["schemas"]["ErrorResponse_ForgotPasswordErrorCodes"];
+type ForgotPasswordRequest = Schema<"ForgotPasswordRequest">;
+type ForgotPasswordSuccess = SuccessResponse<"forgotPassword">;
+type ForgotPasswordError = Schema<"ErrorResponse_ForgotPasswordErrorCodes">;
 
 /**
  * Initialize forgot password form handlers
@@ -87,7 +85,7 @@ function handleForgotPasswordFailure(
   error: string,
   $modal: JQuery,
 ): void {
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -101,7 +99,7 @@ function handleForgotPasswordFailure(
     return;
   }
 
-  if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+  if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ForgotPasswordError;
     switch (errorJson.errorCode) {
       case 1: {

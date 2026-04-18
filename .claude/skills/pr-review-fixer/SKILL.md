@@ -107,8 +107,9 @@ After the CI Log Reader finishes writing the failure analysis, it must launch a 
 **Important**: The CI subagent chain (1a → 1b → 1c) runs independently of the PR comment workflow (Steps 2-6). If the CI fix investigator makes code changes, those changes will be picked up by the next `/git-commit` invocation.
 
 All `gh` commands in CI subagents must:
-- Be prefixed with `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)`
+- Be prefixed with `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)` — this pattern is exempted from the command substitution hook
 - Use `dangerouslyDisableSandbox: true`
+- Never resolve the token separately and inline a raw value
 
 ### 2. Fetch and Analyze Review Comments (Comment Analyzer Subagent)
 
@@ -124,6 +125,8 @@ Your job: fetch all review comments, filter out resolved ones, extract memory-wo
 ## Step 1: Fetch unresolved review threads via GraphQL
 
 Use the GraphQL API to get review threads with resolution status. The REST API does NOT expose resolution — GraphQL is required.
+
+Use `dangerouslyDisableSandbox: true` for all gh commands. Always use the `GH_TOKEN=$(...)` inline prefix — it is exempted from the command substitution hook.
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='
@@ -152,8 +155,6 @@ GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f que
   }
 }'
 ```
-
-Use `dangerouslyDisableSandbox: true` for all gh commands.
 
 Also fetch top-level review bodies:
 ```bash
@@ -334,7 +335,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 
 ## Important Notes
 
-- All `gh` commands require `GH_TOKEN` prefix and `dangerouslyDisableSandbox: true`
+- All `gh` commands require `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)` prefix and `dangerouslyDisableSandbox: true`. Never resolve the token separately and inline a raw value.
 - Never force-push or push to main/master
 - CI failure files and push review files live at `plans/<topic>/reviews/`. Infer `<topic>` from the branch name.
 - Follow existing commit message style (check `git log -3 --oneline`)

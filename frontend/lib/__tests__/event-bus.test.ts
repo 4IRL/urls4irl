@@ -98,7 +98,7 @@ describe("event-bus", () => {
         },
       ],
       tags: [{ id: 2, tagString: "sample", tagApplied: 0 }],
-      members: [{ id: 3 }],
+      members: [{ id: 3, username: "user3" }],
     };
     emit(AppEvents.STALE_DATA_DETECTED, payload);
     expect(handler).toHaveBeenCalledOnce();

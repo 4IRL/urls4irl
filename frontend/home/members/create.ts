@@ -3,7 +3,7 @@ import type {
   MemberModifiedResponse,
 } from "../../types/member.js";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
@@ -124,7 +124,7 @@ export function createMemberHideInput(): void {
 function createMemberSetup(utubID: number): [string, AddMemberRequest] {
   const postURL = APP_CONFIG.routes.createMember(utubID);
 
-  const username = $("#memberCreate").val() as string;
+  const username = getInputValue("#memberCreate");
   const data: AddMemberRequest = { username };
 
   return [postURL, data];
@@ -179,7 +179,7 @@ function createMemberSuccess(
 function createMemberFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -194,13 +194,11 @@ function createMemberFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON;
-      const hasErrors = responseJSON.hasOwnProperty("errors");
-      const hasMessage = responseJSON.hasOwnProperty("message");
-      if (hasErrors) {
+      if (responseJSON.errors) {
         // Show form errors
         createMemberFailErrors(responseJSON.errors);
         break;
-      } else if (hasMessage) {
+      } else if (responseJSON.message) {
         // Show message
         displayCreateMemberFailErrors(responseJSON.message);
         break;

@@ -1,7 +1,7 @@
-import type { components, operations } from "../../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../../types/api-helpers.d.ts";
 import type { UtubUrlItem } from "../../../types/url.js";
 
-import { $ } from "../../../lib/globals.js";
+import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
@@ -20,10 +20,9 @@ import { isATagSelected } from "../../tags/utils.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 
-type CreateUrlRequest = components["schemas"]["CreateURLRequest"];
-type CreateUrlResponse =
-  operations["createUrl"]["responses"][200]["content"]["application/json"];
-type CreateUrlError = components["schemas"]["ErrorResponse_URLErrorCodes"];
+type CreateUrlRequest = Schema<"CreateURLRequest">;
+type CreateUrlResponse = SuccessResponse<"createUrl">;
+type CreateUrlError = Schema<"ErrorResponse_URLErrorCodes">;
 
 const CREATE_URL_FIELD_NAMES = ["urlString", "urlTitle"] as const;
 
@@ -101,8 +100,8 @@ function createURLSetup(
   const postURL = APP_CONFIG.routes.createURL(utubID);
 
   // Assemble submission data
-  const urlTitle = createURLTitleInput.val() as string;
-  const urlString = createURLInput.val() as string;
+  const urlTitle = getInputValue(createURLTitleInput);
+  const urlString = getInputValue(createURLInput);
   const data: CreateUrlRequest = {
     urlString,
     urlTitle,
@@ -205,7 +204,7 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
 function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -221,12 +220,10 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
     return;
   }
   const responseJSON = xhr.responseJSON as CreateUrlError;
-  const hasErrors = responseJSON.hasOwnProperty("errors");
-  const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      if (hasMessage) {
-        if (hasErrors) {
+      if (responseJSON.message) {
+        if (responseJSON.errors) {
           createURLShowFormErrors(
             responseJSON.errors as Partial<
               Record<CreateUrlFieldName, string[]>

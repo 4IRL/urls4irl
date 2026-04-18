@@ -1,6 +1,11 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { KEYS, METHOD_TYPES, INPUT_TYPES } from "../../../lib/constants.js";
+import {
+  ICON_SIZE_LG,
+  INPUT_TYPES,
+  KEYS,
+  METHOD_TYPES,
+} from "../../../lib/constants.js";
 import { accessLink } from "./access.js";
 import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
 import {
@@ -57,8 +62,8 @@ function createUpdateURLStringInput(
 ): JQuery<HTMLElement> {
   const urlStringUpdateTextInputContainer = makeTextInput(
     "urlString",
-    METHOD_TYPES.UPDATE.description,
-    INPUT_TYPES.URL.description,
+    METHOD_TYPES.UPDATE.description!,
+    INPUT_TYPES.URL.description!,
   ).addClass("updateUrlStringWrap hidden gap-5p");
 
   urlStringUpdateTextInputContainer.find("label").text("URL");
@@ -77,7 +82,7 @@ function createUpdateURLStringInput(
   );
 
   // Update Url Title submit button
-  const urlStringSubmitBtnUpdate = makeSubmitButton(30).addClass(
+  const urlStringSubmitBtnUpdate = makeSubmitButton(ICON_SIZE_LG).addClass(
     "urlStringSubmitBtnUpdate",
   );
 
@@ -86,7 +91,7 @@ function createUpdateURLStringInput(
   });
 
   // Update Url Title cancel button
-  const urlStringCancelBtnUpdate = makeCancelButton(30).addClass(
+  const urlStringCancelBtnUpdate = makeCancelButton(ICON_SIZE_LG).addClass(
     "urlStringCancelBtnUpdate",
   );
 

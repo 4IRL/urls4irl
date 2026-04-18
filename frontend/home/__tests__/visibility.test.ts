@@ -56,8 +56,12 @@ describe("visibility", () => {
 
       initVisibilityHandlers();
 
-      const focusCall = onSpy.mock.calls.find((call) => call[0] === "focus");
-      const blurCall = onSpy.mock.calls.find((call) => call[0] === "blur");
+      const focusCall = onSpy.mock.calls.find(
+        (call) => (call[0] as string) === "focus",
+      );
+      const blurCall = onSpy.mock.calls.find(
+        (call) => (call[0] as string) === "blur",
+      );
       expect(focusCall).toBeDefined();
       expect(blurCall).toBeDefined();
 

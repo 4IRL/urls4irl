@@ -1,7 +1,7 @@
-import type { components, operations } from "../../types/api.d.ts";
+import type { Schema, SuccessResponse } from "../../types/api-helpers.d.ts";
 import type { UtubSummaryItem } from "../../types/utub.js";
 
-import { $ } from "../../lib/globals.js";
+import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
@@ -18,11 +18,9 @@ import {
 } from "./update-description.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
-type UpdateUtubNameRequest = components["schemas"]["UpdateUTubNameRequest"];
-type UpdateUtubNameResponse =
-  operations["updateUtubName"]["responses"][200]["content"]["application/json"];
-type UpdateUtubNameError =
-  components["schemas"]["ErrorResponse_UTubErrorCodes"];
+type UpdateUtubNameRequest = Schema<"UpdateUTubNameRequest">;
+type UpdateUtubNameResponse = SuccessResponse<"updateUtubName">;
+type UpdateUtubNameError = Schema<"ErrorResponse_UTubErrorCodes">;
 
 const UPDATE_UTUB_NAME_FIELD_NAMES = ["utubName"] as const;
 
@@ -63,7 +61,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
       updateUTubNameHideInput();
       return;
     }
-    checkSameNameUTubOnUpdate($("#utubNameUpdate").val() as string, utubID);
+    checkSameNameUTubOnUpdate(getInputValue("#utubNameUpdate"), utubID);
   });
 
   utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function () {
@@ -77,7 +75,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
   $("#utubNameUpdate")
     .offAndOn("focus.updateUTubname", function () {
       $("#utubNameUpdate").on("keydown.updateUTubname", function (keyEvent) {
-        if (keyEvent.originalEvent.repeat) return;
+        if (keyEvent.originalEvent?.repeat) return;
         switch (keyEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
@@ -86,10 +84,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
               updateUTubNameHideInput();
               return;
             }
-            checkSameNameUTubOnUpdate(
-              $("#utubNameUpdate").val() as string,
-              utubID,
-            );
+            checkSameNameUTubOnUpdate(getInputValue("#utubNameUpdate"), utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
@@ -199,7 +194,7 @@ function updateUTubNameShowInput(utubID: number): void {
   const utubNameUpdate = $("#utubNameUpdate");
   const parentTitleElem = utubNameUpdate.closest(".titleElement");
   parentTitleElem.addClass("m-top-bot-0-5rem");
-  utubNameUpdate.val(getCurrentUTubName());
+  utubNameUpdate.val(getCurrentUTubName() ?? "");
   showInput("#utubNameUpdate");
   utubNameUpdate.trigger("focus");
 
@@ -277,7 +272,7 @@ function updateUTubName(utubID: number): void {
 function updateUTubNameSetup(utubID: number): [string, UpdateUtubNameRequest] {
   const postURL = APP_CONFIG.routes.updateUTubName(utubID);
 
-  const updatedUTubName = $("#utubNameUpdate").val() as string;
+  const updatedUTubName = getInputValue("#utubNameUpdate");
   const data: UpdateUtubNameRequest = { utubName: updatedUTubName };
 
   return [postURL, data];
@@ -309,7 +304,7 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
 function updateUTubNameFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
 
-  if (!xhr.hasOwnProperty("responseJSON")) {
+  if (!("responseJSON" in xhr)) {
     if (
       xhr.status === 403 &&
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
@@ -324,8 +319,8 @@ function updateUTubNameFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UpdateUtubNameError;
-      if (responseJSON.hasOwnProperty("message")) {
-        if (responseJSON.hasOwnProperty("errors"))
+      if (responseJSON.message) {
+        if (responseJSON.errors)
           updateUTubNameFailErrors(
             responseJSON.errors as Partial<
               Record<UpdateUtubNameFieldName, string[]>

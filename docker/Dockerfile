@@ -11,7 +11,7 @@ WORKDIR /build
 COPY frontend/package.json frontend/package-lock.json frontend/.npmrc ./
 
 # Copy vite config from frontend/ to project root (required for proper __dirname resolution)
-COPY frontend/vite.config.js ./
+COPY frontend/vite.config.ts ./
 
 # Install dependencies at project root (including devDependencies needed for build)
 RUN npm ci
@@ -21,7 +21,7 @@ COPY frontend/ ./frontend/
 
 # Build Vite assets → outputs to /build/backend/static/dist/
 # Run from project root using locally installed vite
-RUN ./node_modules/.bin/vite build --config ./vite.config.js
+RUN ./node_modules/.bin/vite build --config ./vite.config.ts
 
 # ============================================
 # Builder Stage - Install dependencies
