@@ -1,6 +1,11 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
-import { KEYS, METHOD_TYPES } from "../../../lib/constants.js";
+import {
+  ICON_SIZE_LG,
+  ICON_SIZE_SM,
+  KEYS,
+  METHOD_TYPES,
+} from "../../../lib/constants.js";
 import {
   updateURLTitle,
   showUpdateURLTitleForm,
@@ -56,7 +61,7 @@ export function createURLTitleAndUpdateBlock(
 
 // Create the icon that will show the update URL title form
 function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
-  return makeUpdateButton(20)
+  return makeUpdateButton(ICON_SIZE_SM)
     .addClass("urlTitleBtnUpdate")
     .onExact(
       "click.showUpdateURLTitle",
@@ -115,7 +120,7 @@ function createUpdateURLTitleInput(
   });
 
   // Update Url Title submit button
-  const urlTitleSubmitBtnUpdate = makeSubmitButton(30).addClass(
+  const urlTitleSubmitBtnUpdate = makeSubmitButton(ICON_SIZE_LG).addClass(
     "urlTitleSubmitBtnUpdate",
   );
 
@@ -124,7 +129,7 @@ function createUpdateURLTitleInput(
   });
 
   // Update Url Title cancel button
-  const urlTitleCancelBtnUpdate = makeCancelButton(30).addClass(
+  const urlTitleCancelBtnUpdate = makeCancelButton(ICON_SIZE_LG).addClass(
     "urlTitleCancelBtnUpdate tabbable",
   );
 

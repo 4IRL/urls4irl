@@ -4,7 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
-import { METHOD_TYPES } from "../../../lib/constants.js";
+import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -74,7 +74,7 @@ export function createTagInputBlock(
   setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard, utubID);
 
   // Create Url Title submit button
-  const urlTagSubmitBtnCreate = makeSubmitButton(30).addClass(
+  const urlTagSubmitBtnCreate = makeSubmitButton(ICON_SIZE_LG).addClass(
     "urlTagSubmitBtnCreate",
   );
 
@@ -83,7 +83,7 @@ export function createTagInputBlock(
   });
 
   // Create Url Title cancel button
-  const urlTagCancelBtnCreate = makeCancelButton(30).addClass(
+  const urlTagCancelBtnCreate = makeCancelButton(ICON_SIZE_LG).addClass(
     "urlTagCancelBtnCreate",
   );
 
