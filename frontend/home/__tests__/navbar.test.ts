@@ -52,10 +52,10 @@ describe("navbar", () => {
       initNavbar();
 
       const showCall = onSpy.mock.calls.find(
-        (call) => (call[0] as unknown as string) === "show.bs.collapse",
+        (call) => (call[0] as string) === "show.bs.collapse",
       );
       const hideCall = onSpy.mock.calls.find(
-        (call) => (call[0] as unknown as string) === "hide.bs.collapse",
+        (call) => (call[0] as string) === "hide.bs.collapse",
       );
       expect(showCall).toBeDefined();
       expect(hideCall).toBeDefined();

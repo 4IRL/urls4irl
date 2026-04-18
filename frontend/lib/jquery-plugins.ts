@@ -80,23 +80,15 @@ export function registerJQueryPlugins(): void {
 export function enableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  const $parent =
-    typeof parent === "string"
-      ? $(parent)
-      : parent instanceof HTMLElement
-        ? $(parent)
-        : parent;
-  $parent.find(".tabbable").enableTab();
+  $(parent as string | HTMLElement | JQuery<HTMLElement>)
+    .find(".tabbable")
+    .enableTab();
 }
 
 export function disableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  const $parent =
-    typeof parent === "string"
-      ? $(parent)
-      : parent instanceof HTMLElement
-        ? $(parent)
-        : parent;
-  $parent.find(".tabbable").disableTab();
+  $(parent as string | HTMLElement | JQuery<HTMLElement>)
+    .find(".tabbable")
+    .disableTab();
 }

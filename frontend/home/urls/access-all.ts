@@ -55,7 +55,7 @@ function accessAllURLsInUTub(): void {
 
   const visibleURLsToAccess = $.map(visibleURLs.toArray(), (url: HTMLElement) =>
     $(url).attr("href"),
-  );
+  ).filter((href): href is string => href !== undefined);
 
   for (let urlIndex = 0; urlIndex < visibleURLsToAccess.length; urlIndex++) {
     accessLink(visibleURLsToAccess[urlIndex]);

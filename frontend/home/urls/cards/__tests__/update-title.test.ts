@@ -1,3 +1,5 @@
+import type { UtubUrlItem } from "../../../../types/url.js";
+
 import {
   hideAndResetUpdateURLTitleForm,
   updateURLTitle,
@@ -131,8 +133,7 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
     expect(setState).toHaveBeenCalled();
     const setStateArg = vi.mocked(setState).mock.calls[0][0];
     const updatedUrl = setStateArg.urls!.find(
-      (existingUrl: unknown) =>
-        (existingUrl as { utubUrlID: number }).utubUrlID === 1,
+      (existingUrl: unknown) => (existingUrl as UtubUrlItem).utubUrlID === 1,
     );
     expect(updatedUrl!.utubUrlTagIDs).toEqual([11, 22]);
   });
