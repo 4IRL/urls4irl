@@ -55,7 +55,7 @@ export function getAllAccessibleUTubNames(): string[] {
 }
 
 // Utility route to get all UTub summaries
-export function getAllUTubs(): JQuery.Promise<GetUtubsResponse> {
+export function getAllUTubs(): JQuery.jqXHR<GetUtubsResponse> {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   return $.getJSON(APP_CONFIG.routes.getUTubs).always(() =>
     hideUTubLoadingIconAndClearTimeout(timeoutID),

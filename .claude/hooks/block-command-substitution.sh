@@ -46,7 +46,7 @@ fi
 if printf '%s' "$cmd" | grep -qE 'gh[spo ur]_[A-Za-z0-9]'; then
   jq -n '{
     "decision": "block",
-    "reason": "Never inline raw GitHub tokens in commands — they leak secrets into logs. Use GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) as a prefix, or use the gh-app-push.sh script for pushes."
+    "reason": "Never inline raw GitHub tokens in commands — they leak secrets into logs. Always use the GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) inline prefix (exempted from the command substitution hook), or use gh-app-push.sh for pushes. Never resolve the token separately and paste it as a literal value."
   }'
   exit 0
 fi

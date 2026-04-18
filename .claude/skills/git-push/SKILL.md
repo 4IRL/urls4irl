@@ -393,24 +393,20 @@ After a successful push, create or update a PR targeting `main`.
 
 #### Environment Requirements
 
-All `gh` commands require **two sequential Bash calls** — never use `$(...)` inline (the command substitution hook blocks it) and never inline a raw token (the raw token hook blocks it):
+All `gh` commands must:
+1. Use the inline `GH_TOKEN=$(...)` prefix — this pattern is exempted from the command substitution hook
+2. Use `dangerouslyDisableSandbox: true` — the sandbox blocks TLS connections to `api.github.com`
 
 ```bash
-# Call 1: generate token (run with dangerouslyDisableSandbox: true)
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: use the returned token as GH_TOKEN prefix (run with dangerouslyDisableSandbox: true)
-GH_TOKEN=<token-from-call-1> gh pr ...
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr ...
 ```
 
-**CRITICAL:** Never try to work around the command substitution hook by resolving the token first and inlining it — that leaks secrets into logs and is blocked by the raw token hook.
+**CRITICAL:** Never resolve the token in a separate call and inline the raw value — that leaks secrets into logs and is blocked by the raw token hook. Always use the `GH_TOKEN=$(...)` prefix form.
 
 #### Check for Existing PR
 
 ```bash
-# Call 1:
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2:
-GH_TOKEN=<token> gh pr view $BRANCH 2>&1
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view $BRANCH 2>&1
 ```
 
 - **If a PR exists**: use `gh pr edit` to update title/body if the changes warrant it.
@@ -434,10 +430,7 @@ Use the most dominant category. If changes span multiple areas, pick the primary
 #### PR Body Format
 
 ```bash
-# Call 1:
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2 (use heredoc for body — this $(cat <<'EOF') pattern is exempted in the hook):
-GH_TOKEN=<token> gh pr create \
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr create \
   --base main \
   --head "$BRANCH" \
   --title "[SUBJECT] Title" \
@@ -483,10 +476,7 @@ Available labels and when to apply:
 | `documentation` | README, CLAUDE.md, ARCHITECTURE.md, or doc-only changes |
 
 ```bash
-# Call 1:
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2:
-GH_TOKEN=<token> gh pr edit <PR_NUMBER> --add-label "label1,label2,..."
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-label "label1,label2,..."
 ```
 
 #### Set Milestone
@@ -503,41 +493,29 @@ After applying labels, set the appropriate milestone based on the nature and mot
 Use the commit messages, branch name, and PR context to determine the best fit. Refactors and code modernization efforts are `MVP v2`, not `Maintenance`.
 
 ```bash
-# Call 1:
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2:
-GH_TOKEN=<token> gh pr edit <PR_NUMBER> --milestone "<milestone title>"
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --milestone "<milestone title>"
 ```
 
 #### Add to Project
 
 After setting the milestone, add the PR to the **"URLS4IRL -> Real Life"** org project (project ID: `PVT_kwDOCEIbTM4Ai9RV`).
 
-First, get the PR's node ID (3 sequential calls):
+First, get the PR's node ID (capture the output as `PR_NODE_ID` for later calls):
 
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: get PR node ID (capture the output as PR_NODE_ID for later)
-GH_TOKEN=<token> gh api graphql -f query='{ repository(owner: "4IRL", name: "urls4irl") { pullRequest(number: <PR_NUMBER>) { id } } }' --jq '.data.repository.pullRequest.id'
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='{ repository(owner: "4IRL", name: "urls4irl") { pullRequest(number: <PR_NUMBER>) { id } } }' --jq '.data.repository.pullRequest.id'
 ```
 
-Then add it to the project and capture the item ID:
+Then add it to the project (capture the output as `PROJECT_ITEM_ID` for later). Use the `PR_NODE_ID` value from the previous call's output:
 
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: add to project (capture the output as PROJECT_ITEM_ID for later)
-GH_TOKEN=<token> gh api graphql -f query="mutation { addProjectV2ItemById(input: { projectId: \"PVT_kwDOCEIbTM4Ai9RV\", contentId: \"<PR_NODE_ID>\" }) { item { id } } }" --jq '.data.addProjectV2ItemById.item.id'
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query="mutation { addProjectV2ItemById(input: { projectId: \"PVT_kwDOCEIbTM4Ai9RV\", contentId: \"<PR_NODE_ID>\" }) { item { id } } }" --jq '.data.addProjectV2ItemById.item.id'
 ```
 
-Then set the **Status** field to **"In progress"** (field ID: `PVTSSF_lADOCEIbTM4Ai9RVzgbZQoU`, option ID: `42a2e094`):
+Then set the **Status** field to **"In progress"** (field ID: `PVTSSF_lADOCEIbTM4Ai9RVzgbZQoU`, option ID: `42a2e094`). Use the `PROJECT_ITEM_ID` value from the previous call's output:
 
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: set status
-GH_TOKEN=<token> gh api graphql -f query="mutation { updateProjectV2ItemFieldValue(input: { projectId: \"PVT_kwDOCEIbTM4Ai9RV\", itemId: \"<PROJECT_ITEM_ID>\", fieldId: \"PVTSSF_lADOCEIbTM4Ai9RVzgbZQoU\", value: { singleSelectOptionId: \"42a2e094\" } }) { projectV2Item { id } } }"
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query="mutation { updateProjectV2ItemFieldValue(input: { projectId: \"PVT_kwDOCEIbTM4Ai9RV\", itemId: \"<PROJECT_ITEM_ID>\", fieldId: \"PVTSSF_lADOCEIbTM4Ai9RVzgbZQoU\", value: { singleSelectOptionId: \"42a2e094\" } }) { projectV2Item { id } } }"
 ```
 
 This is idempotent — safe to run on PRs already in the project.
@@ -546,22 +524,16 @@ This is idempotent — safe to run on PRs already in the project.
 
 After adding to the project, assign the GitHub App as assignee via GraphQL (bot accounts can't be assigned via `gh pr edit --add-assignee`), then request review from `GPropersi`.
 
-Assign the bot (node ID: `BOT_kgDOCHBJTA`) using the PR node ID obtained earlier:
+Assign the bot (node ID: `BOT_kgDOCHBJTA`) using the `PR_NODE_ID` value obtained earlier:
 
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: assign bot
-GH_TOKEN=<token> gh api graphql -f query='mutation { addAssigneesToAssignable(input: { assignableId: "<PR_NODE_ID>", assigneeIds: ["BOT_kgDOCHBJTA"] }) { assignable { ... on PullRequest { number } } } }'
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='mutation { addAssigneesToAssignable(input: { assignableId: "<PR_NODE_ID>", assigneeIds: ["BOT_kgDOCHBJTA"] }) { assignable { ... on PullRequest { number } } } }'
 ```
 
 Then request review:
 
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: request review
-GH_TOKEN=<token> gh pr edit <PR_NUMBER> --add-reviewer GPropersi
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-reviewer GPropersi
 ```
 
 #### After PR Creation

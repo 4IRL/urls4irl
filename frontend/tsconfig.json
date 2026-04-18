@@ -23,6 +23,7 @@
     "**/*.spec.ts",
     "./vite.config.ts",
     "./vitest.config.ts",
-    "./test-setup.ts"
+    "./test-setup.ts",
+    "./__tests__/**/*.ts"
   ]
 }

@@ -13,13 +13,7 @@ Read PR review comments, fix all issues, commit, and push — looping until the 
 
 ```bash
 BRANCH=$(git branch --show-current)
-```
-
-```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: use token
-GH_TOKEN=<token> gh pr view --json number,title,url
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view --json number,title,url
 ```
 
 Extract the PR number. If no PR exists, inform the user and stop.
@@ -30,12 +24,9 @@ Extract the PR number. If no PR exists, inform the user and stop.
 
 Launch a background subagent that polls CI/CD status for up to 10 minutes. This subagent:
 
-1. Fetches the latest workflow run for this branch (two sequential calls):
+1. Fetches the latest workflow run for this branch:
    ```bash
-   # Call 1: generate token
-   /Users/ggpropersi/.claude/generate-gh-token.sh
-   # Call 2: use token
-   GH_TOKEN=<token> gh run list --branch $BRANCH --limit 1 --json databaseId,status,conclusion
+   GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run list --branch $BRANCH --limit 1 --json databaseId,status,conclusion
    ```
 2. Polls every 60 seconds for up to 10 minutes (10 iterations max)
 3. On each poll, checks the run status:
@@ -44,12 +35,9 @@ Launch a background subagent that polls CI/CD status for up to 10 minutes. This 
    - **`in_progress`** or **`queued`**: Sleep 60 seconds, poll again
 4. If still in progress after 10 minutes, write a timeout note to the CI failures file and stop
 
-When a failure is detected, also fetch failed job details (two sequential calls):
+When a failure is detected, also fetch failed job details:
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: use token
-GH_TOKEN=<token> gh run view <RUN_ID> --json jobs --jq '.jobs[] | select(.conclusion == "failure") | {name, conclusion}'
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --json jobs --jq '.jobs[] | select(.conclusion == "failure") | {name, conclusion}'
 ```
 
 **CI Failures File Format** (`plans/<topic>/reviews/ci-failures-<branch>.md`):
@@ -74,12 +62,9 @@ Status: **FAILED**
 
 When the CI Monitor writes a failure file, it must then launch a second subagent to read the actual failure logs:
 
-1. For each failed job, fetch the failed step logs (two sequential calls):
+1. For each failed job, fetch the failed step logs:
    ```bash
-   # Call 1: generate token
-   /Users/ggpropersi/.claude/generate-gh-token.sh
-   # Call 2: use token
-   GH_TOKEN=<token> gh run view <RUN_ID> --log-failed
+   GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --log-failed
    ```
 2. Parse the log output to extract:
    - Test names that failed (if test jobs)
@@ -122,9 +107,9 @@ After the CI Log Reader finishes writing the failure analysis, it must launch a 
 **Important**: The CI subagent chain (1a → 1b → 1c) runs independently of the PR comment workflow (Steps 2-6). If the CI fix investigator makes code changes, those changes will be picked up by the next `/git-commit` invocation.
 
 All `gh` commands in CI subagents must:
-- Use two sequential Bash calls: first `/Users/ggpropersi/.claude/generate-gh-token.sh` to get the token, then `GH_TOKEN=<token> gh ...` to run the command
+- Be prefixed with `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)` — this pattern is exempted from the command substitution hook
 - Use `dangerouslyDisableSandbox: true`
-- Never use `$(...)` inline or inline raw tokens
+- Never resolve the token separately and inline a raw value
 
 ### 2. Fetch and Analyze Review Comments (Comment Analyzer Subagent)
 
@@ -141,13 +126,10 @@ Your job: fetch all review comments, filter out resolved ones, extract memory-wo
 
 Use the GraphQL API to get review threads with resolution status. The REST API does NOT expose resolution — GraphQL is required.
 
-All gh commands require two sequential Bash calls (never use $(...) inline). Use `dangerouslyDisableSandbox: true` for all gh commands.
+Use `dangerouslyDisableSandbox: true` for all gh commands. Always use the `GH_TOKEN=$(...)` inline prefix — it is exempted from the command substitution hook.
 
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: use token
-GH_TOKEN=<token> gh api graphql -f query='
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='
 {
   repository(owner: "4IRL", name: "urls4irl") {
     pullRequest(number: <PR_NUMBER>) {
@@ -176,10 +158,7 @@ GH_TOKEN=<token> gh api graphql -f query='
 
 Also fetch top-level review bodies:
 ```bash
-# Call 1: generate token
-/Users/ggpropersi/.claude/generate-gh-token.sh
-# Call 2: use token
-GH_TOKEN=<token> gh pr view <PR_NUMBER> --json reviews
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view <PR_NUMBER> --json reviews
 ```
 
 ## Step 2: Filter to unresolved comments only
@@ -356,7 +335,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 
 ## Important Notes
 
-- All `gh` commands require two sequential Bash calls (generate token first, then `GH_TOKEN=<token> gh ...`) and `dangerouslyDisableSandbox: true`. Never use `$(...)` inline or inline raw tokens.
+- All `gh` commands require `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)` prefix and `dangerouslyDisableSandbox: true`. Never resolve the token separately and inline a raw value.
 - Never force-push or push to main/master
 - CI failure files and push review files live at `plans/<topic>/reviews/`. Infer `<topic>` from the branch name.
 - Follow existing commit message style (check `git log -3 --oneline`)
