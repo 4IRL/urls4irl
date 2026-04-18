@@ -20,13 +20,34 @@ if printf '%s' "$cmd" | grep -qE 'git\s+commit\s.*\$\(cat\s+<<'; then
   exit 0
 fi
 
-# GH_TOKEN=$(...) — already handled by push/gh hooks
-if printf '%s' "$cmd" | grep -qE '^GH_TOKEN=\$\('; then
+# GH_TOKEN=$(...) or TOKEN=$(...) feeding gh/git — handled by dedicated push/gh hooks
+# Covers: GH_TOKEN=$(...) gh ..., TOKEN=$(...) && GH_TOKEN=$TOKEN gh ..., etc.
+if printf '%s' "$cmd" | grep -qE '(^|[;&|]+\s*)(GH_TOKEN|TOKEN)=\$\('; then
   exit 0
 fi
 
-# BRANCH=$(git branch --show-current) — already handled by push hooks
-if printf '%s' "$cmd" | grep -qE '^BRANCH=\$\(git\s+branch'; then
+# BRANCH=$(git branch --show-current) — handled by push script hooks
+if printf '%s' "$cmd" | grep -qE '(^|[;&|]+\s*)BRANCH=\$\(git\s+branch'; then
+  exit 0
+fi
+
+# gh-app-push.sh — the push script internally uses $(...)
+if printf '%s' "$cmd" | grep -qE 'gh-app-push\.sh'; then
+  exit 0
+fi
+
+# generate-gh-token.sh invoked directly
+if printf '%s' "$cmd" | grep -qE 'generate-gh-token\.sh'; then
+  exit 0
+fi
+
+# --- Block raw GitHub tokens (ghs_, ghp_, gho_, ghu_, ghr_) inlined in commands ---
+# Prevents the model from working around $(...) blocks by resolving tokens first
+if printf '%s' "$cmd" | grep -qE 'gh[spo ur]_[A-Za-z0-9]'; then
+  jq -n '{
+    "decision": "block",
+    "reason": "Never inline raw GitHub tokens in commands — they leak secrets into logs. Use GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) as a prefix, or use the gh-app-push.sh script for pushes."
+  }'
   exit 0
 fi
 

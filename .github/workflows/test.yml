@@ -163,6 +163,9 @@ jobs:
           npx vite build
           rm package.json package-lock.json vite.config.ts .npmrc
 
+      - name: TypeScript typecheck
+        run: npx tsc --project frontend/tsconfig.json --noEmit
+
       - name: Run tests
         env:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
