@@ -4,7 +4,7 @@ import "./styles/base.css";
 import "./styles/home/index.css";
 import "./lib/security-check.js";
 import { $ } from "./lib/globals.js";
-import { setState } from "./store/app-store.js";
+import { loadInitialUtubState } from "./lib/initial-state.js";
 import {
   registerJQueryPlugins,
   enableTabbableChildElements,
@@ -78,19 +78,13 @@ import * as urlCardsOptionsTagBtn from "./home/urls/cards/options/tag-btn.js";
 import * as urlTags from "./home/urls/tags/tags.js";
 import * as urlTagsCreate from "./home/urls/tags/create.js";
 import * as urlTagsDelete from "./home/urls/tags/delete.js";
-import type { UtubSummaryItem } from "./types/utub.js";
-
 // Register jQuery plugins and setup CSRF before DOM ready
 registerJQueryPlugins();
 setupCSRF();
 
 // Initialize on DOM ready
 $(document).ready(() => {
-  const utubsScript = document.getElementById("utubs-data");
-  if (utubsScript)
-    setState({
-      utubs: JSON.parse(utubsScript.textContent ?? "[]") as UtubSummaryItem[],
-    });
+  loadInitialUtubState();
 
   btnsForms.initBtnsForms();
   visibility.initVisibilityHandlers();
