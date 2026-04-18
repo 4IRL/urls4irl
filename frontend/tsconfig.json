@@ -5,7 +5,6 @@
     "module": "ESNext",
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
-    "allowJs": true,
     "strict": true,
     "skipLibCheck": true,
     "isolatedModules": true,
@@ -15,13 +14,17 @@
     "types": ["jquery"]
   },
   "include": [
-    "**/*.ts",
-    "**/*.js"
+    "**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "../backend/static/dist",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "./postcss.config.js",
+    "./eslint.config.js",
+    "./vite.config.ts",
+    "./vitest.config.ts",
+    "./test-setup.ts"
   ]
 }

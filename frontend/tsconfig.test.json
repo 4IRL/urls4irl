@@ -5,9 +5,7 @@
   },
   "include": [
     "**/*.test.ts",
-    "**/*.test.js",
-    "**/*.spec.ts",
-    "**/*.spec.js"
+    "**/*.spec.ts"
   ],
   "exclude": ["node_modules", "../backend/static/dist"]
 }
