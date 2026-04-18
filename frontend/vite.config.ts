@@ -1,8 +1,10 @@
 import { defineConfig } from "vite";
 import { resolve } from "path";
+import { fileURLToPath } from "url";
 import basicSsl from "@vitejs/plugin-basic-ssl";
 
 const useSSL = process.env.ENABLE_SSL === "true";
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
 
 // "mode" defined through CLI options passed to vite, i.e. npm run _dev_ adds development as mode
 export default defineConfig(({ mode }) => ({
