@@ -348,6 +348,7 @@ function createURLTagFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UrlTagError;
+      // Backend always sends both `message` and `errors` when validation fails
       if (responseJSON.errors) {
         createURLTagFailErrors(
           responseJSON.errors as Partial<

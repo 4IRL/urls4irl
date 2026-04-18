@@ -9,5 +9,5 @@ export const bootstrap: typeof window.bootstrap = window.bootstrap;
 
 export function getInputValue(input: string | JQuery): string {
   const element = typeof input === "string" ? $(input) : input;
-  return (element.val() as string) ?? "";
+  return element.val() as string;
 }

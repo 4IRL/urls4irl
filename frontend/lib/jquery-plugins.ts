@@ -80,8 +80,6 @@ export function registerJQueryPlugins(): void {
 export function enableTabbableChildElements(
   parent: string | HTMLElement | JQuery,
 ): void {
-  // jQuery $() natively accepts string, HTMLElement, and JQuery — cast
-  // through unknown to satisfy TS overload resolution without runtime branching
   $(parent as unknown as HTMLElement)
     .find(".tabbable")
     .enableTab();

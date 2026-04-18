@@ -261,10 +261,10 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
   }
   switch (xhr.status) {
     case 400: {
+      // Backend always sends non-empty values for message/errors when present
       const responseJSON = xhr.responseJSON as CreateUtubError;
       if (responseJSON.message) {
         if (responseJSON.errors) {
-          if (!responseJSON.errors) break;
           createUTubFailErrors(
             responseJSON.errors as Partial<
               Record<"utubName" | "utubDescription", string[]>
