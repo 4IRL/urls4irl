@@ -141,8 +141,13 @@ Your job: fetch all review comments, filter out resolved ones, extract memory-wo
 
 Use the GraphQL API to get review threads with resolution status. The REST API does NOT expose resolution — GraphQL is required.
 
+All gh commands require two sequential Bash calls (never use $(...) inline). Use `dangerouslyDisableSandbox: true` for all gh commands.
+
 ```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='
+# Call 1: generate token
+/Users/ggpropersi/.claude/generate-gh-token.sh
+# Call 2: use token
+GH_TOKEN=<token> gh api graphql -f query='
 {
   repository(owner: "4IRL", name: "urls4irl") {
     pullRequest(number: <PR_NUMBER>) {
@@ -169,11 +174,12 @@ GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f que
 }'
 ```
 
-Use `dangerouslyDisableSandbox: true` for all gh commands.
-
 Also fetch top-level review bodies:
 ```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view <PR_NUMBER> --json reviews
+# Call 1: generate token
+/Users/ggpropersi/.claude/generate-gh-token.sh
+# Call 2: use token
+GH_TOKEN=<token> gh pr view <PR_NUMBER> --json reviews
 ```
 
 ## Step 2: Filter to unresolved comments only
@@ -350,7 +356,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 
 ## Important Notes
 
-- All `gh` commands require `GH_TOKEN` prefix and `dangerouslyDisableSandbox: true`
+- All `gh` commands require two sequential Bash calls (generate token first, then `GH_TOKEN=<token> gh ...`) and `dangerouslyDisableSandbox: true`. Never use `$(...)` inline or inline raw tokens.
 - Never force-push or push to main/master
 - CI failure files and push review files live at `plans/<topic>/reviews/`. Infer `<topic>` from the branch name.
 - Follow existing commit message style (check `git log -3 --oneline`)
