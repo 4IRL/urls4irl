@@ -2,13 +2,10 @@ import { $, bootstrap } from "../lib/globals.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 
 // Navbar toggler object (shared state)
-/** @type {{ toggler: bootstrap.Collapse | null }} */
-export const NAVBAR_TOGGLER = { toggler: null };
+export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
+  toggler: null,
+};
 
-/**
- * Initialize the navbar toggler and event listeners
- * Called on document ready
- */
 export function initNavbar() {
   // Initialize data-route buttons (shared functionality)
   initNavbarRouting();
@@ -28,17 +25,13 @@ export function initNavbar() {
     });
 }
 
-/**
- * Handle mobile navbar opening
- * Creates and displays backdrop, adds z-index classes
- */
 function onMobileNavbarOpened() {
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
 
   navbarBackdrop.on("click", function () {
-    NAVBAR_TOGGLER.toggler.hide();
+    NAVBAR_TOGGLER.toggler?.hide();
   });
 
   setTimeout(function () {
@@ -52,10 +45,6 @@ function onMobileNavbarOpened() {
   $("#mainNavbar").append(navbarBackdrop);
 }
 
-/**
- * Handle mobile navbar closing
- * Removes backdrop and z-index classes
- */
 function onMobileNavbarClosed() {
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
