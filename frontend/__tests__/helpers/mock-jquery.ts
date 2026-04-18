@@ -22,23 +22,13 @@ export function createMockJqXHRChainable(overrides?: {
     always: vi.fn().mockReturnThis(),
   };
 
-  if (overrides?.done) {
-    chainable.done.mockImplementation((...args: unknown[]) => {
-      overrides.done!(...args);
-      return chainable;
-    });
-  }
-  if (overrides?.fail) {
-    chainable.fail.mockImplementation((...args: unknown[]) => {
-      overrides.fail!(...args);
-      return chainable;
-    });
-  }
-  if (overrides?.always) {
-    chainable.always.mockImplementation((...args: unknown[]) => {
-      overrides.always!(...args);
-      return chainable;
-    });
+  for (const method of ["done", "fail", "always"] as const) {
+    if (overrides?.[method]) {
+      chainable[method].mockImplementation((...args: unknown[]) => {
+        overrides[method]!(...args);
+        return chainable;
+      });
+    }
   }
 
   return chainable as unknown as JQuery.jqXHR;

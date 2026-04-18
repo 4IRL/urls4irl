@@ -10,57 +10,44 @@ window.$ = jquery;
 const { registerJQueryPlugins } = await import("./lib/jquery-plugins.js");
 registerJQueryPlugins();
 
+// Factory for Bootstrap component mocks — each component shares the same
+// constructor/show/hide/dispose/getInstance/getOrCreateInstance shape.
+function makeBootstrapClass(
+  name: string,
+  extra?: Record<string, () => void>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
+): any {
+  const ComponentClass = class {
+    constructor() {}
+    show() {}
+    hide() {}
+    dispose() {}
+    static getInstance() {
+      return null;
+    }
+    static getOrCreateInstance() {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- dynamic bootstrap mock access
+      return new (window.bootstrap as any)[name]();
+    }
+  };
+  if (extra) {
+    for (const [methodName, methodFn] of Object.entries(extra)) {
+      Object.defineProperty(ComponentClass.prototype, methodName, {
+        value: methodFn,
+        writable: true,
+      });
+    }
+  }
+  Object.defineProperty(ComponentClass, "name", { value: name });
+  return ComponentClass;
+}
+
 // Mock Bootstrap (mirrors global script tag)
 window.bootstrap = {
-  Modal: class Modal {
-    constructor() {}
-    show() {}
-    hide() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Modal();
-    }
-  },
-  Tooltip: class Tooltip {
-    constructor() {}
-    show() {}
-    hide() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Tooltip();
-    }
-  },
-  Toast: class Toast {
-    constructor() {}
-    show() {}
-    hide() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Toast();
-    }
-  },
-  Collapse: class Collapse {
-    constructor() {}
-    show() {}
-    hide() {}
-    toggle() {}
-    dispose() {}
-    static getInstance() {
-      return null;
-    }
-    static getOrCreateInstance() {
-      return new window.bootstrap.Collapse();
-    }
-  },
+  Modal: makeBootstrapClass("Modal"),
+  Tooltip: makeBootstrapClass("Tooltip"),
+  Toast: makeBootstrapClass("Toast"),
+  Collapse: makeBootstrapClass("Collapse", { toggle() {} }),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test mock; full bootstrap typing not needed
 } as any;
 

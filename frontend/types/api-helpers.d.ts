@@ -5,8 +5,5 @@ export type Schema<Name extends keyof components["schemas"]> =
 
 export type SuccessResponse<
   Op extends keyof operations,
-  Status extends keyof operations[Op]["responses"] & (200 | 201) = Extract<
-    keyof operations[Op]["responses"],
-    200
-  >,
+  Status extends keyof operations[Op]["responses"] & (200 | 201) = 200,
 > = operations[Op]["responses"][Status]["content"]["application/json"];
