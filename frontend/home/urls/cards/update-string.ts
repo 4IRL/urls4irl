@@ -303,11 +303,9 @@ function updateURLFail(
     return;
   }
   const responseJSON = xhr.responseJSON as UpdateUrlStringError;
-  const hasErrors = !!responseJSON.errors;
-  const hasMessage = !!responseJSON.message;
   switch (xhr.status) {
     case 400:
-      if (hasErrors) {
+      if (responseJSON.errors) {
         updateURLFailErrors(
           responseJSON.errors as Partial<
             Record<UpdateUrlStringFieldName, string[]>
@@ -316,7 +314,7 @@ function updateURLFail(
         );
         break;
       }
-      if (hasMessage) {
+      if (responseJSON.message) {
         displayUpdateURLErrors(
           "urlString",
           responseJSON.message as string,

@@ -181,8 +181,7 @@ function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON as UpdateUrlTitleError;
-      const hasErrors = !!responseJSON.errors;
-      if (hasErrors) {
+      if (responseJSON.errors) {
         updateURLTitleFailErrors(
           responseJSON.errors as Partial<
             Record<UpdateUrlTitleFieldName, string[]>

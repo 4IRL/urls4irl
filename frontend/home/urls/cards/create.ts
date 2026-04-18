@@ -220,12 +220,10 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
     return;
   }
   const responseJSON = xhr.responseJSON as CreateUrlError;
-  const hasErrors = !!responseJSON.errors;
-  const hasMessage = !!responseJSON.message;
   switch (xhr.status) {
     case 400:
-      if (hasMessage) {
-        if (hasErrors) {
+      if (responseJSON.message) {
+        if (responseJSON.errors) {
           createURLShowFormErrors(
             responseJSON.errors as Partial<
               Record<CreateUrlFieldName, string[]>

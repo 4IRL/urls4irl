@@ -194,13 +194,11 @@ function createMemberFail(xhr: JQuery.jqXHR): void {
   switch (xhr.status) {
     case 400: {
       const responseJSON = xhr.responseJSON;
-      const hasErrors = !!responseJSON.errors;
-      const hasMessage = !!responseJSON.message;
-      if (hasErrors) {
+      if (responseJSON.errors) {
         // Show form errors
         createMemberFailErrors(responseJSON.errors);
         break;
-      } else if (hasMessage) {
+      } else if (responseJSON.message) {
         // Show message
         displayCreateMemberFailErrors(responseJSON.message);
         break;
