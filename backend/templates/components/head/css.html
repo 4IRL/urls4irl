@@ -1,7 +1,7 @@
-{% if is_privacy_or_terms %}{% set _ep = "navbar.js" %}
-{% elif is_contact_form %}{% set _ep = "contact.js" %}
-{% elif current_user.is_authenticated and current_user.email_validated %}{% set _ep = "main.js" %}
-{% else %}{% set _ep = "splash.js" %}{% endif %}
+{% if is_privacy_or_terms %}{% set _ep = "navbar.ts" %}
+{% elif is_contact_form %}{% set _ep = "contact.ts" %}
+{% elif current_user.is_authenticated and current_user.email_validated %}{% set _ep = "main.ts" %}
+{% else %}{% set _ep = "splash.ts" %}{% endif %}
 {% for href in vite_css_assets(_ep) %}
 <link rel="stylesheet" href="{{ href }}">
 {% endfor %}

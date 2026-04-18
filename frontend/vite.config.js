@@ -45,18 +45,18 @@ export default defineConfig(({ mode }) => ({
 
     rollupOptions: {
       input: {
-        // DO NOT CHANGE THESE PATHS.
+        // DO NOT CHANGE THESE PATHS — entry points are .ts, Vite resolves at build time
         // Vite is running from the project root in the container, so 'frontend/' prefix is required.
         // Entry point for splash page (login/register)
-        splash: resolve(__dirname, "frontend/splash.js"),
+        splash: resolve(__dirname, "frontend/splash.ts"),
         // Entry point for logged-in area
-        main: resolve(__dirname, "frontend/main.js"),
+        main: resolve(__dirname, "frontend/main.ts"),
         // Entry point for contact page
-        contact: resolve(__dirname, "frontend/contact.js"),
+        contact: resolve(__dirname, "frontend/contact.ts"),
         // Entry point for error pages
-        error: resolve(__dirname, "frontend/error.js"),
+        error: resolve(__dirname, "frontend/error.ts"),
         // Entry point for static pages (privacy/terms)
-        navbar: resolve(__dirname, "frontend/navbar.js"),
+        navbar: resolve(__dirname, "frontend/navbar.ts"),
       },
     },
 
