@@ -176,7 +176,8 @@ a.urlString {
     width: 45%;
 }
 
-.urlRow[filterable="false"] {
+.urlRow[filterable="false"],
+.urlRow[searchable="false"] {
     display: none;
 }
 

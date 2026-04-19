@@ -31,7 +31,9 @@
 }
 
 #UTubSearchFilterIconClose,
-#UTubSearchFilterIcon {
+#UTubSearchFilterIcon,
+#urlSearchFilterIconClose,
+#urlSearchFilterIcon {
     cursor: pointer;
     height: 100%;
     margin-bottom: 0;
@@ -39,11 +41,13 @@
     margin-right: 4px;
 }
 
-#UTubSearchFilterIcon>svg {
+#UTubSearchFilterIcon>svg,
+#urlSearchFilterIcon>svg {
     fill: var(--grayBadgeSelection);
 }
 
-#UTubSearchFilterIconClose>svg {
+#UTubSearchFilterIconClose>svg,
+#urlSearchFilterIconClose>svg {
     fill: var(--spanRemoveColor);
 }
 
@@ -69,11 +73,13 @@
         background: var(--removeIconColorHover);
     }
 
-    #UTubSearchFilterIcon:hover>svg {
+    #UTubSearchFilterIcon:hover>svg,
+    #urlSearchFilterIcon:hover>svg {
         fill: var(--deckSelectionGreenHover);
     }
 
-    #UTubSearchFilterIconClose:hover>svg {
+    #UTubSearchFilterIconClose:hover>svg,
+    #urlSearchFilterIconClose:hover>svg {
         fill: var(--spanRemoveColorHover);
     }
 

@@ -47,6 +47,31 @@
     display: none;
 }
 
+#URLContentSearch.text-input[type="text"] {
+    background: var(--searchInputBackgroundColor);
+    border-radius: 25px;
+    padding-inline: 13px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 0;
+    opacity: 0;
+    transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
+}
+
+#URLContentSearch.text-input[type="text"].url-search-expanded {
+    width: 100%;
+    opacity: 1;
+}
+
+#URLContentSearch+.text-input-label {
+    background: var(--searchInputBackgroundColor);
+    color: #c6c6c6;
+}
+
+#URLContentSearch:focus+.text-input-label {
+    display: none;
+}
+
 @media not all and (any-pointer: coarse) {
     .text-input[type="url"]:hover,
     .text-input[type="text"]:hover {
