@@ -20,6 +20,13 @@ import {
   newURLInputRemoveEventListeners,
 } from "./cards/cards.js";
 import { resetNewURLForm } from "./cards/create.js";
+import {
+  closeURLSearchAndEraseInput,
+  showURLSearchIcon,
+  hideURLSearchIcon,
+  setURLSearchEventListener,
+  reapplyURLSearchFilter,
+} from "./search.js";
 import type { UtubUrlItem, UtubTag } from "../../types/url.js";
 
 // Clear the URL Deck
@@ -31,6 +38,7 @@ export function resetURLDeck(): void {
   $(".urlRow").remove();
   $("#urlBtnCreate").hideClass();
   updateUTubDescriptionHideInput();
+  closeURLSearchAndEraseInput();
 }
 
 export function resetURLDeckOnDeleteUTub(): void {
@@ -40,6 +48,7 @@ export function resetURLDeckOnDeleteUTub(): void {
   $("#updateUTubDescriptionBtn")
     .removeClass("visibleBtn")
     .addClass("hiddenBtn");
+  hideURLSearchIcon();
 }
 
 export function showURLDeckBannerError(errorMessage: string): void {
@@ -92,6 +101,10 @@ export function updateURLDeck(
       utubID,
     );
   });
+
+  if ($("#SearchURLWrap").hasClass("visible")) {
+    reapplyURLSearchFilter();
+  }
 }
 
 // Build center panel URL list for selectedUTub
@@ -131,6 +144,14 @@ export function setURLDeckOnUTubSelected(
 
   $("#urlBtnCreate").showClassNormal();
   setUTubNameAndDescription(utubName);
+
+  setURLSearchEventListener();
+  if (numOfURLs > 0) {
+    showURLSearchIcon();
+  } else {
+    hideURLSearchIcon();
+  }
+  reapplyURLSearchFilter();
 }
 
 export function setURLDeckWhenNoUTubSelected(): void {
@@ -152,6 +173,7 @@ export function setURLDeckWhenNoUTubSelected(): void {
 
   // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
+  hideURLSearchIcon();
 }
 
 export function initURLDeck(): void {

@@ -19,6 +19,7 @@ import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { closeURLSearchAndEraseInput, showURLSearchIcon } from "../search.js";
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -198,6 +199,9 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   } else {
     selectURLCard(newUrlCard);
   }
+
+  closeURLSearchAndEraseInput();
+  showURLSearchIcon();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
