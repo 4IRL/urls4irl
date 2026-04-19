@@ -41,6 +41,8 @@ class UI_TEST_STRINGS:
         "D1",
     )
 
+    URL_SEARCH_UTUB_NAME = "URL Search Test UTub"
+
     URL_SEARCH_TITLES = (
         "Alpha News",
         "Beta Blog",

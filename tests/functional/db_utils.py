@@ -92,7 +92,9 @@ def create_test_searchable_urls(app: Flask, user_id: int) -> dict[str, int]:
 
     with app.app_context():
         new_utub = Utubs(
-            name="URL Search Test UTub", utub_description="", utub_creator=user_id
+            name=UI_TEST_STRINGS.URL_SEARCH_UTUB_NAME,
+            utub_description="",
+            utub_creator=user_id,
         )
         db.session.add(new_utub)
         db.session.commit()
@@ -122,6 +124,41 @@ def create_test_searchable_urls(app: Flask, user_id: int) -> dict[str, int]:
         db.session.commit()
 
     return utub_url_ids
+
+
+def create_test_searchable_urls_with_tags(
+    app: Flask, user_id: int
+) -> Tuple[dict[str, int], int, int]:
+    """
+    Creates a UTub with sample URLs and applies a tag to the first two URLs.
+    Returns (url_title_to_id_map, utub_tag_id, utub_id).
+    Tag "tagged" is applied to "Alpha News" and "Beta Blog" only.
+    """
+    url_title_to_id = create_test_searchable_urls(app, user_id)
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(
+            Utubs.name == UI_TEST_STRINGS.URL_SEARCH_UTUB_NAME,
+            Utubs.utub_creator == user_id,
+        ).first()
+        utub_id = utub.id
+
+        new_tag = Utub_Tags(utub_id=utub_id, tag_string="tagged", created_by=user_id)
+        db.session.add(new_tag)
+        db.session.flush()
+        tag_id = new_tag.id
+
+        titles_to_tag = list(UI_TEST_STRINGS.URL_SEARCH_TITLES)[:2]
+        for title in titles_to_tag:
+            utub_url_id = url_title_to_id[title]
+            url_tag = Utub_Url_Tags(
+                utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=tag_id
+            )
+            db.session.add(url_tag)
+
+        db.session.commit()
+
+    return url_title_to_id, tag_id, utub_id
 
 
 def get_other_member_in_utub(app: Flask, utub_id: int, current_user_id: int) -> Users:
