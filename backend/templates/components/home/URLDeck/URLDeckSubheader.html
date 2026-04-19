@@ -13,6 +13,18 @@
 		</button>
 	</div>
 
+	<div id="SearchURLWrap" class="input-text-holder flex-column createDiv hidden" style="margin-left: auto;">
+		<div class="text-input-container">
+			<div class="text-input-inner-container">
+				<input placeholder="Search URLs" class="text-input search-input" type="text"
+					   id="URLContentSearch" name="urlSearch"
+					   minlength="1" maxlength="500" required="" tabindex="0">
+				<label class="text-input-label search-input-label top-50perc left-10p font-size-16p"
+					   for="URLContentSearch">Search URLs</label>
+			</div>
+		</div>
+	</div>
+
 	<!-- Update UTub Description -->
 	{% include 'components/home/URLDeck/UpdateUTubDescriptionForm.html' %}
 </div>
