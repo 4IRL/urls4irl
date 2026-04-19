@@ -78,6 +78,7 @@ const appConfig = {
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,
+    URLS_MIN_LENGTH: 1,
   },
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",

@@ -128,6 +128,38 @@ def test_open_update_utub_name_input_member(
     assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_NAME_UPDATE)
 
 
+def test_switch_from_owned_to_non_owned_utub_removes_name_editable(
+    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a user who owns one UTub and is a member of another
+    WHEN the user selects their owned UTub, then switches to a non-owned UTub
+    THEN the UTub title should lose the editable class and clicking it should not open the edit input
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    with app.app_context():
+        utub_not_owned: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != user_id
+        ).first()
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    utub_title = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
+    assert HPL.EDITABLE_CLASS in utub_title.get_dom_attribute("class")
+
+    select_utub_by_name(browser, utub_not_owned.name)
+    wait_until_utub_name_appears(browser, utub_not_owned.name)
+
+    utub_title = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
+    assert HPL.EDITABLE_CLASS not in utub_title.get_dom_attribute("class")
+
+    utub_title.click()
+    assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_NAME_UPDATE)
+
+
 def test_close_update_utub_name_input_btn(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):

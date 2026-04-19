@@ -300,6 +300,20 @@ a.urlString {
     color: rgba(255, 255, 255, 0.75);
 }
 
+#URLSearchNoResults {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
 #URLDeckSubheaderCreateDescription:focus,
 #URLDeckSubheaderCreateDescription:active {
     opacity: 1;

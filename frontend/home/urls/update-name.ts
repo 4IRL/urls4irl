@@ -44,6 +44,8 @@ function checkSameNameUTubOnUpdate(name: string, utubID: number): void {
 }
 
 export function setupUpdateUTubNameEventListeners(utubID: number): void {
+  $("#URLDeckHeader").removeClass("editable").off("click.updateUTubname");
+
   if (!getState().isCurrentUserOwner) return;
 
   $("#URLDeckHeader").addClass("editable");

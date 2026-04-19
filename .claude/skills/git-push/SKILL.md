@@ -153,6 +153,8 @@ Track which reviewers returned FAIL from `reviewer_verdicts` (needed for re-revi
 
 Track `fix_round = 1` (used in Step 7c to cap fix-review loops).
 
+Capture `PRE_FIX_SHA = $(git rev-parse HEAD)` — the commit hash before any fix rounds begin. This anchor is captured **once** and reused across all re-review passes in Step 7c to scope the fix diff.
+
 ### 5. Write Findings
 
 Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name using the exhaustive token matching from Step 2. If topic truly cannot be inferred after checking all tokens, ask the user which topic to use rather than defaulting to `plans/tmp/`. `plans/tmp/` must never contain final review documents.
@@ -358,7 +360,35 @@ After the subagent returns:
 
 After all fixes (mechanical + design decisions) are applied and committed:
 
-Re-run **only the subagents that originally returned FAIL** (not all 7). Use the same subagent prompts from Step 3 but with the updated diff (`origin/main...HEAD` or `origin/$BRANCH...HEAD`). Write results to the same `<tmp-dir>/<role>.md` files.
+**Generate two diffs for re-review subagents:**
+
+1. **Full branch diff** (`origin/main...HEAD`) — provides overall context of what the branch does
+2. **Fix-only diff** (`<PRE_FIX_SHA>..HEAD`) — shows only the changes made during fix rounds
+
+`PRE_FIX_SHA` was captured once in Step 4b before any fixes began. Because it is never updated, each re-review pass sees the cumulative fix diff (all prior fix rounds), which lets later passes verify that earlier fixes weren't regressed.
+
+Save both diffs to `<tmp-dir>/` (e.g., `re-review-full.diff` and `re-review-fixes.diff`).
+
+**Re-run only the subagents that originally returned FAIL** (not all 7). Use the same review focus areas from Step 3, but modify the prompt to include both diffs and the following instruction:
+
+```
+You are re-reviewing after fixes were applied. You receive two diffs:
+
+1. Full branch diff (full-diff file): the complete branch vs main — use for context only.
+2. Fix-only diff (fix-diff file): changes made since the original review — this is your PRIMARY review target.
+
+Your job:
+- Verify that the fixes in the fix-only diff correctly address the issues from the original review.
+- Check for any NEW issues introduced by the fix commits themselves.
+- Do NOT re-flag issues from the original branch code that are resolved in the fix diff.
+  If the full branch diff shows problematic code but the fix diff changes that same code,
+  the issue is resolved — do not flag it.
+
+When in doubt, read the actual source file at the flagged location to confirm whether
+the issue still exists in the current code.
+```
+
+Write results to the same `<tmp-dir>/<role>.md` files.
 
 Evaluate re-review results:
 - **All now PASS**: Update review file verdict to `**RESOLVED — PUSHED**`. Proceed to Step 8 (push).

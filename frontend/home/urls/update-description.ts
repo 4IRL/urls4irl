@@ -28,6 +28,8 @@ function isUpdateUtubDescriptionFieldName(
 }
 
 export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
+  $("#URLDeckSubheader").removeClass("editable").off("click.updateUTubDesc");
+
   const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
   const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
 

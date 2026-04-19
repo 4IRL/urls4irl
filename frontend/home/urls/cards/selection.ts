@@ -88,7 +88,7 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
   urlCard.offAndOn(
     "click.urlSelected",
     function (event: JQuery.TriggeredEvent) {
-      if (!$(event.target).parents(".urlRow").length) return;
+      if (!$(event.target).closest(".urlRow").length) return;
 
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")
         return;
