@@ -313,6 +313,9 @@ a.urlString {
 #URLDeckSubheader {
     word-break: break-all;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #URLDeckErrorIndicator {

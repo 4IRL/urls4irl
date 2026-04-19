@@ -134,7 +134,7 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();
     }
-    if ($("#SearchURLWrap").hasClass("visible")) {
+    if ($("#SearchURLWrap").hasClass("visible-flex")) {
       closeURLSearchAndEraseInput();
     }
   });

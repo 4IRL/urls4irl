@@ -14,7 +14,7 @@ import {
 } from "./deck.js";
 import {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc,
-  allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty,
+  showCreateDescriptionButtonAlways,
 } from "../urls/update-description.js";
 
 type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
@@ -108,28 +108,20 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     utubDescriptionHeader.text(utubDescription);
     $("#UTubDescriptionSubheaderWrap").showClassFlex();
     $("#URLDeckSubheaderCreateDescription").disableTab();
+    $("#URLDeckNoDescription").hideClass();
   } else {
-    if (isCurrentUserOwner) {
-      allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(selectedUTub.id);
-    }
     utubDescriptionHeader.text("");
     $("#UTubDescriptionSubheaderWrap").hideClass();
+    if (isCurrentUserOwner) {
+      showCreateDescriptionButtonAlways(selectedUTub.id);
+      $("#URLDeckNoDescription").hideClass();
+    } else {
+      $("#URLDeckNoDescription").showClassNormal();
+    }
   }
 
-  // Only allow owner to update UTub name and description
   if (isCurrentUserOwner) {
-    $("#utubNameBtnUpdate").removeClass("hiddenBtn").addClass("visibleBtn");
-    $("#updateUTubDescriptionBtn")
-      .removeClass("hiddenBtn")
-      .addClass("visibleBtn");
-
-    // Setup description update field to match the current header
     $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
-  } else {
-    $("#utubNameBtnUpdate").addClass("hiddenBtn").removeClass("visibleBtn");
-    $("#updateUTubDescriptionBtn")
-      .addClass("hiddenBtn")
-      .removeClass("visibleBtn");
   }
 }
 

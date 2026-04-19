@@ -1,7 +1,5 @@
 from flask import Flask
 import pytest
-from selenium.common.exceptions import ElementNotInteractableException
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -33,18 +31,16 @@ from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
     select_utub_by_id,
     select_utub_by_name,
-    wait_and_get_deepest_hovered_elem,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
-    wait_until_update_btn_has_hidden_class,
     wait_until_utub_name_appears,
     wait_until_visible,
     wait_until_visible_css_selector,
 )
 from tests.functional.utubs_ui.selenium_utils import (
     create_utub,
-    hover_over_utub_title_to_show_add_utub_description,
+    wait_for_add_utub_description_button,
     open_update_utub_desc_input,
     update_utub_description,
 )
@@ -87,11 +83,9 @@ def test_open_update_utub_description_input_member(
     browser: WebDriver, create_test_utubmembers, provide_app: Flask
 ):
     """
-    Tests a user's ability to open the updateUTubName input using the pencil button.
-
     GIVEN a fresh load of the U4I Home page
-    WHEN user selects a UTub they did not create, then tries to click the edit UTub description button
-    THEN ensure the updateUTubDescription button does not show
+    WHEN a non-owner member selects a UTub
+    THEN the UTub description does not have the editable class and clicking it does not open the edit input
     """
     app = provide_app
     user_id = 1
@@ -99,15 +93,12 @@ def test_open_update_utub_description_input_member(
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
     wait_until_utub_name_appears(browser, utub.name)
-    wait_until_update_btn_has_hidden_class(browser, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE)
 
-    # ElementNotInteractableException is raised when selenium tries to hover over the UTub Name,
-    # and then click on the edit UTub description button - but as a member, the button doesn't
-    # show on hover
-    with pytest.raises(ElementNotInteractableException):
-        open_update_utub_desc_input(browser)
+    utub_description = wait_then_get_element(browser, HPL.SUBHEADER_URL_DECK)
+    assert HPL.EDITABLE_CLASS not in utub_description.get_dom_attribute("class")
 
-    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE)
+    utub_description.click()
+    assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
 
 
 def test_close_update_utub_description_input_btn(
@@ -375,7 +366,7 @@ def test_update_empty_utub_description_btn_shows_after_updating_to_empty(
     # Wait until the submit button is hidden and then verify description is still hidden
     wait_until_hidden(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE, timeout=3)
 
-    hover_over_utub_title_to_show_add_utub_description(browser)
+    wait_for_add_utub_description_button(browser)
 
     add_utub_desc = wait_then_get_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
     assert add_utub_desc is not None
@@ -406,7 +397,7 @@ def test_update_empty_utub_description_btn_shows_after_selecting_utub(
     select_utub_by_name(browser, utub_user_created.name)
     wait_until_utub_name_appears(browser, utub_user_created.name)
 
-    hover_over_utub_title_to_show_add_utub_description(browser)
+    wait_for_add_utub_description_button(browser)
 
     add_utub_desc = wait_then_get_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
     assert add_utub_desc is not None
@@ -431,7 +422,7 @@ def test_update_empty_utub_description_btn_shows_after_creating_utub(
     wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE, time=3)
     wait_until_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE, timeout=3)
 
-    hover_over_utub_title_to_show_add_utub_description(browser)
+    wait_for_add_utub_description_button(browser)
 
     add_utub_desc = wait_then_get_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
     assert add_utub_desc is not None
@@ -455,7 +446,7 @@ def test_update_empty_utub_description_btn_opens_input(
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
 
-    hover_over_utub_title_to_show_add_utub_description(browser)
+    wait_for_add_utub_description_button(browser)
 
     wait_then_click_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, time=3)
 
@@ -487,7 +478,7 @@ def test_update_empty_utub_description_updates_description_creator(
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
 
-    hover_over_utub_title_to_show_add_utub_description(browser)
+    wait_for_add_utub_description_button(browser)
 
     wait_then_click_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, time=3)
 
@@ -517,15 +508,16 @@ def test_update_empty_utub_description_updates_description_creator(
     assert utub_description_elem.text == NEW_UTUB_DESC
 
 
-def test_update_empty_utub_description_updates_description_member(
+def test_update_empty_utub_description_shows_no_description_for_member(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
-    Tests a UTub owner's ability to update UTub description after it was empty
+    Tests that a non-owner member sees the "No description" placeholder
+    when the UTub has no description.
 
-    GIVEN a user owns a UTub
-    WHEN they attempt to add a UTub description after owning a UTub with an empty name
-    THEN ensure the UTub Description is updated properly
+    GIVEN a user is a member (not owner) of a UTub with no description
+    WHEN they select that UTub
+    THEN ensure "No description" placeholder is visible and "Add a description?" button is not
     """
     app = provide_app
     user_id = 1
@@ -534,16 +526,9 @@ def test_update_empty_utub_description_updates_description_member(
 
     login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_member_of.id)
 
-    actions = ActionChains(browser)
-
-    utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
-
-    # Hovering over the element should not pop up the
-    # empty UTub description update button
-    actions.move_to_element(utub_title_elem).pause(5).perform()
-    hovered_elem = wait_and_get_deepest_hovered_elem(browser)
-    assert hovered_elem
-    assert hovered_elem.text == utub_user_member_of.name
+    no_desc_label = wait_then_get_element(browser, HPL.LABEL_NO_DESCRIPTION, time=3)
+    assert no_desc_label is not None
+    assert no_desc_label.is_displayed()
     assert_not_visible_css_selector(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
 
 
@@ -601,23 +586,22 @@ def test_open_update_utub_description_btn_not_visible_with_no_utub_selected(
     login_user_to_home_page(app, browser, user_id)
     assert_login_with_username(browser, username)
 
-    update_utub_desc_btn = browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
-    )
-    assert not update_utub_desc_btn.is_displayed()
+    utub_description = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK)
+    desc_classes = utub_description.get_dom_attribute("class") or ""
+    assert HPL.EDITABLE_CLASS not in desc_classes
 
 
-def test_open_update_utub_description_btn_not_visible_on_member_utub_after_own_utub_with_no_description(
+def test_no_description_label_visible_on_member_utub_after_own_utub_with_no_description(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
-    Tests a user's ability to not see the update UTub description button when switching from a UTub
-    they own with no description to switching to a UTub they do not own with no description.
+    Tests that switching from an owned UTub with no description to a non-owned UTub
+    with no description shows "No description" placeholder instead of "Add a description?" button.
 
     GIVEN a fresh load of the U4I Home page
     WHEN user selects a UTub they created with no description, then a UTub they do not own
         that has no description
-    THEN ensure the updateUTubDescription input does not open
+    THEN ensure "No description" placeholder is visible and "Add a description?" button is not
     """
     app = provide_app
     user_id = 1
@@ -632,16 +616,9 @@ def test_open_update_utub_description_btn_not_visible_on_member_utub_after_own_u
 
     select_utub_by_id(browser, utub_user_member_of.id)
 
-    actions = ActionChains(browser)
-
-    utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
-
-    # Hovering over the element should not pop up the
-    # empty UTub description update button
-    actions.move_to_element(utub_title_elem).pause(5).perform()
-    hovered_elem = wait_and_get_deepest_hovered_elem(browser)
-    assert hovered_elem
-    assert hovered_elem.text == utub_user_member_of.name
+    no_desc_label = wait_then_get_element(browser, HPL.LABEL_NO_DESCRIPTION, time=3)
+    assert no_desc_label is not None
+    assert no_desc_label.is_displayed()
     assert_not_visible_css_selector(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
 
 

@@ -21,9 +21,9 @@ import {
 } from "./cards/cards.js";
 import { resetNewURLForm } from "./cards/create.js";
 import {
-  closeURLSearchAndEraseInput,
   showURLSearchIcon,
   hideURLSearchIcon,
+  disableURLSearch,
   setURLSearchEventListener,
   reapplyURLSearchFilter,
 } from "./search.js";
@@ -38,17 +38,14 @@ export function resetURLDeck(): void {
   $(".urlRow").remove();
   $("#urlBtnCreate").hideClass();
   updateUTubDescriptionHideInput();
-  closeURLSearchAndEraseInput();
+  disableURLSearch();
 }
 
 export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
   $("#NoURLsSubheader").hideClass();
   $("#urlBtnDeckCreateWrap").hideClass();
-  $("#updateUTubDescriptionBtn")
-    .removeClass("visibleBtn")
-    .addClass("hiddenBtn");
-  hideURLSearchIcon();
+  disableURLSearch();
 }
 
 export function showURLDeckBannerError(errorMessage: string): void {
@@ -102,7 +99,7 @@ export function updateURLDeck(
     );
   });
 
-  if ($("#SearchURLWrap").hasClass("visible")) {
+  if ($("#SearchURLWrap").hasClass("visible-flex")) {
     reapplyURLSearchFilter();
   }
 }
@@ -160,20 +157,17 @@ export function setURLDeckWhenNoUTubSelected(): void {
   $(".updateUTubBtn").hideClass();
   $("#urlBtnCreate").hideClass();
   $("#accessAllURLsBtn").hideClass();
-  $("#utubNameBtnUpdate").hideClass();
-  $("#updateUTubDescriptionBtn")
-    .removeClass("visibleBtn")
-    .addClass("hiddenBtn");
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 
   const urlDeckSubheader = $("#URLDeckSubheader");
   urlDeckSubheader.text(`${APP_CONFIG.strings.UTUB_SELECT}`);
+  urlDeckSubheader.removeClass("editable");
+  urlDeckSubheader.off("click.updateUTubDesc");
   urlDeckSubheader.show();
+  $("#URLDeckHeader").removeClass("editable");
+  $("#URLDeckHeader").off("click.updateUTubname");
   $("#UTubDescriptionSubheaderWrap").removeClass("hidden");
-
-  // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
-  $("#utubNameBtnUpdate").removeClass("visibleBtn");
-  hideURLSearchIcon();
+  disableURLSearch();
 }
 
 export function initURLDeck(): void {

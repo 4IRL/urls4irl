@@ -323,8 +323,6 @@ def browser_without_cookie_banner_cookie(
     )
     driver = build_driver
 
-    driver.delete_all_cookies()
-
     driver.get(url + str(open_port) + "/")
     wait_for_page_complete_and_dom_stable(driver)
 
@@ -341,8 +339,11 @@ def browser_without_cookie_banner_cookie(
             driver.switch_to.window(handle)
             driver.close()
 
-    # Return to the initial tab for further tests
+    # Return to the initial tab, clear cookies while still on app domain,
+    # then navigate to about:blank to release renderer state
     driver.switch_to.window(init_handle)
+    driver.delete_all_cookies()
+    driver.get("about:blank")
 
 
 @pytest.fixture
@@ -377,14 +378,29 @@ def browser_mobile_portrait_without_cookie_banner_cookie(
     )
     driver = build_driver_mobile_portrait
 
-    driver.delete_all_cookies()
-
     driver.get(url + str(open_port) + "/")
+    driver.delete_all_cookies()
+    driver.get(url + str(open_port) + "/")
+    wait_for_page_complete_and_dom_stable(driver)
+
+    init_handle = driver.current_window_handle
 
     clear_db(runner, debug_strings)
 
     # Return the driver object to be used in the test functions
     yield driver
+
+    # Clean up any additional tabs that may have been opened during tests
+    for handle in driver.window_handles:
+        if handle != init_handle:
+            driver.switch_to.window(handle)
+            driver.close()
+
+    # Return to the initial tab, clear cookies while still on app domain,
+    # then navigate to about:blank to release renderer state
+    driver.switch_to.window(init_handle)
+    driver.delete_all_cookies()
+    driver.get("about:blank")
 
 
 @pytest.fixture

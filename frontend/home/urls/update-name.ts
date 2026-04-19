@@ -12,6 +12,7 @@ import {
 } from "../utubs/utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { highlightInput, showInput, hideInput } from "../btns-forms.js";
+import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
   updateUTubDescriptionHideInput,
   updateUTubDescriptionShowInput,
@@ -43,13 +44,13 @@ function checkSameNameUTubOnUpdate(name: string, utubID: number): void {
 }
 
 export function setupUpdateUTubNameEventListeners(utubID: number): void {
-  // Update UTub name
-  $("#utubNameBtnUpdate").offAndOn("click", function (clickEvent) {
+  if (!getState().isCurrentUserOwner) return;
+
+  $("#URLDeckHeader").addClass("editable");
+  $("#URLDeckHeader").offAndOnExact("click.updateUTubname", function () {
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
-    // Prevent this event from bubbling up to the window to allow event listener creation
-    if (!$(clickEvent.target).is(this)) return;
   });
 
   const utubNameSubmitBtnUpdate = $("#utubNameSubmitBtnUpdate");
@@ -101,8 +102,8 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
 
   // Bind clicking outside the window
   $(window).offAndOn("click.updateUTubname", function (windowClickEvent) {
-    // Ignore clicks on the creation object
-    if ($(windowClickEvent.target).closest("#utubNameBtnUpdate").length) return;
+    // Ignore clicks on the header text that opened this edit
+    if ($(windowClickEvent.target).closest("#URLDeckHeader").length) return;
 
     // Ignore clicks on the input box
     if ($(windowClickEvent.target).is($("#utubNameUpdate"))) return;
@@ -170,11 +171,8 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID: number): void {
   });
 }
 
-function allowUserToCreateDescriptionIfEmptyOnTitleUpdate(
-  utubID: number,
-): void {
+function rebindCreateDescriptionForNameUpdate(utubID: number): void {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
-  clickToCreateDesc.showClassNormal();
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
@@ -198,16 +196,13 @@ function updateUTubNameShowInput(utubID: number): void {
   showInput("#utubNameUpdate");
   utubNameUpdate.trigger("focus");
 
-  // Hide current name and update button
+  // Hide current name
   $("#URLDeckHeader").hideClass();
-  $("#utubNameBtnUpdate").hideClass();
   $("#urlBtnCreate").hideClass();
-
-  // Handle hiding the button on mobile when hover events stay after touch
-  $("#utubNameBtnUpdate").removeClass("visibleBtn");
+  temporarilyHideSearchForEdit();
 
   if ($("#URLDeckSubheader").text().length === 0) {
-    allowUserToCreateDescriptionIfEmptyOnTitleUpdate(utubID);
+    rebindCreateDescriptionForNameUpdate(utubID);
   }
 }
 
@@ -219,21 +214,17 @@ export function updateUTubNameHideInput(): void {
   const parentTitleElem = utubNameUpdate.closest(".titleElement");
   parentTitleElem.removeClass("m-top-bot-0-5rem");
 
-  // Show values and update button
+  // Show values
   $("#URLDeckHeader").showClassNormal();
-  $("#utubNameBtnUpdate").showClassNormal();
   $("#urlBtnCreate").showClassNormal();
+  showURLSearchIcon();
 
   // Remove event listeners on window and escape/enter keys
   removeEventListenersToEscapeUpdateUTubName();
 
-  // Handle giving mobile devices ability to see button again
-  $("#utubNameBtnUpdate").addClass("visibleBtn");
-
   if ($("#URLDeckSubheader").text().length === 0) {
-    $("#URLDeckSubheaderCreateDescription")
-      .removeClass("opa-1 height-2rem")
-      .addClass("opa-0 height-0");
+    const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
+    clickToCreateDesc.off("click.createUTubdescription");
   }
 
   // Remove any errors if shown

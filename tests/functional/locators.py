@@ -35,7 +35,7 @@ class HomePageLocators(GenericPageLocator):
     """A collector class for main page locators"""
 
     INVALID_FIELD_SUFFIX = "-error"
-    HIDDEN_BTN_CLASS = "hiddenBtn"
+    EDITABLE_CLASS = "editable"
     TOOLTIP_SUFFIX = "-tooltip"
 
     # Navbar
@@ -108,17 +108,16 @@ class HomePageLocators(GenericPageLocator):
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"
-    BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     WRAP_URL_CREATE = "#createURLWrap"
     BUTTON_UTUB_NAME_CANCEL_UPDATE = "#utubNameCancelBtnUpdate"
     BUTTON_ADD_UTUB_DESC_ON_EMPTY = "#URLDeckSubheaderCreateDescription"
+    LABEL_NO_DESCRIPTION = "#URLDeckNoDescription"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#NoURLsSubheader"
-    BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"
     INPUT_UTUB_DESCRIPTION_UPDATE = "#utubDescriptionUpdate"
     BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE = "#utubDescriptionSubmitBtnUpdate"
     BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE = "#utubDescriptionCancelBtnUpdate"

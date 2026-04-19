@@ -3,6 +3,7 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from backend import db
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -30,6 +31,7 @@ from tests.functional.selenium_utils import (
 from tests.functional.tags_ui.selenium_utils import apply_tag_filter_based_on_id
 from tests.functional.urls_ui.selenium_utils import (
     create_url,
+    focus_url_search_input,
     open_url_search_box,
 )
 
@@ -54,13 +56,13 @@ def _create_empty_utub(app: Flask, user_id: int, utub_name: str):
         db.session.commit()
 
 
-def test_search_icon_hidden_when_no_urls(
+def test_search_input_hidden_when_no_urls_desktop(
     browser: WebDriver, create_test_users, provide_app: Flask
 ):
     """
-    GIVEN a UTub with 0 URLs
+    GIVEN a UTub with 0 URLs on a desktop viewport
     WHEN the user selects that UTub
-    THEN the URL search icon is not visible
+    THEN the URL search wrap does not have search-ready class
     """
     app = provide_app
     user_id_for_test = 1
@@ -69,52 +71,130 @@ def test_search_icon_hidden_when_no_urls(
 
     login_user_and_select_utub_by_name(app, browser, user_id_for_test, EMPTY_UTUB_NAME)
 
-    assert_not_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    search_wrap = browser.find_element(By.CSS_SELECTOR, HPL.URL_SEARCH_WRAP)
+    assert "search-ready" not in (search_wrap.get_dom_attribute("class") or "")
 
 
-def test_search_icon_visible_when_urls_exist(
+def test_search_input_always_visible_on_desktop(
     browser: WebDriver, create_test_users, provide_app: Flask
 ):
     """
-    GIVEN a UTub with URLs
+    GIVEN a UTub with URLs on a desktop viewport
     WHEN the user selects that UTub
-    THEN the URL search icon is visible
+    THEN the URL search input is always visible without clicking any icon
+    """
+    app = provide_app
+    user_id_for_test = 1
+
+    create_test_searchable_urls(app, user_id_for_test)
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
+    )
+
+    assert_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, time=3)
+    assert_not_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    assert_not_visible_css_selector(browser, HPL.URL_CLOSE_SEARCH_ICON, time=3)
+
+
+def test_search_input_hidden_when_no_utub_selected_desktop(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN the home page with no UTub selected on desktop
+    WHEN the user is logged in
+    THEN the URL search input is not visible
+    """
+    app = provide_app
+    user_id_for_test = 1
+
+    create_test_searchable_urls(app, user_id_for_test)
+
+    login_user_to_home_page(app, browser, user_id_for_test)
+
+    assert_not_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, time=3)
+
+
+def test_desktop_escape_clears_search_but_keeps_input_visible(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN a UTub with URLs and a search term entered on desktop
+    WHEN the user presses Escape
+    THEN the search input is cleared but remains visible
+    """
+    app = provide_app
+    user_id_for_test = 1
+
+    create_test_searchable_urls(app, user_id_for_test)
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
+    )
+
+    focus_url_search_input(browser)
+    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    search_input.send_keys("Alpha")
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    assert_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, time=3)
+    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    assert search_input.get_attribute("value") == ""
+
+
+def test_mobile_search_icon_hidden_when_no_urls(
+    browser_mobile_portrait: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN a UTub with 0 URLs on a mobile viewport
+    WHEN the user selects that UTub
+    THEN the URL search icon is not visible
+    """
+    app = provide_app
+    user_id_for_test = 1
+
+    _create_empty_utub(app, user_id_for_test, EMPTY_UTUB_NAME)
+
+    login_user_and_select_utub_by_name(
+        app, browser_mobile_portrait, user_id_for_test, EMPTY_UTUB_NAME
+    )
+
+    assert_not_visible_css_selector(
+        browser_mobile_portrait, HPL.URL_OPEN_SEARCH_ICON, time=3
+    )
+
+
+def test_mobile_search_icon_visible_when_urls_exist(
+    browser_mobile_portrait: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN a UTub with URLs on a mobile viewport
+    WHEN the user selects that UTub
+    THEN the URL search icon is visible and the input is hidden
     """
     app = provide_app
     user_id_for_test = 1
 
     create_test_searchable_urls(app, user_id_for_test)
     login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
+        app, browser_mobile_portrait, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    assert_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    assert_visible_css_selector(
+        browser_mobile_portrait, HPL.URL_OPEN_SEARCH_ICON, time=3
+    )
+    assert_not_visible_css_selector(
+        browser_mobile_portrait, HPL.URL_SEARCH_INPUT, time=3
+    )
 
 
-def test_search_icon_hidden_when_no_utub_selected(
-    browser: WebDriver, create_test_users, provide_app: Flask
+def test_mobile_open_and_close_search_box(
+    browser_mobile_portrait: WebDriver, create_test_users, provide_app: Flask
 ):
     """
-    GIVEN the home page with no UTub selected
-    WHEN the user is logged in
-    THEN the URL search icon is not visible
-    """
-    app = provide_app
-    user_id_for_test = 1
-
-    create_test_searchable_urls(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
-
-    assert_not_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
-
-
-def test_open_and_close_search_box(
-    browser: WebDriver, create_test_users, provide_app: Flask
-):
-    """
-    GIVEN a UTub with URLs selected
+    GIVEN a UTub with URLs selected on a mobile viewport
     WHEN the user clicks the search icon, the search input is visible and focused;
-         clicking close hides the input and shows the description again
+         clicking close hides the input and shows the search icon again
     THEN the search box opens and closes correctly
     """
     app = provide_app
@@ -122,27 +202,33 @@ def test_open_and_close_search_box(
 
     create_test_searchable_urls(app, user_id_for_test)
     login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
+        app, browser_mobile_portrait, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    open_url_search_box(browser_mobile_portrait)
 
-    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    search_input = wait_then_get_element(
+        browser_mobile_portrait, HPL.URL_SEARCH_INPUT, time=3
+    )
     assert search_input is not None
     assert search_input.is_displayed()
-    assert browser.switch_to.active_element == search_input
+    assert browser_mobile_portrait.switch_to.active_element == search_input
 
-    wait_then_click_element(browser, HPL.URL_CLOSE_SEARCH_ICON, time=3)
+    wait_then_click_element(browser_mobile_portrait, HPL.URL_CLOSE_SEARCH_ICON, time=3)
 
-    assert_not_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, time=3)
-    assert_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    assert_not_visible_css_selector(
+        browser_mobile_portrait, HPL.URL_SEARCH_INPUT, time=3
+    )
+    assert_visible_css_selector(
+        browser_mobile_portrait, HPL.URL_OPEN_SEARCH_ICON, time=3
+    )
 
 
-def test_escape_key_closes_search(
-    browser: WebDriver, create_test_users, provide_app: Flask
+def test_mobile_escape_key_closes_search(
+    browser_mobile_portrait: WebDriver, create_test_users, provide_app: Flask
 ):
     """
-    GIVEN a UTub with URLs and the search box open
+    GIVEN a UTub with URLs and the search box open on mobile
     WHEN the user presses Escape
     THEN the search box closes
     """
@@ -151,17 +237,21 @@ def test_escape_key_closes_search(
 
     create_test_searchable_urls(app, user_id_for_test)
     login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
+        app, browser_mobile_portrait, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    open_url_search_box(browser_mobile_portrait)
 
-    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    search_input = wait_then_get_element(
+        browser_mobile_portrait, HPL.URL_SEARCH_INPUT, time=3
+    )
     assert search_input is not None
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    browser_mobile_portrait.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    assert_not_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, time=3)
+    assert_not_visible_css_selector(
+        browser_mobile_portrait, HPL.URL_SEARCH_INPUT, time=3
+    )
 
 
 def test_search_by_url_title_no_match(
@@ -180,7 +270,7 @@ def test_search_by_url_title_no_match(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -208,7 +298,7 @@ def test_search_by_url_title_one_match(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -241,7 +331,7 @@ def test_search_by_url_string_one_match(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -274,7 +364,7 @@ def test_search_matches_both_title_and_string(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -314,7 +404,7 @@ def test_search_is_case_insensitive(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -349,7 +439,7 @@ def test_search_resets_on_url_creation(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -398,7 +488,7 @@ def test_search_respects_tag_filter(
         url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_title_to_id[title]}']"
         assert_not_visible_css_selector(browser, url_selector, time=3)
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -428,7 +518,7 @@ def test_tag_filter_change_re_evaluates_search(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -485,7 +575,7 @@ def test_search_resets_on_utub_switch(
         app, browser, user_id_for_test, URL_SEARCH_UTUB_NAME
     )
 
-    open_url_search_box(browser)
+    focus_url_search_input(browser)
 
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
@@ -493,4 +583,7 @@ def test_search_resets_on_utub_switch(
 
     select_utub_by_name(browser, second_utub_name)
 
-    assert_not_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, time=3)
+    search_wrap = browser.find_element(By.CSS_SELECTOR, HPL.URL_SEARCH_WRAP)
+    WebDriverWait(browser, 10).until(
+        lambda _: "search-ready" not in (search_wrap.get_dom_attribute("class") or "")
+    )

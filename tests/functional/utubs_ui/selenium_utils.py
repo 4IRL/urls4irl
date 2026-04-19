@@ -1,4 +1,3 @@
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -46,60 +45,13 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
 
 
 def open_update_utub_name_input(browser: WebDriver):
-    """
-    Once logged in and UTub selected, this function conducts the actions for opening either the update UTub name or description input field. First hover over the UTub name or description to display the edit button. Then clicks the edit button.
-
-    Args:
-        WebDriver open to U4I Home Page
-    """
-
-    update_wrap_element = wait_then_get_element(browser, HPL.WRAP_UTUB_NAME_UPDATE)
-    assert update_wrap_element is not None
-
-    _update_utub_input(
-        browser,
-        HPL.WRAP_UTUB_NAME_UPDATE,
-        HPL.HEADER_URL_DECK,
-        HPL.BUTTON_UTUB_NAME_UPDATE,
-    )
+    """Click the UTub title text to open the name edit input (owner only)."""
+    wait_then_click_element(browser, HPL.HEADER_URL_DECK)
 
 
 def open_update_utub_desc_input(browser: WebDriver):
-    """
-    Once logged in and UTub selected, this function conducts the actions for opening either the update UTub name or description input field. First hover over the UTub name or description to display the edit button. Then clicks the edit button.
-
-    Args:
-        WebDriver open to U4I Home Page
-    """
-    update_wrap_element = wait_then_get_element(
-        browser, HPL.WRAP_UTUB_DESCRIPTION_UPDATE, time=3
-    )
-    assert update_wrap_element is not None
-
-    _update_utub_input(
-        browser,
-        HPL.WRAP_UTUB_DESCRIPTION_UPDATE,
-        HPL.SUBHEADER_URL_DECK,
-        HPL.BUTTON_UTUB_DESCRIPTION_UPDATE,
-    )
-
-
-def _update_utub_input(
-    browser: WebDriver, wrap_elem_selector: str, elem_locator: str, btn_locator: str
-):
-    # Hover over UTub name to display utubNameBtnUpdate button
-    actions = ActionChains(browser)
-
-    wrap_elem = wait_then_get_element(browser, wrap_elem_selector, time=3)
-    assert wrap_elem is not None
-    update_element = wrap_elem.find_element(By.CSS_SELECTOR, elem_locator)
-    update_button = wrap_elem.find_element(By.CSS_SELECTOR, btn_locator)
-
-    # Pause to make sure utubNameBtnUpdate button is visible
-    actions.move_to_element(update_element).pause(3).move_to_element(
-        update_button
-    ).pause(2).click(update_button).perform()
-    # Update input field visible
+    """Click the UTub description text to open the description edit input (owner only)."""
+    wait_then_click_element(browser, HPL.SUBHEADER_URL_DECK)
 
 
 def update_utub_name(browser: WebDriver, utub_name: str):
@@ -141,20 +93,7 @@ def update_utub_description(browser: WebDriver, utub_description: str):
     clear_then_send_keys(utub_description_update_input, utub_description)
 
 
-def hover_over_utub_title_to_show_add_utub_description(browser: WebDriver):
-    # Hover over UTub name to display utubNameBtnUpdate button
-    actions = ActionChains(browser)
-
-    utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
-    utub_desc_input_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
-    )
-
-    # Pause to make sure utubNameBtnUpdate button is visible
-    actions.move_to_element(utub_title_elem).pause(5).move_to_element(
-        utub_desc_input_elem
-    ).pause(5).perform()
-
+def wait_for_add_utub_description_button(browser: WebDriver):
     wait_until_visible_css_selector(
         browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, timeout=3
     )

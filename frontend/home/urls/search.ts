@@ -41,8 +41,9 @@ export function setURLSearchEventListener(): void {
   const searchInput = $("#URLContentSearch");
 
   searchIcon.offAndOnExact("click.urlSearchInputShow", function () {
-    wrapper.addClass("visible").removeClass("hidden");
-    $("#UTubDescriptionSubheaderWrap").addClass("hidden");
+    wrapper.addClass("visible-flex").removeClass("hidden");
+    $("#URLDeckSubheaderCreateDescription").addClass("hidden");
+    $("#URLDeckNoDescription").hideClass();
     searchIcon.addClass("hidden");
     searchIconClose.removeClass("hidden");
 
@@ -88,37 +89,64 @@ export function setURLSearchEventListener(): void {
     });
 
   on(AppEvents.URL_TAG_FILTER_APPLIED, () => {
-    if (wrapper.hasClass("visible")) {
+    if (wrapper.hasClass("visible-flex")) {
       reapplyURLSearchFilter();
     }
   });
 }
 
 export function closeURLSearchAndEraseInput(): void {
-  $("#urlSearchFilterIconClose").addClass("hidden");
-  $("#urlSearchFilterIcon").removeClass("hidden");
-  $("#SearchURLWrap").addClass("hidden").removeClass("visible");
-  $("#UTubDescriptionSubheaderWrap").removeClass("hidden");
+  collapseURLSearchInput();
   $("#URLContentSearch").val("");
-  $("#URLContentSearch").removeClass("url-search-expanded");
   $(".urlRow").removeAttr("searchable");
   emit(AppEvents.URL_SEARCH_VISIBILITY_CHANGED);
 }
 
+export function collapseURLSearchInput(): void {
+  $("#urlSearchFilterIconClose").addClass("hidden");
+  $("#urlSearchFilterIcon").removeClass("hidden");
+  $("#SearchURLWrap").addClass("hidden").removeClass("visible-flex");
+  $("#URLDeckSubheaderCreateDescription").removeClass("hidden");
+  $("#URLContentSearch").removeClass("url-search-expanded");
+
+  const hasNoDescription =
+    !$("#URLDeckSubheader").text().length &&
+    $("#UTubDescriptionSubheaderWrap").hasClass("hidden");
+  const isOwner = $("#URLDeckSubheaderCreateDescription").hasClass("opa-1");
+  if (hasNoDescription && !isOwner) {
+    $("#URLDeckNoDescription").showClassNormal();
+  }
+}
+
 export function showURLSearchIcon(): void {
   $("#urlSearchFilterIcon").removeClass("hidden");
+  $("#SearchURLWrap").addClass("search-ready");
 }
 
 export function hideURLSearchIcon(): void {
-  if ($("#SearchURLWrap").hasClass("visible")) {
-    closeURLSearchAndEraseInput();
+  if ($("#SearchURLWrap").hasClass("visible-flex")) {
+    collapseURLSearchInput();
+  }
+  $("#urlSearchFilterIcon").addClass("hidden");
+  $("#SearchURLWrap").removeClass("search-ready");
+}
+
+export function temporarilyHideSearchForEdit(): void {
+  if ($("#SearchURLWrap").hasClass("visible-flex")) {
+    collapseURLSearchInput();
   }
   $("#urlSearchFilterIcon").addClass("hidden");
 }
 
+export function disableURLSearch(): void {
+  closeURLSearchAndEraseInput();
+  hideURLSearchIcon();
+  $("#SearchURLWrap").removeClass("search-ready");
+}
+
 export function reapplyURLSearchFilter(): void {
   const searchTerm = getInputValue($("#URLContentSearch"));
-  if (searchTerm === "" || !$("#SearchURLWrap").hasClass("visible")) {
+  if (searchTerm === "" || !$("#SearchURLWrap").hasClass("visible-flex")) {
     return;
   }
   const urlIDsToHide = filterURLsBySearchTerm(readURLsFromDOM(), searchTerm);

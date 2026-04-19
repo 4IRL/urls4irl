@@ -1,6 +1,5 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from tests.functional.assert_utils import (
@@ -15,7 +14,7 @@ from tests.functional.login_utils import (
     login_user_to_home_page,
 )
 from tests.functional.selenium_utils import (
-    wait_for_element_to_be_removed,
+    wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -194,8 +193,7 @@ def test_utub_search_resets_on_delete_utub(
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
         assert_not_visible_css_selector(browser, utub_selector, time=3)
 
-    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{first_id}"]'
-    utub_elem = browser.find_element(By.CSS_SELECTOR, css_selector)
+    deleted_utub_selector = f'{HPL.SELECTORS_UTUB}[utubid="{first_id}"]'
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
@@ -203,7 +201,7 @@ def test_utub_search_resets_on_delete_utub(
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.HOME_MODAL)
 
-    wait_for_element_to_be_removed(browser, utub_elem, timeout=10)
+    wait_for_selector_to_be_removed(browser, deleted_utub_selector, timeout=10)
 
     for utub_id in utub_names_and_ids.values():
         if utub_id == first_id:

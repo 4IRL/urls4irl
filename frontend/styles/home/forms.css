@@ -26,8 +26,8 @@
     background: var(--searchInputBackgroundColor);
     border-radius: 25px;
     padding-inline: 13px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-top: 1px;
+    padding-bottom: 1px;
     width: 0;
     opacity: 0;
     transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
@@ -51,8 +51,8 @@
     background: var(--searchInputBackgroundColor);
     border-radius: 25px;
     padding-inline: 13px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-top: 1px;
+    padding-bottom: 1px;
     width: 0;
     opacity: 0;
     transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
@@ -61,6 +61,14 @@
 #URLContentSearch.text-input[type="text"].url-search-expanded {
     width: 100%;
     opacity: 1;
+}
+
+@media (min-width: 992px) {
+    #URLContentSearch.text-input[type="text"] {
+        width: 100%;
+        opacity: 1;
+        transition: none;
+    }
 }
 
 #URLContentSearch+.text-input-label {
@@ -73,6 +81,7 @@
 }
 
 @media not all and (any-pointer: coarse) {
+
     .text-input[type="url"]:hover,
     .text-input[type="text"]:hover {
         border-color: var(--deckSelectionGreenHover);

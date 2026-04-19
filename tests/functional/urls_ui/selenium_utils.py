@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.ui import WebDriverWait
 
 from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
@@ -15,8 +16,22 @@ from tests.functional.selenium_utils import (
     wait_until_visible_css_selector,
 )
 
+MOBILE_WIDTH = 500
+MOBILE_HEIGHT = 900
+DESKTOP_WIDTH = 1200
+DESKTOP_HEIGHT = 900
+
+
+def set_mobile_viewport(browser: WebDriver):
+    browser.set_window_size(MOBILE_WIDTH, MOBILE_HEIGHT)
+
+
+def set_desktop_viewport(browser: WebDriver):
+    browser.set_window_size(DESKTOP_WIDTH, DESKTOP_HEIGHT)
+
 
 def open_url_search_box(browser: WebDriver):
+    """Opens the URL search box via the toggle icon (mobile/tablet flow)."""
     wait_until_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, timeout=3)
     assert_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON)
 
@@ -29,6 +44,19 @@ def open_url_search_box(browser: WebDriver):
     assert_visible_css_selector(browser, HPL.URL_CLOSE_SEARCH_ICON, time=3)
     url_search_elem = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert browser.switch_to.active_element == url_search_elem
+
+
+def focus_url_search_input(browser: WebDriver):
+    """Focuses the always-visible URL search input (desktop flow)."""
+    search_wrap = browser.find_element(By.CSS_SELECTOR, HPL.URL_SEARCH_WRAP)
+    WebDriverWait(browser, 10).until(
+        lambda _: "search-ready" in (search_wrap.get_dom_attribute("class") or "")
+    )
+    wait_until_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, timeout=10)
+    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=10)
+    assert search_input is not None
+    search_input.click()
+    wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
 
 
 def create_url(browser: WebDriver, url_title: str, url_string: str):

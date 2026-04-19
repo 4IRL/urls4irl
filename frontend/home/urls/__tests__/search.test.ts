@@ -1,8 +1,10 @@
 import {
   setURLSearchEventListener,
   closeURLSearchAndEraseInput,
+  collapseURLSearchInput,
   showURLSearchIcon,
   hideURLSearchIcon,
+  disableURLSearch,
 } from "../search.js";
 
 import { filterURLsBySearchTerm } from "../../../logic/url-search.js";
@@ -19,6 +21,7 @@ const SEARCH_HTML = `
   <div id="SearchURLWrap" class="hidden"></div>
   <input id="URLContentSearch" value="" />
   <div id="UTubDescriptionSubheaderWrap"></div>
+  <button id="URLDeckSubheaderCreateDescription"></button>
   <div id="listURLs">
     <div class="urlRow" utuburlid="1" filterable="true">
       <span class="urlTitle">Alpha News</span>
@@ -47,12 +50,11 @@ describe("URL Search", () => {
   });
 
   describe("clicking #urlSearchFilterIcon", () => {
-    it("shows #SearchURLWrap and hides #UTubDescriptionSubheaderWrap", () => {
+    it("shows #SearchURLWrap", () => {
       $("#urlSearchFilterIcon").trigger("click");
 
-      expect($("#SearchURLWrap").hasClass("visible")).toBe(true);
+      expect($("#SearchURLWrap").hasClass("visible-flex")).toBe(true);
       expect($("#SearchURLWrap").hasClass("hidden")).toBe(false);
-      expect($("#UTubDescriptionSubheaderWrap").hasClass("hidden")).toBe(true);
     });
 
     it("shows close icon and hides search icon", () => {
@@ -82,12 +84,11 @@ describe("URL Search", () => {
       $("#urlSearchFilterIcon").trigger("click");
     });
 
-    it("hides search wrap and shows description subheader", () => {
+    it("hides search wrap", () => {
       $("#urlSearchFilterIconClose").trigger("click");
 
       expect($("#SearchURLWrap").hasClass("hidden")).toBe(true);
-      expect($("#SearchURLWrap").hasClass("visible")).toBe(false);
-      expect($("#UTubDescriptionSubheaderWrap").hasClass("hidden")).toBe(false);
+      expect($("#SearchURLWrap").hasClass("visible-flex")).toBe(false);
     });
 
     it("shows search icon and hides close icon", () => {
@@ -168,23 +169,20 @@ describe("URL Search", () => {
       $("#URLContentSearch").trigger($.Event("keydown", { key: "Escape" }));
 
       expect($("#SearchURLWrap").hasClass("hidden")).toBe(true);
-      expect($("#SearchURLWrap").hasClass("visible")).toBe(false);
-      expect($("#UTubDescriptionSubheaderWrap").hasClass("hidden")).toBe(false);
+      expect($("#SearchURLWrap").hasClass("visible-flex")).toBe(false);
       expect($("#urlSearchFilterIcon").hasClass("hidden")).toBe(false);
       expect($("#urlSearchFilterIconClose").hasClass("hidden")).toBe(true);
     });
   });
 
   describe("closeURLSearchAndEraseInput", () => {
-    it("hides #SearchURLWrap and shows #UTubDescriptionSubheaderWrap", () => {
-      $("#SearchURLWrap").addClass("visible").removeClass("hidden");
-      $("#UTubDescriptionSubheaderWrap").addClass("hidden");
+    it("hides #SearchURLWrap", () => {
+      $("#SearchURLWrap").addClass("visible-flex").removeClass("hidden");
 
       closeURLSearchAndEraseInput();
 
       expect($("#SearchURLWrap").hasClass("hidden")).toBe(true);
-      expect($("#SearchURLWrap").hasClass("visible")).toBe(false);
-      expect($("#UTubDescriptionSubheaderWrap").hasClass("hidden")).toBe(false);
+      expect($("#SearchURLWrap").hasClass("visible-flex")).toBe(false);
     });
 
     it("shows search icon and hides close icon", () => {
@@ -224,6 +222,12 @@ describe("URL Search", () => {
 
       expect($("#urlSearchFilterIcon").hasClass("hidden")).toBe(false);
     });
+
+    it("adds search-ready class to the search wrap", () => {
+      showURLSearchIcon();
+
+      expect($("#SearchURLWrap").hasClass("search-ready")).toBe(true);
+    });
   });
 
   describe("hideURLSearchIcon", () => {
@@ -233,6 +237,75 @@ describe("URL Search", () => {
       hideURLSearchIcon();
 
       expect($("#urlSearchFilterIcon").hasClass("hidden")).toBe(true);
+    });
+
+    it("removes search-ready class", () => {
+      showURLSearchIcon();
+
+      hideURLSearchIcon();
+
+      expect($("#SearchURLWrap").hasClass("search-ready")).toBe(false);
+    });
+  });
+
+  describe("disableURLSearch", () => {
+    beforeEach(() => {
+      showURLSearchIcon();
+      $("#urlSearchFilterIcon").trigger("click");
+      $("#URLContentSearch").val("test query");
+      $(".urlRow").attr("searchable", "false");
+    });
+
+    it("removes search-ready class from the search wrap", () => {
+      disableURLSearch();
+
+      expect($("#SearchURLWrap").hasClass("search-ready")).toBe(false);
+    });
+
+    it("clears the search input and removes searchable attributes", () => {
+      disableURLSearch();
+
+      expect($("#URLContentSearch").val()).toBe("");
+      $(".urlRow").each(function () {
+        expect($(this).attr("searchable")).toBeUndefined();
+      });
+    });
+
+    it("hides the search icon", () => {
+      disableURLSearch();
+
+      expect($("#urlSearchFilterIcon").hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("collapseURLSearchInput", () => {
+    beforeEach(() => {
+      $("#urlSearchFilterIcon").trigger("click");
+      $("#URLContentSearch").val("test query");
+      $(".urlRow").attr("searchable", "false");
+    });
+
+    it("hides the search wrap without clearing the input value", () => {
+      collapseURLSearchInput();
+
+      expect($("#SearchURLWrap").hasClass("hidden")).toBe(true);
+      expect($("#SearchURLWrap").hasClass("visible-flex")).toBe(false);
+      expect($("#URLContentSearch").val()).toBe("test query");
+    });
+
+    it("preserves searchable attributes on URL rows", () => {
+      collapseURLSearchInput();
+
+      $(".urlRow").each(function () {
+        expect($(this).attr("searchable")).toBe("false");
+      });
+    });
+
+    it("restores the search icon and hides the close icon", () => {
+      collapseURLSearchInput();
+
+      expect($("#urlSearchFilterIcon").hasClass("hidden")).toBe(false);
+      expect($("#urlSearchFilterIconClose").hasClass("hidden")).toBe(true);
     });
   });
 });
