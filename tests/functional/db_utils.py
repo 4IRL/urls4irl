@@ -81,6 +81,49 @@ def create_test_searchable_utubs(app: Flask, test_user_id: int) -> dict[str, int
     return utub_ids
 
 
+def create_test_searchable_urls(app: Flask, user_id: int) -> dict[str, int]:
+    """
+    Assumes users created. Creates a UTub owned by user_id with sample URLs
+    for search testing. Returns {url_title: utub_urls_id}.
+    """
+    url_titles = UI_TEST_STRINGS.URL_SEARCH_TITLES
+    url_strings = UI_TEST_STRINGS.URL_SEARCH_STRINGS
+    utub_url_ids: dict[str, int] = {}
+
+    with app.app_context():
+        new_utub = Utubs(
+            name="URL Search Test UTub", utub_description="", utub_creator=user_id
+        )
+        db.session.add(new_utub)
+        db.session.commit()
+
+        utub_member = Utub_Members()
+        utub_member.utub_id = new_utub.id
+        utub_member.user_id = user_id
+        utub_member.member_role = Member_Role.CREATOR
+        db.session.add(utub_member)
+        db.session.commit()
+
+        for title, url_string in zip(url_titles, url_strings):
+            url = Urls(normalized_url=url_string, current_user_id=user_id)
+            db.session.add(url)
+            db.session.flush()
+
+            utub_url = Utub_Urls()
+            utub_url.url_title = title
+            utub_url.url_id = url.id
+            utub_url.utub_id = new_utub.id
+            utub_url.user_id = user_id
+            db.session.add(utub_url)
+            db.session.flush()
+
+            utub_url_ids[title] = utub_url.id
+
+        db.session.commit()
+
+    return utub_url_ids
+
+
 def get_other_member_in_utub(app: Flask, utub_id: int, current_user_id: int) -> Users:
     with app.app_context():
         other_member: Utub_Members = Utub_Members.query.filter(

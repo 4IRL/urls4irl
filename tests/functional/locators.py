@@ -78,6 +78,11 @@ class HomePageLocators(GenericPageLocator):
     UTUB_CLOSE_SEARCH_ICON = "#UTubSearchFilterIconClose"
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
 
+    URL_OPEN_SEARCH_ICON = "#urlSearchFilterIcon"
+    URL_CLOSE_SEARCH_ICON = "#urlSearchFilterIconClose"
+    URL_SEARCH_INPUT = "#URLContentSearch"
+    URL_SEARCH_WRAP = "#SearchURLWrap"
+
     # Tag Deck
     HEADER_TAG_DECK = "#TagDeckHeader"
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"

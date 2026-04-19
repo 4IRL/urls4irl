@@ -2,15 +2,33 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
     open_update_url_title,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+
+
+def open_url_search_box(browser: WebDriver):
+    wait_until_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, timeout=3)
+    assert_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON)
+
+    wait_then_click_element(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, HPL.URL_SEARCH_INPUT, timeout=3
+    )
+    wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
+
+    assert_visible_css_selector(browser, HPL.URL_CLOSE_SEARCH_ICON, time=3)
+    url_search_elem = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    assert browser.switch_to.active_element == url_search_elem
 
 
 def create_url(browser: WebDriver, url_title: str, url_string: str):
