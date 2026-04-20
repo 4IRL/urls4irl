@@ -55,6 +55,17 @@
     justify-content: flex-end;
 }
 
+@media (any-pointer: coarse) {
+    .button-container button {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+}
+
 @media not all and (any-pointer: coarse) {
     .green-clickable:hover {
         cursor: pointer;

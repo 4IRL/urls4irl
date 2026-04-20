@@ -39,6 +39,7 @@ from tests.functional.urls_ui.selenium_utils import (
     create_url,
     focus_url_search_input,
     open_url_search_box,
+    wait_for_url_search_filter_applied,
 )
 
 pytestmark = pytest.mark.urls_ui
@@ -282,6 +283,7 @@ def test_search_by_url_title_no_match(
     assert search_input is not None
 
     search_input.send_keys("ZZZZZZ")
+    wait_for_url_search_filter_applied(browser)
 
     url_rows = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     for url_row in url_rows:
@@ -311,6 +313,7 @@ def test_search_by_url_title_one_match(
 
     target_title = UTS.URL_SEARCH_TITLES[0]
     search_input.send_keys("Alpha")
+    wait_for_url_search_filter_applied(browser)
 
     url_rows = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     for url_row in url_rows:
@@ -344,6 +347,7 @@ def test_search_by_url_string_one_match(
 
     target_title = UTS.URL_SEARCH_TITLES[1]
     search_input.send_keys("beta-blog")
+    wait_for_url_search_filter_applied(browser)
 
     url_rows = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     for url_row in url_rows:
@@ -378,6 +382,7 @@ def test_search_matches_both_title_and_string(
     # "cha" matches "Charlie Docs" by title and "charlie-docs" by URL string,
     # verifying that search checks both title and string fields
     search_input.send_keys("cha")
+    wait_for_url_search_filter_applied(browser)
 
     target_title = UTS.URL_SEARCH_TITLES[2]
     target_id = str(url_title_to_id[target_title])
@@ -416,6 +421,7 @@ def test_search_is_case_insensitive(
     assert search_input is not None
 
     search_input.send_keys("ALPHA")
+    wait_for_url_search_filter_applied(browser)
 
     target_title = UTS.URL_SEARCH_TITLES[0]
     target_id = str(url_title_to_id[target_title])
@@ -450,6 +456,7 @@ def test_search_resets_on_url_creation(
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
     search_input.send_keys("ZZZZZZ")
+    wait_for_url_search_filter_applied(browser)
 
     url_rows = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     for url_row in url_rows:
@@ -501,6 +508,7 @@ def test_search_respects_tag_filter(
 
     untagged_title = UTS.URL_SEARCH_TITLES[2]
     search_input.send_keys("Charlie")
+    wait_for_url_search_filter_applied(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_title_to_id[untagged_title]}']"
     assert_not_visible_css_selector(browser, url_selector, time=3)
@@ -532,6 +540,7 @@ def test_tag_filter_change_re_evaluates_search(
     # "Ne" matches "Alpha News" by title and "delta-forum.net" by URL string
     # So Alpha and Delta are search-visible; Beta and Charlie are search-hidden
     search_input.send_keys("Ne")
+    wait_for_url_search_filter_applied(browser)
 
     alpha_id = str(url_title_to_id[UTS.URL_SEARCH_TITLES[0]])
     delta_id = str(url_title_to_id[UTS.URL_SEARCH_TITLES[3]])
@@ -752,6 +761,7 @@ def test_active_search_preserved_on_url_deletion(
     focus_url_search_input(browser)
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     search_input.send_keys("Alpha")
+    wait_for_url_search_filter_applied(browser)
 
     url_row = browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
 
@@ -792,6 +802,7 @@ def test_no_results_message_shown_when_search_matches_nothing(
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
     search_input.send_keys("ZZZZZZ")
+    wait_for_url_search_filter_applied(browser)
 
     no_results = wait_then_get_element(browser, HPL.URL_SEARCH_NO_RESULTS, time=3)
     assert no_results is not None
@@ -820,6 +831,7 @@ def test_no_results_message_hidden_when_search_has_matches(
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
     search_input.send_keys("ZZZZZZ")
+    wait_for_url_search_filter_applied(browser)
 
     no_results = wait_then_get_element(browser, HPL.URL_SEARCH_NO_RESULTS, time=3)
     assert no_results is not None
@@ -827,6 +839,7 @@ def test_no_results_message_hidden_when_search_has_matches(
 
     search_input.clear()
     search_input.send_keys("Alpha")
+    wait_for_url_search_filter_applied(browser)
 
     assert_not_visible_css_selector(browser, HPL.URL_SEARCH_NO_RESULTS, time=3)
 
@@ -855,6 +868,7 @@ def test_no_results_message_hidden_on_utub_switch(
     search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
     assert search_input is not None
     search_input.send_keys("ZZZZZZ")
+    wait_for_url_search_filter_applied(browser)
 
     no_results = wait_then_get_element(browser, HPL.URL_SEARCH_NO_RESULTS, time=3)
     assert no_results is not None

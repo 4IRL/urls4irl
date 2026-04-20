@@ -10,6 +10,8 @@ import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 
+let descEditOpenedViaKeyboard = false;
+
 type UpdateUtubDescRequest = Schema<"UpdateUTubDescriptionRequest">;
 type UpdateUtubDescResponse = SuccessResponse<"updateUtubDesc">;
 type UpdateUtubDescError = Schema<"ErrorResponse_UTubErrorCodes">;
@@ -28,17 +30,38 @@ function isUpdateUtubDescriptionFieldName(
 }
 
 export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
-  $("#URLDeckSubheader").removeClass("editable").off("click.updateUTubDesc");
+  $("#URLDeckSubheader").removeClass("editable");
+  $("#UTubDescriptionSubheaderWrap")
+    .removeClass("editable-wrap")
+    .off("click.updateUTubDesc");
+  const descPencilIcon = $("#UTubDescriptionSubheaderWrap .edit-pencil-icon");
+  descPencilIcon.addClass("hidden").off("keydown.updateUTubDesc");
 
   const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
   const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
 
   if (getState().isCurrentUserOwner) {
     $("#URLDeckSubheader").addClass("editable");
-    $("#URLDeckSubheader").offAndOnExact("click.updateUTubDesc", function () {
+    $("#UTubDescriptionSubheaderWrap").addClass("editable-wrap");
+    descPencilIcon.removeClass("hidden");
+
+    function openDescriptionEdit(): void {
       deselectAllURLs();
       updateUTubNameHideInput();
       updateUTubDescriptionShowInput(utubID);
+    }
+
+    $("#UTubDescriptionSubheaderWrap").offAndOnExact(
+      "click.updateUTubDesc",
+      openDescriptionEdit,
+    );
+
+    descPencilIcon.offAndOnExact("keydown.updateUTubDesc", function (keyEvent) {
+      if (keyEvent.key === KEYS.ENTER || keyEvent.key === KEYS.SPACE) {
+        keyEvent.preventDefault();
+        descEditOpenedViaKeyboard = true;
+        openDescriptionEdit();
+      }
     });
   }
 
@@ -57,7 +80,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
   $("#utubDescriptionUpdate")
     .offAndOn("focus.updateUTubDescription", function () {
       $("#utubDescriptionUpdate").on(
-        "keyup.updateUTubDescription",
+        "keydown.updateUTubDescription",
         function (keyEvent) {
           if (keyEvent.originalEvent?.repeat) return;
           switch (keyEvent.key) {
@@ -76,7 +99,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       );
     })
     .on("blur.updateUTubDescription", function () {
-      $("#utubDescriptionUpdate").off("keyup.updateUTubDescription");
+      $("#utubDescriptionUpdate").off("keydown.updateUTubDescription");
     });
 
   // Bind clicking outside the window
@@ -84,7 +107,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
     "click.updateUTubDescription",
     function (windowClickEvent) {
       if (
-        $(windowClickEvent.target).closest("#URLDeckSubheader").length ||
+        $(windowClickEvent.target).closest("#UTubDescriptionSubheaderWrap")
+          .length ||
         $(windowClickEvent.target).is($("#utubDescriptionUpdate")) ||
         $(windowClickEvent.target).is(
           $("#URLDeckSubheaderCreateDescription"),
@@ -142,9 +166,10 @@ export function updateUTubDescriptionShowInput(utubID: number): void {
   utubDescriptionUpdate.trigger("focus");
   $("#utubDescriptionSubmitBtnUpdate").showClassNormal();
 
-  // Hide current description
+  // Hide current description and pencil icon
   $("#UTubDescription").hideClass();
   $("#URLDeckSubheader").hideClass();
+  $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").addClass("hidden");
   $("#URLDeckSubheaderCreateDescription").addClass("width-0");
   temporarilyHideSearchForEdit();
 
@@ -155,6 +180,8 @@ export function updateUTubDescriptionShowInput(utubID: number): void {
 export function updateUTubDescriptionHideInput(
   utubID: number | null = null,
 ): void {
+  const editWasOpen = $("#URLDeckSubheader").hasClass("hidden");
+
   // Hide update fields
   hideInput("#utubDescriptionUpdate");
   $("#utubDescriptionSubmitBtnUpdate").hideClass();
@@ -162,8 +189,14 @@ export function updateUTubDescriptionHideInput(
   // Remove event listeners for window click and escape/enter keys
   removeEventListenersToEscapeUpdateUTubDescription();
 
-  // Show values
+  // Show values and pencil icon (only for owners), return focus to pencil
   $("#URLDeckSubheader").showClassNormal();
+  if (getState().isCurrentUserOwner) {
+    const descPencilIcon = $("#UTubDescriptionSubheaderWrap .edit-pencil-icon");
+    descPencilIcon.removeClass("hidden");
+    if (editWasOpen && descEditOpenedViaKeyboard) descPencilIcon[0]?.focus();
+  }
+  descEditOpenedViaKeyboard = false;
   showURLSearchIcon();
 
   // Reset errors on hiding of inputs

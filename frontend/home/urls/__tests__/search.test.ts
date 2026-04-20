@@ -27,6 +27,7 @@ const SEARCH_HTML = `
   <div id="UTubDescriptionSubheaderWrap"></div>
   <button id="URLDeckSubheaderCreateDescription"></button>
   <p id="URLSearchNoResults" class="hidden"></p>
+  <span id="URLSearchAnnouncement"></span>
   <div id="listURLs">
     <div class="urlRow" utuburlid="1" filterable="true">
       <span class="urlTitle">Alpha News</span>
@@ -124,13 +125,19 @@ describe("URL Search", () => {
 
   describe("typing into #URLContentSearch", () => {
     beforeEach(() => {
+      vi.useFakeTimers();
       $("#URLSearchFilterIcon").trigger("click");
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     it("calls filterURLsBySearchTerm with only filterable=true URLs", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
 
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
 
       expect(filterURLsBySearchTerm).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -151,6 +158,7 @@ describe("URL Search", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
 
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
 
       expect($('.urlRow[utuburlid="1"]').attr("searchable")).toBe("true");
       expect($('.urlRow[utuburlid="2"]').attr("searchable")).toBe("false");
@@ -161,6 +169,7 @@ describe("URL Search", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
 
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
 
       expect($('.urlRow[utuburlid="3"]').attr("searchable")).toBeUndefined();
     });
@@ -231,6 +240,16 @@ describe("URL Search", () => {
     it("adds search-ready class to the search wrap", () => {
       showURLSearchIcon();
 
+      expect($("#SearchURLWrap").hasClass("search-ready")).toBe(true);
+    });
+
+    it("removes hidden class when restoring from temporarily hidden state", () => {
+      showURLSearchIcon();
+      temporarilyHideSearchForEdit();
+
+      showURLSearchIcon();
+
+      expect($("#SearchURLWrap").hasClass("hidden")).toBe(false);
       expect($("#SearchURLWrap").hasClass("search-ready")).toBe(true);
     });
   });
@@ -325,13 +344,23 @@ describe("URL Search", () => {
       expect($("#URLSearchFilterIcon").hasClass("hidden")).toBe(true);
     });
 
-    it("hides icon only when search is already collapsed", () => {
+    it("removes search-ready and adds hidden when search is in desktop ready state", () => {
       showURLSearchIcon();
 
       temporarilyHideSearchForEdit();
 
       expect($("#URLSearchFilterIcon").hasClass("hidden")).toBe(true);
-      expect($("#SearchURLWrap").hasClass("search-ready")).toBe(true);
+      expect($("#SearchURLWrap").hasClass("search-ready")).toBe(false);
+      expect($("#SearchURLWrap").hasClass("hidden")).toBe(true);
+    });
+
+    it("preserves search input value for restore after edit", () => {
+      showURLSearchIcon();
+      $("#URLContentSearch").val("alpha");
+
+      temporarilyHideSearchForEdit();
+
+      expect($("#URLContentSearch").val()).toBe("alpha");
     });
   });
 
@@ -401,13 +430,19 @@ describe("URL Search", () => {
     const FILTERABLE_IDS = [1, 2, 4];
 
     beforeEach(() => {
+      vi.useFakeTimers();
       $("#URLSearchFilterIcon").trigger("click");
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
     });
 
     it("shows #URLSearchNoResults when search hides all filterable URLs", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
 
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
 
       const noResults = $("#URLSearchNoResults");
       expect(noResults.hasClass("hidden")).toBe(false);
@@ -418,6 +453,7 @@ describe("URL Search", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2, 4]);
 
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
 
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(true);
     });
@@ -425,6 +461,7 @@ describe("URL Search", () => {
     it("hides #URLSearchNoResults when search input is cleared", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
 
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([]);
       $("#URLContentSearch").val("").trigger("input");
@@ -435,6 +472,7 @@ describe("URL Search", () => {
     it("hides #URLSearchNoResults when search is closed via close icon", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
 
       $("#URLSearchFilterIconClose").trigger("click");
 
@@ -444,6 +482,7 @@ describe("URL Search", () => {
     it("hides #URLSearchNoResults when search is closed via Escape", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
 
       $("#URLContentSearch").trigger("focus");
       $("#URLContentSearch").trigger($.Event("keydown", { key: "Escape" }));
@@ -454,6 +493,7 @@ describe("URL Search", () => {
     it("hides #URLSearchNoResults when closeURLSearchAndEraseInput is called", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
 
       closeURLSearchAndEraseInput();
 
@@ -463,6 +503,7 @@ describe("URL Search", () => {
     it("hides #URLSearchNoResults when disableURLSearch is called", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
 
       disableURLSearch();
 
@@ -487,10 +528,12 @@ describe("URL Search", () => {
     it("hides when no-results is showing and search transitions to partial match", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(false);
 
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
 
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(true);
     });
@@ -498,6 +541,7 @@ describe("URL Search", () => {
     it("shows when tag filter change causes all remaining URLs to be hidden", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2, 4]);
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(true);
 
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
@@ -510,6 +554,7 @@ describe("URL Search", () => {
     it("hides when tag filter change restores some URLs from zero results", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(false);
 
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
@@ -521,6 +566,7 @@ describe("URL Search", () => {
     it("does not show when tag filter hides all URLs leaving zero filterable rows", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2, 4]);
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(true);
 
       $(".urlRow").attr("filterable", "false");
@@ -533,6 +579,7 @@ describe("URL Search", () => {
     it("shows when tag filter removes the only search-matching URL but filterable rows remain", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([2, 4]);
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(true);
 
       $('.urlRow[utuburlid="1"]').attr("filterable", "false");
@@ -550,6 +597,7 @@ describe("URL Search", () => {
       );
       vi.mocked(filterURLsBySearchTerm).mockReturnValue([1]);
       $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(false);
 
       $(".urlRow").attr("filterable", "true");
@@ -557,6 +605,100 @@ describe("URL Search", () => {
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("search results announcement (aria-live)", () => {
+    const FILTERABLE_IDS = [1, 2, 4];
+
+    beforeEach(() => {
+      vi.useFakeTimers();
+      $("#URLSearchFilterIcon").trigger("click");
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it("announces partial match count after debounce", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      expect($("#URLSearchAnnouncement").text()).toBe("2 of 3 URLs shown");
+    });
+
+    it("announces 'No URLs found' when search hides all filterable URLs", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
+
+      $("#URLContentSearch").val("zzzzz").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      expect($("#URLSearchAnnouncement").text()).toBe("No URLs found");
+    });
+
+    it("clears announcement when search input is emptied", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+      expect($("#URLSearchAnnouncement").text()).toBe("2 of 3 URLs shown");
+
+      $("#URLContentSearch").val("").trigger("input");
+
+      expect($("#URLSearchAnnouncement").text()).toBe("");
+    });
+
+    it("clears announcement when search is closed via close icon", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      $("#URLSearchFilterIconClose").trigger("click");
+
+      expect($("#URLSearchAnnouncement").text()).toBe("");
+    });
+
+    it("clears announcement when search is closed via Escape", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      $("#URLContentSearch").trigger("focus");
+      $("#URLContentSearch").trigger($.Event("keydown", { key: "Escape" }));
+
+      expect($("#URLSearchAnnouncement").text()).toBe("");
+    });
+
+    it("clears announcement when disableURLSearch is called", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      disableURLSearch();
+
+      expect($("#URLSearchAnnouncement").text()).toBe("");
+    });
+
+    it("updates announcement when tag filter changes search results", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+      expect($("#URLSearchAnnouncement").text()).toBe("2 of 3 URLs shown");
+
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
+      emit(AppEvents.URL_TAG_FILTER_APPLIED);
+
+      expect($("#URLSearchAnnouncement").text()).toBe("No URLs found");
+    });
+
+    it("announces all URLs shown when search matches everything", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([]);
+
+      $("#URLContentSearch").val("a").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      expect($("#URLSearchAnnouncement").text()).toBe("3 of 3 URLs shown");
     });
   });
 });

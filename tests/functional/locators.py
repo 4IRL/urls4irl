@@ -116,6 +116,9 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_ADD_UTUB_DESC_ON_EMPTY = "#URLDeckSubheaderCreateDescription"
     LABEL_NO_DESCRIPTION = "#URLDeckNoDescription"
 
+    PENCIL_ICON_NAME = "#UTubNameUpdateWrap .edit-pencil-icon"
+    PENCIL_ICON_DESCRIPTION = "#UTubDescriptionSubheaderWrap .edit-pencil-icon"
+
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#NoURLsSubheader"

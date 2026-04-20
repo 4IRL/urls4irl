@@ -75,13 +75,6 @@
 }
 
 #URLContentSearch+.text-input-label {
-    background: var(--searchInputBackgroundColor);
-    color: #c6c6c6;
-    left: 32px;
-}
-
-#URLContentSearch:focus+.text-input-label,
-#URLContentSearch:not(:placeholder-shown)+.text-input-label {
     display: none;
 }
 

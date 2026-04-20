@@ -19,6 +19,8 @@ import {
 } from "./update-description.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
+let nameEditOpenedViaKeyboard = false;
+
 type UpdateUtubNameRequest = Schema<"UpdateUTubNameRequest">;
 type UpdateUtubNameResponse = SuccessResponse<"updateUtubName">;
 type UpdateUtubNameError = Schema<"ErrorResponse_UTubErrorCodes">;
@@ -44,15 +46,33 @@ function checkSameNameUTubOnUpdate(name: string, utubID: number): void {
 }
 
 export function setupUpdateUTubNameEventListeners(utubID: number): void {
-  $("#URLDeckHeader").removeClass("editable").off("click.updateUTubname");
+  $("#URLDeckHeader").removeClass("editable");
+  $("#UTubNameUpdateWrap")
+    .removeClass("editable-wrap")
+    .off("click.updateUTubname");
+  const namePencilIcon = $("#UTubNameUpdateWrap .edit-pencil-icon");
+  namePencilIcon.addClass("hidden").off("keydown.updateUTubname");
 
   if (!getState().isCurrentUserOwner) return;
 
   $("#URLDeckHeader").addClass("editable");
-  $("#URLDeckHeader").offAndOnExact("click.updateUTubname", function () {
+  $("#UTubNameUpdateWrap").addClass("editable-wrap");
+  namePencilIcon.removeClass("hidden");
+
+  function openNameEdit(): void {
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
+  }
+
+  $("#UTubNameUpdateWrap").offAndOnExact("click.updateUTubname", openNameEdit);
+
+  namePencilIcon.offAndOnExact("keydown.updateUTubname", function (keyEvent) {
+    if (keyEvent.key === KEYS.ENTER || keyEvent.key === KEYS.SPACE) {
+      keyEvent.preventDefault();
+      nameEditOpenedViaKeyboard = true;
+      openNameEdit();
+    }
   });
 
   const utubNameSubmitBtnUpdate = $("#utubNameSubmitBtnUpdate");
@@ -104,8 +124,9 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
 
   // Bind clicking outside the window
   $(window).offAndOn("click.updateUTubname", function (windowClickEvent) {
-    // Ignore clicks on the header text that opened this edit
-    if ($(windowClickEvent.target).closest("#URLDeckHeader").length) return;
+    // Ignore clicks on the header wrapper (title text, pencil icon, gap)
+    if ($(windowClickEvent.target).closest("#UTubNameUpdateWrap").length)
+      return;
 
     // Ignore clicks on the input box
     if ($(windowClickEvent.target).is($("#utubNameUpdate"))) return;
@@ -198,8 +219,9 @@ function updateUTubNameShowInput(utubID: number): void {
   showInput("#utubNameUpdate");
   utubNameUpdate.trigger("focus");
 
-  // Hide current name
+  // Hide current name and pencil icon
   $("#URLDeckHeader").hideClass();
+  $("#UTubNameUpdateWrap .edit-pencil-icon").addClass("hidden");
   $("#urlBtnCreate").hideClass();
   temporarilyHideSearchForEdit();
 
@@ -210,14 +232,22 @@ function updateUTubNameShowInput(utubID: number): void {
 
 // Hides input fields for updating an existing UTub's name
 export function updateUTubNameHideInput(): void {
+  const editWasOpen = $("#URLDeckHeader").hasClass("hidden");
+
   // Hide update fields
   hideInput("#utubNameUpdate");
   const utubNameUpdate = $("#utubNameUpdate");
   const parentTitleElem = utubNameUpdate.closest(".titleElement");
   parentTitleElem.removeClass("m-top-bot-0-5rem");
 
-  // Show values
+  // Show values and pencil icon (only for owners), return focus to pencil
   $("#URLDeckHeader").showClassNormal();
+  if (getState().isCurrentUserOwner) {
+    const namePencilIcon = $("#UTubNameUpdateWrap .edit-pencil-icon");
+    namePencilIcon.removeClass("hidden");
+    if (editWasOpen && nameEditOpenedViaKeyboard) namePencilIcon[0]?.focus();
+  }
+  nameEditOpenedViaKeyboard = false;
   $("#urlBtnCreate").showClassNormal();
   showURLSearchIcon();
 

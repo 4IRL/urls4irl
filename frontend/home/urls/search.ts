@@ -9,6 +9,9 @@ type URLDOMEntry = { id: number; title: string; urlString: string };
 
 const MAX_SEARCH_LENGTH = 500;
 const NO_RESULTS_TEXT = "No URLs found";
+const SEARCH_DEBOUNCE_MS = 200;
+
+let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 function readURLsFromDOM(): URLDOMEntry[] {
   return $.map($(".urlRow[filterable=true]").toArray(), (el: HTMLElement) => {
@@ -32,6 +35,7 @@ function updateURLCardSearchVisibility(urlIDsToHide: number[]): void {
   if (urlIDsToHide.length === 0) {
     filterableRows.attr("searchable", "true");
     hideNoResultsMessage();
+    announceSearchResults(filterableRows.length, filterableRows.length);
     emit(AppEvents.URL_SEARCH_VISIBILITY_CHANGED);
     return;
   }
@@ -44,15 +48,27 @@ function updateURLCardSearchVisibility(urlIDsToHide: number[]): void {
     row.attr("searchable", hideSet.has(urlID) ? "false" : "true");
   }
 
-  const hasVisibleURLs =
-    $(".urlRow[filterable=true][searchable=true]").length > 0;
-  if (hasVisibleURLs) {
+  const visibleCount = $(".urlRow[filterable=true][searchable=true]").length;
+  if (visibleCount > 0) {
     hideNoResultsMessage();
   } else {
     showNoResultsMessage();
   }
 
+  announceSearchResults(visibleCount, filterableRows.length);
   emit(AppEvents.URL_SEARCH_VISIBILITY_CHANGED);
+}
+
+function announceSearchResults(visibleCount: number, totalCount: number): void {
+  const text =
+    visibleCount === 0
+      ? "No URLs found"
+      : `${visibleCount} of ${totalCount} URLs shown`;
+  $("#URLSearchAnnouncement").text(text);
+}
+
+function clearSearchAnnouncement(): void {
+  $("#URLSearchAnnouncement").text("");
 }
 
 function showNoResultsMessage(): void {
@@ -110,23 +126,38 @@ export function setURLSearchEventListener(): void {
         searchInput.val(searchTerm.slice(0, MAX_SEARCH_LENGTH));
         return;
       }
+
+      if (searchDebounceTimer !== null) {
+        clearTimeout(searchDebounceTimer);
+      }
+
       if (searchTerm.length < APP_CONFIG.constants.URLS_MIN_LENGTH) {
         updateURLCardSearchVisibility([]);
+        clearSearchAnnouncement();
         return;
       }
-      const urlIDsToHide = filterURLsBySearchTerm(
-        readURLsFromDOM(),
-        searchTerm,
-      );
-      updateURLCardSearchVisibility(urlIDsToHide);
+
+      searchDebounceTimer = setTimeout(() => {
+        searchDebounceTimer = null;
+        const urlIDsToHide = filterURLsBySearchTerm(
+          readURLsFromDOM(),
+          searchTerm,
+        );
+        updateURLCardSearchVisibility(urlIDsToHide);
+      }, SEARCH_DEBOUNCE_MS);
     });
 }
 
 export function closeURLSearchAndEraseInput(): void {
+  if (searchDebounceTimer !== null) {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = null;
+  }
   collapseURLSearchInput();
   $("#URLContentSearch").val("");
   $(".urlRow").removeAttr("searchable");
   hideNoResultsMessage();
+  clearSearchAnnouncement();
   emit(AppEvents.URL_SEARCH_VISIBILITY_CHANGED);
 }
 
@@ -148,25 +179,23 @@ export function collapseURLSearchInput(): void {
 
 export function showURLSearchIcon(): void {
   $("#URLSearchFilterIcon").removeClass("hidden");
-  $("#SearchURLWrap").addClass("search-ready");
+  $("#SearchURLWrap").removeClass("hidden").addClass("search-ready");
 }
 
-function _collapseAndHideIcon(removeSearchReady: boolean): void {
+function _collapseAndHideIcon(): void {
   if ($("#SearchURLWrap").hasClass("visible-flex")) {
     collapseURLSearchInput();
   }
   $("#URLSearchFilterIcon").addClass("hidden");
-  if (removeSearchReady) {
-    $("#SearchURLWrap").removeClass("search-ready");
-  }
+  $("#SearchURLWrap").removeClass("search-ready").addClass("hidden");
 }
 
 export function hideURLSearchIcon(): void {
-  _collapseAndHideIcon(true);
+  _collapseAndHideIcon();
 }
 
 export function temporarilyHideSearchForEdit(): void {
-  _collapseAndHideIcon(false);
+  _collapseAndHideIcon();
 }
 
 export function disableURLSearch(): void {

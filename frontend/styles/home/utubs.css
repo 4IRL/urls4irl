@@ -40,11 +40,47 @@
     cursor: pointer;
 }
 
+.editable-wrap {
+    cursor: pointer;
+}
+
 #URLDeckHeader.editable:hover,
 #URLDeckHeader.editable:active,
 #URLDeckSubheader.editable:hover,
 #URLDeckSubheader.editable:active {
     text-decoration: underline;
+}
+
+.edit-pencil-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.35rem;
+    color: rgba(255, 255, 255, 0.5);
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    cursor: pointer;
+}
+
+@media (hover: hover) {
+    #UTubNameUpdateWrap:hover .edit-pencil-icon:not(.hidden),
+    #UTubDescriptionSubheaderWrap:hover .edit-pencil-icon:not(.hidden),
+    #UTubNameUpdateWrap:focus-within .edit-pencil-icon:not(.hidden),
+    #UTubDescriptionSubheaderWrap:focus-within .edit-pencil-icon:not(.hidden) {
+        opacity: 1;
+    }
+}
+
+.edit-pencil-icon:focus-visible {
+    opacity: 1;
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+
+@media (hover: none) {
+    .edit-pencil-icon:not(.hidden) {
+        opacity: 0.6;
+    }
 }
 
 #UTubDescriptionSubheaderWrap~.createDiv {
@@ -69,6 +105,12 @@
     width: 50%;
     flex-shrink: 0;
     order: 1;
+}
+
+@media (max-width: 991.98px) {
+    #SearchURLWrap.search-ready:not(.visible-flex) {
+        display: none !important;
+    }
 }
 
 @media (min-width: 992px) {
@@ -116,6 +158,17 @@
     #UTubNameOuterUpdateWrap,
     #UTubDescriptionInnerUpdateWrap {
         width: 100%;
+    }
+}
+
+@media (any-pointer: coarse) {
+    .editable-wrap {
+        min-height: 2.75rem;
+        padding-block: 0.5rem;
+    }
+
+    #UTubDescriptionSubheaderOuterWrap {
+        min-height: 2.75rem;
     }
 }
 

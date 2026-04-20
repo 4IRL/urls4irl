@@ -314,14 +314,18 @@ a.urlString {
     letter-spacing: 0.025em;
 }
 
-#URLDeckSubheaderCreateDescription:focus,
-#URLDeckSubheaderCreateDescription:active {
+#URLDeckSubheaderCreateDescription.opa-1:focus,
+#URLDeckSubheaderCreateDescription.opa-1:active {
     opacity: 1;
     height: 100%;
 }
 
 #URLDeckSubheaderCreateDescription {
     color: var(--cardURLTextColor);
+}
+
+#URLDeckSubheaderCreateDescription.opa-0 {
+    pointer-events: none;
 }
 
 #URLDeckSubheader {

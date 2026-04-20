@@ -451,3 +451,21 @@ class ClipboardMockHelper:
                 document.execCommand = window.originalExecCommand;
             }
         """)
+
+
+def wait_for_url_search_filter_applied(browser: WebDriver, timeout: int = 3):
+    """Wait until the URL search handler has updated the DOM.
+
+    After typing into the search input, the handler (possibly debounced) sets a
+    ``searchable`` attribute on every ``.urlRow[filterable='true']`` element. This
+    function blocks until all such rows carry the attribute, confirming that the
+    search filter cycle has completed.
+    """
+
+    def all_filterable_rows_have_searchable_attr(driver: WebDriver) -> bool:
+        rows = driver.find_elements(By.CSS_SELECTOR, HPL.ROW_VISIBLE_URL)
+        if not rows:
+            return False
+        return all(row.get_attribute("searchable") is not None for row in rows)
+
+    WebDriverWait(browser, timeout).until(all_filterable_rows_have_searchable_attr)
