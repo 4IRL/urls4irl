@@ -25,9 +25,7 @@ function readURLsFromDOM(): URLDOMEntry[] {
   }).filter(Boolean);
 }
 
-on(AppEvents.URL_TAG_FILTER_APPLIED, () => {
-  reapplyURLSearchFilter();
-});
+on(AppEvents.URL_TAG_FILTER_APPLIED, reapplyURLSearchFilter);
 
 function updateURLCardSearchVisibility(urlIDsToHide: number[]): void {
   const filterableRows = $(".urlRow[filterable=true]");
@@ -62,7 +60,7 @@ function updateURLCardSearchVisibility(urlIDsToHide: number[]): void {
 function announceSearchResults(visibleCount: number, totalCount: number): void {
   const text =
     visibleCount === 0
-      ? "No URLs found"
+      ? NO_RESULTS_TEXT
       : `${visibleCount} of ${totalCount} URLs shown`;
   $("#URLSearchAnnouncement").text(text);
 }
@@ -121,14 +119,14 @@ export function setURLSearchEventListener(): void {
       searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
+      if (searchDebounceTimer !== null) {
+        clearTimeout(searchDebounceTimer);
+      }
+
       const searchTerm = getInputValue(searchInput).trim();
       if (searchTerm.length > MAX_SEARCH_LENGTH) {
         searchInput.val(searchTerm.slice(0, MAX_SEARCH_LENGTH));
         return;
-      }
-
-      if (searchDebounceTimer !== null) {
-        clearTimeout(searchDebounceTimer);
       }
 
       if (searchTerm.length < APP_CONFIG.constants.URLS_MIN_LENGTH) {
@@ -182,7 +180,7 @@ export function showURLSearchIcon(): void {
   $("#SearchURLWrap").removeClass("hidden").addClass("search-ready");
 }
 
-function _collapseAndHideIcon(): void {
+export function hideURLSearchIcon(): void {
   if ($("#SearchURLWrap").hasClass("visible-flex")) {
     collapseURLSearchInput();
   }
@@ -190,12 +188,8 @@ function _collapseAndHideIcon(): void {
   $("#SearchURLWrap").removeClass("search-ready").addClass("hidden");
 }
 
-export function hideURLSearchIcon(): void {
-  _collapseAndHideIcon();
-}
-
 export function temporarilyHideSearchForEdit(): void {
-  _collapseAndHideIcon();
+  hideURLSearchIcon();
 }
 
 export function disableURLSearch(): void {

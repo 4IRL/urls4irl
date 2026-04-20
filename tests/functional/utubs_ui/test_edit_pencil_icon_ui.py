@@ -4,7 +4,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.models.utubs import Utubs
-from locators import HomePageLocators as HPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
