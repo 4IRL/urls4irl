@@ -492,6 +492,29 @@ describe("Edit pencil icon", () => {
         expect(focusSpy).not.toHaveBeenCalled();
         focusSpy.mockRestore();
       });
+
+      it("hides Add URL button when description edit form opens", () => {
+        $("#urlBtnCreate").removeClass("hidden");
+        descriptionPencilIcon().trigger("click");
+
+        expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+      });
+
+      it("restores Add URL button when description edit form closes via cancel", () => {
+        $("#urlBtnCreate").removeClass("hidden");
+        descriptionPencilIcon().trigger("click");
+        $("#utubDescriptionCancelBtnUpdate").trigger("click");
+
+        expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
+      });
+
+      it("restores Add URL button when updateUTubDescriptionHideInput is called", () => {
+        $("#urlBtnCreate").removeClass("hidden");
+        descriptionPencilIcon().trigger("click");
+        updateUTubDescriptionHideInput(UTUB_ID);
+
+        expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
+      });
     });
 
     describe("non-owner", () => {
@@ -631,6 +654,44 @@ describe("Edit pencil icon", () => {
 
       expect(focusSpy).not.toHaveBeenCalled();
       focusSpy.mockRestore();
+    });
+
+    it("name edit hides Add URL button", () => {
+      $("#urlBtnCreate").removeClass("hidden");
+      $("#URLDeckHeader").trigger("click");
+
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+    });
+
+    it("description edit hides Add URL button", () => {
+      $("#urlBtnCreate").removeClass("hidden");
+      $("#URLDeckSubheader").trigger("click");
+
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+    });
+
+    it("switching from description edit to name edit keeps Add URL button hidden", () => {
+      $("#urlBtnCreate").removeClass("hidden");
+      $("#URLDeckSubheader").trigger("click");
+      namePencilIcon().trigger("click");
+
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+    });
+
+    it("switching from name edit to description edit keeps Add URL button hidden", () => {
+      $("#urlBtnCreate").removeClass("hidden");
+      $("#URLDeckHeader").trigger("click");
+      descriptionPencilIcon().trigger("click");
+
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+    });
+
+    it("cancelling description edit restores Add URL button", () => {
+      $("#urlBtnCreate").removeClass("hidden");
+      $("#URLDeckSubheader").trigger("click");
+      $("#utubDescriptionCancelBtnUpdate").trigger("click");
+
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
     });
   });
 });

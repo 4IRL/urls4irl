@@ -95,6 +95,7 @@ Include this preamble in every subagent prompt:
 | 3 | Request/Response Chain | Per-endpoint full-stack trace | Always (when endpoints are involved) |
 | 4 | Test Infrastructure | Markers, fixtures, coverage, test patterns | Always |
 | 5 | Schema & Data Shapes | Pydantic schemas, DB models, form classes, frontend contracts | Only when task involves data validation or model changes |
+| 6 | UX & Interaction Analysis | Page-level feature inventory, cross-feature conflicts, accessibility, empty/error states, mobile interactions | Always (when task adds or modifies UI) |
 
 All applicable subagents must launch in a **single message** for true parallelism.
 
@@ -239,6 +240,29 @@ For every endpoint where the plan changes the request format, response codes, or
 - `handleImproperFormErrors` dispatch keys
 
 Integration tests send the final format directly and will not catch a gap where the browser is silently broken between steps. Write the frontend to-do in the same step bullet block as the backend to-do it pairs with.
+
+### Accessibility Protocol
+
+When a plan adds or modifies any interactive UI element (buttons, inputs, editable regions, expandable panels, modals), include to-do items for each applicable concern:
+
+1. **Keyboard operability**: Every interactive element must be reachable via Tab and activatable via Enter/Space. If a non-button element (e.g., a clickable `<div>` or `<span>`) is made interactive, add `role="button"`, `tabindex="0"`, and keydown handlers for Enter and Space.
+2. **Focus management**: After opening/closing an interactive widget (search panel, edit form, modal), specify where focus moves. After closing, focus should return to the element that opened it — track opener identity if needed (e.g., `editOpenedViaKeyboard` flag).
+3. **ARIA labels and roles**: Every input must have an `aria-label` or associated `<label>`. Dynamic content changes that the user needs to know about (filter counts, "no results" messages) must use `aria-live="polite"` with a visually-hidden announcement element.
+4. **Touch targets**: On mobile (< 992px), interactive elements must have minimum 44px touch targets (`min-height: 2.75rem`). Specify CSS rules with `@media` breakpoints.
+5. **Focus visibility**: Interactive elements must show a visible focus indicator. Use `:focus-visible` with `outline-offset` to avoid clipping.
+
+If the plan has no UI changes, skip this protocol.
+
+### Cross-Feature Interaction Protocol
+
+For any plan that adds or modifies an interactive UI feature on a page, **Subagent #6 (UX & Interaction Analysis) inventories all other interactive features on the same page/view.** Use its findings to add to-do items for each composition concern:
+
+1. **State conflicts**: If the new feature hides/shows elements (e.g., search filtering URLs), check every other feature that depends on those elements being visible (e.g., card selection, keyboard navigation, inline editing). Add to-do items to handle the conflict (e.g., auto-deselect when selected card is hidden, skip hidden elements in keyboard nav).
+2. **Mutual exclusion**: If two features cannot be active simultaneously (e.g., editing a title while search panel is open), specify which one takes priority and how the other is temporarily disabled or hidden. Add to-do items for the disable/re-enable lifecycle.
+3. **Shared event handlers**: If the new feature binds keyboard events (Escape, Enter, arrow keys) that other features also bind, specify precedence and event propagation behavior. Check for `stopPropagation` / `preventDefault` conflicts.
+4. **Input performance**: If the feature involves text input that triggers filtering, API calls, or DOM manipulation, add a debounce (typically 150-300ms) with timer cleanup on close/unmount.
+5. **Empty/zero states**: For any feature that hides content (search, filters), specify what the user sees when all content is hidden — a "no results" message, a prompt, etc. This must be distinct from the "no content exists" state.
+6. **Discoverability**: If the feature makes existing elements interactive in a non-obvious way (e.g., making headers clickable for inline editing), add visual affordances (icons, hover effects) and specify their show/hide rules per device (hover on desktop, persistent on mobile).
 
 ### CSRF / Auth / Session specifics
 

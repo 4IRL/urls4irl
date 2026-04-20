@@ -164,7 +164,8 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 
 | Command | Description |
 |---|---|
-| `make up` | Build and start the full stack |
+| `make up d=1` | Build and start the full stack (detached) |
+| `make up-built d=1` | Build and start with pre-built Vite assets (detached) |
 | `make down` | Stop the stack |
 | `make build` | Rebuild images without starting |
 | `make restart c=<service>` | Restart a specific compose service |
@@ -182,6 +183,8 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 ### Docker Execution Note
 
 **CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
+
+**CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up d=1` (or `make up-built d=1`), then poll `docker compose ps` until services are healthy. Before starting containers, check if they're already running with `docker compose --project-directory . -f docker/compose.local.yaml ps`.
 
 ### Git Config Write Note
 

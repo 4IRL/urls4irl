@@ -1,12 +1,12 @@
 ---
 name: plan-reviewer
-description: Review a plan file using up to 3 iterative passes of 6 parallel subagents with specialized expertise (Correctness, Full-Stack Trace, Ordering/Dependencies, Codebase Integration, Verification/Test Coverage, Completeness/Risk). Each pass auto-applies mechanical fixes, presents design decisions as interactive questions via AskUserQuestion, applies user choices, then loops into the next pass. Exits early if a pass finds 0 critical + 0 major. After Pass 3, remaining issues are tagged "resolve during implementation." The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in reviews/.
+description: Review a plan file using up to 3 iterative passes of up to 7 parallel subagents with specialized expertise (Correctness, Full-Stack Trace, Ordering/Dependencies, Codebase Integration, Verification/Test Coverage, Completeness/Risk, UX/Accessibility/Edge Cases). Each pass auto-applies mechanical fixes, presents design decisions as interactive questions via AskUserQuestion, applies user choices, then loops into the next pass. Exits early if a pass finds 0 critical + 0 major. After Pass 3, remaining issues are tagged "resolve during implementation." The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in reviews/.
 argument-hint: Plan-name
 ---
 
 # Plan Review with Parallel Subagents (Up to 3 Passes)
 
-Review a plan using 6 specialized subagents running in parallel, then merge their findings into a single review document. Automatically loops up to 3 passes, pausing between each pass for the user to answer design decisions via interactive `AskUserQuestion` prompts.
+Review a plan using up to 7 specialized subagents running in parallel, then merge their findings into a single review document. Automatically loops up to 3 passes, pausing between each pass for the user to answer design decisions via interactive `AskUserQuestion` prompts.
 
 ## Branch Guard
 
@@ -61,7 +61,7 @@ If the plan appears to be a sub-plan (lives in a folder referenced by `**Sub-pla
 
 ### Step 2: Launch 6 Parallel Review Subagents
 
-Launch **all 6 subagents in parallel** using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from individual reference files — the orchestrator does NOT inline the full checklist or response format.
+Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI changes) using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from individual reference files — the orchestrator does NOT inline the full checklist or response format.
 
 **Subagent prompt template** (send this to each, filling in the blanks):
 
@@ -78,8 +78,9 @@ Launch **all 6 subagents in parallel** using the Agent tool with **minimal promp
 
 **Key rules:**
 - Each subagent reads source files independently — the main agent does NOT pre-read files
-- All 6 launches must be in a **single message** for true parallelism
+- All subagent launches must be in a **single message** for true parallelism
 - Use `model: sonnet` for all review subagents
+- Skip Subagent #7 (UX, Accessibility & Edge Cases) if the plan has no UI/frontend changes — it adds no value for backend-only plans
 - NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool. Omit `subagent_type` (defaults to general-purpose)
 
 Subagents (all launched in a single message):
@@ -92,6 +93,7 @@ Subagents (all launched in a single message):
 | 4 | Codebase Integration & Conventions | `sa4-integration.md` | `integration.md` |
 | 5 | Verification & Test Coverage | `sa5-verification.md` | `verification.md` |
 | 6 | Completeness, Risk & Specificity | `sa6-completeness.md` | `completeness.md` |
+| 7 | UX, Accessibility & Edge Cases | `sa7-ux-accessibility.md` | `ux-accessibility.md` |
 
 ### Step 2a: Prior-Fix Verifier (Pass 2+ only)
 
@@ -111,7 +113,7 @@ Prompt template:
 
 ### Step 3: Collect and Validate Results
 
-After all 6 subagents return their one-line confirmations, verify each `plans/<topic>/tmp/<role>.md` file exists. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`.
+After all subagents return their one-line confirmations, verify each expected `plans/<topic>/tmp/<role>.md` file exists. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`, and `ux-accessibility.md` (if launched).
 
 **Use the Glob tool** (`Glob(pattern: "plans/<topic>/tmp/*.md")`) to check for the files — **never use Bash `ls` with brace expansion** (`{a,b,c}`) as it triggers sandbox security prompts.
 
@@ -210,6 +212,7 @@ The writer subagent prompt:
 > **Coverage checklist mapping:** Mark `[x]` if the primary subagent for that area reported reading relevant files (check `files_read`):
 > - Imports → #3 Ordering | Type annotations → #1 Correctness | Error handling → #2 Full-Stack Trace
 > - Test coverage → #5 Verification | Breaking changes → #6 Completeness | Config → #4 Integration | Naming → #4 Integration
+> - Accessibility → #7 UX/Accessibility | Cross-feature interactions → #7 UX/Accessibility | Empty states → #7 UX/Accessibility
 >
 > **DD numbering:** Design decisions use sequential IDs continuing from prior passes. Read the existing file to find the highest DD-N, then start from DD-(N+1). If no prior DDs exist, start at DD-1.
 >
@@ -301,7 +304,7 @@ If prior reviews exist and the current pass found findings that prior passes mis
 ### General Rules
 
 - Each subagent reads source files independently — the main agent does NOT pre-read files for them
-- All 6 subagent launches must be in a single message for true parallelism
+- All subagent launches must be in a single message for true parallelism
 - If a subagent fails to return valid JSON, the coordinator (Step 3b) handles it as a FAIL with a parse error finding — do not attempt to handle it in the orchestrator
 - Cite specific step numbers and file paths in every finding
 - If the plan is solid, say so clearly — a clean review is a useful result

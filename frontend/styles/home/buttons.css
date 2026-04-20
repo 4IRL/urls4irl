@@ -53,6 +53,7 @@
 
 .button-container {
     justify-content: flex-end;
+    flex-shrink: 0;
 }
 
 @media (any-pointer: coarse) {

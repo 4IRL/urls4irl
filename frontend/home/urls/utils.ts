@@ -12,7 +12,8 @@ export function getNumOfVisibleURLs(): number {
   return $(".urlRow[filterable=true]").length;
 }
 
-// Keyboard navigation between selected UTubs or URLs
+const VISIBLE_URL_SELECTOR = ".urlRow[filterable=true]:not([searchable=false])";
+
 export function bindSwitchURLKeyboardEventListeners(): void {
   $(document).offAndOn(
     "keyup.switchurls",
@@ -21,36 +22,37 @@ export function bindSwitchURLKeyboardEventListeners(): void {
       const next = event.key === KEYS.ARROW_DOWN;
 
       if (!prev && !next) return;
+
+      const visibleURLs = $(VISIBLE_URL_SELECTOR);
+      const visibleCount = visibleURLs.length;
+      if (visibleCount === 0) return;
+
       const selectedURLCard = getSelectedURLCard();
 
-      const allURLs = $(".urlRow");
-      const allURLsLength = allURLs.length;
-      if (allURLsLength === 0) return;
-
       if (selectedURLCard === null) {
-        // Select first url if none are selected
-        selectURLCard($(allURLs[0]));
+        selectURLCard($(visibleURLs[0]));
         return;
       }
 
-      const currentIndex = allURLs.index(selectedURLCard);
+      const currentIndex = visibleURLs.index(selectedURLCard);
+
+      if (currentIndex === -1) {
+        selectURLCard($(visibleURLs[0]));
+        return;
+      }
+
+      if (visibleCount === 1) return;
 
       if (prev) {
-        if (currentIndex === 0) {
-          // Wrap to select the bottom URL instead
-          selectURLCard($(allURLs[allURLsLength - 1]));
-        } else {
-          selectURLCard($(allURLs[currentIndex - 1]));
-        }
+        const prevIndex =
+          currentIndex === 0 ? visibleCount - 1 : currentIndex - 1;
+        selectURLCard($(visibleURLs[prevIndex]));
       }
 
       if (next) {
-        if (currentIndex === allURLsLength - 1) {
-          // Wrap to select first URL
-          selectURLCard($(allURLs[0]));
-        } else {
-          selectURLCard($(allURLs[currentIndex + 1]));
-        }
+        const nextIndex =
+          currentIndex === visibleCount - 1 ? 0 : currentIndex + 1;
+        selectURLCard($(visibleURLs[nextIndex]));
       }
     },
   );

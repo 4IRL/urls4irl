@@ -21,9 +21,10 @@ class CreateURLRequest(BaseModel):
     @field_validator("urlTitle", mode="after")
     @classmethod
     def title_not_empty_after_sanitize(cls, value: str) -> str:
-        if not value or value.strip() == "":
+        stripped = value.strip()
+        if not stripped:
             raise ValueError(URL_FAILURE.INVALID_INPUT)
-        return value
+        return stripped
 
 
 class UpdateURLStringRequest(BaseModel):
@@ -45,6 +46,7 @@ class UpdateURLTitleRequest(BaseModel):
     @field_validator("urlTitle", mode="after")
     @classmethod
     def title_not_empty_after_sanitize(cls, value: str) -> str:
-        if not value or value.strip() == "":
+        stripped = value.strip()
+        if not stripped:
             raise ValueError(URL_FAILURE.INVALID_INPUT)
-        return value
+        return stripped

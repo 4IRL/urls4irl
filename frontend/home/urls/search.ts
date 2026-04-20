@@ -121,7 +121,7 @@ export function setURLSearchEventListener(): void {
       searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
-      const searchTerm = getInputValue(searchInput);
+      const searchTerm = getInputValue(searchInput).trim();
       if (searchTerm.length > MAX_SEARCH_LENGTH) {
         searchInput.val(searchTerm.slice(0, MAX_SEARCH_LENGTH));
         return;
@@ -204,7 +204,7 @@ export function disableURLSearch(): void {
 }
 
 export function reapplyURLSearchFilter(): void {
-  const searchTerm = getInputValue($("#URLContentSearch"));
+  const searchTerm = getInputValue($("#URLContentSearch")).trim();
   const searchWrap = $("#SearchURLWrap");
   const isVisible =
     searchWrap.hasClass("visible-flex") || searchWrap.hasClass("search-ready");

@@ -14,6 +14,7 @@ from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
     assert_on_429_page,
+    assert_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -78,6 +79,31 @@ def test_open_update_utub_description_input_creator(
     assert utub_description_update_input.is_displayed()
 
     assert utub_description == utub_description_update_input.get_attribute("value")
+
+
+def test_open_update_utub_description_hides_add_url_btn(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user owns a UTub and the Add URL button is visible
+    WHEN the user opens the description edit input
+    THEN the Add URL button is hidden, and restored when the edit is cancelled
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    wait_until_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE, timeout=3)
+
+    open_update_utub_desc_input(browser)
+
+    assert_not_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
+
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE)
+
+    wait_until_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE, timeout=3)
+    assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
 
 def test_open_update_utub_description_input_member(

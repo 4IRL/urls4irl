@@ -13,11 +13,11 @@ FLASK = source /code/venv/bin/activate && flask
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
-up: ## Build and start the full stack
-	$(COMPOSE) up --build --remove-orphans
+up: ## Build and start the full stack (pass d=1 for detached mode)
+	$(COMPOSE) up --build --remove-orphans $(if $(d),-d,)
 
-up-built: ## Build and start the full stack using pre-built Vite assets
-	$(COMPOSE_BUILT) up --build --remove-orphans
+up-built: ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
+	$(COMPOSE_BUILT) up --build --remove-orphans $(if $(d),-d,)
 
 start-built: ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
 	$(COMPOSE) down

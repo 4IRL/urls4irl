@@ -172,6 +172,7 @@ export function updateUTubDescriptionShowInput(utubID: number): void {
   $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").addClass("hidden");
   $("#URLDeckSubheaderCreateDescription").addClass("width-0");
   temporarilyHideSearchForEdit();
+  $("#urlBtnCreate").hideClass();
 
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 }
@@ -198,6 +199,7 @@ export function updateUTubDescriptionHideInput(
   }
   descEditOpenedViaKeyboard = false;
   showURLSearchIcon();
+  $("#urlBtnCreate").showClassNormal();
 
   // Reset errors on hiding of inputs
   resetUpdateUTubDescriptionFailErrors();

@@ -173,6 +173,37 @@ describe("URL Search", () => {
 
       expect($('.urlRow[utuburlid="3"]').attr("searchable")).toBeUndefined();
     });
+
+    it("treats whitespace-only input as empty and does not call filter", () => {
+      $("#URLContentSearch").val("   ").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      expect(filterURLsBySearchTerm).not.toHaveBeenCalled();
+    });
+
+    it("trims leading/trailing whitespace before filtering", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+
+      $("#URLContentSearch").val("  alpha  ").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      expect(filterURLsBySearchTerm).toHaveBeenCalledWith(
+        expect.any(Array),
+        "alpha",
+      );
+    });
+
+    it("clears search announcement for whitespace-only input", () => {
+      vi.mocked(filterURLsBySearchTerm).mockReturnValue([2]);
+      $("#URLContentSearch").val("alpha").trigger("input");
+      vi.advanceTimersByTime(200);
+      expect($("#URLSearchAnnouncement").text()).toBe("2 of 3 URLs shown");
+
+      $("#URLContentSearch").val("   ").trigger("input");
+      vi.advanceTimersByTime(200);
+
+      expect($("#URLSearchAnnouncement").text()).toBe("");
+    });
   });
 
   describe("pressing Escape", () => {
@@ -394,6 +425,16 @@ describe("URL Search", () => {
         expect.arrayContaining([expect.objectContaining({ id: 1 })]),
         "alpha",
       );
+    });
+
+    it("is a no-op when search input is whitespace-only", () => {
+      showURLSearchIcon();
+      $("#SearchURLWrap").addClass("visible-flex");
+      $("#URLContentSearch").val("   ");
+
+      reapplyURLSearchFilter();
+
+      expect(filterURLsBySearchTerm).not.toHaveBeenCalled();
     });
 
     it("re-filters when search is active with search-ready (desktop)", () => {

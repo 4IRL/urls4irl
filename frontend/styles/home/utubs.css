@@ -27,12 +27,30 @@
     background-color: var(--selectedUTubColorBackground);
 }
 
+.UTubSelector .UTubName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
 .UTubSelector .memberRole {
+    flex-shrink: 0;
     color: var(--memberRoleIconColor);
 }
 
 #UTubDeckSubheaderWrap {
     width: 100%;
+}
+
+#URLDeckHeader {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
+}
+
+#UTubNameUpdateWrap {
+    min-width: 0;
 }
 
 #URLDeckHeader.editable,
@@ -147,7 +165,9 @@
 }
 
 #UTubNameOuterUpdateWrap {
-    width: 85%;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 #UTubDescriptionInnerUpdateWrap {
