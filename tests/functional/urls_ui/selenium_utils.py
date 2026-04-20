@@ -16,19 +16,6 @@ from tests.functional.selenium_utils import (
     wait_until_visible_css_selector,
 )
 
-MOBILE_WIDTH = 500
-MOBILE_HEIGHT = 900
-DESKTOP_WIDTH = 1200
-DESKTOP_HEIGHT = 900
-
-
-def set_mobile_viewport(browser: WebDriver):
-    browser.set_window_size(MOBILE_WIDTH, MOBILE_HEIGHT)
-
-
-def set_desktop_viewport(browser: WebDriver):
-    browser.set_window_size(DESKTOP_WIDTH, DESKTOP_HEIGHT)
-
 
 def open_url_search_box(browser: WebDriver):
     """Opens the URL search box via the toggle icon (mobile/tablet flow)."""
