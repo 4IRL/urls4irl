@@ -51,13 +51,10 @@
     color: black;
 }
 
-#utubTagBtnUpdateAllClose>svg {
+#utubTagBtnUpdateAllClose>svg,
+#utubTagBtnUpdateAllOpen>svg {
     background: var(--updateUTubTagBtnColor);
     border-radius: 4px;
-}
-
-#utubTagBtnUpdateAllOpen {
-    background: var(--updateUTubTagBtnColor);
 }
 
 .tagFilter {

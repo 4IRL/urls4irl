@@ -343,7 +343,7 @@ button {
     }
 
     #UTubNameOuterUpdateWrap ~ .button-container {
-        width: 0% !important;
+        display: none;
     }
 }
 

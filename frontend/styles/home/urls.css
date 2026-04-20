@@ -176,7 +176,8 @@ a.urlString {
     width: 45%;
 }
 
-.urlRow[filterable="false"] {
+.urlRow[filterable="false"],
+.urlRow[searchable="false"] {
     display: none;
 }
 
@@ -299,8 +300,22 @@ a.urlString {
     color: rgba(255, 255, 255, 0.75);
 }
 
-#URLDeckSubheaderCreateDescription:focus,
-#URLDeckSubheaderCreateDescription:active {
+#URLSearchNoResults {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
+#URLDeckSubheaderCreateDescription.opa-1:focus,
+#URLDeckSubheaderCreateDescription.opa-1:active {
     opacity: 1;
     height: 100%;
 }
@@ -309,9 +324,16 @@ a.urlString {
     color: var(--cardURLTextColor);
 }
 
+#URLDeckSubheaderCreateDescription.opa-0 {
+    pointer-events: none;
+}
+
 #URLDeckSubheader {
     word-break: break-all;
     margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 #URLDeckErrorIndicator {

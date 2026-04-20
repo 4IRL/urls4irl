@@ -16,7 +16,7 @@ Each subagent receives the plan file path and must independently read the plan a
       "file": "path/to/file (if applicable)",
       "title": "Short finding title",
       "description": "What's wrong, why it matters, and what the plan should say instead",
-      "category": "correctness | full-stack-trace | ordering | integration | verification | completeness",
+      "category": "correctness | full-stack-trace | ordering | integration | verification | completeness | ux-accessibility",
       "fix_type": "mechanical | design_decision",
       "fix_description": "Exact edit to make (for mechanical) or description of the decision needed (for design_decision)",
       "design_options": ["option A", "option B"]

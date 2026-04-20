@@ -41,4 +41,20 @@ class UI_TEST_STRINGS:
         "D1",
     )
 
+    URL_SEARCH_UTUB_NAME = "URL Search Test UTub"
+
+    URL_SEARCH_TITLES = (
+        "Alpha News",
+        "Beta Blog",
+        "Charlie Docs",
+        "Delta Forum",
+    )
+
+    URL_SEARCH_STRINGS = (
+        "https://alpha-news.com",
+        "https://beta-blog.org",
+        "https://charlie-docs.io",
+        "https://delta-forum.net",
+    )
+
     COOKIE_NAME, COOKIE_VALUE = COOKIE_BANNER_SEEN.split("=")

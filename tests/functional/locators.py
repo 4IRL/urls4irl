@@ -35,7 +35,7 @@ class HomePageLocators(GenericPageLocator):
     """A collector class for main page locators"""
 
     INVALID_FIELD_SUFFIX = "-error"
-    HIDDEN_BTN_CLASS = "hiddenBtn"
+    EDITABLE_CLASS = "editable"
     TOOLTIP_SUFFIX = "-tooltip"
 
     # Navbar
@@ -78,6 +78,12 @@ class HomePageLocators(GenericPageLocator):
     UTUB_CLOSE_SEARCH_ICON = "#UTubSearchFilterIconClose"
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
 
+    URL_OPEN_SEARCH_ICON = "#URLSearchFilterIcon"
+    URL_CLOSE_SEARCH_ICON = "#URLSearchFilterIconClose"
+    URL_SEARCH_INPUT = "#URLContentSearch"
+    URL_SEARCH_WRAP = "#SearchURLWrap"
+    URL_SEARCH_NO_RESULTS = "#URLSearchNoResults"
+
     # Tag Deck
     HEADER_TAG_DECK = "#TagDeckHeader"
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
@@ -103,17 +109,19 @@ class HomePageLocators(GenericPageLocator):
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"
-    BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     WRAP_URL_CREATE = "#createURLWrap"
     BUTTON_UTUB_NAME_CANCEL_UPDATE = "#utubNameCancelBtnUpdate"
     BUTTON_ADD_UTUB_DESC_ON_EMPTY = "#URLDeckSubheaderCreateDescription"
+    LABEL_NO_DESCRIPTION = "#URLDeckNoDescription"
+
+    PENCIL_ICON_NAME = "#UTubNameUpdateWrap .edit-pencil-icon"
+    PENCIL_ICON_DESCRIPTION = "#UTubDescriptionSubheaderWrap .edit-pencil-icon"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#NoURLsSubheader"
-    BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"
     INPUT_UTUB_DESCRIPTION_UPDATE = "#utubDescriptionUpdate"
     BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE = "#utubDescriptionSubmitBtnUpdate"
     BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE = "#utubDescriptionCancelBtnUpdate"

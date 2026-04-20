@@ -1,5 +1,6 @@
 import { $ } from "../../../lib/globals.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { AppEvents, on } from "../../../lib/event-bus.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
 import {
@@ -84,11 +85,29 @@ export function deselectAllURLs(): void {
   if (previouslySelectedCard !== null) deselectURL(previouslySelectedCard);
 }
 
+function isSelectedCardHidden(): boolean {
+  const selectedCard = getSelectedURLCard();
+  if (selectedCard === null) return false;
+  return (
+    selectedCard.attr("searchable") === "false" ||
+    selectedCard.attr("filterable") === "false"
+  );
+}
+
+function deselectIfSelectedCardHidden(): void {
+  if (isSelectedCardHidden()) {
+    deselectAllURLs();
+  }
+}
+
+on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, deselectIfSelectedCardHidden);
+on(AppEvents.URL_TAG_FILTER_APPLIED, deselectIfSelectedCardHidden);
+
 export function setURLCardSelectionEventListener(urlCard: JQuery): void {
   urlCard.offAndOn(
     "click.urlSelected",
     function (event: JQuery.TriggeredEvent) {
-      if (!$(event.target).parents(".urlRow").length) return;
+      if (!$(event.target).closest(".urlRow").length) return;
 
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")
         return;

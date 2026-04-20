@@ -60,9 +60,18 @@ Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore
 Code should be concise, but readable. We are looking for maintainability and future proofing.
 
 
-### Frontend - JavaScript/HTML/CSS
+### Frontend - TypeScript/HTML/CSS
 
-1. Never use window globals for module communiation
+1. Never use window globals for module communication
+2. **Established TS patterns** — use these existing patterns rather than inventing new ones:
+   - **Type-guard dispatch** for field-level validation errors: `const FIELDS = [...] as const` + `isFieldName()` guard (see `splash/init.ts`, `tags/create.ts`)
+   - **is429Handled(xhr)** guard at the top of every `.fail()` handler (`frontend/lib/ajax.ts`)
+   - **Schema<>/SuccessResponse<>** type helpers from `frontend/types/api-helpers.d.ts` for typed AJAX
+   - **offAndOnExact** jQuery plugin for rebinding listeners on repeatedly shown/hidden elements
+   - **ajaxCall()** wrapper for all AJAX — never use `$.ajax` directly
+   - **App store** (`frontend/store/app-store.ts`): `getState()`/`setState()` with `Object.assign` merges
+   - **Event bus** (`frontend/lib/event-bus.ts`): typed `emit()`/`on()` with `AppEvents` enum — see ARCHITECTURE.md for full event reference
+   - **Vitest mocks**: `vi.mock()` at top, `createMockJqXHRChainable()` from `frontend/__tests__/helpers/mock-jquery.ts`, `vi.importActual()` inside `it()` blocks only
 
 
 ### Backend - Python/PostgreSQL/Redis
@@ -78,6 +87,16 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 0. Follow test patterns already established
 1. All backend code must have integration tests that involve a test database and/or Redis.
 2. All frontend code should have at least one happy and one sad path test associated with the UI, unless the UI is complex to warrant multiple tests.
+
+#### Test Infrastructure Quick Reference
+
+- **Locators**: `tests/functional/locators.py` — `HomePageLocators`, `SplashPageLocators`, `GenericPageLocator`, `ModalLocators`
+- **Shared Selenium helpers**: `tests/functional/selenium_utils.py` (40+ helpers: `wait_then_click_element`, `wait_for_element_presence`, `clear_then_send_keys`)
+- **Shared DB helpers**: `tests/functional/db_utils.py` (20+ helpers: `get_utub_this_user_created`, `create_test_searchable_utubs`, `add_mock_urls`)
+- **Feature-specific helpers**: Each `tests/functional/<feature>_ui/` has its own `selenium_utils.py` with domain helpers (e.g., `urls_ui/selenium_utils.py` has `create_url()`, `open_url_search_box()`)
+- **Test constants**: `backend/utils/strings/ui_testing_strs.py` (`UI_TEST_STRINGS` class), `tests/models_for_test.py` (typed test data objects)
+- **Frontend test mocks**: `frontend/__tests__/helpers/mock-jquery.ts` — `createMockJqXHRChainable()`, `createMockModal()`
+- **Full details**: See ARCHITECTURE.md Testing section
 
 #### Testing Best Practices
 
@@ -145,7 +164,8 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 
 | Command | Description |
 |---|---|
-| `make up` | Build and start the full stack |
+| `make up d=1` | Build and start the full stack (detached) |
+| `make up-built d=1` | Build and start with pre-built Vite assets (detached) |
 | `make down` | Stop the stack |
 | `make build` | Rebuild images without starting |
 | `make restart c=<service>` | Restart a specific compose service |
@@ -163,6 +183,8 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 ### Docker Execution Note
 
 **CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
+
+**CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up d=1` (or `make up-built d=1`), then poll `docker compose ps` until services are healthy. Before starting containers, check if they're already running with `docker compose --project-directory . -f docker/compose.local.yaml ps`.
 
 ### Git Config Write Note
 

@@ -235,6 +235,30 @@ def wait_for_element_to_be_removed(
         return False
 
 
+def wait_for_selector_to_be_removed(
+    browser: WebDriver, css_selector: str, timeout: int = 10
+) -> bool:
+    """
+    Waits for all elements matching a CSS selector to be absent from the DOM.
+    Re-queries the DOM each poll cycle, avoiding stale element references.
+
+    Args:
+        browser: The Selenium WebDriver instance.
+        css_selector: CSS selector for the element(s) expected to be removed.
+        timeout: Maximum time to wait (in seconds).
+
+    Returns:
+        True if the selector matches no elements within the timeout, False otherwise.
+    """
+    try:
+        WebDriverWait(browser, timeout).until(
+            lambda driver: len(driver.find_elements(By.CSS_SELECTOR, css_selector)) == 0
+        )
+        return True
+    except TimeoutException:
+        return False
+
+
 def wait_until_hidden(
     browser: WebDriver, css_selector: str, timeout: int = 10
 ) -> WebElement | None:
@@ -636,23 +660,34 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
         Name of UTub to be selected
     """
 
-    utub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
-    assert utub_selectors
+    def find_and_click_utub_by_name(driver):
+        selectors = driver.find_elements(By.CSS_SELECTOR, HPL.SELECTORS_UTUB)
+        for selector in selectors:
+            try:
+                name_elem = selector.find_element(
+                    By.CSS_SELECTOR, HPL.SELECTORS_UTUB_NAME
+                )
+                if name_elem.is_displayed() and name_elem.text == utub_name:
+                    selector.click()
+                    return True
+            except StaleElementReferenceException:
+                return False
+        return False
 
-    for selector in utub_selectors:
-        utub_name_elem = selector.find_element(By.CSS_SELECTOR, HPL.SELECTORS_UTUB_NAME)
-
-        if utub_name_elem.text == utub_name:
-            selector.click()
-            wait_until_utub_name_appears(browser, utub_name)
-            return
+    WebDriverWait(
+        browser, 10, ignored_exceptions=[StaleElementReferenceException]
+    ).until(find_and_click_utub_by_name)
+    wait_until_utub_name_appears(browser, utub_name)
 
 
 def select_utub_by_id(browser: WebDriver, utub_id: int):
     utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
     utub_selector_elem = wait_then_get_element(browser, utub_selector, time=10)
     assert utub_selector_elem is not None
-    utub_name = utub_selector_elem.text
+    utub_name_elem = utub_selector_elem.find_element(
+        By.CSS_SELECTOR, HPL.SELECTORS_UTUB_NAME
+    )
+    utub_name = utub_name_elem.text
     wait_then_click_element(browser, utub_selector, time=3)
     wait_until_utub_name_appears(browser, utub_name)
 
@@ -665,18 +700,14 @@ def select_utub_by_id_mobile(browser: WebDriver, utub_id: int):
 
 
 def wait_until_utub_name_appears(browser: WebDriver, utub_name: str):
-    utub_name_deck_header = wait_then_get_element(browser, HPL.HEADER_URL_DECK, time=10)
-    assert utub_name_deck_header is not None
-    if utub_name_deck_header.text != utub_name:
-        WebDriverWait(browser, 10).until(
-            lambda _: utub_name_deck_header.text == utub_name
+    WebDriverWait(
+        browser, 10, ignored_exceptions=[StaleElementReferenceException]
+    ).until(
+        lambda driver: (
+            elem := driver.find_elements(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
         )
-
-
-def wait_until_update_btn_has_hidden_class(browser: WebDriver, btn_css_selector: str):
-    btn = browser.find_element(By.CSS_SELECTOR, btn_css_selector)
-    WebDriverWait(browser, 10).until(
-        lambda _: HPL.HIDDEN_BTN_CLASS in btn.get_dom_attribute("class")
+        and elem[0].is_displayed()
+        and elem[0].text == utub_name
     )
 
 

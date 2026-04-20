@@ -19,6 +19,11 @@ import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
+import {
+  closeURLSearchAndEraseInput,
+  temporarilyHideSearchForEdit,
+  showURLSearchIcon,
+} from "../search.js";
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -70,6 +75,7 @@ export function resetNewURLForm(): void {
 // Displays new URL input prompt
 export function createURLHideInput(): void {
   resetNewURLForm();
+  showURLSearchIcon();
   if (!getNumOfURLs()) {
     $("#NoURLsSubheader").showClassNormal();
     $("#urlBtnDeckCreateWrap").showClassFlex();
@@ -88,6 +94,7 @@ export function createURLShowInput(utubID: number): void {
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
   $("#urlBtnDeckCreateWrap").hideClass();
+  temporarilyHideSearchForEdit();
 }
 
 // Prepares post request inputs for addition of a new URL
@@ -198,6 +205,9 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   } else {
     selectURLCard(newUrlCard);
   }
+
+  closeURLSearchAndEraseInput();
+  showURLSearchIcon();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL

@@ -4,16 +4,13 @@
 		<!-- Header -->
 		<div class="flex-row align-center" id="UTubNameUpdateWrap">
 			<h2 id="URLDeckHeader">URLs</h2>
-			<!-- Show Update UTub name button -->
-			<button id="utubNameBtnUpdate" class="mx-1" tabindex="0">
-				<svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor"
-					class="bi bi-pencil-square updateIcon" viewBox="0 0 16 16">
-					<path
-						d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-					<path fill-rule="evenodd"
-						d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+			<span class="edit-pencil-icon hidden" role="button" tabindex="0"
+			  aria-label="Edit UTub name">
+				<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+					fill="currentColor" class="bi bi-pencil" viewBox="0 0 16 16">
+					<path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.468-.325"/>
 				</svg>
-			</button>
+			</span>
 		</div>
 
 		<!-- Update UTub name -->
@@ -21,7 +18,26 @@
 	</div>
 
 	<!-- Create URL button -->
-	<div class="col-3 col-lg-3 d-flex flex-row button-container">
+	<div class="d-flex flex-row button-container">
+		<button id="URLSearchFilterIcon" class="hidden" tabindex="0">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="white"
+				height="26" width="26"
+				viewBox="0 0 512 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+				<path
+					d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+			</svg>
+		</button>
+		<button id="URLSearchFilterIconClose" class="hidden" tabindex="0">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="white"
+					height="26" width="26" viewBox="0 0 512 512">
+					<path
+						d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+
+				  <!-- X Shape Inside the Magnifying Glass -->
+					  <line x1="158" y1="158" x2="258" y2="258" stroke="white" stroke-width="20" stroke-linecap="round"/>
+						<line x1="258" y1="158" x2="158" y2="258" stroke="white" stroke-width="20" stroke-linecap="round"/>
+			</svg>
+		</button>
 		<button id="urlBtnCreate" class="green-clickable hidden" tabindex="0">
 			<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
 				class="bi bi-plus-square-fill" viewBox="0 0 16 16">

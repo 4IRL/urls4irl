@@ -27,7 +27,15 @@
     background-color: var(--selectedUTubColorBackground);
 }
 
+.UTubSelector .UTubName {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
 .UTubSelector .memberRole {
+    flex-shrink: 0;
     color: var(--memberRoleIconColor);
 }
 
@@ -35,43 +43,153 @@
     width: 100%;
 }
 
-#updateUTubDescriptionBtn,
-#utubNameBtnUpdate {
-    color: rgba(84, 84, 84, 1.0);
+#URLDeckHeader {
+    overflow-wrap: break-word;
+    word-break: break-word;
+    min-width: 0;
 }
 
-#UTubDescriptionSubheaderWrap>.visibleBtn,
-#UTubNameUpdateWrap>.visibleBtn {
-    display: flex;
+#UTubNameUpdateWrap {
+    min-width: 0;
+}
+
+#URLDeckHeader.editable,
+#URLDeckSubheader.editable {
+    cursor: pointer;
+}
+
+.editable-wrap {
+    cursor: pointer;
+}
+
+#URLDeckHeader.editable:hover,
+#URLDeckHeader.editable:active,
+#URLDeckSubheader.editable:hover,
+#URLDeckSubheader.editable:active {
+    text-decoration: underline;
+}
+
+.edit-pencil-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 0.35rem;
+    color: rgba(255, 255, 255, 0.5);
     opacity: 0;
+    transition: opacity 0.15s ease-in-out;
+    cursor: pointer;
 }
 
-#updateUTubDescriptionBtn:focus,
-#updateUTubDescriptionBtn:active,
-#utubNameBtnUpdate:focus,
-#utubNameBtnUpdate:active {
+@media (hover: hover) {
+    #UTubNameUpdateWrap:hover .edit-pencil-icon:not(.hidden),
+    #UTubDescriptionSubheaderWrap:hover .edit-pencil-icon:not(.hidden),
+    #UTubNameUpdateWrap:focus-within .edit-pencil-icon:not(.hidden),
+    #UTubDescriptionSubheaderWrap:focus-within .edit-pencil-icon:not(.hidden) {
+        opacity: 1;
+    }
+}
+
+.edit-pencil-icon:focus-visible {
     opacity: 1;
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
+    border-radius: 2px;
 }
 
-.hiddenBtn#updateUTubDescriptionBtn,
-.hiddenBtn#utubNameBtnUpdate {
-    display: none !important;
+@media (hover: none) {
+    .edit-pencil-icon:not(.hidden) {
+        opacity: 0.6;
+    }
 }
 
 #UTubDescriptionSubheaderWrap~.createDiv {
     padding-top: 1rem;
 }
 
+#UTubDescriptionSubheaderOuterWrap {
+    width: 100%;
+    min-height: 2rem;
+}
+
+#URLDeckNoDescription {
+    color: rgba(255, 255, 255, 0.45);
+    font-style: italic;
+    font-size: 0.85rem;
+    margin-top: 3px;
+}
+
+#SearchURLWrap {
+    margin-left: auto;
+    padding-top: 0;
+    width: 50%;
+    flex-shrink: 0;
+    order: 1;
+}
+
+@media (max-width: 991.98px) {
+    #SearchURLWrap.search-ready:not(.visible-flex) {
+        display: none !important;
+    }
+}
+
+@media (min-width: 992px) {
+    #SearchURLWrap.search-ready {
+        display: flex !important;
+        width: 30%;
+    }
+
+    #URLSearchFilterIcon,
+    #URLSearchFilterIconClose {
+        display: none !important;
+    }
+}
+
+@media (max-width: 767.98px) {
+    #SearchURLWrap {
+        width: 75%;
+    }
+}
+
+@media (max-width: 558px) {
+    #SearchURLWrap {
+        width: 100%;
+    }
+}
+
 #UTubDescriptionSubheaderWrap {
     margin-bottom: 0.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 #UTubNameOuterUpdateWrap {
-    width: 85%;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 #UTubDescriptionInnerUpdateWrap {
     width: 65%;
+}
+
+@media (max-width: 767.98px) {
+    #UTubNameOuterUpdateWrap,
+    #UTubDescriptionInnerUpdateWrap {
+        width: 100%;
+    }
+}
+
+@media (any-pointer: coarse) {
+    .editable-wrap {
+        min-height: 2.75rem;
+        padding-block: 0.5rem;
+    }
+
+    #UTubDescriptionSubheaderOuterWrap {
+        min-height: 2.75rem;
+    }
 }
 
 @media not all and (any-pointer: coarse) {
@@ -87,13 +205,4 @@
         background-color: var(--selectedUTubColorBackground);
     }
 
-    .updateIcon:hover {
-        cursor: pointer;
-        color: white;
-    }
-
-    #UTubDescriptionSubheaderWrap.visible-flex:hover>.visibleBtn,
-    #UTubNameUpdateWrap:hover>.visibleBtn {
-        opacity: 1;
-    }
 }

@@ -10,7 +10,10 @@
 }
 
 .text-input[type="url"],
-.text-input[type="text"] {
+.text-input[type="text"],
+.text-input[type="search"] {
+    -webkit-appearance: none;
+    appearance: none;
     width: 100%;
     padding: 10px;
     border: 1px solid var(--borderColor);
@@ -22,15 +25,30 @@
     color: whitesmoke;
 }
 
-#UTubNameSearch.text-input[type="text"] {
+.search-input.text-input[type="text"],
+.search-input.text-input[type="search"] {
     background: var(--searchInputBackgroundColor);
     border-radius: 25px;
     padding-inline: 13px;
-    padding-top: 5px;
-    padding-bottom: 5px;
+    padding-top: 1px;
+    padding-bottom: 1px;
     width: 0;
     opacity: 0;
     transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
+}
+
+.url-search-prefix-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+    z-index: 1;
+}
+
+#URLContentSearch.search-input.text-input[type="search"] {
+    padding-left: 32px;
 }
 
 #UTubNameSearch.text-input[type="text"].utub-search-expanded {
@@ -47,15 +65,35 @@
     display: none;
 }
 
+#URLContentSearch.text-input[type="search"].url-search-expanded {
+    width: 100%;
+    opacity: 1;
+}
+
+@media (min-width: 992px) {
+    #URLContentSearch.search-input.text-input[type="search"] {
+        width: 100%;
+        opacity: 1;
+        transition: none;
+    }
+}
+
+#URLContentSearch+.text-input-label {
+    display: none;
+}
+
 @media not all and (any-pointer: coarse) {
+
     .text-input[type="url"]:hover,
-    .text-input[type="text"]:hover {
+    .text-input[type="text"]:hover,
+    .text-input[type="search"]:hover {
         border-color: var(--deckSelectionGreenHover);
     }
 }
 
 .text-input[type="url"]:focus,
-.text-input[type="text"]:focus {
+.text-input[type="text"]:focus,
+.text-input[type="search"]:focus {
     border-color: var(--deckSelectionGreen);
 }
 

@@ -10,7 +10,7 @@ Each subagent is a **research-only** general-purpose agent that explores the cod
 
 ```json
 {
-  "area": "architecture | dependencies | request-chain | tests | schemas",
+  "area": "architecture | dependencies | request-chain | tests | schemas | ux-interaction",
   "files_read": ["list of files actually read during research"],
   "findings": {
     // area-specific structured data — see per-subagent sections below
@@ -309,6 +309,119 @@ Rules:
   ],
   "validation_constants": [
     {"file": "backend/utils/strings/splash_strings.py", "constants": ["USER_FAILURE", "REGISTER_FORM"]}
+  ]
+}
+```
+
+---
+
+## Subagent 6: UX & Interaction Analysis (Conditional)
+
+**Role:** Inventory all interactive features on the affected page/view, identify cross-feature composition conflicts, check accessibility, and flag empty/error states and mobile interaction concerns.
+
+**Launch condition:** Always launch when the task adds or modifies UI elements. Skip for backend-only or test-only tasks.
+
+**What to read:**
+- HTML templates for the affected page/view — identify every interactive element (buttons, inputs, editable regions, expandable panels, modals, keyboard-navigable lists)
+- All JS/TS modules loaded on the same page — identify event listeners, keyboard bindings, state-dependent show/hide logic
+- CSS files for the affected area — identify responsive breakpoints, hover/focus styles, transition/animation classes
+- Existing accessibility attributes (`aria-*`, `role`, `tabindex`) in the affected templates
+- Any existing "search", "filter", "select", "edit", or "nav" features on the same page
+
+**Research checklist:**
+
+1. **Page feature inventory**: List every interactive feature currently on the page where the new feature will live. For each, note: what events it binds (click, keydown, hover), what DOM elements it shows/hides, what state it tracks.
+
+2. **Cross-feature conflict analysis**: For each existing feature, ask: "If the new feature and this feature are both active simultaneously, what breaks?" Specific scenarios:
+   - New feature hides elements that another feature depends on (e.g., search hides a selected card)
+   - New feature binds the same keyboard shortcut as an existing feature (e.g., both bind Escape)
+   - New feature modifies DOM structure that another feature queries (e.g., filtering changes `.length` counts)
+   - New feature's open/close state conflicts with another feature's open/close state (e.g., can't edit and search at the same time)
+
+3. **Accessibility audit**: For each interactive element the plan adds:
+   - Does it have keyboard access (tab order, Enter/Space activation)?
+   - Does it have ARIA labels/roles for screen readers?
+   - Does it announce state changes (`aria-live` regions for filter results, error counts)?
+   - Does it have visible focus indicators (`:focus-visible` styles)?
+   - Does it meet minimum touch target size on mobile (44px)?
+
+4. **Empty/error state inventory**: For each feature that hides/shows/filters content:
+   - What does the user see when all content is hidden? Is there a "no results" message?
+   - Is the "no results" state distinct from the "no content exists" state?
+   - What happens when the filter/search input is empty vs. has whitespace-only input?
+
+5. **Input performance**: For any text input that triggers DOM manipulation or filtering:
+   - Is debouncing needed? What interval?
+   - Are there timer cleanup requirements on close/unmount/Escape?
+
+6. **Discoverability**: For any element made interactive without a visible affordance (e.g., clickable headers):
+   - What visual cue tells the user this element is interactive?
+   - Does the cue differ between desktop (hover) and mobile (persistent)?
+   - Is the affordance hidden during edit/active state?
+
+7. **Mobile-specific concerns**:
+   - Does the feature involve text input? If so, does the soft keyboard shift the viewport?
+   - Are touch targets large enough (44px minimum)?
+   - Do hover-dependent interactions have mobile fallbacks?
+
+**Response `findings` shape:**
+
+```json
+{
+  "page_features": [
+    {
+      "name": "card selection",
+      "elements": ["#URLDeckInner .urlRow"],
+      "events_bound": ["click", "keydown (arrow keys)"],
+      "state_tracked": ["selectedCardId in app-store"],
+      "dom_effects": ["adds .selected class, shows URL details panel"]
+    }
+  ],
+  "cross_feature_conflicts": [
+    {
+      "feature_a": "URL search",
+      "feature_b": "card selection",
+      "conflict": "Search hides cards via searchable=false, but selected card may be hidden — selection state becomes stale",
+      "severity": "major",
+      "suggested_resolution": "Auto-deselect when selected card is hidden by search filter"
+    }
+  ],
+  "accessibility_gaps": [
+    {
+      "element": "editable UTub name header",
+      "gap": "No keyboard activation — header click triggers edit but no keydown handler exists",
+      "wcag_criterion": "2.1.1 Keyboard",
+      "suggested_fix": "Add role=button, tabindex=0, keydown handler for Enter/Space"
+    }
+  ],
+  "empty_states": [
+    {
+      "feature": "URL search filter",
+      "scenario": "All URLs hidden by search term",
+      "current_behavior": "Empty list with no indication",
+      "suggested_fix": "Show 'No URLs found' message with aria-live announcement"
+    }
+  ],
+  "input_performance": [
+    {
+      "element": "search input",
+      "concern": "Typing fires filter on every keystroke — expensive DOM manipulation",
+      "suggested_fix": "Add 200ms debounce with timer cleanup on close/Escape"
+    }
+  ],
+  "discoverability_issues": [
+    {
+      "element": "UTub name header",
+      "issue": "Header is clickable for inline editing but has no visual affordance",
+      "suggested_fix": "Add pencil icon on hover (desktop) / persistent (mobile)"
+    }
+  ],
+  "mobile_concerns": [
+    {
+      "element": "edit buttons",
+      "issue": "Buttons are 24px — below 44px touch target minimum",
+      "suggested_fix": "Add min-height: 2.75rem on mobile via @media query"
+    }
   ]
 }
 ```

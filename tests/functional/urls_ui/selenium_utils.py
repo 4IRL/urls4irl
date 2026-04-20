@@ -1,16 +1,49 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.ui import WebDriverWait
 
+from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
     open_update_url_title,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+
+
+def open_url_search_box(browser: WebDriver):
+    """Opens the URL search box via the toggle icon (mobile/tablet flow)."""
+    wait_until_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, timeout=3)
+    assert_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON)
+
+    wait_then_click_element(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, HPL.URL_SEARCH_INPUT, timeout=3
+    )
+    wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
+
+    assert_visible_css_selector(browser, HPL.URL_CLOSE_SEARCH_ICON, time=3)
+    url_search_elem = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    assert browser.switch_to.active_element == url_search_elem
+
+
+def focus_url_search_input(browser: WebDriver):
+    """Focuses the always-visible URL search input (desktop flow)."""
+    search_wrap = browser.find_element(By.CSS_SELECTOR, HPL.URL_SEARCH_WRAP)
+    WebDriverWait(browser, 10).until(
+        lambda _: "search-ready" in (search_wrap.get_dom_attribute("class") or "")
+    )
+    wait_until_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, timeout=10)
+    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=10)
+    assert search_input is not None
+    search_input.click()
+    wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
 
 
 def create_url(browser: WebDriver, url_title: str, url_string: str):
@@ -405,3 +438,21 @@ class ClipboardMockHelper:
                 document.execCommand = window.originalExecCommand;
             }
         """)
+
+
+def wait_for_url_search_filter_applied(browser: WebDriver, timeout: int = 3):
+    """Wait until the URL search handler has updated the DOM.
+
+    After typing into the search input, the handler (possibly debounced) sets a
+    ``searchable`` attribute on every ``.urlRow[filterable='true']`` element. This
+    function blocks until all such rows carry the attribute, confirming that the
+    search filter cycle has completed.
+    """
+
+    def all_filterable_rows_have_searchable_attr(driver: WebDriver) -> bool:
+        rows = driver.find_elements(By.CSS_SELECTOR, HPL.ROW_VISIBLE_URL)
+        if not rows:
+            return False
+        return all(row.get_attribute("searchable") is not None for row in rows)
+
+    WebDriverWait(browser, timeout).until(all_filterable_rows_have_searchable_attr)

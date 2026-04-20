@@ -34,6 +34,7 @@ export function updateURLsAndTagSubheaderWhenTagSelected(): void {
   }));
   const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
   applyURLVisibilityToDOM(visibility);
+  emit(AppEvents.URL_TAG_FILTER_APPLIED);
   reapplyAlternatingURLCardBackgroundAfterFilter();
   emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs });
   updateVisibleURLsForTagCount();
@@ -100,7 +101,9 @@ export function updateTagFilterCount(
 }
 
 export function reapplyAlternatingURLCardBackgroundAfterFilter(): void {
-  const visibleURLCards = $(".urlRow[filterable=true]:visible");
+  const visibleURLCards = $(
+    ".urlRow[filterable=true][searchable!=false]:visible",
+  );
 
   visibleURLCards.each((idx, urlCard) => {
     $(urlCard)
@@ -147,6 +150,10 @@ export function updateTagFilteringOnURLOrURLTagDeletion(): void {
 }
 
 on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());
+
+on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () =>
+  reapplyAlternatingURLCardBackgroundAfterFilter(),
+);
 
 on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
   setState({

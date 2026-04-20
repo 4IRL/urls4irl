@@ -20,6 +20,13 @@ import {
   newURLInputRemoveEventListeners,
 } from "./cards/cards.js";
 import { resetNewURLForm } from "./cards/create.js";
+import {
+  showURLSearchIcon,
+  hideURLSearchIcon,
+  disableURLSearch,
+  setURLSearchEventListener,
+  reapplyURLSearchFilter,
+} from "./search.js";
 import type { UtubUrlItem, UtubTag } from "../../types/url.js";
 
 // Clear the URL Deck
@@ -31,15 +38,14 @@ export function resetURLDeck(): void {
   $(".urlRow").remove();
   $("#urlBtnCreate").hideClass();
   updateUTubDescriptionHideInput();
+  disableURLSearch();
 }
 
 export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
   $("#NoURLsSubheader").hideClass();
   $("#urlBtnDeckCreateWrap").hideClass();
-  $("#updateUTubDescriptionBtn")
-    .removeClass("visibleBtn")
-    .addClass("hiddenBtn");
+  disableURLSearch();
 }
 
 export function showURLDeckBannerError(errorMessage: string): void {
@@ -92,6 +98,10 @@ export function updateURLDeck(
       utubID,
     );
   });
+
+  if ($("#SearchURLWrap").hasClass("visible-flex")) {
+    reapplyURLSearchFilter();
+  }
 }
 
 // Build center panel URL list for selectedUTub
@@ -131,6 +141,14 @@ export function setURLDeckOnUTubSelected(
 
   $("#urlBtnCreate").showClassNormal();
   setUTubNameAndDescription(utubName);
+
+  setURLSearchEventListener();
+  if (numOfURLs > 0) {
+    showURLSearchIcon();
+  } else {
+    hideURLSearchIcon();
+  }
+  reapplyURLSearchFilter();
 }
 
 export function setURLDeckWhenNoUTubSelected(): void {
@@ -139,19 +157,17 @@ export function setURLDeckWhenNoUTubSelected(): void {
   $(".updateUTubBtn").hideClass();
   $("#urlBtnCreate").hideClass();
   $("#accessAllURLsBtn").hideClass();
-  $("#utubNameBtnUpdate").hideClass();
-  $("#updateUTubDescriptionBtn")
-    .removeClass("visibleBtn")
-    .addClass("hiddenBtn");
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 
   const urlDeckSubheader = $("#URLDeckSubheader");
   urlDeckSubheader.text(`${APP_CONFIG.strings.UTUB_SELECT}`);
+  urlDeckSubheader.removeClass("editable");
+  urlDeckSubheader.off("click.updateUTubDesc");
   urlDeckSubheader.show();
+  $("#URLDeckHeader").removeClass("editable");
+  $("#URLDeckHeader").off("click.updateUTubname");
   $("#UTubDescriptionSubheaderWrap").removeClass("hidden");
-
-  // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
-  $("#utubNameBtnUpdate").removeClass("visibleBtn");
+  disableURLSearch();
 }
 
 export function initURLDeck(): void {

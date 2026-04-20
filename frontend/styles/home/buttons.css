@@ -31,7 +31,9 @@
 }
 
 #UTubSearchFilterIconClose,
-#UTubSearchFilterIcon {
+#UTubSearchFilterIcon,
+#URLSearchFilterIconClose,
+#URLSearchFilterIcon {
     cursor: pointer;
     height: 100%;
     margin-bottom: 0;
@@ -39,16 +41,30 @@
     margin-right: 4px;
 }
 
-#UTubSearchFilterIcon>svg {
+#UTubSearchFilterIcon>svg,
+#URLSearchFilterIcon>svg {
     fill: var(--grayBadgeSelection);
 }
 
-#UTubSearchFilterIconClose>svg {
+#UTubSearchFilterIconClose>svg,
+#URLSearchFilterIconClose>svg {
     fill: var(--spanRemoveColor);
 }
 
 .button-container {
     justify-content: flex-end;
+    flex-shrink: 0;
+}
+
+@media (any-pointer: coarse) {
+    .button-container button {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+
 }
 
 @media not all and (any-pointer: coarse) {
@@ -69,11 +85,13 @@
         background: var(--removeIconColorHover);
     }
 
-    #UTubSearchFilterIcon:hover>svg {
+    #UTubSearchFilterIcon:hover>svg,
+    #URLSearchFilterIcon:hover>svg {
         fill: var(--deckSelectionGreenHover);
     }
 
-    #UTubSearchFilterIconClose:hover>svg {
+    #UTubSearchFilterIconClose:hover>svg,
+    #URLSearchFilterIconClose:hover>svg {
         fill: var(--spanRemoveColorHover);
     }
 

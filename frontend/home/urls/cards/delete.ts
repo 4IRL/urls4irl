@@ -7,6 +7,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { hideURLSearchIcon } from "../search.js";
 
 type DeleteUrlResponse = SuccessResponse<"deleteUrl">;
 
@@ -129,6 +130,7 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
       $("#accessAllURLsBtn").hideClass();
       $("#NoURLsSubheader").showClassFlex();
       $("#urlBtnDeckCreateWrap").showClassFlex();
+      hideURLSearchIcon();
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();
     }
