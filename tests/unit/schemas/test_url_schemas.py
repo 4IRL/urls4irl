@@ -1,6 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
+from backend.schemas.requests.urls import CreateURLRequest, UpdateURLTitleRequest
 from backend.utils.strings.model_strs import MODELS as M
 
 pytestmark = pytest.mark.unit
@@ -115,24 +116,18 @@ class TestCreateURLRequestWhitespaceStripping:
     """Tests that CreateURLRequest strips leading/trailing whitespace from urlTitle."""
 
     def test_strips_leading_and_trailing_whitespace(self):
-        from backend.schemas.requests.urls import CreateURLRequest
-
         request = CreateURLRequest(
             urlString="https://example.com", urlTitle="  hello  "
         )
         assert request.urlTitle == "hello"
 
     def test_strips_tabs_and_newlines(self):
-        from backend.schemas.requests.urls import CreateURLRequest
-
         request = CreateURLRequest(
             urlString="https://example.com", urlTitle="\t\n title here \n\t"
         )
         assert request.urlTitle == "title here"
 
     def test_all_whitespace_title_raises_validation_error(self):
-        from backend.schemas.requests.urls import CreateURLRequest
-
         with pytest.raises(ValidationError):
             CreateURLRequest(urlString="https://example.com", urlTitle="   ")
 
@@ -141,19 +136,13 @@ class TestUpdateURLTitleRequestWhitespaceStripping:
     """Tests that UpdateURLTitleRequest strips leading/trailing whitespace from urlTitle."""
 
     def test_strips_leading_and_trailing_whitespace(self):
-        from backend.schemas.requests.urls import UpdateURLTitleRequest
-
         request = UpdateURLTitleRequest(urlTitle="  hello  ")
         assert request.urlTitle == "hello"
 
     def test_strips_tabs_and_newlines(self):
-        from backend.schemas.requests.urls import UpdateURLTitleRequest
-
         request = UpdateURLTitleRequest(urlTitle="\t\n title here \n\t")
         assert request.urlTitle == "title here"
 
     def test_all_whitespace_title_raises_validation_error(self):
-        from backend.schemas.requests.urls import UpdateURLTitleRequest
-
         with pytest.raises(ValidationError):
             UpdateURLTitleRequest(urlTitle="   ")
