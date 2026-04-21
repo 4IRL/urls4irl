@@ -8,7 +8,8 @@ import {
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
 import { getNumOfURLs, getNumOfVisibleURLs } from "../utils.js";
-const TAG_FILTER_NO_RESULTS_TEXT = "No URLs match selected tags";
+
+export const TAG_FILTER_NO_RESULTS_TEXT = "No URLs match selected tags";
 
 function showTagFilterNoResultsMessage(): void {
   $("#URLTagFilterNoResults")

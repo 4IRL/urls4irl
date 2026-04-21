@@ -1,4 +1,7 @@
-import { updateURLsAndTagSubheaderWhenTagSelected } from "../filtering.js";
+import {
+  TAG_FILTER_NO_RESULTS_TEXT,
+  updateURLsAndTagSubheaderWhenTagSelected,
+} from "../filtering.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 
 vi.mock("../../../../logic/tag-filtering.js", () => ({
@@ -17,8 +20,6 @@ import { computeURLVisibility } from "../../../../logic/tag-filtering.js";
 import { getState } from "../../../../store/app-store.js";
 
 const $ = window.jQuery;
-
-const TAG_FILTER_NO_RESULTS_TEXT = "No URLs match selected tags";
 
 const FIXTURE_HTML = `
   <p id="URLTagFilterNoResults" class="hidden"></p>

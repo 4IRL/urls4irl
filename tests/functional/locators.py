@@ -84,6 +84,7 @@ class HomePageLocators(GenericPageLocator):
     URL_SEARCH_WRAP = "#SearchURLWrap"
     URL_SEARCH_NO_RESULTS = "#URLSearchNoResults"
     TAG_FILTER_NO_RESULTS = "#URLTagFilterNoResults"
+    TAG_FILTER_ANNOUNCEMENT = "#URLTagFilterAnnouncement"
 
     # Tag Deck
     HEADER_TAG_DECK = "#TagDeckHeader"

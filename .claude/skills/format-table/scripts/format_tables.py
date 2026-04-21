@@ -44,6 +44,7 @@ def format_table(lines):
 
     formatted = []
     for row_idx, row in enumerate(rows):
+        # GFM spec: row index 1 is always the header-separator row (e.g. |---|---|)
         if row_idx == 1 and is_separator_row(row):
             cells = ["-" * col_widths[col_idx] for col_idx in range(num_cols)]
         else:
@@ -424,7 +425,11 @@ def check_file(filepath, fix=False):
     all_ok = tables_ok and diagrams_ok
 
     if fix and not all_ok:
-        Path(filepath).write_text("\n".join(new_lines) + "\n")
+        had_trailing_newline = content.endswith("\n")
+        output = "\n".join(new_lines)
+        if had_trailing_newline:
+            output += "\n"
+        Path(filepath).write_text(output)
         print(f"{filepath}: fixed")
 
     return all_ok

@@ -34,7 +34,6 @@ from tests.functional.urls_ui.selenium_utils import (
 
 pytestmark = pytest.mark.tags_ui
 
-TAG_FILTER_ANNOUNCEMENT_SELECTOR = "#URLTagFilterAnnouncement"
 UNMATCHED_TAG_STRING = "unmatched-tag"
 
 
@@ -277,7 +276,7 @@ def test_tag_filter_aria_announcement(
     assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
 
     announcement_elem = browser.find_element(
-        By.CSS_SELECTOR, TAG_FILTER_ANNOUNCEMENT_SELECTOR
+        By.CSS_SELECTOR, HPL.TAG_FILTER_ANNOUNCEMENT
     )
     assert announcement_elem.get_attribute("textContent") == UTS.TAG_FILTER_NO_URLS
 
@@ -287,6 +286,6 @@ def test_tag_filter_aria_announcement(
     assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
 
     announcement_elem = browser.find_element(
-        By.CSS_SELECTOR, TAG_FILTER_ANNOUNCEMENT_SELECTOR
+        By.CSS_SELECTOR, HPL.TAG_FILTER_ANNOUNCEMENT
     )
     assert announcement_elem.get_attribute("textContent") == ""
