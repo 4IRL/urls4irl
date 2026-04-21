@@ -167,6 +167,23 @@ describe("Tag Filter Empty State", () => {
     expect($("#URLTagFilterAnnouncement").text()).toBe("");
   });
 
+  it("tag filter message shown even when search is active and no filterable URLs exist", () => {
+    $("#SearchURLWrap").removeClass("hidden").addClass("visible-flex");
+    $("#URLContentSearch").val("some query");
+
+    vi.mocked(computeURLVisibility).mockReturnValue([
+      { urlId: 1, visible: false },
+      { urlId: 2, visible: false },
+      { urlId: 3, visible: false },
+    ]);
+
+    updateURLsAndTagSubheaderWhenTagSelected();
+
+    const noResults = $("#URLTagFilterNoResults");
+    expect(noResults.hasClass("hidden")).toBe(false);
+    expect(noResults.text()).toBe(TAG_FILTER_NO_RESULTS_TEXT);
+  });
+
   it("hides message on UTUB_SELECTED event", () => {
     $("#URLTagFilterNoResults")
       .removeClass("hidden")
