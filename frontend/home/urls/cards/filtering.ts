@@ -1,4 +1,5 @@
 import { $ } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { on, emit, AppEvents } from "../../../lib/event-bus.js";
 import { currentTagDeckIDs, isATagSelected } from "../../tags/utils.js";
@@ -9,13 +10,11 @@ import {
 } from "../../../logic/tag-filtering.js";
 import { getNumOfVisibleURLs } from "../utils.js";
 
-export const TAG_FILTER_NO_RESULTS_TEXT = "No URLs match selected tags";
-
 function showTagFilterNoResultsMessage(): void {
   $("#URLTagFilterNoResults")
-    .text(TAG_FILTER_NO_RESULTS_TEXT)
+    .text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS)
     .removeClass("hidden");
-  $("#URLTagFilterAnnouncement").text(TAG_FILTER_NO_RESULTS_TEXT);
+  $("#URLTagFilterAnnouncement").text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
 }
 
 function hideTagFilterNoResultsMessage(): void {

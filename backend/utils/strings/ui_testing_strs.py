@@ -5,6 +5,8 @@ from backend.cli.mock_constants import (
     EMAIL_SUFFIX,
     MOCK_URL_STRINGS,
 )
+from backend.utils.strings.tag_strs import TAG_FILTER_NO_RESULTS
+from backend.utils.strings.url_strs import URL_SEARCH_NO_RESULTS
 from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
 
 
@@ -57,6 +59,7 @@ class UI_TEST_STRINGS:
         "https://delta-forum.net",
     )
 
-    TAG_FILTER_NO_URLS = "No URLs match selected tags"
+    TAG_FILTER_NO_URLS = TAG_FILTER_NO_RESULTS
+    URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
 
     COOKIE_NAME, COOKIE_VALUE = COOKIE_BANNER_SEEN.split("=")

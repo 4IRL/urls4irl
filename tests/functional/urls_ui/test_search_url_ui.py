@@ -807,7 +807,7 @@ def test_no_results_message_shown_when_search_matches_nothing(
     no_results = wait_then_get_element(browser, HPL.URL_SEARCH_NO_RESULTS, time=3)
     assert no_results is not None
     assert no_results.is_displayed()
-    assert no_results.text == "No URLs found"
+    assert no_results.text == UTS.URL_SEARCH_NO_URLS
 
 
 def test_no_results_message_hidden_when_search_has_matches(

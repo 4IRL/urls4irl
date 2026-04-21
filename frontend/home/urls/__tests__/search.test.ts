@@ -9,6 +9,7 @@ import {
   reapplyURLSearchFilter,
 } from "../search.js";
 
+import { APP_CONFIG } from "../../../lib/config.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 
 import { filterURLsBySearchTerm } from "../../../logic/url-search.js";
@@ -467,7 +468,6 @@ describe("URL Search", () => {
   });
 
   describe("no results message", () => {
-    const NO_RESULTS_TEXT = "No URLs found";
     const FILTERABLE_IDS = [1, 2, 4];
 
     beforeEach(() => {
@@ -487,7 +487,7 @@ describe("URL Search", () => {
 
       const noResults = $("#URLSearchNoResults");
       expect(noResults.hasClass("hidden")).toBe(false);
-      expect(noResults.text()).toBe(NO_RESULTS_TEXT);
+      expect(noResults.text()).toBe(APP_CONFIG.strings.URL_SEARCH_NO_RESULTS);
     });
 
     it("hides #URLSearchNoResults when search matches some URLs", () => {
@@ -559,7 +559,7 @@ describe("URL Search", () => {
 
       const noResults = $("#URLSearchNoResults");
       expect(noResults.hasClass("hidden")).toBe(false);
-      expect(noResults.text()).toBe(NO_RESULTS_TEXT);
+      expect(noResults.text()).toBe(APP_CONFIG.strings.URL_SEARCH_NO_RESULTS);
     });
 
     it("is hidden by default before any search", () => {
@@ -589,7 +589,9 @@ describe("URL Search", () => {
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(false);
-      expect($("#URLSearchNoResults").text()).toBe(NO_RESULTS_TEXT);
+      expect($("#URLSearchNoResults").text()).toBe(
+        APP_CONFIG.strings.URL_SEARCH_NO_RESULTS,
+      );
     });
 
     it("hides when tag filter change restores some URLs from zero results", () => {
@@ -628,7 +630,9 @@ describe("URL Search", () => {
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
       expect($("#URLSearchNoResults").hasClass("hidden")).toBe(false);
-      expect($("#URLSearchNoResults").text()).toBe(NO_RESULTS_TEXT);
+      expect($("#URLSearchNoResults").text()).toBe(
+        APP_CONFIG.strings.URL_SEARCH_NO_RESULTS,
+      );
     });
 
     it("hides when all tag filters are cleared while no-results is showing", () => {
@@ -676,7 +680,9 @@ describe("URL Search", () => {
       $("#URLContentSearch").val("zzzzz").trigger("input");
       vi.advanceTimersByTime(200);
 
-      expect($("#URLSearchAnnouncement").text()).toBe("No URLs found");
+      expect($("#URLSearchAnnouncement").text()).toBe(
+        APP_CONFIG.strings.URL_SEARCH_NO_RESULTS,
+      );
     });
 
     it("clears announcement when search input is emptied", () => {
@@ -730,7 +736,9 @@ describe("URL Search", () => {
       vi.mocked(filterURLsBySearchTerm).mockReturnValue(FILTERABLE_IDS);
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
-      expect($("#URLSearchAnnouncement").text()).toBe("No URLs found");
+      expect($("#URLSearchAnnouncement").text()).toBe(
+        APP_CONFIG.strings.URL_SEARCH_NO_RESULTS,
+      );
     });
 
     it("announces all URLs shown when search matches everything", () => {

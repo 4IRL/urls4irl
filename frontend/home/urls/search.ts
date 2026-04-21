@@ -8,7 +8,6 @@ import { getState } from "../../store/app-store.js";
 type URLDOMEntry = { id: number; title: string; urlString: string };
 
 const MAX_SEARCH_LENGTH = 500;
-const NO_RESULTS_TEXT = "No URLs found";
 const SEARCH_DEBOUNCE_MS = 200;
 
 let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -60,7 +59,7 @@ function updateURLCardSearchVisibility(urlIDsToHide: number[]): void {
 function announceSearchResults(visibleCount: number, totalCount: number): void {
   const text =
     visibleCount === 0
-      ? NO_RESULTS_TEXT
+      ? APP_CONFIG.strings.URL_SEARCH_NO_RESULTS
       : `${visibleCount} of ${totalCount} URLs shown`;
   $("#URLSearchAnnouncement").text(text);
 }
@@ -70,7 +69,9 @@ function clearSearchAnnouncement(): void {
 }
 
 function showNoResultsMessage(): void {
-  $("#URLSearchNoResults").text(NO_RESULTS_TEXT).removeClass("hidden");
+  $("#URLSearchNoResults")
+    .text(APP_CONFIG.strings.URL_SEARCH_NO_RESULTS)
+    .removeClass("hidden");
 }
 
 function hideNoResultsMessage(): void {

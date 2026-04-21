@@ -1,7 +1,5 @@
-import {
-  TAG_FILTER_NO_RESULTS_TEXT,
-  updateURLsAndTagSubheaderWhenTagSelected,
-} from "../filtering.js";
+import { updateURLsAndTagSubheaderWhenTagSelected } from "../filtering.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 
 vi.mock("../../../../logic/tag-filtering.js", () => ({
@@ -70,13 +68,13 @@ describe("Tag Filter Empty State", () => {
 
     const noResults = $("#URLTagFilterNoResults");
     expect(noResults.hasClass("hidden")).toBe(false);
-    expect(noResults.text()).toBe(TAG_FILTER_NO_RESULTS_TEXT);
+    expect(noResults.text()).toBe(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
   });
 
   it("hides message when tags unselected (all URLs visible)", () => {
     $("#URLTagFilterNoResults")
       .removeClass("hidden")
-      .text(TAG_FILTER_NO_RESULTS_TEXT);
+      .text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
 
     vi.mocked(getState).mockReturnValue({
       selectedTagIDs: [],
@@ -137,15 +135,17 @@ describe("Tag Filter Empty State", () => {
     updateURLsAndTagSubheaderWhenTagSelected();
 
     expect($("#URLTagFilterAnnouncement").text()).toBe(
-      TAG_FILTER_NO_RESULTS_TEXT,
+      APP_CONFIG.strings.TAG_FILTER_NO_RESULTS,
     );
   });
 
   it("clears aria-live announcement when hiding message", () => {
     $("#URLTagFilterNoResults")
       .removeClass("hidden")
-      .text(TAG_FILTER_NO_RESULTS_TEXT);
-    $("#URLTagFilterAnnouncement").text(TAG_FILTER_NO_RESULTS_TEXT);
+      .text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
+    $("#URLTagFilterAnnouncement").text(
+      APP_CONFIG.strings.TAG_FILTER_NO_RESULTS,
+    );
 
     vi.mocked(computeURLVisibility).mockReturnValue([
       { urlId: 1, visible: true },
@@ -182,14 +182,16 @@ describe("Tag Filter Empty State", () => {
 
     const noResults = $("#URLTagFilterNoResults");
     expect(noResults.hasClass("hidden")).toBe(false);
-    expect(noResults.text()).toBe(TAG_FILTER_NO_RESULTS_TEXT);
+    expect(noResults.text()).toBe(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
   });
 
   it("hides message on UTUB_SELECTED event", () => {
     $("#URLTagFilterNoResults")
       .removeClass("hidden")
-      .text(TAG_FILTER_NO_RESULTS_TEXT);
-    $("#URLTagFilterAnnouncement").text(TAG_FILTER_NO_RESULTS_TEXT);
+      .text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
+    $("#URLTagFilterAnnouncement").text(
+      APP_CONFIG.strings.TAG_FILTER_NO_RESULTS,
+    );
 
     emit(AppEvents.UTUB_SELECTED, {
       utubID: 1,
