@@ -289,3 +289,31 @@ def test_tag_filter_aria_announcement(
         By.CSS_SELECTOR, HPL.TAG_FILTER_ANNOUNCEMENT
     )
     assert announcement_elem.get_attribute("textContent") == ""
+
+
+def test_zero_urls_utub_tag_filter_does_not_show_no_results(
+    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a UTub with zero URLs and a tag added to the UTub
+    WHEN the user selects that tag as a filter
+    THEN the no-results message remains hidden (zero-URL UTub should not trigger the message)
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, UNMATCHED_TAG_STRING
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    assert len(url_row_elements) == 0
+
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
+
+    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)

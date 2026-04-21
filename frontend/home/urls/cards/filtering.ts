@@ -7,7 +7,7 @@ import {
   computeVisibleTagCounts,
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
-import { getNumOfURLs, getNumOfVisibleURLs } from "../utils.js";
+import { getNumOfVisibleURLs } from "../utils.js";
 
 export const TAG_FILTER_NO_RESULTS_TEXT = "No URLs match selected tags";
 
@@ -50,7 +50,7 @@ export function updateURLsAndTagSubheaderWhenTagSelected(): void {
   }));
   const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
   applyURLVisibilityToDOM(visibility);
-  const totalURLs = getNumOfURLs();
+  const totalURLs = getState().urls.length;
   const visibleURLs = getNumOfVisibleURLs();
   if (totalURLs > 0 && visibleURLs === 0) {
     showTagFilterNoResultsMessage();
