@@ -19,7 +19,7 @@ up: ## Build and start the full stack (pass d=1 for detached mode)
 up-built: ## Build and start the full stack using pre-built Vite assets (pass d=1 for detached mode)
 	$(COMPOSE_BUILT) up --build --remove-orphans $(if $(d),-d,)
 
-start-built: ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
+start-built: prune ## Tear down stack, rebuild with pre-built assets, wait for healthy (used by built test targets)
 	$(COMPOSE) down
 	$(COMPOSE_BUILT) up --build --remove-orphans --wait
 
@@ -38,13 +38,13 @@ test-integration: ## Run all integration (non-UI) tests
 test-integration-parallel: ## Run integration tests in parallel: make test-integration-parallel [n=4]
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui' -n $(or $(n),4) --dist=loadscope -v"
 
-test-functional: ## Run all functional (UI/Selenium) tests
+test-functional: prune ## Run all functional (UI/Selenium) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -v"
 
 test-functional-built: start-built ## Run all functional (UI/Selenium) tests against built assets
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -v"
 
-test-ui-parallel: ## Run UI tests in parallel: make test-ui-parallel [n=8] (SE_NODE_MAX_SESSIONS=12, but n=8 avoids host resource saturation)
+test-ui-parallel: prune ## Run UI tests in parallel: make test-ui-parallel [n=8] (SE_NODE_MAX_SESSIONS=12, but n=8 avoids host resource saturation)
 	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),8) --dist=loadscope"
 
 test-ui-parallel-built: start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=8]
@@ -78,5 +78,7 @@ generate-types: ## Generate TypeScript API types from backend OpenAPI spec
 	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
 	$(EXEC_VITE) npx openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 
-prune: ## Prune Docker build cache to free disk space
+prune: ## Prune dangling images, orphaned volumes, and build cache
+	docker image prune -f
+	docker volume prune -f
 	docker builder prune -f
