@@ -7,6 +7,21 @@ import {
   computeVisibleTagCounts,
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
+import { getNumOfURLs, getNumOfVisibleURLs } from "../utils.js";
+const TAG_FILTER_NO_RESULTS_TEXT = "No URLs match selected tags";
+
+function showTagFilterNoResultsMessage(): void {
+  $("#URLTagFilterNoResults")
+    .text(TAG_FILTER_NO_RESULTS_TEXT)
+    .removeClass("hidden");
+  $("#URLTagFilterAnnouncement").text(TAG_FILTER_NO_RESULTS_TEXT);
+}
+
+function hideTagFilterNoResultsMessage(): void {
+  $("#URLTagFilterNoResults").addClass("hidden").text("");
+  $("#URLTagFilterAnnouncement").text("");
+}
+
 export const TagCountOperation = Object.freeze({
   INCREMENT: 1,
   DECREMENT: -1,
@@ -34,6 +49,13 @@ export function updateURLsAndTagSubheaderWhenTagSelected(): void {
   }));
   const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
   applyURLVisibilityToDOM(visibility);
+  const totalURLs = getNumOfURLs();
+  const visibleURLs = getNumOfVisibleURLs();
+  if (totalURLs > 0 && visibleURLs === 0) {
+    showTagFilterNoResultsMessage();
+  } else {
+    hideTagFilterNoResultsMessage();
+  }
   emit(AppEvents.URL_TAG_FILTER_APPLIED);
   reapplyAlternatingURLCardBackgroundAfterFilter();
   emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs });
@@ -150,6 +172,8 @@ export function updateTagFilteringOnURLOrURLTagDeletion(): void {
 }
 
 on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());
+
+on(AppEvents.UTUB_SELECTED, () => hideTagFilterNoResultsMessage());
 
 on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () =>
   reapplyAlternatingURLCardBackgroundAfterFilter(),

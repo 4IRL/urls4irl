@@ -24,6 +24,8 @@ const FIXTURE_HTML = `
   <p id="URLTagFilterNoResults" class="hidden"></p>
   <span id="URLTagFilterAnnouncement" aria-live="polite" class="visually-hidden"></span>
   <div id="listTags"></div>
+  <div id="SearchURLWrap" class="hidden"><input id="URLContentSearch" type="text" value="" /></div>
+  <p id="URLSearchNoResults" class="hidden"></p>
   <div id="listURLs">
     <div class="urlRow" utuburlid="1" filterable="true"></div>
     <div class="urlRow" utuburlid="2" filterable="true"></div>
@@ -35,6 +37,8 @@ const EMPTY_FIXTURE_HTML = `
   <p id="URLTagFilterNoResults" class="hidden"></p>
   <span id="URLTagFilterAnnouncement" aria-live="polite" class="visually-hidden"></span>
   <div id="listTags"></div>
+  <div id="SearchURLWrap" class="hidden"><input id="URLContentSearch" type="text" value="" /></div>
+  <p id="URLSearchNoResults" class="hidden"></p>
   <div id="listURLs"></div>
 `;
 
