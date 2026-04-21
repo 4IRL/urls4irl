@@ -57,4 +57,6 @@ class UI_TEST_STRINGS:
         "https://delta-forum.net",
     )
 
+    TAG_FILTER_NO_URLS = "No URLs match selected tags"
+
     COOKIE_NAME, COOKIE_VALUE = COOKIE_BANNER_SEEN.split("=")
