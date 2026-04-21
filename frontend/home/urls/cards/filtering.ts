@@ -1,4 +1,5 @@
 import { $ } from "../../../lib/globals.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { on, emit, AppEvents } from "../../../lib/event-bus.js";
 import { currentTagDeckIDs, isATagSelected } from "../../tags/utils.js";
@@ -7,6 +8,20 @@ import {
   computeVisibleTagCounts,
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
+import { getNumOfVisibleURLs } from "../utils.js";
+
+function showTagFilterNoResultsMessage(): void {
+  $("#URLTagFilterNoResults")
+    .text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS)
+    .removeClass("hidden");
+  $("#URLTagFilterAnnouncement").text(APP_CONFIG.strings.TAG_FILTER_NO_RESULTS);
+}
+
+function hideTagFilterNoResultsMessage(): void {
+  $("#URLTagFilterNoResults").addClass("hidden").text("");
+  $("#URLTagFilterAnnouncement").text("");
+}
+
 export const TagCountOperation = Object.freeze({
   INCREMENT: 1,
   DECREMENT: -1,
@@ -34,6 +49,13 @@ export function updateURLsAndTagSubheaderWhenTagSelected(): void {
   }));
   const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
   applyURLVisibilityToDOM(visibility);
+  const totalURLs = getState().urls.length;
+  const visibleURLs = getNumOfVisibleURLs();
+  if (totalURLs > 0 && visibleURLs === 0) {
+    showTagFilterNoResultsMessage();
+  } else {
+    hideTagFilterNoResultsMessage();
+  }
   emit(AppEvents.URL_TAG_FILTER_APPLIED);
   reapplyAlternatingURLCardBackgroundAfterFilter();
   emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs });
@@ -150,6 +172,8 @@ export function updateTagFilteringOnURLOrURLTagDeletion(): void {
 }
 
 on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());
+
+on(AppEvents.UTUB_SELECTED, () => hideTagFilterNoResultsMessage());
 
 on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () =>
   reapplyAlternatingURLCardBackgroundAfterFilter(),

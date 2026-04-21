@@ -63,7 +63,8 @@ Code should be concise, but readable. We are looking for maintainability and fut
 ### Frontend - TypeScript/HTML/CSS
 
 1. Never use window globals for module communication
-2. **Established TS patterns** — use these existing patterns rather than inventing new ones:
+2. **User-facing strings must go through `APP_CONFIG.strings`** — never hardcode display strings in TypeScript. Define them in `backend/utils/strings/<domain>_strs.py`, register in the `STRINGS` class and `generate_strings_js()` in `backend/utils/constants.py`, add to `frontend/test-setup.ts` mock config, and access as `APP_CONFIG.strings.KEY_NAME`. UI test constants in `ui_testing_strs.py` should import from the backend source, not duplicate the literal.
+3. **Established TS patterns** — use these existing patterns rather than inventing new ones:
    - **Type-guard dispatch** for field-level validation errors: `const FIELDS = [...] as const` + `isFieldName()` guard (see `splash/init.ts`, `tags/create.ts`)
    - **is429Handled(xhr)** guard at the top of every `.fail()` handler (`frontend/lib/ajax.ts`)
    - **Schema<>/SuccessResponse<>** type helpers from `frontend/types/api-helpers.d.ts` for typed AJAX

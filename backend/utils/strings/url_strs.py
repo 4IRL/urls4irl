@@ -30,6 +30,7 @@ ACCESS_URL_TOOLTIP = "Access URL"
 EDIT_URL_TOOLTIP = "Edit URL"
 DELETE_URL_TOOLTIP = "Delete URL"
 ACCESS_URL_WARNING = "This URL is a bit unusual — it could launch an app, not a webpage. Still want to access?"
+URL_SEARCH_NO_RESULTS = "No URLs found"
 
 
 class URL_GENERAL:
