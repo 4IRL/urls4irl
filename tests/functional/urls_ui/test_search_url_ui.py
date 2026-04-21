@@ -28,6 +28,7 @@ from tests.functional.login_utils import (
 from tests.functional.selenium_utils import (
     click_on_navbar,
     select_utub_by_name,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -717,6 +718,9 @@ def test_search_icon_hidden_after_last_url_deleted(
 
     url_row = browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
 
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
     wait_then_click_element(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=5
     )
