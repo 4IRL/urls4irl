@@ -125,7 +125,6 @@ TypeScript ES6 modules in `frontend/` built by Vite. jQuery (3.7.1) and Bootstra
 - **validation.ts** — `isValidURL()` with protocol blocking, `generateURLObj()`
 - **utils.ts** — `getNumOfURLs()`, `getNumOfVisibleURLs()`, arrow-key navigation
 - **create-btns.ts** — Create URL button event listeners
-- **access-all.ts** — Opens all visible URLs in new tabs
 - **update-name.ts** — UTub name inline editing
 - **update-description.ts** — UTub description inline editing
 

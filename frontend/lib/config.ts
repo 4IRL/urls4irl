@@ -68,7 +68,6 @@ export interface AppConstants {
   readonly TAGS_MAX_LENGTH: number;
   readonly TAGS_MAX_ON_URLS: number;
   readonly TAGS_MAX_ON_URL: number;
-  readonly MAX_NUM_OF_URLS_TO_ACCESS: number;
   readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
 }
 

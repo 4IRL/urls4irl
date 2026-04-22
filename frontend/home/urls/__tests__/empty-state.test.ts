@@ -61,7 +61,6 @@ const EMPTY_STATE_HTML = `
         <div id="createURLWrap" class="hidden"></div>
       </div>
     </div>
-    <button id="accessAllURLsBtn" class="hidden"></button>
     <button id="urlBtnCreate" class="hidden"></button>
   </div>
 `;

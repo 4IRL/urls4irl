@@ -229,7 +229,7 @@ def test_create_url_submit_btn_no_urls(
 
     GIVEN a user and selected UTub
     WHEN they submit a new URL using the submit button
-    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    THEN ensure the URL is added and input is hidden
     """
     app = provide_app
     user_id_for_test = 1
@@ -269,10 +269,6 @@ def test_create_url_submit_btn_no_urls(
     assert url_row_string == url_string_visible
     assert url_string == url_row_href
 
-    assert browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
-    ).is_displayed()
-
     assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
@@ -294,7 +290,7 @@ def test_create_url_submit_btn_some_urls(
 
     GIVEN a user and selected UTub
     WHEN they submit a new URL using the submit button
-    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    THEN ensure the URL is added and input is hidden
     """
     app = provide_app
     user_id_for_test = 1
@@ -333,10 +329,6 @@ def test_create_url_submit_btn_some_urls(
     assert url_title == url_row_title
     assert url_row_string == url_string_visible
     assert url_string == url_row_href
-
-    assert browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
-    ).is_displayed()
 
     assert_url_coloring_is_correct(browser)
 
@@ -397,7 +389,7 @@ def test_valid_url_input(
 
     GIVEN a user and selected UTub
     WHEN they submit a new URL using the submit button
-    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    THEN ensure the URL is added and input is hidden
     """
     app = provide_app
     user_id_for_test = 1
@@ -445,10 +437,6 @@ def test_valid_url_input(
     assert url_row_href is not None
     assert url_row_href == ada_validated_url
 
-    assert browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
-    ).is_displayed()
-
     assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
@@ -468,7 +456,7 @@ def test_create_url_using_enter_key_no_urls(
 
     GIVEN a user and selected UTub
     WHEN they submit a new URL using the submit button
-    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    THEN ensure the URL is added and input is hidden
     """
     app = provide_app
     user_id_for_test = 1
@@ -508,10 +496,6 @@ def test_create_url_using_enter_key_no_urls(
     assert url_row_string == url_string_visible
     assert url_string == url_row_href
 
-    assert browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
-    ).is_displayed()
-
     assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
@@ -531,7 +515,7 @@ def test_create_url_using_enter_key_some_urls(
 
     GIVEN a user and selected UTub
     WHEN they submit a new URL using the submit button
-    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    THEN ensure the URL is added and input is hidden
     """
     app = provide_app
     user_id_for_test = 1
@@ -570,10 +554,6 @@ def test_create_url_using_enter_key_some_urls(
     assert url_title == url_row_title
     assert url_row_string == url_string_visible
     assert url_string == url_row_href
-
-    assert browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
-    ).is_displayed()
 
     assert_url_coloring_is_correct(browser)
 
@@ -924,7 +904,7 @@ def test_create_url_when_utub_tag_applied(
 
     GIVEN a user and selected UTub
     WHEN they submit a new URL using the submit button
-    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    THEN ensure the URL is added and input is hidden
     """
     app = provide_app
     user_id_for_test = 1

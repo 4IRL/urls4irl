@@ -75,7 +75,6 @@ const CREATE_URL_FORM_HTML = `
     <div id="urlBtnDeckCreateWrap"></div>
   </div>
   <div id="urlCreateDualLoadingRing"></div>
-  <a id="accessAllURLsBtn"></a>
 `;
 
 describe("createURL - client-side validation", () => {

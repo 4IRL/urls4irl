@@ -191,9 +191,7 @@ function deleteURLOnStale(urlCard: JQuery): void {
   $("#confirmModal").modal("hide");
   urlCard.fadeOut("slow", function () {
     urlCard.remove();
-    if ($("#listURLs .urlRow").length === 0) {
-      $("#accessAllURLsBtn").hide();
-    } else {
+    if ($("#listURLs .urlRow").length > 0) {
       updateTagFilteringOnURLOrURLTagDeletion();
     }
   });

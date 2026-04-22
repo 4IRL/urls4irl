@@ -129,12 +129,9 @@ export function setURLDeckOnUTubSelected(
       );
     }
 
-    // Show access all URLs button
-    $("#accessAllURLsBtn").showClassNormal();
     hideURLsEmptyState();
   } else {
     showURLsEmptyState();
-    $("#accessAllURLsBtn").hideClass();
   }
 
   $("#urlBtnCreate").showClassNormal();
@@ -154,7 +151,6 @@ export function setURLDeckWhenNoUTubSelected(): void {
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hideClass();
   $("#urlBtnCreate").hideClass();
-  $("#accessAllURLsBtn").hideClass();
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 
   const urlDeckSubheader = $("#URLDeckSubheader");

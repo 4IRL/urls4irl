@@ -226,14 +226,12 @@ a.urlString {
     text-overflow: unset;
 }
 
-#accessAllURLsBtn,
 .urlBtnAccess {
     background-color: var(--accessLinkColor);
     border-width: 1px;
     border-color: var(--accessLinkColor);
 }
 
-#accessAllURLsBtn:active,
 .urlBtnAccess:active {
     background-color: var(--accessLinkColor) !important;
     border-width: 1px !important;
@@ -275,10 +273,6 @@ a.urlString {
     border-width: 1px;
     border-color: var(--editURLColor) !important;
     transition: background-color 0.1s ease;
-}
-
-#accessAllURLsBtn {
-    color: var(--panelBackgroundColor);
 }
 
 .urlBtnDelete {
@@ -402,7 +396,6 @@ a.urlString {
         display: flex;
     }
 
-    #accessAllURLsBtn:hover,
     .urlBtnAccess:hover {
         background-color: var(--accessLinkColorHover);
         border-color: var(--accessLinkColorBorderHover);

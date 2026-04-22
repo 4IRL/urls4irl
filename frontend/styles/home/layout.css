@@ -364,9 +364,6 @@ button {
         flex-direction: column;
     }
 
-    #accessAllURLsBtn {
-        width: 100% !important;
-    }
 }
 
 @media (min-width: 465px) {}
