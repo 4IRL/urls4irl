@@ -24,6 +24,7 @@ import {
   temporarilyHideSearchForEdit,
   showURLSearchIcon,
 } from "../search.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -75,25 +76,23 @@ export function resetNewURLForm(): void {
 // Displays new URL input prompt
 export function createURLHideInput(): void {
   resetNewURLForm();
-  showURLSearchIcon();
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").showClassNormal();
-    $("#urlBtnDeckCreateWrap").showClassFlex();
+    showURLsEmptyState();
+  } else {
+    showURLSearchIcon();
   }
 }
 
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").hideClass();
-    $("#urlBtnDeckCreateWrap").hideClass();
+    hideURLsEmptyState();
   }
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
-  $("#urlBtnDeckCreateWrap").hideClass();
   temporarilyHideSearchForEdit();
 }
 

@@ -2,6 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { diffIDLists } from "../../logic/deck-diffing.js";
 import { getState } from "../../store/app-store.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "./empty-state.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { bindSwitchURLKeyboardEventListeners } from "./utils.js";
 import {
@@ -43,8 +44,7 @@ export function resetURLDeck(): void {
 
 export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
-  $("#NoURLsSubheader").hideClass();
-  $("#urlBtnDeckCreateWrap").hideClass();
+  hideURLsEmptyState();
   disableURLSearch();
 }
 
@@ -131,11 +131,9 @@ export function setURLDeckOnUTubSelected(
 
     // Show access all URLs button
     $("#accessAllURLsBtn").showClassNormal();
-    $("#NoURLsSubheader").hideClass();
-    $("#urlBtnDeckCreateWrap").hideClass();
+    hideURLsEmptyState();
   } else {
-    $("#NoURLsSubheader").showClassNormal();
-    $("#urlBtnDeckCreateWrap").showClassFlex();
+    showURLsEmptyState();
     $("#accessAllURLsBtn").hideClass();
   }
 

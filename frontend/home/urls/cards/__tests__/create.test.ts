@@ -1,5 +1,13 @@
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { createURL, resetCreateURLFailErrors } from "../create.js";
+import { getNumOfURLs } from "../../utils.js";
+import { showURLSearchIcon } from "../../search.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "../../empty-state.js";
+import {
+  createURL,
+  createURLHideInput,
+  createURLShowInput,
+  resetCreateURLFailErrors,
+} from "../create.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -32,6 +40,27 @@ vi.mock("../../../utubs/stale-data.js", () => ({
   updateUTubOnFindingStaleData: vi.fn(),
 }));
 
+vi.mock("../../search.js", () => ({
+  closeURLSearchAndEraseInput: vi.fn(),
+  temporarilyHideSearchForEdit: vi.fn(),
+  showURLSearchIcon: vi.fn(),
+}));
+
+vi.mock("../../empty-state.js", () => ({
+  showURLsEmptyState: vi.fn(),
+  hideURLsEmptyState: vi.fn(),
+}));
+
+vi.mock("../utils.js", () => ({
+  isEmptyString: vi.fn((val: string) => val.trim() === ""),
+  updateColorOfFollowingURLCardsAfterURLCreated: vi.fn(),
+}));
+
+vi.mock("../../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ urls: [] })),
+  setState: vi.fn(),
+}));
+
 const $ = window.jQuery;
 
 const CREATE_URL_FORM_HTML = `
@@ -41,8 +70,10 @@ const CREATE_URL_FORM_HTML = `
   <div id="urlStringCreate-error"></div>
   <div id="urlTitleCreate-error"></div>
   <button id="urlBtnCreate"></button>
-  <div id="urlBtnDeckCreateWrap"></div>
-  <div id="NoURLsSubheader"></div>
+  <div id="noURLsEmptyState" class="hidden">
+    <p id="noURLsSubheader"></p>
+    <div id="urlBtnDeckCreateWrap"></div>
+  </div>
   <div id="urlCreateDualLoadingRing"></div>
   <a id="accessAllURLsBtn"></a>
 `;
@@ -95,6 +126,36 @@ describe("createURL - client-side validation", () => {
 
       expect($("#urlStringCreate").hasClass("invalid-field")).toBe(false);
       expect($("#urlStringCreate-error").hasClass("visible")).toBe(false);
+    });
+  });
+
+  describe("createURLHideInput — empty-state branches", () => {
+    it("calls showURLsEmptyState when no URLs exist", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(0);
+
+      createURLHideInput();
+
+      expect(showURLsEmptyState).toHaveBeenCalled();
+      expect(showURLSearchIcon).not.toHaveBeenCalled();
+    });
+
+    it("calls showURLSearchIcon and does not show empty state when URLs exist", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(3);
+
+      createURLHideInput();
+
+      expect(showURLsEmptyState).not.toHaveBeenCalled();
+      expect(showURLSearchIcon).toHaveBeenCalled();
+    });
+  });
+
+  describe("createURLShowInput — empty-state branch", () => {
+    it("calls hideURLsEmptyState when no URLs exist", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(0);
+
+      createURLShowInput(1);
+
+      expect(hideURLsEmptyState).toHaveBeenCalled();
     });
   });
 });
