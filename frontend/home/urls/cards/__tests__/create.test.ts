@@ -1,7 +1,7 @@
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { APP_CONFIG } from "../../../../lib/config.js";
 import { getNumOfURLs } from "../../utils.js";
 import { showURLSearchIcon } from "../../search.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "../../empty-state.js";
 import {
   createURL,
   createURLHideInput,
@@ -44,6 +44,11 @@ vi.mock("../../search.js", () => ({
   closeURLSearchAndEraseInput: vi.fn(),
   temporarilyHideSearchForEdit: vi.fn(),
   showURLSearchIcon: vi.fn(),
+}));
+
+vi.mock("../../empty-state.js", () => ({
+  showURLsEmptyState: vi.fn(),
+  hideURLsEmptyState: vi.fn(),
 }));
 
 vi.mock("../utils.js", () => ({
@@ -125,38 +130,32 @@ describe("createURL - client-side validation", () => {
   });
 
   describe("createURLHideInput — empty-state branches", () => {
-    it("shows empty state with UTUB_NO_URLS text when no URLs exist", () => {
+    it("calls showURLsEmptyState when no URLs exist", () => {
       vi.mocked(getNumOfURLs).mockReturnValue(0);
 
       createURLHideInput();
 
-      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(false);
-      expect($("#noURLsSubheader").text()).toBe(
-        APP_CONFIG.strings.UTUB_NO_URLS,
-      );
+      expect(showURLsEmptyState).toHaveBeenCalled();
       expect(showURLSearchIcon).not.toHaveBeenCalled();
     });
 
-    it("calls showURLSearchIcon and keeps empty state hidden when URLs exist", () => {
+    it("calls showURLSearchIcon and does not show empty state when URLs exist", () => {
       vi.mocked(getNumOfURLs).mockReturnValue(3);
 
       createURLHideInput();
 
-      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
+      expect(showURLsEmptyState).not.toHaveBeenCalled();
       expect(showURLSearchIcon).toHaveBeenCalled();
     });
   });
 
   describe("createURLShowInput — empty-state branch", () => {
-    it("hides empty state and clears subheader text when no URLs exist", () => {
+    it("calls hideURLsEmptyState when no URLs exist", () => {
       vi.mocked(getNumOfURLs).mockReturnValue(0);
-      $("#noURLsEmptyState").removeClass("hidden");
-      $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
 
       createURLShowInput(1);
 
-      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
-      expect($("#noURLsSubheader").text()).toBe("");
+      expect(hideURLsEmptyState).toHaveBeenCalled();
     });
   });
 });

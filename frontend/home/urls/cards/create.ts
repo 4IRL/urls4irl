@@ -24,6 +24,7 @@ import {
   temporarilyHideSearchForEdit,
   showURLSearchIcon,
 } from "../search.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -76,8 +77,7 @@ export function resetNewURLForm(): void {
 export function createURLHideInput(): void {
   resetNewURLForm();
   if (!getNumOfURLs()) {
-    $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
-    $("#noURLsEmptyState").removeClass("hidden");
+    showURLsEmptyState();
   } else {
     showURLSearchIcon();
   }
@@ -86,8 +86,7 @@ export function createURLHideInput(): void {
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
   if (!getNumOfURLs()) {
-    $("#noURLsEmptyState").addClass("hidden");
-    $("#noURLsSubheader").text("");
+    hideURLsEmptyState();
   }
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();

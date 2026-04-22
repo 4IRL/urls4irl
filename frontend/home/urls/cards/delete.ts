@@ -8,6 +8,7 @@ import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { hideURLSearchIcon } from "../search.js";
+import { showURLsEmptyState } from "../empty-state.js";
 
 type DeleteUrlResponse = SuccessResponse<"deleteUrl">;
 
@@ -128,8 +129,7 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
       $("#accessAllURLsBtn").hideClass();
-      $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
-      $("#noURLsEmptyState").removeClass("hidden");
+      showURLsEmptyState();
       hideURLSearchIcon();
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();

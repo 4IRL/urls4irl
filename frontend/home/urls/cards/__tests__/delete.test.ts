@@ -1,7 +1,7 @@
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { APP_CONFIG } from "../../../../lib/config.js";
 import { getUpdatedURL } from "../get.js";
 import { hideURLSearchIcon } from "../../search.js";
+import { showURLsEmptyState } from "../../empty-state.js";
 import { deleteURLShowModal } from "../delete.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
@@ -25,6 +25,11 @@ vi.mock("../../../../store/app-store.js", () => ({
 
 vi.mock("../../search.js", () => ({
   hideURLSearchIcon: vi.fn(),
+}));
+
+vi.mock("../../empty-state.js", () => ({
+  showURLsEmptyState: vi.fn(),
+  hideURLsEmptyState: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -105,8 +110,7 @@ describe("deleteURLSuccess — empty-state branches", () => {
       expect($("#listURLs .urlRow").length).toBe(0);
     });
 
-    expect($("#noURLsEmptyState").hasClass("hidden")).toBe(false);
-    expect($("#noURLsSubheader").text()).toBe(APP_CONFIG.strings.UTUB_NO_URLS);
+    expect(showURLsEmptyState).toHaveBeenCalled();
     expect(hideURLSearchIcon).toHaveBeenCalled();
   });
 
@@ -122,7 +126,7 @@ describe("deleteURLSuccess — empty-state branches", () => {
       expect($("#listURLs .urlRow").length).toBe(1);
     });
 
-    expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
+    expect(showURLsEmptyState).not.toHaveBeenCalled();
     expect(hideURLSearchIcon).not.toHaveBeenCalled();
   });
 });

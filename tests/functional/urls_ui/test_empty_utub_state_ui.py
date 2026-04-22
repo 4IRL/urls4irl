@@ -66,7 +66,7 @@ def test_empty_utub_shows_add_url_button(
     assert_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE, time=3)
 
     add_url_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_DECK_URL_CREATE)
-    assert add_url_btn.text == "Add URL"
+    assert add_url_btn.text == UTS.ADD_URL_BUTTON
 
 
 def test_add_url_button_opens_create_form(

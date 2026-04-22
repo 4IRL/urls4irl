@@ -1,4 +1,5 @@
 import { APP_CONFIG } from "../../../lib/config.js";
+import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
 import { setURLDeckOnUTubSelected, resetURLDeckOnDeleteUTub } from "../deck.js";
 
 vi.mock("../create-btns.js", () => ({
@@ -65,13 +66,39 @@ const EMPTY_STATE_HTML = `
   </div>
 `;
 
-describe("UTub empty state — #noURLsSubheader", () => {
+describe("UTub empty state", () => {
   beforeEach(() => {
     document.body.innerHTML = EMPTY_STATE_HTML;
   });
 
   afterEach(() => {
     document.body.innerHTML = "";
+  });
+
+  describe("showURLsEmptyState helper", () => {
+    it("shows wrapper, sets subheader text, and sets button text", () => {
+      showURLsEmptyState();
+
+      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(false);
+      expect($("#noURLsSubheader").text()).toBe(
+        APP_CONFIG.strings.UTUB_NO_URLS,
+      );
+      expect($("#urlBtnDeckCreate").text()).toBe(
+        APP_CONFIG.strings.ADD_URL_BUTTON,
+      );
+    });
+  });
+
+  describe("hideURLsEmptyState helper", () => {
+    it("hides wrapper and clears subheader text", () => {
+      $("#noURLsEmptyState").removeClass("hidden");
+      $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+
+      hideURLsEmptyState();
+
+      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
+      expect($("#noURLsSubheader").text()).toBe("");
+    });
   });
 
   describe("setURLDeckOnUTubSelected with 0 URLs", () => {
