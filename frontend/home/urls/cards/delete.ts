@@ -128,8 +128,8 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
       $("#accessAllURLsBtn").hideClass();
-      $("#NoURLsSubheader").showClassFlex();
-      $("#urlBtnDeckCreateWrap").showClassFlex();
+      $("#NoURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+      $("#noURLsEmptyState").removeClass("hidden");
       hideURLSearchIcon();
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();

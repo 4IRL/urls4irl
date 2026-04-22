@@ -85,6 +85,7 @@ const appConfig = {
     INVALID_URL: "This is not a valid URL.",
     TAG_FILTER_NO_RESULTS: "No URLs match selected tags",
     URL_SEARCH_NO_RESULTS: "No URLs found",
+    UTUB_NO_URLS: "No URLs yet",
     VALIDATE_MY_EMAIL: "Validate My Email",
   },
 };

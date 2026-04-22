@@ -75,25 +75,26 @@ export function resetNewURLForm(): void {
 // Displays new URL input prompt
 export function createURLHideInput(): void {
   resetNewURLForm();
-  showURLSearchIcon();
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").showClassNormal();
-    $("#urlBtnDeckCreateWrap").showClassFlex();
+    $("#NoURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+    $("#noURLsEmptyState").removeClass("hidden");
+  } else {
+    showURLSearchIcon();
   }
 }
 
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").hideClass();
-    $("#urlBtnDeckCreateWrap").hideClass();
+    $("#noURLsEmptyState").addClass("hidden");
+    $("#NoURLsSubheader").text("");
   }
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
-  $("#urlBtnDeckCreateWrap").hideClass();
+  $("#noURLsEmptyState").addClass("hidden");
   temporarilyHideSearchForEdit();
 }
 

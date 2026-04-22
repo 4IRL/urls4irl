@@ -360,6 +360,7 @@ def test_delete_last_url(
 
     no_url_subheader = wait_then_get_element(browser, HPL.SUBHEADER_NO_URLS)
     assert no_url_subheader is not None
+    assert no_url_subheader.text == UTS.UTUB_NO_URLS
 
 
 def test_delete_url_invalid_csrf_token(

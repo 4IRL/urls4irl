@@ -6,7 +6,7 @@ from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
 )
 from backend.utils.strings.tag_strs import TAG_FILTER_NO_RESULTS
-from backend.utils.strings.url_strs import URL_SEARCH_NO_RESULTS
+from backend.utils.strings.url_strs import URL_SEARCH_NO_RESULTS, UTUB_NO_URLS
 from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
 
 
@@ -61,5 +61,6 @@ class UI_TEST_STRINGS:
 
     TAG_FILTER_NO_URLS = TAG_FILTER_NO_RESULTS
     URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
+    UTUB_NO_URLS = UTUB_NO_URLS
 
     COOKIE_NAME, COOKIE_VALUE = COOKIE_BANNER_SEEN.split("=")

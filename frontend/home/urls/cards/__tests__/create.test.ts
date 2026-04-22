@@ -41,8 +41,10 @@ const CREATE_URL_FORM_HTML = `
   <div id="urlStringCreate-error"></div>
   <div id="urlTitleCreate-error"></div>
   <button id="urlBtnCreate"></button>
-  <div id="urlBtnDeckCreateWrap"></div>
-  <div id="NoURLsSubheader"></div>
+  <div id="noURLsEmptyState" class="hidden">
+    <p id="NoURLsSubheader"></p>
+    <div id="urlBtnDeckCreateWrap"></div>
+  </div>
   <div id="urlCreateDualLoadingRing"></div>
   <a id="accessAllURLsBtn"></a>
 `;
