@@ -44,7 +44,7 @@ export function resetURLDeck(): void {
 export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
   $("#noURLsEmptyState").addClass("hidden");
-  $("#NoURLsSubheader").text("");
+  $("#noURLsSubheader").text("");
   disableURLSearch();
 }
 
@@ -132,9 +132,9 @@ export function setURLDeckOnUTubSelected(
     // Show access all URLs button
     $("#accessAllURLsBtn").showClassNormal();
     $("#noURLsEmptyState").addClass("hidden");
-    $("#NoURLsSubheader").text("");
+    $("#noURLsSubheader").text("");
   } else {
-    $("#NoURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+    $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
     $("#noURLsEmptyState").removeClass("hidden");
     $("#accessAllURLsBtn").hideClass();
   }

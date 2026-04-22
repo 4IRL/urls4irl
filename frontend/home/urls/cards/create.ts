@@ -76,7 +76,7 @@ export function resetNewURLForm(): void {
 export function createURLHideInput(): void {
   resetNewURLForm();
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+    $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
     $("#noURLsEmptyState").removeClass("hidden");
   } else {
     showURLSearchIcon();
@@ -87,14 +87,13 @@ export function createURLHideInput(): void {
 export function createURLShowInput(utubID: number): void {
   if (!getNumOfURLs()) {
     $("#noURLsEmptyState").addClass("hidden");
-    $("#NoURLsSubheader").text("");
+    $("#noURLsSubheader").text("");
   }
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
-  $("#noURLsEmptyState").addClass("hidden");
   temporarilyHideSearchForEdit();
 }
 

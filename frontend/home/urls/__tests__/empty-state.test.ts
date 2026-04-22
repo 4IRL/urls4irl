@@ -49,7 +49,7 @@ const EMPTY_STATE_HTML = `
     </div>
     <div class="flex-column content">
       <div id="noURLsEmptyState" class="hidden">
-        <p id="NoURLsSubheader"></p>
+        <p id="noURLsSubheader"></p>
         <div id="urlBtnDeckCreateWrap" class="flex-column align-center">
           <button id="urlBtnDeckCreate" class="btn btn-success btn-sm">Add URL</button>
         </div>
@@ -65,7 +65,7 @@ const EMPTY_STATE_HTML = `
   </div>
 `;
 
-describe("UTub empty state — #NoURLsSubheader", () => {
+describe("UTub empty state — #noURLsSubheader", () => {
   beforeEach(() => {
     document.body.innerHTML = EMPTY_STATE_HTML;
   });
@@ -79,7 +79,7 @@ describe("UTub empty state — #NoURLsSubheader", () => {
       setURLDeckOnUTubSelected(1, "Test UTub", [], []);
 
       expect($("#noURLsEmptyState").hasClass("hidden")).toBe(false);
-      expect($("#NoURLsSubheader").text()).toBe(
+      expect($("#noURLsSubheader").text()).toBe(
         APP_CONFIG.strings.UTUB_NO_URLS,
       );
     });
@@ -99,19 +99,19 @@ describe("UTub empty state — #NoURLsSubheader", () => {
       setURLDeckOnUTubSelected(1, "Test UTub", mockURLs, []);
 
       expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
-      expect($("#NoURLsSubheader").text()).toBe("");
+      expect($("#noURLsSubheader").text()).toBe("");
     });
   });
 
   describe("resetURLDeckOnDeleteUTub", () => {
     it("hides empty state wrapper and clears text", () => {
-      $("#NoURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+      $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
       $("#noURLsEmptyState").removeClass("hidden");
 
       resetURLDeckOnDeleteUTub();
 
       expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
-      expect($("#NoURLsSubheader").text()).toBe("");
+      expect($("#noURLsSubheader").text()).toBe("");
     });
   });
 });

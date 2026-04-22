@@ -1,5 +1,13 @@
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { createURL, resetCreateURLFailErrors } from "../create.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
+import { getNumOfURLs } from "../../utils.js";
+import { showURLSearchIcon } from "../../search.js";
+import {
+  createURL,
+  createURLHideInput,
+  createURLShowInput,
+  resetCreateURLFailErrors,
+} from "../create.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -32,6 +40,22 @@ vi.mock("../../../utubs/stale-data.js", () => ({
   updateUTubOnFindingStaleData: vi.fn(),
 }));
 
+vi.mock("../../search.js", () => ({
+  closeURLSearchAndEraseInput: vi.fn(),
+  temporarilyHideSearchForEdit: vi.fn(),
+  showURLSearchIcon: vi.fn(),
+}));
+
+vi.mock("../utils.js", () => ({
+  isEmptyString: vi.fn((val: string) => val.trim() === ""),
+  updateColorOfFollowingURLCardsAfterURLCreated: vi.fn(),
+}));
+
+vi.mock("../../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ urls: [] })),
+  setState: vi.fn(),
+}));
+
 const $ = window.jQuery;
 
 const CREATE_URL_FORM_HTML = `
@@ -42,7 +66,7 @@ const CREATE_URL_FORM_HTML = `
   <div id="urlTitleCreate-error"></div>
   <button id="urlBtnCreate"></button>
   <div id="noURLsEmptyState" class="hidden">
-    <p id="NoURLsSubheader"></p>
+    <p id="noURLsSubheader"></p>
     <div id="urlBtnDeckCreateWrap"></div>
   </div>
   <div id="urlCreateDualLoadingRing"></div>
@@ -97,6 +121,42 @@ describe("createURL - client-side validation", () => {
 
       expect($("#urlStringCreate").hasClass("invalid-field")).toBe(false);
       expect($("#urlStringCreate-error").hasClass("visible")).toBe(false);
+    });
+  });
+
+  describe("createURLHideInput — empty-state branches", () => {
+    it("shows empty state with UTUB_NO_URLS text when no URLs exist", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(0);
+
+      createURLHideInput();
+
+      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(false);
+      expect($("#noURLsSubheader").text()).toBe(
+        APP_CONFIG.strings.UTUB_NO_URLS,
+      );
+      expect(showURLSearchIcon).not.toHaveBeenCalled();
+    });
+
+    it("calls showURLSearchIcon and keeps empty state hidden when URLs exist", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(3);
+
+      createURLHideInput();
+
+      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
+      expect(showURLSearchIcon).toHaveBeenCalled();
+    });
+  });
+
+  describe("createURLShowInput — empty-state branch", () => {
+    it("hides empty state and clears subheader text when no URLs exist", () => {
+      vi.mocked(getNumOfURLs).mockReturnValue(0);
+      $("#noURLsEmptyState").removeClass("hidden");
+      $("#noURLsSubheader").text(APP_CONFIG.strings.UTUB_NO_URLS);
+
+      createURLShowInput(1);
+
+      expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
+      expect($("#noURLsSubheader").text()).toBe("");
     });
   });
 });
