@@ -140,8 +140,6 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
     BUTTON_URL_CANCEL_CREATE = "#urlCancelBtnCreate"
 
-    BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
-
     # URLs
     URL_TITLE_READ = ".urlTitle"
     URL_STRING_READ = ".urlString"
@@ -204,7 +202,6 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_MODAL_REDIRECT = "#modalRedirect"
     BUTTON_MODAL_SUBMIT = "#modalSubmit"
     BUTTON_X_CLOSE = ".btn-close"
-    ACCESS_ALL_URL_MODAL = "#confirmModal.accessAllUrlModal"
     ACCESS_EXTERNAL_URL_MODAL = "#confirmModal.accessExternalURLModal"
     DELETE_URL_MODAL = ".deleteUrlModal"
 

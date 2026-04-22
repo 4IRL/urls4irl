@@ -189,8 +189,6 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
     utubID,
   ).addClass("even");
 
-  $("#accessAllURLsBtn").showClassNormal();
-
   newUrlCard.insertAfter($("#createURLWrap"));
 
   if (currentNumOfURLs !== 0) {

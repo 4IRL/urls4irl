@@ -20,7 +20,6 @@ import { setCreateUTubEventListeners } from "./home/utubs/create.js";
 import { initUnselectAllTags } from "./home/tags/unselect-all.js";
 import { initUpdateAllTags } from "./home/tags/update-all.js";
 import { initURLDeck } from "./home/urls/deck.js";
-import { initAccessAllURLsBtn } from "./home/urls/access-all.js";
 import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import "./home/urls/cards/filtering.js";
@@ -43,7 +42,6 @@ $(document).ready(() => {
   initUnselectAllTags();
   initUpdateAllTags();
   initURLDeck();
-  initAccessAllURLsBtn();
   initCookieBanner();
 });
 

@@ -1,5 +1,3 @@
-from backend.utils.constants import URL_CONSTANTS
-
 TEST_USER_COUNT = 5
 USERNAME_BASE = "u4i_test"
 EMAIL_SUFFIX = "@urls4irl.app"
@@ -23,10 +21,7 @@ MOCK_URL_STRINGS = (
     "https://efg.com/",
 )
 
-MOCK_TEST_URL_STRINGS = [
-    f"https://www.u4i.test/{idx}"
-    for idx in range(URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 5)
-]
+MOCK_TEST_URL_STRINGS = [f"https://www.u4i.test/{idx}" for idx in range(8)]
 
 MOCK_TAGS = (
     "Great",

@@ -128,7 +128,6 @@ function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
   urlCard.fadeOut("slow", function () {
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
-      $("#accessAllURLsBtn").hideClass();
       showURLsEmptyState();
       hideURLSearchIcon();
     } else {

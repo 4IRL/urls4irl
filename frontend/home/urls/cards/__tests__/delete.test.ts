@@ -45,7 +45,6 @@ const DELETE_URL_HTML = `
   <div id="noURLsEmptyState" class="hidden">
     <p id="noURLsSubheader"></p>
   </div>
-  <button id="accessAllURLsBtn"></button>
   <div id="listURLs"></div>
 `;
 
