@@ -88,6 +88,9 @@ const appConfig = {
     UTUB_NO_URLS: "No URLs yet",
     ADD_URL_BUTTON: "Add URL",
     VALIDATE_MY_EMAIL: "Validate My Email",
+    UTUB_SEARCH_NO_RESULTS: "No UTubs found",
+    UTUB_SEARCH_PLACEHOLDER: "Search UTub Names",
+    UTUB_CREATE_MSG: "Create a UTub",
   },
 };
 

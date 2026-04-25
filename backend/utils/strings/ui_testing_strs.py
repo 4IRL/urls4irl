@@ -12,6 +12,7 @@ from backend.utils.strings.url_strs import (
     UTUB_NO_URLS,
 )
 from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
+from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
 
 class UI_TEST_STRINGS:
@@ -65,6 +66,7 @@ class UI_TEST_STRINGS:
 
     TAG_FILTER_NO_URLS = TAG_FILTER_NO_RESULTS
     URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
+    UTUB_SEARCH_NO_UTUBS = UTUB_SEARCH_NO_RESULTS
     UTUB_NO_URLS = UTUB_NO_URLS
     ADD_URL_BUTTON = ADD_URL_BUTTON
 
