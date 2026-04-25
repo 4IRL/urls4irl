@@ -11,7 +11,7 @@ import {
   sameNameWarningHideModal,
 } from "./utils.js";
 import { createUTubSelector, selectUTub } from "./selectors.js";
-import { closeUTubSearchAndEraseInput } from "./search.js";
+import { resetUTubSearch } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
@@ -34,7 +34,7 @@ export function setCreateUTubEventListeners(): void {
   const utubBtnCreate = $("#utubBtnCreate");
   utubBtnCreate.offAndOnExact("click.createUTub", function () {
     createUTubShowInput();
-    closeUTubSearchAndEraseInput();
+    resetUTubSearch();
   });
 }
 

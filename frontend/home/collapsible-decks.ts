@@ -1,7 +1,7 @@
 import { $ } from "../lib/globals.js";
 import { isMobile } from "./mobile.js";
 import { isUTubSelected } from "./utubs/utils.js";
-import { closeUTubSearchAndEraseInput } from "./utubs/search.js";
+import { resetUTubSearch } from "./utubs/search.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
@@ -90,7 +90,7 @@ function setupUTubHeaderForMaximizeMinimize() {
     caret.addClass("closed");
     $(UTUB_DECK_CSS_SELECTOR).addClass("collapsed");
 
-    closeUTubSearchAndEraseInput();
+    resetUTubSearch();
     if (isUTubSelected()) createUTubHideInput();
 
     if (numDecksAlreadyCollapsed >= 2) {

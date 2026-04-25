@@ -17,7 +17,7 @@ import {
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { getNumOfUTubs } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
-import { closeUTubSearchAndEraseInput } from "./search.js";
+import { resetUTubSearch } from "./search.js";
 
 type DeleteUtubResponse = SuccessResponse<"deleteUtub">;
 
@@ -67,7 +67,7 @@ function deleteUTubShowModal(utubID: number): void {
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       deleteUTub(utubID);
-      closeUTubSearchAndEraseInput();
+      resetUTubSearch();
     });
 
   $("#modalSubmit").prop("disabled", false);
