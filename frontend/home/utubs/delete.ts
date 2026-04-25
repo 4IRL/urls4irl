@@ -10,10 +10,7 @@ import {
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
 } from "../mobile.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
-import {
-  hideInputsAndSetUTubDeckSubheader,
-  resetUTubDeckIfNoUTubs,
-} from "./deck.js";
+import { hideInputsAndUpdateUTubDeck, resetUTubDeckIfNoUTubs } from "./deck.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { getNumOfUTubs } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -134,13 +131,13 @@ function deleteUTubSuccess(utubID: number): void {
     // Reset all panels
     setUIWhenNoUTubSelected();
 
-    hideInputsAndSetUTubDeckSubheader();
-    emit(AppEvents.UTUB_DELETED, { utubID });
-
     if (getNumOfUTubs() === 0) {
       resetUTubDeckIfNoUTubs();
       $("#utubTagBtnCreate").hideClass();
+    } else {
+      hideInputsAndUpdateUTubDeck();
     }
+    emit(AppEvents.UTUB_DELETED, { utubID });
 
     if (isMobile()) setMobileUIWhenUTubNotSelectedOrUTubDeleted();
   });
