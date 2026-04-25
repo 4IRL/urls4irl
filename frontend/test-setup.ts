@@ -90,6 +90,7 @@ const appConfig = {
     VALIDATE_MY_EMAIL: "Validate My Email",
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",
     UTUB_SEARCH_PLACEHOLDER: "Search UTub Names",
+    UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
     UTUB_CREATE_MSG: "Create a UTub",
   },
 };

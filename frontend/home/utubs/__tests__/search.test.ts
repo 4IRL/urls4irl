@@ -121,7 +121,12 @@ describe("UTub Search", () => {
 
       $("#UTubNameSearch").val("alpha").trigger("input");
 
-      expect($("#UTubSearchAnnouncement").text()).toBe("2 of 3 UTubs shown");
+      const expectedAnnouncement =
+        APP_CONFIG.strings.UTUB_SEARCH_COUNT_TEMPLATE.replace(
+          "{{ visible }}",
+          "2",
+        ).replace("{{ total }}", "3");
+      expect($("#UTubSearchAnnouncement").text()).toBe(expectedAnnouncement);
     });
 
     it("announces 'No UTubs found' when no UTubs match", () => {

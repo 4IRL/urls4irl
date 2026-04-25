@@ -87,9 +87,12 @@ export function setUTubSelectorSearchEventListener(): void {
       } else {
         hideUTubSearchNoResults();
         const totalCount = $(".UTubSelector").length;
-        $("#UTubSearchAnnouncement").text(
-          `${visibleCount} of ${totalCount} UTubs shown`,
-        );
+        const announcement =
+          APP_CONFIG.strings.UTUB_SEARCH_COUNT_TEMPLATE.replace(
+            "{{ visible }}",
+            String(visibleCount),
+          ).replace("{{ total }}", String(totalCount));
+        $("#UTubSearchAnnouncement").text(announcement);
       }
     })
     .offAndOn("change", function () {
