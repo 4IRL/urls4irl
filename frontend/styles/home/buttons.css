@@ -30,8 +30,6 @@
     fill: var(--panelBackgroundColor);
 }
 
-#UTubSearchFilterIconClose,
-#UTubSearchFilterIcon,
 #URLSearchFilterIconClose,
 #URLSearchFilterIcon {
     cursor: pointer;
@@ -41,12 +39,10 @@
     margin-right: 4px;
 }
 
-#UTubSearchFilterIcon>svg,
 #URLSearchFilterIcon>svg {
     fill: var(--grayBadgeSelection);
 }
 
-#UTubSearchFilterIconClose>svg,
 #URLSearchFilterIconClose>svg {
     fill: var(--spanRemoveColor);
 }
@@ -85,12 +81,10 @@
         background: var(--removeIconColorHover);
     }
 
-    #UTubSearchFilterIcon:hover>svg,
     #URLSearchFilterIcon:hover>svg {
         fill: var(--deckSelectionGreenHover);
     }
 
-    #UTubSearchFilterIconClose:hover>svg,
     #URLSearchFilterIconClose:hover>svg {
         fill: var(--spanRemoveColorHover);
     }
