@@ -71,7 +71,6 @@ export function setUTubSelectorSearchEventListener(): void {
     })
     .offAndOn("input", function () {
       const searchTerm = getInputValue(searchInput).toLowerCase();
-      const totalCount = $(".UTubSelector").length;
       if (searchTerm.length < APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH) {
         updatedUTubSelectorDisplay([]);
         hideUTubSearchNoResults();
@@ -87,6 +86,7 @@ export function setUTubSelectorSearchEventListener(): void {
         showUTubSearchNoResults();
       } else {
         hideUTubSearchNoResults();
+        const totalCount = $(".UTubSelector").length;
         $("#UTubSearchAnnouncement").text(
           `${visibleCount} of ${totalCount} UTubs shown`,
         );
