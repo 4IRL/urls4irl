@@ -11,25 +11,6 @@
     </div>
     <!-- Icons -->
     <div class="flex-row button-container flex-center gap-2p">
-        <button id="UTubSearchFilterIcon">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="white" class="bi bi-plus-square-fill"
-                height="26" width="26"
-                viewBox="0 0 512 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
-                <path
-                    d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
-            </svg>
-        </button>
-        <button id="UTubSearchFilterIconClose" class="hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="white" class="bi bi-plus-square-fill"
-                    height="26" width="26" viewBox="0 0 512 512">
-                    <path
-                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
-
-                      <!-- X Shape Inside the Magnifying Glass -->
-                          <line x1="158" y1="158" x2="258" y2="258" stroke="white" stroke-width="20" stroke-linecap="round"/>
-                            <line x1="258" y1="158" x2="158" y2="258" stroke="white" stroke-width="20" stroke-linecap="round"/>
-            </svg>
-        </button>
         <!-- Create UTub button -->
         <button class="green-clickable" id="utubBtnCreate" tabindex="0">
             <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
@@ -56,16 +37,42 @@
     <div id="UTubDeckSubheaderWrap" class="flex-column">
         {% if utubs_for_this_user|length == 0 %}
         <h5 id="UTubDeckSubheader">{{ CONSTANTS.STRINGS.UTUB_CREATE_MSG }}</h5>
-        {% else %}
-        <h5 id="UTubDeckSubheader">{{ utubs_for_this_user|length }} UTubs</h5>
-        {% endif %}
-        <div id="SearchUTubWrap" class="input-text-holder flex-column createDiv hidden">
+        <div id="SearchUTubWrap" class="input-text-holder flex-column hidden">
             <div class="text-input-container">
                 <div class="text-input-inner-container">
-                    <input placeholder="Search UTubs" class="text-input search-input" type="text" id="UTubNameSearch" name="utubName" minlength="{{CONSTANTS.UTUBS.MIN_NAME_LENGTH}}" maxlength="{{CONSTANTS.UTUBS.MAX_NAME_LENGTH}}" required="" tabindex="0">
-                    <label class="text-input-label search-input-label top-50perc left-10p font-size-16p" for="utubNameSearch">Search UTubs</label>
+                    <svg class="utub-search-prefix-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                        height="14" width="14"
+                        viewBox="0 0 512 512" aria-hidden="true">
+                        <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+                    </svg>
+                    <input placeholder="{{ CONSTANTS.STRINGS.UTUB_SEARCH_PLACEHOLDER }}" class="text-input search-input" type="search"
+                           id="UTubNameSearch" name="utubName"
+                           aria-label="Search UTub names"
+                           autocorrect="off" autocapitalize="off"
+                           minlength="{{CONSTANTS.UTUBS.MIN_NAME_LENGTH}}" maxlength="{{CONSTANTS.UTUBS.MAX_NAME_LENGTH}}" required="" tabindex="0">
+                    <label class="text-input-label search-input-label top-50perc left-10p font-size-16p" for="UTubNameSearch">{{ CONSTANTS.STRINGS.UTUB_SEARCH_PLACEHOLDER }}</label>
                 </div>
             </div>
         </div>
+        {% else %}
+        <h5 id="UTubDeckSubheader" class="hidden">{{ CONSTANTS.STRINGS.UTUB_CREATE_MSG }}</h5>
+        <div id="SearchUTubWrap" class="input-text-holder flex-column">
+            <div class="text-input-container">
+                <div class="text-input-inner-container">
+                    <svg class="utub-search-prefix-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+                        height="14" width="14"
+                        viewBox="0 0 512 512" aria-hidden="true">
+                        <path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+                    </svg>
+                    <input placeholder="{{ CONSTANTS.STRINGS.UTUB_SEARCH_PLACEHOLDER }}" class="text-input search-input" type="search"
+                           id="UTubNameSearch" name="utubName"
+                           aria-label="Search UTub names"
+                           autocorrect="off" autocapitalize="off"
+                           minlength="{{CONSTANTS.UTUBS.MIN_NAME_LENGTH}}" maxlength="{{CONSTANTS.UTUBS.MAX_NAME_LENGTH}}" required="" tabindex="0">
+                    <label class="text-input-label search-input-label top-50perc left-10p font-size-16p" for="UTubNameSearch">{{ CONSTANTS.STRINGS.UTUB_SEARCH_PLACEHOLDER }}</label>
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
