@@ -74,9 +74,9 @@ class HomePageLocators(GenericPageLocator):
     CO_CREATOR_ICON = ".bi-diamond-half"
     CREATOR_ICON = ".bi-diamond-fill"
 
-    UTUB_OPEN_SEARCH_ICON = "#UTubSearchFilterIcon"
-    UTUB_CLOSE_SEARCH_ICON = "#UTubSearchFilterIconClose"
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
+    UTUB_SEARCH_WRAP = "#SearchUTubWrap"
+    UTUB_SEARCH_NO_RESULTS = "#UTubSearchNoResults"
 
     URL_OPEN_SEARCH_ICON = "#URLSearchFilterIcon"
     URL_CLOSE_SEARCH_ICON = "#URLSearchFilterIconClose"

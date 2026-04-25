@@ -37,7 +37,8 @@
     transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
 }
 
-.url-search-prefix-icon {
+.url-search-prefix-icon,
+.utub-search-prefix-icon {
     position: absolute;
     left: 10px;
     top: 50%;
@@ -47,11 +48,12 @@
     z-index: 1;
 }
 
-#URLContentSearch.search-input.text-input[type="search"] {
+#URLContentSearch.search-input.text-input[type="search"],
+#UTubNameSearch.search-input.text-input[type="search"] {
     padding-left: 32px;
 }
 
-#UTubNameSearch.text-input[type="text"].utub-search-expanded {
+#UTubNameSearch.search-input.text-input[type="search"] {
     width: 100%;
     opacity: 1;
 }
@@ -59,9 +61,6 @@
 #UTubNameSearch+.text-input-label {
     background: var(--searchInputBackgroundColor);
     color: #c6c6c6;
-}
-
-#UTubNameSearch:focus+.text-input-label {
     display: none;
 }
 

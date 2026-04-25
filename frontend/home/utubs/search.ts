@@ -31,29 +31,20 @@ function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
   }
 }
 
+function showUTubSearchNoResults(): void {
+  $("#UTubSearchNoResults")
+    .text(APP_CONFIG.strings.UTUB_SEARCH_NO_RESULTS)
+    .removeClass("hidden");
+  $("#UTubSearchAnnouncement").text(APP_CONFIG.strings.UTUB_SEARCH_NO_RESULTS);
+}
+
+function hideUTubSearchNoResults(): void {
+  $("#UTubSearchNoResults").addClass("hidden").text("");
+  $("#UTubSearchAnnouncement").text("");
+}
+
 export function setUTubSelectorSearchEventListener(): void {
-  const wrapper = $("#SearchUTubWrap");
-  const searchIcon = $("#UTubSearchFilterIcon");
-  const searchIconClose = $("#UTubSearchFilterIconClose");
   const searchInput = $("#UTubNameSearch");
-
-  searchIcon.offAndOnExact("click.searchInputShow", function () {
-    wrapper.addClass("visible").removeClass("hidden");
-    $("#UTubDeckSubheader").addClass("hidden");
-    searchIcon.addClass("hidden");
-    searchIconClose.removeClass("hidden");
-
-    setTimeout(() => {
-      searchInput.addClass("utub-search-expanded");
-    }, 0);
-
-    searchInput.focus();
-  });
-
-  searchIconClose.offAndOnExact("click.searchInputClose", function () {
-    closeUTubSearchAndEraseInput();
-    searchInput.removeClass("utub-search-expanded");
-  });
 
   searchInput
     .offAndOn("focus.searchInputEsc", function () {
@@ -62,8 +53,15 @@ export function setUTubSelectorSearchEventListener(): void {
         function (event: JQuery.TriggeredEvent) {
           if (event.key === KEYS.ESCAPE) {
             searchInput.blur();
-            closeUTubSearchAndEraseInput();
-            searchInput.removeClass("utub-search-expanded");
+            resetUTubSearch();
+            const firstVisibleSelector = $(".UTubSelector")
+              .not(".hidden")
+              .first();
+            if (firstVisibleSelector.length > 0) {
+              firstVisibleSelector.trigger("focus");
+            } else {
+              $("#memberBtnCreate").trigger("focus");
+            }
           }
         },
       );
@@ -75,6 +73,7 @@ export function setUTubSelectorSearchEventListener(): void {
       const searchTerm = getInputValue(searchInput).toLowerCase();
       if (searchTerm.length < APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH) {
         updatedUTubSelectorDisplay([]);
+        hideUTubSearchNoResults();
         return;
       }
       const filteredUTubIDsToHide = filterUTubsByName(
@@ -82,14 +81,44 @@ export function setUTubSelectorSearchEventListener(): void {
         searchTerm,
       );
       updatedUTubSelectorDisplay(filteredUTubIDsToHide);
+      const visibleCount = $(".UTubSelector").not(".hidden").length;
+      if (visibleCount === 0) {
+        showUTubSearchNoResults();
+      } else {
+        hideUTubSearchNoResults();
+        const totalCount = $(".UTubSelector").length;
+        const announcement =
+          APP_CONFIG.strings.UTUB_SEARCH_COUNT_TEMPLATE.replace(
+            "{{ visible }}",
+            String(visibleCount),
+          ).replace("{{ total }}", String(totalCount));
+        $("#UTubSearchAnnouncement").text(announcement);
+      }
+    })
+    .offAndOn("change", function () {
+      if (getInputValue(searchInput) === "") {
+        resetUTubSearch();
+      }
     });
 }
 
-export function closeUTubSearchAndEraseInput(): void {
-  $("#UTubSearchFilterIconClose").addClass("hidden");
-  $("#UTubSearchFilterIcon").removeClass("hidden");
-  $("#SearchUTubWrap").addClass("hidden").removeClass("visible");
-  $("#UTubDeckSubheader").removeClass("hidden");
-  $("#UTubNameSearch").val("");
+export function resetUTubSearch(): void {
+  const searchInput = $("#UTubNameSearch");
+  searchInput.val("");
+  searchInput.off("keydown.searchInputEsc");
   $(".UTubSelector").removeClass("hidden");
+  hideUTubSearchNoResults();
+}
+
+export function showUTubSearchBar(): void {
+  $("#SearchUTubWrap").removeClass("hidden");
+  $("#UTubDeckSubheader").addClass("hidden");
+}
+
+export function hideUTubSearchBar(): void {
+  $("#SearchUTubWrap").addClass("hidden");
+  $("#UTubDeckSubheader")
+    .removeClass("hidden")
+    .text(APP_CONFIG.strings.UTUB_CREATE_MSG);
+  resetUTubSearch();
 }

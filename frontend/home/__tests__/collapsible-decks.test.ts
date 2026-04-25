@@ -8,7 +8,7 @@ import {
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
 vi.mock("../utubs/utils.js", () => ({ isUTubSelected: vi.fn(() => false) }));
 vi.mock("../utubs/search.js", () => ({
-  closeUTubSearchAndEraseInput: vi.fn(),
+  resetUTubSearch: vi.fn(),
 }));
 vi.mock("../utubs/create.js", () => ({ createUTubHideInput: vi.fn() }));
 vi.mock("../members/create.js", () => ({ createMemberHideInput: vi.fn() }));
@@ -21,6 +21,7 @@ const DECK_HTML = `
     <div id="UTubDeckHeaderAndCaret">
       <span class="title-caret"></span>
     </div>
+    <div id="SearchUTubWrap"></div>
   </div>
   <div class="deck" id="MemberDeck">
     <div id="MemberDeckHeaderAndCaret">
@@ -75,6 +76,13 @@ describe("Collapsible Decks", () => {
       expect($("#UTubDeckHeaderAndCaret .title-caret").hasClass("closed")).toBe(
         false,
       );
+    });
+
+    it("collapsing the UTub deck does not hide #SearchUTubWrap", () => {
+      expect($("#SearchUTubWrap").hasClass("hidden")).toBe(false);
+      $("#UTubDeckHeaderAndCaret").trigger("click");
+      expect($(".deck#UTubDeck").hasClass("collapsed")).toBe(true);
+      expect($("#SearchUTubWrap").hasClass("hidden")).toBe(false);
     });
   });
 

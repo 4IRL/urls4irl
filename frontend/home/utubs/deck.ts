@@ -1,7 +1,6 @@
 import type { UtubSummaryItem } from "../../types/utub.js";
 
 import { $ } from "../../lib/globals.js";
-import { APP_CONFIG } from "../../lib/config.js";
 import { SHOW_LOADING_ICON_AFTER_MS } from "../../lib/constants.js";
 import { setState } from "../../store/app-store.js";
 import { hideInputs } from "../btns-forms.js";
@@ -9,8 +8,11 @@ import {
   createUTubSelector,
   setUTubSelectorEventListeners,
 } from "./selectors.js";
-import { getNumOfUTubs } from "./utils.js";
-import { setUTubSelectorSearchEventListener } from "./search.js";
+import {
+  hideUTubSearchBar,
+  setUTubSelectorSearchEventListener,
+  showUTubSearchBar,
+} from "./search.js";
 import { setDeleteEventListeners } from "./delete.js";
 
 // Utility function to show a loading icon when loading UTubs
@@ -59,7 +61,7 @@ export function buildUTubDeck(
       );
     }
 
-    hideInputsAndSetUTubDeckSubheader();
+    hideInputsAndUpdateUTubDeck();
   } else {
     resetUTubDeckIfNoUTubs();
   }
@@ -76,28 +78,23 @@ export function setUTubEventListenersOnInitialPageLoad(): void {
 }
 
 export function resetUTubDeckIfNoUTubs(): void {
-  // Subheader to prompt user to create a UTub shown
-  $("#UTubDeckSubheader").text(`${APP_CONFIG.strings.UTUB_CREATE_MSG}`);
-
   // Hide delete UTub button
   $("#utubBtnDelete").hideClass();
+
+  // Hide the search bar and reveal the "Create a UTub" subheader
+  hideUTubSearchBar();
 }
 
-export function hideInputsAndSetUTubDeckSubheader(): void {
+export function hideInputsAndUpdateUTubDeck(): void {
   hideInputs();
-  const numOfUTubs = getNumOfUTubs();
-  const subheaderText =
-    numOfUTubs > 1 ? numOfUTubs + " UTubs" : numOfUTubs + " UTub";
-
-  // Subheader to tell user how many UTubs are accessible
-  $("#UTubDeckSubheader").text(subheaderText);
+  showUTubSearchBar();
 }
 
 export function setUTubDeckOnUTubSelected(
   selectedUTubID: number,
   isCurrentUserOwner: boolean,
 ): void {
-  hideInputsAndSetUTubDeckSubheader();
+  hideInputsAndUpdateUTubDeck();
 
   if (isCurrentUserOwner) {
     $("#utubBtnDelete").showClassNormal();
