@@ -9,6 +9,11 @@ import { updateMemberDeck } from "../deck.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { diffIDLists } from "../../../logic/deck-diffing.js";
 import { getState } from "../../../store/app-store.js";
+import { getNumOfUTubs } from "../../utubs/utils.js";
+import {
+  hideInputsAndUpdateUTubDeck,
+  resetUTubDeckIfNoUTubs,
+} from "../../utubs/deck.js";
 
 vi.mock("../delete.js", async () => {
   const actual =
@@ -36,7 +41,7 @@ vi.mock("../../../store/app-store.js", () => ({
 vi.mock("../../utubs/utils.js", () => ({ getNumOfUTubs: vi.fn(() => 1) }));
 vi.mock("../../utubs/deck.js", () => ({
   resetUTubDeckIfNoUTubs: vi.fn(),
-  hideInputsAndSetUTubDeckSubheader: vi.fn(),
+  hideInputsAndUpdateUTubDeck: vi.fn(),
 }));
 vi.mock("../../init.js", () => ({ setUIWhenNoUTubSelected: vi.fn() }));
 
@@ -210,5 +215,79 @@ describe("updateMemberDeck - null-guard for missing member data", () => {
     updateMemberDeck([{ id: 1, username: "Alice" }], true, 42);
 
     expect($("#listMembers").children().length).toBe(0);
+  });
+});
+
+const LEAVE_UTUB_HTML = `
+  <div id="confirmModal">
+    <div id="confirmModalTitle"></div>
+    <div id="confirmModalBody"></div>
+    <button id="modalDismiss"></button>
+    <button id="modalSubmit"></button>
+    <div id="modalRedirect"></div>
+  </div>
+  <button id="memberSelfBtnDelete"></button>
+  <div id="listUTubs">
+    <div class="UTubSelector" utubid="42"></div>
+  </div>
+`;
+
+describe("leaveUTubSuccess - UTub deck dispatch on successful leave", () => {
+  beforeEach(() => {
+    document.body.innerHTML = LEAVE_UTUB_HTML;
+    vi.clearAllMocks();
+    ($.fn as unknown as Record<string, unknown>).modal = function (
+      this: JQuery,
+    ) {
+      return this;
+    };
+    // Override fadeOut so the post-fade callback fires synchronously
+    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+      this: JQuery,
+      _duration: unknown,
+      callback?: () => void,
+    ) {
+      if (typeof callback === "function") callback();
+      return this;
+    };
+    vi.mocked(is429Handled).mockReturnValue(false);
+  });
+
+  function triggerLeaveSubmit(utubID: number): void {
+    const successXhr = createMockXhr({ status: 200 });
+    const chainable = createMockJqXHRChainable({
+      done: (cb: unknown) => {
+        (
+          cb as (
+            _response: unknown,
+            _textStatus: unknown,
+            xhr: JQuery.jqXHR,
+          ) => void
+        )({}, "success", successXhr);
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    // Pass isCreator=false to route the done callback through leaveUTubSuccess
+    removeMemberShowModal(5, false, utubID);
+    $("#modalSubmit").trigger("click");
+  }
+
+  it("calls resetUTubDeckIfNoUTubs and skips hideInputsAndUpdateUTubDeck when no UTubs remain", () => {
+    vi.mocked(getNumOfUTubs).mockReturnValue(0);
+
+    triggerLeaveSubmit(42);
+
+    expect(vi.mocked(resetUTubDeckIfNoUTubs)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(hideInputsAndUpdateUTubDeck)).not.toHaveBeenCalled();
+  });
+
+  it("calls hideInputsAndUpdateUTubDeck and skips resetUTubDeckIfNoUTubs when UTubs remain", () => {
+    vi.mocked(getNumOfUTubs).mockReturnValue(2);
+
+    triggerLeaveSubmit(42);
+
+    expect(vi.mocked(hideInputsAndUpdateUTubDeck)).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(resetUTubDeckIfNoUTubs)).not.toHaveBeenCalled();
   });
 });
