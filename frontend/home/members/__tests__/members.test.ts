@@ -7,7 +7,7 @@ import { createMemberRemoveBtn, removeMemberShowModal } from "../delete.js";
 import { createMemberHideInput } from "../create.js";
 import { updateMemberDeck } from "../deck.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
-import { diffIDLists } from "../../../logic/deck-diffing.js";
+import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 import { getState } from "../../../store/app-store.js";
 import { getNumOfUTubs } from "../../utubs/utils.js";
 import {
@@ -31,8 +31,8 @@ vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
 }));
-vi.mock("../../../logic/deck-diffing.js", () => ({
-  diffIDLists: vi.fn(() => ({ toRemove: [], toAdd: [], toUpdate: [] })),
+vi.mock("../../../logic/apply-deck-diff.js", () => ({
+  applyDeckDiff: vi.fn(),
 }));
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ members: [], isCurrentUserOwner: true })),
@@ -193,28 +193,31 @@ describe("resetNewMemberForm via createMemberHideInput", () => {
   });
 });
 
-describe("updateMemberDeck - null-guard for missing member data", () => {
+describe("updateMemberDeck - applyDeckDiff config", () => {
   beforeEach(() => {
     document.body.innerHTML = `<div id="listMembers"></div>`;
     vi.clearAllMocks();
     vi.mocked(getState).mockReturnValue({
-      members: [],
+      members: [{ id: 1, username: "Alice" }],
       isCurrentUserOwner: true,
     } as unknown as ReturnType<typeof getState>);
   });
 
-  it("skips appending a badge when the member ID in toAdd is not found in newMembers", () => {
-    // Force diffIDLists to return a toAdd ID that is not present in newMembers,
-    // exercising the `if (!memberData) return;` null-guard branch.
-    vi.mocked(diffIDLists).mockReturnValueOnce({
-      toRemove: [],
-      toAdd: [999],
-      toUpdate: [],
-    });
+  it("calls applyDeckDiff once with oldItems matching getState().members and newItems matching newMembers", () => {
+    const existingMember = { id: 1, username: "Alice" };
+    const newMember = { id: 2, username: "Bob" };
+    const newMembers = [existingMember, newMember];
 
-    updateMemberDeck([{ id: 1, username: "Alice" }], true, 42);
+    updateMemberDeck(newMembers, true, 42);
 
-    expect($("#listMembers").children().length).toBe(0);
+    expect(vi.mocked(applyDeckDiff)).toHaveBeenCalledTimes(1);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+    expect(config.oldItems).toEqual([existingMember]);
+    expect(config.newItems).toEqual(newMembers);
+    expect(config.getID(existingMember)).toBe(1);
+    expect(config.getID(newMember)).toBe(2);
+    expect(typeof config.removeElement).toBe("function");
+    expect(typeof config.addElement).toBe("function");
   });
 });
 
