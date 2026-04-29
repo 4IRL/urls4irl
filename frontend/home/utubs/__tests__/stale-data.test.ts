@@ -110,5 +110,12 @@ describe("updateUTubOnFindingStaleData", () => {
       const setStateOrder = vi.mocked(setState).mock.invocationCallOrder[0];
       expect(emitOrder).toBeLessThan(setStateOrder);
     });
+
+    it("updates #URLDeckHeader and #URLDeckSubheader text from the resolved UTub", async () => {
+      await updateUTubOnFindingStaleData(mockUtubID);
+
+      expect($("#URLDeckHeader").text()).toBe(mockUtubDetail.name);
+      expect($("#URLDeckSubheader").text()).toBe(mockUtubDetail.description);
+    });
   });
 });

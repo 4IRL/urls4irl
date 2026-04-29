@@ -219,6 +219,36 @@ describe("updateMemberDeck - applyDeckDiff config", () => {
     expect(typeof config.removeElement).toBe("function");
     expect(typeof config.addElement).toBe("function");
   });
+
+  it("removeElement callback removes the member badge from the DOM", () => {
+    document.body.innerHTML = `
+      <div id="listMembers">
+        <span class="member" memberid="7"><b>Charlie</b></span>
+      </div>
+    `;
+
+    updateMemberDeck([], true, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.removeElement(7);
+
+    expect(document.querySelector('.member[memberid="7"]')).toBeNull();
+  });
+
+  it("addElement callback appends a new member badge to #listMembers", () => {
+    const newMember = { id: 9, username: "Dana" };
+
+    updateMemberDeck([newMember], true, 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+
+    config.addElement(newMember);
+
+    const appendedBadge = document.querySelector(
+      '#listMembers .member[memberid="9"]',
+    );
+    expect(appendedBadge).not.toBeNull();
+    expect(appendedBadge!.querySelector("b")!.textContent).toBe("Dana");
+  });
 });
 
 const LEAVE_UTUB_HTML = `
