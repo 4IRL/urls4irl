@@ -15,9 +15,8 @@ import {
 } from "./cards.js";
 import { selectURLCard } from "./selection.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
-import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
+import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { isATagSelected } from "../../tags/utils.js";
-import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
 import { getState, setState } from "../../../store/app-store.js";
 import {
   closeURLSearchAndEraseInput,
@@ -244,23 +243,10 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
         }
       }
       break;
-    case 409: {
-      // Indicates duplicate URL error
-      // If duplicate URL is not currently visible, indicates another user has added this URL
-      // or updated another card to the new URL
-      // Reload UTub and add/modify differences
-      const duplicateUrlString = (
-        responseJSON as CreateUrlError & { urlString?: string }
-      ).urlString;
-      if (
-        duplicateUrlString !== undefined &&
-        !isURLCurrentlyVisibleInURLDeck(duplicateUrlString)
-      ) {
-        updateUTubOnFindingStaleData(utubID);
-      }
+    case 409:
+      checkForStaleDataOn409(responseJSON, utubID);
       displayCreateUrlFailErrors("urlString", responseJSON.message as string);
       break;
-    }
     case 403:
     case 404:
     default:

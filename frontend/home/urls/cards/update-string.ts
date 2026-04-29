@@ -28,8 +28,7 @@ import {
   enableTagRemovalInURLCard,
 } from "../tags/tags.js";
 import { createEditURLIcon } from "./options/edit-string-btn.js";
-import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
-import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
+import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { getState, setState } from "../../../store/app-store.js";
 
 type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
@@ -322,27 +321,14 @@ function updateURLFail(
         );
         break;
       }
-    case 409: {
-      // Indicates duplicate URL error
-      // If duplicate URL is not currently visible, indicates another user has added this URL
-      // or updated another card to the new URL
-      // Reload UTub and add/modify differences
-      const duplicateUrlString = (
-        responseJSON as UpdateUrlStringError & { urlString?: string }
-      ).urlString;
-      if (
-        duplicateUrlString !== undefined &&
-        !isURLCurrentlyVisibleInURLDeck(duplicateUrlString)
-      ) {
-        updateUTubOnFindingStaleData(utubID);
-      }
+    case 409:
+      checkForStaleDataOn409(responseJSON, utubID);
       displayUpdateURLErrors(
         "urlString",
         responseJSON.message as string,
         urlCard,
       );
       break;
-    }
     case 403:
     case 404:
     default:

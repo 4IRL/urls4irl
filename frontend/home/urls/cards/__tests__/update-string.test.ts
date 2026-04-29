@@ -44,12 +44,8 @@ vi.mock("../../../btns-forms.js", () => ({
   highlightInput: vi.fn(),
 }));
 
-vi.mock("../filtering.js", () => ({
-  isURLCurrentlyVisibleInURLDeck: vi.fn(() => false),
-}));
-
-vi.mock("../../../utubs/stale-data.js", () => ({
-  updateUTubOnFindingStaleData: vi.fn(),
+vi.mock("../conflict-handler.js", () => ({
+  checkForStaleDataOn409: vi.fn(),
 }));
 
 vi.mock("../access.js", () => ({

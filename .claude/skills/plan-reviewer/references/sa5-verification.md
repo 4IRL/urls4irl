@@ -20,6 +20,8 @@
 
 - **Route path verification in tests (required):** When a test example names a specific route path (e.g., `spec['paths']['/utubs/{utub_id}/urls/{utub_url_id}']`), read the corresponding route file and confirm (a) the path is registered, and (b) all HTTP methods registered at that path are known. A path claimed to be GET-only that also has PATCH/DELETE will cause assertions like 'x-key absent on this path' to fail. Flag as **Major** if the test example path has methods the plan doesn't account for.
 
+- **Red-phase test count consistency (required):** When a step's Red sub-phase has a verification command of the form "confirm N tests fail" (or matching Green-phase form "confirm N tests pass"), count the test-case specifications defined in that same Red block and verify the count equals N. If they differ, flag as **Critical**. When a prior review pass added a new test case to a Red block, the "confirm N tests fail/pass" number must have been updated atomically across both Red and Green phases — if it was not, the count is stale regardless of which pass introduced the test case.
+
 - **Final test suite phase (required)**: The last phase must include `make test-integration-parallel` and `make test-ui-parallel-built`. Flag as **Critical** if either is missing.
 
 - **Verification sufficiency**: Are the verification steps actually sufficient to catch regressions?
