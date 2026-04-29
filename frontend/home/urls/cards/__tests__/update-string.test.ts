@@ -1,5 +1,6 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   updateURL,
   hideAndResetUpdateURLStringForm,
@@ -196,5 +197,44 @@ describe("updateURLSuccess - tag ID mapping regression guard", () => {
       (existingUrl) => existingUrl.utubUrlID === 1,
     );
     expect(updatedUrl!.utubUrlTagIDs).toEqual([10, 20]);
+  });
+});
+
+describe("updateURL - 409 conflict delegates to checkForStaleDataOn409", () => {
+  let urlCard: JQuery, urlStringInput: JQuery;
+
+  beforeEach(() => {
+    document.body.innerHTML = URL_CARD_HTML;
+    urlCard = $(".urlRow");
+    urlStringInput = urlCard.find(".urlStringUpdate");
+    vi.clearAllMocks();
+  });
+
+  it("calls checkForStaleDataOn409 with utubID when ajaxCall fails with status 409", async () => {
+    urlStringInput.val("https://duplicate.example.com");
+
+    const responseJSON = {
+      status: "Failure",
+      message: "URL already in UTub",
+      errorCode: null,
+      errors: null,
+      details: null,
+      urlString: "https://duplicate.example.com",
+    };
+    const xhr = {
+      status: 409,
+      responseJSON,
+    } as unknown as JQuery.jqXHR;
+
+    const chainable = createMockJqXHRChainable({
+      fail: (callback: unknown) =>
+        (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    await updateURL(urlStringInput, urlCard, 99);
+
+    expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
+    expect(checkForStaleDataOn409).toHaveBeenCalledWith(responseJSON, 99);
   });
 });
