@@ -1,4 +1,6 @@
+import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import { getNumOfURLs } from "../../utils.js";
 import { showURLSearchIcon } from "../../search.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../../empty-state.js";
@@ -11,6 +13,7 @@ import {
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
+  is429Handled: vi.fn(() => false),
 }));
 
 vi.mock("../cards.js", () => ({
@@ -28,16 +31,12 @@ vi.mock("../../utils.js", () => ({
   getNumOfVisibleURLs: vi.fn(() => 0),
 }));
 
-vi.mock("../filtering.js", () => ({
-  isURLCurrentlyVisibleInURLDeck: vi.fn(() => false),
+vi.mock("../conflict-handler.js", () => ({
+  checkForStaleDataOn409: vi.fn(),
 }));
 
 vi.mock("../../../tags/utils.js", () => ({
   isATagSelected: vi.fn(() => false),
-}));
-
-vi.mock("../../../utubs/stale-data.js", () => ({
-  updateUTubOnFindingStaleData: vi.fn(),
 }));
 
 vi.mock("../../search.js", () => ({
@@ -155,6 +154,37 @@ describe("createURL - client-side validation", () => {
       createURLShowInput(1);
 
       expect(hideURLsEmptyState).toHaveBeenCalled();
+    });
+  });
+
+  describe("createURL - 409 conflict delegates to checkForStaleDataOn409", () => {
+    it("calls checkForStaleDataOn409 with utubID when ajaxCall fails with status 409", () => {
+      urlStringInput.val("https://duplicate.example.com");
+      urlTitleInput.val("Some Title");
+
+      const responseJSON = {
+        status: "Failure",
+        message: "URL already in UTub",
+        errorCode: null,
+        errors: null,
+        details: null,
+        urlString: "https://duplicate.example.com",
+      };
+      const xhr = {
+        status: 409,
+        responseJSON,
+      } as unknown as JQuery.jqXHR;
+
+      const chainable = createMockJqXHRChainable({
+        fail: (callback: unknown) =>
+          (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      });
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL(urlTitleInput, urlStringInput, 99);
+
+      expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
+      expect(checkForStaleDataOn409).toHaveBeenCalledWith(responseJSON, 99);
     });
   });
 });

@@ -77,22 +77,38 @@ git status --short
 
 If the diff is empty (nothing to push), inform the user and stop.
 
-### 2. Infer Topic and Resolve Tmp Directory
+### 2. Resolve Plan Folder
 
-Before launching subagents, infer `<topic>` from the current branch name:
+Launch a **subagent** to pick the `plans/<folder>/` directory where this branch's push review belongs. The subagent enumerates existing plan folders, scores each against the branch name, and writes a structured result. The orchestrator never holds the scoring rules — they live in the reference file.
 
-1. Split the branch name on `/` and `-`
-2. **Exhaustively** check every token against **all** known topics. Do not stop at the first non-match — check every token:
-   - `api-route` → tokens include `api`, `route`, `decorator`, `permission`
-   - `urls` → tokens include `url`, `urls`, `rename`
-   - `openapi` → tokens include `openapi`, `schema`, `spec`, `description`
-3. Examples: `refactor/url-permission-decorator` → `api-route`, `feature/openapi-schema` → `openapi`, `fix/rename-url-title` → `urls`, `review/enrich-schema-descriptions` → `openapi` (token `schema` matches)
-4. If a topic can be inferred: set `<tmp-dir>` to `plans/<topic>/tmp/` and create the directory if it does not exist
-5. If topic cannot be inferred: set `<tmp-dir>` to `$TMPDIR`
+Subagent prompt:
 
-**CRITICAL: `plans/tmp/` must never be used as the final storage location for plans, reviews, or any persistent document.** `plans/tmp/` and `$TMPDIR` are for transient subagent output only — the files are deleted after evaluation. Final documents (push reviews, plans) always go under `plans/<topic>/`.
+```
+Read .claude/skills/git-push/references/plan-folder-resolver-prompt.md for your full instructions.
+Branch name: <BRANCH>
+Write your result to $TMPDIR/plan-folder.md.
+```
 
-Store `<tmp-dir>` for use in all subagent prompts below.
+- Uses `model: sonnet` for speed.
+- Output goes to `$TMPDIR` initially because `<plan-dir>` (and therefore `<tmp-dir>`) is not yet known.
+
+After the subagent returns, read `$TMPDIR/plan-folder.md` and parse the JSON (schema is defined in the reference file). Branch on `decision`:
+
+- **`match`**: Set `<plan-dir>` to the returned `plan_dir`. Skip to "Set tmp directory" below.
+- **`ambiguous`** or **`no_match`**: Present `AskUserQuestion` with:
+  - One option per entry in `candidates` (label = bare folder name, description = `summary` from the entry, falling back to `"(no plan file)"` if `summary` is null).
+  - One option labeled `"Create plans/<suggested_new_folder>/"` with description `"New folder for this branch"`.
+  - The user may also pick "Other" to type a custom folder name.
+  - `multiSelect: false`. `header: "Plan folder"`.
+  After the user answers: if they chose "Create …", `mkdir -p plans/<suggested_new_folder>/tmp/` and set `<plan-dir>` to `plans/<suggested_new_folder>`. Otherwise set `<plan-dir>` to the chosen folder path.
+
+**Set tmp directory:**
+- Set `<tmp-dir>` to `<plan-dir>/tmp/` and `mkdir -p` it.
+- Move `$TMPDIR/plan-folder.md` to `<tmp-dir>/plan-folder.md` (or delete it — the orchestrator no longer needs it).
+
+**CRITICAL: `plans/tmp/` must never be used as the final storage location for plans, reviews, or any persistent document.** `<tmp-dir>` (`<plan-dir>/tmp/`) is for transient subagent output only — files are deleted after evaluation. Final documents (push reviews, plans) always go under `<plan-dir>/`.
+
+Store `<plan-dir>` and `<tmp-dir>` for use in all subagent prompts below.
 
 ### 3. Launch 7 Parallel Review Subagents
 
@@ -157,11 +173,11 @@ Capture `PRE_FIX_SHA = $(git rev-parse HEAD)` — the commit hash before any fix
 
 ### 5. Write Findings
 
-Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name using the exhaustive token matching from Step 2. If topic truly cannot be inferred after checking all tokens, ask the user which topic to use rather than defaulting to `plans/tmp/`. `plans/tmp/` must never contain final review documents.
+Push review file lives at `<plan-dir>/reviews/push-review-<branch>.md`, where `<plan-dir>` was resolved in Step 2. `mkdir -p <plan-dir>/reviews/` if it does not exist. `plans/tmp/` must never contain final review documents.
 
 #### File and Review Numbering
 
-1. Check if `plans/<topic>/reviews/push-review-<branch>.md` already exists (or the fallback path if no topic)
+1. Check if `<plan-dir>/reviews/push-review-<branch>.md` already exists
 2. **If it exists**: read the file, find the highest `## Review N` number, and append a new section numbered N+1
 3. **If it does not exist**: create the file with a header and start with `## Review 1`
 
@@ -415,7 +431,7 @@ Evaluate re-review results:
 
 After a successful push, proceed to Step 9 (PR creation).
 
-After a successful push, delete all files in `<tmp-dir>/` if a topic was inferred and the tmp dir was used (i.e., `<tmp-dir>` is `plans/<topic>/tmp/`).
+After a successful push, delete all files in `<tmp-dir>/` (i.e., `<plan-dir>/tmp/`).
 
 ### 9. Create or Update PR
 
@@ -579,7 +595,7 @@ Output:
 - Never push to `main` or `master` — warn the user and abort
 - Never force-push
 - If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code
-- Push review file lives at `plans/<topic>/reviews/push-review-<branch>.md`. Derive `<topic>` from branch name. **Never store final documents (reviews, plans) in `plans/tmp/`** — if no topic can be inferred after exhaustive token matching, ask the user which topic to use.
+- Push review file lives at `<plan-dir>/reviews/push-review-<branch>.md`, where `<plan-dir>` was resolved by the plan-folder-resolver subagent in Step 2. **Never store final documents (reviews, plans) in `plans/tmp/`.**
 - All subagent launches must be in a single message for true parallelism
 - If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error
 - **All design decisions must be resolved before pushing.** The skill blocks until the user has answered every DD via `AskUserQuestion`. There is no "skip" or "defer" option.

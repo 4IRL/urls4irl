@@ -1,5 +1,5 @@
 import { $ } from "../../lib/globals.js";
-import { diffIDLists } from "../../logic/deck-diffing.js";
+import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
 import { getState } from "../../store/app-store.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "./empty-state.js";
@@ -65,38 +65,25 @@ export function updateURLDeck(
   updatedUTubTags: UtubTag[],
   utubID: number,
 ): void {
-  const oldURLIDs = getState().urls.map((url) => url.utubUrlID);
-  const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
-
-  const { toRemove, toAdd, toUpdate } = diffIDLists(oldURLIDs, newURLIDs);
-
-  // Remove any URLs that are in old that aren't in new
-  toRemove.forEach((urlID) => {
-    const urlToRemove = $(".urlRow[utuburlid=" + urlID + "]");
-    urlToRemove.fadeOut("fast", function () {
-      urlToRemove.remove();
-    });
-  });
-
-  // Add any URLs that are in new that aren't in old
-  const urlDeck = $("#listURLs");
-  toAdd.forEach((urlID) => {
-    const urlToAdd = updatedUTubUrls.find((url) => url.utubUrlID === urlID);
-    if (!urlToAdd) return;
-    urlDeck.append(createURLBlock(urlToAdd, updatedUTubTags, utubID));
-  });
-
-  // Update any URLs in both old/new that might have new data from new
-  toUpdate.forEach((urlID) => {
-    const urlToUpdate = $(".urlRow[utuburlid=" + urlID + "]");
-    const newUrl = updatedUTubUrls.find((url) => url.utubUrlID === urlID);
-    if (!newUrl) return;
-    updateURLAfterFindingStaleData(
-      urlToUpdate,
-      newUrl,
-      updatedUTubTags,
-      utubID,
-    );
+  applyDeckDiff<UtubUrlItem>({
+    oldItems: getState().urls,
+    newItems: updatedUTubUrls,
+    getID: (url) => url.utubUrlID,
+    removeElement: (urlID) => {
+      const urlToRemove = $(".urlRow[utuburlid=" + urlID + "]");
+      urlToRemove.fadeOut("fast", function () {
+        urlToRemove.remove();
+      });
+    },
+    addElement: (url) => {
+      $("#listURLs").append(createURLBlock(url, updatedUTubTags, utubID));
+    },
+    updateElement: (urlID, url) => {
+      const urlCard = $(".urlRow[utuburlid=" + urlID + "]");
+      if (urlCard.length) {
+        updateURLAfterFindingStaleData(urlCard, url, updatedUTubTags, utubID);
+      }
+    },
   });
 
   if ($("#SearchURLWrap").hasClass("visible-flex")) {

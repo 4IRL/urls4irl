@@ -1,7 +1,7 @@
 import type { MemberItem } from "../../types/member.js";
 
 import { $ } from "../../lib/globals.js";
-import { diffIDLists } from "../../logic/deck-diffing.js";
+import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
 import { getState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { createMemberBadge, createOwnerBadge } from "./members.js";
@@ -20,29 +20,22 @@ export function updateMemberDeck(
   isCurrentUserOwner: boolean,
   utubID: number,
 ): void {
-  const currentMemberIDs = getState().members.map((member) => member.id);
-  const newMemberIDs = $.map(newMembers, (member) => member.id);
-
-  const { toRemove, toAdd } = diffIDLists(currentMemberIDs, newMemberIDs);
-
-  // Find any old members that aren't in new and remove them
-  toRemove.forEach((memberID) => {
-    $(".member[memberid=" + memberID + "]").remove();
-  });
-
-  // Find any new members that aren't in old and add them
-  const memberDeck = $("#listMembers");
-  toAdd.forEach((memberID) => {
-    const memberData = newMembers.find((member) => member.id === memberID);
-    if (!memberData) return;
-    memberDeck.append(
-      createMemberBadge(
-        memberData.id,
-        memberData.username,
-        isCurrentUserOwner,
-        utubID,
-      ),
-    );
+  applyDeckDiff<MemberItem>({
+    oldItems: getState().members,
+    newItems: newMembers,
+    getID: (member) => member.id,
+    removeElement: (memberID) =>
+      $(".member[memberid=" + memberID + "]").remove(),
+    addElement: (member) => {
+      $("#listMembers").append(
+        createMemberBadge(
+          member.id,
+          member.username,
+          isCurrentUserOwner,
+          utubID,
+        ),
+      );
+    },
   });
 }
 

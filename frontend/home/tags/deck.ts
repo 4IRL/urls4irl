@@ -3,7 +3,7 @@ import type { UtubTag } from "../../types/url.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
-import { diffIDLists } from "../../logic/deck-diffing.js";
+import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
 import { getState } from "../../store/app-store.js";
 import {
   createUTubTagHideInput,
@@ -98,22 +98,17 @@ export function resetTagDeckIfNoUTubSelected(): void {
 
 // Update tags in LH panel based on asynchronous updates or stale data
 export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
-  const oldTagIDs = getState().tags.map((tag) => tag.id);
-  const newTagIDs = $.map(updatedTags, (tag) => tag.id);
-
-  const { toRemove, toAdd } = diffIDLists(oldTagIDs, newTagIDs);
-
-  // Find any tags in old that aren't in new and remove them
-  toRemove.forEach((tagID) => {
-    $(".tagFilter[data-utub-tag-id=" + tagID + "]").remove();
-  });
-
-  // Find any tags in new that aren't in old and add them
-  const tagDeck = $("#listTags");
-  toAdd.forEach((tagID) => {
-    const tagData = updatedTags.find((tag) => tag.id === tagID);
-    if (!tagData) return;
-    tagDeck.append(buildTagFilterInDeck(utubID, tagData.id, tagData.tagString));
+  applyDeckDiff<UtubTag>({
+    oldItems: getState().tags,
+    newItems: updatedTags,
+    getID: (tag) => tag.id,
+    removeElement: (tagID) =>
+      $(".tagFilter[data-utub-tag-id=" + tagID + "]").remove(),
+    addElement: (tag) => {
+      $("#listTags").append(
+        buildTagFilterInDeck(utubID, tag.id, tag.tagString),
+      );
+    },
   });
 }
 

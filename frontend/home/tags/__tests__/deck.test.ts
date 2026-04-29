@@ -1,9 +1,9 @@
 import { updateTagDeck } from "../deck.js";
 import { resetStore, setState } from "../../../store/app-store.js";
-import { diffIDLists } from "../../../logic/deck-diffing.js";
+import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 
-vi.mock("../../../logic/deck-diffing.js", () => ({
-  diffIDLists: vi.fn(),
+vi.mock("../../../logic/apply-deck-diff.js", () => ({
+  applyDeckDiff: vi.fn(),
 }));
 
 vi.mock("../create.js", () => ({
@@ -33,47 +33,44 @@ vi.mock("../tags.js", () => ({
   ),
 }));
 
-const $ = window.jQuery;
-
-describe("updateTagDeck - missing tag ID guard", () => {
+describe("updateTagDeck - applyDeckDiff config", () => {
   beforeEach(() => {
     resetStore();
     document.body.innerHTML = `<div id="listTags"></div>`;
-    vi.mocked(diffIDLists).mockReset();
+    vi.mocked(applyDeckDiff).mockReset();
   });
 
-  it("skips a toAdd tag ID that is not present in updatedTags and throws no error", () => {
-    // Store already contains tag 1. updatedTags also contains tag 1.
-    // But we force diffIDLists to claim toAdd=[999], an ID absent from updatedTags,
-    // exercising the `if (!tagData) return;` guard in updateTagDeck.
-    setState({ tags: [{ id: 1, tagString: "existing", tagApplied: 0 }] });
-    const updatedTags = [{ id: 1, tagString: "existing", tagApplied: 0 }];
-    vi.mocked(diffIDLists).mockReturnValue({
-      toRemove: [],
-      toAdd: [999],
-      toUpdate: [1],
-    });
+  it("calls applyDeckDiff once with oldItems matching getState().tags and newItems matching updatedTags", () => {
+    const existingTag = { id: 1, tagString: "existing", tagApplied: 0 };
+    const newTag = { id: 5, tagString: "new-tag", tagApplied: 0 };
+    setState({ tags: [existingTag] });
+    const updatedTags = [existingTag, newTag];
 
-    expect(() => {
-      updateTagDeck(updatedTags, 42);
-    }).not.toThrow();
+    updateTagDeck(updatedTags, 42);
 
-    // No filter element appended for the missing ID.
-    expect($("#listTags").find('[data-utub-tag-id="999"]').length).toBe(0);
-    expect($("#listTags").children().length).toBe(0);
+    expect(vi.mocked(applyDeckDiff)).toHaveBeenCalledTimes(1);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
+    expect(config.oldItems).toEqual([existingTag]);
+    expect(config.newItems).toEqual(updatedTags);
+    expect(config.getID(existingTag)).toBe(1);
+    expect(config.getID(newTag)).toBe(5);
+    expect(typeof config.removeElement).toBe("function");
+    expect(typeof config.addElement).toBe("function");
   });
 
-  it("appends a tag filter when the toAdd tag IS present in updatedTags", () => {
-    setState({ tags: [] });
-    const updatedTags = [{ id: 5, tagString: "new-tag", tagApplied: 0 }];
-    vi.mocked(diffIDLists).mockReturnValue({
-      toRemove: [],
-      toAdd: [5],
-      toUpdate: [],
-    });
+  it("removeElement callback removes the tag filter element from the DOM", () => {
+    setState({ tags: [{ id: 7, tagString: "deleted", tagApplied: 0 }] });
+    document.body.innerHTML = `
+      <div id="listTags">
+        <div class="tagFilter" data-utub-tag-id="7">deleted</div>
+      </div>
+    `;
 
-    updateTagDeck(updatedTags, 7);
+    updateTagDeck([], 42);
+    const config = vi.mocked(applyDeckDiff).mock.calls[0][0];
 
-    expect($("#listTags").find('[data-utub-tag-id="5"]').length).toBe(1);
+    config.removeElement(7);
+
+    expect(document.querySelector('[data-utub-tag-id="7"]')).toBeNull();
   });
 });
