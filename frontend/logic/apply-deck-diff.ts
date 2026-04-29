@@ -32,13 +32,12 @@ export function applyDeckDiff<T>(config: DeckDiffConfig<T>): void {
   });
 
   if (config.updateElement) {
-    const updateElement = config.updateElement;
     toUpdate.forEach((id) => {
       const item = config.newItems.find(
         (candidate) => config.getID(candidate) === id,
       );
       if (!item) return;
-      updateElement(id, item);
+      config.updateElement!(id, item);
     });
   }
 }
