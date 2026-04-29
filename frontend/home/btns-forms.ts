@@ -29,7 +29,7 @@ function handleBlur(event: JQuery.TriggeredEvent): void {
 // Handle blur for the search text input boxes
 function handleSearchInputBlur(event: JQuery.TriggeredEvent): void {
   const input = event.target as HTMLInputElement;
-  if (input.id === "URLContentSearch") return;
+  if (input.id === "URLContentSearch" || input.id === "UTubNameSearch") return;
   const label = input.nextElementSibling;
   if (input.value === "") {
     $(label!).show();

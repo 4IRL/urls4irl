@@ -41,15 +41,22 @@ if [ -n "$path" ]; then
 fi
 
 # Match: cd <path> && git ...   OR   cd <path> ; git ...
-path=$(echo "$cmd" | sed -nE 's|^[[:space:]]*cd[[:space:]]+([^[:space:]]+)[[:space:]]*(&&|;)[[:space:]]*git[[:space:]].*|\1|p')
+# (BSD sed -E doesn't support (&&|;) alternation, so try each separately.)
+op=""
+path=$(echo "$cmd" | sed -nE 's|^[[:space:]]*cd[[:space:]]+([^[:space:]]+)[[:space:]]*&&[[:space:]]*git[[:space:]].*|\1|p')
+[ -n "$path" ] && op="&&"
+if [ -z "$path" ]; then
+  path=$(echo "$cmd" | sed -nE 's|^[[:space:]]*cd[[:space:]]+([^[:space:]]+)[[:space:]]*;[[:space:]]*git[[:space:]].*|\1|p')
+  [ -n "$path" ] && op=";"
+fi
 if [ -n "$path" ]; then
   target_real=$(resolve_target "$path")
   if [ "$target_real" = "$proj_real" ]; then
-    jq -n --arg p "$path" '{
+    jq -n --arg p "$path" --arg op "$op" '{
       hookSpecificOutput: {
         hookEventName: "PreToolUse",
         permissionDecision: "deny",
-        permissionDecisionReason: "Drop the `cd \($p) &&` prefix — cwd is already the repo root, and the prefix shifts the command past allowlist rules. Re-issue the git command without the cd."
+        permissionDecisionReason: "Drop the `cd \($p) \($op)` prefix — cwd is already the repo root, and the prefix shifts the command past allowlist rules. Re-issue the git command without the cd."
       }
     }'
     exit 0

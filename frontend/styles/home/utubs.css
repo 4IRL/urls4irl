@@ -116,12 +116,11 @@
 }
 
 #UTubDescriptionSubheaderWrap~.createDiv {
-    padding-top: 1rem;
+    padding-block: 1rem;
 }
 
 #UTubDescriptionSubheaderOuterWrap {
     width: 100%;
-    min-height: 2rem;
 }
 
 #URLDeckNoDescription {

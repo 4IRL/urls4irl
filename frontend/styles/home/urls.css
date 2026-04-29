@@ -286,6 +286,10 @@ a.urlString {
     align-items: center;
 }
 
+#listURLs :not(.urlRow) + .urlRow {
+    border-top: none;
+}
+
 #URLDeckSubheader {
     margin-top: 3px;
 }

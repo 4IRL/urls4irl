@@ -263,5 +263,22 @@ describe("btns-forms", () => {
 
       expect(label.style.display).toBe("none");
     });
+
+    it("does not run float-label logic for UTubNameSearch input", () => {
+      document.body.innerHTML = `
+        <input id="UTubNameSearch" type="search" value="" />
+        <label style="display:none;">Search UTub Names</label>
+      `;
+      const input = document.getElementById(
+        "UTubNameSearch",
+      ) as HTMLInputElement;
+      const label = input.nextElementSibling as HTMLElement;
+      label.style.display = "none";
+
+      const fakeEvent = { target: input } as unknown as JQuery.TriggeredEvent;
+      handleSearchInputBlur(fakeEvent);
+
+      expect(label.style.display).toBe("none");
+    });
   });
 });
