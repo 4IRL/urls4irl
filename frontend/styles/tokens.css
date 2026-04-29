@@ -97,4 +97,7 @@
     --cookieBannerLinkHoverColor: var(--darkSplashGreen);
     --cookieBannerTextColor: var(--offWhiteSplashBackgroundBanner);
     --cookieBannerTitleColor: rgba(106, 246, 141, 0.94);
+
+    /* Layout sizing */
+    --deckSubheaderMinHeight: 2.25rem;
 }

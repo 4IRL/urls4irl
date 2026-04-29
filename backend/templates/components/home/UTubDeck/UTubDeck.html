@@ -6,6 +6,8 @@
     <div class="flex-column content">
         <!-- Create UTub Form -->
         {% include 'components/home/UTubDeck/CreateUTubForm.html' %}
+        <p id="UTubSearchNoResults" class="hidden"></p>
+        <span id="UTubSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
         <div class="pad-in-15p flex-column" id="listUTubs">
             <!-- UTubs -->
             {% for utub in utubs_for_this_user %}

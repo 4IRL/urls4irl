@@ -79,6 +79,10 @@ const appConfig = {
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,
     URLS_MIN_LENGTH: 1,
+    MEMBER_ROLES: {
+      CREATOR: "CREATOR",
+      CO_CREATOR: "CO_CREATOR",
+    },
   },
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
@@ -88,6 +92,10 @@ const appConfig = {
     UTUB_NO_URLS: "No URLs yet",
     ADD_URL_BUTTON: "Add URL",
     VALIDATE_MY_EMAIL: "Validate My Email",
+    UTUB_SEARCH_NO_RESULTS: "No UTubs found",
+    UTUB_SEARCH_PLACEHOLDER: "Search UTub Names",
+    UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
+    UTUB_CREATE_MSG: "Create a UTub",
   },
 };
 

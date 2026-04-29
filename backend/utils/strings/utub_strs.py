@@ -13,6 +13,9 @@ UTUB_UPDATE_SAME_NAME = "You are a member of a UTub with an identical name."
 UTUB_DELETE_WARNING = "This action is irreversible!"
 UTUB_CREATE_MSG = "Create a UTub"
 UTUB_SELECT = "Select a UTub"
+UTUB_SEARCH_NO_RESULTS = "No UTubs found"
+UTUB_SEARCH_PLACEHOLDER = "Search UTub Names"
+UTUB_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} UTubs shown"
 
 
 class UTUB_GENERAL:

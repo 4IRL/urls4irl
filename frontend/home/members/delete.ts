@@ -9,8 +9,8 @@ import { getState, setState } from "../../store/app-store.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import {
+  hideInputsAndUpdateUTubDeck,
   resetUTubDeckIfNoUTubs,
-  hideInputsAndSetUTubDeckSubheader,
 } from "../utubs/deck.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
 
@@ -172,7 +172,11 @@ function leaveUTubSuccess(utubID: number): void {
   const utubSelector = $(".UTubSelector[utubid=" + utubID + "]");
   utubSelector.fadeOut("slow", function () {
     utubSelector.remove();
-    hideInputsAndSetUTubDeckSubheader();
+    if (getNumOfUTubs() === 0) {
+      resetUTubDeckIfNoUTubs();
+    } else {
+      hideInputsAndUpdateUTubDeck();
+    }
   });
 
   setTimeout(function () {

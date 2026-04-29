@@ -278,6 +278,9 @@ def test_delete_last_utub_no_urls_no_tags_no_members(
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK).text
         == UTUB_CREATE_MSG
     )
+    assert not browser.find_element(
+        By.CSS_SELECTOR, HPL.UTUB_SEARCH_WRAP
+    ).is_displayed()
 
 
 def test_delete_last_utub_with_urls_tags_members(
@@ -317,6 +320,9 @@ def test_delete_last_utub_with_urls_tags_members(
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK).text
         == UTUB_CREATE_MSG
     )
+    assert not browser.find_element(
+        By.CSS_SELECTOR, HPL.UTUB_SEARCH_WRAP
+    ).is_displayed()
 
     assert len(browser.find_elements(By.CSS_SELECTOR, HPL.SELECTORS_UTUB)) == 0
     assert len(browser.find_elements(By.CSS_SELECTOR, HPL.BADGES_MEMBERS)) == 0

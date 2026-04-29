@@ -68,6 +68,10 @@
     height: 38px;
 }
 
+.titleElement.dynamic-subheader {
+    min-height: var(--deckSubheaderMinHeight);
+}
+
 .title-caret {
     color: var(--deckHeaderGreen);
     transition: transform 0.15s ease;

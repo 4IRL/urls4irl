@@ -8,10 +8,11 @@ import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { highlightInput } from "../btns-forms.js";
 import {
   getAllAccessibleUTubNames,
+  getNumOfUTubs,
   sameNameWarningHideModal,
 } from "./utils.js";
 import { createUTubSelector, selectUTub } from "./selectors.js";
-import { closeUTubSearchAndEraseInput } from "./search.js";
+import { resetUTubSearch, showUTubSearchBar } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 
@@ -34,7 +35,7 @@ export function setCreateUTubEventListeners(): void {
   const utubBtnCreate = $("#utubBtnCreate");
   utubBtnCreate.offAndOnExact("click.createUTub", function () {
     createUTubShowInput();
-    closeUTubSearchAndEraseInput();
+    resetUTubSearch();
   });
 }
 
@@ -239,6 +240,8 @@ function createUTubSuccess(response: CreateUtubResponse): void {
     index - 1,
   );
   $("#listUTubs").prepend(newUTubSelector);
+
+  if (getNumOfUTubs() === 1) showUTubSearchBar();
 
   selectUTub(utubID, newUTubSelector);
 }
