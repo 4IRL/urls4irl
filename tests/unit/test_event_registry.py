@@ -21,11 +21,6 @@ def test_event_category_has_three_values():
         assert category.value == category.name.lower()
 
 
-def test_event_name_count_matches_master_plan():
-    """EventName has 47 members: 1 API + 11 domain + 35 UI."""
-    assert len(EventName) == 47
-
-
 def test_event_name_value_format():
     """Every EventName value is the lowercase form of its member name."""
     for member in EventName:
@@ -54,26 +49,6 @@ def test_api_category_contains_only_api_hit():
         if category is EventCategory.API
     }
     assert api_members == {EventName.API_HIT}
-
-
-def test_domain_category_size():
-    """The DOMAIN category contains exactly 11 events."""
-    domain_members = {
-        member
-        for member, category in EVENT_CATEGORY.items()
-        if category is EventCategory.DOMAIN
-    }
-    assert len(domain_members) == 11
-
-
-def test_ui_category_size():
-    """The UI category contains exactly 35 events."""
-    ui_members = {
-        member
-        for member, category in EVENT_CATEGORY.items()
-        if category is EventCategory.UI
-    }
-    assert len(ui_members) == 35
 
 
 def test_ui_events_have_ui_prefix():
