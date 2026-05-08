@@ -153,6 +153,10 @@ Always write test output to `/tmp/claude/` (e.g., `/tmp/claude/test-foo-results.
 
 After making code changes, proactively check for downstream breakage (changed error messages, removed elements, renamed constants) before marking work complete.
 
+### Test Runs Always Use Synchronous Bash
+
+All `make test-*` invocations — integration, UI, single-marker, parallel, full suite — run via the synchronous `Bash` tool, either directly in the orchestrator or inside a subagent the orchestrator launched. **Never** wrap test runs in a `Monitor`, **never** use `run_in_background` for tests, and **never** poll a subagent's result file while the subagent is still in flight. A subagent's Agent-tool reply IS the completion signal; the orchestrator reads the temp result file after that reply lands.
+
 ## Build Verification
 
 After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
@@ -184,6 +188,8 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 ### Docker Execution Note
 
 **CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
+
+**CRITICAL — never compound `make`/`docker` with another command.** `sandbox.excludedCommands` (in `.claude/settings.local.json`) auto-runs `make ...` and `docker ...` unsandboxed silently — but it matches on the **first token of the command only**. Compounding with anything else (`rm /tmp/foo && make test`, `mkdir x && docker compose up`, `cd dir && make build`) shifts the first token away from the excluded prefix, so the match fails and the harness shows an unsandbox approval prompt. Always split into two separate Bash calls: cleanup/setup first, then the `make`/`docker` call alone.
 
 **CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up d=1` (or `make up-built d=1`), then poll `docker compose ps` until services are healthy. Before starting containers, check if they're already running with `docker compose --project-directory . -f docker/compose.local.yaml ps`.
 

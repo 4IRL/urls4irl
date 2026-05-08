@@ -23,6 +23,7 @@ from backend.config import Config, ConfigProd
 from backend.extensions.email_sender.email_sender import EmailSender
 from backend.extensions.notifications.notifications import NotificationSender
 from backend.extensions.url_validation.url_validator import UrlValidator
+from backend.cli.metrics import register_metrics_cli
 from backend.cli.mock_options import register_mocks_db_cli
 from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
@@ -166,6 +167,7 @@ def create_app(
 
         app.register_blueprint(debug_routes)
 
+    register_metrics_cli(app)
     register_mocks_db_cli(app)
     register_openapi_cli(app)
     register_short_urls_cli(app)

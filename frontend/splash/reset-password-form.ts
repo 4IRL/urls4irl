@@ -18,8 +18,8 @@ type ResetPasswordError = Schema<"ErrorResponse_ResetPasswordErrorCodes">;
  */
 export function initResetPasswordForm($modal: JQuery): void {
   $modal
-    .find("#submit")
-    .offAndOn("click", (event) => handleResetPassword(event, $modal));
+    .find("form")
+    .offAndOn("submit", (event) => handleResetPassword(event, $modal));
 
   $modal.on("hide.bs.modal", function () {
     $modal.off("hide.bs.modal");

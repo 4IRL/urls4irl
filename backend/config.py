@@ -31,6 +31,27 @@ VITE_URL = environ.get(ENV.VITE_URL, default="https://localhost:5173")
 VITE_INTERNAL_HOST = environ.get(ENV.VITE_INTERNAL_HOST, default="")
 ENABLE_SSL = environ.get(ENV.ENABLE_SSL, default="false").lower() == "true"
 
+# Anonymous metrics flags. Phase 1 of the anonymous-metrics initiative reserves
+# the env names and surfaces them on Flask config; nothing writes metrics yet.
+METRICS_ENABLED = environ.get(ENV.METRICS_ENABLED, default="false").lower() == "true"
+# Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
+METRICS_FLUSH_INTERVAL_SECONDS = int(
+    environ.get(ENV.METRICS_FLUSH_INTERVAL_SECONDS, default="60")
+)
+# Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
+METRICS_BUCKET_SECONDS = int(environ.get(ENV.METRICS_BUCKET_SECONDS, default="3600"))
+# Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
+# Redis logical DB index for metrics counter/batch keys.
+#   DB 0 = sessions / Flask-Limiter (production default)
+#   DB 1 = test-redis (CI/test isolation)
+#   DB 2 = metrics (this constant) — reserved by the Phase 1 sub-plan to keep
+#          metrics keys separate from session and rate-limit keyspaces.
+METRICS_REDIS_DB = int(environ.get(ENV.METRICS_REDIS_DB, default="2"))
+# Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
+METRICS_BATCH_NONCE_TTL_SECONDS = int(
+    environ.get(ENV.METRICS_BATCH_NONCE_TTL_SECONDS, default="120")
+)
+
 DEV_DB_URI = build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
@@ -124,6 +145,11 @@ class Config:
     VITE_URL = VITE_URL
     VITE_INTERNAL_HOST = VITE_INTERNAL_HOST
     ENABLE_SSL = ENABLE_SSL
+    METRICS_ENABLED = METRICS_ENABLED
+    METRICS_FLUSH_INTERVAL_SECONDS = METRICS_FLUSH_INTERVAL_SECONDS
+    METRICS_BUCKET_SECONDS = METRICS_BUCKET_SECONDS
+    METRICS_REDIS_DB = METRICS_REDIS_DB
+    METRICS_BATCH_NONCE_TTL_SECONDS = METRICS_BATCH_NONCE_TTL_SECONDS
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:
@@ -167,6 +193,9 @@ class ConfigTest(Config):
     SQLALCHEMY_BINDS = {"test": TEST_DB_URI}
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI
     UI_TESTING = False
+    # Defense in depth: ensure the metrics CLI/sync helpers are no-ops in tests
+    # unless a test explicitly opts in (overrides the flag and calls sync).
+    METRICS_ENABLED = False
 
     SESSION_TYPE = (
         "redis"

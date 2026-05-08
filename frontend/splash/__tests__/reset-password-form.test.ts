@@ -30,9 +30,11 @@ const $ = window.jQuery;
 // This decouples tests from template markup and avoids maintaining HTML in two places.
 const RESET_PASSWORD_MODAL_HTML = `
   <div class="modal fade" id="ResetPasswordModal">
-    <input id="newPassword" class="form-control" value="newpass123" />
-    <input id="confirmNewPassword" class="form-control" value="newpass123" />
-    <button id="submit" type="submit"></button>
+    <form id="ModalForm" method="POST" action="">
+      <input id="newPassword" class="form-control" value="newpass123" />
+      <input id="confirmNewPassword" class="form-control" value="newpass123" />
+      <button id="submit" type="submit"></button>
+    </form>
   </div>
 `;
 
@@ -52,7 +54,7 @@ describe("reset-password-form 429 HTML response", () => {
 
     const $modal = $("#ResetPasswordModal");
     initResetPasswordForm($modal);
-    $modal.find("#submit").trigger("click");
+    $modal.find("form").trigger("submit");
 
     // Simulate 429 HTML response
     const fakeXhr = {
@@ -73,7 +75,7 @@ describe("reset-password-form 429 HTML response", () => {
 
     const $modal = $("#ResetPasswordModal");
     initResetPasswordForm($modal);
-    $modal.find("#submit").trigger("click");
+    $modal.find("form").trigger("submit");
 
     const fakeXhr = {
       status: 403,
