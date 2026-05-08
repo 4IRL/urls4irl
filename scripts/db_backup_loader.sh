@@ -10,8 +10,9 @@
 # DB_PASSWORD=database_password_here
 # CONTAINER_NAME=docker_container_running_postgres
 #
-# 4) Ensure the gzip'd backup file is in this directory, and pass it as an argument when running this file
-# 5) Should lead you to a successful restore of backup :)
+# 4) Ensure the gzip'd backup file is in this directory
+# 5) Pass it as an argument when running this file. Run this file from host, not within docker container
+# 6) Should lead you to a successful restore of backup :)
 
 # Load credentials from a configuration file
 CREDENTIALS_FILE="secrets/db_credentials.conf"

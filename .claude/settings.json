@@ -5,7 +5,13 @@
       "Read(./.env.*)",
       "Read(./secrets/**)",
       "Read(./config/credentials.json)",
-      "Read(./build)"
+      "Read(./build)",
+      "Monitor(rm *)",
+      "Monitor(sudo *)",
+      "Monitor(curl *)",
+      "Monitor(wget *)",
+      "Monitor(dd *)",
+      "Monitor(mkfs *)"
     ],
     "allow": [
       "Bash(ls ~/.claude/**)",
@@ -19,8 +25,14 @@
       "Bash(docker compose up *)",
       "Bash(docker compose build *)",
       "Bash(make *)",
+      "Monitor",
+      "Read(/tmp/**)",
+      "Read(/private/tmp/**)",
       "Write(./plans/*/tmp/*)"
     ]
+  },
+  "env": {
+    "BASH_MAX_TIMEOUT_MS": "1800000"
   },
   "hooks": {
     "PreToolUse": [
@@ -29,7 +41,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/block-compound-push.sh\"",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/block-compound-commands.sh\"",
             "timeout": 5
           },
           {

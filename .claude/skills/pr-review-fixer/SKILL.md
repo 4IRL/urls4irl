@@ -342,6 +342,7 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 - All subagent launches in a single step must be in one message for parallelism
 - If a subagent fails or returns unclear results, treat as needing user intervention
 - The CI monitor chain (1a → 1b → 1c) is a sequential pipeline but runs in the background, independent of Steps 2-6
+- **Test runs use synchronous Bash inside subagents** — test-runner subagents invoke `make test-*` synchronously (with `dangerouslyDisableSandbox: true`) and block until make exits. The orchestrator waits for the subagent's Agent-tool reply — that reply IS the completion signal. Do not arm a Monitor on a test result file, do not poll a running subagent, and never reach into a container with a side-channel probe. The CI monitor chain (1a → 1b → 1c) is a separate concern: it polls GitHub Actions via `gh`, not a local test run.
 - CI fixes from subagent 1c will be included in the next commit cycle
 - **Comment resolution check is mandatory**: The Comment Analyzer subagent (Step 2) uses the GraphQL API to check `isResolved` on each review thread. The REST API does NOT expose resolution status — always use GraphQL. If all threads are resolved, the workflow stops early with no changes.
 - The orchestrator never fetches or processes comments directly — it delegates to the Comment Analyzer subagent and acts on the structured JSON output
