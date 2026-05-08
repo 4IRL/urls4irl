@@ -43,7 +43,7 @@ def test_sync_event_registry_is_idempotent(app: Flask):
     sync_event_registry(app)
     sync_event_registry(app)
 
-    assert Event_Registry.query.count() == len(list(EventName))
+    assert Event_Registry.query.count() == len(EventName)
 
 
 def test_sync_event_registry_preserves_retired_rows(app: Flask):
@@ -65,7 +65,7 @@ def test_sync_event_registry_preserves_retired_rows(app: Flask):
 
     sync_event_registry(app)
 
-    assert Event_Registry.query.count() == len(list(EventName)) + 1
+    assert Event_Registry.query.count() == len(EventName) + 1
     retired_row = Event_Registry.query.filter_by(name="retired_event").one()
     assert retired_row.description == "retired"
 

@@ -21,12 +21,3 @@ def test_record_event_accepts_all_documented_kwargs():
         dimensions={"x": 1},
     )
     assert result is None
-
-
-# type-check sentinel: the `event: EventName` parameter type carries the
-# contract that non-EventName values are rejected. Enforcement is via static
-# type checking (mypy/pyright), not a runtime assertion, so this test does
-# not attempt a runtime check — the function signature is the contract.
-def test_record_event_rejects_non_event_name_at_type_check():
-    """Documents that the EventName type-hint is the contract; no runtime check."""
-    assert record_event(EventName.UTUB_CREATED) is None

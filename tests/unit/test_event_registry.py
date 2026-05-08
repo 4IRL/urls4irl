@@ -23,7 +23,7 @@ def test_event_category_has_three_values():
 
 def test_event_name_count_matches_master_plan():
     """EventName has 47 members: 1 API + 11 domain + 35 UI."""
-    assert len(list(EventName)) == 47
+    assert len(EventName) == 47
 
 
 def test_event_name_value_format():

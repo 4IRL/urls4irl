@@ -40,5 +40,5 @@ def sync_event_registry(app: Flask) -> None:
         db.session.commit()
         current_app.logger.info(
             "metrics: synced event_registry — %d enum members",
-            len(list(EventName)),
+            len(EventName),
         )

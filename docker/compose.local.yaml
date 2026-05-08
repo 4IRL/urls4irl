@@ -33,6 +33,12 @@ services:
       - VITE_URL=http://localhost:5173
       - VITE_INTERNAL_HOST=vite
       - ENABLE_SSL=false
+      # Anonymous metrics knobs (Phase 1: stub writer; values consumed in Phase 3)
+      - METRICS_ENABLED=false
+      - METRICS_FLUSH_INTERVAL_SECONDS=60
+      - METRICS_BUCKET_SECONDS=3600
+      - METRICS_REDIS_DB=2
+      - METRICS_BATCH_NONCE_TTL_SECONDS=120
     volumes:
       - ./run.py:/code/u4i/run.py
       - ./pytest.ini:/code/u4i/pytest.ini

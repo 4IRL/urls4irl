@@ -15,6 +15,12 @@ services:
     environment:
       - PRODUCTION=true
       - FLASK_DEBUG=false
+      # Anonymous metrics knobs (Phase 1: stub writer; values consumed in Phase 3)
+      - METRICS_ENABLED=false
+      - METRICS_FLUSH_INTERVAL_SECONDS=60
+      - METRICS_BUCKET_SECONDS=3600
+      - METRICS_REDIS_DB=2
+      - METRICS_BATCH_NONCE_TTL_SECONDS=120
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
