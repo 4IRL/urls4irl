@@ -17,8 +17,16 @@ cmd=$(jq -r '.tool_input.command // empty')
 first=$(echo "$cmd" | awk '{print $1}' | sed 's|.*/||')
 
 case "$first" in
-  ls|find)
+  ls)
     tool="Glob"
+    ;;
+  find)
+    # find piped/exec'd into grep|rg is content search → Grep, not Glob
+    if echo "$cmd" | grep -qE -- '-exec\s+(grep|rg)\b|\|\s*xargs\s+(grep|rg)\b|\|\s*(grep|rg)\b'; then
+      tool="Grep"
+    else
+      tool="Glob"
+    fi
     ;;
   cat)
     # Allow cat with redirects (>, >>, <<) — those are file writes, handled elsewhere
