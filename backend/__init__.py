@@ -21,6 +21,7 @@ from backend.api_common.error_handler import (
 from backend.db import db
 from backend.config import Config, ConfigProd
 from backend.extensions.email_sender.email_sender import EmailSender
+from backend.extensions.metrics.middleware import init_metrics_middleware
 from backend.extensions.metrics.writer import MetricsWriter
 from backend.extensions.notifications.notifications import NotificationSender
 from backend.extensions.url_validation.url_validator import UrlValidator
@@ -195,6 +196,7 @@ def create_app(
         migrate.init_app(app)
 
     add_security_headers(app)
+    init_metrics_middleware(app)
     init_vite_app(app)
     return app
 
