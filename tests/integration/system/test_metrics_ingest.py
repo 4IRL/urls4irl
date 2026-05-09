@@ -644,7 +644,7 @@ def test_ingest_anonymous_user_accepted(
 
 
 def test_ingest_authenticated_user_accepted(
-    provide_metrics_redis: Redis,
+    metrics_enabled_app: Flask,
     login_first_user_with_register,
 ):
     """
@@ -652,23 +652,12 @@ def test_ingest_authenticated_user_accepted(
     WHEN POSTing a payload with a valid CSRF token
     THEN the response is 200.
     """
-    logged_in_client, csrf, _user, app = login_first_user_with_register
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    original_redis = app_metrics_writer._redis
-    original_enabled = app_metrics_writer._enabled
+    logged_in_client, csrf, _user, _app = login_first_user_with_register
 
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    app_metrics_writer.init_app(app)
+    response = logged_in_client.post(
+        INGEST_URL,
+        json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
+        headers={"X-CSRFToken": csrf},
+    )
 
-    try:
-        response = logged_in_client.post(
-            INGEST_URL,
-            json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
-            headers={"X-CSRFToken": csrf},
-        )
-
-        assert response.status_code == 200
-    finally:
-        app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
-        app_metrics_writer._redis = original_redis
-        app_metrics_writer._enabled = original_enabled
+    assert response.status_code == 200
