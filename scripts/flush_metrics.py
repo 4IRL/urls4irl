@@ -92,6 +92,14 @@ EXECUTE_VALUES_PAGE_SIZE: int = 200
 FLUSH_LOCK_KEY: str = "metrics:flush:lock"
 FLUSH_LOCK_TTL_SECONDS: int = 55
 
+# Liveness sentinel — a healthcheck script (`check_flush_liveness.py`) reads
+# this key and fails the workflow container's healthcheck when it is missing
+# or older than `METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS`. Set ONLY after a
+# successful flush completes (including empty-flush success); never set on the
+# lock-held early-exit path or on Postgres commit failure. No TTL so a long
+# stretch of failures naturally ages the value out past the threshold.
+FLUSH_LAST_SUCCESS_KEY: str = "metrics:flush:last_success_epoch"
+
 UPSERT_SQL: str = """
     INSERT INTO "AnonymousMetrics"
         ("eventName", "endpoint", "method", "statusCode",
@@ -196,6 +204,7 @@ def run_flush(
             )
 
         if not rows:
+            _record_flush_success(redis_client)
             return 0
 
         with pg_conn.cursor() as cursor:
@@ -208,10 +217,28 @@ def run_flush(
             )
         pg_conn.commit()
 
+        _record_flush_success(redis_client)
         return len(rows)
     except Exception:
         pg_conn.rollback()
         raise
+
+
+def _record_flush_success(redis_client: redis.Redis) -> None:
+    """Stamp the liveness sentinel with the current epoch after a successful flush.
+
+    Wrapped in try/except so a transient Redis hiccup at the very end of an
+    otherwise-successful flush does not flip the whole run to failure (Postgres
+    commit has already landed). The healthcheck will fail on the *next* tick if
+    Redis genuinely stays down — which is the correct signal.
+    """
+    try:
+        redis_client.set(FLUSH_LAST_SUCCESS_KEY, str(int(time.time())))
+    except Exception as sentinel_error:
+        print(
+            f"metrics flush: failed to stamp liveness sentinel: {sentinel_error}",
+            file=sys.stderr,
+        )
 
 
 def _build_redis_client_from_env() -> redis.Redis:

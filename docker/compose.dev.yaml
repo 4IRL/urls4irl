@@ -79,6 +79,7 @@ services:
       - REDIS_URI=redis://redis:6379/0
       - METRICS_REDIS_DB=2
       - METRICS_BUCKET_SECONDS=3600
+      - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
       - POSTGRES_HOST=db
       - POSTGRES_PORT=5432
     volumes:
@@ -87,11 +88,11 @@ services:
       - workflow_logs:/app/workflow_logs
       - backups:/backups
     healthcheck:
-      test: [ "CMD", "pgrep", "cron" ]
+      test: [ "CMD", "/opt/metrics-venv/bin/python", "/app/check_flush_liveness.py" ]
       interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 200s
 
 secrets:
   MAILJET_API_KEY:

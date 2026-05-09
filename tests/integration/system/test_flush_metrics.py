@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock
@@ -12,7 +13,12 @@ from redis import Redis
 
 from backend.metrics.events import EVENT_CATEGORY, EVENT_DESCRIPTIONS, EventName
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from scripts.flush_metrics import FLUSH_LOCK_KEY, FLUSH_LOCK_TTL_SECONDS, run_flush
+from scripts.flush_metrics import (
+    FLUSH_LAST_SUCCESS_KEY,
+    FLUSH_LOCK_KEY,
+    FLUSH_LOCK_TTL_SECONDS,
+    run_flush,
+)
 
 pytestmark = pytest.mark.cli
 
@@ -23,13 +29,16 @@ _BUCKET_START_DT = datetime.fromtimestamp(_BUCKET_START_EPOCH, tz=timezone.utc)
 
 @pytest.fixture(autouse=True)
 def _release_flush_lock(provide_metrics_redis: Redis):
-    """Release the metrics:flush:lock between tests so each test can acquire
-    it cleanly. Without this, the lock's 55s TTL would block successive
-    flush tests within the same pytest worker.
+    """Release the metrics:flush:lock and clear the liveness sentinel between
+    tests so each test starts from a clean slate. Without this, the lock's 55s
+    TTL would block successive flush tests within the same pytest worker, and
+    a prior test's liveness stamp would pollute negative-path assertions.
     """
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
+    provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
     yield
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
+    provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
 
 
 def _build_counter_key(bucket_epoch: int, event_value: str, dims: dict) -> str:
@@ -544,5 +553,130 @@ def test_flush_can_be_invoked_idempotently(
         assert second == 0
         assert rows_after_first == rows_after_second
     finally:
+        _truncate_metrics_tables(pg_conn)
+        pg_conn.close()
+
+
+def test_flush_stamps_liveness_sentinel_after_successful_drain(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a Redis counter key drained by a successful run_flush
+    WHEN the function returns
+    THEN metrics:flush:last_success_epoch is set in Redis to the current
+        epoch (within ~5 seconds of int(time.time())).
+    """
+    pg_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(pg_conn)
+        _seed_event_registry(pg_conn, EventName.API_HIT)
+        dims = {"endpoint": "/live", "method": "GET", "status_code": 200}
+        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        provide_metrics_redis.set(key, 1)
+
+        before_epoch = int(time.time())
+        run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+        after_epoch = int(time.time())
+
+        raw_sentinel = provide_metrics_redis.get(FLUSH_LAST_SUCCESS_KEY)
+        assert raw_sentinel is not None
+        stamped_epoch = int(raw_sentinel)
+        assert before_epoch <= stamped_epoch <= after_epoch
+    finally:
+        _truncate_metrics_tables(pg_conn)
+        pg_conn.close()
+
+
+def test_flush_stamps_liveness_sentinel_on_empty_drain(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN no counter keys in Redis
+    WHEN run_flush is invoked (early-returns 0 with no Postgres write)
+    THEN the liveness sentinel IS still stamped — an empty flush is a
+        successful flush and the worker is making progress.
+    """
+    pg_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(pg_conn)
+
+        before_epoch = int(time.time())
+        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+        after_epoch = int(time.time())
+
+        assert upserted == 0
+        raw_sentinel = provide_metrics_redis.get(FLUSH_LAST_SUCCESS_KEY)
+        assert raw_sentinel is not None
+        stamped_epoch = int(raw_sentinel)
+        assert before_epoch <= stamped_epoch <= after_epoch
+    finally:
+        _truncate_metrics_tables(pg_conn)
+        pg_conn.close()
+
+
+def test_flush_does_not_stamp_liveness_sentinel_on_postgres_commit_failure(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN run_flush has rows to upsert and Postgres commit() raises
+    WHEN run_flush propagates the exception
+    THEN metrics:flush:last_success_epoch is NOT set in Redis — the
+        healthcheck must NOT report success when commits are failing.
+    """
+    seeder_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(seeder_conn)
+        _seed_event_registry(seeder_conn, EventName.API_HIT)
+    finally:
+        seeder_conn.close()
+
+    dims = {"endpoint": "/fail", "method": "GET", "status_code": 200}
+    key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+    provide_metrics_redis.set(key, 4)
+
+    real_conn = _build_pg_conn(app)
+    try:
+        mock_pg_conn = MagicMock(wraps=real_conn)
+        mock_pg_conn.commit.side_effect = RuntimeError("simulated postgres failure")
+
+        with pytest.raises(RuntimeError, match="simulated postgres failure"):
+            run_flush(redis_client=provide_metrics_redis, pg_conn=mock_pg_conn)
+
+        assert provide_metrics_redis.get(FLUSH_LAST_SUCCESS_KEY) is None
+    finally:
+        cleanup_conn = _build_pg_conn(app)
+        try:
+            _truncate_metrics_tables(cleanup_conn)
+        finally:
+            cleanup_conn.close()
+        real_conn.close()
+
+
+def test_flush_does_not_stamp_liveness_sentinel_when_lock_held(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN the metrics:flush:lock key is already held (simulating a hung or
+        overlapping worker)
+    WHEN run_flush is invoked
+    THEN it returns 0 without stamping the liveness sentinel — being
+        locked-out is NOT progress; another worker must succeed for the
+        sentinel to advance.
+    """
+    pg_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(pg_conn)
+        provide_metrics_redis.set(FLUSH_LOCK_KEY, "1", ex=FLUSH_LOCK_TTL_SECONDS)
+
+        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+
+        assert upserted == 0
+        assert provide_metrics_redis.get(FLUSH_LAST_SUCCESS_KEY) is None
+    finally:
+        provide_metrics_redis.delete(FLUSH_LOCK_KEY)
         _truncate_metrics_tables(pg_conn)
         pg_conn.close()

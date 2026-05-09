@@ -55,8 +55,9 @@ COPY --chown=workflow:workflow scripts/backup-logs.sh /app/
 COPY --chown=workflow:workflow scripts/remote-object-storage.sh /app/
 COPY scripts/restricted-curl.sh /usr/bin/restricted_curl
 
-# Copy metrics flush script and backend package (full tree retained for import-path consistency)
+# Copy metrics flush + liveness scripts and backend package (full tree retained for import-path consistency)
 COPY --chown=workflow:workflow scripts/flush_metrics.py /app/flush_metrics.py
+COPY --chown=workflow:workflow scripts/check_flush_liveness.py /app/check_flush_liveness.py
 COPY --chown=workflow:workflow backend/ /app/backend/
 
 # Copy crontab job
@@ -65,6 +66,7 @@ COPY docker/crontab.workflow /tmp/crontab.workflow
 # Make scripts executable and replace curl with a restricted version
 RUN chmod +x /app/*.sh \
     && chmod +x /app/flush_metrics.py \
+    && chmod +x /app/check_flush_liveness.py \
     && chmod +x /usr/bin/restricted_curl \
     && mv /usr/bin/curl /usr/bin/curl.real \
     && ln -s /usr/bin/restricted_curl /usr/bin/curl
@@ -73,9 +75,12 @@ RUN chmod +x /app/*.sh \
 RUN crontab -u workflow /tmp/crontab.workflow \
     && rm /tmp/crontab.workflow
 
-# Add healthcheck
-HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \
-    CMD pgrep cron || exit 1
+# Add healthcheck — fails when no successful metrics flush has been recorded
+# in Redis within METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS (default 180s).
+# Replaces the prior `pgrep cron` check, which only proved the cron daemon
+# was alive, not that flushes were succeeding.
+HEALTHCHECK --interval=60s --timeout=5s --start-period=200s --retries=3 \
+    CMD /opt/metrics-venv/bin/python /app/check_flush_liveness.py || exit 1
 
 # Container runs as root to start cron daemon
 # Cron jobs themselves run as 'workflow' user (set via crontab -u)
