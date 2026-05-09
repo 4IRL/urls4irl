@@ -47,7 +47,7 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
-_METRICS_REDIS_DB_BASE = 16
+_METRICS_REDIS_DB_BASE = 8
 
 
 class AjaxFlaskClient(FlaskClient):

@@ -2047,6 +2047,7 @@
           "batch_id": {
             "anyOf": [
               {
+                "maxLength": 128,
                 "type": "string"
               },
               {
