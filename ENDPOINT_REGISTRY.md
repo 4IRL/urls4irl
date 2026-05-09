@@ -319,6 +319,11 @@ Base path: `/api/metrics`
 | **CSRF**         | Header `X-CSRFToken` (preferred) or JSON body `csrf_token` (sendBeacon fallback); validated manually via `flask_wtf.csrf.validate_csrf`. Missing token → 400; invalid token → 403 (re-raised `CSRFError`).                                                                                                                                                                     |
 | **Tests**        | `tests/integration/system/test_metrics_ingest.py` (marker: `cli`), `tests/unit/test_metrics_ingest_csrf_token_extraction.py` (marker: `unit`), `tests/unit/test_metrics_ingest_schema.py` (marker: `unit`), `tests/unit/test_dimension_models.py` (marker: `unit`)                                                                                                              |
 
+#### Forward references (future phases)
+
+- **Phase 4 — `frontend/lib/metrics-client.ts`**: thin browser-side client that batches UI events, attaches the CSRF token (header preferred, body fallback for `navigator.sendBeacon`), and POSTs to `/api/metrics`. Consumes the generated `MetricsIngestRequest` / `MetricsIngestEvent` types from `frontend/types/api.d.ts`. Not yet present in the codebase — file will be added in Phase 4.
+- **Phase 6 — `/api/metrics/query/*` (read endpoints)**: future read-side blueprint surfaces (e.g., `GET /api/metrics/query/events`, `GET /api/metrics/query/summary`) for the internal admin dashboard. Will live alongside the ingest route under the same `metrics` blueprint. Not yet present in the codebase — routes/schemas/handlers will be added in Phase 6.
+
 ---
 
 ## Tags Blueprint — UTub Tags

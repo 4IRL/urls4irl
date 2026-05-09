@@ -226,6 +226,63 @@
         }
       }
     },
+    "/api/metrics": {
+      "post": {
+        "operationId": "ingest",
+        "tags": [
+          "metrics"
+        ],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Ingest a batch of UI-category metrics events from the browser",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MetricsIngestRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Response payload returned by `POST /api/metrics`.\n\n    `accepted` is the number of events that the route handed off to\n    `record_event(...)`. Because the writer is log-and-drop, individual events\n    may have been silently dropped at the Redis layer; the field is informative\n    but not authoritative.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MetricsIngestResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_MetricsErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "MetricsErrorCodes": {
+            "$ref": "#/components/schemas/MetricsErrorCodes"
+          }
+        }
+      }
+    },
     "/register": {
       "post": {
         "operationId": "registerUser",
@@ -1897,6 +1954,161 @@
           "INVALID_FORM_INPUT"
         ],
         "description": "Error codes for UTubMembersErrorCodes"
+      },
+      "MetricsIngestEvent": {
+        "additionalProperties": false,
+        "description": "One UI metrics event submitted by the browser.\n\nPer-event dimension validation lives at the route layer\n(`validate_dimensions(...)`) \u2014 not in a `@model_validator` here. Pydantic\nv2 wraps `ValueError`/`AssertionError` raised inside validators, but a\n`ValidationError` raised inside a validator does NOT round-trip cleanly\nthrough that wrapper, so dimension shape checks happen post-decoration.",
+        "properties": {
+          "event_name": {
+            "description": "UI-category EventName value emitted by the browser",
+            "enum": [
+              "ui_utub_select",
+              "ui_utub_create_open",
+              "ui_utub_delete_confirm",
+              "ui_utub_name_edit_open",
+              "ui_utub_desc_edit_open",
+              "ui_url_access",
+              "ui_url_card_click",
+              "ui_url_create_open",
+              "ui_url_title_edit_open",
+              "ui_url_string_edit_open",
+              "ui_url_delete_confirm",
+              "ui_url_copy",
+              "ui_url_access_warning",
+              "ui_search_open",
+              "ui_search_close",
+              "ui_tag_apply",
+              "ui_tag_remove",
+              "ui_tag_create_open",
+              "ui_tag_delete_confirm",
+              "ui_tag_filter_toggle",
+              "ui_member_invite_open",
+              "ui_member_remove_confirm",
+              "ui_member_leave_confirm",
+              "ui_form_submit",
+              "ui_form_cancel",
+              "ui_validation_error",
+              "ui_deck_collapse",
+              "ui_deck_expand",
+              "ui_navbar_mobile_menu_open",
+              "ui_mobile_nav",
+              "ui_login_submit",
+              "ui_register_submit",
+              "ui_forgot_password_submit",
+              "ui_auth_form_switch",
+              "ui_rate_limit_hit"
+            ],
+            "type": "string"
+          },
+          "dimensions": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "integer"
+                    },
+                    {
+                      "type": "boolean"
+                    }
+                  ]
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model"
+          }
+        },
+        "required": [
+          "event_name"
+        ],
+        "type": "object"
+      },
+      "MetricsIngestRequest": {
+        "additionalProperties": false,
+        "description": "Top-level batch payload for `POST /api/metrics`.",
+        "properties": {
+          "events": {
+            "description": "Batch of UI-category metrics events to ingest (1-100 entries)",
+            "items": {
+              "$ref": "#/components/schemas/MetricsIngestEvent"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "type": "array"
+          },
+          "batch_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Client-generated batch identifier; used server-side for SET NX EX idempotency on retries"
+          },
+          "csrf_token": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional CSRF token in the JSON body for navigator.sendBeacon callers that cannot set headers"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object"
+      },
+      "MetricsIngestResponseSchema": {
+        "description": "Response payload returned by `POST /api/metrics`.\n\n`accepted` is the number of events that the route handed off to\n`record_event(...)`. Because the writer is log-and-drop, individual events\nmay have been silently dropped at the Redis layer; the field is informative\nbut not authoritative.",
+        "properties": {
+          "accepted": {
+            "default": 0,
+            "description": "Count of events accepted by the metrics ingest endpoint",
+            "type": "integer"
+          }
+        },
+        "type": "object"
+      },
+      "ErrorResponse_MetricsErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/MetricsErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "MetricsErrorCodes": {
+        "type": "integer",
+        "enum": [
+          1
+        ],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT"
+        ],
+        "description": "Error codes for MetricsErrorCodes"
       },
       "RegisterRequest": {
         "properties": {
