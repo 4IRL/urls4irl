@@ -30,16 +30,15 @@ def _seed_event_registry(pg_conn: Any, event: EventName) -> None:
     """Insert the given EventName into EventRegistry so the FK on AnonymousMetrics
     is satisfied when run_flush UPSERTs rows.
     """
-    # SQLAlchemy's `Enum(EventCategory)` (used in models/event_registry.py)
-    # creates the Postgres enum using the enum member NAMES (uppercase
-    # "API"/"DOMAIN"/"UI"), not the StrEnum values, when `values_callable`
-    # is not provided. Writing via raw SQL must use the names.
+    # `Enum(EventCategory, values_callable=...)` (in models/event_registry.py)
+    # creates the Postgres enum using the StrEnum member values (lowercase
+    # "api"/"domain"/"ui"). Writing via raw SQL must use the enum values.
     with pg_conn.cursor() as cur:
         cur.execute(
             'INSERT INTO "EventRegistry" ("name", "category", "description", "addedAt")'
             " VALUES (%s, %s, %s, NOW())"
             ' ON CONFLICT ("name") DO NOTHING',
-            (event.value, EVENT_CATEGORY[event].name, EVENT_DESCRIPTIONS[event]),
+            (event.value, EVENT_CATEGORY[event].value, EVENT_DESCRIPTIONS[event]),
         )
     pg_conn.commit()
 

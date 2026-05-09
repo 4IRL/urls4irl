@@ -18,7 +18,11 @@ class Event_Registry(db.Model):
     __tablename__ = "EventRegistry"
     name: str = Column(String(100), primary_key=True, name="name")
     category: EventCategory = Column(
-        SQLEnum(EventCategory, name="event_category_enum"),
+        SQLEnum(
+            EventCategory,
+            name="event_category_enum",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         nullable=False,
         name="category",
     )
