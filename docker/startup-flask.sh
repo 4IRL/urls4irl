@@ -31,7 +31,7 @@ fi
 flask db upgrade
 flask utils verify-tables
 flask shorturls add
-flask metrics sync-registry
+flask metrics sync-registry || { echo "FATAL: metrics sync-registry failed" >&2; exit 1; }
 
 if [[ "$PRODUCTION" != "true" && "$DEV_SERVER" != "true" ]]; then
     echo 'Running on 127.0.0.1:8659!'
