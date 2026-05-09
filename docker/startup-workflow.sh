@@ -29,6 +29,8 @@ load_secrets() {
 if [ "$PRODUCTION" == "true" ]; then
     echo -e "\nLoading environments...\n"
     load_secrets
+    # Assemble REDIS_URI from REDIS_PASSWORD secret (mirrors backend/config.py:88-90)
+    export REDIS_URI="redis://:${REDIS_PASSWORD}@redis:6379/0"
 else
     echo -e "\nRunning workflow in development mode\n"
 fi

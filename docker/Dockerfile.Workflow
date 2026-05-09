@@ -19,6 +19,8 @@ RUN apt-get update \
         unzip \
         file \
         procps \
+        python3-minimal \
+        python3-venv \
     && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
@@ -28,6 +30,13 @@ RUN apt-get update \
     && rclone version \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+# Create Python venv with metrics dependencies (versions match requirements/requirements-prod.txt)
+RUN python3 -m venv /opt/metrics-venv \
+    && /opt/metrics-venv/bin/pip install --no-cache-dir --upgrade pip \
+    && /opt/metrics-venv/bin/pip install --no-cache-dir \
+         redis==5.0.1 \
+         psycopg2-binary==2.9.9
 
 # Create non-root user for running cron jobs
 RUN groupadd --gid 1001 workflow \
@@ -46,11 +55,16 @@ COPY --chown=workflow:workflow scripts/backup-logs.sh /app/
 COPY --chown=workflow:workflow scripts/remote-object-storage.sh /app/
 COPY scripts/restricted-curl.sh /usr/bin/restricted_curl
 
+# Copy metrics flush script and backend package (full tree retained for import-path consistency)
+COPY --chown=workflow:workflow scripts/flush_metrics.py /app/flush_metrics.py
+COPY --chown=workflow:workflow backend/ /app/backend/
+
 # Copy crontab job
 COPY docker/crontab.workflow /tmp/crontab.workflow
 
 # Make scripts executable and replace curl with a restricted version
 RUN chmod +x /app/*.sh \
+    && chmod +x /app/flush_metrics.py \
     && chmod +x /usr/bin/restricted_curl \
     && mv /usr/bin/curl /usr/bin/curl.real \
     && ln -s /usr/bin/restricted_curl /usr/bin/curl

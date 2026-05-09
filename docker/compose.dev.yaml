@@ -51,6 +51,7 @@ services:
     restart: unless-stopped
     image: redis:6.2
     container_name: u4i-dev-redis
+    command: redis-server --databases 32
     volumes:
       - redisdata:/data
     healthcheck:
@@ -70,9 +71,16 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - PRODUCTION=false
       - DEV_SERVER=true
+      - REDIS_URI=redis://redis:6379/0
+      - METRICS_REDIS_DB=2
+      - METRICS_BUCKET_SECONDS=3600
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro

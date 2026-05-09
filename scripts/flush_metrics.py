@@ -21,16 +21,57 @@ import sys
 # /app/backend/. No-op in pytest where the project root is already on sys.path.
 sys.path.insert(0, "/app")
 
+import importlib.util  # noqa: E402
 import json  # noqa: E402
 import os  # noqa: E402
 import time  # noqa: E402
+from pathlib import Path  # noqa: E402
+from types import ModuleType  # noqa: E402
 
 import psycopg2  # noqa: E402
 import psycopg2.extras  # noqa: E402
 import redis  # noqa: E402
 
-from backend.extensions.metrics.buckets import epoch_to_aware_datetime  # noqa: E402
-from backend.utils.strings.metrics_strs import METRICS_REDIS  # noqa: E402
+
+def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleType:
+    """Load a backend submodule without triggering ``backend/__init__.py``.
+
+    The workflow venv ships only ``redis`` and ``psycopg2`` — no Flask. Importing
+    ``backend.extensions.metrics.buckets`` via the normal machinery would run
+    ``backend/__init__.py`` (which imports Flask) and fail. The two helper
+    modules used here are pure-Python with zero Flask deps, so we side-load
+    them directly. In pytest, where Flask is on the path, the standard
+    ``backend.*`` imports work — this fallback only fires under
+    ``ModuleNotFoundError``.
+    """
+    candidate_paths = [
+        Path("/app") / file_relative_to_app,
+        Path(__file__).resolve().parent.parent / file_relative_to_app,
+    ]
+    for module_path in candidate_paths:
+        if module_path.is_file():
+            spec = importlib.util.spec_from_file_location(module_name, module_path)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return module
+    raise ImportError(
+        f"Could not locate {file_relative_to_app} on disk for module {module_name}"
+    )
+
+
+try:
+    from backend.extensions.metrics.buckets import epoch_to_aware_datetime  # noqa: E402
+    from backend.utils.strings.metrics_strs import METRICS_REDIS  # noqa: E402
+except ModuleNotFoundError:
+    _buckets_module = _load_module_direct(
+        "_metrics_buckets", "backend/extensions/metrics/buckets.py"
+    )
+    _metrics_strs_module = _load_module_direct(
+        "_metrics_strs", "backend/utils/strings/metrics_strs.py"
+    )
+    epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
+    METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
 
 REDIS_COUNTER_GLOB: str = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
 SCAN_BATCH_SIZE: int = 500
