@@ -302,6 +302,25 @@ Base path: `/utubs/<utub_id>/members`
 
 ---
 
+## Metrics Blueprint
+
+Base path: `/api/metrics`
+
+### POST /api/metrics
+
+| Layer            | Location                                                                                                                                                                                                                                                                                                                                                                       |
+|------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**      | `backend/metrics/routes.py:ingest`                                                                                                                                                                                                                                                                                                                                             |
+| **Decorators**   | `@csrf.exempt`, `@api_route(request_schema=MetricsIngestRequest, response_schema=MetricsIngestResponseSchema, tags=["metrics"], ajax_required=False, description="Ingest a batch of UI-category metrics events from the browser", status_codes={200: MetricsIngestResponseSchema, 400: ErrorResponse})`, `@limiter.limit("120 per minute, 3000 per hour", methods=["POST"])` |
+| **Service**      | `backend/extensions/metrics/writer.py:record_event` (proxy to `MetricsWriter.record`); `MetricsWriter.reserve_batch` for batch nonce idempotency                                                                                                                                                                                                                               |
+| **Request**      | `backend/schemas/requests/metrics.py:MetricsIngestRequest` (top-level batch + optional `batch_id` and `csrf_token`); per-event shape: `MetricsIngestEvent`                                                                                                                                                                                                                     |
+| **Response**     | `backend/schemas/metrics.py:MetricsIngestResponseSchema`                                                                                                                                                                                                                                                                                                                       |
+| **JS Module**    | `frontend/lib/metrics-client.ts` (forward-link, lands in Phase 4)                                                                                                                                                                                                                                                                                                              |
+| **CSRF**         | Header `X-CSRFToken` (preferred) or JSON body `csrf_token` (sendBeacon fallback); validated manually via `flask_wtf.csrf.validate_csrf`. Missing token → 400; invalid token → 403 (re-raised `CSRFError`).                                                                                                                                                                     |
+| **Tests**        | `tests/integration/system/test_metrics_ingest.py` (marker: `cli`), `tests/unit/test_metrics_ingest_csrf_token_extraction.py` (marker: `unit`), `tests/unit/test_metrics_ingest_schema.py` (marker: `unit`), `tests/unit/test_dimension_models.py` (marker: `unit`)                                                                                                              |
+
+---
+
 ## Tags Blueprint — UTub Tags
 
 Base path: `/utubs/<utub_id>/tags`

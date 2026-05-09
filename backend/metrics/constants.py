@@ -9,3 +9,8 @@ class MetricsErrorCodes(IntEnum):
     # numbering scheme (value 2 for `INVALID_FORM_INPUT`); that inconsistency
     # is pre-existing across the codebase and not introduced here.
     INVALID_FORM_INPUT = 1
+
+
+class MetricsFailureMessages:
+    UNABLE_TO_RECORD_METRICS = "Unable to record metrics."
+    MISSING_CSRF = "Missing CSRF token."

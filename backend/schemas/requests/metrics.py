@@ -36,8 +36,16 @@ class MetricsIngestEvent(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    event_name: UIEventNameLiteral
-    dimensions: dict[str, str | int | bool] | None = None
+    event_name: UIEventNameLiteral = Field(
+        description="UI-category EventName value emitted by the browser",
+    )
+    dimensions: dict[str, str | int | bool] | None = Field(
+        default=None,
+        description=(
+            "Optional per-event dimension dict; shape enforced server-side via "
+            "the matching `_Dim<EventName>` Pydantic model"
+        ),
+    )
 
 
 class MetricsIngestRequest(BaseModel):
@@ -45,6 +53,22 @@ class MetricsIngestRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    events: list[MetricsIngestEvent] = Field(min_length=1, max_length=100)
-    batch_id: str | None = None
-    csrf_token: str | None = None
+    events: list[MetricsIngestEvent] = Field(
+        min_length=1,
+        max_length=100,
+        description="Batch of UI-category metrics events to ingest (1-100 entries)",
+    )
+    batch_id: str | None = Field(
+        default=None,
+        description=(
+            "Client-generated batch identifier; used server-side for SET NX EX "
+            "idempotency on retries"
+        ),
+    )
+    csrf_token: str | None = Field(
+        default=None,
+        description=(
+            "Optional CSRF token in the JSON body for navigator.sendBeacon "
+            "callers that cannot set headers"
+        ),
+    )
