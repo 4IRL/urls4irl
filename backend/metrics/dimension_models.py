@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.metrics.events import EventName
 
@@ -160,7 +160,7 @@ class _DimApiHit(BaseModel):
 DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # API
     EventName.API_HIT: _DimApiHit,
-    # Domain — Phase 3 may revisit; no dims today.
+    # Domain events carry no per-event dimensions; the MetricsWriter populates them server-side.
     EventName.UTUB_CREATED: None,
     EventName.UTUB_DELETED: None,
     EventName.UTUB_OPENED: None,
@@ -242,6 +242,5 @@ def validate_dimensions(event: EventName, dimensions: dict | None) -> None:
 
 __all__ = [
     "DIMENSION_MODELS",
-    "ValidationError",
     "validate_dimensions",
 ]

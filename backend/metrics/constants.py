@@ -14,3 +14,4 @@ class MetricsErrorCodes(IntEnum):
 class MetricsFailureMessages:
     UNABLE_TO_RECORD_METRICS = "Unable to record metrics."
     MISSING_CSRF = "Missing CSRF token."
+    METRICS_RECORDED = "Metrics recorded."

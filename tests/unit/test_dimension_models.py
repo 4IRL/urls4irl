@@ -52,7 +52,6 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
 def test_every_eventname_member_has_an_entry():
     """Every member of `EventName` is keyed in `DIMENSION_MODELS`."""
     assert set(DIMENSION_MODELS.keys()) == set(EventName)
-    assert len(DIMENSION_MODELS) == 47
 
 
 def test_none_entries_reject_non_empty_dimensions():

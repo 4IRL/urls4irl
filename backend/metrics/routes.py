@@ -9,10 +9,10 @@ from backend import csrf, limiter, metrics_writer
 from backend.api_common.parse_request import api_route
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.extensions.metrics.writer import record_event
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import EventName
-from backend.extensions.metrics.writer import record_event
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
@@ -79,7 +79,7 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
         newly_reserved = metrics_writer.reserve_batch(metrics_ingest_request.batch_id)
         if not newly_reserved:
             return APIResponse(
-                message="Metrics recorded",
+                message=MetricsFailureMessages.METRICS_RECORDED,
                 data={"accepted": len(metrics_ingest_request.events)},
             ).to_response()
 
@@ -101,6 +101,6 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
         )
 
     return APIResponse(
-        message="Metrics recorded",
+        message=MetricsFailureMessages.METRICS_RECORDED,
         data={"accepted": len(metrics_ingest_request.events)},
     ).to_response()

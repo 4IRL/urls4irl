@@ -47,6 +47,8 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
+_METRICS_REDIS_DB_BASE = 16
+
 
 class AjaxFlaskClient(FlaskClient):
     """FlaskClient subclass that injects X-Requested-With: XMLHttpRequest on every request."""
@@ -270,7 +272,7 @@ def build_app(
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     worker_num = _get_worker_num(worker_id) or 0
-    config.METRICS_REDIS_DB = 16 + worker_num
+    config.METRICS_REDIS_DB = _METRICS_REDIS_DB_BASE + worker_num
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
@@ -432,7 +434,7 @@ def provide_metrics_redis(
         return
 
     worker_num = _get_worker_num(worker_id) or 0
-    metrics_db = 16 + worker_num
+    metrics_db = _METRICS_REDIS_DB_BASE + worker_num
     base, _trailing_db = redis_uri.rsplit("/", 1)
     metrics_uri = f"{base}/{metrics_db}"
 

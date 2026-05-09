@@ -31,6 +31,9 @@ fi
 flask db upgrade
 flask utils verify-tables
 flask shorturls add
+# Hard deployment gate when METRICS_ENABLED=true: web container refuses to start
+# if the EventName <-> metrics_event_registry table is out of sync. Adding new
+# EventName members requires a corresponding migration before redeploying.
 flask metrics sync-registry || { echo "FATAL: metrics sync-registry failed" >&2; exit 1; }
 
 if [[ "$PRODUCTION" != "true" && "$DEV_SERVER" != "true" ]]; then

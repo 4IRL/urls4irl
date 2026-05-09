@@ -60,6 +60,7 @@ class MetricsIngestRequest(BaseModel):
     )
     batch_id: str | None = Field(
         default=None,
+        max_length=128,
         description=(
             "Client-generated batch identifier; used server-side for SET NX EX "
             "idempotency on retries"
