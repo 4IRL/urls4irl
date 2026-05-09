@@ -264,10 +264,13 @@ def build_app(
     ignore_deprecation_warning,
     worker_db_uri: str,
     worker_redis_uri: str,
+    worker_id: str,
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
+    worker_num = _get_worker_num(worker_id) or 0
+    config.METRICS_REDIS_DB = 16 + worker_num
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
@@ -410,6 +413,36 @@ def provide_redis(app: Flask) -> Generator[Redis | None, None, None]:
 
     for key_to_del in keys_to_delete:
         redis_client.delete(key_to_del)
+
+
+@pytest.fixture
+def provide_metrics_redis(
+    build_app: Tuple[Flask, ConfigTest], worker_id: str
+) -> Generator[Redis | None, None, None]:
+    """Per-worker Redis client pointed at the metrics DB index used by `MetricsWriter`.
+
+    Function-scoped so each test starts with a flushed metrics DB. Depends on the
+    session-scoped `build_app` (allowed: narrow scope may request wider scope) so
+    it shares a single Flask app with other fixtures and avoids nested SAVEPOINT
+    conflicts seen in CLI flush tests that also use `runner`.
+    """
+    flask_app, _ = build_app
+    redis_uri = flask_app.config.get(CONFIG_ENVS.REDIS_URI, None)
+    if not redis_uri or redis_uri == "memory://":
+        return
+
+    worker_num = _get_worker_num(worker_id) or 0
+    metrics_db = 16 + worker_num
+    base, _trailing_db = redis_uri.rsplit("/", 1)
+    metrics_uri = f"{base}/{metrics_db}"
+
+    redis_client: Any = redis.Redis.from_url(url=metrics_uri)
+    assert isinstance(redis_client, Redis)
+
+    redis_client.flushdb()
+    yield redis_client
+    redis_client.flushdb()
+    redis_client.close()
 
 
 @pytest.fixture
