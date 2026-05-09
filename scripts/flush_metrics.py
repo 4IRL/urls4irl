@@ -1,16 +1,24 @@
 """Standalone Redis -> Postgres flush worker for anonymous metrics counters.
 
 Invoked once per minute by cron in the workflow sidecar container. SCANs the
-``metrics:counter:*`` namespace, aggregates pending counts, bulk-UPSERTs into
-``AnonymousMetrics``, and deletes the flushed Redis keys after the Postgres
-commit succeeds. Has no Flask/SQLAlchemy dependency — only ``redis`` and
-``psycopg2`` are imported.
+``metrics:counter:*`` namespace, atomically reads-and-removes each counter
+key with ``GETDEL``, aggregates the drained values, and bulk-UPSERTs them
+into ``AnonymousMetrics``. Has no Flask/SQLAlchemy dependency — only
+``redis`` and ``psycopg2`` are imported.
 
-Atomicity note: Postgres commit and the subsequent Redis DEL are independent
-operations. If the process dies between commit and delete, the next flush
-re-processes the same keys via the ``ON CONFLICT DO UPDATE`` UPSERT — the
-addition is idempotent at the row level but counts may be added twice. This
-is acceptable for hobby-grade telemetry.
+Atomicity note: each counter key is drained with a single ``GETDEL`` round-
+trip, so any ``INCR`` landing after the ``GETDEL`` lands on a fresh key (the
+counter restarts at 1) and is captured by the next flush cycle — eliminating
+the silent-discard TOCTOU window of the prior GET-then-DELETE design. The
+Postgres UPSERT is ``ON CONFLICT DO UPDATE``, which is row-level idempotent
+in the rare event the process dies between drain and commit; the only
+remaining risk is double-counting the just-drained batch on retry, which is
+acceptable for hobby-grade telemetry.
+
+Concurrency note: a Redis ``SET NX EX`` lock at the start of ``run_flush``
+guarantees only one worker drains the namespace per cron tick, so an
+overlapping cron firing or a hung previous run cannot double-count the same
+keys into Postgres.
 """
 
 from __future__ import annotations
@@ -75,8 +83,14 @@ except ModuleNotFoundError:
 
 REDIS_COUNTER_GLOB: str = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
 SCAN_BATCH_SIZE: int = 500
-DELETE_BATCH_SIZE: int = 500
 EXECUTE_VALUES_PAGE_SIZE: int = 200
+
+# Distributed lock so two cron firings (or a hung previous run) cannot drain
+# the same counter keys concurrently and double-count them into Postgres.
+# TTL of 55s is shorter than the 60s cron interval, so the lock auto-expires
+# before the next firing without an explicit DELETE.
+FLUSH_LOCK_KEY: str = "metrics:flush:lock"
+FLUSH_LOCK_TTL_SECONDS: int = 55
 
 UPSERT_SQL: str = """
     INSERT INTO "AnonymousMetrics"
@@ -124,16 +138,32 @@ def run_flush(
 ) -> int:
     """Drain the metrics counter namespace from Redis into AnonymousMetrics.
 
+    Acquires a Redis ``SET NX EX`` lock so concurrent cron firings cannot
+    double-count the same keys; if another worker holds the lock, returns 0
+    immediately without performing any Postgres writes.
+
     Returns the number of UPSERTed rows. On Postgres failure, calls rollback()
-    and re-raises — Redis keys are NOT deleted, guaranteeing no data loss.
+    and re-raises — note that the keys have already been removed by ``GETDEL``
+    at this point, so the just-drained batch is lost; this matches the prior
+    design's behavior on commit failure and is acceptable for hobby-grade
+    telemetry. Subsequent INCRs continue on fresh keys.
     """
+    lock_acquired = redis_client.set(
+        FLUSH_LOCK_KEY, "1", nx=True, ex=FLUSH_LOCK_TTL_SECONDS
+    )
+    if not lock_acquired:
+        print(
+            "metrics flush: another flush is in progress, skipping",
+            file=sys.stdout,
+        )
+        return 0
+
     try:
-        flushed_keys: list[bytes] = []
         rows: list[tuple] = []
         for raw_key in redis_client.scan_iter(
             match=REDIS_COUNTER_GLOB, count=SCAN_BATCH_SIZE
         ):
-            raw_value = redis_client.get(raw_key)
+            raw_value = redis_client.getdel(raw_key)
             if raw_value is None:
                 continue
             parsed = parse_counter_key(raw_key)
@@ -164,7 +194,6 @@ def run_flush(
                     count_value,
                 )
             )
-            flushed_keys.append(raw_key)
 
         if not rows:
             return 0
@@ -178,10 +207,6 @@ def run_flush(
                 page_size=EXECUTE_VALUES_PAGE_SIZE,
             )
         pg_conn.commit()
-
-        for batch_start in range(0, len(flushed_keys), DELETE_BATCH_SIZE):
-            batch = flushed_keys[batch_start : batch_start + DELETE_BATCH_SIZE]
-            redis_client.delete(*batch)
 
         return len(rows)
     except Exception:

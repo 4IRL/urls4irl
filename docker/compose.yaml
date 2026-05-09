@@ -70,6 +70,13 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    # `--databases 32` is intentionally omitted in production. Production
+    # only uses DB 0 (sessions/limiter) and DB 2 (METRICS_REDIS_DB), so the
+    # default 16-database limit is more than sufficient. `compose.local.yaml`
+    # and `compose.dev.yaml` both pass `--databases 32` because the test
+    # conftest assigns per-worker metrics DB indices starting at 16 (see
+    # `_METRICS_REDIS_DB_BASE` in `tests/conftest.py`), which only matters
+    # for the parallel test runners and never for production.
     command: >
       /bin/sh -c "redis-server --appendonly yes --requirepass $(cat /run/secrets/REDIS_PASSWORD)"
 

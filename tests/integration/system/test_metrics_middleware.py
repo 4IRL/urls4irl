@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from typing import Generator
 from unittest import mock
 
 import pytest
@@ -16,29 +15,6 @@ from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
-
-
-@pytest.fixture
-def metrics_enabled_app(
-    app: Flask, provide_metrics_redis: Redis
-) -> Generator[Flask, None, None]:
-    """Re-init the module-level `metrics_writer` with `METRICS_ENABLED=True`
-    so the after_request middleware writes counters into the per-worker
-    metrics Redis DB. Restores the original config flag and writer state on
-    teardown.
-    """
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    original_redis = app_metrics_writer._redis
-    original_enabled = app_metrics_writer._enabled
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    app_metrics_writer.init_app(app)
-
-    yield app
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
-    app_metrics_writer._redis = original_redis
-    app_metrics_writer._enabled = original_enabled
 
 
 def _api_hit_keys(metrics_redis: Redis) -> list[bytes]:

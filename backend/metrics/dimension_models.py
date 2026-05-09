@@ -58,6 +58,10 @@ class _DimUrlCopy(BaseModel):
     result: Literal["success", "failure"]
 
 
+# `_DimSearchOpen` and `_DimSearchClose` share the same field shape today,
+# but are deliberately defined as separate classes (one per `EventName`) so
+# each event has a 1:1 grep-able dim model. The pair may diverge as the
+# search UI grows; keep them split.
 class _DimSearchOpen(BaseModel):
     model_config = ConfigDict(extra="forbid")
     target: Literal["utubs", "urls"]
@@ -108,6 +112,10 @@ class _DimValidationError(BaseModel):
     ]
 
 
+# `_DimDeckCollapse` and `_DimDeckExpand` share the same field shape today,
+# but are deliberately defined as separate classes (one per `EventName`) so
+# each event has a 1:1 grep-able dim model. The pair may diverge as the
+# deck UI grows; keep them split.
 class _DimDeckCollapse(BaseModel):
     model_config = ConfigDict(extra="forbid")
     deck: Literal["members", "tags", "urls"]

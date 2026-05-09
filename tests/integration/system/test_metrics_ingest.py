@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Generator
 from unittest import mock
 
 import pytest
@@ -20,35 +19,6 @@ from tests.utils_for_test import get_csrf_token
 pytestmark = pytest.mark.cli
 
 INGEST_URL = "/api/metrics"
-
-
-@pytest.fixture
-def metrics_enabled_app(
-    app: Flask, provide_metrics_redis: Redis
-) -> Generator[Flask, None, None]:
-    """Re-init the app's `metrics_writer` extension with `METRICS_ENABLED=True`
-    so the ingest route's CSRF + nonce + dispatch path actually exercises Redis.
-
-    Mutates the module-level singleton (the same instance the
-    `app.extensions["metrics_writer"]` slot points at) rather than swapping in
-    a fresh one — keeps the writer that `record_event(...)` resolves through
-    `current_app.extensions` and the writer that the route's
-    `from backend import metrics_writer` import binds to identical, so
-    `mock.patch.object(app_metrics_writer, ...)` in tests is honored by both
-    the route code and the proxy.
-    """
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    original_redis = app_metrics_writer._redis
-    original_enabled = app_metrics_writer._enabled
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    app_metrics_writer.init_app(app)
-
-    yield app
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
-    app_metrics_writer._redis = original_redis
-    app_metrics_writer._enabled = original_enabled
 
 
 def _load_csrf(client: FlaskClient) -> str:
@@ -180,6 +150,68 @@ def test_ingest_rejects_invalid_csrf(
 
     assert response.status_code == 403
     assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
+
+
+def test_ingest_header_token_wins_over_body_token(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN both a valid X-CSRFToken header and a garbage body csrf_token
+    WHEN POSTing a payload
+    THEN the response is 200 (header takes precedence over body — the
+        garbage body token is ignored).
+    """
+    csrf = _load_csrf(client)
+
+    response = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_URL_COPY.value,
+                    "dimensions": {"result": "success"},
+                }
+            ],
+            "csrf_token": "invalid-garbage-token",
+        },
+        headers={"X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 200
+    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
+
+
+def test_ingest_empty_header_falls_back_to_body_token(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN an empty-string X-CSRFToken header and a valid body csrf_token
+    WHEN POSTing a payload
+    THEN the response is 200 (the empty header is treated as missing and the
+        body token is used).
+    """
+    csrf = _load_csrf(client)
+
+    response = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_URL_COPY.value,
+                    "dimensions": {"result": "success"},
+                }
+            ],
+            "csrf_token": csrf,
+        },
+        headers={"X-CSRFToken": ""},
+    )
+
+    assert response.status_code == 200
+    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
 def test_ingest_rejects_invalid_csrf_body_token(

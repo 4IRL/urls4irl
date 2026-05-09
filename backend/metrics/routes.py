@@ -29,20 +29,6 @@ metrics = Blueprint("metrics", __name__)
 _METRICS_RATE_LIMIT = "120 per minute, 3000 per hour"
 
 
-def _pick_csrf_token(*, header_token: str | None, body_token: str | None) -> str | None:
-    """Pick a CSRF token from the X-CSRFToken header (preferred) or the JSON
-    body's `csrf_token` field (sendBeacon fallback).
-
-    Empty strings count as missing so callers can safely funnel both
-    "header absent" and "header present but blank" into the body fallback.
-    """
-    if header_token:
-        return header_token
-    if body_token:
-        return body_token
-    return None
-
-
 @metrics.route("/api/metrics", methods=["POST"])
 @csrf.exempt
 @api_route(
@@ -57,9 +43,11 @@ def _pick_csrf_token(*, header_token: str | None, body_token: str | None) -> str
 )
 @limiter.limit(_METRICS_RATE_LIMIT, methods=["POST"])
 def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
-    submitted_token = _pick_csrf_token(
-        header_token=request.headers.get("X-CSRFToken"),
-        body_token=metrics_ingest_request.csrf_token,
+    # Prefer the X-CSRFToken header; fall back to the JSON body's
+    # `csrf_token` field for sendBeacon callers (no custom headers allowed).
+    # Empty strings on either path count as missing.
+    submitted_token = (
+        request.headers.get("X-CSRFToken") or metrics_ingest_request.csrf_token or None
     )
 
     try:

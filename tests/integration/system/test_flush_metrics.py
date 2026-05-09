@@ -12,13 +12,24 @@ from redis import Redis
 
 from backend.metrics.events import EVENT_CATEGORY, EVENT_DESCRIPTIONS, EventName
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from scripts.flush_metrics import run_flush
+from scripts.flush_metrics import FLUSH_LOCK_KEY, FLUSH_LOCK_TTL_SECONDS, run_flush
 
 pytestmark = pytest.mark.cli
 
 
 _BUCKET_START_EPOCH = 1735689600  # 2025-01-01 00:00:00 UTC, hour-aligned
 _BUCKET_START_DT = datetime.fromtimestamp(_BUCKET_START_EPOCH, tz=timezone.utc)
+
+
+@pytest.fixture(autouse=True)
+def _release_flush_lock(provide_metrics_redis: Redis):
+    """Release the metrics:flush:lock between tests so each test can acquire
+    it cleanly. Without this, the lock's 55s TTL would block successive
+    flush tests within the same pytest worker.
+    """
+    provide_metrics_redis.delete(FLUSH_LOCK_KEY)
+    yield
+    provide_metrics_redis.delete(FLUSH_LOCK_KEY)
 
 
 def _build_counter_key(bucket_epoch: int, event_value: str, dims: dict) -> str:
@@ -362,8 +373,13 @@ def test_flush_rolls_back_on_postgres_error(
         read-only C-extension attributes, so the mock-wrapping pattern is
         used instead of patch.object)
     WHEN run_flush is invoked
-    THEN the exception propagates, rollback() is invoked, and the Redis
-        counter keys remain (no data loss).
+    THEN the exception propagates, rollback() is invoked, and no
+        AnonymousMetrics rows are committed.
+
+    Note: with the GETDEL atomic-drain design, the just-drained batch IS
+    consumed before commit, so the Redis key is gone on commit failure. This
+    is the documented trade-off of the GETDEL TOCTOU fix; subsequent INCRs
+    continue on fresh keys and are captured by the next flush.
     """
     seeder_conn = _build_pg_conn(app)
     try:
@@ -392,10 +408,6 @@ def test_flush_rolls_back_on_postgres_error(
         mock_pg_conn.commit.assert_called_once()
         mock_pg_conn.rollback.assert_called()
 
-        # Redis key MUST remain — flush re-raised before deleting; the next
-        # flush will retry the same counter via the idempotent UPSERT.
-        assert provide_metrics_redis.get(key) == b"4"
-
         # Use a fresh connection because the wrapped one had its transaction
         # rolled back via the mock; verify no AnonymousMetrics rows landed.
         verify_conn = _build_pg_conn(app)
@@ -412,6 +424,91 @@ def test_flush_rolls_back_on_postgres_error(
         finally:
             cleanup_conn.close()
         real_conn.close()
+
+
+def test_flush_getdel_captures_concurrent_incr_in_next_cycle(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a counter key that is INCRd after run_flush completes its GETDEL
+        but before the next cycle starts (simulating a concurrent INCR that
+        would have been silently discarded by the prior GET-then-DELETE
+        design)
+    WHEN run_flush is invoked a second time
+    THEN the post-GETDEL INCR is captured as a fresh key and UPSERTed,
+        proving the atomic GETDEL eliminates the silent-discard window.
+    """
+    pg_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(pg_conn)
+        _seed_event_registry(pg_conn, EventName.API_HIT)
+        dims = {"endpoint": "/concurrent", "method": "GET", "status_code": 200}
+        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+
+        # First flush drains an initial counter value of 3.
+        provide_metrics_redis.set(key, 3)
+        first_upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+        assert first_upserted == 1
+
+        # An INCR landing AFTER the GETDEL lands on a fresh key (counter
+        # restarts at 1). This is exactly the case the prior GET-then-DELETE
+        # design would have silently discarded.
+        provide_metrics_redis.incr(key)
+
+        # The first run_flush left the lock in place (TTL 55s); release it so
+        # the second simulated cron firing can acquire it. In production the
+        # 55s TTL expires before the next 60s cron tick.
+        provide_metrics_redis.delete(FLUSH_LOCK_KEY)
+
+        # Second flush captures the post-GETDEL increment and UPSERTs it,
+        # adding to the existing row (count: 3 + 1 = 4).
+        second_upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+        assert second_upserted == 1
+
+        rows = _select_metrics_rows(pg_conn)
+        assert len(rows) == 1
+        assert rows[0][-1] == 4
+    finally:
+        _truncate_metrics_tables(pg_conn)
+        pg_conn.close()
+
+
+def test_flush_lock_prevents_concurrent_double_count(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN the metrics:flush:lock key is already held by a simulated other
+        worker
+    WHEN run_flush is invoked
+    THEN it returns 0 without performing any GETDELs or Postgres writes,
+        the counter key remains intact, and no AnonymousMetrics rows are
+        inserted.
+    """
+    pg_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(pg_conn)
+        _seed_event_registry(pg_conn, EventName.API_HIT)
+        dims = {"endpoint": "/locked", "method": "GET", "status_code": 200}
+        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        provide_metrics_redis.set(key, 9)
+
+        # Pre-acquire the lock to simulate a hung previous run (or an
+        # overlapping cron firing that is still mid-drain).
+        provide_metrics_redis.set(FLUSH_LOCK_KEY, "1", ex=FLUSH_LOCK_TTL_SECONDS)
+
+        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+
+        assert upserted == 0
+        # Counter key is untouched — the locked-out worker must NOT GETDEL.
+        assert provide_metrics_redis.get(key) == b"9"
+        # No rows committed.
+        assert _select_metrics_rows(pg_conn) == []
+    finally:
+        provide_metrics_redis.delete(FLUSH_LOCK_KEY)
+        _truncate_metrics_tables(pg_conn)
+        pg_conn.close()
 
 
 def test_flush_can_be_invoked_idempotently(
@@ -434,6 +531,11 @@ def test_flush_can_be_invoked_idempotently(
 
         first = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
         rows_after_first = _select_metrics_rows(pg_conn)
+
+        # Release the lock between simulated cron firings so the second
+        # invocation actually executes the drain path (and returns 0 because
+        # Redis is empty, not because the lock blocked it).
+        provide_metrics_redis.delete(FLUSH_LOCK_KEY)
 
         second = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
         rows_after_second = _select_metrics_rows(pg_conn)
