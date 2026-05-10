@@ -48,12 +48,18 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     (EventName.UI_FORM_SUBMIT, {"trigger": "enter_key", "form": "url_string_edit"}),
     (EventName.UI_FORM_SUBMIT, {"trigger": "button_click", "form": "utub_name_edit"}),
     (EventName.UI_FORM_SUBMIT, {"trigger": "enter_key", "form": "utub_desc_edit"}),
+    (EventName.UI_FORM_SUBMIT, {"trigger": "button_click", "form": "member_invite"}),
     (
         EventName.UI_FORM_CANCEL,
         {"trigger": "escape_key", "form": "tag_create"},
     ),
+    (
+        EventName.UI_FORM_CANCEL,
+        {"trigger": "escape_key", "form": "url_title_edit"},
+    ),
     (EventName.UI_VALIDATION_ERROR, {"form": "utub_create"}),
     (EventName.UI_VALIDATION_ERROR, {"form": "utub_name_edit"}),
+    (EventName.UI_VALIDATION_ERROR, {"form": "url_string_edit"}),
     (EventName.UI_DECK_COLLAPSE, {"deck": "members"}),
     (EventName.UI_DECK_EXPAND, {"deck": "urls"}),
     (EventName.UI_MOBILE_NAV, {"target": "tags"}),
