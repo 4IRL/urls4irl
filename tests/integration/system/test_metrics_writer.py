@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Generator
+from unittest import mock
 from unittest.mock import patch
 
 import pytest
@@ -216,73 +217,35 @@ def test_writer_disabled_when_metrics_enabled_false(
 
 
 _URI_PARAM_CASES = [
+    pytest.param("redis://localhost:6379/3", id="standard-host-port-db3"),
     pytest.param(
-        "redis://localhost:6379/3",
-        {"host": "localhost", "port": 6379, "db": 3},
-        id="standard-host-port-db3",
+        "redis://:s3cr3t@redis-host:6380/5", id="custom-port-and-password-db5"
     ),
-    pytest.param(
-        "redis://:s3cr3t@redis-host:6380/5",
-        {"host": "redis-host", "port": 6380, "db": 5},
-        id="custom-port-and-password-db5",
-    ),
-    pytest.param(
-        "redis://localhost:6379/12",
-        {"host": "localhost", "port": 6379, "db": 12},
-        id="high-db-index-db12",
-    ),
-    pytest.param(
-        "redis://localhost:6379/0",
-        {"host": "localhost", "port": 6379, "db": 0},
-        id="default-db-index-db0",
-    ),
+    pytest.param("redis://localhost:6379/12", id="high-db-index-db12"),
+    pytest.param("redis://localhost:6379/0", id="default-db-index-db0"),
 ]
 
 
-@pytest.mark.parametrize("uri,expected_conn_kwargs", _URI_PARAM_CASES)
-def test_writer_uses_metrics_redis_uri(
-    app: Flask,
-    uri: str,
-    expected_conn_kwargs: dict,
-):
+@pytest.mark.parametrize("uri", _URI_PARAM_CASES)
+def test_writer_uses_metrics_redis_uri(app: Flask, uri: str):
     """
     GIVEN a MetricsWriter initialized with a specific METRICS_REDIS_URI
-    WHEN the writer's underlying Redis connection pool is inspected
-    THEN it connects to the host, port, and DB encoded in the URI.
+    WHEN init_app builds the underlying Redis client
+    THEN Redis.from_url is invoked with the exact URI from app.config.
 
     Parametrized to cover standard URIs, URIs with custom ports and
     passwords, high DB indices, and the default DB-0 case.
     """
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    original_uri = app.config.get(CONFIG_ENVS.METRICS_REDIS_URI)
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    app.config[CONFIG_ENVS.METRICS_REDIS_URI] = uri
-
-    writer = MetricsWriter()
-    # Patch Redis.from_url to avoid real network connections; capture the URI passed.
-    with patch("backend.extensions.metrics.writer.Redis") as mock_redis_class:
-        fake_client = mock_redis_class.from_url.return_value
-        fake_client.connection_pool.connection_kwargs = expected_conn_kwargs
-        writer.init_app(app)
-        mock_redis_class.from_url.assert_called_once_with(uri)
-
-    redis_client = writer._redis
-    assert redis_client is not None
-    assert (
-        redis_client.connection_pool.connection_kwargs["db"]
-        == expected_conn_kwargs["db"]
-    )
-    assert (
-        redis_client.connection_pool.connection_kwargs["host"]
-        == expected_conn_kwargs["host"]
-    )
-    assert (
-        redis_client.connection_pool.connection_kwargs["port"]
-        == expected_conn_kwargs["port"]
-    )
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
-    app.config[CONFIG_ENVS.METRICS_REDIS_URI] = original_uri
+    config_overrides = {
+        CONFIG_ENVS.METRICS_ENABLED: True,
+        CONFIG_ENVS.METRICS_REDIS_URI: uri,
+    }
+    with mock.patch.dict(app.config, config_overrides):
+        writer = MetricsWriter()
+        # Patch Redis.from_url to avoid real network connections; capture the URI passed.
+        with patch("backend.extensions.metrics.writer.Redis") as mock_redis_class:
+            writer.init_app(app)
+            mock_redis_class.from_url.assert_called_once_with(uri)
 
 
 def test_writer_increments_redis_counter_for_ui_event(

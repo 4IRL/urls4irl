@@ -31,6 +31,24 @@ def _count_counter_keys(metrics_redis: Redis, event: EventName) -> int:
     return len(list(metrics_redis.scan_iter(match=pattern)))
 
 
+def assert_warning_logged(caplog: pytest.LogCaptureFixture, text: str) -> None:
+    """Assert at least one captured log record at WARNING level contains ``text``.
+
+    Tighter than ``is_string_in_logs(...)`` (which is text-only) plus a separate
+    ``any(record.levelno == WARNING ...)`` check (which can be satisfied by an
+    unrelated WARNING record): both conditions must hold on the same record.
+    """
+    matching_warning_records = [
+        record
+        for record in caplog.records
+        if record.levelno == logging.WARNING and text in record.getMessage()
+    ]
+    assert matching_warning_records, (
+        f"Expected a WARNING-level log containing {text!r}; "
+        f"got records: {[(record.levelname, record.getMessage()) for record in caplog.records]}"
+    )
+
+
 def test_ingest_happy_path_with_csrf_header(
     metrics_enabled_app: Flask,
     client: FlaskClient,
@@ -267,8 +285,7 @@ def test_ingest_rejects_domain_category_event_name(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_FORM_INPUT
-    assert is_string_in_logs("Invalid JSON", caplog.records)
-    assert any(record.levelno == logging.WARNING for record in caplog.records)
+    assert_warning_logged(caplog, "Invalid JSON")
 
 
 def test_ingest_rejects_completely_unknown_event_name(
@@ -294,8 +311,7 @@ def test_ingest_rejects_completely_unknown_event_name(
     assert response.status_code == 400
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert is_string_in_logs("Invalid JSON", caplog.records)
-    assert any(record.levelno == logging.WARNING for record in caplog.records)
+    assert_warning_logged(caplog, "Invalid JSON")
 
 
 def test_ingest_rejects_unknown_dimension_key(
@@ -445,8 +461,7 @@ def test_ingest_rejects_top_level_extra_key(
         )
 
     assert response.status_code == 400
-    assert is_string_in_logs("Invalid JSON", caplog.records)
-    assert any(record.levelno == logging.WARNING for record in caplog.records)
+    assert_warning_logged(caplog, "Invalid JSON")
 
 
 def test_ingest_rejects_zero_events(
@@ -470,8 +485,7 @@ def test_ingest_rejects_zero_events(
         )
 
     assert response.status_code == 400
-    assert is_string_in_logs("Invalid JSON", caplog.records)
-    assert any(record.levelno == logging.WARNING for record in caplog.records)
+    assert_warning_logged(caplog, "Invalid JSON")
 
 
 def test_ingest_rejects_too_many_events(
@@ -498,8 +512,7 @@ def test_ingest_rejects_too_many_events(
         )
 
     assert response.status_code == 400
-    assert is_string_in_logs("Invalid JSON", caplog.records)
-    assert any(record.levelno == logging.WARNING for record in caplog.records)
+    assert_warning_logged(caplog, "Invalid JSON")
 
 
 def test_ingest_batch_nonce_idempotent(

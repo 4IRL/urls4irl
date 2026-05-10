@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 from datetime import datetime, timezone
 from typing import Any
@@ -19,6 +20,7 @@ from scripts.flush_metrics import (
     FLUSH_LOCK_TTL_SECONDS,
     run_flush,
 )
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.cli
 
@@ -539,14 +541,16 @@ def test_flush_getdel_captures_concurrent_incr_in_next_cycle(
 def test_flush_lock_prevents_concurrent_double_count(
     app: Flask,
     provide_metrics_redis: Redis,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN the metrics:flush:lock key is already held by a simulated other
         worker
     WHEN run_flush is invoked
     THEN it returns 0 without performing any GETDELs or Postgres writes,
-        the counter key remains intact, and no AnonymousMetrics rows are
-        inserted.
+        the counter key remains intact, no AnonymousMetrics rows are
+        inserted, and a WARNING-level "another flush is in progress" log
+        is emitted on the metrics_flush logger.
     """
     pg_conn = _build_pg_conn(app)
     try:
@@ -560,13 +564,22 @@ def test_flush_lock_prevents_concurrent_double_count(
         # overlapping cron firing that is still mid-drain).
         provide_metrics_redis.set(FLUSH_LOCK_KEY, "1", ex=FLUSH_LOCK_TTL_SECONDS)
 
-        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+        with caplog.at_level(logging.WARNING, logger="metrics_flush"):
+            upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
 
         assert upserted == 0
         # Counter key is untouched — the locked-out worker must NOT GETDEL.
         assert provide_metrics_redis.get(key) == b"9"
         # No rows committed.
         assert _select_metrics_rows(pg_conn) == []
+        assert is_string_in_logs(
+            "another flush is in progress, skipping", caplog.records
+        )
+        assert any(
+            record.levelno == logging.WARNING
+            and "another flush is in progress, skipping" in record.getMessage()
+            for record in caplog.records
+        )
     finally:
         provide_metrics_redis.delete(FLUSH_LOCK_KEY)
         _truncate_metrics_tables(pg_conn)
@@ -711,6 +724,7 @@ def test_flush_does_not_stamp_liveness_sentinel_on_postgres_commit_failure(
 def test_flush_does_not_stamp_liveness_sentinel_when_lock_held(
     app: Flask,
     provide_metrics_redis: Redis,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN the metrics:flush:lock key is already held (simulating a hung or
@@ -718,17 +732,27 @@ def test_flush_does_not_stamp_liveness_sentinel_when_lock_held(
     WHEN run_flush is invoked
     THEN it returns 0 without stamping the liveness sentinel — being
         locked-out is NOT progress; another worker must succeed for the
-        sentinel to advance.
+        sentinel to advance — and a WARNING-level "another flush is in
+        progress" log is emitted on the metrics_flush logger.
     """
     pg_conn = _build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         provide_metrics_redis.set(FLUSH_LOCK_KEY, "1", ex=FLUSH_LOCK_TTL_SECONDS)
 
-        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+        with caplog.at_level(logging.WARNING, logger="metrics_flush"):
+            upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
 
         assert upserted == 0
         assert provide_metrics_redis.get(FLUSH_LAST_SUCCESS_KEY) is None
+        assert is_string_in_logs(
+            "another flush is in progress, skipping", caplog.records
+        )
+        assert any(
+            record.levelno == logging.WARNING
+            and "another flush is in progress, skipping" in record.getMessage()
+            for record in caplog.records
+        )
     finally:
         provide_metrics_redis.delete(FLUSH_LOCK_KEY)
         _truncate_metrics_tables(pg_conn)

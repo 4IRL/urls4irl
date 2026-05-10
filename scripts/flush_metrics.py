@@ -231,8 +231,8 @@ def _record_flush_success(redis_client: redis.Redis) -> None:
     """
     try:
         redis_client.set(FLUSH_LAST_SUCCESS_KEY, str(int(time.time())))
-    except Exception as sentinel_error:
-        logger.exception("failed to stamp liveness sentinel: %s", sentinel_error)
+    except Exception:
+        logger.exception("failed to stamp liveness sentinel")
 
 
 def _load_env_from_container_dump(path: str = CONTAINER_ENVIRONMENT_FILE) -> None:

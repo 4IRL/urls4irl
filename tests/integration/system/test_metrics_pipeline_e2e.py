@@ -78,8 +78,16 @@ MULTI_EVENT_PAYLOAD: list[dict[str, object]] = [
 ]
 
 # Set of event names used in MULTI_EVENT_PAYLOAD (for assertion lookups).
+# Kept as an explicit literal (rather than derived from MULTI_EVENT_PAYLOAD) so
+# the type checker can see a `frozenset[str]` directly without an `arg-type`
+# ignore comment, and so the test source documents the expected events inline.
 MULTI_EVENT_NAMES: frozenset[str] = frozenset(
-    entry["event_name"] for entry in MULTI_EVENT_PAYLOAD  # type: ignore[arg-type]
+    {
+        EventName.UI_URL_COPY.value,
+        EventName.UI_TAG_APPLY.value,
+        EventName.UI_UTUB_CREATE_OPEN.value,
+        EventName.UI_URL_CREATE_OPEN.value,
+    }
 )
 
 
@@ -164,8 +172,7 @@ def test_metrics_pipeline_end_to_end(
 
     api_hit_pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
     api_hit_keys = list(provide_metrics_redis.scan_iter(match=api_hit_pattern))
-    if api_hit_keys:
-        provide_metrics_redis.delete(*api_hit_keys)
+    provide_metrics_redis.delete(*api_hit_keys)
 
     # Step 4 — flush Redis into AnonymousMetrics via inline psycopg2 conn
     inline_conn = _build_pg_conn(app)
@@ -242,8 +249,7 @@ def test_metrics_pipeline_multi_event_payload(
     # flush below only processes the events explicitly submitted in the POST.
     api_hit_pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
     api_hit_keys = list(provide_metrics_redis.scan_iter(match=api_hit_pattern))
-    if api_hit_keys:
-        provide_metrics_redis.delete(*api_hit_keys)
+    provide_metrics_redis.delete(*api_hit_keys)
 
     # One counter key per distinct event name submitted — value b"1" each.
     for event_name_value in MULTI_EVENT_NAMES:
