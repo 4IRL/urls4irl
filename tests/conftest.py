@@ -47,6 +47,15 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
+# Per-worker metrics Redis DB index base. Each xdist worker is assigned
+# `_METRICS_REDIS_DB_BASE + worker_num` to keep counter keys isolated across
+# parallel test runs. With the n=8 worker cap (per CLAUDE.md), the highest
+# assigned metrics DB index is 15 — exactly at the boundary of Redis's default
+# 16-database limit (indices 0..15). Raising the worker count above 8 (or the
+# base above 8) requires either bumping `--databases` in the test compose
+# files or rebasing the metrics DB block to a lower start.
+_METRICS_REDIS_DB_BASE = 8
+
 
 class AjaxFlaskClient(FlaskClient):
     """FlaskClient subclass that injects X-Requested-With: XMLHttpRequest on every request."""
@@ -264,11 +273,20 @@ def build_app(
     ignore_deprecation_warning,
     worker_db_uri: str,
     worker_redis_uri: str,
+    worker_id: str,
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
+    worker_num = _get_worker_num(worker_id) or 0
     if worker_redis_uri and worker_redis_uri != "memory://":
+        metrics_db = _METRICS_REDIS_DB_BASE + worker_num
+        assert metrics_db <= 15, (
+            "n>8 workers exceed default Redis 16-DB limit; "
+            "bump --databases in compose or lower _METRICS_REDIS_DB_BASE"
+        )
+        base, _trailing_db = worker_redis_uri.rsplit("/", 1)
+        config.METRICS_REDIS_URI = f"{base}/{metrics_db}"
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
 
@@ -410,6 +428,31 @@ def provide_redis(app: Flask) -> Generator[Redis | None, None, None]:
 
     for key_to_del in keys_to_delete:
         redis_client.delete(key_to_del)
+
+
+@pytest.fixture
+def provide_metrics_redis(
+    build_app: Tuple[Flask, ConfigTest],
+) -> Generator[Redis | None, None, None]:
+    """Per-worker Redis client pointed at the metrics DB index used by `MetricsWriter`.
+
+    Function-scoped so each test starts with a flushed metrics DB. Depends on the
+    session-scoped `build_app` (allowed: narrow scope may request wider scope) so
+    it shares a single Flask app with other fixtures and avoids nested SAVEPOINT
+    conflicts seen in CLI flush tests that also use `runner`.
+    """
+    flask_app, _ = build_app
+    metrics_uri = flask_app.config.get(CONFIG_ENVS.METRICS_REDIS_URI, None)
+    if not metrics_uri or metrics_uri == "memory://":
+        return
+
+    redis_client: Any = redis.Redis.from_url(url=metrics_uri)
+    assert isinstance(redis_client, Redis)
+
+    redis_client.flushdb()
+    yield redis_client
+    redis_client.flushdb()
+    redis_client.close()
 
 
 @pytest.fixture

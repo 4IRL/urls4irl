@@ -37,6 +37,16 @@
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/block-test-script-writes.sh\"",
+            "timeout": 5
+          }
+        ]
+      },
+      {
         "matcher": "Bash",
         "hooks": [
           {
@@ -90,6 +100,17 @@
           {
             "type": "command",
             "command": "docker compose exec -T vite npx vite build --logLevel error 2>&1 | tail -5"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/list-allowlisted-entrypoints.sh\"",
+            "timeout": 5
           }
         ]
       }

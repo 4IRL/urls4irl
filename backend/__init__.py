@@ -21,6 +21,8 @@ from backend.api_common.error_handler import (
 from backend.db import db
 from backend.config import Config, ConfigProd
 from backend.extensions.email_sender.email_sender import EmailSender
+from backend.extensions.metrics.middleware import init_metrics_middleware
+from backend.extensions.metrics.writer import MetricsWriter
 from backend.extensions.notifications.notifications import NotificationSender
 from backend.extensions.url_validation.url_validator import UrlValidator
 from backend.cli.metrics import register_metrics_cli
@@ -79,6 +81,8 @@ url_validator = UrlValidator()
 
 notification_sender = NotificationSender()
 
+metrics_writer = MetricsWriter()
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["20/second", "100/minute"],
@@ -109,6 +113,7 @@ def create_app(
     db.init_app(app)
 
     csrf.init_app(app)
+    metrics_writer.init_app(app)
     login_manager.init_app(app)
 
     # Configure limiter with app-specific settings
@@ -138,8 +143,13 @@ def create_app(
     if production:
         email_sender.in_production()
 
+    # Standing exception to the global-import rule (CLAUDE.md): all blueprint
+    # imports are kept inside `create_app()` to avoid module-scope circular
+    # imports — every blueprint module ultimately imports from `backend.*`,
+    # which transitively imports this module. Mirrors the existing pattern.
     from backend.contact.routes import contact
     from backend.members.routes import members
+    from backend.metrics.routes import metrics
     from backend.splash.routes import splash
     from backend.system.routes import system
     from backend.urls.routes import urls
@@ -154,6 +164,7 @@ def create_app(
 
     app.register_blueprint(contact)
     app.register_blueprint(members)
+    app.register_blueprint(metrics)
     app.register_blueprint(splash)
     app.register_blueprint(system)
     app.register_blueprint(urls)
@@ -185,6 +196,7 @@ def create_app(
         migrate.init_app(app)
 
     add_security_headers(app)
+    init_metrics_middleware(app)
     init_vite_app(app)
     return app
 

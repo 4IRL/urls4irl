@@ -51,6 +51,7 @@ services:
     restart: unless-stopped
     image: redis:6.2
     container_name: u4i-dev-redis
+    command: redis-server --databases 32
     volumes:
       - redisdata:/data
     healthcheck:
@@ -70,20 +71,27 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     environment:
       - PRODUCTION=false
       - DEV_SERVER=true
+      - METRICS_REDIS_URI=redis://redis:6379/2
+      - METRICS_BUCKET_SECONDS=3600
+      - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
     healthcheck:
-      test: [ "CMD", "pgrep", "cron" ]
+      test: [ "CMD", "/opt/metrics-venv/bin/python", "/app/check_flush_liveness.py" ]
       interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 200s
 
 secrets:
   MAILJET_API_KEY:

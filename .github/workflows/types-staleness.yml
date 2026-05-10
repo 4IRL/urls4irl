@@ -57,6 +57,10 @@ jobs:
         working-directory: frontend
         run: npx openapi-typescript types/openapi.json -o types/api.d.ts
 
+      - name: Format generated types with prettier
+        working-directory: frontend
+        run: npx prettier --write types/api.d.ts types/openapi.json
+
       - name: Check for uncommitted changes
         run: |
           if ! git diff --exit-code frontend/types/; then

@@ -41,13 +41,6 @@ METRICS_FLUSH_INTERVAL_SECONDS = int(
 # Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
 METRICS_BUCKET_SECONDS = int(environ.get(ENV.METRICS_BUCKET_SECONDS, default="3600"))
 # Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
-# Redis logical DB index for metrics counter/batch keys.
-#   DB 0 = sessions / Flask-Limiter (production default)
-#   DB 1 = test-redis (CI/test isolation)
-#   DB 2 = metrics (this constant) — reserved by the Phase 1 sub-plan to keep
-#          metrics keys separate from session and rate-limit keyspaces.
-METRICS_REDIS_DB = int(environ.get(ENV.METRICS_REDIS_DB, default="2"))
-# Must be a valid integer; a non-numeric value raises ValueError at import time (fail-fast behavior).
 METRICS_BATCH_NONCE_TTL_SECONDS = int(
     environ.get(ENV.METRICS_BATCH_NONCE_TTL_SECONDS, default="120")
 )
@@ -88,8 +81,13 @@ if IS_PRODUCTION:
     redis_password = environ.get("REDIS_PASSWORD", "")
     encoded_password = quote(redis_password)
     REDIS_URI = "redis://:" + encoded_password + "@redis:6379/0"
+    # Metrics counter/batch keys live on a dedicated Redis logical DB to keep
+    # them isolated from session and rate-limit keyspaces. Built from the same
+    # REDIS_PASSWORD secret as REDIS_URI; the trailing /2 is the metrics DB.
+    METRICS_REDIS_URI = "redis://:" + encoded_password + "@redis:6379/2"
 else:
     REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
+    METRICS_REDIS_URI = environ.get(ENV.METRICS_REDIS_URI, default=None)
 
 
 class Config:
@@ -148,7 +146,7 @@ class Config:
     METRICS_ENABLED = METRICS_ENABLED
     METRICS_FLUSH_INTERVAL_SECONDS = METRICS_FLUSH_INTERVAL_SECONDS
     METRICS_BUCKET_SECONDS = METRICS_BUCKET_SECONDS
-    METRICS_REDIS_DB = METRICS_REDIS_DB
+    METRICS_REDIS_URI = METRICS_REDIS_URI
     METRICS_BATCH_NONCE_TTL_SECONDS = METRICS_BATCH_NONCE_TTL_SECONDS
 
     def __init__(self) -> None:

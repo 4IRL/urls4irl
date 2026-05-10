@@ -209,6 +209,18 @@ All inter-module communication uses typed events:
 - CSP: Nonce-based inline script policy, set in `add_security_headers()`
 - Passwords: Werkzeug `pbkdf2:sha256`
 
+## Redis DB Allocation
+
+A single Redis instance is partitioned by numeric DB index. The trailing `/N` in each URI is the only thing distinguishing them, so the meaning is documented here rather than re-derived from env-var names.
+
+| DB  | Env var              | Purpose                                                                          |
+| --- | -------------------- | -------------------------------------------------------------------------------- |
+| 0   | `REDIS_URI`          | Flask-Session sessions, Flask-Limiter rate limiting                              |
+| 1   | `TEST_REDIS_URI`     | Integration test sessions (isolated from dev DB 0 so tests don't evict sessions) |
+| 2   | `METRICS_REDIS_URI`  | Workflow metrics counters, batch IDs, and the `metrics:flush:*` liveness sentinel |
+
+The literal `/N` digits live in: `backend/config.py` (prod URI assembly), `docker/compose.local.yaml`, `docker/compose.dev.yaml`, `docker/startup-workflow.sh` (workflow-container assembly), `docker/smoke-test.sh` (CI verification), and `.github/workflows/test.yml`. **Adding a new DB requires updating all of the above and this table.**
+
 ## API Pattern
 
 Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. AJAX write endpoints (`utubs`, `urls`, `members`, `tags`) and splash endpoints (`login`, `register`, `forgot-password`, `reset-password`) expect `Content-Type: application/json` with the CSRF token in the `X-Csrftoken` request header. The contact blueprint still uses `application/x-www-form-urlencoded` with WTForms. See `backend/API_DOCUMENTATION.md` for full endpoint docs.

@@ -15,11 +15,12 @@ services:
     environment:
       - PRODUCTION=true
       - FLASK_DEBUG=false
-      # Anonymous metrics knobs (Phase 1: stub writer; values consumed in Phase 3)
+      # Anonymous metrics knobs (Phase 2: Redis-backed writer active; domain hooks land in Phase 3)
+      # METRICS_REDIS_URI is assembled in backend/config.py from the
+      # REDIS_PASSWORD secret; do not set it here in prod.
       - METRICS_ENABLED=false
       - METRICS_FLUSH_INTERVAL_SECONDS=60
       - METRICS_BUCKET_SECONDS=3600
-      - METRICS_REDIS_DB=2
       - METRICS_BATCH_NONCE_TTL_SECONDS=120
     secrets:
       - MAILJET_API_KEY
@@ -70,6 +71,16 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    # `--databases 32` is intentionally omitted in production. Production
+    # only uses DB 0 (sessions/limiter) and DB 2 (metrics — see the
+    # METRICS_REDIS_URI assembled in backend/config.py and
+    # docker/startup-workflow.sh from the REDIS_PASSWORD secret), so the
+    # default 16-database limit is sufficient. `compose.local.yaml` and
+    # `compose.dev.yaml` pass `--databases 32` as a forward-compatibility
+    # buffer, but CI's default-16 Redis is already sufficient because the test
+    # conftest assigns per-worker metrics DB indices starting at 8 (see
+    # `_METRICS_REDIS_DB_BASE` in `tests/conftest.py`), which fits within the
+    # default 16-database limit (indices 0-15).
     command: >
       /bin/sh -c "redis-server --appendonly yes --requirepass $(cat /run/secrets/REDIS_PASSWORD)"
 
@@ -82,10 +93,13 @@ services:
         condition: service_healthy
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     secrets:
       - POSTGRES_DB
       - POSTGRES_USER
       - POSTGRES_PASSWORD
+      - REDIS_PASSWORD
       - NOTIFICATION_URL
       - ACCESS_KEY
       - SECRET_ACCESS_KEY
@@ -93,17 +107,23 @@ services:
     environment:
       - PRODUCTION=true
       - DEV_SERVER=false
+      # METRICS_REDIS_URI is assembled in startup-workflow.sh from the
+      # REDIS_PASSWORD secret; do not set it here in prod.
+      - METRICS_BUCKET_SECONDS=3600
+      - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
     healthcheck:
-      test: ["CMD", "pgrep", "cron"]
+      test: ["CMD", "/opt/metrics-venv/bin/python", "/app/check_flush_liveness.py"]
       interval: 60s
       timeout: 5s
       retries: 3
-      start_period: 10s
+      start_period: 200s
 
 secrets:
   POSTGRES_DB:

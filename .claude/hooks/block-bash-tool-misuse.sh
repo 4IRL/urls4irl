@@ -14,11 +14,36 @@ set -eu
 cmd=$(jq -r '.tool_input.command // empty')
 [ -z "$cmd" ] && exit 0
 
-first=$(echo "$cmd" | awk '{print $1}' | sed 's|.*/||')
+first_full=$(echo "$cmd" | awk '{print $1}')
+
+# Block ephemeral wrapper scripts in /tmp/claude/ (and the macOS variant under /private/tmp/claude/).
+# These dodge hooks but aren't allowlisted, so each invocation prompts. Force the durable path.
+case "$first_full" in
+  /tmp/claude/*.sh|/private/tmp/claude/*.sh)
+    jq -n '{
+      "hookSpecificOutput": {
+        "hookEventName": "PreToolUse",
+        "permissionDecision": "block",
+        "permissionDecisionReason": "Do not run wrapper scripts from /tmp/claude/ — they are ephemeral and not allowlisted, so each invocation prompts. Use an existing make target (run `make help` or check the Makefile), or move the wrapper to .claude/scripts/<name>.sh and add a Bash(.claude/scripts/<name>.sh:*) allow rule. /tmp/claude/ is for transient OUTPUT files (test logs, intermediate JSON) only — never executable wrappers."
+      }
+    }'
+    exit 0
+    ;;
+esac
+
+first=$(echo "$first_full" | sed 's|.*/||')
 
 case "$first" in
-  ls|find)
+  ls)
     tool="Glob"
+    ;;
+  find)
+    # find piped/exec'd into grep|rg is content search → Grep, not Glob
+    if echo "$cmd" | grep -qE -- '-exec\s+(grep|rg)\b|\|\s*xargs\s+(grep|rg)\b|\|\s*(grep|rg)\b'; then
+      tool="Grep"
+    else
+      tool="Glob"
+    fi
     ;;
   cat)
     # Allow cat with redirects (>, >>, <<) — those are file writes, handled elsewhere

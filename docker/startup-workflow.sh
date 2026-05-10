@@ -29,6 +29,14 @@ load_secrets() {
 if [ "$PRODUCTION" == "true" ]; then
     echo -e "\nLoading environments...\n"
     load_secrets
+    # Assemble METRICS_REDIS_URI from REDIS_PASSWORD secret. The workflow
+    # container only writes to the metrics DB (no sessions, no rate-limiter),
+    # so it does not need REDIS_URI. Mirrors the assembly in backend/config.py
+    # for the web container — including the urllib.parse.quote percent-encode
+    # so passwords containing URL-special characters (@, :, #, ?) do not
+    # produce a malformed URI here while web connects fine.
+    ENCODED_REDIS_PASSWORD=$(printf '%s' "${REDIS_PASSWORD}" | python3 -c 'import sys, urllib.parse; sys.stdout.write(urllib.parse.quote(sys.stdin.read()))')
+    export METRICS_REDIS_URI="redis://:${ENCODED_REDIS_PASSWORD}@redis:6379/2"
 else
     echo -e "\nRunning workflow in development mode\n"
 fi

@@ -1,5 +1,6 @@
 from backend.schemas.base import BaseSchema, StatusMessageResponseSchema
 from backend.schemas.contact import ContactResponseSchema
+from backend.schemas.metrics import MetricsIngestResponseSchema
 from backend.schemas.system import HealthResponseSchema
 from backend.schemas.tags import (
     UrlTagModifiedResponseSchema,
@@ -48,6 +49,7 @@ __all__ = [
     "LoginRedirectResponseSchema",
     "MemberModifiedResponseSchema",
     "MemberSchema",
+    "MetricsIngestResponseSchema",
     "RegisterResponseSchema",
     "ResetPasswordResponseSchema",
     "StatusMessageResponseSchema",
