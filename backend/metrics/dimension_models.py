@@ -7,6 +7,30 @@ from pydantic import BaseModel, ConfigDict, Field
 from backend.metrics.events import EventName
 
 # ---------------------------------------------------------------------------
+# Shared dimension literal aliases — extracted only when a literal appears in
+# 3+ dim models with identical shape. Pair-shapes (e.g., search target,
+# deck name) are intentionally NOT aliased: their dim classes are split per
+# the "may diverge" comments below, so coupling their literal types would
+# undo that intent. `TagScope` covers the create/delete-open/delete-confirm
+# tag-action triplet (UTub-level vs URL-level tag operation).
+# ---------------------------------------------------------------------------
+
+
+SearchActive = Literal["true", "false"]
+TagScope = Literal["utub", "url"]
+Form = Literal[
+    "url_create",
+    "url_title_edit",
+    "url_string_edit",
+    "utub_create",
+    "utub_name_edit",
+    "utub_desc_edit",
+    "tag_create",
+    "member_invite",
+]
+
+
+# ---------------------------------------------------------------------------
 # Sentinel model — used by `validate_dimensions` to reject non-empty dims
 # for events whose `DIMENSION_MODELS` entry is `None`. `_NoDims` has zero
 # fields, so any caller-supplied key triggers `extra="forbid"` and a real
@@ -27,7 +51,7 @@ class _NoDims(BaseModel):
 
 class _DimUtubSelect(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    search_active: Literal["true", "false"]
+    search_active: SearchActive
 
 
 class _DimUtubNameEditOpen(BaseModel):
@@ -43,13 +67,13 @@ class _DimUtubDescEditOpen(BaseModel):
 class _DimUrlAccess(BaseModel):
     model_config = ConfigDict(extra="forbid")
     trigger: Literal["corner_button", "url_text", "main_button"]
-    search_active: Literal["true", "false"]
+    search_active: SearchActive
     active_tag_count: int
 
 
 class _DimUrlCardClick(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    search_active: Literal["true", "false"]
+    search_active: SearchActive
     active_tag_count: int
 
 
@@ -74,42 +98,39 @@ class _DimSearchClose(BaseModel):
 
 class _DimTagCreateOpen(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    scope: Literal["deck", "url"]
+    scope: TagScope
+
+
+class _DimTagDeleteOpen(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scope: TagScope
+
+
+class _DimTagDeleteConfirm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scope: TagScope
+
+
+class _DimTagDeleteCancel(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    scope: TagScope
 
 
 class _DimFormSubmit(BaseModel):
     model_config = ConfigDict(extra="forbid")
     trigger: Literal["enter_key", "button_click"]
-    form: Literal[
-        "url_create",
-        "url_edit",
-        "utub_create",
-        "tag_create",
-        "member_invite",
-    ]
+    form: Form
 
 
 class _DimFormCancel(BaseModel):
     model_config = ConfigDict(extra="forbid")
     trigger: Literal["escape_key", "cancel_button"]
-    form: Literal[
-        "url_create",
-        "url_edit",
-        "utub_create",
-        "tag_create",
-        "member_invite",
-    ]
+    form: Form
 
 
 class _DimValidationError(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    form: Literal[
-        "url_create",
-        "url_edit",
-        "utub_create",
-        "tag_create",
-        "member_invite",
-    ]
+    form: Form
 
 
 # `_DimDeckCollapse` and `_DimDeckExpand` share the same field shape today,
@@ -175,6 +196,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.URL_ACCESSED: None,
     EventName.TAG_APPLIED: None,
     EventName.TAG_REMOVED: None,
+    EventName.TAG_DELETED: None,
     EventName.MEMBER_ADDED: None,
     EventName.MEMBER_REMOVED: None,
     EventName.URL_TITLE_UPDATED: None,
@@ -183,7 +205,9 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # UI — UTubs
     EventName.UI_UTUB_SELECT: _DimUtubSelect,
     EventName.UI_UTUB_CREATE_OPEN: None,
+    EventName.UI_UTUB_DELETE_OPEN: None,
     EventName.UI_UTUB_DELETE_CONFIRM: None,
+    EventName.UI_UTUB_DELETE_CANCEL: None,
     EventName.UI_UTUB_NAME_EDIT_OPEN: _DimUtubNameEditOpen,
     EventName.UI_UTUB_DESC_EDIT_OPEN: _DimUtubDescEditOpen,
     # UI — URLs
@@ -192,9 +216,12 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_URL_CREATE_OPEN: None,
     EventName.UI_URL_TITLE_EDIT_OPEN: None,
     EventName.UI_URL_STRING_EDIT_OPEN: None,
+    EventName.UI_URL_DELETE_OPEN: None,
     EventName.UI_URL_DELETE_CONFIRM: None,
+    EventName.UI_URL_DELETE_CANCEL: None,
     EventName.UI_URL_COPY: _DimUrlCopy,
     EventName.UI_URL_ACCESS_WARNING: None,
+    EventName.UI_URL_ACCESS_WARNING_DISMISS: None,
     # UI — Search
     EventName.UI_SEARCH_OPEN: _DimSearchOpen,
     EventName.UI_SEARCH_CLOSE: _DimSearchClose,
@@ -202,12 +229,18 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_TAG_APPLY: None,
     EventName.UI_TAG_REMOVE: None,
     EventName.UI_TAG_CREATE_OPEN: _DimTagCreateOpen,
-    EventName.UI_TAG_DELETE_CONFIRM: None,
+    EventName.UI_TAG_DELETE_OPEN: _DimTagDeleteOpen,
+    EventName.UI_TAG_DELETE_CONFIRM: _DimTagDeleteConfirm,
+    EventName.UI_TAG_DELETE_CANCEL: _DimTagDeleteCancel,
     EventName.UI_TAG_FILTER_TOGGLE: None,
     # UI — Members
     EventName.UI_MEMBER_INVITE_OPEN: None,
+    EventName.UI_MEMBER_REMOVE_OPEN: None,
     EventName.UI_MEMBER_REMOVE_CONFIRM: None,
+    EventName.UI_MEMBER_REMOVE_CANCEL: None,
+    EventName.UI_MEMBER_LEAVE_OPEN: None,
     EventName.UI_MEMBER_LEAVE_CONFIRM: None,
+    EventName.UI_MEMBER_LEAVE_CANCEL: None,
     # UI — Forms
     EventName.UI_FORM_SUBMIT: _DimFormSubmit,
     EventName.UI_FORM_CANCEL: _DimFormCancel,
@@ -216,6 +249,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_DECK_COLLAPSE: _DimDeckCollapse,
     EventName.UI_DECK_EXPAND: _DimDeckExpand,
     EventName.UI_NAVBAR_MOBILE_MENU_OPEN: None,
+    EventName.UI_NAVBAR_MOBILE_MENU_CLOSE: None,
     EventName.UI_MOBILE_NAV: _DimMobileNav,
     # UI — Auth (splash)
     EventName.UI_LOGIN_SUBMIT: None,
