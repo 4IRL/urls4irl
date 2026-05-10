@@ -185,6 +185,14 @@ def clear_db(db_type: str):
     con = engine.connect()
     meta = MetaData(engine)
     meta.reflect()
+    # Exclude alembic_version from the drop/create cycle so migration state
+    # survives `clear` — mirrors the existing --keep-alembic flag on
+    # `managedb drop`. Otherwise every dev deploy's post-up `flask managedb
+    # clear` wipes the version_num row, leaving the next deploy's `flask db
+    # upgrade` trying to re-run from the initial migration and crashing on
+    # the already-created enum types.
+    if TABLE_NAMES.ALEMBIC_VERSION in meta.tables:
+        meta.remove(meta.tables[TABLE_NAMES.ALEMBIC_VERSION])
     meta.drop_all()
     meta.create_all()
     con.close()
