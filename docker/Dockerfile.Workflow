@@ -55,10 +55,13 @@ COPY --chown=workflow:workflow scripts/backup-logs.sh /app/
 COPY --chown=workflow:workflow scripts/remote-object-storage.sh /app/
 COPY scripts/restricted-curl.sh /usr/bin/restricted_curl
 
-# Copy metrics flush + liveness scripts and backend package (full tree retained for import-path consistency)
+# Copy metrics flush + liveness scripts. flush_metrics.py side-loads two backend
+# leaf modules by absolute path (see _load_module_direct); copy only those two
+# files at their source-tree paths so the loader's "/app/<rel>" probe finds them.
 COPY --chown=workflow:workflow scripts/flush_metrics.py /app/flush_metrics.py
 COPY --chown=workflow:workflow scripts/check_flush_liveness.py /app/check_flush_liveness.py
-COPY --chown=workflow:workflow backend/ /app/backend/
+COPY --chown=workflow:workflow backend/extensions/metrics/buckets.py /app/backend/extensions/metrics/buckets.py
+COPY --chown=workflow:workflow backend/utils/strings/metrics_strs.py /app/backend/utils/strings/metrics_strs.py
 
 # Copy crontab job
 COPY docker/crontab.workflow /tmp/crontab.workflow

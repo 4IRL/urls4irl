@@ -23,34 +23,28 @@ keys into Postgres.
 
 from __future__ import annotations
 
+import importlib.util
+import json
+import os
 import sys
+import time
+from pathlib import Path
+from types import ModuleType
 
-# Required when run from the workflow container where backend/ lives at
-# /app/backend/. No-op in pytest where the project root is already on sys.path.
-sys.path.insert(0, "/app")
-
-import importlib.util  # noqa: E402
-import json  # noqa: E402
-import os  # noqa: E402
-import time  # noqa: E402
-from pathlib import Path  # noqa: E402
-from types import ModuleType  # noqa: E402
-
-import psycopg2  # noqa: E402
-import psycopg2.extras  # noqa: E402
-import redis  # noqa: E402
+import psycopg2
+import psycopg2.extras
+import redis
 
 
 def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleType:
-    """Load a backend submodule without triggering ``backend/__init__.py``.
+    """Load a backend leaf module without triggering ``backend/__init__.py``.
 
-    The workflow venv ships only ``redis`` and ``psycopg2`` — no Flask. Importing
-    ``backend.extensions.metrics.buckets`` via the normal machinery would run
-    ``backend/__init__.py`` (which imports Flask) and fail. The two helper
-    modules used here are pure-Python with zero Flask deps, so we side-load
-    them directly. In pytest, where Flask is on the path, the standard
-    ``backend.*`` imports work — this fallback only fires under
-    ``ModuleNotFoundError``.
+    The workflow venv ships only ``redis`` and ``psycopg2`` — no Flask — so a
+    normal ``from backend.extensions.metrics.buckets import ...`` would execute
+    ``backend/__init__.py`` (which imports Flask) and raise. Side-loading the
+    two leaf files by absolute path bypasses package import entirely. Probes
+    ``/app/<rel>`` first (workflow container layout) then
+    ``<project_root>/<rel>`` (pytest layout).
     """
     candidate_paths = [
         Path("/app") / file_relative_to_app,
@@ -68,18 +62,14 @@ def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleTy
     )
 
 
-try:
-    from backend.extensions.metrics.buckets import epoch_to_aware_datetime  # noqa: E402
-    from backend.utils.strings.metrics_strs import METRICS_REDIS  # noqa: E402
-except ModuleNotFoundError:
-    _buckets_module = _load_module_direct(
-        "_metrics_buckets", "backend/extensions/metrics/buckets.py"
-    )
-    _metrics_strs_module = _load_module_direct(
-        "_metrics_strs", "backend/utils/strings/metrics_strs.py"
-    )
-    epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
-    METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
+_buckets_module = _load_module_direct(
+    "_metrics_buckets", "backend/extensions/metrics/buckets.py"
+)
+_metrics_strs_module = _load_module_direct(
+    "_metrics_strs", "backend/utils/strings/metrics_strs.py"
+)
+epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
+METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
 
 REDIS_COUNTER_GLOB: str = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
 SCAN_BATCH_SIZE: int = 500
@@ -242,14 +232,9 @@ def _record_flush_success(redis_client: redis.Redis) -> None:
 
 
 def _build_redis_client_from_env() -> redis.Redis:
-    redis_uri = os.environ.get("REDIS_URI")
-    metrics_db = os.environ.get("METRICS_REDIS_DB")
-    if not redis_uri:
-        raise RuntimeError("REDIS_URI environment variable is required")
-    if metrics_db is None:
-        raise RuntimeError("METRICS_REDIS_DB environment variable is required")
-    base, _trailing_db = redis_uri.rsplit("/", 1)
-    metrics_uri = f"{base}/{metrics_db}"
+    metrics_uri = os.environ.get("METRICS_REDIS_URI")
+    if not metrics_uri:
+        raise RuntimeError("METRICS_REDIS_URI environment variable is required")
     return redis.Redis.from_url(metrics_uri)
 
 
