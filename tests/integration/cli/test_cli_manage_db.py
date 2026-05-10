@@ -3,7 +3,7 @@ import os
 from alembic import command
 from alembic.config import Config
 import pytest
-from sqlalchemy import inspect
+from sqlalchemy import inspect, text
 from sqlalchemy.engine.reflection import Inspector
 
 from backend import db, migrate
@@ -169,3 +169,60 @@ def test_drop_db_with_migrations(runner):
     del os.environ[
         "PYTEST_RUNNING"
     ]  # Remove env variable used to turn off alembic logging
+
+
+def test_clear_db_preserves_alembic_version(runner):
+    """
+    GIVEN a database with an alembic_version row recording a migration revision
+    WHEN the developer clears the database via:
+        `flask managedb clear test`
+    THEN verify alembic_version table and its row both survive the clear.
+        Migration state must NEVER be wiped by `clear` — otherwise the next
+        `flask db upgrade` re-runs from the initial migration and crashes on
+        already-existing enum types and tables. This regression-guards the
+        dev-deploy bug where every deploy's post-up `managedb clear` left
+        the version_num row empty for the next deploy's startup-flask.sh.
+    """
+    expected_revision = "f4fa128de1d0"
+    app, cli_runner = runner
+
+    with app.app_context():
+        with db.engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS alembic_version "
+                    "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
+                )
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO alembic_version (version_num) VALUES (:revision) "
+                    "ON CONFLICT DO NOTHING"
+                ),
+                {"revision": expected_revision},
+            )
+
+        with db.engine.connect() as conn:
+            initial_rows = (
+                conn.execute(text("SELECT version_num FROM alembic_version"))
+                .scalars()
+                .all()
+            )
+        assert initial_rows == [expected_revision]
+
+    cli_runner.invoke(args=["managedb", "clear", "test"])
+
+    with app.app_context():
+        inspector: Inspector = inspect(db.engine)
+        assert inspector.has_table(TABLE_NAMES.ALEMBIC_VERSION)
+
+        with db.engine.connect() as conn:
+            preserved_rows = (
+                conn.execute(text("SELECT version_num FROM alembic_version"))
+                .scalars()
+                .all()
+            )
+        assert preserved_rows == [expected_revision]
+
+        with db.engine.begin() as conn:
+            conn.execute(text("DROP TABLE alembic_version"))
