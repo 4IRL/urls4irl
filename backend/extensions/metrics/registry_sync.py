@@ -38,7 +38,7 @@ def sync_event_registry(app: Flask) -> None:
                 if row.description != expected_description:
                     row.description = expected_description
         db.session.commit()
-        current_app.logger.info(
+        current_app.cli_logger.info(
             "metrics: synced event_registry — %d enum members",
             len(EventName),
         )

@@ -20,6 +20,8 @@ services:
       - FLASK_DEBUG=true
       - DOCKER=true
       - DEV_SERVER=true
+      - METRICS_ENABLED=true
+      - METRICS_REDIS_URI=redis://redis:6379/2
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY

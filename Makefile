@@ -6,7 +6,7 @@ EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all
 
 .DEFAULT_GOAL := help
 
@@ -89,3 +89,25 @@ prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker image prune -f
 	docker volume prune -f
 	docker builder prune -f
+
+metrics-watch: ## Live tail Redis ops on metrics DB 2 (requires METRICS_ENABLED=true on web)
+	$(COMPOSE) exec redis redis-cli -n 2 MONITOR
+
+metrics-snapshot: ## Snapshot current metrics:counter:* keys with values
+	$(COMPOSE) exec redis sh -c 'for k in $$(redis-cli -n 2 --scan --pattern "metrics:counter:*"); do echo "$$k = $$(redis-cli -n 2 GET $$k)"; done'
+
+metrics-flush-now: ## Trigger an immediate flush worker run (drains Redis -> Postgres)
+	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run METRICS_ENABLED=true make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
+
+metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
+
+metrics-smoke-test: metrics-snapshot metrics-flush-now metrics-rows ## E2E: snapshot Redis, force flush, dump Postgres rows
+
+metrics-clear-counters: ## Delete pending Redis state (metrics:counter:* and metrics:batch:*); leaves flush lock/sentinel intact
+	$(COMPOSE) exec redis sh -c 'redis-cli -n 2 --scan --pattern "metrics:counter:*" | xargs -r redis-cli -n 2 UNLINK; redis-cli -n 2 --scan --pattern "metrics:batch:*" | xargs -r redis-cli -n 2 UNLINK'
+
+metrics-clear-rows: ## Truncate AnonymousMetrics in Postgres
+	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
+
+metrics-clear-all: metrics-clear-counters metrics-clear-rows ## Wipe all metrics data (Redis pending + Postgres flushed)
