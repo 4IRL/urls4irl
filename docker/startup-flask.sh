@@ -31,9 +31,12 @@ fi
 flask db upgrade
 flask utils verify-tables
 flask shorturls add
-# Hard deployment gate when METRICS_ENABLED=true: web container refuses to start
-# if the EventName <-> metrics_event_registry table is out of sync. Adding new
-# EventName members requires a corresponding migration before redeploying.
+# Reconciles the EventRegistry table with the EventName Python enum on every
+# boot (inserts missing rows, updates drifted category/description, never
+# deletes — historical AnonymousMetrics rows FK to retired enum values).
+# Idempotent. Startup aborts only on hard failure (DB unreachable, ORM/schema
+# mismatch). Adding new EventName members is a code-only change; only schema-
+# shape changes (new columns, FK changes) require an Alembic migration.
 flask metrics sync-registry || { echo "FATAL: metrics sync-registry failed" >&2; exit 1; }
 
 if [[ "$PRODUCTION" != "true" && "$DEV_SERVER" != "true" ]]; then
