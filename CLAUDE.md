@@ -185,6 +185,21 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 | `make generate-types` | Regenerate TypeScript API types from OpenAPI spec |
 | `make help` | List all available make commands |
 
+### Metrics Verification (local stack)
+
+Bring the stack up with metrics enabled (`METRICS_ENABLED=true make up d=1`) to exercise the anonymous-metrics pipeline end-to-end. Local default is `METRICS_ENABLED=false` (overridable via env), prod is hard-`false` by rollout strategy, dev is hard-`true`.
+
+| Command | Description |
+|---|---|
+| `make metrics-watch` | Live tail of Redis ops on metrics DB 2 |
+| `make metrics-snapshot` | Dump current `metrics:counter:*` keys with values |
+| `make metrics-flush-now` | Trigger an immediate flush worker run (Redis → Postgres) |
+| `make metrics-rows` | Show last 25 rows from `AnonymousMetrics` |
+| `make metrics-smoke-test` | E2E: snapshot → flush → rows |
+| `make metrics-clear-counters` | UNLINK pending Redis state (counters + batch nonces); leaves flush lock/sentinel intact |
+| `make metrics-clear-rows` | `TRUNCATE "AnonymousMetrics"` |
+| `make metrics-clear-all` | Wipe Redis pending + Postgres flushed |
+
 ### Docker Execution Note
 
 **CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
