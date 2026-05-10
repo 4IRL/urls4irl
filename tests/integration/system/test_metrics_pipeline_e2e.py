@@ -70,6 +70,19 @@ def _truncate_metrics_tables(pg_conn: Any) -> None:
     pg_conn.commit()
 
 
+MULTI_EVENT_PAYLOAD: list[dict[str, object]] = [
+    {"event_name": EventName.UI_URL_COPY.value, "dimensions": {"result": "success"}},
+    {"event_name": EventName.UI_TAG_APPLY.value, "dimensions": None},
+    {"event_name": EventName.UI_UTUB_CREATE_OPEN.value, "dimensions": None},
+    {"event_name": EventName.UI_URL_CREATE_OPEN.value, "dimensions": None},
+]
+
+# Set of event names used in MULTI_EVENT_PAYLOAD (for assertion lookups).
+MULTI_EVENT_NAMES: frozenset[str] = frozenset(
+    entry["event_name"] for entry in MULTI_EVENT_PAYLOAD  # type: ignore[arg-type]
+)
+
+
 def test_metrics_pipeline_end_to_end(
     metrics_enabled_runner_app: Flask,
     provide_metrics_redis: Redis,
@@ -171,6 +184,99 @@ def test_metrics_pipeline_end_to_end(
         assert event_name == EventName.UI_URL_COPY.value
         assert dimensions == {"result": "success"}
         assert count == 1
+
+        remaining_counter_keys = list(
+            provide_metrics_redis.scan_iter(
+                match=f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
+            )
+        )
+        assert remaining_counter_keys == []
+    finally:
+        _truncate_metrics_tables(inline_conn)
+        inline_conn.close()
+
+
+def test_metrics_pipeline_multi_event_payload(
+    metrics_enabled_runner_app: Flask,
+    provide_metrics_redis: Redis,
+) -> None:
+    """
+    GIVEN a freshly-synced EventRegistry, the metrics_writer extension enabled,
+        and an inline psycopg2 connection to the test DB
+    WHEN a single POST /api/metrics is made with multiple events of different
+        EventName types in one payload (MULTI_EVENT_PAYLOAD, 4 events)
+    THEN the ingest returns 200 with accepted == len(MULTI_EVENT_PAYLOAD);
+        one counter key is set in Redis for each distinct event; run_flush(...)
+        upserts one AnonymousMetrics row per distinct event; and all counter
+        keys are cleared from Redis after the flush.
+
+    Covers the typical browser-batch path where several user interactions are
+    buffered and shipped to the endpoint together.
+    """
+    app = metrics_enabled_runner_app
+
+    setup_conn = _build_pg_conn(app)
+    try:
+        reset_postgres_enum_to_lowercase_values(setup_conn)
+    finally:
+        setup_conn.close()
+
+    with app.app_context():
+        sync_event_registry(app)
+        assert db.session.query(Event_Registry).count() == len(EventName)
+
+    flask_client = app.test_client()
+    splash_response = flask_client.get("/")
+    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
+
+    ingest_response = flask_client.post(
+        INGEST_URL,
+        json={"events": MULTI_EVENT_PAYLOAD},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert ingest_response.status_code == 200
+    assert ingest_response.get_json()["accepted"] == len(MULTI_EVENT_PAYLOAD)
+
+    # Remove incidental api_hit keys written by the GET / middleware so the
+    # flush below only processes the events explicitly submitted in the POST.
+    api_hit_pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
+    api_hit_keys = list(provide_metrics_redis.scan_iter(match=api_hit_pattern))
+    if api_hit_keys:
+        provide_metrics_redis.delete(*api_hit_keys)
+
+    # One counter key per distinct event name submitted — value b"1" each.
+    for event_name_value in MULTI_EVENT_NAMES:
+        event_pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{event_name_value}:*"
+        event_counter_keys = list(provide_metrics_redis.scan_iter(match=event_pattern))
+        assert len(event_counter_keys) == 1
+        assert provide_metrics_redis.get(event_counter_keys[0]) == b"1"
+
+    inline_conn = _build_pg_conn(app)
+    try:
+        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=inline_conn)
+        assert upserted == len(MULTI_EVENT_NAMES)
+
+        with inline_conn.cursor() as cur:
+            cur.execute(
+                'SELECT "eventName", "dimensions", "count"'
+                ' FROM "AnonymousMetrics" ORDER BY "eventName"'
+            )
+            rows = cur.fetchall()
+
+        assert len(rows) == len(MULTI_EVENT_NAMES)
+
+        flushed_event_names = {row[0] for row in rows}
+        assert flushed_event_names == MULTI_EVENT_NAMES
+
+        for event_name_value, dimensions, count in rows:
+            assert count == 1
+            # ui_url_copy carries a dimensions dict; the rest were sent as None
+            # but the writer stores the key without dimensions (empty dict or
+            # absent). Assert the dimension shape is consistent with the payload.
+            if event_name_value == EventName.UI_URL_COPY.value:
+                expected_dims = {"result": "success"}
+                assert dimensions == expected_dims
 
         remaining_counter_keys = list(
             provide_metrics_redis.scan_iter(

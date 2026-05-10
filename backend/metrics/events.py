@@ -10,10 +10,10 @@ class EventCategory(StrEnum):
 
 
 class EventName(StrEnum):
-    # API (1) — auto-instrumented via middleware (Phase 2)
+    # API — auto-instrumented via middleware
     API_HIT = "api_hit"
 
-    # Domain (12) — explicit record_event() calls in service layer (Phase 3)
+    # Domain — explicit record_event() calls in service layer
     UTUB_CREATED = "utub_created"
     UTUB_DELETED = "utub_deleted"
     UTUB_OPENED = "utub_opened"
@@ -27,8 +27,8 @@ class EventName(StrEnum):
     UTUB_TITLE_UPDATED = "utub_title_updated"
     UTUB_DESC_UPDATED = "utub_desc_updated"
 
-    # UI (47) — browser-side emit() shipped to POST /api/metrics (Phase 5)
-    # — UTubs (7)
+    # UI — browser-side emit() shipped to POST /api/metrics
+    # — UTubs
     UI_UTUB_SELECT = "ui_utub_select"
     UI_UTUB_CREATE_OPEN = "ui_utub_create_open"
     UI_UTUB_DELETE_OPEN = "ui_utub_delete_open"
@@ -36,7 +36,7 @@ class EventName(StrEnum):
     UI_UTUB_DELETE_CANCEL = "ui_utub_delete_cancel"
     UI_UTUB_NAME_EDIT_OPEN = "ui_utub_name_edit_open"
     UI_UTUB_DESC_EDIT_OPEN = "ui_utub_desc_edit_open"
-    # — URLs (11)
+    # — URLs
     UI_URL_ACCESS = "ui_url_access"
     UI_URL_CARD_CLICK = "ui_url_card_click"
     UI_URL_CREATE_OPEN = "ui_url_create_open"
@@ -48,10 +48,10 @@ class EventName(StrEnum):
     UI_URL_COPY = "ui_url_copy"
     UI_URL_ACCESS_WARNING = "ui_url_access_warning"
     UI_URL_ACCESS_WARNING_DISMISS = "ui_url_access_warning_dismiss"
-    # — Search (2)
+    # — Search
     UI_SEARCH_OPEN = "ui_search_open"
     UI_SEARCH_CLOSE = "ui_search_close"
-    # — Tags (7)
+    # — Tags
     UI_TAG_APPLY = "ui_tag_apply"
     UI_TAG_REMOVE = "ui_tag_remove"
     UI_TAG_CREATE_OPEN = "ui_tag_create_open"
@@ -59,7 +59,7 @@ class EventName(StrEnum):
     UI_TAG_DELETE_CONFIRM = "ui_tag_delete_confirm"
     UI_TAG_DELETE_CANCEL = "ui_tag_delete_cancel"
     UI_TAG_FILTER_TOGGLE = "ui_tag_filter_toggle"
-    # — Members (7)
+    # — Members
     UI_MEMBER_INVITE_OPEN = "ui_member_invite_open"
     UI_MEMBER_REMOVE_OPEN = "ui_member_remove_open"
     UI_MEMBER_REMOVE_CONFIRM = "ui_member_remove_confirm"
@@ -67,22 +67,22 @@ class EventName(StrEnum):
     UI_MEMBER_LEAVE_OPEN = "ui_member_leave_open"
     UI_MEMBER_LEAVE_CONFIRM = "ui_member_leave_confirm"
     UI_MEMBER_LEAVE_CANCEL = "ui_member_leave_cancel"
-    # — Forms (3)
+    # — Forms
     UI_FORM_SUBMIT = "ui_form_submit"
     UI_FORM_CANCEL = "ui_form_cancel"
     UI_VALIDATION_ERROR = "ui_validation_error"
-    # — Layout & Navigation (5)
+    # — Layout & Navigation
     UI_DECK_COLLAPSE = "ui_deck_collapse"
     UI_DECK_EXPAND = "ui_deck_expand"
     UI_NAVBAR_MOBILE_MENU_OPEN = "ui_navbar_mobile_menu_open"
     UI_NAVBAR_MOBILE_MENU_CLOSE = "ui_navbar_mobile_menu_close"
     UI_MOBILE_NAV = "ui_mobile_nav"
-    # — Auth / splash (4)
+    # — Auth / splash
     UI_LOGIN_SUBMIT = "ui_login_submit"
     UI_REGISTER_SUBMIT = "ui_register_submit"
     UI_FORGOT_PASSWORD_SUBMIT = "ui_forgot_password_submit"
     UI_AUTH_FORM_SWITCH = "ui_auth_form_switch"
-    # — Errors (1)
+    # — Errors
     UI_RATE_LIMIT_HIT = "ui_rate_limit_hit"
 
 

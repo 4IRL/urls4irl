@@ -130,6 +130,8 @@ def record_event(
     """
     try:
         writer = current_app.extensions.get("metrics_writer")
+    # Werkzeug's LocalProxy raises RuntimeError when current_app is accessed
+    # outside an application context — silent no-op for CLI/script callers.
     except RuntimeError:
         return None
     if writer is None:

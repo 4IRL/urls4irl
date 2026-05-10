@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from typing import Generator
+from unittest.mock import patch
 
 import pytest
 import redis as redis_module
@@ -47,6 +48,8 @@ def test_writer_increments_redis_counter_for_api_hit(
     WHEN record_event is called for API_HIT with endpoint/method/status_code
     THEN exactly one matching counter key exists with value b"1".
     """
+    assert _find_counter_keys(provide_metrics_redis, EventName.API_HIT) == []
+
     with app.app_context():
         record_event(
             EventName.API_HIT,
@@ -146,8 +149,10 @@ def test_writer_log_and_drop_on_invalid_dimensions(
 
     assert result is None
     assert any(
-        "metrics" in record.message.lower() for record in caplog.records
-    ), "Expected a metrics log entry on validation failure"
+        record.message == "metrics: record_event failed"
+        and record.levelno == logging.ERROR
+        for record in caplog.records
+    ), "Expected an ERROR log with message 'metrics: record_event failed' on validation failure"
     assert provide_metrics_redis.dbsize() == 0
 
 
@@ -180,8 +185,10 @@ def test_writer_log_and_drop_on_redis_failure(
 
     assert result is None
     assert any(
-        "metrics" in record.message.lower() for record in caplog.records
-    ), "Expected a metrics log entry on Redis failure"
+        record.message == "metrics: record_event failed"
+        and record.levelno == logging.ERROR
+        for record in caplog.records
+    ), "Expected an ERROR log with message 'metrics: record_event failed' on Redis failure"
 
 
 def test_writer_disabled_when_metrics_enabled_false(
@@ -208,20 +215,74 @@ def test_writer_disabled_when_metrics_enabled_false(
     assert provide_metrics_redis.dbsize() == 0
 
 
+_URI_PARAM_CASES = [
+    pytest.param(
+        "redis://localhost:6379/3",
+        {"host": "localhost", "port": 6379, "db": 3},
+        id="standard-host-port-db3",
+    ),
+    pytest.param(
+        "redis://:s3cr3t@redis-host:6380/5",
+        {"host": "redis-host", "port": 6380, "db": 5},
+        id="custom-port-and-password-db5",
+    ),
+    pytest.param(
+        "redis://localhost:6379/12",
+        {"host": "localhost", "port": 6379, "db": 12},
+        id="high-db-index-db12",
+    ),
+    pytest.param(
+        "redis://localhost:6379/0",
+        {"host": "localhost", "port": 6379, "db": 0},
+        id="default-db-index-db0",
+    ),
+]
+
+
+@pytest.mark.parametrize("uri,expected_conn_kwargs", _URI_PARAM_CASES)
 def test_writer_uses_metrics_redis_uri(
     app: Flask,
-    writer_with_metrics_enabled: MetricsWriter,
+    uri: str,
+    expected_conn_kwargs: dict,
 ):
     """
-    GIVEN a MetricsWriter initialized for tests
-    WHEN the writer's underlying Redis connection is inspected
-    THEN it connects to the host/port/DB encoded in app.config[METRICS_REDIS_URI].
+    GIVEN a MetricsWriter initialized with a specific METRICS_REDIS_URI
+    WHEN the writer's underlying Redis connection pool is inspected
+    THEN it connects to the host, port, and DB encoded in the URI.
+
+    Parametrized to cover standard URIs, URIs with custom ports and
+    passwords, high DB indices, and the default DB-0 case.
     """
-    expected_uri = app.config[CONFIG_ENVS.METRICS_REDIS_URI]
-    expected_db = int(expected_uri.rsplit("/", 1)[1])
-    redis_client = writer_with_metrics_enabled._redis
+    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
+    original_uri = app.config.get(CONFIG_ENVS.METRICS_REDIS_URI)
+    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
+    app.config[CONFIG_ENVS.METRICS_REDIS_URI] = uri
+
+    writer = MetricsWriter()
+    # Patch Redis.from_url to avoid real network connections; capture the URI passed.
+    with patch("backend.extensions.metrics.writer.Redis") as mock_redis_class:
+        fake_client = mock_redis_class.from_url.return_value
+        fake_client.connection_pool.connection_kwargs = expected_conn_kwargs
+        writer.init_app(app)
+        mock_redis_class.from_url.assert_called_once_with(uri)
+
+    redis_client = writer._redis
     assert redis_client is not None
-    assert redis_client.connection_pool.connection_kwargs["db"] == expected_db
+    assert (
+        redis_client.connection_pool.connection_kwargs["db"]
+        == expected_conn_kwargs["db"]
+    )
+    assert (
+        redis_client.connection_pool.connection_kwargs["host"]
+        == expected_conn_kwargs["host"]
+    )
+    assert (
+        redis_client.connection_pool.connection_kwargs["port"]
+        == expected_conn_kwargs["port"]
+    )
+
+    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
+    app.config[CONFIG_ENVS.METRICS_REDIS_URI] = original_uri
 
 
 def test_writer_increments_redis_counter_for_ui_event(

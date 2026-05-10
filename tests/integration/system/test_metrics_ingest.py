@@ -14,7 +14,7 @@ from backend.metrics.events import EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from tests.utils_for_test import get_csrf_token
+from tests.utils_for_test import get_csrf_token, is_string_in_logs
 
 pytestmark = pytest.mark.cli
 
@@ -246,46 +246,56 @@ def test_ingest_rejects_invalid_csrf_body_token(
 def test_ingest_rejects_domain_category_event_name(
     metrics_enabled_app: Flask,
     client: FlaskClient,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN a payload using a domain-category EventName value (utub_created)
     WHEN POSTing with a valid CSRF token
-    THEN the response is 400 (top-level event_name Literal restricts to UI events).
+    THEN the response is 400 (top-level event_name Literal restricts to UI events)
+    AND the app logger emits a WARNING containing the validation failure details.
     """
     csrf = _load_csrf(client)
 
-    response = client.post(
-        INGEST_URL,
-        json={"events": [{"event_name": "utub_created"}]},
-        headers={"X-CSRFToken": csrf},
-    )
+    with caplog.at_level(logging.WARNING, logger="backend"):
+        response = client.post(
+            INGEST_URL,
+            json={"events": [{"event_name": "utub_created"}]},
+            headers={"X-CSRFToken": csrf},
+        )
 
     assert response.status_code == 400
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_FORM_INPUT
+    assert is_string_in_logs("Invalid JSON", caplog.records)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 def test_ingest_rejects_completely_unknown_event_name(
     metrics_enabled_app: Flask,
     client: FlaskClient,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN an event_name that is not a valid EventName at all
     WHEN POSTing with a valid CSRF token
-    THEN the response is 400.
+    THEN the response is 400
+    AND the app logger emits a WARNING containing the validation failure details.
     """
     csrf = _load_csrf(client)
 
-    response = client.post(
-        INGEST_URL,
-        json={"events": [{"event_name": "made_up_event"}]},
-        headers={"X-CSRFToken": csrf},
-    )
+    with caplog.at_level(logging.WARNING, logger="backend"):
+        response = client.post(
+            INGEST_URL,
+            json={"events": [{"event_name": "made_up_event"}]},
+            headers={"X-CSRFToken": csrf},
+        )
 
     assert response.status_code == 400
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert is_string_in_logs("Invalid JSON", caplog.records)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 def test_ingest_rejects_unknown_dimension_key(
@@ -414,67 +424,82 @@ def test_ingest_accepts_empty_dimensions_for_none_model(
 def test_ingest_rejects_top_level_extra_key(
     metrics_enabled_app: Flask,
     client: FlaskClient,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN a payload with an unknown top-level key
     WHEN POSTing with a valid CSRF token
-    THEN the response is 400 (extra="forbid" on MetricsIngestRequest).
+    THEN the response is 400 (extra="forbid" on MetricsIngestRequest)
+    AND the app logger emits a WARNING containing the validation failure details.
     """
     csrf = _load_csrf(client)
 
-    response = client.post(
-        INGEST_URL,
-        json={
-            "events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}],
-            "unknown": 1,
-        },
-        headers={"X-CSRFToken": csrf},
-    )
+    with caplog.at_level(logging.WARNING, logger="backend"):
+        response = client.post(
+            INGEST_URL,
+            json={
+                "events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}],
+                "unknown": 1,
+            },
+            headers={"X-CSRFToken": csrf},
+        )
 
     assert response.status_code == 400
+    assert is_string_in_logs("Invalid JSON", caplog.records)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 def test_ingest_rejects_zero_events(
     metrics_enabled_app: Flask,
     client: FlaskClient,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN an empty events list
     WHEN POSTing with a valid CSRF token
-    THEN the response is 400 (min_length=1 enforced).
+    THEN the response is 400 (min_length=1 enforced)
+    AND the app logger emits a WARNING containing the validation failure details.
     """
     csrf = _load_csrf(client)
 
-    response = client.post(
-        INGEST_URL,
-        json={"events": []},
-        headers={"X-CSRFToken": csrf},
-    )
+    with caplog.at_level(logging.WARNING, logger="backend"):
+        response = client.post(
+            INGEST_URL,
+            json={"events": []},
+            headers={"X-CSRFToken": csrf},
+        )
 
     assert response.status_code == 400
+    assert is_string_in_logs("Invalid JSON", caplog.records)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 def test_ingest_rejects_too_many_events(
     metrics_enabled_app: Flask,
     client: FlaskClient,
+    caplog: pytest.LogCaptureFixture,
 ):
     """
     GIVEN a 101-element events list
     WHEN POSTing with a valid CSRF token
-    THEN the response is 400 (max_length=100 enforced).
+    THEN the response is 400 (max_length=100 enforced)
+    AND the app logger emits a WARNING containing the validation failure details.
     """
     csrf = _load_csrf(client)
 
     too_many_events = [
         {"event_name": EventName.UI_UTUB_CREATE_OPEN.value} for _ in range(101)
     ]
-    response = client.post(
-        INGEST_URL,
-        json={"events": too_many_events},
-        headers={"X-CSRFToken": csrf},
-    )
+    with caplog.at_level(logging.WARNING, logger="backend"):
+        response = client.post(
+            INGEST_URL,
+            json={"events": too_many_events},
+            headers={"X-CSRFToken": csrf},
+        )
 
     assert response.status_code == 400
+    assert is_string_in_logs("Invalid JSON", caplog.records)
+    assert any(record.levelno == logging.WARNING for record in caplog.records)
 
 
 def test_ingest_batch_nonce_idempotent(
@@ -599,10 +624,10 @@ def test_ingest_writer_log_and_drop_does_not_500(
     """
     GIVEN the writer's `_redis.pipeline` raises during INCR
     WHEN POSTing with a valid CSRF token
-    THEN the response is still 200 (writer log-and-drop) and a metrics log entry is emitted.
+    THEN the response is still 200 (writer log-and-drop) and the app logger emits
+    an ERROR entry with the exact phrase "metrics: record_event failed".
     """
     csrf = _load_csrf(client)
-    caplog.set_level(logging.WARNING)
 
     class _BrokenPipelineRedis:
         def pipeline(self):
@@ -611,15 +636,17 @@ def test_ingest_writer_log_and_drop_does_not_500(
         def set(self, *_args, **_kwargs):
             return True
 
-    with mock.patch.object(app_metrics_writer, "_redis", _BrokenPipelineRedis()):
-        response = client.post(
-            INGEST_URL,
-            json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
-            headers={"X-CSRFToken": csrf},
-        )
+    with caplog.at_level(logging.ERROR, logger="backend"):
+        with mock.patch.object(app_metrics_writer, "_redis", _BrokenPipelineRedis()):
+            response = client.post(
+                INGEST_URL,
+                json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
+                headers={"X-CSRFToken": csrf},
+            )
 
     assert response.status_code == 200
-    assert any("metrics" in record.message.lower() for record in caplog.records)
+    assert is_string_in_logs("metrics: record_event failed", caplog.records)
+    assert any(record.levelno == logging.ERROR for record in caplog.records)
 
 
 def test_ingest_anonymous_user_accepted(

@@ -78,17 +78,11 @@ def test_parse_counter_key_returns_none_for_malformed_keys(
 
 def test_parse_counter_key_returns_none_for_too_many_parts():
     """
-    GIVEN a key with extra colon-delimited segments after the JSON
-        (because the JSON segment itself contains a colon and split was
-        called with maxsplit < 4)
+    GIVEN a key where the JSON segment itself contains colons
     WHEN parse_counter_key is invoked
     THEN it preserves the JSON intact via split(":", 4) and parses
-        successfully — proving the maxsplit guard is correct.
-
-    This is the inverse of the (c) "too many parts" branch noted in the
-    review: with `split(":", 4)` the parser cannot encounter "more than 5
-    parts" because the JSON tail is captured whole. This test documents
-    that explicitly so the (c) case stays intentionally unreachable.
+        successfully — the JSON tail is captured whole regardless of
+        how many colons appear inside it.
     """
     dims_with_colon = {"endpoint": "/api/v1:foo", "method": "GET", "status_code": 200}
     canonical = json.dumps(dims_with_colon, sort_keys=True, separators=(",", ":"))

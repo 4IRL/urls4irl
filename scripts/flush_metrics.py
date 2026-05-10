@@ -80,9 +80,10 @@ _metrics_strs_module = _load_module_direct(
 epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
 
+CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
+EXECUTE_VALUES_PAGE_SIZE: int = 200
 REDIS_COUNTER_GLOB: str = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
 SCAN_BATCH_SIZE: int = 500
-EXECUTE_VALUES_PAGE_SIZE: int = 200
 
 # Distributed lock so two cron firings (or a hung previous run) cannot drain
 # the same counter keys concurrently and double-count them into Postgres.
@@ -232,9 +233,6 @@ def _record_flush_success(redis_client: redis.Redis) -> None:
         redis_client.set(FLUSH_LAST_SUCCESS_KEY, str(int(time.time())))
     except Exception as sentinel_error:
         logger.exception("failed to stamp liveness sentinel: %s", sentinel_error)
-
-
-CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 
 
 def _load_env_from_container_dump(path: str = CONTAINER_ENVIRONMENT_FILE) -> None:
