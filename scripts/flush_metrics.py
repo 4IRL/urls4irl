@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import logging
 import os
 import sys
 import time
@@ -34,6 +35,13 @@ from types import ModuleType
 import psycopg2
 import psycopg2.extras
 import redis
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    stream=sys.stderr,
+)
+logger = logging.getLogger("metrics_flush")
 
 
 def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleType:
@@ -151,10 +159,7 @@ def run_flush(
         FLUSH_LOCK_KEY, "1", nx=True, ex=FLUSH_LOCK_TTL_SECONDS
     )
     if not lock_acquired:
-        print(
-            "metrics flush: another flush is in progress, skipping",
-            file=sys.stdout,
-        )
+        logger.warning("another flush is in progress, skipping")
         return 0
 
     try:
@@ -226,10 +231,7 @@ def _record_flush_success(redis_client: redis.Redis) -> None:
     try:
         redis_client.set(FLUSH_LAST_SUCCESS_KEY, str(int(time.time())))
     except Exception as sentinel_error:
-        print(
-            f"metrics flush: failed to stamp liveness sentinel: {sentinel_error}",
-            file=sys.stderr,
-        )
+        logger.exception("failed to stamp liveness sentinel: %s", sentinel_error)
 
 
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
@@ -301,13 +303,10 @@ if __name__ == "__main__":
         pg_conn_main = _build_pg_conn_from_env()
         upserted_rows = run_flush(redis_client=redis_client_main, pg_conn=pg_conn_main)
         elapsed_ms = int((time.time() - started_at) * 1000)
-        print(
-            f"metrics flush: upserted={upserted_rows} elapsed_ms={elapsed_ms}",
-            file=sys.stdout,
-        )
+        logger.info("upserted=%d elapsed_ms=%d", upserted_rows, elapsed_ms)
         sys.exit(0)
     except Exception as flush_error:
-        print(f"metrics flush failed: {flush_error}", file=sys.stderr)
+        logger.exception("flush failed: %s", flush_error)
         sys.exit(1)
     finally:
         if pg_conn_main is not None:
