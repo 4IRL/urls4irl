@@ -83,6 +83,7 @@ typecheck: ## Run TypeScript typecheck
 generate-types: ## Generate TypeScript API types from backend OpenAPI spec
 	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
 	$(EXEC_VITE) npx openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
+	$(EXEC_VITE) npx prettier --write frontend/types/api.d.ts frontend/types/openapi.json
 
 prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker image prune -f

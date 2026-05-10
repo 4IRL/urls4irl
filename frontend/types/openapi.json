@@ -9,9 +9,7 @@
     "/contact": {
       "post": {
         "operationId": "submitContactUs",
-        "tags": [
-          "contact"
-        ],
+        "tags": ["contact"],
         "security": [
           {
             "csrfToken": []
@@ -59,9 +57,7 @@
     "/utubs/{utub_id}/members/{user_id}": {
       "delete": {
         "operationId": "removeMember",
-        "tags": [
-          "members"
-        ],
+        "tags": ["members"],
         "security": [
           {
             "sessionAuth": [],
@@ -141,9 +137,7 @@
     "/utubs/{utub_id}/members": {
       "post": {
         "operationId": "createMember",
-        "tags": [
-          "members"
-        ],
+        "tags": ["members"],
         "security": [
           {
             "sessionAuth": [],
@@ -229,9 +223,7 @@
     "/api/metrics": {
       "post": {
         "operationId": "ingest",
-        "tags": [
-          "metrics"
-        ],
+        "tags": ["metrics"],
         "security": [
           {
             "csrfToken": []
@@ -286,9 +278,7 @@
     "/register": {
       "post": {
         "operationId": "registerUser",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "security": [
           {
             "csrfToken": []
@@ -346,9 +336,7 @@
     "/login": {
       "post": {
         "operationId": "login",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "security": [
           {
             "csrfToken": []
@@ -413,9 +401,7 @@
     "/send-validation-email": {
       "post": {
         "operationId": "sendValidationEmail",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "security": [
           {
             "csrfToken": []
@@ -469,9 +455,7 @@
     "/forgot-password": {
       "post": {
         "operationId": "forgotPassword",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "security": [
           {
             "csrfToken": []
@@ -519,9 +503,7 @@
     "/reset-password/{token}": {
       "post": {
         "operationId": "resetPassword",
-        "tags": [
-          "auth"
-        ],
+        "tags": ["auth"],
         "security": [
           {
             "csrfToken": []
@@ -589,9 +571,7 @@
     "/health": {
       "get": {
         "operationId": "health",
-        "tags": [
-          "system"
-        ],
+        "tags": ["system"],
         "security": [],
         "description": "Health check endpoint. Pass ?db=true to verify all database tables exist.",
         "responses": {
@@ -621,9 +601,7 @@
     "/utubs/{utub_id}/urls": {
       "post": {
         "operationId": "createUrl",
-        "tags": [
-          "urls"
-        ],
+        "tags": ["urls"],
         "security": [
           {
             "sessionAuth": [],
@@ -709,9 +687,7 @@
     "/utubs/{utub_id}/urls/{utub_url_id}": {
       "get": {
         "operationId": "getUrl",
-        "tags": [
-          "urls"
-        ],
+        "tags": ["urls"],
         "security": [
           {
             "sessionAuth": []
@@ -768,9 +744,7 @@
       },
       "patch": {
         "operationId": "updateUrl",
-        "tags": [
-          "urls"
-        ],
+        "tags": ["urls"],
         "security": [
           {
             "sessionAuth": [],
@@ -872,9 +846,7 @@
       },
       "delete": {
         "operationId": "deleteUrl",
-        "tags": [
-          "urls"
-        ],
+        "tags": ["urls"],
         "security": [
           {
             "sessionAuth": [],
@@ -944,9 +916,7 @@
     "/utubs/{utub_id}/urls/{utub_url_id}/title": {
       "patch": {
         "operationId": "updateUrlTitle",
-        "tags": [
-          "urls"
-        ],
+        "tags": ["urls"],
         "security": [
           {
             "sessionAuth": [],
@@ -1040,9 +1010,7 @@
     "/utubs": {
       "post": {
         "operationId": "createUtub",
-        "tags": [
-          "utubs"
-        ],
+        "tags": ["utubs"],
         "security": [
           {
             "sessionAuth": [],
@@ -1096,9 +1064,7 @@
       },
       "get": {
         "operationId": "getUtubs",
-        "tags": [
-          "utubs"
-        ],
+        "tags": ["utubs"],
         "security": [
           {
             "sessionAuth": []
@@ -1129,9 +1095,7 @@
     "/utubs/{utub_id}": {
       "get": {
         "operationId": "getSingleUtub",
-        "tags": [
-          "utubs"
-        ],
+        "tags": ["utubs"],
         "security": [
           {
             "sessionAuth": []
@@ -1180,9 +1144,7 @@
       },
       "delete": {
         "operationId": "deleteUtub",
-        "tags": [
-          "utubs"
-        ],
+        "tags": ["utubs"],
         "security": [
           {
             "sessionAuth": [],
@@ -1244,9 +1206,7 @@
     "/utubs/{utub_id}/name": {
       "patch": {
         "operationId": "updateUtubName",
-        "tags": [
-          "utubs"
-        ],
+        "tags": ["utubs"],
         "security": [
           {
             "sessionAuth": [],
@@ -1332,9 +1292,7 @@
     "/utubs/{utub_id}/description": {
       "patch": {
         "operationId": "updateUtubDesc",
-        "tags": [
-          "utubs"
-        ],
+        "tags": ["utubs"],
         "security": [
           {
             "sessionAuth": [],
@@ -1420,9 +1378,7 @@
     "/utubs/{utub_id}/urls/{utub_url_id}/tags": {
       "post": {
         "operationId": "createUtubUrlTag",
-        "tags": [
-          "tags"
-        ],
+        "tags": ["tags"],
         "security": [
           {
             "sessionAuth": [],
@@ -1506,9 +1462,7 @@
     "/utubs/{utub_id}/urls/{utub_url_id}/tags/{utub_tag_id}": {
       "delete": {
         "operationId": "deleteUtubUrlTag",
-        "tags": [
-          "tags"
-        ],
+        "tags": ["tags"],
         "security": [
           {
             "sessionAuth": [],
@@ -1576,9 +1530,7 @@
     "/utubs/{utub_id}/tags": {
       "post": {
         "operationId": "createUtubTag",
-        "tags": [
-          "tags"
-        ],
+        "tags": ["tags"],
         "security": [
           {
             "sessionAuth": [],
@@ -1654,9 +1606,7 @@
     "/utubs/{utub_id}/tags/{utub_tag_id}": {
       "delete": {
         "operationId": "deleteUtubTag",
-        "tags": [
-          "tags"
-        ],
+        "tags": ["tags"],
         "security": [
           {
             "sessionAuth": [],
@@ -1721,11 +1671,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "description": "Response status: Success, Failure, or No change"
           },
           "message": {
@@ -1733,17 +1679,13 @@
             "description": "Human-readable response message, if applicable"
           }
         },
-        "required": [
-          "status"
-        ]
+        "required": ["status"]
       },
       "ContactRequest": {
         "properties": {
           "subject": {
             "description": "Subject line of the contact message",
-            "examples": [
-              "Bug report"
-            ],
+            "examples": ["Bug report"],
             "maxLength": 100,
             "minLength": 5,
             "type": "string"
@@ -1755,21 +1697,14 @@
             "type": "string"
           }
         },
-        "required": [
-          "subject",
-          "content"
-        ],
+        "required": ["subject", "content"],
         "type": "object"
       },
       "ContactResponseSchema": {
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "type": "string"
           },
           "message": {
@@ -1777,10 +1712,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "ErrorResponse": {
@@ -1849,10 +1781,7 @@
             "description": "URL string involved in the error, if applicable"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "ErrorResponse_ContactErrorCodes": {
@@ -1872,12 +1801,8 @@
       },
       "ContactErrorCodes": {
         "type": "integer",
-        "enum": [
-          1
-        ],
-        "x-enum-varnames": [
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1],
+        "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ContactErrorCodes"
       },
       "UserSchema": {
@@ -1891,10 +1816,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "username"
-        ],
+        "required": ["id", "username"],
         "type": "object"
       },
       "MemberModifiedResponseSchema": {
@@ -1908,10 +1830,7 @@
             "description": "User object for the member added or removed"
           }
         },
-        "required": [
-          "utubID",
-          "member"
-        ],
+        "required": ["utubID", "member"],
         "type": "object"
       },
       "AddMemberRequest": {
@@ -1923,9 +1842,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "username"
-        ],
+        "required": ["username"],
         "type": "object"
       },
       "ErrorResponse_UTubMembersErrorCodes": {
@@ -1945,14 +1862,8 @@
       },
       "UTubMembersErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2
-        ],
-        "x-enum-varnames": [
-          "UNKNOWN_EXCEPTION",
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1, 2],
+        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
         "description": "Error codes for UTubMembersErrorCodes"
       },
       "MetricsIngestEvent": {
@@ -2038,9 +1949,7 @@
             "description": "Optional per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model"
           }
         },
-        "required": [
-          "event_name"
-        ],
+        "required": ["event_name"],
         "type": "object"
       },
       "MetricsIngestRequest": {
@@ -2082,9 +1991,7 @@
             "description": "Optional CSRF token in the JSON body for navigator.sendBeacon callers that cannot set headers"
           }
         },
-        "required": [
-          "events"
-        ],
+        "required": ["events"],
         "type": "object"
       },
       "MetricsIngestResponseSchema": {
@@ -2115,30 +2022,22 @@
       },
       "MetricsErrorCodes": {
         "type": "integer",
-        "enum": [
-          1
-        ],
-        "x-enum-varnames": [
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1],
+        "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for MetricsErrorCodes"
       },
       "RegisterRequest": {
         "properties": {
           "username": {
             "description": "Username for the new account",
-            "examples": [
-              "john_doe"
-            ],
+            "examples": ["john_doe"],
             "maxLength": 20,
             "minLength": 3,
             "type": "string"
           },
           "email": {
             "description": "Email address for the new account",
-            "examples": [
-              "user@example.com"
-            ],
+            "examples": ["user@example.com"],
             "format": "email",
             "type": "string"
           },
@@ -2172,11 +2071,7 @@
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "type": "string"
           },
           "message": {
@@ -2184,10 +2079,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "ErrorResponse_RegisterErrorCodes": {
@@ -2207,10 +2099,7 @@
       },
       "RegisterErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2
-        ],
+        "enum": [1, 2],
         "x-enum-varnames": [
           "ACCOUNT_NOT_EMAIL_VALIDATED",
           "INVALID_FORM_INPUT"
@@ -2221,9 +2110,7 @@
         "properties": {
           "username": {
             "description": "Username for login",
-            "examples": [
-              "john_doe"
-            ],
+            "examples": ["john_doe"],
             "maxLength": 20,
             "minLength": 3,
             "type": "string"
@@ -2234,10 +2121,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "username",
-          "password"
-        ],
+        "required": ["username", "password"],
         "type": "object"
       },
       "LoginRedirectResponseSchema": {
@@ -2248,9 +2132,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "redirectUrl"
-        ],
+        "required": ["redirectUrl"],
         "type": "object"
       },
       "ErrorResponse_LoginErrorCodes": {
@@ -2270,10 +2152,7 @@
       },
       "LoginErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2
-        ],
+        "enum": [1, 2],
         "x-enum-varnames": [
           "ACCOUNT_NOT_EMAIL_VALIDATED",
           "INVALID_FORM_INPUT"
@@ -2284,11 +2163,7 @@
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "type": "string"
           },
           "message": {
@@ -2296,37 +2171,26 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "ForgotPasswordRequest": {
         "properties": {
           "email": {
             "description": "Email address associated with the account",
-            "examples": [
-              "user@example.com"
-            ],
+            "examples": ["user@example.com"],
             "format": "email",
             "type": "string"
           }
         },
-        "required": [
-          "email"
-        ],
+        "required": ["email"],
         "type": "object"
       },
       "ForgotPasswordResponseSchema": {
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "type": "string"
           },
           "message": {
@@ -2334,10 +2198,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "ErrorResponse_ForgotPasswordErrorCodes": {
@@ -2357,14 +2218,8 @@
       },
       "ForgotPasswordErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          3
-        ],
-        "x-enum-varnames": [
-          "INVALID_FORM_INPUT",
-          "EMAIL_SEND_FAILURE"
-        ],
+        "enum": [1, 3],
+        "x-enum-varnames": ["INVALID_FORM_INPUT", "EMAIL_SEND_FAILURE"],
         "description": "Error codes for ForgotPasswordErrorCodes"
       },
       "ResetPasswordRequest": {
@@ -2381,21 +2236,14 @@
             "type": "string"
           }
         },
-        "required": [
-          "newPassword",
-          "confirmNewPassword"
-        ],
+        "required": ["newPassword", "confirmNewPassword"],
         "type": "object"
       },
       "ResetPasswordResponseSchema": {
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "type": "string"
           },
           "message": {
@@ -2403,10 +2251,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "ErrorResponse_ResetPasswordErrorCodes": {
@@ -2426,12 +2271,8 @@
       },
       "ResetPasswordErrorCodes": {
         "type": "integer",
-        "enum": [
-          1
-        ],
-        "x-enum-varnames": [
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1],
+        "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ResetPasswordErrorCodes"
       },
       "HealthResponseSchema": {
@@ -2441,9 +2282,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "status"
-        ],
+        "required": ["status"],
         "type": "object"
       },
       "StatusMessageResponseSchema": {
@@ -2451,11 +2290,7 @@
         "properties": {
           "status": {
             "description": "Response status: Success, Failure, or No change",
-            "enum": [
-              "Success",
-              "Failure",
-              "No change"
-            ],
+            "enum": ["Success", "Failure", "No change"],
             "type": "string"
           },
           "message": {
@@ -2463,19 +2298,14 @@
             "type": "string"
           }
         },
-        "required": [
-          "status",
-          "message"
-        ],
+        "required": ["status", "message"],
         "type": "object"
       },
       "CreateURLRequest": {
         "properties": {
           "urlString": {
             "description": "URL string to add",
-            "examples": [
-              "https://example.com"
-            ],
+            "examples": ["https://example.com"],
             "maxLength": 8000,
             "minLength": 1,
             "type": "string"
@@ -2487,10 +2317,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "urlString",
-          "urlTitle"
-        ],
+        "required": ["urlString", "urlTitle"],
         "type": "object"
       },
       "UrlCreatedItemSchema": {
@@ -2509,11 +2336,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "utubUrlID",
-          "urlString",
-          "urlTitle"
-        ],
+        "required": ["utubUrlID", "urlString", "urlTitle"],
         "type": "object"
       },
       "UrlCreatedResponseSchema": {
@@ -2531,11 +2354,7 @@
             "description": "URL item that was created"
           }
         },
-        "required": [
-          "utubID",
-          "addedByUserID",
-          "URL"
-        ],
+        "required": ["utubID", "addedByUserID", "URL"],
         "type": "object"
       },
       "ErrorResponse_URLErrorCodes": {
@@ -2555,15 +2374,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2,
-          3,
-          4,
-          5,
-          6,
-          7
-        ],
+        "enum": [1, 2, 3, 4, 5, 6, 7],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -2586,10 +2397,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "utubTagID",
-          "tagString"
-        ],
+        "required": ["utubTagID", "tagString"],
         "type": "object"
       },
       "UtubUrlDetailSchema": {
@@ -2614,12 +2422,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "utubUrlID",
-          "urlTitle",
-          "urlString",
-          "urlTags"
-        ],
+        "required": ["utubUrlID", "urlTitle", "urlString", "urlTags"],
         "type": "object"
       },
       "UrlReadResponseSchema": {
@@ -2629,26 +2432,20 @@
             "description": "Detailed URL item retrieved"
           }
         },
-        "required": [
-          "URL"
-        ],
+        "required": ["URL"],
         "type": "object"
       },
       "UpdateURLStringRequest": {
         "properties": {
           "urlString": {
             "description": "New URL string to replace the existing one",
-            "examples": [
-              "https://example.com"
-            ],
+            "examples": ["https://example.com"],
             "maxLength": 8000,
             "minLength": 1,
             "type": "string"
           }
         },
-        "required": [
-          "urlString"
-        ],
+        "required": ["urlString"],
         "type": "object"
       },
       "UrlUpdatedResponseSchema": {
@@ -2666,11 +2463,7 @@
             "description": "Detailed URL item with updated URL string"
           }
         },
-        "required": [
-          "utubID",
-          "utubName",
-          "URL"
-        ],
+        "required": ["utubID", "utubName", "URL"],
         "type": "object"
       },
       "UpdateURLTitleRequest": {
@@ -2682,9 +2475,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "urlTitle"
-        ],
+        "required": ["urlTitle"],
         "type": "object"
       },
       "UrlTitleUpdatedResponseSchema": {
@@ -2694,9 +2485,7 @@
             "description": "Detailed URL item with updated title"
           }
         },
-        "required": [
-          "URL"
-        ],
+        "required": ["URL"],
         "type": "object"
       },
       "UtubUrlDeleteSchema": {
@@ -2714,11 +2503,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "utubUrlID",
-          "urlString",
-          "urlTitle"
-        ],
+        "required": ["utubUrlID", "urlString", "urlTitle"],
         "type": "object"
       },
       "UrlDeletedResponseSchema": {
@@ -2739,11 +2524,7 @@
             "type": "object"
           }
         },
-        "required": [
-          "utubID",
-          "URL",
-          "tagCountsInUtub"
-        ],
+        "required": ["utubID", "URL", "tagCountsInUtub"],
         "type": "object"
       },
       "CreateUTubRequest": {
@@ -2767,9 +2548,7 @@
             "description": "Optional description for the UTub"
           }
         },
-        "required": [
-          "utubName"
-        ],
+        "required": ["utubName"],
         "type": "object"
       },
       "UtubCreatedResponseSchema": {
@@ -2798,12 +2577,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "utubID",
-          "utubName",
-          "utubDescription",
-          "utubCreatorID"
-        ],
+        "required": ["utubID", "utubName", "utubDescription", "utubCreatorID"],
         "type": "object"
       },
       "ErrorResponse_UTubErrorCodes": {
@@ -2823,14 +2597,8 @@
       },
       "UTubErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2
-        ],
-        "x-enum-varnames": [
-          "UNKNOWN_ERROR",
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1, 2],
+        "x-enum-varnames": ["UNKNOWN_ERROR", "INVALID_FORM_INPUT"],
         "description": "Error codes for UTubErrorCodes"
       },
       "UtubTagSchema": {
@@ -2849,10 +2617,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "id",
-          "tagString"
-        ],
+        "required": ["id", "tagString"],
         "type": "object"
       },
       "UtubUrlSchema": {
@@ -2973,11 +2738,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "id",
-          "name",
-          "memberRole"
-        ],
+        "required": ["id", "name", "memberRole"],
         "type": "object"
       },
       "UtubSummaryListSchema": {
@@ -2991,9 +2752,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "utubs"
-        ],
+        "required": ["utubs"],
         "type": "object"
       },
       "UpdateUTubNameRequest": {
@@ -3005,9 +2764,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "utubName"
-        ],
+        "required": ["utubName"],
         "type": "object"
       },
       "UtubNameUpdatedResponseSchema": {
@@ -3021,10 +2778,7 @@
             "type": "string"
           }
         },
-        "required": [
-          "utubID",
-          "utubName"
-        ],
+        "required": ["utubID", "utubName"],
         "type": "object"
       },
       "UpdateUTubDescriptionRequest": {
@@ -3063,10 +2817,7 @@
             "description": "New description of the UTub, or null if cleared"
           }
         },
-        "required": [
-          "utubID",
-          "utubDescription"
-        ],
+        "required": ["utubID", "utubDescription"],
         "type": "object"
       },
       "UtubDeletedResponseSchema": {
@@ -3091,28 +2842,20 @@
             "description": "Description of the deleted UTub, or null if not set"
           }
         },
-        "required": [
-          "utubID",
-          "utubName",
-          "utubDescription"
-        ],
+        "required": ["utubID", "utubName", "utubDescription"],
         "type": "object"
       },
       "AddTagRequest": {
         "properties": {
           "tagString": {
             "description": "Tag label to add",
-            "examples": [
-              "python"
-            ],
+            "examples": ["python"],
             "maxLength": 30,
             "minLength": 1,
             "type": "string"
           }
         },
-        "required": [
-          "tagString"
-        ],
+        "required": ["tagString"],
         "type": "object"
       },
       "UrlTagModifiedResponseSchema": {
@@ -3133,11 +2876,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "utubUrlTagIDs",
-          "utubTag",
-          "tagCountsInUtub"
-        ],
+        "required": ["utubUrlTagIDs", "utubTag", "tagCountsInUtub"],
         "type": "object"
       },
       "ErrorResponse_URLTagErrorCodes": {
@@ -3157,14 +2896,8 @@
       },
       "URLTagErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2
-        ],
-        "x-enum-varnames": [
-          "UNKNOWN_EXCEPTION",
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1, 2],
+        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
         "description": "Error codes for URLTagErrorCodes"
       },
       "UtubTagAddedToUtubResponseSchema": {
@@ -3178,10 +2911,7 @@
             "type": "integer"
           }
         },
-        "required": [
-          "utubTag",
-          "tagCountsInUtub"
-        ],
+        "required": ["utubTag", "tagCountsInUtub"],
         "type": "object"
       },
       "ErrorResponse_UTubTagErrorCodes": {
@@ -3201,14 +2931,8 @@
       },
       "UTubTagErrorCodes": {
         "type": "integer",
-        "enum": [
-          1,
-          2
-        ],
-        "x-enum-varnames": [
-          "UNKNOWN_EXCEPTION",
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [1, 2],
+        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
         "description": "Error codes for UTubTagErrorCodes"
       },
       "UtubTagDeletedFromUtubResponseSchema": {
@@ -3225,10 +2949,7 @@
             "type": "array"
           }
         },
-        "required": [
-          "utubTag",
-          "utubUrlIDs"
-        ],
+        "required": ["utubTag", "utubUrlIDs"],
         "type": "object"
       }
     },
