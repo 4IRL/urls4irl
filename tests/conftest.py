@@ -47,6 +47,13 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
+# Per-worker metrics Redis DB index base. Each xdist worker is assigned
+# `_METRICS_REDIS_DB_BASE + worker_num` to keep counter keys isolated across
+# parallel test runs. With the n=8 worker cap (per CLAUDE.md), the highest
+# assigned metrics DB index is 15 — exactly at the boundary of Redis's default
+# 16-database limit (indices 0..15). Raising the worker count above 8 (or the
+# base above 8) requires either bumping `--databases` in the test compose
+# files or rebasing the metrics DB block to a lower start.
 _METRICS_REDIS_DB_BASE = 8
 
 
@@ -274,6 +281,10 @@ def build_app(
     worker_num = _get_worker_num(worker_id) or 0
     if worker_redis_uri and worker_redis_uri != "memory://":
         metrics_db = _METRICS_REDIS_DB_BASE + worker_num
+        assert metrics_db <= 15, (
+            "n>8 workers exceed default Redis 16-DB limit; "
+            "bump --databases in compose or lower _METRICS_REDIS_DB_BASE"
+        )
         base, _trailing_db = worker_redis_uri.rsplit("/", 1)
         config.METRICS_REDIS_URI = f"{base}/{metrics_db}"
         config.SESSION_TYPE = "redis"

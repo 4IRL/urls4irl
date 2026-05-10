@@ -12,7 +12,7 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 
 @pytest.fixture
 def metrics_enabled_app(
-    app: Flask, provide_metrics_redis: Redis
+    app: Flask, provide_metrics_redis: Redis | None
 ) -> Generator[Flask, None, None]:
     """Re-init the module-level `metrics_writer` with `METRICS_ENABLED=True`
     so the after_request middleware writes counters into the per-worker
@@ -30,6 +30,9 @@ def metrics_enabled_app(
     Restores the original config flag and writer state on teardown so the
     fixture is safe under parallel xdist workers.
     """
+    if provide_metrics_redis is None:
+        pytest.skip("metrics Redis is unavailable in this environment")
+
     original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
     original_redis = app_metrics_writer._redis
     original_enabled = app_metrics_writer._enabled

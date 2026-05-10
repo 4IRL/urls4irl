@@ -65,7 +65,7 @@ class MetricsWriter:
             return None
         try:
             if event is EventName.API_HIT:
-                effective_dims: dict = {
+                effective_dims: dict[str, str | int | None] = {
                     "endpoint": endpoint,
                     "method": method,
                     "status_code": status_code,
@@ -95,7 +95,6 @@ class MetricsWriter:
             pipe.execute()
         except Exception:
             current_app.logger.exception("metrics: record_event failed")
-            return None
 
     def reserve_batch(self, batch_id: str) -> bool:
         """Atomically reserve a batch nonce; True if newly reserved, False otherwise.
@@ -111,7 +110,7 @@ class MetricsWriter:
             return bool(result)
         except Exception:
             current_app.logger.exception("metrics: reserve_batch failed")
-            return True
+        return True
 
 
 def record_event(

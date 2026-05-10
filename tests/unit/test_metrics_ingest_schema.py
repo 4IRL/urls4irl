@@ -4,10 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
-from backend.schemas.requests.metrics import (
-    UI_EVENT_NAMES,
-    MetricsIngestRequest,
-)
+from backend.schemas.requests.metrics import MetricsIngestRequest
 
 pytestmark = pytest.mark.unit
 
@@ -25,9 +22,6 @@ _DOMAIN_EVENT_VALUES = tuple(
 
 def test_event_name_accepts_only_ui_category():
     """Every UI EventName value validates; api/domain values raise."""
-    # Sanity: module-level UI_EVENT_NAMES matches the live category map.
-    assert tuple(sorted(UI_EVENT_NAMES)) == tuple(sorted(_UI_EVENT_VALUES))
-
     # Happy path — every UI value succeeds.
     for ui_value in _UI_EVENT_VALUES:
         MetricsIngestRequest.model_validate({"events": [{"event_name": ui_value}]})

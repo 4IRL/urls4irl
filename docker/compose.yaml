@@ -15,7 +15,7 @@ services:
     environment:
       - PRODUCTION=true
       - FLASK_DEBUG=false
-      # Anonymous metrics knobs (Phase 1: stub writer; values consumed in Phase 3)
+      # Anonymous metrics knobs (Phase 2: Redis-backed writer active; domain hooks land in Phase 3)
       # METRICS_REDIS_URI is assembled in backend/config.py from the
       # REDIS_PASSWORD secret; do not set it here in prod.
       - METRICS_ENABLED=false

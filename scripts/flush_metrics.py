@@ -53,7 +53,8 @@ def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleTy
     for module_path in candidate_paths:
         if module_path.is_file():
             spec = importlib.util.spec_from_file_location(module_name, module_path)
-            assert spec is not None and spec.loader is not None
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not load spec for {module_path}")
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             return module
@@ -157,7 +158,7 @@ def run_flush(
         return 0
 
     try:
-        rows: list[tuple] = []
+        rows: list[tuple[object, ...]] = []
         for raw_key in redis_client.scan_iter(
             match=REDIS_COUNTER_GLOB, count=SCAN_BATCH_SIZE
         ):
@@ -231,8 +232,42 @@ def _record_flush_success(redis_client: redis.Redis) -> None:
         )
 
 
+CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
+
+
+def _load_env_from_container_dump(path: str = CONTAINER_ENVIRONMENT_FILE) -> None:
+    """Best-effort merge of the workflow container's env dump into ``os.environ``.
+
+    Mirrors the cron-line pattern (``set -a && . /app/container_environment &&
+    set +a``) for callers that bypass cron — e.g., a manual ``docker compose
+    exec workflow`` run. Parses ``KEY=value`` lines (the format ``printenv``
+    writes) and only sets entries not already present in ``os.environ`` so
+    genuine env-var overrides win. Silently no-ops if the file is missing.
+    """
+    dump_path = Path(path)
+    if not dump_path.is_file():
+        return
+    try:
+        for raw_line in dump_path.read_text(encoding="utf-8").splitlines():
+            stripped_line = raw_line.strip()
+            if not stripped_line or stripped_line.startswith("#"):
+                continue
+            if "=" not in stripped_line:
+                continue
+            key, _, value = stripped_line.partition("=")
+            key = key.strip()
+            if not key or key in os.environ:
+                continue
+            os.environ[key] = value
+    except OSError:
+        return
+
+
 def _build_redis_client_from_env() -> redis.Redis:
     metrics_uri = os.environ.get("METRICS_REDIS_URI")
+    if not metrics_uri:
+        _load_env_from_container_dump()
+        metrics_uri = os.environ.get("METRICS_REDIS_URI")
     if not metrics_uri:
         raise RuntimeError("METRICS_REDIS_URI environment variable is required")
     return redis.Redis.from_url(metrics_uri)
