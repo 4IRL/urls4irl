@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
 from flask import Flask
 
@@ -112,3 +114,20 @@ def test_sync_event_registry_updates_drifted_category(app: Flask):
 
     row = Event_Registry.query.filter_by(name=EventName.API_HIT.value).one()
     assert row.category == EventCategory.API
+
+
+def test_sync_event_registry_logs_via_cli_logger(app: Flask):
+    """
+    GIVEN sync_event_registry() runs during app startup (no request context)
+    WHEN the function completes its reconciliation
+    THEN ensure the success message is emitted via `app.cli_logger.info`
+        (not `current_app.logger`, which requires a request context and would
+        crash at startup) with the canonical format string and enum count
+    """
+    with patch.object(app.cli_logger, "info") as mock_cli_logger_info:
+        sync_event_registry(app)
+
+        mock_cli_logger_info.assert_called_once_with(
+            "metrics: synced event_registry — %d enum members",
+            len(EventName),
+        )

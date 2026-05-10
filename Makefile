@@ -97,7 +97,7 @@ metrics-snapshot: ## Snapshot current metrics:counter:* keys with values
 	$(COMPOSE) exec redis sh -c 'for k in $$(redis-cli -n 2 --scan --pattern "metrics:counter:*"); do echo "$$k = $$(redis-cli -n 2 GET $$k)"; done'
 
 metrics-flush-now: ## Trigger an immediate flush worker run (drains Redis -> Postgres)
-	$(COMPOSE) exec workflow sh -c 'set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
+	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run METRICS_ENABLED=true make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
 
 metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "SELECT \"bucketStart\", \"eventName\", endpoint, method, \"statusCode\", dimensions, count FROM \"AnonymousMetrics\" ORDER BY \"bucketStart\" DESC LIMIT 25;"'
