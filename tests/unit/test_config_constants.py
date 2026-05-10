@@ -11,7 +11,7 @@ def test_metrics_config_envs_exist():
         "METRICS_ENABLED",
         "METRICS_FLUSH_INTERVAL_SECONDS",
         "METRICS_BUCKET_SECONDS",
-        "METRICS_REDIS_DB",
+        "METRICS_REDIS_URI",
         "METRICS_BATCH_NONCE_TTL_SECONDS",
     )
     for metrics_key in expected_metrics_keys:

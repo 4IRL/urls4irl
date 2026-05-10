@@ -118,8 +118,7 @@ CONTAINER_ID=$(docker run -d \
     -e POSTGRES_USER=bob \
     -e POSTGRES_DB=test \
     -e POSTGRES_PASSWORD=test \
-    -e REDIS_URI="redis://${SMOKE_REDIS}:6379/0" \
-    -e METRICS_REDIS_DB=2 \
+    -e METRICS_REDIS_URI="redis://${SMOKE_REDIS}:6379/2" \
     -e METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180 \
     --name "$SMOKE_MAIN" \
     "$IMAGE_NAME"

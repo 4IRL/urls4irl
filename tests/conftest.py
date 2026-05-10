@@ -272,8 +272,10 @@ def build_app(
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     worker_num = _get_worker_num(worker_id) or 0
-    config.METRICS_REDIS_DB = _METRICS_REDIS_DB_BASE + worker_num
     if worker_redis_uri and worker_redis_uri != "memory://":
+        metrics_db = _METRICS_REDIS_DB_BASE + worker_num
+        base, _trailing_db = worker_redis_uri.rsplit("/", 1)
+        config.METRICS_REDIS_URI = f"{base}/{metrics_db}"
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
 
@@ -419,7 +421,7 @@ def provide_redis(app: Flask) -> Generator[Redis | None, None, None]:
 
 @pytest.fixture
 def provide_metrics_redis(
-    build_app: Tuple[Flask, ConfigTest], worker_id: str
+    build_app: Tuple[Flask, ConfigTest],
 ) -> Generator[Redis | None, None, None]:
     """Per-worker Redis client pointed at the metrics DB index used by `MetricsWriter`.
 
@@ -429,14 +431,9 @@ def provide_metrics_redis(
     conflicts seen in CLI flush tests that also use `runner`.
     """
     flask_app, _ = build_app
-    redis_uri = flask_app.config.get(CONFIG_ENVS.REDIS_URI, None)
-    if not redis_uri or redis_uri == "memory://":
+    metrics_uri = flask_app.config.get(CONFIG_ENVS.METRICS_REDIS_URI, None)
+    if not metrics_uri or metrics_uri == "memory://":
         return
-
-    worker_num = _get_worker_num(worker_id) or 0
-    metrics_db = _METRICS_REDIS_DB_BASE + worker_num
-    base, _trailing_db = redis_uri.rsplit("/", 1)
-    metrics_uri = f"{base}/{metrics_db}"
 
     redis_client: Any = redis.Redis.from_url(url=metrics_uri)
     assert isinstance(redis_client, Redis)

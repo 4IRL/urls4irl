@@ -53,6 +53,11 @@ class MetricsIngestRequest(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # max_length=100 bounds worst-case worker-block time on the per-event Redis
+    # write loop in routes.ingest (currently N sequential RTTs, see writer.record).
+    # Frontend (Phase 5) must split larger flushes into multiple batches, each
+    # with its own batch_id. Safe to raise once Redis writes are batched into
+    # one pipeline and the new ceiling is bounded by validation/body-size cost.
     events: list[MetricsIngestEvent] = Field(
         min_length=1,
         max_length=100,

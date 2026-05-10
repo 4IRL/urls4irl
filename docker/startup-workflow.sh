@@ -29,8 +29,11 @@ load_secrets() {
 if [ "$PRODUCTION" == "true" ]; then
     echo -e "\nLoading environments...\n"
     load_secrets
-    # Assemble REDIS_URI from REDIS_PASSWORD secret (mirrors backend/config.py:88-90)
-    export REDIS_URI="redis://:${REDIS_PASSWORD}@redis:6379/0"
+    # Assemble METRICS_REDIS_URI from REDIS_PASSWORD secret. The workflow
+    # container only writes to the metrics DB (no sessions, no rate-limiter),
+    # so it does not need REDIS_URI. Mirrors the assembly in backend/config.py
+    # for the web container.
+    export METRICS_REDIS_URI="redis://:${REDIS_PASSWORD}@redis:6379/2"
 else
     echo -e "\nRunning workflow in development mode\n"
 fi

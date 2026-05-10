@@ -76,8 +76,7 @@ services:
     environment:
       - PRODUCTION=false
       - DEV_SERVER=true
-      - REDIS_URI=redis://redis:6379/0
-      - METRICS_REDIS_DB=2
+      - METRICS_REDIS_URI=redis://redis:6379/2
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
       - POSTGRES_HOST=db

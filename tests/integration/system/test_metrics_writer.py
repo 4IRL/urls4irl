@@ -208,16 +208,17 @@ def test_writer_disabled_when_metrics_enabled_false(
     assert provide_metrics_redis.dbsize() == 0
 
 
-def test_writer_uses_metrics_redis_db(
+def test_writer_uses_metrics_redis_uri(
     app: Flask,
     writer_with_metrics_enabled: MetricsWriter,
 ):
     """
     GIVEN a MetricsWriter initialized for tests
     WHEN the writer's underlying Redis connection is inspected
-    THEN it connects to the per-worker DB index from app.config[METRICS_REDIS_DB].
+    THEN it connects to the host/port/DB encoded in app.config[METRICS_REDIS_URI].
     """
-    expected_db = app.config[CONFIG_ENVS.METRICS_REDIS_DB]
+    expected_uri = app.config[CONFIG_ENVS.METRICS_REDIS_URI]
+    expected_db = int(expected_uri.rsplit("/", 1)[1])
     redis_client = writer_with_metrics_enabled._redis
     assert redis_client is not None
     assert redis_client.connection_pool.connection_kwargs["db"] == expected_db

@@ -32,14 +32,9 @@ def _build_redis_client_from_env() -> redis.Redis:
     Mirrors ``scripts.flush_metrics._build_redis_client_from_env`` so password
     handling and decode behavior match exactly.
     """
-    redis_uri = os.environ.get("REDIS_URI")
-    metrics_db = os.environ.get("METRICS_REDIS_DB")
-    if not redis_uri:
-        raise RuntimeError("REDIS_URI environment variable is required")
-    if metrics_db is None:
-        raise RuntimeError("METRICS_REDIS_DB environment variable is required")
-    base, _trailing_db = redis_uri.rsplit("/", 1)
-    metrics_uri = f"{base}/{metrics_db}"
+    metrics_uri = os.environ.get("METRICS_REDIS_URI")
+    if not metrics_uri:
+        raise RuntimeError("METRICS_REDIS_URI environment variable is required")
     return redis.Redis.from_url(metrics_uri)
 
 

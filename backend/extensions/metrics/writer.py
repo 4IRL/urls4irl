@@ -44,11 +44,8 @@ class MetricsWriter:
             )
         )
         if self._enabled:
-            redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI)
-            metrics_db = app.config.get(CONFIG_ENVS.METRICS_REDIS_DB)
-            if redis_uri and redis_uri != "memory://" and metrics_db is not None:
-                base, _trailing_db = redis_uri.rsplit("/", 1)
-                metrics_uri = f"{base}/{metrics_db}"
+            metrics_uri = app.config.get(CONFIG_ENVS.METRICS_REDIS_URI)
+            if metrics_uri and metrics_uri != "memory://":
                 self._redis = Redis.from_url(metrics_uri)
         else:
             self._redis = None
