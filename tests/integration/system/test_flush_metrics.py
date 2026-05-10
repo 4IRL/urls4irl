@@ -156,6 +156,59 @@ def test_flush_drains_redis_keys(
         pg_conn.close()
 
 
+def test_flush_silently_drops_non_numeric_counter_values(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a corrupted counter key whose stored value is non-numeric (simulating
+        Redis corruption or a third-party writer colliding on the
+        metrics:counter:* prefix), alongside a sibling well-formed counter key
+    WHEN run_flush is invoked
+    THEN the corrupted key is consumed from Redis (GETDEL drained it before the
+        int() parse failure), no AnonymousMetrics row is written for that key,
+        the well-formed sibling counter is upserted normally, its key is also
+        gone, and run_flush returns successfully without raising.
+
+    Documents the silent-discard contract for the (TypeError, ValueError) parse
+    branch in run_flush — prevents future refactors from accidentally surfacing
+    a parse error to the cron caller.
+    """
+    pg_conn = _build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(pg_conn)
+        _seed_event_registry(pg_conn, EventName.API_HIT)
+
+        corrupt_dims = {"endpoint": "/corrupt", "method": "GET", "status_code": 200}
+        corrupt_key = _build_counter_key(
+            _BUCKET_START_EPOCH, EventName.API_HIT.value, corrupt_dims
+        )
+        provide_metrics_redis.set(corrupt_key, b"not-a-number")
+
+        valid_dims = {"endpoint": "/valid", "method": "GET", "status_code": 200}
+        valid_key = _build_counter_key(
+            _BUCKET_START_EPOCH, EventName.API_HIT.value, valid_dims
+        )
+        provide_metrics_redis.set(valid_key, 4)
+
+        upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
+
+        # Only the well-formed counter produces a row.
+        assert upserted == 1
+        rows = _select_metrics_rows(pg_conn)
+        assert len(rows) == 1
+        assert rows[0][1] == "/valid"
+        assert rows[0][-1] == 4
+
+        # Both counter keys were consumed from Redis (GETDEL ran before the
+        # parse failure for the corrupt key).
+        assert provide_metrics_redis.get(corrupt_key) is None
+        assert provide_metrics_redis.get(valid_key) is None
+    finally:
+        _truncate_metrics_tables(pg_conn)
+        pg_conn.close()
+
+
 def test_flush_skips_batch_keys(
     app: Flask,
     provide_metrics_redis: Redis,

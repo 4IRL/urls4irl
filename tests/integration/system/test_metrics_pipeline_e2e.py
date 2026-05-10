@@ -15,6 +15,7 @@ from backend.models.event_registry import Event_Registry
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from scripts.flush_metrics import run_flush
+from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
@@ -63,36 +64,6 @@ def _build_pg_conn(app: Flask) -> Any:
     return psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
 
 
-def _reset_postgres_enum_to_lowercase_values(pg_conn: Any) -> None:
-    """Force the Postgres `event_category_enum` type to contain only the
-    lowercase StrEnum VALUES — matching the production migration's
-    `postgresql.ENUM("api", "domain", "ui", name="event_category_enum")`.
-
-    `db.create_all()` (used in test setup) generates the enum from the
-    SQLAlchemy column definition. Without `values_callable`, SQLAlchemy
-    emits the enum using the member NAMES (uppercase), so the test DB's
-    enum disagrees with production. We rebuild the enum here so this test
-    reproduces the exact mismatch production hits, ensuring this e2e
-    chain exercises the F1 fix path (lowercase values via
-    `values_callable=...` on the `Event_Registry.category` column).
-
-    Uses an inline psycopg2 connection so the DDL commits before
-    `sync_event_registry(...)` is invoked; using the SQLAlchemy session
-    here would race with whatever transaction state the route handlers
-    leave in place.
-    """
-    with pg_conn.cursor() as cur:
-        cur.execute('DELETE FROM "EventRegistry"')
-        cur.execute('ALTER TABLE "EventRegistry" ALTER COLUMN "category" TYPE TEXT')
-        cur.execute("DROP TYPE IF EXISTS event_category_enum")
-        cur.execute("CREATE TYPE event_category_enum AS ENUM ('api', 'domain', 'ui')")
-        cur.execute(
-            'ALTER TABLE "EventRegistry" ALTER COLUMN "category"'
-            " TYPE event_category_enum USING category::event_category_enum"
-        )
-    pg_conn.commit()
-
-
 def _truncate_metrics_tables(pg_conn: Any) -> None:
     with pg_conn.cursor() as cur:
         cur.execute('TRUNCATE TABLE "AnonymousMetrics" RESTART IDENTITY CASCADE')
@@ -137,7 +108,7 @@ def test_metrics_pipeline_end_to_end(
     # into the enum column.
     setup_conn = _build_pg_conn(app)
     try:
-        _reset_postgres_enum_to_lowercase_values(setup_conn)
+        reset_postgres_enum_to_lowercase_values(setup_conn)
     finally:
         setup_conn.close()
 

@@ -131,3 +131,27 @@ def test_batch_id_optional():
         MetricsIngestRequest.model_validate(
             {"events": [base_event], "batch_id": ["a", "b"]}
         )
+
+
+def test_batch_id_max_length_boundary_accepts_128_chars():
+    """`batch_id` with exactly 128 characters is accepted (boundary inclusive).
+
+    Documents the `max_length=128` cap on `MetricsIngestRequest.batch_id` —
+    UUID4 strings are 36 chars, so 128 gives generous headroom for any future
+    client format. The cap exists because the value is used verbatim as a
+    Redis key suffix (`metrics:batch:<batch_id>`); without it, an unbounded
+    length would enable large-key allocation within rate-limit windows.
+    """
+    base_event = {"event_name": EventName.UI_URL_COPY.value}
+
+    MetricsIngestRequest.model_validate({"events": [base_event], "batch_id": "a" * 128})
+
+
+def test_batch_id_max_length_boundary_rejects_129_chars():
+    """`batch_id` with 129 characters raises ValidationError (boundary exclusive)."""
+    base_event = {"event_name": EventName.UI_URL_COPY.value}
+
+    with pytest.raises(ValidationError):
+        MetricsIngestRequest.model_validate(
+            {"events": [base_event], "batch_id": "a" * 129}
+        )

@@ -176,3 +176,17 @@ def test_resolve_threshold_seconds_uses_env_override(monkeypatch):
     monkeypatch.setenv("METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS", "300")
 
     assert _resolve_threshold_seconds() == 300
+
+
+def test_resolve_threshold_seconds_raises_on_non_numeric_env(monkeypatch):
+    """
+    GIVEN METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS is set to a non-numeric value
+    WHEN _resolve_threshold_seconds is invoked
+    THEN it raises ValueError — documenting the fail-fast behavior so a
+        misconfigured env value surfaces immediately rather than silently
+        falling back to the default threshold.
+    """
+    monkeypatch.setenv("METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS", "not_a_number")
+
+    with pytest.raises(ValueError):
+        _resolve_threshold_seconds()

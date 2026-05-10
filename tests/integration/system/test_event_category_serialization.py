@@ -7,34 +7,21 @@ from sqlalchemy import text
 from backend import db
 from backend.metrics.events import EventCategory
 from backend.models.event_registry import Event_Registry
+from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
 
 pytestmark = pytest.mark.cli
 
 
-def _reset_postgres_enum_to_lowercase_values() -> None:
-    """Force the Postgres `event_category_enum` type to contain only the
-    lowercase StrEnum VALUES — matching the production migration's
-    `postgresql.ENUM("api", "domain", "ui", name="event_category_enum")`.
+def _reset_enum_via_raw_connection() -> None:
+    """Adapter that drives the shared psycopg2-based helper from the
+    SQLAlchemy engine, then asserts the enum was rebuilt with the
+    expected lowercase values."""
+    raw_conn = db.engine.raw_connection()
+    try:
+        reset_postgres_enum_to_lowercase_values(raw_conn)
+    finally:
+        raw_conn.close()
 
-    `db.create_all()` (used in test setup) generates the enum from the
-    SQLAlchemy column definition. Without `values_callable`, SQLAlchemy
-    emits the enum using the member NAMES (uppercase), so the test DB's
-    enum disagrees with production. We rebuild the enum here so this test
-    reproduces the exact mismatch production hits.
-    """
-    db.session.execute(
-        text('ALTER TABLE "EventRegistry" ALTER COLUMN "category" TYPE TEXT')
-    )
-    db.session.execute(text("DROP TYPE IF EXISTS event_category_enum"))
-    db.session.execute(
-        text("CREATE TYPE event_category_enum AS ENUM ('api', 'domain', 'ui')")
-    )
-    db.session.execute(
-        text(
-            'ALTER TABLE "EventRegistry" ALTER COLUMN "category"'
-            " TYPE event_category_enum USING category::event_category_enum"
-        )
-    )
     enum_values = (
         db.session.execute(
             text(
@@ -63,7 +50,7 @@ def test_event_category_persists_to_postgres(app: Flask):
     Postgres only accepted the lowercase VALUES, so every flush rolled back
     with `DataError: invalid input value for enum event_category_enum: "API"`.
     """
-    _reset_postgres_enum_to_lowercase_values()
+    _reset_enum_via_raw_connection()
 
     rows = [
         Event_Registry(
