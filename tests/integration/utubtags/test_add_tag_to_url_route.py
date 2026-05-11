@@ -3,6 +3,7 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -13,6 +14,7 @@ from backend.schemas.urls import UtubUrlSchema
 from backend.tags.constants import URLTagErrorCodes
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import all_tag_strings
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
@@ -142,6 +144,51 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         assert add_tag_response_json[
             TAGS_SUCCESS.TAG_COUNTS_MODIFIED
         ] == count_tag_instances_in_utub(utub_id_user_is_creator_of, new_tag_id)
+
+
+def test_add_tag_to_url_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub with a URL (no tags) and metrics enabled
+    WHEN the creator POSTs to "/utubs/<utub_id>/urls/<utub_url_id>/tags"
+        with a valid tag string
+    THEN the request returns HTTP 200 AND exactly one TAG_APPLIED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+
+    # Before-state: no TAG_APPLIED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_APPLIED) == 0
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_APPLIED) == 1
 
 
 def test_add_fresh_tag_to_valid_url_as_utub_member(

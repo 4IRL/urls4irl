@@ -6,6 +6,8 @@ from backend.app_logger import (
     safe_add_many_logs,
     warning_log,
 )
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -64,6 +66,8 @@ def add_tag_to_url_if_valid(
             f"UTubURLTag.id={utub_url_tag.id}",
         ]
     )
+
+    record_event(EventName.TAG_APPLIED)
 
     return APIResponse(
         message=TAGS_SUCCESS.TAG_ADDED_TO_URL,
