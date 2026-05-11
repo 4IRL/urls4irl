@@ -20,6 +20,7 @@ from scripts.flush_metrics import (
     FLUSH_LOCK_TTL_SECONDS,
     run_flush,
 )
+from tests.integration.system.metrics_helpers import build_counter_key
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.cli
@@ -41,11 +42,6 @@ def _release_flush_lock(provide_metrics_redis: Redis):
     yield
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
     provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
-
-
-def _build_counter_key(bucket_epoch: int, event_value: str, dims: dict) -> str:
-    canonical = json.dumps(dims, sort_keys=True, separators=(",", ":"))
-    return f"{METRICS_REDIS.COUNTER_KEY_PREFIX}{bucket_epoch}:{event_value}:{canonical}"
 
 
 def _seed_event_registry(pg_conn: Any, event: EventName) -> None:
@@ -102,7 +98,7 @@ def test_flush_aggregates_single_key(
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
         dims = {"endpoint": "/utubs", "method": "POST", "status_code": 200}
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
         provide_metrics_redis.set(key, 5)
 
         upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
@@ -138,7 +134,7 @@ def test_flush_drains_redis_keys(
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
-        key = _build_counter_key(
+        key = build_counter_key(
             _BUCKET_START_EPOCH,
             EventName.API_HIT.value,
             {"endpoint": "/x", "method": "GET", "status_code": 200},
@@ -182,13 +178,13 @@ def test_flush_silently_drops_non_numeric_counter_values(
         _seed_event_registry(pg_conn, EventName.API_HIT)
 
         corrupt_dims = {"endpoint": "/corrupt", "method": "GET", "status_code": 200}
-        corrupt_key = _build_counter_key(
+        corrupt_key = build_counter_key(
             _BUCKET_START_EPOCH, EventName.API_HIT.value, corrupt_dims
         )
         provide_metrics_redis.set(corrupt_key, b"not-a-number")
 
         valid_dims = {"endpoint": "/valid", "method": "GET", "status_code": 200}
-        valid_key = _build_counter_key(
+        valid_key = build_counter_key(
             _BUCKET_START_EPOCH, EventName.API_HIT.value, valid_dims
         )
         provide_metrics_redis.set(valid_key, 4)
@@ -225,7 +221,7 @@ def test_flush_skips_batch_keys(
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
-        counter_key = _build_counter_key(
+        counter_key = build_counter_key(
             _BUCKET_START_EPOCH,
             EventName.API_HIT.value,
             {"endpoint": "/y", "method": "GET", "status_code": 200},
@@ -275,7 +271,7 @@ def test_flush_aggregates_multiple_keys_to_distinct_rows(
             ),
         ]
         for event_value, dims, count in keys:
-            key = _build_counter_key(_BUCKET_START_EPOCH, event_value, dims)
+            key = build_counter_key(_BUCKET_START_EPOCH, event_value, dims)
             provide_metrics_redis.set(key, count)
 
         upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
@@ -320,7 +316,7 @@ def test_flush_upserts_existing_row(
                 ),
             )
         pg_conn.commit()
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
         provide_metrics_redis.set(key, 5)
 
         run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
@@ -347,7 +343,7 @@ def test_flush_uses_split_maxsplit_4(
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
         dims = {"endpoint": "/api/v1:foo", "method": "GET", "status_code": 200}
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
         provide_metrics_redis.set(key, 1)
 
         run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
@@ -379,11 +375,11 @@ def test_flush_promotes_api_hit_dims_to_flat_columns(
         api_dims = {"endpoint": "/utubs", "method": "POST", "status_code": 201}
         ui_dims = {"result": "success"}
         provide_metrics_redis.set(
-            _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, api_dims),
+            build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, api_dims),
             3,
         )
         provide_metrics_redis.set(
-            _build_counter_key(
+            build_counter_key(
                 _BUCKET_START_EPOCH, EventName.UI_URL_COPY.value, ui_dims
             ),
             1,
@@ -453,7 +449,7 @@ def test_flush_rolls_back_on_postgres_error(
         seeder_conn.close()
 
     dims = {"endpoint": "/zz", "method": "GET", "status_code": 200}
-    key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+    key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
     provide_metrics_redis.set(key, 4)
 
     real_conn = _build_pg_conn(app)
@@ -508,7 +504,7 @@ def test_flush_getdel_captures_concurrent_incr_in_next_cycle(
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
         dims = {"endpoint": "/concurrent", "method": "GET", "status_code": 200}
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
 
         # First flush drains an initial counter value of 3.
         provide_metrics_redis.set(key, 3)
@@ -557,7 +553,7 @@ def test_flush_lock_prevents_concurrent_double_count(
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
         dims = {"endpoint": "/locked", "method": "GET", "status_code": 200}
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
         provide_metrics_redis.set(key, 9)
 
         # Pre-acquire the lock to simulate a hung previous run (or an
@@ -601,7 +597,7 @@ def test_flush_can_be_invoked_idempotently(
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
         dims = {"endpoint": "/u", "method": "GET", "status_code": 200}
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
         provide_metrics_redis.set(key, 2)
 
         first = run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
@@ -638,7 +634,7 @@ def test_flush_stamps_liveness_sentinel_after_successful_drain(
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
         dims = {"endpoint": "/live", "method": "GET", "status_code": 200}
-        key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+        key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
         provide_metrics_redis.set(key, 1)
 
         before_epoch = int(time.time())
@@ -700,7 +696,7 @@ def test_flush_does_not_stamp_liveness_sentinel_on_postgres_commit_failure(
         seeder_conn.close()
 
     dims = {"endpoint": "/fail", "method": "GET", "status_code": 200}
-    key = _build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
+    key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
     provide_metrics_redis.set(key, 4)
 
     real_conn = _build_pg_conn(app)

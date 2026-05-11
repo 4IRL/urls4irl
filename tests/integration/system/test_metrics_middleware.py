@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from unittest import mock
 
 import pytest
@@ -12,6 +11,7 @@ from backend import metrics_writer as app_metrics_writer
 from backend.metrics.events import EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
+from tests.integration.system.metrics_helpers import parse_dims
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
@@ -20,18 +20,6 @@ pytestmark = pytest.mark.cli
 def _api_hit_keys(metrics_redis: Redis) -> list[bytes]:
     pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
     return list(metrics_redis.scan_iter(match=pattern))
-
-
-def _parse_dims(counter_key: bytes) -> dict:
-    """Extract the trailing canonical-dims JSON segment from a counter key.
-
-    Key shape: `metrics:counter:<bucket>:<event_name>:<canonical_dims_json>`
-    The JSON segment is everything after the 4th colon — split with
-    `maxsplit=4` so a `:` inside the JSON does not corrupt the parse.
-    """
-    decoded = counter_key.decode("utf-8")
-    parts = decoded.split(":", 4)
-    return json.loads(parts[4])
 
 
 def test_middleware_records_api_hit_for_normal_route(
@@ -52,7 +40,7 @@ def test_middleware_records_api_hit_for_normal_route(
     assert len(keys) == 1
     assert provide_metrics_redis.get(keys[0]) == b"1"
 
-    dims = _parse_dims(keys[0])
+    dims = parse_dims(keys[0])
     assert dims["endpoint"] == "splash.splash_page"
     assert dims["method"] == "GET"
     assert dims["status_code"] == 200
@@ -115,7 +103,7 @@ def test_middleware_skips_metrics_blueprint_self(
 
     api_hit_keys = _api_hit_keys(provide_metrics_redis)
     for key in api_hit_keys:
-        dims = _parse_dims(key)
+        dims = parse_dims(key)
         assert dims.get("endpoint") != "metrics.ingest", (
             "metrics blueprint self-skip failed: "
             f"api_hit recorded for endpoint={dims.get('endpoint')!r}"
@@ -152,7 +140,7 @@ def test_middleware_records_status_code(
 
     keys = _api_hit_keys(provide_metrics_redis)
     assert len(keys) == 1
-    dims = _parse_dims(keys[0])
+    dims = parse_dims(keys[0])
     assert dims["status_code"] == response.status_code
     assert dims["method"] == "GET"
 
@@ -179,7 +167,7 @@ def test_middleware_records_post_method(
 
     keys = _api_hit_keys(provide_metrics_redis)
     assert len(keys) > api_hits_before
-    methods_seen = {_parse_dims(key)["method"] for key in keys}
+    methods_seen = {parse_dims(key)["method"] for key in keys}
     assert "POST" in methods_seen
 
 

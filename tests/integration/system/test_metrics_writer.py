@@ -14,7 +14,7 @@ from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import MetricsWriter, record_event
 from backend.metrics.events import EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
-from backend.utils.strings.metrics_strs import METRICS_REDIS
+from tests.integration.system.metrics_helpers import find_counter_keys
 
 pytestmark = pytest.mark.cli
 
@@ -34,11 +34,6 @@ def writer_with_metrics_enabled(
     app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
 
 
-def _find_counter_keys(metrics_redis: Redis, event: EventName) -> list[bytes]:
-    pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{event.value}:*"
-    return list(metrics_redis.scan_iter(match=pattern))
-
-
 def test_writer_increments_redis_counter_for_api_hit(
     app: Flask,
     writer_with_metrics_enabled: MetricsWriter,
@@ -49,7 +44,7 @@ def test_writer_increments_redis_counter_for_api_hit(
     WHEN record_event is called for API_HIT with endpoint/method/status_code
     THEN exactly one matching counter key exists with value b"1".
     """
-    assert _find_counter_keys(provide_metrics_redis, EventName.API_HIT) == []
+    assert find_counter_keys(provide_metrics_redis, EventName.API_HIT) == []
 
     with app.app_context():
         record_event(
@@ -59,7 +54,7 @@ def test_writer_increments_redis_counter_for_api_hit(
             status_code=200,
         )
 
-    keys = _find_counter_keys(provide_metrics_redis, EventName.API_HIT)
+    keys = find_counter_keys(provide_metrics_redis, EventName.API_HIT)
     assert len(keys) == 1
     assert provide_metrics_redis.get(keys[0]) == b"1"
 
@@ -94,7 +89,7 @@ def test_writer_uses_canonical_dimensions_in_key(
             },
         )
 
-    keys = _find_counter_keys(provide_metrics_redis, EventName.UI_URL_ACCESS)
+    keys = find_counter_keys(provide_metrics_redis, EventName.UI_URL_ACCESS)
     assert len(keys) == 1
     assert provide_metrics_redis.get(keys[0]) == b"2"
 
@@ -123,7 +118,7 @@ def test_writer_separate_keys_for_distinct_dimensions(
             status_code=200,
         )
 
-    keys = _find_counter_keys(provide_metrics_redis, EventName.API_HIT)
+    keys = find_counter_keys(provide_metrics_redis, EventName.API_HIT)
     assert len(keys) == 2
     for key in keys:
         assert provide_metrics_redis.get(key) == b"1"
@@ -265,7 +260,7 @@ def test_writer_increments_redis_counter_for_ui_event(
             dimensions={"search_active": "true"},
         )
 
-    keys = _find_counter_keys(provide_metrics_redis, EventName.UI_UTUB_SELECT)
+    keys = find_counter_keys(provide_metrics_redis, EventName.UI_UTUB_SELECT)
     assert len(keys) == 1
     assert provide_metrics_redis.get(keys[0]) == b"1"
     canonical_dims = canonicalize_dimensions({"search_active": "true"})
