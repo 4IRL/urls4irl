@@ -70,7 +70,7 @@ def metrics_enabled_runner_app(
     app_metrics_writer._enabled = original_enabled
 
 
-def test_phase_three_domain_events_flush_with_intact_fk_joins(
+def test_domain_events_flush_with_intact_fk_joins(
     metrics_enabled_runner_app: Flask,
     provide_metrics_redis: Redis,
 ):
@@ -81,17 +81,17 @@ def test_phase_three_domain_events_flush_with_intact_fk_joins(
         URL, URL-UTub association, UTub tag, and a second user — all
         inserted via the ORM bypassing the service layer so no
         `record_event` fires during setup
-    WHEN each of the 11 Phase 3 instrumented routes is hit exactly once
+    WHEN each of the 11 instrumented DOMAIN routes is hit exactly once
         through an authenticated Flask client (non-destructive routes
         first, the destructive UTUB_DELETED last and targeting a freshly
         created UTub so cascade cannot wipe the resources earlier routes
         depend on), then `run_flush(...)` drains Redis into Postgres
-    THEN every Phase 3 DOMAIN event appears in `AnonymousMetrics` after
+    THEN every DOMAIN event appears in `AnonymousMetrics` after
         an INNER JOIN against `EventRegistry` — proving the FK relation
         holds and no event was silently dropped between
         `record_event(...)`, the writer's batch dispatch, and the flush.
 
-    End-to-end regression guard for the Phase 3 instrumentation pipeline.
+    End-to-end regression guard for the DOMAIN instrumentation pipeline.
     Auto-extends to any future DOMAIN event by iterating
     `EVENT_CATEGORY` (excluding the deferred `URL_ACCESSED`).
     """
@@ -311,7 +311,7 @@ def test_phase_three_domain_events_flush_with_intact_fk_joins(
             joined_event_names = {row[0] for row in cursor.fetchall()}
 
         assert joined_event_names == set(expected_event_values), (
-            "Phase 3 FK join broke or events missing from AnonymousMetrics: "
+            "FK join broke or DOMAIN events missing from AnonymousMetrics: "
             f"missing={set(expected_event_values) - joined_event_names}"
         )
     finally:

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from typing import NamedTuple
 
 import pytest
-from flask import url_for
+from flask import Flask, url_for
 from redis import Redis
 
 from backend import db
@@ -21,32 +22,20 @@ from backend.utils.strings.metrics_strs import METRICS_REDIS
 pytestmark = pytest.mark.cli
 
 
-def test_phase_three_domain_events_emit_no_pii_dimensions(
-    metrics_enabled_app,
-    provide_metrics_redis: Redis,
-    login_first_user_with_register,
-):
-    """
-    GIVEN every Phase 3 DOMAIN event is wired into a service-layer call site
-        and metrics are enabled
-    WHEN each instrumented route is hit exactly once via the authenticated
-        client (after seeding the minimum required state inline so no
-        services run during setup)
-    THEN every `metrics:counter:*` key written to Redis (excluding the
-        incidental API_HIT counters) has an empty canonical-dims segment —
-        no `user_id`, `email`, `username`, `utub_id`, `tag_id`, etc. leaks
-        into the dimensions payload.
+class _NoPiiSeedState(NamedTuple):
+    extra_user_id: int
+    seeded_utub_id: int
+    utub_url_id: int
+    tag_id: int
 
-    Structural PII non-leak guard. Auto-extends to any future DOMAIN
-    event by iterating `EventCategory.DOMAIN` members (excluding
-    `URL_ACCESSED`, which is deferred per Phase 3 design decision).
-    """
-    client, csrf_token, user, app = login_first_user_with_register
 
+def _seed_no_pii_test_state(app: Flask, creator_user: Users) -> _NoPiiSeedState:
+    """
+    Seeds the minimum ORM state needed for the PII non-leak guard test without
+    invoking any service-layer call sites, which would emit metrics events and
+    pollute the Redis counter space before the assertions run.
+    """
     with app.app_context():
-        # Second user (recipient of MEMBER_ADDED / MEMBER_REMOVED). No
-        # `Utub_Members` row needed — `create_utub_member` will insert it
-        # when MEMBER_ADDED fires below.
         extra_user = Users(
             username="MemberRecipient1234",
             email="memberrecipient1234@email.com",
@@ -59,11 +48,11 @@ def test_phase_three_domain_events_emit_no_pii_dimensions(
 
         seeded_utub = Utubs(
             name="Seed UTub",
-            utub_creator=user.id,
+            utub_creator=creator_user.id,
             utub_description="Initial seed description",
         )
         creator_membership = Utub_Members(member_role=Member_Role.CREATOR)
-        creator_membership.to_user = user
+        creator_membership.to_user = creator_user
         seeded_utub.members.append(creator_membership)
         db.session.add(seeded_utub)
         db.session.commit()
@@ -71,7 +60,7 @@ def test_phase_three_domain_events_emit_no_pii_dimensions(
 
         url_row = Urls(
             normalized_url="https://www.no-pii-seed-example.com",
-            current_user_id=user.id,
+            current_user_id=creator_user.id,
         )
         db.session.add(url_row)
         db.session.commit()
@@ -79,22 +68,58 @@ def test_phase_three_domain_events_emit_no_pii_dimensions(
         utub_url = Utub_Urls()
         utub_url.utub_id = seeded_utub_id
         utub_url.url_id = url_row.id
-        utub_url.user_id = user.id
+        utub_url.user_id = creator_user.id
         utub_url.url_title = "Seed URL Title"
         db.session.add(utub_url)
         db.session.commit()
         utub_url_id = utub_url.id
 
         # `Utub_Tags` definition row only — no `Utub_Url_Tags` association;
-        # the TAG_APPLIED route call below creates the association.
+        # the TAG_APPLIED route call creates the association during the test.
         tag_row = Utub_Tags(
             utub_id=seeded_utub_id,
             tag_string="seed-tag",
-            created_by=user.id,
+            created_by=creator_user.id,
         )
         db.session.add(tag_row)
         db.session.commit()
         tag_id = tag_row.id
+
+    return _NoPiiSeedState(
+        extra_user_id=extra_user_id,
+        seeded_utub_id=seeded_utub_id,
+        utub_url_id=utub_url_id,
+        tag_id=tag_id,
+    )
+
+
+def test_domain_events_emit_no_pii_dimensions(
+    metrics_enabled_app,
+    provide_metrics_redis: Redis,
+    login_first_user_with_register,
+):
+    """
+    GIVEN every DOMAIN event is wired into a service-layer call site
+        and metrics are enabled
+    WHEN each instrumented route is hit exactly once via the authenticated
+        client (after seeding the minimum required state inline so no
+        services run during setup)
+    THEN every `metrics:counter:*` key written to Redis (excluding the
+        incidental API_HIT counters) has an empty canonical-dims segment —
+        no `user_id`, `email`, `username`, `utub_id`, `tag_id`, etc. leaks
+        into the dimensions payload.
+
+    Structural PII non-leak guard. Auto-extends to any future DOMAIN
+    event by iterating `EventCategory.DOMAIN` members (excluding
+    `URL_ACCESSED`, which is currently deferred).
+    """
+    client, csrf_token, user, app = login_first_user_with_register
+
+    seed = _seed_no_pii_test_state(app, user)
+    extra_user_id = seed.extra_user_id
+    seeded_utub_id = seed.seeded_utub_id
+    utub_url_id = seed.utub_url_id
+    tag_id = seed.tag_id
 
     # TAG_APPLIED — creates the `Utub_Url_Tags` row intentionally absent from seed.
     tag_apply_response = client.post(
@@ -235,13 +260,11 @@ def test_phase_three_domain_events_emit_no_pii_dimensions(
         parts = decoded.split(":", 4)
         event_value = parts[3]
         dims = json.loads(parts[4])
-        assert (
-            dims == {}
-        ), f"Phase 3 DOMAIN counter leaked PII dims: key={decoded}, dims={dims}"
+        assert dims == {}, f"DOMAIN counter leaked PII dims: key={decoded}, dims={dims}"
         observed_event_values.add(event_value)
 
     expected_event_values = {event.value for event in expected_domain_events}
     assert expected_event_values.issubset(observed_event_values), (
-        "Missing Phase 3 DOMAIN events in Redis counters: "
+        "Missing DOMAIN events in Redis counters: "
         f"{expected_event_values - observed_event_values}"
     )
