@@ -8,9 +8,11 @@ import pytest
 import redis
 from redis.client import Redis
 
+from backend.metrics.events import EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utubs.constants import UTubErrorCodes
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import (
     valid_empty_utub_1,
     valid_empty_utub_2,
@@ -118,6 +120,35 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         assert current_utub_user_association.utub_id == utub_id
         assert current_utub_user_association.user_id == user.id
         assert current_utub_user_association.member_role == Member_Role.CREATOR
+
+
+def test_add_utub_records_metric(
+    metrics_enabled_app, provide_metrics_redis, login_first_user_with_register
+):
+    """
+    GIVEN a valid logged-in user with metrics enabled
+    WHEN they POST to "/utubs" with a valid payload
+    THEN the request succeeds with HTTP 200 AND exactly one UTUB_CREATED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, _ = login_first_user_with_register
+
+    # Before-state: no UTUB_CREATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_CREATED) == 0
+
+    new_utub_response = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert new_utub_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_CREATED) == 1
 
 
 def test_add_utub_with_valid_form_empty_description(login_first_user_with_register):

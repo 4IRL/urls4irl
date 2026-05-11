@@ -3,6 +3,8 @@ from flask_login import current_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.utubs import UtubCreatedResponseSchema
@@ -31,6 +33,8 @@ def create_new_utub(utub_name: str, utub_description: str | None) -> FlaskRespon
             f"UTub.name={utub.name}",
         ]
     )
+
+    record_event(EventName.UTUB_CREATED)
 
     return APIResponse(
         status=STD_JSON.SUCCESS,
