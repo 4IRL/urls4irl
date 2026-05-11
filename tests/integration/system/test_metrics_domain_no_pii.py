@@ -116,17 +116,13 @@ def test_domain_events_emit_no_pii_dimensions(
     client, csrf_token, user, app = login_first_user_with_register
 
     seed = _seed_no_pii_test_state(app, user)
-    extra_user_id = seed.extra_user_id
-    seeded_utub_id = seed.seeded_utub_id
-    utub_url_id = seed.utub_url_id
-    tag_id = seed.tag_id
 
     # TAG_APPLIED — creates the `Utub_Url_Tags` row intentionally absent from seed.
     tag_apply_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
-            utub_id=seeded_utub_id,
-            utub_url_id=utub_url_id,
+            utub_id=seed.seeded_utub_id,
+            utub_url_id=seed.utub_url_id,
         ),
         json={TAG_FORM.TAG_STRING: "seed-tag"},
         headers={"X-CSRFToken": csrf_token},
@@ -137,9 +133,9 @@ def test_domain_events_emit_no_pii_dimensions(
     tag_remove_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
-            utub_id=seeded_utub_id,
-            utub_url_id=utub_url_id,
-            utub_tag_id=tag_id,
+            utub_id=seed.seeded_utub_id,
+            utub_url_id=seed.utub_url_id,
+            utub_tag_id=seed.tag_id,
         ),
         headers={"X-CSRFToken": csrf_token},
     )
@@ -147,14 +143,14 @@ def test_domain_events_emit_no_pii_dimensions(
 
     # UTUB_OPENED — read-only.
     utub_open_response = client.get(
-        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=seeded_utub_id),
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=seed.seeded_utub_id),
         headers={"X-CSRFToken": csrf_token},
     )
     assert utub_open_response.status_code == 200
 
     # UTUB_TITLE_UPDATED — changed name.
     utub_name_response = client.patch(
-        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=seeded_utub_id),
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=seed.seeded_utub_id),
         json={UTUB_FORM.UTUB_NAME: "Renamed Seed UTub"},
         headers={"X-CSRFToken": csrf_token},
     )
@@ -162,7 +158,7 @@ def test_domain_events_emit_no_pii_dimensions(
 
     # UTUB_DESC_UPDATED — changed description.
     utub_desc_response = client.patch(
-        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=seeded_utub_id),
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=seed.seeded_utub_id),
         json={UTUB_FORM.UTUB_DESCRIPTION: "Updated seed description"},
         headers={"X-CSRFToken": csrf_token},
     )
@@ -172,8 +168,8 @@ def test_domain_events_emit_no_pii_dimensions(
     url_title_response = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL_TITLE,
-            utub_id=seeded_utub_id,
-            utub_url_id=utub_url_id,
+            utub_id=seed.seeded_utub_id,
+            utub_url_id=seed.utub_url_id,
         ),
         json={URL_FORM.URL_TITLE: "Renamed Seed URL Title"},
         headers={"X-CSRFToken": csrf_token},
@@ -182,7 +178,7 @@ def test_domain_events_emit_no_pii_dimensions(
 
     # MEMBER_ADDED — extra user.
     member_add_response = client.post(
-        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=seeded_utub_id),
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=seed.seeded_utub_id),
         json={ADD_USER_FORM.USERNAME: "MemberRecipient1234"},
         headers={"X-CSRFToken": csrf_token},
     )
@@ -192,8 +188,8 @@ def test_domain_events_emit_no_pii_dimensions(
     member_remove_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
-            utub_id=seeded_utub_id,
-            user_id=extra_user_id,
+            utub_id=seed.seeded_utub_id,
+            user_id=seed.extra_user_id,
         ),
         headers={"X-CSRFToken": csrf_token},
     )
@@ -204,8 +200,8 @@ def test_domain_events_emit_no_pii_dimensions(
     tag_delete_response = client.delete(
         url_for(
             ROUTES.UTUB_TAGS.DELETE_UTUB_TAG,
-            utub_id=seeded_utub_id,
-            utub_tag_id=tag_id,
+            utub_id=seed.seeded_utub_id,
+            utub_tag_id=seed.tag_id,
         ),
         headers={"X-CSRFToken": csrf_token},
     )
