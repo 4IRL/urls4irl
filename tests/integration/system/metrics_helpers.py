@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
+import psycopg2
+from flask import Flask
 from redis import Redis
 
 from backend.metrics.events import EventName
@@ -13,9 +16,18 @@ def find_counter_keys(metrics_redis: Redis, event: EventName) -> list[bytes]:
     return list(metrics_redis.scan_iter(match=pattern))
 
 
+def build_pg_conn(app: Flask) -> Any:
+    return psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
+
+
+def truncate_metrics_tables(pg_conn: Any) -> None:
+    with pg_conn.cursor() as cursor:
+        cursor.execute('TRUNCATE TABLE "AnonymousMetrics" RESTART IDENTITY CASCADE')
+    pg_conn.commit()
+
+
 def count_counter_keys(metrics_redis: Redis, event: EventName) -> int:
-    pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{event.value}:*"
-    return len(list(metrics_redis.scan_iter(match=pattern)))
+    return len(find_counter_keys(metrics_redis, event))
 
 
 def parse_dims(counter_key: bytes) -> dict:

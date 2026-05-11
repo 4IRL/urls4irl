@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from typing import Any, Generator, Tuple
+from typing import Generator, Tuple
 
-import psycopg2
 import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskCliRunner
@@ -23,6 +22,10 @@ from backend.utils.strings.form_strs import ADD_USER_FORM, TAG_FORM, URL_FORM, U
 from scripts.flush_metrics import run_flush
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
+from tests.integration.system.metrics_helpers import (
+    build_pg_conn,
+    truncate_metrics_tables,
+)
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
@@ -67,16 +70,6 @@ def metrics_enabled_runner_app(
     app_metrics_writer._enabled = original_enabled
 
 
-def _build_pg_conn(app: Flask) -> Any:
-    return psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-
-
-def _truncate_metrics_tables(pg_conn: Any) -> None:
-    with pg_conn.cursor() as cursor:
-        cursor.execute('TRUNCATE TABLE "AnonymousMetrics" RESTART IDENTITY CASCADE')
-    pg_conn.commit()
-
-
 def test_phase_three_domain_events_flush_with_intact_fk_joins(
     metrics_enabled_runner_app: Flask,
     provide_metrics_redis: Redis,
@@ -104,7 +97,7 @@ def test_phase_three_domain_events_flush_with_intact_fk_joins(
     """
     app = metrics_enabled_runner_app
 
-    setup_conn = _build_pg_conn(app)
+    setup_conn = build_pg_conn(app)
     try:
         reset_postgres_enum_to_lowercase_values(setup_conn)
     finally:
@@ -304,7 +297,7 @@ def test_phase_three_domain_events_flush_with_intact_fk_joins(
         and event is not EventName.URL_ACCESSED
     ]
 
-    flush_conn = _build_pg_conn(app)
+    flush_conn = build_pg_conn(app)
     try:
         run_flush(redis_client=provide_metrics_redis, pg_conn=flush_conn)
 
@@ -322,5 +315,5 @@ def test_phase_three_domain_events_flush_with_intact_fk_joins(
             f"missing={set(expected_event_values) - joined_event_names}"
         )
     finally:
-        _truncate_metrics_tables(flush_conn)
+        truncate_metrics_tables(flush_conn)
         flush_conn.close()

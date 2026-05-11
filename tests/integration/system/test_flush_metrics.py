@@ -7,7 +7,6 @@ from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import MagicMock
 
-import psycopg2
 import pytest
 from flask import Flask
 from redis import Redis
@@ -20,7 +19,11 @@ from scripts.flush_metrics import (
     FLUSH_LOCK_TTL_SECONDS,
     run_flush,
 )
-from tests.integration.system.metrics_helpers import build_counter_key
+from tests.integration.system.metrics_helpers import (
+    build_counter_key,
+    build_pg_conn,
+    truncate_metrics_tables,
+)
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.cli
@@ -61,10 +64,6 @@ def _seed_event_registry(pg_conn: Any, event: EventName) -> None:
     pg_conn.commit()
 
 
-def _build_pg_conn(app: Flask) -> Any:
-    return psycopg2.connect(app.config["SQLALCHEMY_DATABASE_URI"])
-
-
 def _select_metrics_rows(pg_conn: Any) -> list[tuple]:
     with pg_conn.cursor() as cur:
         cur.execute(
@@ -76,8 +75,8 @@ def _select_metrics_rows(pg_conn: Any) -> list[tuple]:
 
 
 def _truncate_metrics_tables(pg_conn: Any) -> None:
+    truncate_metrics_tables(pg_conn)
     with pg_conn.cursor() as cur:
-        cur.execute('TRUNCATE TABLE "AnonymousMetrics" RESTART IDENTITY CASCADE')
         cur.execute('DELETE FROM "EventRegistry"')
     pg_conn.commit()
 
@@ -93,7 +92,7 @@ def test_flush_aggregates_single_key(
         bucket_start as a UTC datetime, dimensions populated with the
         canonical JSON, and flat columns endpoint/method/status_code populated.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -130,7 +129,7 @@ def test_flush_drains_redis_keys(
     WHEN run_flush completes successfully
     THEN no metrics:counter:* keys remain in Redis.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -172,7 +171,7 @@ def test_flush_silently_drops_non_numeric_counter_values(
     branch in run_flush — prevents future refactors from accidentally surfacing
     a parse error to the cron caller.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -217,7 +216,7 @@ def test_flush_skips_batch_keys(
     THEN the counter key is deleted but the batch key remains
         (batch keys self-expire via TTL, never via flush).
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -248,7 +247,7 @@ def test_flush_aggregates_multiple_keys_to_distinct_rows(
     WHEN run_flush is invoked
     THEN three distinct rows are inserted into AnonymousMetrics.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -294,7 +293,7 @@ def test_flush_upserts_existing_row(
         (bucket, event, dims) triple with value 5
     THEN the row's count is incremented to 15 (ON CONFLICT DO UPDATE).
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -338,7 +337,7 @@ def test_flush_uses_split_maxsplit_4(
     WHEN run_flush parses the key with split(":", 4)
     THEN the JSON segment is preserved intact (not split inside the JSON).
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -367,7 +366,7 @@ def test_flush_promotes_api_hit_dims_to_flat_columns(
     THEN the api_hit row has flat columns populated from dimensions,
         and the non-api row has NULL flat columns.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -410,7 +409,7 @@ def test_flush_handles_empty_redis_no_op(
     WHEN run_flush is invoked
     THEN it returns 0 and no rows are written to AnonymousMetrics.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
 
@@ -441,7 +440,7 @@ def test_flush_rolls_back_on_postgres_error(
     is the documented trade-off of the GETDEL TOCTOU fix; subsequent INCRs
     continue on fresh keys and are captured by the next flush.
     """
-    seeder_conn = _build_pg_conn(app)
+    seeder_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(seeder_conn)
         _seed_event_registry(seeder_conn, EventName.API_HIT)
@@ -452,7 +451,7 @@ def test_flush_rolls_back_on_postgres_error(
     key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
     provide_metrics_redis.set(key, 4)
 
-    real_conn = _build_pg_conn(app)
+    real_conn = build_pg_conn(app)
     try:
         # Wrap the real connection in a MagicMock so commit() can be
         # overridden (psycopg2's connection.commit is a read-only C-method
@@ -470,7 +469,7 @@ def test_flush_rolls_back_on_postgres_error(
 
         # Use a fresh connection because the wrapped one had its transaction
         # rolled back via the mock; verify no AnonymousMetrics rows landed.
-        verify_conn = _build_pg_conn(app)
+        verify_conn = build_pg_conn(app)
         try:
             with verify_conn.cursor() as cur:
                 cur.execute('SELECT COUNT(*) FROM "AnonymousMetrics"')
@@ -478,7 +477,7 @@ def test_flush_rolls_back_on_postgres_error(
         finally:
             verify_conn.close()
     finally:
-        cleanup_conn = _build_pg_conn(app)
+        cleanup_conn = build_pg_conn(app)
         try:
             _truncate_metrics_tables(cleanup_conn)
         finally:
@@ -499,7 +498,7 @@ def test_flush_getdel_captures_concurrent_incr_in_next_cycle(
     THEN the post-GETDEL INCR is captured as a fresh key and UPSERTed,
         proving the atomic GETDEL eliminates the silent-discard window.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -548,7 +547,7 @@ def test_flush_lock_prevents_concurrent_double_count(
         inserted, and a WARNING-level "another flush is in progress" log
         is emitted on the metrics_flush logger.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -592,7 +591,7 @@ def test_flush_can_be_invoked_idempotently(
     THEN it returns 0 upserted rows and the AnonymousMetrics row count
         is unchanged.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -629,7 +628,7 @@ def test_flush_stamps_liveness_sentinel_after_successful_drain(
     THEN metrics:flush:last_success_epoch is set in Redis to the current
         epoch (within ~5 seconds of int(time.time())).
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         _seed_event_registry(pg_conn, EventName.API_HIT)
@@ -660,7 +659,7 @@ def test_flush_stamps_liveness_sentinel_on_empty_drain(
     THEN the liveness sentinel IS still stamped — an empty flush is a
         successful flush and the worker is making progress.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
 
@@ -688,7 +687,7 @@ def test_flush_does_not_stamp_liveness_sentinel_on_postgres_commit_failure(
     THEN metrics:flush:last_success_epoch is NOT set in Redis — the
         healthcheck must NOT report success when commits are failing.
     """
-    seeder_conn = _build_pg_conn(app)
+    seeder_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(seeder_conn)
         _seed_event_registry(seeder_conn, EventName.API_HIT)
@@ -699,7 +698,7 @@ def test_flush_does_not_stamp_liveness_sentinel_on_postgres_commit_failure(
     key = build_counter_key(_BUCKET_START_EPOCH, EventName.API_HIT.value, dims)
     provide_metrics_redis.set(key, 4)
 
-    real_conn = _build_pg_conn(app)
+    real_conn = build_pg_conn(app)
     try:
         mock_pg_conn = MagicMock(wraps=real_conn)
         mock_pg_conn.commit.side_effect = RuntimeError("simulated postgres failure")
@@ -709,7 +708,7 @@ def test_flush_does_not_stamp_liveness_sentinel_on_postgres_commit_failure(
 
         assert provide_metrics_redis.get(FLUSH_LAST_SUCCESS_KEY) is None
     finally:
-        cleanup_conn = _build_pg_conn(app)
+        cleanup_conn = build_pg_conn(app)
         try:
             _truncate_metrics_tables(cleanup_conn)
         finally:
@@ -731,7 +730,7 @@ def test_flush_does_not_stamp_liveness_sentinel_when_lock_held(
         sentinel to advance — and a WARNING-level "another flush is in
         progress" log is emitted on the metrics_flush logger.
     """
-    pg_conn = _build_pg_conn(app)
+    pg_conn = build_pg_conn(app)
     try:
         _truncate_metrics_tables(pg_conn)
         provide_metrics_redis.set(FLUSH_LOCK_KEY, "1", ex=FLUSH_LOCK_TTL_SECONDS)

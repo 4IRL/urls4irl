@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from flask import url_for
+import json
+
 import pytest
+from flask import url_for
 from redis import Redis
 
 from backend import db
@@ -15,7 +17,6 @@ from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import ADD_USER_FORM, TAG_FORM, URL_FORM, UTUB_FORM
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from tests.integration.system.metrics_helpers import parse_dims
 
 pytestmark = pytest.mark.cli
 
@@ -229,14 +230,15 @@ def test_phase_three_domain_events_emit_no_pii_dimensions(
     )
     observed_event_values: set[str] = set()
     for counter_key in counter_keys:
-        dims = parse_dims(counter_key)
+        # Key shape: metrics:counter:<bucket>:<event_name>:<dims_json>
         decoded = counter_key.decode("utf-8")
+        parts = decoded.split(":", 4)
+        event_value = parts[3]
+        dims = json.loads(parts[4])
         assert (
             dims == {}
         ), f"Phase 3 DOMAIN counter leaked PII dims: key={decoded}, dims={dims}"
-        # Key shape: metrics:counter:<bucket>:<event_name>:<dims_json>
-        parts = decoded.split(":", 4)
-        observed_event_values.add(parts[3])
+        observed_event_values.add(event_value)
 
     expected_event_values = {event.value for event in expected_domain_events}
     assert expected_event_values.issubset(observed_event_values), (
