@@ -1,6 +1,8 @@
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -30,6 +32,8 @@ def delete_url_tag(
 
     utub.set_last_updated()
     db.session.commit()
+
+    record_event(EventName.TAG_REMOVED)
 
     return _build_delete_url_tag_response(
         # Count instances of particular tag in UTub that is to be deleted

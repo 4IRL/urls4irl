@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
@@ -15,6 +16,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.tags
@@ -93,6 +95,46 @@ def test_delete_tag_from_utub_with_no_url_associations(
         assert Utub_Tags.query.count() == num_of_utub_tags - 1
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == num_of_utub_url_tags
+
+
+def test_delete_utub_tag_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_in_every_utub,
+    add_one_tag_to_each_utub_after_one_url_added,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub with a UTub-scoped tag and metrics enabled
+    WHEN the creator DELETEs "/utubs/<utub_id>/tags/<utub_tag_id>"
+        to remove a tag from the UTub
+    THEN the request returns HTTP 200 AND exactly one TAG_DELETED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub.id
+        ).first()
+        utub_id = utub.id
+        utub_tag_id = utub_tag.id
+
+    # Before-state: no TAG_DELETED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_DELETED) == 0
+
+    delete_tag_response = client.delete(
+        url_for(
+            ROUTES.UTUB_TAGS.DELETE_UTUB_TAG,
+            utub_id=utub_id,
+            utub_tag_id=utub_tag_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_tag_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_DELETED) == 1
 
 
 def test_delete_tag_from_utub_with_url_associations(

@@ -6,6 +6,8 @@ from backend.app_logger import (
     safe_add_log,
     warning_log,
 )
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UrlTitleUpdatedResponseSchema, UtubUrlDetailSchema
@@ -40,6 +42,7 @@ def update_url_title_if_new(
         current_utub.set_last_updated()
         db.session.commit()
         safe_add_log("URL title updated")
+        record_event(EventName.URL_TITLE_UPDATED)
     else:
         warning_log(f"User={current_user.id} tried updating to identical URL title")
 

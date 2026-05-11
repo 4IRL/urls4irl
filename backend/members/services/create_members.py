@@ -6,7 +6,9 @@ from backend.app_logger import (
     safe_add_many_logs,
     warning_log,
 )
+from backend.extensions.metrics.writer import record_event
 from backend.members.data_models import ValidatedMember
+from backend.metrics.events import EventName
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
@@ -95,6 +97,7 @@ def _add_user_to_utub(user: Users, current_utub: Utubs) -> FlaskResponse:
     safe_add_many_logs(
         ["Added member to UTub", f"UTub.id={current_utub.id}", f"Added User={user.id}"]
     )
+    record_event(EventName.MEMBER_ADDED)
 
     return APIResponse(
         message=MEMBER_SUCCESS.MEMBER_ADDED,

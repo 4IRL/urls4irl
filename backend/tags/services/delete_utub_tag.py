@@ -1,6 +1,8 @@
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
@@ -42,6 +44,8 @@ def delete_utub_tag_from_utub_and_utub_urls(
             f"UTubTag.tag_string={tag_schema.tag_string}",
         ]
     )
+
+    record_event(EventName.TAG_DELETED)
 
     return APIResponse(
         message=TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,

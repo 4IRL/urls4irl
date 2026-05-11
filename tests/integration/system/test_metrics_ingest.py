@@ -14,6 +14,7 @@ from backend.metrics.events import EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import get_csrf_token, is_string_in_logs
 
 pytestmark = pytest.mark.cli
@@ -24,11 +25,6 @@ INGEST_URL = "/api/metrics"
 def _load_csrf(client: FlaskClient) -> str:
     splash_response = client.get("/")
     return get_csrf_token(splash_response.get_data(), meta_tag=True)
-
-
-def _count_counter_keys(metrics_redis: Redis, event: EventName) -> int:
-    pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{event.value}:*"
-    return len(list(metrics_redis.scan_iter(match=pattern)))
 
 
 def assert_warning_logged(caplog: pytest.LogCaptureFixture, text: str) -> None:
@@ -78,7 +74,7 @@ def test_ingest_happy_path_with_csrf_header(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response_json["accepted"] == 1
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
 def test_ingest_happy_path_with_csrf_body_token(
@@ -107,7 +103,7 @@ def test_ingest_happy_path_with_csrf_body_token(
     )
 
     assert response.status_code == 200
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
 def test_ingest_rejects_missing_csrf(
@@ -138,7 +134,7 @@ def test_ingest_rejects_missing_csrf(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_FORM_INPUT
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
 
 
 def test_ingest_rejects_invalid_csrf(
@@ -167,7 +163,7 @@ def test_ingest_rejects_invalid_csrf(
     )
 
     assert response.status_code == 403
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
 
 
 def test_ingest_header_token_wins_over_body_token(
@@ -198,7 +194,7 @@ def test_ingest_header_token_wins_over_body_token(
     )
 
     assert response.status_code == 200
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
 def test_ingest_empty_header_falls_back_to_body_token(
@@ -229,7 +225,7 @@ def test_ingest_empty_header_falls_back_to_body_token(
     )
 
     assert response.status_code == 200
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
 def test_ingest_rejects_invalid_csrf_body_token(
@@ -258,7 +254,7 @@ def test_ingest_rejects_invalid_csrf_body_token(
     )
 
     assert response.status_code == 403
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
 
 
 def test_ingest_rejects_domain_category_event_name(
@@ -347,7 +343,7 @@ def test_ingest_rejects_unknown_dimension_key(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_FORM_INPUT
-    assert _count_counter_keys(provide_metrics_redis, EventName.UI_FORM_SUBMIT) == 0
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_FORM_SUBMIT) == 0
 
 
 def test_ingest_rejects_unknown_dimension_value(

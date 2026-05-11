@@ -5,6 +5,7 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
 from backend.models.users import Users
@@ -13,6 +14,7 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.utubs
@@ -71,6 +73,35 @@ def test_get_valid_utub_as_creator(
         assert (
             utub_user_creator_of.last_updated - initial_last_updated
         ).total_seconds() > 0
+
+
+def test_get_single_utub_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a logged-in user, a UTub they are a member of, and metrics enabled
+    WHEN they GET "/utubs/<utub_id>"
+    THEN the request succeeds with HTTP 200 AND exactly one UTUB_OPENED
+        counter key is written to the metrics Redis DB.
+
+    The setup fixture inserts the UTub directly via the ORM (bypassing
+    the service layer) so no UTUB_CREATED counter is emitted during
+    setup — only UTUB_OPENED should be observable.
+    """
+    client, utub_id, _, _ = add_single_utub_as_user_after_logging_in
+
+    # Before-state: no UTUB_OPENED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED) == 0
+
+    get_single_utub_response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert get_single_utub_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED) == 1
 
 
 def test_get_valid_utub_as_member(

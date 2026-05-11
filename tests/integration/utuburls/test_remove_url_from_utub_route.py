@@ -2,8 +2,12 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
+from backend.metrics.events import EventName
 from backend.schemas.urls import UtubUrlDeleteSchema
 from backend.models.urls import Urls
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
@@ -14,6 +18,7 @@ from backend.utils.strings.json_strs import (
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.url_strs import URL_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.urls
@@ -103,6 +108,94 @@ def test_delete_url_as_utub_creator_no_tags(
         assert len(current_user_utub.utub_urls) == 0
 
         assert Utub_Urls.query.count() == initial_utub_urls - 1
+
+
+def test_delete_url_does_not_inflate_tag_removed_counter(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    login_first_user_with_register,
+):
+    """
+    GIVEN a UTub with a URL that has multiple Utub_Url_Tags associations,
+        seeded via raw ORM (bypassing the service layer so no TAG_APPLIED
+        is emitted during setup), and metrics enabled
+    WHEN the creator DELETEs "/utubs/<utub_id>/urls/<utub_url_id>"
+    THEN the request returns HTTP 200 AND NO TAG_REMOVED counter key is
+        written — proving that the raw-SQL bulk-delete path in
+        `_update_tag_counts_on_url_delete` does NOT re-enter
+        `delete_url_tag` and inflate the counter.
+    """
+    client, csrf_token, user, app = login_first_user_with_register
+    user_id = user.id
+
+    with app.app_context():
+        seeded_utub = Utubs(
+            name="Bypass-Cascade UTub",
+            utub_creator=user_id,
+            utub_description="",
+        )
+        db.session.add(seeded_utub)
+        db.session.commit()
+        utub_id = seeded_utub.id
+
+        creator_membership = Utub_Members()
+        creator_membership.utub_id = utub_id
+        creator_membership.user_id = user_id
+        creator_membership.member_role = Member_Role.CREATOR
+        db.session.add(creator_membership)
+        db.session.commit()
+
+        url_row = Urls(
+            normalized_url="https://www.bypass-cascade-example.com",
+            current_user_id=user_id,
+        )
+        db.session.add(url_row)
+        db.session.commit()
+
+        utub_url = Utub_Urls()
+        utub_url.utub_id = utub_id
+        utub_url.url_id = url_row.id
+        utub_url.user_id = user_id
+        utub_url.url_title = "Bypass URL"
+        db.session.add(utub_url)
+        db.session.commit()
+        utub_url_id = utub_url.id
+
+        # Seed two Utub_Tags + two Utub_Url_Tags directly so TAG_APPLIED
+        # is NOT emitted during setup.
+        for tag_idx in range(2):
+            tag_row = Utub_Tags(
+                utub_id=utub_id,
+                tag_string=f"bypass-tag-{tag_idx}",
+                created_by=user_id,
+            )
+            db.session.add(tag_row)
+            db.session.commit()
+
+            url_tag = Utub_Url_Tags()
+            url_tag.utub_id = utub_id
+            url_tag.utub_url_id = utub_url_id
+            url_tag.utub_tag_id = tag_row.id
+            db.session.add(url_tag)
+            db.session.commit()
+
+    # Before-state: no TAG_REMOVED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_REMOVED) == 0
+
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_url_response.status_code == 200
+
+    # The bulk-delete path bypasses `delete_url_tag`, so TAG_REMOVED
+    # must remain at 0 despite the 2 Utub_Url_Tags rows being deleted.
+    assert count_counter_keys(provide_metrics_redis, EventName.TAG_REMOVED) == 0
 
 
 def test_delete_url_as_utub_member_no_tags(

@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.schemas.urls import UtubUrlDetailSchema
 from backend.models.urls import Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -18,6 +19,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.urls
@@ -118,6 +120,95 @@ def test_update_url_title_utub_creator(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).count() == len(associated_tags)
+
+
+def test_update_url_title_records_metric_when_changed(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub with a URL and metrics enabled
+    WHEN the creator PATCHes "/utubs/<utub_id>/urls/<utub_url_id>/title"
+        with a new (different) URL title
+    THEN the request returns HTTP 200 AND exactly one URL_TITLE_UPDATED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_utub_id = utub_creator_of.id
+        current_url_id = url_in_this_utub.id
+
+    # Before-state: no URL_TITLE_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_TITLE_UPDATED) == 0
+
+    update_url_title_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=current_utub_id,
+            utub_url_id=current_url_id,
+        ),
+        json={URL_FORM.URL_TITLE: NEW_TITLE},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_title_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_TITLE_UPDATED) == 1
+
+
+def test_update_url_title_does_not_record_metric_when_unchanged(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub with a URL and metrics enabled
+    WHEN the creator PATCHes "/utubs/<utub_id>/urls/<utub_url_id>/title"
+        with the current (unchanged) URL title
+    THEN the request returns HTTP 200 with STD_JSON.NO_CHANGE AND NO
+        URL_TITLE_UPDATED counter key is written — the no-change branch
+        must not emit the metric.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_utub_id = utub_creator_of.id
+        current_url_id = url_in_this_utub.id
+        current_title = url_in_this_utub.url_title
+
+    # Before-state: no URL_TITLE_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_TITLE_UPDATED) == 0
+
+    update_url_title_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=current_utub_id,
+            utub_url_id=current_url_id,
+        ),
+        json={URL_FORM.URL_TITLE: current_title},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_title_response.status_code == 200
+    assert update_url_title_response.json[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_TITLE_UPDATED) == 0
 
 
 def test_update_url_title_url_adder(

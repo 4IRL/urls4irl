@@ -2,6 +2,8 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
+from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
@@ -16,6 +18,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
@@ -107,6 +110,97 @@ def test_update_valid_utub_description_as_creator(
                     final_utub_names_and_descriptions[utub_name]
                     == all_utub_names_and_descriptions[utub_name]
                 )
+
+
+def test_update_utub_desc_records_metric_when_changed(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub and metrics enabled
+    WHEN the creator PATCHes "/utubs/<utub_id>/description" with a new (different) description
+    THEN the request returns HTTP 200 AND exactly one UTUB_DESC_UPDATED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_DESCRIPTION = "Anonymous-metrics: this is a new UTub description"
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+
+    # Before-state: no UTUB_DESC_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DESC_UPDATED) == 0
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: NEW_DESCRIPTION},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_utub_desc_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DESC_UPDATED) == 1
+
+
+def test_update_utub_desc_does_not_record_metric_when_unchanged(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub and metrics enabled
+    WHEN the creator PATCHes "/utubs/<utub_id>/description" twice — first with the
+        unchanged non-empty description, then with None while the stored value is
+        the empty string ""
+    THEN no UTUB_DESC_UPDATED counter is written for either call. Validates the
+        `(value or "")` normalization at backend/utubs/services/update_utubs.py:61
+        treats None and "" as identical and does not falsely register a change.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+        current_utub_description = utub_of_user.utub_description
+
+    # Before-state: no UTUB_DESC_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DESC_UPDATED) == 0
+
+    # PATCH-1: same non-empty description — must not emit
+    first_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        json={
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description
+        },
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+    assert first_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DESC_UPDATED) == 0
+
+    # Mutate the UTub description to the empty string at the DB layer (bypassing
+    # the service so no metric fires), then PATCH with the empty string payload.
+    # Empty string sanitizes to None upstream; (None or "") == ("" or "") proves
+    # the normalization holds — no metric must fire.
+    with app.app_context():
+        utub_to_clear: Utubs = Utubs.query.get(current_utub_id)
+        utub_to_clear.utub_description = ""
+        db.session.commit()
+
+    second_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: ""},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+    assert second_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DESC_UPDATED) == 0
 
 
 def test_update_valid_empty_utub_description_as_creator(

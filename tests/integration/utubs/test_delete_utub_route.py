@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
@@ -16,6 +17,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import valid_empty_utub_1
 from tests.utils_for_test import is_string_in_logs
 
@@ -74,6 +76,72 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
         # Assert no UTubs and no UTub-User associations exist in the database after deletion
         assert Utubs.query.count() == initial_num_utubs - 1
         assert Utub_Members.query.count() == 0
+
+
+def test_delete_utub_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_utub_as_user_after_logging_in,
+):
+    """
+    GIVEN a valid logged-in user, a UTub they created, and metrics enabled
+    WHEN they DELETE "/utubs/<utub_id>"
+    THEN the request succeeds with HTTP 200 AND exactly one UTUB_DELETED
+        counter key is written to the metrics Redis DB.
+
+    The setup fixture inserts the UTub directly via the ORM (bypassing
+    the service layer) so no UTUB_CREATED counter is emitted during
+    setup — only UTUB_DELETED should be observable.
+    """
+    client, utub_id, csrf_token, _ = add_single_utub_as_user_after_logging_in
+
+    # Before-state: no UTUB_DELETED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DELETED) == 0
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_DELETED) == 1
+
+
+def test_delete_utub_does_not_inflate_member_removed_counter(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_multiple_users_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in UTub creator and a UTub populated with two
+        additional non-creator members via the ORM-only setup fixture
+        (so no MEMBER_ADDED counter was emitted during setup), and
+        metrics enabled
+    WHEN the creator DELETEs "/utubs/<utub_id>"
+    THEN the request returns HTTP 200 AND no MEMBER_REMOVED counter
+        key is written — proving the ORM cascade on `Utubs.members`
+        wipes child `Utub_Members` rows at the DB layer without ever
+        calling `_remove_member_from_utub`.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = current_utub.id
+
+    # Before-state: no MEMBER_REMOVED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_REMOVED) == 0
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_REMOVED) == 0
 
 
 def test_delete_existing_utub_with_members_but_no_urls_no_tags(

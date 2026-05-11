@@ -4,6 +4,8 @@ from backend import db
 from backend.api_common.request_utils import is_current_utub_creator
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, safe_add_many_logs, warning_log
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.schemas.errors import build_message_error_response
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
@@ -168,6 +170,7 @@ def _remove_member_from_utub(
             f"User={user_id_to_remove}",
         ]
     )
+    record_event(EventName.MEMBER_REMOVED)
 
     return APIResponse(
         message=MEMBER_SUCCESS.MEMBER_REMOVED,
