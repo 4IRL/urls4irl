@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Generator, Tuple
+from typing import Generator
 
 import pytest
 from flask import Flask, url_for
@@ -33,7 +33,7 @@ pytestmark = pytest.mark.cli
 
 @pytest.fixture
 def metrics_enabled_runner_app(
-    runner: Tuple[Flask, FlaskCliRunner],
+    runner: tuple[Flask, FlaskCliRunner],
     provide_metrics_redis: Redis,
 ) -> Generator[Flask, None, None]:
     """Activate the metrics_writer extension on the `runner` fixture's app.
