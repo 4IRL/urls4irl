@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
@@ -17,6 +18,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
@@ -108,6 +110,75 @@ def test_update_valid_utub_name_as_creator(
                     final_utub_names_and_descriptions[utub_desc]
                     == all_utub_names_and_descriptions[utub_desc]
                 )
+
+
+def test_update_utub_name_records_metric_when_changed(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub and metrics enabled
+    WHEN the creator PATCHes "/utubs/<utub_id>/name" with a new (different) name
+    THEN the request returns HTTP 200 AND exactly one UTUB_TITLE_UPDATED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_NAME = "Renamed UTub"
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+
+    # Before-state: no UTUB_TITLE_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_TITLE_UPDATED) == 0
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        json={UTUB_FORM.UTUB_NAME: NEW_NAME},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_utub_name_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_TITLE_UPDATED) == 1
+
+
+def test_update_utub_name_does_not_record_metric_when_unchanged(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub and metrics enabled
+    WHEN the creator PATCHes "/utubs/<utub_id>/name" with the current (unchanged) name
+    THEN the request returns HTTP 200 AND NO UTUB_TITLE_UPDATED counter key
+        is written — the no-change branch must not emit the metric.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+        current_utub_name = utub_of_user.name
+
+    # Before-state: no UTUB_TITLE_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_TITLE_UPDATED) == 0
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        json={UTUB_FORM.UTUB_NAME: current_utub_name},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_utub_name_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_TITLE_UPDATED) == 0
 
 
 def test_update_valid_utub_same_name_as_creator(

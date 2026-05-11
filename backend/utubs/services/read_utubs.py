@@ -2,6 +2,8 @@ from flask_login import current_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
 from backend.schemas.utubs import UtubDetailSchema
@@ -14,6 +16,7 @@ def get_single_utub_for_user(current_utub: Utubs) -> FlaskResponse:
     db.session.commit()
 
     safe_add_log(f"Retrieving UTub.id={current_utub.id} from direct route")
+    record_event(EventName.UTUB_OPENED)
     return APIResponse(data=utub_schema, status_code=200).to_response()
 
 

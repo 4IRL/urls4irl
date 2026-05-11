@@ -1,6 +1,8 @@
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, safe_add_many_logs
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utubs import Utubs
 from backend.schemas.utubs import (
     UtubDescUpdatedResponseSchema,
@@ -34,6 +36,7 @@ def update_utub_name_if_new(current_utub: Utubs, utub_name: str) -> FlaskRespons
                 f"NEW UTub.name={current_utub.name}",
             ]
         )
+        record_event(EventName.UTUB_TITLE_UPDATED)
 
     return APIResponse(
         data=UtubNameUpdatedResponseSchema(
@@ -71,6 +74,7 @@ def update_utub_desc_if_new(
                 f"NEW UTub.description={utub_description}",
             ]
         )
+        record_event(EventName.UTUB_DESC_UPDATED)
     else:
         safe_add_log("No change in UTub description")
 
