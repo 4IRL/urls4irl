@@ -151,6 +151,38 @@ def test_add_utub_records_metric(
     assert count_counter_keys(provide_metrics_redis, EventName.UTUB_CREATED) == 1
 
 
+def test_create_utub_does_not_record_member_added(
+    metrics_enabled_app, provide_metrics_redis, login_first_user_with_register
+):
+    """
+    GIVEN a valid logged-in user with metrics enabled
+    WHEN they POST to "/utubs" with a valid payload (which triggers the
+        creator's auto-membership insertion via
+        `_create_new_utub_member_for_utub_creator`)
+    THEN the request succeeds with HTTP 200 AND no MEMBER_ADDED counter
+        key is written — proving the helper inlines the `Utub_Members`
+        insert directly and does NOT re-enter `create_utub_member`.
+    """
+    client, csrf_token, _, _ = login_first_user_with_register
+
+    # Before-state: no MEMBER_ADDED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
+
+    new_utub_response = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert new_utub_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
+
+
 def test_add_utub_with_valid_form_empty_description(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page

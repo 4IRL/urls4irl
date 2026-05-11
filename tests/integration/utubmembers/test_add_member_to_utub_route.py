@@ -3,6 +3,7 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
 from backend.models.utubs import Utubs
@@ -20,6 +21,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.schemas.users import UserSchema
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
@@ -128,6 +130,44 @@ def test_add_valid_users_to_utub_as_creator(
 
             # Ensure correct count of Utub-User associations
             assert Utub_Members.query.count() == initial_num_user_utubs
+
+
+def test_add_member_to_utub_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a creator of a UTub (no other members) and metrics enabled
+    WHEN the creator POSTs to "/utubs/<utub_id>/members" with a valid
+        non-member's username
+    THEN the request returns HTTP 200 AND exactly one MEMBER_ADDED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Pick a user not yet in the creator's UTub
+        non_member: Users = Users.query.filter(Users.id != current_user.id).first()
+        non_member_username = non_member.username
+
+    # Before-state: no MEMBER_ADDED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 0
+
+    add_member_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_user_is_creator_of),
+        json={ADD_USER_FORM.USERNAME: non_member_username},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_member_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_ADDED) == 1
 
 
 def test_add_then_remove_then_add_user_who_has_urls_to_utub(

@@ -3,6 +3,7 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
 from backend.models.utubs import Utubs
@@ -18,6 +19,7 @@ from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.schemas.users import UserSchema
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
@@ -188,6 +190,87 @@ def test_remove_self_from_utub_as_member(
 
         # Ensure counts of Utubs-User associations is correct
         assert Utub_Members.query.count() == initial_num_user_utubs - 1
+
+
+def test_remove_member_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_user_to_utub_without_logging_in,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in UTub creator, a UTub with another member added via
+        the ORM-only setup fixture (so no MEMBER_ADDED counter is
+        emitted during setup), and metrics enabled
+    WHEN the creator DELETEs "/utubs/<utub_id>/members/<user_id>" to
+        remove the other member
+    THEN the request returns HTTP 200 AND exactly one MEMBER_REMOVED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        second_user_association: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub.id,
+            Utub_Members.user_id != current_user.id,
+        ).first()
+        second_user_id = second_user_association.user_id
+        utub_id = current_utub.id
+
+    # Before-state: no MEMBER_REMOVED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_REMOVED) == 0
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub_id,
+            user_id=second_user_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert remove_user_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_REMOVED) == 1
+
+
+def test_self_leave_records_member_removed_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_single_user_to_utub_without_logging_in,
+    login_second_user_without_register,
+):
+    """
+    GIVEN a non-creator member of a UTub (the second user) logged in
+        with metrics enabled
+    WHEN the member DELETEs "/utubs/<utub_id>/members/<own_user_id>" to
+        leave the UTub themselves
+    THEN the request returns HTTP 200 AND exactly one MEMBER_REMOVED
+        counter key is written to the metrics Redis DB — confirming the
+        self-leave path lands in `_remove_member_from_utub` and emits
+        the same event as creator-removes-other.
+    """
+    client, csrf_token, _, app = login_second_user_without_register
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.first()
+        utub_id = current_utub.id
+        current_user_id = current_user.id
+
+    # Before-state: no MEMBER_REMOVED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_REMOVED) == 0
+
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub_id,
+            user_id=current_user_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert remove_user_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.MEMBER_REMOVED) == 1
 
 
 def test_remove_valid_user_with_urls_from_utub_as_creator(
