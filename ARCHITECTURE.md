@@ -211,15 +211,37 @@ All inter-module communication uses typed events:
 
 ## Redis DB Allocation
 
-A single Redis instance is partitioned by numeric DB index. The trailing `/N` in each URI is the only thing distinguishing them, so the meaning is documented here rather than re-derived from env-var names.
+Two separate Redis instances back the stack: a shared `redis` container for sessions and rate-limiting, and a dedicated `redis-metrics` container for the anonymous-metrics counter buffer.
 
-| DB  | Env var              | Purpose                                                                          |
-| --- | -------------------- | -------------------------------------------------------------------------------- |
-| 0   | `REDIS_URI`          | Flask-Session sessions, Flask-Limiter rate limiting                              |
-| 1   | `TEST_REDIS_URI`     | Integration test sessions (isolated from dev DB 0 so tests don't evict sessions) |
-| 2   | `METRICS_REDIS_URI`  | Workflow metrics counters, batch IDs, and the `metrics:flush:*` liveness sentinel |
+**Shared `redis` container:**
 
-The literal `/N` digits live in: `backend/config.py` (prod URI assembly), `docker/compose.local.yaml`, `docker/compose.dev.yaml`, `docker/startup-workflow.sh` (workflow-container assembly), `docker/smoke-test.sh` (CI verification), and `.github/workflows/test.yml`. **Adding a new DB requires updating all of the above and this table.**
+| DB  | Env var          | Purpose                                                                          |
+| --- | ---------------- | -------------------------------------------------------------------------------- |
+| 0   | `REDIS_URI`      | Flask-Session sessions, Flask-Limiter rate limiting                              |
+| 1   | `TEST_REDIS_URI` | Integration test sessions (isolated from dev DB 0 so tests don't evict sessions) |
+
+**Dedicated `redis-metrics` container:**
+
+| DB  | Env var             | Purpose                                                                                        |
+| --- | ------------------- | ---------------------------------------------------------------------------------------------- |
+| 0   | `METRICS_REDIS_URI` | Workflow metrics counters, batch IDs, and the `metrics:flush:*` flush lock + liveness sentinel |
+
+The `redis-metrics` container is bounded at `maxmemory 256mb` with `allkeys-lru` eviction and runs with no persistence (`--save ''`, `--appendonly no`) — the metrics buffer is intentionally ephemeral.
+
+**Why two containers:** Redis `maxmemory` and eviction are per-instance, not per-DB. Keeping metrics on a dedicated container ensures a stuck flush worker can never starve sessions or the rate-limiter, and a misconfigured `maxmemory` cap on the metrics buffer can never silently evict session keys.
+
+Both URIs are assembled in `backend/config.py` (production) and declared in each compose file (`docker/compose.local.yaml`, `docker/compose.dev.yaml`, `docker/compose.yaml`) for their respective environments. The workflow container assembles its `METRICS_REDIS_URI` in `docker/startup-workflow.sh`; CI declares both service containers and their URIs in `.github/workflows/test.yml`.
+
+### Cutover
+
+The cutover from the previous single-instance topology (shared `redis` DB 2 for metrics) to the dedicated `redis-metrics` container follows this sequence:
+
+1. **Pre-deploy**: confirm shared `redis` DB 2 contains only `metrics:counter:*`, `metrics:batch:*`, `metrics:flush:lock`, `metrics:flush:last_success_epoch` keys. Verify via `docker compose exec u4i-prod-redis redis-cli -a "$REDIS_PASSWORD" -n 2 KEYS '*'`.
+2. **Deploy**: ship the PR. Compose now declares `redis-metrics`; `web` and `workflow` `depends_on` the new container; `METRICS_REDIS_URI` consumers point at the new host. After health checks pass, the new container is the active metrics buffer.
+3. **Expected data loss**: any in-flight `metrics:counter:*` keys on the shared instance's DB 2 are silently abandoned at deploy. Worst case is one flush cycle (≤60 seconds) of unflushed counters. The `metrics:flush:last_success_epoch` sentinel resets to "no recent success" on the new container; the alert may briefly fire and resolve.
+4. **Post-deploy cleanup**: once the new container's flush sentinel reports healthy (`docker compose exec u4i-prod-workflow /opt/metrics-venv/bin/python /app/check_flush_liveness.py` returns `0`), reclaim DB 2 on the shared instance: `docker compose exec u4i-prod-redis redis-cli -a "$REDIS_PASSWORD" -n 2 FLUSHDB`.
+5. **Operator monitoring** (steady-state): `docker compose exec u4i-prod-redis-metrics redis-cli INFO stats | grep evicted_keys` — a non-zero rate is the early-warning signal that flush is failing or `maxmemory` is undersized. Pair with the existing flush-liveness alert.
+6. **Tuning**: if `evicted_keys` grows persistently, raise `--maxmemory` in `docker/compose.yaml` (the dedicated instance can scale independently of the shared instance's working set).
 
 ## API Pattern
 
@@ -290,9 +312,9 @@ Organized by domain with per-feature conftest files:
 - `docker/Dockerfile` - production multi-stage build (Python 3.11-slim)
 - `docker/Dockerfile.Local` - local dev
 - `docker/Dockerfile.Vite` - Vite dev server container
-- `docker/compose.local.yaml` - full local stack (web, vite, db, test-db, redis, selenium, workflow)
-- `docker/compose.yaml` - production stack
-- `docker/compose.dev.yaml` - dev server stack
+- `docker/compose.local.yaml` - full local stack (web, vite, db, test-db, redis, redis-metrics, selenium, workflow)
+- `docker/compose.yaml` - production stack (web, db, redis, redis-metrics, workflow)
+- `docker/compose.dev.yaml` - dev server stack (web, db, redis, redis-metrics, workflow)
 
 ## Environment Variables
 
