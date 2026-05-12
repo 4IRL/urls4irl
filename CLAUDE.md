@@ -188,7 +188,7 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 
 ### Metrics Verification (local stack)
 
-Bring the stack up with metrics enabled (`METRICS_ENABLED=true make up d=1`) to exercise the anonymous-metrics pipeline end-to-end. Local default is `METRICS_ENABLED=false` (overridable via env), prod is hard-`false` by rollout strategy, dev is hard-`true`.
+Bring the stack up with `make up d=1` to exercise the anonymous-metrics pipeline end-to-end. The local developer shell exports `METRICS_ENABLED=true`, so a bare `make up d=1` picks it up — **never prefix `METRICS_ENABLED=true` on local commands**. The compose file declares `METRICS_ENABLED=${METRICS_ENABLED:-false}`, but the shell export wins for this stack. To exercise the disabled path, set `METRICS_ENABLED=false` explicitly. Prod is hard-`false` by rollout strategy; dev is hard-`true`.
 
 | Command | Description |
 |---|---|

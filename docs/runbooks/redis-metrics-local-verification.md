@@ -8,7 +8,7 @@ Run top-to-bottom. Each step has a pass criterion; deviations point to a specifi
 
 ```bash
 make down                       # ensure clean state — testing on stale state masks wiring bugs
-METRICS_ENABLED=true make up d=1
+make up d=1                     # local shell exports METRICS_ENABLED=true; do not prefix
 docker compose --project-directory . -f docker/compose.local.yaml ps
 ```
 
@@ -88,12 +88,17 @@ docker compose exec redis redis-cli -n 2 KEYS '*'
 
 ## Step 7 — Flush worker reads from `redis-metrics`, writes to Postgres
 
+The workflow container's cron runs `flush_metrics.py` every minute with a ~50s lock TTL, so on the local stack the lock is held for almost every second of every minute and a bare `make metrics-flush-now` will log `another flush is in progress, skipping`. To demonstrate the **manual** flush path (in addition to the cron path), drop the lock first:
+
 ```bash
+docker compose exec redis-metrics redis-cli UNLINK metrics:flush:lock
 make metrics-flush-now
 make metrics-rows
 ```
 
-**Pass:** `metrics-flush-now` logs `upserted=N` for some `N>=1`, and `metrics-rows` shows recent rows for the current hour bucket.
+**Pass:** `metrics-flush-now` logs `upserted=N` for some `N>=1`, and `metrics-rows` shows recent rows for the current hour bucket. The next minute-cron tick will re-acquire the lock — that is expected.
+
+If you'd rather verify the **cron** path (no lock manipulation), just wait ~60s after Step 5 and run `make metrics-rows` — the cron will have drained the counters into Postgres on its own.
 
 Verify the liveness sentinel was updated on the dedicated container:
 
@@ -135,7 +140,13 @@ docker compose exec redis-metrics redis-cli CONFIG SET maxmemory 268435456
 
 **Pass:** `evicted_keys:N` for some `N>0`, AND shared `redis` still has no `metrics:*` keys.
 
-**Fail mode:** if you see `OOM command not allowed when used with 'maxmemory'` in `docker compose logs web | grep OOM`, the eviction policy wasn't applied — recheck Step 1's `maxmemory-policy=allkeys-lru`.
+Under a 1 mb cap with concurrent writers, expect a steady stream of `redis.exceptions.OutOfMemoryError: ... command not allowed when used memory > 'maxmemory'` lines in `docker compose logs web` — the writer is racing eviction inside MULTI/EXEC pipelines, and individual pipelined commands lose. That is **not** a fail signal on its own: the structural pass criterion is `evicted_keys>0` **and** shared redis untouched. Eviction running concurrently with some pipeline rejections is the expected behavior.
+
+**Fail mode (real):** the eviction policy wasn't applied — recheck Step 1's `maxmemory-policy=allkeys-lru`. The diagnostic is `evicted_keys:0` after the 2000 hits, not the presence of error logs. To inspect:
+
+```bash
+docker compose logs web | grep -E "OutOfMemoryError|maxmemory"
+```
 
 The deterministic automated equivalent is `make test-file f=tests/integration/system/test_metrics_redis_isolation.py`.
 
@@ -154,5 +165,6 @@ make down                       # stops the stack
 | `redis-metrics` unhealthy                                | `docker compose logs redis-metrics` — check `--maxmemory` value or port       |
 | `metrics-snapshot` prints nothing after a curl           | `METRICS_ENABLED` not set, or web container started before the env change     |
 | Counters appear on shared `redis` (`-n 2`)               | Web container env still points at old URI — `make restart c=web`              |
-| `metrics-flush-now` succeeds but `metrics-rows` is empty | Flush worker is hitting a different Postgres than expected — check workflow env|
-| OOM error in web logs during Step 9                      | `maxmemory-policy` not `allkeys-lru` on the dedicated container               |
+| `metrics-flush-now` logs `another flush is in progress, skipping` | Workflow cron holds the lock — Step 7 expects you to `UNLINK metrics:flush:lock` first |
+| `metrics-flush-now` succeeds but `metrics-rows` is empty | Flush worker is hitting a different Postgres than expected — check workflow env       |
+| Step 9 ends with `evicted_keys:0`                        | `maxmemory-policy` not `allkeys-lru` on the dedicated container — NOT the presence of `OutOfMemoryError` logs, which are expected under 1 mb cap |
