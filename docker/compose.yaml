@@ -84,6 +84,20 @@ services:
     command: >
       /bin/sh -c "redis-server --appendonly yes --requirepass $(cat /run/secrets/REDIS_PASSWORD)"
 
+  redis-metrics:
+    image: redis:6.2
+    container_name: u4i-prod-redis-metrics
+    restart: unless-stopped
+    secrets:
+      - REDIS_PASSWORD
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    command: >
+      /bin/sh -c "redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no --requirepass $(cat /run/secrets/REDIS_PASSWORD)"
+
   workflow:
     container_name: u4i-prod-workflow
     image: ghcr.io/4irl/u4i-workflow:latest

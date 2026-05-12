@@ -182,6 +182,16 @@ services:
       timeout: 5s
       retries: 3
 
+  redis-metrics:
+    image: redis:6.2
+    container_name: u4i-local-redis-metrics
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   pgdata:
   redisdata:

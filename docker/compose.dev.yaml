@@ -62,6 +62,17 @@ services:
       timeout: 5s
       retries: 3
 
+  redis-metrics:
+    restart: unless-stopped
+    image: redis:6.2
+    container_name: u4i-dev-redis-metrics
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   workflow:
     restart: unless-stopped
     container_name: u4i-dev-workflow
