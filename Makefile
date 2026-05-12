@@ -90,11 +90,11 @@ prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker volume prune -f
 	docker builder prune -f
 
-metrics-watch: ## Live tail Redis ops on metrics DB 2 (requires METRICS_ENABLED=true on web)
-	$(COMPOSE) exec redis redis-cli -n 2 MONITOR
+metrics-watch: ## Live tail Redis ops on dedicated redis-metrics container (requires METRICS_ENABLED=true on web)
+	$(COMPOSE) exec redis-metrics redis-cli MONITOR
 
 metrics-snapshot: ## Snapshot current metrics:counter:* keys with values
-	$(COMPOSE) exec redis sh -c 'for k in $$(redis-cli -n 2 --scan --pattern "metrics:counter:*"); do echo "$$k = $$(redis-cli -n 2 GET $$k)"; done'
+	$(COMPOSE) exec redis-metrics sh -c 'for k in $$(redis-cli --scan --pattern "metrics:counter:*"); do echo "$$k = $$(redis-cli GET $$k)"; done'
 
 metrics-flush-now: ## Trigger an immediate flush worker run (drains Redis -> Postgres)
 	$(COMPOSE) exec workflow sh -c 'if [ ! -f /app/container_environment ]; then echo "ERROR: /app/container_environment missing on workflow container. Run METRICS_ENABLED=true make up d=1 first." >&2; exit 1; fi; set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py'
@@ -105,7 +105,7 @@ metrics-rows: ## Show last 25 flushed rows from AnonymousMetrics
 metrics-smoke-test: metrics-snapshot metrics-flush-now metrics-rows ## E2E: snapshot Redis, force flush, dump Postgres rows
 
 metrics-clear-counters: ## Delete pending Redis state (metrics:counter:* and metrics:batch:*); leaves flush lock/sentinel intact
-	$(COMPOSE) exec redis sh -c 'redis-cli -n 2 --scan --pattern "metrics:counter:*" | xargs -r redis-cli -n 2 UNLINK; redis-cli -n 2 --scan --pattern "metrics:batch:*" | xargs -r redis-cli -n 2 UNLINK'
+	$(COMPOSE) exec redis-metrics sh -c 'redis-cli --scan --pattern "metrics:counter:*" | xargs -r redis-cli UNLINK; redis-cli --scan --pattern "metrics:batch:*" | xargs -r redis-cli UNLINK'
 
 metrics-clear-rows: ## Truncate AnonymousMetrics in Postgres
 	$(COMPOSE) exec db sh -c 'psql -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -c "TRUNCATE TABLE \"AnonymousMetrics\";"'
