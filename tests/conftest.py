@@ -22,6 +22,7 @@ from backend.config import (
     POSTGRES_USER,
     POSTGRES_PASSWORD,
     TEST_DB_URI,
+    TEST_METRICS_REDIS_URI,
     TEST_REDIS_URI,
 )
 from backend.utils.db_uri_builder import build_db_uri
@@ -47,13 +48,15 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
-# Per-worker metrics Redis DB index base. Each xdist worker is assigned
-# `_METRICS_REDIS_DB_BASE + worker_num` to keep counter keys isolated across
-# parallel test runs. With the n=8 worker cap (per CLAUDE.md), the highest
-# assigned metrics DB index is 15 — exactly at the boundary of Redis's default
-# 16-database limit (indices 0..15). Raising the worker count above 8 (or the
-# base above 8) requires either bumping `--databases` in the test compose
-# files or rebasing the metrics DB block to a lower start.
+# Per-worker metrics Redis DB index base on the dedicated `redis-metrics`
+# container. Each xdist worker is assigned `_METRICS_REDIS_DB_BASE + worker_num`
+# to keep counter keys isolated across parallel test runs. With the n=8 worker
+# cap (per CLAUDE.md), the highest assigned metrics DB index is 15 — exactly at
+# the boundary of the dedicated container's default 16-database limit (indices
+# 0..15). The constraint is the dedicated container's `--databases` config, not
+# contention with session DBs on the shared Redis. Raising the worker count
+# above 8 (or the base above 8) requires either bumping `--databases` on the
+# `redis-metrics` service or rebasing the metrics DB block to a lower start.
 _METRICS_REDIS_DB_BASE = 8
 
 
@@ -269,24 +272,53 @@ def worker_redis_uri(worker_id: str) -> str:
 
 
 @pytest.fixture(scope="session")
+def worker_metrics_redis_uri(worker_id: str) -> str:
+    """Returns a per-worker metrics Redis URI on the dedicated redis-metrics container.
+
+    Master worker is intentionally mapped to ``_METRICS_REDIS_DB_BASE`` (DB 8 by
+    default) so tests never share DB 0 with the production-style runtime
+    `METRICS_REDIS_URI` (which is the only DB used in production on the
+    dedicated `redis-metrics` container). Parallel workers gw0..gw7 map to DBs
+    `_METRICS_REDIS_DB_BASE + worker_num` (8..15 by default).
+    """
+    if not TEST_METRICS_REDIS_URI or TEST_METRICS_REDIS_URI == "memory://":
+        return TEST_METRICS_REDIS_URI
+    base, _db_str = TEST_METRICS_REDIS_URI.rsplit("/", 1)
+    worker_num = _get_worker_num(worker_id) or 0
+    db_index = _METRICS_REDIS_DB_BASE + worker_num
+
+    probe = Redis.from_url(f"{base}/0")
+    try:
+        max_dbs = int(
+            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
+        )
+    finally:
+        probe.close()
+
+    if db_index >= max_dbs:
+        raise ValueError(
+            f"Metrics Redis DB index {db_index} is out of range for worker '{worker_id}'. "
+            f"redis-metrics only has {max_dbs} databases (0-{max_dbs - 1}). "
+            f"_METRICS_REDIS_DB_BASE is {_METRICS_REDIS_DB_BASE}. "
+            f"Either increase redis-metrics 'databases' config or lower _METRICS_REDIS_DB_BASE."
+        )
+
+    return f"{base}/{db_index}"
+
+
+@pytest.fixture(scope="session")
 def build_app(
     ignore_deprecation_warning,
     worker_db_uri: str,
     worker_redis_uri: str,
-    worker_id: str,
+    worker_metrics_redis_uri: str,
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
-    worker_num = _get_worker_num(worker_id) or 0
+    if worker_metrics_redis_uri and worker_metrics_redis_uri != "memory://":
+        config.METRICS_REDIS_URI = worker_metrics_redis_uri
     if worker_redis_uri and worker_redis_uri != "memory://":
-        metrics_db = _METRICS_REDIS_DB_BASE + worker_num
-        assert metrics_db <= 15, (
-            "n>8 workers exceed default Redis 16-DB limit; "
-            "bump --databases in compose or lower _METRICS_REDIS_DB_BASE"
-        )
-        base, _trailing_db = worker_redis_uri.rsplit("/", 1)
-        config.METRICS_REDIS_URI = f"{base}/{metrics_db}"
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
 

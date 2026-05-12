@@ -12,6 +12,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      redis-metrics:
+        condition: service_healthy
     environment:
       - PRODUCTION=true
       - FLASK_DEBUG=false
@@ -108,6 +110,8 @@ services:
       db:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      redis-metrics:
         condition: service_healthy
     secrets:
       - POSTGRES_DB

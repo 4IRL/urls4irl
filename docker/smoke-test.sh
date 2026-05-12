@@ -118,7 +118,7 @@ CONTAINER_ID=$(docker run -d \
     -e POSTGRES_USER=bob \
     -e POSTGRES_DB=test \
     -e POSTGRES_PASSWORD=test \
-    -e METRICS_REDIS_URI="redis://${SMOKE_REDIS}:6379/2" \
+    -e METRICS_REDIS_URI="redis://${SMOKE_REDIS}:6379/0" \
     -e METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180 \
     --name "$SMOKE_MAIN" \
     "$IMAGE_NAME"
@@ -181,7 +181,7 @@ echo "✅ State 1 PASSED"
 
 echo "🧪 State 2 — fresh sentinel (expect 0)..."
 NOW_EPOCH=$(date +%s)
-docker exec "$SMOKE_REDIS" redis-cli -n 2 SET metrics:flush:last_success_epoch "$NOW_EPOCH" >/dev/null
+docker exec "$SMOKE_REDIS" redis-cli SET metrics:flush:last_success_epoch "$NOW_EPOCH" >/dev/null
 if ! run_liveness_check; then
     echo "❌ State 2 FAILED: expected exit 0, got non-zero"
     cat "$LIVENESS_STDERR_FILE"
@@ -190,7 +190,7 @@ fi
 echo "✅ State 2 PASSED"
 
 echo "🧪 State 3 — stale sentinel (expect non-zero + 'stale')..."
-docker exec "$SMOKE_REDIS" redis-cli -n 2 SET metrics:flush:last_success_epoch 0 >/dev/null
+docker exec "$SMOKE_REDIS" redis-cli SET metrics:flush:last_success_epoch 0 >/dev/null
 if run_liveness_check; then
     echo "❌ State 3 FAILED: expected non-zero exit, got 0"
     cat "$LIVENESS_STDERR_FILE"

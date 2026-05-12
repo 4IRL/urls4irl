@@ -73,6 +73,7 @@ TEST_DB_URI = build_db_uri(
 
 
 TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
+TEST_METRICS_REDIS_URI = environ.get(ENV.TEST_METRICS_REDIS_URI, default="memory://")
 TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
 
 LOG_DIR = environ.get(ENV.LOG_DIR, default="logs")
@@ -81,10 +82,10 @@ if IS_PRODUCTION:
     redis_password = environ.get("REDIS_PASSWORD", "")
     encoded_password = quote(redis_password)
     REDIS_URI = "redis://:" + encoded_password + "@redis:6379/0"
-    # Metrics counter/batch keys live on a dedicated Redis logical DB to keep
-    # them isolated from session and rate-limit keyspaces. Built from the same
-    # REDIS_PASSWORD secret as REDIS_URI; the trailing /2 is the metrics DB.
-    METRICS_REDIS_URI = "redis://:" + encoded_password + "@redis:6379/2"
+    # Metrics counter/batch keys live on a dedicated `redis-metrics` container,
+    # distinct from the shared Redis used for sessions and rate-limiting. Built
+    # from the same REDIS_PASSWORD secret as REDIS_URI.
+    METRICS_REDIS_URI = "redis://:" + encoded_password + "@redis-metrics:6379/0"
 else:
     REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
     METRICS_REDIS_URI = environ.get(ENV.METRICS_REDIS_URI, default=None)
