@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from typing import Generator
 from unittest import mock
 from unittest.mock import patch
 
@@ -17,21 +16,6 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 from tests.integration.system.metrics_helpers import find_counter_keys
 
 pytestmark = pytest.mark.cli
-
-
-@pytest.fixture
-def writer_with_metrics_enabled(
-    app: Flask, provide_metrics_redis: Redis
-) -> Generator[MetricsWriter, None, None]:
-    """Initialize a fresh MetricsWriter against the per-worker metrics DB
-    with `METRICS_ENABLED=True`. Restores the original config flag on teardown.
-    """
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    metrics_writer = MetricsWriter()
-    metrics_writer.init_app(app)
-    yield metrics_writer
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
 
 
 def test_writer_increments_redis_counter_for_api_hit(
