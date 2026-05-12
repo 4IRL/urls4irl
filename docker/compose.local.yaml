@@ -18,12 +18,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      redis-metrics:
+        condition: service_healthy
     env_file:
       - .env
     environment:
       - PRODUCTION=false
       - REDIS_URI=redis://redis:6379/0
       - TEST_REDIS_URI=redis://redis:6379/1
+      - TEST_METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - FLASK_DEBUG=true
       - FLASK_ENV=development
       - BASE_EMAIL=u4i@urls4irl.app
@@ -39,7 +42,7 @@ services:
       - METRICS_ENABLED=${METRICS_ENABLED:-false}
       - METRICS_FLUSH_INTERVAL_SECONDS=60
       - METRICS_BUCKET_SECONDS=3600
-      - METRICS_REDIS_URI=redis://redis:6379/2
+      - METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - METRICS_BATCH_NONCE_TTL_SECONDS=120
     volumes:
       - ./run.py:/code/u4i/run.py
@@ -116,10 +119,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      redis-metrics:
+        condition: service_healthy
     environment:
       - PRODUCTION=false
       - DEV_SERVER=false
-      - METRICS_REDIS_URI=redis://redis:6379/2
+      - METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
       - POSTGRES_HOST=db
@@ -176,6 +181,16 @@ services:
     command: redis-server --databases 32
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  redis-metrics:
+    image: redis:6.2
+    container_name: u4i-local-redis-metrics
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

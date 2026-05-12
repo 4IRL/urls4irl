@@ -36,6 +36,7 @@ from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
 )
 
@@ -190,6 +191,7 @@ def test_dismiss_delete_member_modal_key(
     delete_member_active_utub(browser, member_name)
 
     wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_until_in_focus(browser, HPL.HOME_MODAL, timeout=3)
 
     browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL).send_keys(Keys.ESCAPE)
 

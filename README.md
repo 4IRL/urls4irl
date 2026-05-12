@@ -43,6 +43,7 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 | `MAILJET_SECRET_KEY` | Yes | - | Mailjet secret key |
 | `POSTGRES_TEST_DB` | No | - | Test database name for pytest |
 | `REDIS_URI` | No | `memory://` | Redis connection URI |
+| `METRICS_REDIS_URI` | No | `memory://` | Redis URI for the dedicated metrics counter buffer (separate from `REDIS_URI`) |
 | `SELENIUM_URL` | No | - | Selenium Grid URL for UI tests |
 | `ENABLE_SSL` | No | `false` | Enable HTTPS in local dev (Flask + Vite) |
 | `VITE_URL` | No | `http://localhost:5173` | Vite dev server URL (use `https://` when `ENABLE_SSL=true`) |

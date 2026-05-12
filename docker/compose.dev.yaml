@@ -12,6 +12,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      redis-metrics:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -21,7 +23,7 @@ services:
       - DOCKER=true
       - DEV_SERVER=true
       - METRICS_ENABLED=true
-      - METRICS_REDIS_URI=redis://redis:6379/2
+      - METRICS_REDIS_URI=redis://redis-metrics:6379/0
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
@@ -62,6 +64,17 @@ services:
       timeout: 5s
       retries: 3
 
+  redis-metrics:
+    restart: unless-stopped
+    image: redis:6.2
+    container_name: u4i-dev-redis-metrics
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   workflow:
     restart: unless-stopped
     container_name: u4i-dev-workflow
@@ -75,10 +88,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      redis-metrics:
+        condition: service_healthy
     environment:
       - PRODUCTION=false
       - DEV_SERVER=true
-      - METRICS_REDIS_URI=redis://redis:6379/2
+      - METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180
       - POSTGRES_HOST=db

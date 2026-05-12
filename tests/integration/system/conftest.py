@@ -1,6 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Generator
+
+import pytest
+from flask import Flask
+from redis import Redis
+
+from backend.extensions.metrics.writer import MetricsWriter
+from backend.utils.strings.config_strs import CONFIG_ENVS
 
 
 def reset_postgres_enum_to_lowercase_values(pg_conn: Any) -> None:
@@ -27,3 +34,18 @@ def reset_postgres_enum_to_lowercase_values(pg_conn: Any) -> None:
             " TYPE event_category_enum USING category::event_category_enum"
         )
     pg_conn.commit()
+
+
+@pytest.fixture
+def writer_with_metrics_enabled(
+    app: Flask, provide_metrics_redis: Redis
+) -> Generator[MetricsWriter, None, None]:
+    """Initialize a fresh MetricsWriter against the per-worker metrics DB
+    with `METRICS_ENABLED=True`. Restores the original config flag on teardown.
+    """
+    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
+    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
+    metrics_writer = MetricsWriter()
+    metrics_writer.init_app(app)
+    yield metrics_writer
+    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled

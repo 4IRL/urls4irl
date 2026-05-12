@@ -140,20 +140,22 @@ jobs:
             run: >
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
               cd /home/u4i/;
-              hasRedis=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep redis);
+              hasRedis=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep -x redis);
+              hasRedisMetrics=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep -x redis-metrics);
               hasDB=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep db);
               hasWeb=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep web);
               hasWorkflow=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep workflow);
 
-              if [ -n "${hasRedis}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ] && [ -n "${hasWorkflow}" ]; then
+              if [ -n "${hasRedis}" ] && [ -n "${hasRedisMetrics}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ] && [ -n "${hasWorkflow}" ]; then
                 echo "After 30 seconds, all of the services are up!";
-                exit 0; 
+                exit 0;
               else
                 echo "After 30 seconds, one or more of the services is not up: ";
-                [ "redis" != "${hasRedis}" ] && echo "Redis not operational"; 
-                [ "db" != "${hasDB}" ] && echo "Database not operational"; 
+                [ "redis" != "${hasRedis}" ] && echo "Redis not operational";
+                [ -z "${hasRedisMetrics}" ] && echo "Redis-metrics not operational";
+                [ "db" != "${hasDB}" ] && echo "Database not operational";
                 [ "web" != "${hasWeb}" ] && echo "Web service not operational";
                 [ "workflow" != "${hasWorkflow}" ] && echo "Workflow service not operational";
                 exit 1;
-              fi; 
+              fi;
               '
