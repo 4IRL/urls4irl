@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.metrics.events import EventName
+from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 
 # ---------------------------------------------------------------------------
 # Shared dimension literal aliases — extracted only when a literal appears in
@@ -261,6 +261,27 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
 }
 
 
+def get_all_dimension_keys() -> tuple[str, ...]:
+    """Return the sorted union of every dimension field name across UI-category DIMENSION_MODELS entries.
+
+    Skips entries where EVENT_CATEGORY[event_name] != EventCategory.UI so that
+    non-browser event dimensions (e.g., API-hit endpoint/method/status_code) are
+    never shipped to the frontend allow-list.
+
+    Source of truth for the frontend allow-list filter shipped via
+    APP_CONFIG.constants.DIMENSION_KEYS. Adding a field to a `_Dim<EventName>`
+    model for a UI-category event here auto-propagates to the browser on next page load.
+    """
+    collected: set[str] = set()
+    for event_name, dim_model in DIMENSION_MODELS.items():
+        if dim_model is None:
+            continue
+        if EVENT_CATEGORY[event_name] != EventCategory.UI:
+            continue
+        collected.update(dim_model.model_fields.keys())
+    return tuple(sorted(collected))
+
+
 def validate_dimensions(event: EventName, dimensions: dict | None) -> None:
     """Validate `dimensions` against the per-event schema.
 
@@ -284,5 +305,6 @@ def validate_dimensions(event: EventName, dimensions: dict | None) -> None:
 
 __all__ = [
     "DIMENSION_MODELS",
+    "get_all_dimension_keys",
     "validate_dimensions",
 ]

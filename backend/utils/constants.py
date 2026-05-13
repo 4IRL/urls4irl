@@ -1,3 +1,4 @@
+from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_routes_js
@@ -146,7 +147,9 @@ class CONSTANTS:
     SPLASH = SPLASH_CONSTANTS()
 
 
-def generate_constants_js() -> dict[str, int | dict[str, str] | dict[str, int]]:
+def generate_constants_js() -> (
+    dict[str, int | list[str] | dict[str, str] | dict[str, int]]
+):
     """
     Generate constants configuration for frontend JavaScript.
     Returns a dict that can be passed to Jinja and converted to JSON.
@@ -174,6 +177,8 @@ def generate_constants_js() -> dict[str, int | dict[str, str] | dict[str, int]]:
             error_code.name: error_code.value
             for error_code in CONSTANTS.SPLASH.EMAIL_VALIDATION_ERROR_CODES
         },
+        # Metrics dimension allow-list (source of truth: DIMENSION_MODELS)
+        "DIMENSION_KEYS": list(get_all_dimension_keys()),
     }
 
 

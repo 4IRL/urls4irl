@@ -1,5 +1,6 @@
 import pytest
 
+from backend.utils.constants import generate_constants_js
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 pytestmark = pytest.mark.unit
@@ -19,3 +20,19 @@ def test_metrics_config_envs_exist():
             CONFIG_ENVS, metrics_key
         ), f"CONFIG_ENVS is missing metrics key: {metrics_key}"
         assert getattr(CONFIG_ENVS, metrics_key) == metrics_key
+
+
+def test_generate_constants_js_includes_dimension_keys():
+    constants = generate_constants_js()
+    assert constants["DIMENSION_KEYS"] == sorted(
+        {
+            "search_active",
+            "trigger",
+            "active_tag_count",
+            "result",
+            "target",
+            "scope",
+            "form",
+            "deck",
+        }
+    )
