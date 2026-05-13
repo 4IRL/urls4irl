@@ -212,4 +212,168 @@ describe("metrics-client", () => {
       expect(body.events).toHaveLength(50);
     });
   });
+
+  describe("visibilitychange + pagehide → navigator.sendBeacon", () => {
+    let sendBeaconMock: Mock;
+
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+      sendBeaconMock = vi.fn(() => true);
+      Object.defineProperty(navigator, "sendBeacon", {
+        value: sendBeaconMock,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+      delete (navigator as Partial<Navigator>).sendBeacon;
+    });
+
+    it("sendBeacon on visibilitychange-hidden carries CSRF in body and is called exactly once", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      const [url, blob] = sendBeaconMock.mock.calls[0];
+      expect(url).toBe("/api/metrics");
+      expect(blob).toBeInstanceOf(Blob);
+      expect((blob as Blob).type).toBe("application/json");
+      return (blob as Blob).text().then((text) => {
+        const body = JSON.parse(text);
+        expect(body.csrf_token).toBe("test-token");
+        expect(body.events[0].event_name).toBe("ui_utub_create_open");
+        expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
+      });
+    });
+
+    it("sendBeacon is never retried — single call only", async () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      vi.useFakeTimers();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+
+    it("falls back to fetch with keepalive when sendBeacon returns false", () => {
+      sendBeaconMock.mockReturnValueOnce(false);
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(fetch).toHaveBeenCalledOnce();
+      const init = (fetch as unknown as Mock).mock.calls[0][1];
+      expect(init.keepalive).toBe(true);
+    });
+
+    it("pagehide triggers the unload flush path", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+    });
+
+    it("visibilitychange while still visible is a no-op", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+    });
+
+    it("does not double-send when both visibilitychange and pagehide fire", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("flushBeacon skips sendBeacon when buffer is empty", () => {
+      initMetricsClient();
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+    });
+
+    it("flushBeacon does not fire when a regular flush is in flight", async () => {
+      let resolveFetch: (response: Response) => void = () => {};
+      (fetch as unknown as Mock).mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      void flush();
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    it("flushBeacon does not fire when _csrfDeadForLifetime is true", async () => {
+      (fetch as unknown as Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      } as Response);
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      await flush();
+      emit("ui_url_copy", { result: "success" });
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+    });
+  });
 });

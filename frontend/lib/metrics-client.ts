@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- scaffolding; identifiers consumed by emit/flush/init logic in follow-up commits */
+/* eslint-disable @typescript-eslint/no-unused-vars -- _retryAttempts, _retryTimerId, RETRY_MAX_ATTEMPTS, RETRY_BASE_BACKOFF_MS consumed by Step 8 retry/backoff logic */
 import type { Schema } from "../types/api-helpers.d.ts";
 
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
@@ -89,10 +89,45 @@ export async function flush(): Promise<void> {
     });
     if (response.ok || response.status === 200) {
       _clearInFlight();
+    } else if (response.status === 403) {
+      _csrfDeadForLifetime = true;
+      _clearInFlight();
     }
-    /* error branches land in Step 8 */
+    /* remaining error branches land in Step 8 */
   } catch {
     /* error branches land in Step 8 */
+  }
+}
+
+function flushBeacon(): void {
+  if (_csrfDeadForLifetime) return;
+  if (_buffer.length === 0) return;
+  if (_inFlightBatchId !== null) return;
+  const beaconEvents = _buffer.splice(0, MAX_BATCH_SIZE);
+  const beaconBatchId = crypto.randomUUID();
+  const payload: MetricsIngestRequest = {
+    events: beaconEvents,
+    batch_id: beaconBatchId,
+    csrf_token: getCsrfToken(),
+  };
+  const serialized = JSON.stringify(payload);
+  try {
+    const blob = new Blob([serialized], { type: "application/json" });
+    const beaconEnqueued =
+      typeof navigator.sendBeacon === "function"
+        ? navigator.sendBeacon(METRICS_INGEST_URL, blob)
+        : false;
+    if (!beaconEnqueued) {
+      void fetch(METRICS_INGEST_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: serialized,
+        credentials: "same-origin",
+        keepalive: true,
+      });
+    }
+  } catch {
+    /* telemetry must never break page unload */
   }
 }
 
@@ -101,6 +136,16 @@ export function initMetricsClient(): void {
   _intervalId = setInterval(() => {
     void flush();
   }, FLUSH_INTERVAL_MS);
+  _onVisibilityChange = () => {
+    if (document.visibilityState === "hidden") {
+      flushBeacon();
+    }
+  };
+  _onPageHide = () => {
+    flushBeacon();
+  };
+  document.addEventListener("visibilitychange", _onVisibilityChange);
+  window.addEventListener("pagehide", _onPageHide);
 }
 
 export function resetMetricsClient(): void {
@@ -115,7 +160,13 @@ export function resetMetricsClient(): void {
     clearInterval(_intervalId);
     _intervalId = null;
   }
-  _onVisibilityChange = null;
-  _onPageHide = null;
+  if (_onVisibilityChange !== null) {
+    document.removeEventListener("visibilitychange", _onVisibilityChange);
+    _onVisibilityChange = null;
+  }
+  if (_onPageHide !== null) {
+    window.removeEventListener("pagehide", _onPageHide);
+    _onPageHide = null;
+  }
   _csrfDeadForLifetime = false;
 }
