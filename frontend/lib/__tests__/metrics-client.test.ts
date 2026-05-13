@@ -70,4 +70,66 @@ describe("metrics-client", () => {
       expect(fetch).toHaveBeenCalledOnce();
     });
   });
+
+  describe("emit() dedupe with cooldown window", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("dedupes identical (event, dimensions) pairs within cooldown", async () => {
+      vi.useFakeTimers();
+      emit("ui_utub_create_open");
+      emit("ui_utub_create_open");
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(1);
+      vi.useRealTimers();
+    });
+
+    it("treats same event with different dimensions as distinct", async () => {
+      emit("ui_url_copy", { result: "success" });
+      emit("ui_url_copy", { result: "failure" });
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(2);
+    });
+
+    it("allows re-emit after cooldown expires", async () => {
+      vi.useFakeTimers();
+      emit("ui_utub_create_open");
+      vi.advanceTimersByTime(1001);
+      emit("ui_utub_create_open");
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(2);
+      vi.useRealTimers();
+    });
+
+    it("bounds dedupe map memory via prune across cooldown windows", async () => {
+      vi.useFakeTimers();
+      for (let index = 0; index < 5; index++) {
+        emit("ui_url_card_click", { active_tag_count: index });
+        vi.advanceTimersByTime(1001);
+      }
+      await flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(5);
+      vi.useRealTimers();
+    });
+  });
 });

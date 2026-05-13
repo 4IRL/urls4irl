@@ -39,7 +39,23 @@ function _clearInFlight(): void {
   _retryAttempts = 0;
 }
 
+function pruneDedupeMap(now: number): void {
+  for (const [key, timestamp] of _dedupe) {
+    if (now - timestamp >= DEDUPE_COOLDOWN_MS) {
+      _dedupe.delete(key);
+    }
+  }
+}
+
 export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
+  const now = Date.now();
+  pruneDedupeMap(now);
+  const dedupeKey = `${event}|${JSON.stringify(dimensions ?? null)}`;
+  const lastEmittedAt = _dedupe.get(dedupeKey);
+  if (lastEmittedAt !== undefined && now - lastEmittedAt < DEDUPE_COOLDOWN_MS) {
+    return;
+  }
+  _dedupe.set(dedupeKey, now);
   _buffer.push({ event_name: event, dimensions: dimensions ?? null });
 }
 
