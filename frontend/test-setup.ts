@@ -83,6 +83,16 @@ const appConfig = {
       CREATOR: "CREATOR",
       CO_CREATOR: "CO_CREATOR",
     },
+    DIMENSION_KEYS: [
+      "active_tag_count",
+      "deck",
+      "form",
+      "result",
+      "scope",
+      "search_active",
+      "target",
+      "trigger",
+    ],
   },
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",

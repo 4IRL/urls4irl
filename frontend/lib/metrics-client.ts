@@ -1,5 +1,7 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 
+import { APP_CONFIG } from "./config.js";
+
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
 type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
 
@@ -61,6 +63,20 @@ function _scheduleRetry(): void {
   }, backoffMs);
 }
 
+function filterDimensions(
+  dimensions: EmitDimensions | undefined,
+): EmitDimensions | null {
+  if (dimensions === undefined) return null;
+  const allowed = new Set<string>(APP_CONFIG.constants.DIMENSION_KEYS);
+  const filtered: EmitDimensions = {};
+  for (const key of Object.keys(dimensions)) {
+    if (allowed.has(key)) {
+      filtered[key] = dimensions[key];
+    }
+  }
+  return Object.keys(filtered).length === 0 ? null : filtered;
+}
+
 function pruneDedupeMap(now: number): void {
   for (const [key, timestamp] of _dedupe) {
     if (now - timestamp >= DEDUPE_COOLDOWN_MS) {
@@ -78,7 +94,7 @@ export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
     return;
   }
   _dedupe.set(dedupeKey, now);
-  _buffer.push({ event_name: event, dimensions: dimensions ?? null });
+  _buffer.push({ event_name: event, dimensions: filterDimensions(dimensions) });
   if (_buffer.length >= BATCH_THRESHOLD) {
     void flush();
   }

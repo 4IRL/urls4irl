@@ -1,5 +1,6 @@
 import type { Mock } from "vitest";
 
+import type { EmitDimensions } from "../metrics-client.js";
 import {
   emit,
   flush,
@@ -586,6 +587,61 @@ describe("metrics-client", () => {
       );
       expect(secondBody.events).toHaveLength(1);
       expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+    });
+  });
+
+  describe("dimension allow-list filter", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("strips disallowed dimension keys before serialization", async () => {
+      emit("ui_url_copy", {
+        result: "success",
+        userId: 42,
+        email: "user@example.com",
+      } as unknown as EmitDimensions);
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toEqual({ result: "success" });
+    });
+
+    it("passes through all allow-listed keys", async () => {
+      emit("ui_url_access", {
+        trigger: "corner_button",
+        search_active: "true",
+        active_tag_count: 3,
+      });
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toEqual({
+        trigger: "corner_button",
+        search_active: "true",
+        active_tag_count: 3,
+      });
+    });
+
+    it("sets dimensions to null when filtering leaves an empty object", async () => {
+      emit("ui_utub_create_open", {
+        userId: 42,
+      } as unknown as EmitDimensions);
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toBeNull();
     });
   });
 });
