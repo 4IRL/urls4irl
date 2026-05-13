@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars -- _retryAttempts, _retryTimerId, RETRY_MAX_ATTEMPTS, RETRY_BASE_BACKOFF_MS consumed by Step 8 retry/backoff logic */
 import type { Schema } from "../types/api-helpers.d.ts";
 
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
@@ -37,6 +36,27 @@ function _clearInFlight(): void {
   _inFlightBatchId = null;
   _inFlightEvents = null;
   _retryAttempts = 0;
+  if (_retryTimerId !== null) {
+    clearTimeout(_retryTimerId);
+    _retryTimerId = null;
+  }
+}
+
+function _scheduleRetry(): void {
+  _retryAttempts += 1;
+  if (_retryAttempts >= RETRY_MAX_ATTEMPTS) {
+    const droppedCount = _inFlightEvents?.length ?? 0;
+    _clearInFlight();
+    console.warn("metrics: retry cap exhausted, dropping batch", {
+      events: droppedCount,
+    });
+    return;
+  }
+  const backoffMs = RETRY_BASE_BACKOFF_MS * 2 ** (_retryAttempts - 1);
+  _retryTimerId = setTimeout(() => {
+    _retryTimerId = null;
+    void flush();
+  }, backoffMs);
 }
 
 function pruneDedupeMap(now: number): void {
@@ -66,6 +86,7 @@ export async function flush(): Promise<void> {
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
     if (_inFlightBatchId !== null || _retryTimerId !== null) return;
+    if (_csrfDeadForLifetime) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
     _inFlightBatchId = crypto.randomUUID();
   }
@@ -89,13 +110,26 @@ export async function flush(): Promise<void> {
     });
     if (response.ok || response.status === 200) {
       _clearInFlight();
-    } else if (response.status === 403) {
-      _csrfDeadForLifetime = true;
-      _clearInFlight();
+      return;
     }
-    /* remaining error branches land in Step 8 */
+    if (response.status === 400) {
+      console.warn("metrics: 400 — dropping batch");
+      _clearInFlight();
+      return;
+    }
+    if (response.status === 403) {
+      _csrfDeadForLifetime = true;
+      console.warn("metrics: 403 — dropping batch, CSRF dead for lifetime");
+      _clearInFlight();
+      return;
+    }
+    if (response.status === 429 || response.status >= 500) {
+      _scheduleRetry();
+      return;
+    }
+    _clearInFlight();
   } catch {
-    /* error branches land in Step 8 */
+    _scheduleRetry();
   }
 }
 

@@ -376,4 +376,144 @@ describe("metrics-client", () => {
       expect(sendBeaconMock).not.toHaveBeenCalled();
     });
   });
+
+  describe("retry-with-backoff on transient failures", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("retries on 503 after 1s backoff with same batch_id", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock)
+        .mockResolvedValueOnce({ ok: false, status: 503 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      const secondBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      ).batch_id;
+      expect(firstBatchId).toBe(secondBatchId);
+      vi.useRealTimers();
+    });
+
+    it("retries on 429 with same batch_id", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock)
+        .mockResolvedValueOnce({ ok: false, status: 429 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      const secondBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      ).batch_id;
+      expect(firstBatchId).toBe(secondBatchId);
+      vi.useRealTimers();
+    });
+
+    it("retries on network error (fetch rejects) with same batch_id", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock)
+        .mockRejectedValueOnce(new TypeError("network down"))
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      const secondBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      ).batch_id;
+      expect(firstBatchId).toBe(secondBatchId);
+      vi.useRealTimers();
+    });
+
+    it("drops the batch after RETRY_MAX_ATTEMPTS exhausted", async () => {
+      vi.useFakeTimers();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      (fetch as unknown as Mock).mockResolvedValue({
+        ok: false,
+        status: 503,
+      } as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(fetch).toHaveBeenCalledTimes(3);
+      expect(warnSpy).toHaveBeenCalled();
+      vi.useRealTimers();
+      warnSpy.mockRestore();
+    });
+
+    it("drops the batch immediately on 400 with no retry", async () => {
+      vi.useFakeTimers();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      (fetch as unknown as Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: vi.fn().mockResolvedValue({ errorCode: 1 }),
+      } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+      warnSpy.mockRestore();
+    });
+
+    it("drops the batch on 403 and short-circuits subsequent flushes", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      } as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      emit("ui_url_copy", { result: "success" });
+      void flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+  });
 });
