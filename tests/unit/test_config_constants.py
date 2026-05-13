@@ -1,5 +1,6 @@
 import pytest
 
+from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.utils.constants import generate_constants_js
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -24,15 +25,4 @@ def test_metrics_config_envs_exist():
 
 def test_generate_constants_js_includes_dimension_keys():
     constants = generate_constants_js()
-    assert constants["DIMENSION_KEYS"] == sorted(
-        {
-            "search_active",
-            "trigger",
-            "active_tag_count",
-            "result",
-            "target",
-            "scope",
-            "form",
-            "deck",
-        }
-    )
+    assert constants["DIMENSION_KEYS"] == list(get_all_dimension_keys())

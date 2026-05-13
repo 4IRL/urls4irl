@@ -16,6 +16,10 @@ const MAX_BATCH_SIZE = 100;
 const RETRY_MAX_ATTEMPTS = 3;
 const RETRY_BASE_BACKOFF_MS = 1000;
 
+const _allowedDimensionKeys = new Set<string>(
+  APP_CONFIG.constants.DIMENSION_KEYS,
+);
+
 let _buffer: MetricsIngestEvent[] = [];
 let _dedupe: Map<string, number> = new Map();
 let _inFlightBatchId: string | null = null;
@@ -67,10 +71,9 @@ function filterDimensions(
   dimensions: EmitDimensions | undefined,
 ): EmitDimensions | null {
   if (dimensions === undefined) return null;
-  const allowed = new Set<string>(APP_CONFIG.constants.DIMENSION_KEYS);
   const filtered: EmitDimensions = {};
   for (const key of Object.keys(dimensions)) {
-    if (allowed.has(key)) {
+    if (_allowedDimensionKeys.has(key)) {
       filtered[key] = dimensions[key];
     }
   }
@@ -102,9 +105,9 @@ export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
 
 export async function flush(): Promise<void> {
   if (_postInFlight) return;
+  if (_retryTimerId !== null) return;
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
-    if (_retryTimerId !== null) return;
     if (_csrfDeadForLifetime) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
     _inFlightBatchId = crypto.randomUUID();
@@ -116,20 +119,26 @@ export async function flush(): Promise<void> {
     csrf_token: null,
   };
 
+  const csrfToken = getCsrfToken();
+  if (csrfToken === null) {
+    console.warn(
+      "metrics-client: csrf-token meta tag missing; request will be rejected",
+    );
+  }
+
   _postInFlight = true;
   try {
     const response = await fetch(METRICS_INGEST_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRFToken": getCsrfToken() ?? "",
+        "X-CSRFToken": csrfToken ?? "",
       },
       body: JSON.stringify(payload),
       credentials: "same-origin",
-      keepalive: false,
     });
     _postInFlight = false;
-    if (response.ok || response.status === 200) {
+    if (response.ok) {
       _clearInFlight();
       return;
     }
@@ -208,10 +217,6 @@ export function resetMetricsClient(): void {
   _buffer.length = 0;
   _dedupe.clear();
   _clearInFlight();
-  if (_retryTimerId !== null) {
-    clearTimeout(_retryTimerId);
-    _retryTimerId = null;
-  }
   if (_intervalId !== null) {
     clearInterval(_intervalId);
     _intervalId = null;
