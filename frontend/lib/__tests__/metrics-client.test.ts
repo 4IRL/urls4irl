@@ -516,4 +516,76 @@ describe("metrics-client", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("concurrent-flush guard", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("does not issue concurrent POSTs when flush is in flight", async () => {
+      let resolveFetch: (response: Response) => void = () => {};
+      (fetch as unknown as Mock)
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve;
+          }),
+        )
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      emit("ui_url_copy", { result: "success" });
+      void flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    it("buffers events emitted during in-flight flush and ships them next time", async () => {
+      let resolveFirst: (response: Response) => void = () => {};
+      (fetch as unknown as Mock)
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveFirst = resolve;
+          }),
+        )
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      emit("ui_url_copy", { result: "success" });
+      resolveFirst({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+      await flush();
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const secondBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      );
+      expect(secondBody.events).toHaveLength(1);
+      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+    });
+  });
 });

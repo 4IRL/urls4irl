@@ -18,6 +18,7 @@ let _buffer: MetricsIngestEvent[] = [];
 let _dedupe: Map<string, number> = new Map();
 let _inFlightBatchId: string | null = null;
 let _inFlightEvents: MetricsIngestEvent[] | null = null;
+let _postInFlight: boolean = false;
 let _retryAttempts: number = 0;
 let _retryTimerId: ReturnType<typeof setTimeout> | null = null;
 let _intervalId: ReturnType<typeof setInterval> | null = null;
@@ -36,6 +37,7 @@ function _clearInFlight(): void {
   _inFlightBatchId = null;
   _inFlightEvents = null;
   _retryAttempts = 0;
+  _postInFlight = false;
   if (_retryTimerId !== null) {
     clearTimeout(_retryTimerId);
     _retryTimerId = null;
@@ -83,9 +85,10 @@ export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
 }
 
 export async function flush(): Promise<void> {
+  if (_postInFlight) return;
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
-    if (_inFlightBatchId !== null || _retryTimerId !== null) return;
+    if (_retryTimerId !== null) return;
     if (_csrfDeadForLifetime) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
     _inFlightBatchId = crypto.randomUUID();
@@ -97,6 +100,7 @@ export async function flush(): Promise<void> {
     csrf_token: null,
   };
 
+  _postInFlight = true;
   try {
     const response = await fetch(METRICS_INGEST_URL, {
       method: "POST",
@@ -108,6 +112,7 @@ export async function flush(): Promise<void> {
       credentials: "same-origin",
       keepalive: false,
     });
+    _postInFlight = false;
     if (response.ok || response.status === 200) {
       _clearInFlight();
       return;
@@ -129,6 +134,7 @@ export async function flush(): Promise<void> {
     }
     _clearInFlight();
   } catch {
+    _postInFlight = false;
     _scheduleRetry();
   }
 }
