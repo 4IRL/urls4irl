@@ -182,4 +182,34 @@ describe("metrics-client", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("threshold flush at BATCH_THRESHOLD", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 50 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("flushes immediately when buffer reaches BATCH_THRESHOLD", async () => {
+      for (let index = 0; index < 50; index++) {
+        emit("ui_url_card_click", { active_tag_count: index });
+      }
+      await Promise.resolve();
+      expect(fetch).toHaveBeenCalledOnce();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(50);
+    });
+  });
 });

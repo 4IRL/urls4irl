@@ -57,6 +57,9 @@ export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
   }
   _dedupe.set(dedupeKey, now);
   _buffer.push({ event_name: event, dimensions: dimensions ?? null });
+  if (_buffer.length >= BATCH_THRESHOLD) {
+    void flush();
+  }
 }
 
 export async function flush(): Promise<void> {
