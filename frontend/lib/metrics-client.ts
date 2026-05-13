@@ -26,12 +26,55 @@ let _csrfDeadForLifetime: boolean = false;
 let _onVisibilityChange: (() => void) | null = null;
 let _onPageHide: (() => void) | null = null;
 
-export function emit(_event: UIEventName, _dimensions?: EmitDimensions): void {
-  /* implementation pending */
+function getCsrfToken(): string | null {
+  return (
+    document.querySelector<HTMLMetaElement>("meta[name=csrf-token]")?.content ??
+    null
+  );
 }
 
-export function flush(): void {
-  /* implementation pending */
+function _clearInFlight(): void {
+  _inFlightBatchId = null;
+  _inFlightEvents = null;
+  _retryAttempts = 0;
+}
+
+export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
+  _buffer.push({ event_name: event, dimensions: dimensions ?? null });
+}
+
+export async function flush(): Promise<void> {
+  if (_inFlightBatchId === null || _inFlightEvents === null) {
+    if (_buffer.length === 0) return;
+    if (_inFlightBatchId !== null || _retryTimerId !== null) return;
+    _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
+    _inFlightBatchId = crypto.randomUUID();
+  }
+
+  const payload: MetricsIngestRequest = {
+    events: _inFlightEvents,
+    batch_id: _inFlightBatchId,
+    csrf_token: null,
+  };
+
+  try {
+    const response = await fetch(METRICS_INGEST_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCsrfToken() ?? "",
+      },
+      body: JSON.stringify(payload),
+      credentials: "same-origin",
+      keepalive: false,
+    });
+    if (response.ok || response.status === 200) {
+      _clearInFlight();
+    }
+    /* error branches land in Step 8 */
+  } catch {
+    /* error branches land in Step 8 */
+  }
 }
 
 export function initMetricsClient(): void {
@@ -39,5 +82,12 @@ export function initMetricsClient(): void {
 }
 
 export function resetMetricsClient(): void {
-  /* implementation pending */
+  _buffer.length = 0;
+  _dedupe.clear();
+  _clearInFlight();
+  if (_retryTimerId !== null) {
+    clearTimeout(_retryTimerId);
+    _retryTimerId = null;
+  }
+  _csrfDeadForLifetime = false;
 }
