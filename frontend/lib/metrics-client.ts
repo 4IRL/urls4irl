@@ -94,7 +94,10 @@ export async function flush(): Promise<void> {
 }
 
 export function initMetricsClient(): void {
-  /* implementation pending */
+  if (_intervalId !== null) return;
+  _intervalId = setInterval(() => {
+    void flush();
+  }, FLUSH_INTERVAL_MS);
 }
 
 export function resetMetricsClient(): void {
@@ -105,5 +108,11 @@ export function resetMetricsClient(): void {
     clearTimeout(_retryTimerId);
     _retryTimerId = null;
   }
+  if (_intervalId !== null) {
+    clearInterval(_intervalId);
+    _intervalId = null;
+  }
+  _onVisibilityChange = null;
+  _onPageHide = null;
   _csrfDeadForLifetime = false;
 }

@@ -132,4 +132,54 @@ describe("metrics-client", () => {
       vi.useRealTimers();
     });
   });
+
+  describe("initMetricsClient() / resetMetricsClient() interval lifecycle", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("initMetricsClient registers a 60s flush interval", async () => {
+      vi.useFakeTimers();
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      expect(fetch).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+
+    it("resetMetricsClient clears the interval and state", async () => {
+      vi.useFakeTimers();
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      resetMetricsClient();
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(fetch).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("initMetricsClient is idempotent — double-init does not register two intervals", async () => {
+      vi.useFakeTimers();
+      initMetricsClient();
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+  });
 });
