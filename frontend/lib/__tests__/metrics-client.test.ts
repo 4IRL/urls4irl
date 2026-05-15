@@ -70,6 +70,21 @@ describe("metrics-client", () => {
       await flush();
       expect(fetch).toHaveBeenCalledOnce();
     });
+
+    it("flush() sends empty X-CSRFToken and warns when csrf-token meta tag is missing", async () => {
+      document.head.innerHTML = "";
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+      emit("ui_utub_create_open");
+      await flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      const init = (fetch as unknown as Mock).mock.calls[0][1];
+      expect(init.headers["X-CSRFToken"]).toBe("");
+      expect(warnSpy).toHaveBeenCalledOnce();
+      expect(warnSpy).toHaveBeenCalledWith(
+        "metrics-client: csrf-token meta tag missing; request will be rejected",
+      );
+      warnSpy.mockRestore();
+    });
   });
 
   describe("emit() dedupe with cooldown window", () => {
@@ -376,6 +391,22 @@ describe("metrics-client", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       expect(sendBeaconMock).not.toHaveBeenCalled();
     });
+
+    it("flushBeacon swallows exceptions thrown by sendBeacon", () => {
+      sendBeaconMock.mockImplementation(() => {
+        throw new Error("beacon failure");
+      });
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      expect(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      }).not.toThrow();
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+    });
   });
 
   describe("retry-with-backoff on transient failures", () => {
@@ -587,6 +618,66 @@ describe("metrics-client", () => {
       );
       expect(secondBody.events).toHaveLength(1);
       expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+    });
+  });
+
+  describe("MAX_BATCH_SIZE slicing", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("slices buffers larger than MAX_BATCH_SIZE into separate POSTs", async () => {
+      // Hold the first fetch open so the BATCH_THRESHOLD auto-flush triggered by
+      // the priming emit stays in flight while we load 110 additional events into
+      // the buffer (the in-flight guard suppresses further auto-flushes).
+      let resolveFirst: (response: Response) => void = () => {};
+      (fetch as unknown as Mock)
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveFirst = resolve;
+          }),
+        )
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+
+      emit("ui_utub_create_open");
+      void flush();
+
+      for (let index = 0; index < 110; index++) {
+        emit("ui_url_card_click", { active_tag_count: index });
+      }
+
+      resolveFirst({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      await flush();
+      await flush();
+
+      expect(fetch).toHaveBeenCalledTimes(3);
+      const secondBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      );
+      const thirdBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[2][1].body,
+      );
+      expect(secondBody.events).toHaveLength(100);
+      expect(thirdBody.events).toHaveLength(10);
+      expect(secondBody.batch_id).not.toBe(thirdBody.batch_id);
     });
   });
 

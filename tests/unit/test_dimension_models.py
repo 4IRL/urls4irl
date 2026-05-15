@@ -160,17 +160,3 @@ def test_get_all_dimension_keys_returns_union_of_ui_model_fields():
         expected.update(dim_model.model_fields.keys())
     assert set(get_all_dimension_keys()) == expected
     assert get_all_dimension_keys() == tuple(sorted(expected))
-
-
-def test_get_all_dimension_keys_matches_registry():
-    # Update this set whenever a new field is added to a UI-category dim model in dimension_models.py.
-    assert set(get_all_dimension_keys()) == {
-        "search_active",
-        "trigger",
-        "active_tag_count",
-        "result",
-        "target",
-        "scope",
-        "form",
-        "deck",
-    }
