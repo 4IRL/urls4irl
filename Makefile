@@ -6,7 +6,7 @@ EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all addmock
 
 .DEFAULT_GOAL := help
 
@@ -84,6 +84,9 @@ generate-types: ## Generate TypeScript API types from backend OpenAPI spec
 	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
 	$(EXEC_VITE) npx openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
 	$(EXEC_VITE) npx prettier --write frontend/types/api.d.ts frontend/types/openapi.json
+
+addmock: ## Seed the dev database with all mock data (flask addmock all)
+	$(EXEC_WEB) "$(FLASK) addmock all"
 
 prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker image prune -f

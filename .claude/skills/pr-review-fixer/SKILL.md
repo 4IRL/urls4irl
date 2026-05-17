@@ -5,11 +5,11 @@ description: Read all review comments on the current branch's GitHub PR, extract
 
 # PR Review Fixer
 
-Read PR review comments, fix all issues, commit, and push — looping until the push review passes. Simultaneously monitors CI/CD for failures.
+Read PR review comments, fix all issues, commit, and push — looping until the push review passes. After the push, monitor CI/CD for failures via `/loop`.
 
 ## Workflow
 
-### 1. Identify the PR and Launch CI Monitor
+### 1. Identify the PR
 
 ```bash
 BRANCH=$(git branch --show-current)
@@ -18,98 +18,7 @@ GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view --json num
 
 Extract the PR number. If no PR exists, inform the user and stop.
 
-**Immediately after identifying the PR**, launch the CI Monitor subagent (Step 1a) in the background. It runs independently alongside the rest of the workflow.
-
-#### 1a. CI Monitor Subagent (background)
-
-Launch a background subagent that polls CI/CD status for up to 10 minutes. This subagent:
-
-1. Fetches the latest workflow run for this branch:
-   ```bash
-   GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run list --branch $BRANCH --limit 1 --json databaseId,status,conclusion
-   ```
-2. Polls every 60 seconds for up to 10 minutes (10 iterations max)
-3. On each poll, checks the run status:
-   - **`completed` + `success`**: Report success and stop polling
-   - **`completed` + `failure`**: Write the run ID and failed job names to `plans/<topic>/reviews/ci-failures-<branch>.md` (see format below), then stop polling
-   - **`in_progress`** or **`queued`**: Sleep 60 seconds, poll again
-4. If still in progress after 10 minutes, write a timeout note to the CI failures file and stop
-
-When a failure is detected, also fetch failed job details:
-```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --json jobs --jq '.jobs[] | select(.conclusion == "failure") | {name, conclusion}'
-```
-
-**CI Failures File Format** (`plans/<topic>/reviews/ci-failures-<branch>.md`):
-
-Infer `<topic>` from the branch name by splitting on `/` and `-` and matching against known topics (e.g., `api-route`, `urls`, `openapi`). If the topic cannot be inferred, fall back to `plans/tmp/ci-failures-<branch>.md`.
-
-```markdown
-# CI Failures: <branch>
-
-## Run <RUN_ID> — <YYYY-MM-DD HH:MM>
-Status: **FAILED**
-
-### Failed Jobs
-- <job name 1>
-- <job name 2>
-
-### Failure Logs
-<!-- Populated by the CI Log Reader subagent -->
-```
-
-#### 1b. CI Log Reader Subagent (triggered by 1a)
-
-When the CI Monitor writes a failure file, it must then launch a second subagent to read the actual failure logs:
-
-1. For each failed job, fetch the failed step logs:
-   ```bash
-   GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --log-failed
-   ```
-2. Parse the log output to extract:
-   - Test names that failed (if test jobs)
-   - Error messages and stack traces
-   - Build errors (if build jobs)
-3. Append a summarized, structured analysis to `plans/<topic>/reviews/ci-failures-<branch>.md` under `### Failure Logs`:
-   ```markdown
-   ### Failure Logs
-
-   #### <Job Name>
-   **Root cause**: <brief description>
-   **Failed tests**:
-   - `test_name_1` — <assertion/error summary>
-   - `test_name_2` — <assertion/error summary>
-
-   **Stack trace** (key excerpt):
-   ```
-   <relevant lines only, not full log>
-   ```
-   ```
-
-#### 1c. CI Fix Investigator Subagent (triggered by 1b)
-
-After the CI Log Reader finishes writing the failure analysis, it must launch a third subagent to investigate fixes:
-
-1. Read `plans/<topic>/reviews/ci-failures-<branch>.md` to understand the failures
-2. For each failure, investigate the root cause in the codebase:
-   - Read the failing test files to understand what they expect
-   - Read the source files referenced in stack traces
-   - Determine if the failure is caused by changes on this branch
-3. **Never dismiss a failure as "pre-existing" or "flaky"** because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For every failure: read the traceback, check if branch changes could affect the failing path, and either fix or confirm unrelated by rerunning in isolation 2-3 times.
-4. If the fix is straightforward (typo, import error, missing constant, test assertion update):
-   - Apply the fix directly
-   - Report what was changed
-5. If the fix requires behavioral or design decisions:
-   - **Do NOT make changes**
-   - Document the issue and recommended approach in the CI failures file
-   - Flag it for user intervention
-
-**Important**: The CI subagent chain (1a → 1b → 1c) runs independently of the PR comment workflow (Steps 2-6). If the CI fix investigator makes code changes, those changes will be picked up by the next `/git-commit` invocation.
-
-All `gh` commands in CI subagents must:
-- Be prefixed with `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)` — this pattern is exempted from the command substitution hook
-- Use `dangerouslyDisableSandbox: true`
-- Never resolve the token separately and inline a raw value
+**Do NOT launch a CI monitor here.** The pre-fix CI run is invalidated the moment we push fixes, so monitoring it is pointless. CI monitoring runs in Step 7, after the push, against the post-fix commit.
 
 ### 2. Fetch and Analyze Review Comments (Comment Analyzer Subagent)
 
@@ -333,6 +242,103 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 
 **Loop cap**: Maximum 3 iterations. If still blocked after 3 attempts, stop and present all remaining findings to the user.
 
+### 7. Monitor Post-Push CI via /loop
+
+After the push in Step 6 completes successfully, monitor the new GitHub Actions run for the just-pushed commit. **Never use a background `Agent` subagent for this** — general-purpose subagents don't execute synchronous sleep loops; they exit immediately with "Monitor armed" without iterating. Use `/loop` in dynamic (self-paced) mode instead, where the runtime drives the cadence via `ScheduleWakeup`.
+
+#### 7a. Resolve the post-push run ID
+
+Right after the push, find the new run for the just-pushed `HEAD`:
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run list --branch $BRANCH --limit 1 --json databaseId,status,conclusion,headSha,createdAt
+```
+
+If the most recent run's `headSha` does NOT match the just-pushed commit, GitHub hasn't picked up the push yet. Sleep 30 seconds (one `sleep 30` Bash call), retry once, and only proceed once the latest run is associated with the new commit. If still missing after the retry, stop and inform the user — there is no run to monitor.
+
+Capture `RUN_ID` for use in the loop prompt below.
+
+#### 7b. Invoke /loop in dynamic mode
+
+Invoke the `loop` skill via the Skill tool. Pass NO interval (dynamic / self-paced). The prompt is a self-contained polling instruction that:
+
+1. Checks the run via `gh run view <RUN_ID> --json status,conclusion`.
+2. **If `status == "completed"` and `conclusion == "success"`** → report success and DO NOT call `ScheduleWakeup` (this ends the loop).
+3. **If `status == "completed"` and `conclusion` is `failure` / `cancelled` / `timed_out`** → launch the CI Log Reader subagent (Step 7c) as a foreground subagent inside this loop tick, then DO NOT call `ScheduleWakeup` (this ends the loop).
+4. **Otherwise (`queued`, `in_progress`, `waiting`)** → call `ScheduleWakeup(delaySeconds: 90, prompt: <same loop prompt>, reason: "polling CI run <RUN_ID>, currently <status>")` to fire again in 90 seconds.
+
+90 seconds keeps the prompt cache warm (under the 5-minute TTL).
+
+Skill invocation example payload:
+
+```
+/loop <self-contained polling prompt that references RUN_ID, the failures-file path, and the Log Reader subagent prompt template below>
+```
+
+The polling prompt must be fully self-contained — each `/loop` firing is a fresh prompt and does not have access to earlier turn context.
+
+#### 7c. CI Log Reader subagent (launched on failure)
+
+The /loop tick that detects a terminal failure launches the Log Reader as a regular foreground `Agent` subagent (`subagent_type: "general-purpose"`, `model: "sonnet"`).
+
+Subagent prompt:
+
+```
+You are the CI Log Reader for run <RUN_ID> on branch <BRANCH>. The CI Monitor detected a terminal failure.
+
+Steps:
+1. Get failed jobs:
+   GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --json jobs --jq '.jobs[] | select(.conclusion == "failure") | {name, conclusion}'
+2. Get failed logs:
+   GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh run view <RUN_ID> --log-failed
+3. Get a timestamp: date '+%Y-%m-%d %H:%M' (separate Bash call).
+4. WRITE the failures file at plans/<topic>/reviews/ci-failures-<branch>.md using the Write tool (NEVER heredoc / cat-redirect):
+
+   # CI Failures: <branch>
+
+   ## Run <RUN_ID> — <timestamp>
+   Status: **FAILED** (conclusion: <conclusion>)
+
+   ### Failed Jobs
+   - <job 1>
+   - <job 2>
+
+   ### Failure Logs
+
+   #### <Job Name>
+   **Root cause**: <brief>
+   **Failed tests**:
+   - `test_x` — <assertion/error summary>
+   **Stack trace** (key excerpt):
+   ```
+   <5-15 relevant lines, not the full log>
+   ```
+
+5. Launch the CI Fix Investigator subagent (Step 7d prompt below).
+6. Report a one-paragraph summary and stop.
+
+Rules: inline GH_TOKEN prefix and dangerouslyDisableSandbox on every gh call. Never commit, never push. Use Write/Edit for file content — never heredoc.
+```
+
+Infer `<topic>` from the branch name. Fall back to `plans/tmp/ci-failures-<branch>.md` if no topic match exists.
+
+#### 7d. CI Fix Investigator subagent (launched by 7c)
+
+```
+You are the CI Fix Investigator. The failure analysis is at plans/<topic>/reviews/ci-failures-<branch>.md.
+
+Steps:
+1. Read the failures file.
+2. For each failure: read the failing test, read source in the stack trace, decide if the just-pushed commit could plausibly have caused it (think indirectly: shared fixtures, CSS/templates, timing, imports). Never dismiss as "flaky" or "pre-existing" without that investigation.
+3. If the fix is straightforward (typo, missing import, constant rename, simple assertion update) → apply via Edit and report what changed.
+4. If the fix needs design judgment → append a `### Recommended Approach` section to the failures file describing the issue and what the user should decide.
+5. Report a one-paragraph summary and stop.
+
+Rules: inline GH_TOKEN prefix, dangerouslyDisableSandbox on gh/docker/make. Use Read/Grep/Glob to investigate; Edit to apply fixes. Never use Bash to write file content. Never commit, never push — the orchestrator handles commits on the next cycle.
+```
+
+Fixes applied by the Investigator will be picked up by the next `/git-commit` invocation.
+
 ## Important Notes
 
 - All `gh` commands require `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)` prefix and `dangerouslyDisableSandbox: true`. Never resolve the token separately and inline a raw value.
@@ -341,8 +347,8 @@ Invoke the `/git-push` skill via the Skill tool. This runs the 7-agent review an
 - Follow existing commit message style (check `git log -3 --oneline`)
 - All subagent launches in a single step must be in one message for parallelism
 - If a subagent fails or returns unclear results, treat as needing user intervention
-- The CI monitor chain (1a → 1b → 1c) is a sequential pipeline but runs in the background, independent of Steps 2-6
-- **Test runs use synchronous Bash inside subagents** — test-runner subagents invoke `make test-*` synchronously (with `dangerouslyDisableSandbox: true`) and block until make exits. The orchestrator waits for the subagent's Agent-tool reply — that reply IS the completion signal. Do not arm a Monitor on a test result file, do not poll a running subagent, and never reach into a container with a side-channel probe. The CI monitor chain (1a → 1b → 1c) is a separate concern: it polls GitHub Actions via `gh`, not a local test run.
-- CI fixes from subagent 1c will be included in the next commit cycle
+- **CI monitoring uses /loop dynamic mode, never a background subagent.** General-purpose `Agent` subagents do NOT execute synchronous `sleep` polling loops in the background — they interpret "poll for N minutes" as a setup task and exit immediately ("Monitor armed"). `/loop` (dynamic / self-paced) hands cadence to the runtime via `ScheduleWakeup`, and each fire re-enters the polling prompt with fresh state.
+- **Test runs use synchronous Bash inside subagents** — test-runner subagents invoke `make test-*` synchronously (with `dangerouslyDisableSandbox: true`) and block until make exits. The orchestrator waits for the subagent's Agent-tool reply — that reply IS the completion signal. Do not arm a Monitor on a test result file, do not poll a running subagent, and never reach into a container with a side-channel probe. The CI monitor in Step 7 is a separate concern: it polls GitHub Actions via `gh` through `/loop`, not a local test run.
+- Fixes from the CI Fix Investigator (Step 7d) are picked up by the next `/git-commit` invocation.
 - **Comment resolution check is mandatory**: The Comment Analyzer subagent (Step 2) uses the GraphQL API to check `isResolved` on each review thread. The REST API does NOT expose resolution status — always use GraphQL. If all threads are resolved, the workflow stops early with no changes.
 - The orchestrator never fetches or processes comments directly — it delegates to the Comment Analyzer subagent and acts on the structured JSON output

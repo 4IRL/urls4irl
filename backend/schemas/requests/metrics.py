@@ -71,10 +71,11 @@ class MetricsIngestRequest(BaseModel):
             "idempotency on retries"
         ),
     )
+    # TODO: remove csrf_token field — deprecated as of 2026-05-17 deploy date; kept for one-release canary window
     csrf_token: str | None = Field(
         default=None,
         description=(
-            "Optional CSRF token in the JSON body for navigator.sendBeacon "
-            "callers that cannot set headers"
+            "DEPRECATED — ignored by the server as of 2026-05-17. Will be removed "
+            "after one release."
         ),
     )

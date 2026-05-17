@@ -16,7 +16,6 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from scripts.flush_metrics import run_flush
 from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
-from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
 
@@ -100,9 +99,8 @@ def test_metrics_pipeline_end_to_end(
         metrics_writer extension enabled with a real metrics-DB Redis
         client, and an inline psycopg2 connection to the test DB
     WHEN the browser-side flow is exercised end-to-end:
-        1. GET / to obtain a CSRF token
-        2. POST /api/metrics with a single ui_url_copy event
-        3. invoke run_flush(...) to drain Redis into AnonymousMetrics
+        1. POST /api/metrics with a single ui_url_copy event
+        2. invoke run_flush(...) to drain Redis into AnonymousMetrics
     THEN every stage of the pipeline succeeds: the registry sync writes
         len(EventName) rows; the ingest returns 200 with accepted=1 and
         sets exactly one metrics:counter:* key with value b"1"; the flush
@@ -137,10 +135,8 @@ def test_metrics_pipeline_end_to_end(
         sync_event_registry(app)
         assert db.session.query(Event_Registry).count() == len(EventName)
 
-    # Step 2 — POST /api/metrics with a CSRF token from GET /
+    # POST /api/metrics
     flask_client = app.test_client()
-    splash_response = flask_client.get("/")
-    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
 
     ingest_response = flask_client.post(
         INGEST_URL,
@@ -152,27 +148,18 @@ def test_metrics_pipeline_end_to_end(
                 }
             ]
         },
-        headers={"X-CSRFToken": csrf_token},
     )
 
     assert ingest_response.status_code == 200
     assert ingest_response.get_json()["accepted"] == 1
 
     # Step 3 — exactly one counter key exists for ui_url_copy with value b"1".
-    # The api_hit middleware also records the GET / response as an api_hit
-    # counter, but that is incidental to the e2e chain under test. Delete
-    # those api_hit keys so the flush below only exercises the ui_url_copy
-    # path the test asserts on.
     counter_pattern = (
         f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.UI_URL_COPY.value}:*"
     )
     counter_keys = list(provide_metrics_redis.scan_iter(match=counter_pattern))
     assert len(counter_keys) == 1
     assert provide_metrics_redis.get(counter_keys[0]) == b"1"
-
-    api_hit_pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
-    api_hit_keys = list(provide_metrics_redis.scan_iter(match=api_hit_pattern))
-    provide_metrics_redis.delete(*api_hit_keys)
 
     # Step 4 — flush Redis into AnonymousMetrics via inline psycopg2 conn
     inline_conn = _build_pg_conn(app)
@@ -233,23 +220,14 @@ def test_metrics_pipeline_multi_event_payload(
         assert db.session.query(Event_Registry).count() == len(EventName)
 
     flask_client = app.test_client()
-    splash_response = flask_client.get("/")
-    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
 
     ingest_response = flask_client.post(
         INGEST_URL,
         json={"events": MULTI_EVENT_PAYLOAD},
-        headers={"X-CSRFToken": csrf_token},
     )
 
     assert ingest_response.status_code == 200
     assert ingest_response.get_json()["accepted"] == len(MULTI_EVENT_PAYLOAD)
-
-    # Remove incidental api_hit keys written by the GET / middleware so the
-    # flush below only processes the events explicitly submitted in the POST.
-    api_hit_pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
-    api_hit_keys = list(provide_metrics_redis.scan_iter(match=api_hit_pattern))
-    provide_metrics_redis.delete(*api_hit_keys)
 
     # One counter key per distinct event name submitted — value b"1" each.
     for event_name_value in MULTI_EVENT_NAMES:
