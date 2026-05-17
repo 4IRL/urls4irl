@@ -1,0 +1,727 @@
+import type { Mock } from "vitest";
+
+import type { EmitDimensions } from "../metrics-client.js";
+import {
+  emit,
+  flush,
+  initMetricsClient,
+  resetMetricsClient,
+} from "../metrics-client.js";
+
+describe("metrics-client", () => {
+  it("exports emit, flush, initMetricsClient, resetMetricsClient", () => {
+    expect(typeof emit).toBe("function");
+    expect(typeof flush).toBe("function");
+    expect(typeof initMetricsClient).toBe("function");
+    expect(typeof resetMetricsClient).toBe("function");
+  });
+
+  it("rejects non-UI EventName values at compile time", () => {
+    // @ts-expect-error utub_created is a domain-category EventName, not a UI event name
+    emit("utub_created", undefined);
+  });
+
+  describe("flush() POST contract", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 2 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("flush() POSTs buffered events as application/json with CSRF header and batch_id", async () => {
+      emit("ui_utub_create_open");
+      emit("ui_url_copy", { result: "success" });
+      await flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      const [url, init] = (fetch as unknown as Mock).mock.calls[0];
+      expect(url).toBe("/api/metrics");
+      expect(init.method).toBe("POST");
+      expect(init.headers["Content-Type"]).toBe("application/json");
+      expect(init.headers["X-CSRFToken"]).toBe("test-token");
+      const body = JSON.parse(init.body);
+      expect(body.events).toHaveLength(2);
+      expect(body.events[0].event_name).toBe("ui_utub_create_open");
+      expect(body.events[0].dimensions).toBeNull();
+      expect(body.events[1].event_name).toBe("ui_url_copy");
+      expect(body.events[1].dimensions).toEqual({ result: "success" });
+      expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
+    });
+
+    it("flush() is a no-op when buffer is empty", async () => {
+      await flush();
+      expect(fetch).not.toHaveBeenCalled();
+    });
+
+    it("flush() drains the buffer on success", async () => {
+      emit("ui_utub_create_open");
+      await flush();
+      await flush();
+      expect(fetch).toHaveBeenCalledOnce();
+    });
+
+    it("flush() sends empty X-CSRFToken when csrf-token meta tag is missing", async () => {
+      document.head.innerHTML = "";
+      emit("ui_utub_create_open");
+      await flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      const init = (fetch as unknown as Mock).mock.calls[0][1];
+      expect(init.headers["X-CSRFToken"]).toBe("");
+    });
+  });
+
+  describe("emit() dedupe with cooldown window", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("dedupes identical (event, dimensions) pairs within cooldown", async () => {
+      vi.useFakeTimers();
+      emit("ui_utub_create_open");
+      emit("ui_utub_create_open");
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(1);
+      vi.useRealTimers();
+    });
+
+    it("treats same event with different dimensions as distinct", async () => {
+      emit("ui_url_copy", { result: "success" });
+      emit("ui_url_copy", { result: "failure" });
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(2);
+    });
+
+    it("allows re-emit after cooldown expires", async () => {
+      vi.useFakeTimers();
+      emit("ui_utub_create_open");
+      vi.advanceTimersByTime(1001);
+      emit("ui_utub_create_open");
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(2);
+      vi.useRealTimers();
+    });
+
+    it("bounds dedupe map memory via prune across cooldown windows", async () => {
+      vi.useFakeTimers();
+      for (let index = 0; index < 5; index++) {
+        emit("ui_url_card_click", { active_tag_count: index });
+        vi.advanceTimersByTime(1001);
+      }
+      await flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(5);
+      vi.useRealTimers();
+    });
+  });
+
+  describe("initMetricsClient() / resetMetricsClient() interval lifecycle", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("initMetricsClient registers a 60s flush interval", async () => {
+      vi.useFakeTimers();
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      expect(fetch).not.toHaveBeenCalled();
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+
+    it("resetMetricsClient clears the interval and state", async () => {
+      vi.useFakeTimers();
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      resetMetricsClient();
+      await vi.advanceTimersByTimeAsync(120000);
+      expect(fetch).not.toHaveBeenCalled();
+      vi.useRealTimers();
+    });
+
+    it("initMetricsClient is idempotent — double-init does not register two intervals", async () => {
+      vi.useFakeTimers();
+      initMetricsClient();
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      await vi.advanceTimersByTimeAsync(60000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("threshold flush at BATCH_THRESHOLD", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 50 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("flushes immediately when buffer reaches BATCH_THRESHOLD", async () => {
+      for (let index = 0; index < 50; index++) {
+        emit("ui_url_card_click", { active_tag_count: index });
+      }
+      await Promise.resolve();
+      expect(fetch).toHaveBeenCalledOnce();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(50);
+    });
+  });
+
+  describe("visibilitychange + pagehide → navigator.sendBeacon", () => {
+    let sendBeaconMock: Mock;
+
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+      sendBeaconMock = vi.fn(() => true);
+      Object.defineProperty(navigator, "sendBeacon", {
+        value: sendBeaconMock,
+        configurable: true,
+        writable: true,
+      });
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+      delete (navigator as Partial<Navigator>).sendBeacon;
+    });
+
+    it("sendBeacon on visibilitychange-hidden carries CSRF in body and is called exactly once", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      const [url, blob] = sendBeaconMock.mock.calls[0];
+      expect(url).toBe("/api/metrics");
+      expect(blob).toBeInstanceOf(Blob);
+      expect((blob as Blob).type).toBe("application/json");
+      return (blob as Blob).text().then((text) => {
+        const body = JSON.parse(text);
+        expect(body.csrf_token).toBe("test-token");
+        expect(body.events[0].event_name).toBe("ui_utub_create_open");
+        expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
+      });
+    });
+
+    it("sendBeacon is never retried — single call only", async () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      vi.useFakeTimers();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+
+    it("falls back to fetch with keepalive when sendBeacon returns false", () => {
+      sendBeaconMock.mockReturnValueOnce(false);
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(fetch).toHaveBeenCalledOnce();
+      const init = (fetch as unknown as Mock).mock.calls[0][1];
+      expect(init.keepalive).toBe(true);
+    });
+
+    it("pagehide triggers the unload flush path", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+    });
+
+    it("visibilitychange while still visible is a no-op", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+    });
+
+    it("does not double-send when both visibilitychange and pagehide fire", () => {
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("flushBeacon skips sendBeacon when buffer is empty", () => {
+      initMetricsClient();
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+    });
+
+    it("flushBeacon does not fire when a regular flush is in flight", async () => {
+      let resolveFetch: (response: Response) => void = () => {};
+      (fetch as unknown as Mock).mockReturnValueOnce(
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+      );
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      void flush();
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    it("flushBeacon does not fire when _csrfDeadForLifetime is true", async () => {
+      (fetch as unknown as Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      } as Response);
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      await flush();
+      emit("ui_url_copy", { result: "success" });
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+    });
+
+    it("flushBeacon swallows exceptions thrown by sendBeacon", () => {
+      sendBeaconMock.mockImplementation(() => {
+        throw new Error("beacon failure");
+      });
+      initMetricsClient();
+      emit("ui_utub_create_open");
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      expect(() => {
+        document.dispatchEvent(new Event("visibilitychange"));
+      }).not.toThrow();
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("retry-with-backoff on transient failures", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("retries on 503 after 1s backoff with same batch_id", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock)
+        .mockResolvedValueOnce({ ok: false, status: 503 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      const secondBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      ).batch_id;
+      expect(firstBatchId).toBe(secondBatchId);
+      vi.useRealTimers();
+    });
+
+    it("retries on 429 with same batch_id", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock)
+        .mockResolvedValueOnce({ ok: false, status: 429 } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      const secondBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      ).batch_id;
+      expect(firstBatchId).toBe(secondBatchId);
+      vi.useRealTimers();
+    });
+
+    it("retries on network error (fetch rejects) with same batch_id", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock)
+        .mockRejectedValueOnce(new TypeError("network down"))
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      const secondBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      ).batch_id;
+      expect(firstBatchId).toBe(secondBatchId);
+      vi.useRealTimers();
+    });
+
+    it("drops the batch after RETRY_MAX_ATTEMPTS exhausted", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock).mockResolvedValue({
+        ok: false,
+        status: 503,
+      } as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await Promise.resolve();
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(1000);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(fetch).toHaveBeenCalledTimes(3);
+      vi.useRealTimers();
+    });
+
+    it("drops the batch immediately on 400 with no retry", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 400,
+        json: vi.fn().mockResolvedValue({ errorCode: 1 }),
+      } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+
+    it("drops the batch on 403 and short-circuits subsequent flushes", async () => {
+      vi.useFakeTimers();
+      (fetch as unknown as Mock).mockResolvedValueOnce({
+        ok: false,
+        status: 403,
+      } as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      emit("ui_url_copy", { result: "success" });
+      void flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      vi.useRealTimers();
+    });
+  });
+
+  describe("concurrent-flush guard", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("does not issue concurrent POSTs when flush is in flight", async () => {
+      let resolveFetch: (response: Response) => void = () => {};
+      (fetch as unknown as Mock)
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveFetch = resolve;
+          }),
+        )
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      emit("ui_url_copy", { result: "success" });
+      void flush();
+      expect(fetch).toHaveBeenCalledOnce();
+      resolveFetch({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    it("buffers events emitted during in-flight flush and ships them next time", async () => {
+      let resolveFirst: (response: Response) => void = () => {};
+      (fetch as unknown as Mock)
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveFirst = resolve;
+          }),
+        )
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      void flush();
+      emit("ui_url_copy", { result: "success" });
+      resolveFirst({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+      await flush();
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const secondBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      );
+      expect(secondBody.events).toHaveLength(1);
+      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+    });
+  });
+
+  describe("MAX_BATCH_SIZE slicing", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal("fetch", vi.fn());
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("slices buffers larger than MAX_BATCH_SIZE into separate POSTs", async () => {
+      // Hold the first fetch open so the BATCH_THRESHOLD auto-flush triggered by
+      // the priming emit stays in flight while we load 110 additional events into
+      // the buffer (the in-flight guard suppresses further auto-flushes).
+      let resolveFirst: (response: Response) => void = () => {};
+      (fetch as unknown as Mock)
+        .mockReturnValueOnce(
+          new Promise<Response>((resolve) => {
+            resolveFirst = resolve;
+          }),
+        )
+        .mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+
+      emit("ui_utub_create_open");
+      void flush();
+
+      for (let index = 0; index < 110; index++) {
+        emit("ui_url_card_click", { active_tag_count: index });
+      }
+
+      resolveFirst({
+        ok: true,
+        status: 200,
+        json: vi.fn(),
+      } as unknown as Response);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      await flush();
+      await flush();
+
+      expect(fetch).toHaveBeenCalledTimes(3);
+      const secondBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      );
+      const thirdBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[2][1].body,
+      );
+      expect(secondBody.events).toHaveLength(100);
+      expect(thirdBody.events).toHaveLength(10);
+      expect(secondBody.batch_id).not.toBe(thirdBody.batch_id);
+    });
+  });
+
+  describe("dimension allow-list filter", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+    });
+
+    it("strips disallowed dimension keys before serialization", async () => {
+      emit("ui_url_copy", {
+        result: "success",
+        userId: 42,
+        email: "user@example.com",
+      } as unknown as EmitDimensions);
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toEqual({ result: "success" });
+    });
+
+    it("passes through all allow-listed keys", async () => {
+      emit("ui_url_access", {
+        trigger: "corner_button",
+        search_active: "true",
+        active_tag_count: 3,
+      });
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toEqual({
+        trigger: "corner_button",
+        search_active: "true",
+        active_tag_count: 3,
+      });
+    });
+
+    it("sets dimensions to null when filtering leaves an empty object", async () => {
+      emit("ui_utub_create_open", {
+        userId: 42,
+      } as unknown as EmitDimensions);
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toBeNull();
+    });
+  });
+});

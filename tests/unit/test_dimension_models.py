@@ -3,8 +3,12 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from backend.metrics.dimension_models import DIMENSION_MODELS, validate_dimensions
-from backend.metrics.events import EventName
+from backend.metrics.dimension_models import (
+    DIMENSION_MODELS,
+    get_all_dimension_keys,
+    validate_dimensions,
+)
+from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 
 pytestmark = pytest.mark.unit
 
@@ -143,3 +147,16 @@ def test_api_hit_model_validates_endpoint_method_status_code():
         api_hit_model.model_validate(
             {"endpoint": "/utubs", "method": "POST", "status_code": "200"}
         )
+
+
+def test_get_all_dimension_keys_returns_union_of_ui_model_fields():
+    """`get_all_dimension_keys()` returns sorted union of UI-category dim model fields."""
+    expected: set[str] = set()
+    for event_name, dim_model in DIMENSION_MODELS.items():
+        if dim_model is None:
+            continue
+        if EVENT_CATEGORY[event_name] != EventCategory.UI:
+            continue
+        expected.update(dim_model.model_fields.keys())
+    assert set(get_all_dimension_keys()) == expected
+    assert get_all_dimension_keys() == tuple(sorted(expected))
