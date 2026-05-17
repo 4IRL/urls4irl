@@ -71,19 +71,13 @@ describe("metrics-client", () => {
       expect(fetch).toHaveBeenCalledOnce();
     });
 
-    it("flush() sends empty X-CSRFToken and warns when csrf-token meta tag is missing", async () => {
+    it("flush() sends empty X-CSRFToken when csrf-token meta tag is missing", async () => {
       document.head.innerHTML = "";
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       emit("ui_utub_create_open");
       await flush();
       expect(fetch).toHaveBeenCalledOnce();
       const init = (fetch as unknown as Mock).mock.calls[0][1];
       expect(init.headers["X-CSRFToken"]).toBe("");
-      expect(warnSpy).toHaveBeenCalledOnce();
-      expect(warnSpy).toHaveBeenCalledWith(
-        "metrics-client: csrf-token meta tag missing; request will be rejected",
-      );
-      warnSpy.mockRestore();
     });
   });
 
@@ -498,7 +492,6 @@ describe("metrics-client", () => {
 
     it("drops the batch after RETRY_MAX_ATTEMPTS exhausted", async () => {
       vi.useFakeTimers();
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       (fetch as unknown as Mock).mockResolvedValue({
         ok: false,
         status: 503,
@@ -510,14 +503,11 @@ describe("metrics-client", () => {
       await vi.advanceTimersByTimeAsync(1000);
       await vi.advanceTimersByTimeAsync(2000);
       expect(fetch).toHaveBeenCalledTimes(3);
-      expect(warnSpy).toHaveBeenCalled();
       vi.useRealTimers();
-      warnSpy.mockRestore();
     });
 
     it("drops the batch immediately on 400 with no retry", async () => {
       vi.useFakeTimers();
-      const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
       (fetch as unknown as Mock).mockResolvedValueOnce({
         ok: false,
         status: 400,
@@ -528,7 +518,6 @@ describe("metrics-client", () => {
       await vi.advanceTimersByTimeAsync(10000);
       expect(fetch).toHaveBeenCalledOnce();
       vi.useRealTimers();
-      warnSpy.mockRestore();
     });
 
     it("drops the batch on 403 and short-circuits subsequent flushes", async () => {

@@ -53,11 +53,7 @@ function _clearInFlight(): void {
 function _scheduleRetry(): void {
   _retryAttempts += 1;
   if (_retryAttempts >= RETRY_MAX_ATTEMPTS) {
-    const droppedCount = _inFlightEvents?.length ?? 0;
     _clearInFlight();
-    console.warn("metrics: retry cap exhausted, dropping batch", {
-      events: droppedCount,
-    });
     return;
   }
   const backoffMs = RETRY_BASE_BACKOFF_MS * 2 ** (_retryAttempts - 1);
@@ -89,7 +85,9 @@ function pruneDedupeMap(now: number): void {
 }
 
 export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
-  const now = Date.now();
+  // performance.now() is monotonic high-resolution time relative to page navigation start;
+  // it cannot be persisted across page loads and is safe from NTP/clock jumps.
+  const now = performance.now();
   pruneDedupeMap(now);
   const dedupeKey = `${event}|${JSON.stringify(dimensions ?? null)}`;
   const lastEmittedAt = _dedupe.get(dedupeKey);
@@ -120,11 +118,6 @@ export async function flush(): Promise<void> {
   };
 
   const csrfToken = getCsrfToken();
-  if (csrfToken === null) {
-    console.warn(
-      "metrics-client: csrf-token meta tag missing; request will be rejected",
-    );
-  }
 
   _postInFlight = true;
   try {
@@ -143,13 +136,11 @@ export async function flush(): Promise<void> {
       return;
     }
     if (response.status === 400) {
-      console.warn("metrics: 400 — dropping batch");
       _clearInFlight();
       return;
     }
     if (response.status === 403) {
       _csrfDeadForLifetime = true;
-      console.warn("metrics: 403 — dropping batch, CSRF dead for lifetime");
       _clearInFlight();
       return;
     }

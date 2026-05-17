@@ -84,7 +84,6 @@ const appConfig = {
       CO_CREATOR: "CO_CREATOR",
     },
     // Source of truth: backend/metrics/dimension_models.py (DIMENSION_MODELS registry).
-    // Gating check: tests/unit/test_dimension_models.py::test_get_all_dimension_keys_matches_registry
     // — keep this array in sync when DIMENSION_MODELS changes.
     DIMENSION_KEYS: [
       "active_tag_count",
