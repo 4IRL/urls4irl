@@ -245,7 +245,7 @@ The cutover from the previous single-instance topology (shared `redis` DB 2 for 
 
 ## API Pattern
 
-Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. AJAX write endpoints (`utubs`, `urls`, `members`, `tags`) and splash endpoints (`login`, `register`, `forgot-password`, `reset-password`) expect `Content-Type: application/json` with the CSRF token in the `X-Csrftoken` request header. The contact blueprint still uses `application/x-www-form-urlencoded` with WTForms. See `backend/API_DOCUMENTATION.md` for full endpoint docs.
+Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. AJAX write endpoints (`utubs`, `urls`, `members`, `tags`) and splash endpoints (`login`, `register`, `forgot-password`, `reset-password`) expect `Content-Type: application/json` with the CSRF token in the `X-Csrftoken` request header. The contact blueprint still uses `application/x-www-form-urlencoded` with WTForms. **Exception:** `POST /api/metrics` is `@csrf.exempt` by design — it is anonymous (no session state to protect), rate-limited per IP, JSON `Content-Type` forces CORS preflight against cross-origin browser abuse, and replay is blocked by a server-side `batch_id` nonce. See `backend/API_DOCUMENTATION.md` for full endpoint docs.
 
 ## Testing (`tests/`)
 
