@@ -1,5 +1,6 @@
 import type { Mock } from "vitest";
 
+import { _resetDeviceTypeCacheForTests } from "../device-type.js";
 import type { EmitDimensions } from "../metrics-client.js";
 import {
   emit,
@@ -7,6 +8,28 @@ import {
   initMetricsClient,
   resetMetricsClient,
 } from "../metrics-client.js";
+
+// Outer-scope matchMedia stub: defaults all tests to a desktop viewport so
+// `getDeviceType()` consistently returns `"desktop"` in the auto-injected
+// `device_type` dimension. Individual `describe` blocks may override via
+// their own `beforeEach` to test mobile behavior; the outer `afterEach`
+// restores the default via `vi.unstubAllGlobals()`.
+beforeEach(() => {
+  vi.stubGlobal(
+    "matchMedia",
+    vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  );
+  _resetDeviceTypeCacheForTests();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  _resetDeviceTypeCacheForTests();
+});
 
 describe("metrics-client", () => {
   it("exports emit, flush, initMetricsClient, resetMetricsClient", () => {
@@ -51,9 +74,12 @@ describe("metrics-client", () => {
       const body = JSON.parse(init.body);
       expect(body.events).toHaveLength(2);
       expect(body.events[0].event_name).toBe("ui_utub_create_open");
-      expect(body.events[0].dimensions).toBeNull();
+      expect(body.events[0].dimensions).toEqual({ device_type: "desktop" });
       expect(body.events[1].event_name).toBe("ui_url_copy");
-      expect(body.events[1].dimensions).toEqual({ result: "success" });
+      expect(body.events[1].dimensions).toEqual({
+        device_type: "desktop",
+        result: "success",
+      });
       expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
     });
 
@@ -684,7 +710,10 @@ describe("metrics-client", () => {
       } as unknown as EmitDimensions);
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
-      expect(body.events[0].dimensions).toEqual({ result: "success" });
+      expect(body.events[0].dimensions).toEqual({
+        device_type: "desktop",
+        result: "success",
+      });
     });
 
     it("passes through all allow-listed keys", async () => {
@@ -696,19 +725,61 @@ describe("metrics-client", () => {
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
+        device_type: "desktop",
         trigger: "corner_button",
         search_active: "true",
         active_tag_count: 3,
       });
     });
 
-    it("sets dimensions to null when filtering leaves an empty object", async () => {
+    it("keeps auto-injected device_type when all caller-supplied keys are disallowed", async () => {
       emit("ui_utub_create_open", {
         userId: 42,
       } as unknown as EmitDimensions);
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
-      expect(body.events[0].dimensions).toBeNull();
+      expect(body.events[0].dimensions).toEqual({ device_type: "desktop" });
+    });
+  });
+
+  describe("device_type auto-injection", () => {
+    beforeEach(() => {
+      resetMetricsClient();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+    });
+
+    afterEach(() => {
+      resetMetricsClient();
+    });
+
+    it("auto-injects device_type=mobile when matchMedia matches the mobile breakpoint", async () => {
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockReturnValue({
+          matches: true,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }),
+      );
+      _resetDeviceTypeCacheForTests();
+      emit("ui_utub_create_open");
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toEqual({ device_type: "mobile" });
+    });
+
+    it("caller-supplied device_type wins over the auto-injected value", async () => {
+      emit("ui_utub_create_open", { device_type: "mobile" } as EmitDimensions);
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events[0].dimensions).toEqual({ device_type: "mobile" });
     });
   });
 });

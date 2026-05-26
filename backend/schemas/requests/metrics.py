@@ -39,11 +39,12 @@ class MetricsIngestEvent(BaseModel):
     event_name: UIEventNameLiteral = Field(
         description="UI-category EventName value emitted by the browser",
     )
-    dimensions: dict[str, str | int | bool] | None = Field(
-        default=None,
+    dimensions: dict[str, str | int | bool] = Field(
         description=(
-            "Optional per-event dimension dict; shape enforced server-side via "
-            "the matching `_Dim<EventName>` Pydantic model"
+            "Per-event dimension dict; shape enforced server-side via the "
+            "matching `_Dim<EventName>` Pydantic model. Auto-injected with "
+            "`device_type` by the metrics-client for all UI events, so the "
+            "dict is always non-empty when sent from the browser."
         ),
     )
 

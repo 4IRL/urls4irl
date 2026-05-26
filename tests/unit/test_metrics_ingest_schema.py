@@ -22,21 +22,44 @@ _DOMAIN_EVENT_VALUES = tuple(
 
 def test_event_name_accepts_only_ui_category():
     """Every UI EventName value validates; api/domain values raise."""
-    # Happy path — every UI value succeeds.
+    # Happy path — every UI value succeeds. `dimensions` is now a required
+    # field on `MetricsIngestEvent`; the schema only enforces the dict shape,
+    # so any non-empty dict suffices (per-event content checks happen at the
+    # route layer via `validate_dimensions()`).
     for ui_value in _UI_EVENT_VALUES:
-        MetricsIngestRequest.model_validate({"events": [{"event_name": ui_value}]})
+        MetricsIngestRequest.model_validate(
+            {
+                "events": [
+                    {"event_name": ui_value, "dimensions": {"device_type": "mobile"}}
+                ]
+            }
+        )
 
     # api_hit (the API category) is rejected.
     with pytest.raises(ValidationError):
         MetricsIngestRequest.model_validate(
-            {"events": [{"event_name": EventName.API_HIT.value}]}
+            {
+                "events": [
+                    {
+                        "event_name": EventName.API_HIT.value,
+                        "dimensions": {"device_type": "mobile"},
+                    }
+                ]
+            }
         )
 
     # Every domain category value is rejected.
     for domain_value in _DOMAIN_EVENT_VALUES:
         with pytest.raises(ValidationError):
             MetricsIngestRequest.model_validate(
-                {"events": [{"event_name": domain_value}]}
+                {
+                    "events": [
+                        {
+                            "event_name": domain_value,
+                            "dimensions": {"device_type": "mobile"},
+                        }
+                    ]
+                }
             )
 
 
@@ -45,7 +68,12 @@ def test_top_level_extra_keys_rejected():
     with pytest.raises(ValidationError):
         MetricsIngestRequest.model_validate(
             {
-                "events": [{"event_name": EventName.UI_URL_COPY.value}],
+                "events": [
+                    {
+                        "event_name": EventName.UI_URL_COPY.value,
+                        "dimensions": {"device_type": "mobile"},
+                    }
+                ],
                 "unknown_top_key": 1,
             }
         )
@@ -105,18 +133,33 @@ def test_empty_events_list_rejected():
 
 def test_max_events_limit():
     """`max_length=100` enforced on `events`."""
-    too_many = [{"event_name": EventName.UI_URL_COPY.value} for _ in range(101)]
+    too_many = [
+        {
+            "event_name": EventName.UI_URL_COPY.value,
+            "dimensions": {"device_type": "mobile"},
+        }
+        for _ in range(101)
+    ]
     with pytest.raises(ValidationError):
         MetricsIngestRequest.model_validate({"events": too_many})
 
     # 100 events is fine.
-    exactly_max = [{"event_name": EventName.UI_URL_COPY.value} for _ in range(100)]
+    exactly_max = [
+        {
+            "event_name": EventName.UI_URL_COPY.value,
+            "dimensions": {"device_type": "mobile"},
+        }
+        for _ in range(100)
+    ]
     MetricsIngestRequest.model_validate({"events": exactly_max})
 
 
 def test_batch_id_optional():
     """`batch_id` accepts None, str; rejects non-str."""
-    base_event = {"event_name": EventName.UI_URL_COPY.value}
+    base_event = {
+        "event_name": EventName.UI_URL_COPY.value,
+        "dimensions": {"device_type": "mobile"},
+    }
 
     # None is allowed
     MetricsIngestRequest.model_validate({"events": [base_event], "batch_id": None})
@@ -142,14 +185,20 @@ def test_batch_id_max_length_boundary_accepts_128_chars():
     Redis key suffix (`metrics:batch:<batch_id>`); without it, an unbounded
     length would enable large-key allocation within rate-limit windows.
     """
-    base_event = {"event_name": EventName.UI_URL_COPY.value}
+    base_event = {
+        "event_name": EventName.UI_URL_COPY.value,
+        "dimensions": {"device_type": "mobile"},
+    }
 
     MetricsIngestRequest.model_validate({"events": [base_event], "batch_id": "a" * 128})
 
 
 def test_batch_id_max_length_boundary_rejects_129_chars():
     """`batch_id` with 129 characters raises ValidationError (boundary exclusive)."""
-    base_event = {"event_name": EventName.UI_URL_COPY.value}
+    base_event = {
+        "event_name": EventName.UI_URL_COPY.value,
+        "dimensions": {"device_type": "mobile"},
+    }
 
     with pytest.raises(ValidationError):
         MetricsIngestRequest.model_validate(

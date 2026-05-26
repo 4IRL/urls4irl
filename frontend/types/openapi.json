@@ -1924,32 +1924,24 @@
             "type": "string"
           },
           "dimensions": {
-            "anyOf": [
-              {
-                "additionalProperties": {
-                  "anyOf": [
-                    {
-                      "type": "string"
-                    },
-                    {
-                      "type": "integer"
-                    },
-                    {
-                      "type": "boolean"
-                    }
-                  ]
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
                 },
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model"
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "boolean"
+                }
+              ]
+            },
+            "description": "Per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model. Auto-injected with `device_type` by the metrics-client for all UI events, so the dict is always non-empty when sent from the browser.",
+            "type": "object"
           }
         },
-        "required": ["event_name"],
+        "required": ["event_name", "dimensions"],
         "type": "object"
       },
       "MetricsIngestRequest": {
