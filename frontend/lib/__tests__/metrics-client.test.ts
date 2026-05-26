@@ -1,6 +1,6 @@
 import type { Mock } from "vitest";
 
-import { _resetDeviceTypeCacheForTests } from "../device-type.js";
+import { resetDeviceTypeCache } from "../../__tests__/helpers/device-type-test-utils.js";
 import type { EmitDimensions } from "../metrics-client.js";
 import {
   emit,
@@ -23,12 +23,12 @@ beforeEach(() => {
       removeEventListener: vi.fn(),
     }),
   );
-  _resetDeviceTypeCacheForTests();
+  resetDeviceTypeCache();
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  _resetDeviceTypeCacheForTests();
+  resetDeviceTypeCache();
 });
 
 describe("metrics-client", () => {
@@ -155,6 +155,31 @@ describe("metrics-client", () => {
       expect(body.events).toHaveLength(5);
       vi.useRealTimers();
     });
+
+    it("treats mobile↔desktop transition as distinct dedupe buckets", async () => {
+      // Outer-scope beforeEach already stubbed matchMedia=matches=false (desktop).
+      // First emit captures device_type='desktop' into the dedupe key.
+      emit("ui_utub_create_open");
+
+      // Toggle viewport to mobile and reset the device-type cache so the next
+      // getDeviceType() call re-queries matchMedia and returns 'mobile'.
+      vi.stubGlobal(
+        "matchMedia",
+        vi.fn().mockReturnValue({
+          matches: true,
+          addEventListener: vi.fn(),
+          removeEventListener: vi.fn(),
+        }),
+      );
+      resetDeviceTypeCache();
+      emit("ui_utub_create_open");
+
+      await flush();
+      const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
+      expect(body.events).toHaveLength(2);
+      expect(body.events[0].dimensions).toEqual({ device_type: "desktop" });
+      expect(body.events[1].dimensions).toEqual({ device_type: "mobile" });
+    });
   });
 
   describe("initMetricsClient() / resetMetricsClient() interval lifecycle", () => {
@@ -203,6 +228,25 @@ describe("metrics-client", () => {
       await vi.advanceTimersByTimeAsync(60000);
       expect(fetch).toHaveBeenCalledOnce();
       vi.useRealTimers();
+    });
+
+    it("initMetricsClient wires the device-type listener via matchMedia.addEventListener('change', ...)", () => {
+      const addEventListenerSpy = vi.fn();
+      const matchMediaMock = vi.fn().mockReturnValue({
+        matches: false,
+        addEventListener: addEventListenerSpy,
+        removeEventListener: vi.fn(),
+      });
+      vi.stubGlobal("matchMedia", matchMediaMock);
+      resetDeviceTypeCache();
+
+      initMetricsClient();
+
+      expect(matchMediaMock).toHaveBeenCalled();
+      expect(addEventListenerSpy).toHaveBeenCalledWith(
+        "change",
+        expect.any(Function),
+      );
     });
   });
 
@@ -768,7 +812,7 @@ describe("metrics-client", () => {
           removeEventListener: vi.fn(),
         }),
       );
-      _resetDeviceTypeCacheForTests();
+      resetDeviceTypeCache();
       emit("ui_utub_create_open");
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);

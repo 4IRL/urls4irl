@@ -38,10 +38,14 @@ export function initDeviceTypeListener(): void {
 }
 
 /**
- * Test-only helper: clear the cached device-type so the next
- * `getDeviceType()` call re-queries `matchMedia`. Never call from
- * production code paths.
+ * Internal hook for tree-shakable test access to the module-level cache.
+ * Production code MUST NOT import this — it exists only so the test-utility
+ * `frontend/__tests__/helpers/device-type-test-utils.ts` can reset cached
+ * state between tests. Vite tree-shakes this in production builds because
+ * no application module imports it.
  */
-export function _resetDeviceTypeCacheForTests(): void {
-  _cachedDeviceType = null;
-}
+export const __deviceTypeInternals = Object.freeze({
+  resetCache(): void {
+    _cachedDeviceType = null;
+  },
+});

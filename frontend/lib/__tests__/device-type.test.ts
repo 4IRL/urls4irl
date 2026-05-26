@@ -1,11 +1,8 @@
 import type { Mock } from "vitest";
 
+import { resetDeviceTypeCache } from "../../__tests__/helpers/device-type-test-utils.js";
 import { TABLET_WIDTH } from "../constants.js";
-import {
-  _resetDeviceTypeCacheForTests,
-  getDeviceType,
-  initDeviceTypeListener,
-} from "../device-type.js";
+import { getDeviceType, initDeviceTypeListener } from "../device-type.js";
 
 const MOBILE_MEDIA_QUERY = "(max-width: " + (TABLET_WIDTH - 1) + "px)";
 
@@ -29,12 +26,12 @@ function makeMockMediaQueryList(matches: boolean): MockMediaQueryList {
 
 describe("device-type", () => {
   beforeEach(() => {
-    _resetDeviceTypeCacheForTests();
+    resetDeviceTypeCache();
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
-    _resetDeviceTypeCacheForTests();
+    resetDeviceTypeCache();
   });
 
   describe("getDeviceType()", () => {
