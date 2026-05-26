@@ -485,6 +485,47 @@ describe("metrics-client", () => {
       expect(fetch).toHaveBeenCalledOnce();
       vi.useRealTimers();
     });
+
+    it("flush() on unexpected 403 clears in-flight without retry", async () => {
+      vi.useFakeTimers();
+      const sendBeaconMock = vi.fn(() => true);
+      Object.defineProperty(navigator, "sendBeacon", {
+        value: sendBeaconMock,
+        configurable: true,
+        writable: true,
+      });
+      (fetch as unknown as Mock)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
+      emit("ui_utub_create_open");
+      await flush();
+      await vi.advanceTimersByTimeAsync(10000);
+      expect(fetch).toHaveBeenCalledOnce();
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+
+      emit("ui_url_copy", { result: "success" });
+      await flush();
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const secondBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      );
+      expect(secondBody.events).toHaveLength(1);
+      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      expect(secondBody.batch_id).not.toBe(firstBatchId);
+
+      delete (navigator as Partial<Navigator>).sendBeacon;
+      vi.useRealTimers();
+    });
   });
 
   describe("concurrent-flush guard", () => {
