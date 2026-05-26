@@ -17,7 +17,7 @@ import { TABLET_WIDTH } from "./constants.js";
 
 export type DeviceType = "mobile" | "desktop";
 
-const MOBILE_MEDIA_QUERY = "(max-width: " + (TABLET_WIDTH - 1) + "px)";
+const MOBILE_MEDIA_QUERY = `(max-width: ${TABLET_WIDTH - 1}px)`;
 
 let _cachedDeviceType: DeviceType | null = null;
 

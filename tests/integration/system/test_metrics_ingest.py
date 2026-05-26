@@ -239,7 +239,7 @@ def test_ingest_accepts_device_type_dimension_for_formerly_none_model(
 ):
     """
     GIVEN a formerly-None-mapped UI event (now `_DimDeviceOnly`)
-    WHEN posting with `device_type` (200), with omitted dimensions (422), or with empty dimensions (422)
+    WHEN posting with `device_type` (200), with omitted dimensions (400), or with empty dimensions (400)
     THEN only the `device_type`-bearing payload succeeds; both missing-field cases are rejected.
     """
     response_with_device = client.post(
