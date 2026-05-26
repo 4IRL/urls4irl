@@ -28,16 +28,8 @@ let _postInFlight: boolean = false;
 let _retryAttempts: number = 0;
 let _retryTimerId: ReturnType<typeof setTimeout> | null = null;
 let _intervalId: ReturnType<typeof setInterval> | null = null;
-let _csrfDeadForLifetime: boolean = false;
 let _onVisibilityChange: (() => void) | null = null;
 let _onPageHide: (() => void) | null = null;
-
-function getCsrfToken(): string | null {
-  return (
-    document.querySelector<HTMLMetaElement>("meta[name=csrf-token]")?.content ??
-    null
-  );
-}
 
 function _clearInFlight(): void {
   _inFlightBatchId = null;
@@ -106,7 +98,6 @@ export async function flush(): Promise<void> {
   if (_retryTimerId !== null) return;
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
-    if (_csrfDeadForLifetime) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
     _inFlightBatchId = crypto.randomUUID();
   }
@@ -114,10 +105,7 @@ export async function flush(): Promise<void> {
   const payload: MetricsIngestRequest = {
     events: _inFlightEvents,
     batch_id: _inFlightBatchId,
-    csrf_token: null,
   };
-
-  const csrfToken = getCsrfToken();
 
   _postInFlight = true;
   try {
@@ -125,7 +113,6 @@ export async function flush(): Promise<void> {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-CSRFToken": csrfToken ?? "",
       },
       body: JSON.stringify(payload),
       credentials: "same-origin",
@@ -136,11 +123,6 @@ export async function flush(): Promise<void> {
       return;
     }
     if (response.status === 400) {
-      _clearInFlight();
-      return;
-    }
-    if (response.status === 403) {
-      _csrfDeadForLifetime = true;
       _clearInFlight();
       return;
     }
@@ -156,7 +138,6 @@ export async function flush(): Promise<void> {
 }
 
 function flushBeacon(): void {
-  if (_csrfDeadForLifetime) return;
   if (_buffer.length === 0) return;
   if (_inFlightBatchId !== null) return;
   const beaconEvents = _buffer.splice(0, MAX_BATCH_SIZE);
@@ -164,7 +145,6 @@ function flushBeacon(): void {
   const payload: MetricsIngestRequest = {
     events: beaconEvents,
     batch_id: beaconBatchId,
-    csrf_token: getCsrfToken(),
   };
   const serialized = JSON.stringify(payload);
   try {
@@ -220,5 +200,4 @@ export function resetMetricsClient(): void {
     window.removeEventListener("pagehide", _onPageHide);
     _onPageHide = null;
   }
-  _csrfDeadForLifetime = false;
 }

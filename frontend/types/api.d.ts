@@ -538,11 +538,6 @@ export interface components {
        * @default null
        */
       batch_id: string | null;
-      /**
-       * @description Optional CSRF token in the JSON body for navigator.sendBeacon callers that cannot set headers
-       * @default null
-       */
-      csrf_token: string | null;
     };
     /**
      * @description Response payload returned by `POST /api/metrics`.

@@ -71,10 +71,3 @@ class MetricsIngestRequest(BaseModel):
             "idempotency on retries"
         ),
     )
-    csrf_token: str | None = Field(
-        default=None,
-        description=(
-            "Optional CSRF token in the JSON body for navigator.sendBeacon "
-            "callers that cannot set headers"
-        ),
-    )

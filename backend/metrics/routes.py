@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from flask import Blueprint, request
-from flask_wtf.csrf import CSRFError, validate_csrf
+from flask import Blueprint
 from pydantic import ValidationError
-from wtforms import ValidationError as WTFormsValidationError
 
 from backend import csrf, limiter, metrics_writer
 from backend.api_common.parse_request import api_route
@@ -16,7 +14,6 @@ from backend.metrics.events import EventName
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
-    build_message_error_response,
 )
 from backend.schemas.metrics import MetricsIngestResponseSchema
 from backend.schemas.requests.metrics import MetricsIngestRequest
@@ -43,26 +40,6 @@ _METRICS_RATE_LIMIT = "120 per minute, 3000 per hour"
 )
 @limiter.limit(_METRICS_RATE_LIMIT, methods=["POST"])
 def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
-    # Prefer the X-CSRFToken header; fall back to the JSON body's
-    # `csrf_token` field for sendBeacon callers (no custom headers allowed).
-    # Empty strings on either path count as missing.
-    submitted_token = (
-        request.headers.get("X-CSRFToken") or metrics_ingest_request.csrf_token or None
-    )
-
-    try:
-        validate_csrf(submitted_token)
-    except WTFormsValidationError as csrf_validation_error:
-        if submitted_token:
-            # A real token was submitted but is invalid/expired/mismatched —
-            # raise CSRFError manually so the global handler returns 403.
-            raise CSRFError(str(csrf_validation_error))
-        return build_message_error_response(
-            message=MetricsFailureMessages.MISSING_CSRF,
-            error_code=MetricsErrorCodes.INVALID_FORM_INPUT,
-            status_code=400,
-        )
-
     if metrics_ingest_request.batch_id is not None:
         newly_reserved = metrics_writer.reserve_batch(metrics_ingest_request.batch_id)
         if not newly_reserved:

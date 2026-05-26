@@ -84,9 +84,6 @@ def test_middleware_skips_metrics_blueprint_self(
     WHEN POST /api/metrics is invoked with a valid payload
     THEN no api_hit counter key is created (only the per-event keys from dispatch).
     """
-    splash_response = client.get("/")
-    csrf = get_csrf_token(splash_response.get_data(), meta_tag=True)
-
     response = client.post(
         "/api/metrics",
         json={
@@ -97,7 +94,6 @@ def test_middleware_skips_metrics_blueprint_self(
                 }
             ]
         },
-        headers={"X-CSRFToken": csrf},
     )
     assert response.status_code == 200
 

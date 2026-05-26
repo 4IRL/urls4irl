@@ -24,7 +24,6 @@ describe("metrics-client", () => {
   describe("flush() POST contract", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -40,7 +39,7 @@ describe("metrics-client", () => {
       resetMetricsClient();
     });
 
-    it("flush() POSTs buffered events as application/json with CSRF header and batch_id", async () => {
+    it("flush() POSTs buffered events as application/json with batch_id", async () => {
       emit("ui_utub_create_open");
       emit("ui_url_copy", { result: "success" });
       await flush();
@@ -49,7 +48,6 @@ describe("metrics-client", () => {
       expect(url).toBe("/api/metrics");
       expect(init.method).toBe("POST");
       expect(init.headers["Content-Type"]).toBe("application/json");
-      expect(init.headers["X-CSRFToken"]).toBe("test-token");
       const body = JSON.parse(init.body);
       expect(body.events).toHaveLength(2);
       expect(body.events[0].event_name).toBe("ui_utub_create_open");
@@ -70,21 +68,11 @@ describe("metrics-client", () => {
       await flush();
       expect(fetch).toHaveBeenCalledOnce();
     });
-
-    it("flush() sends empty X-CSRFToken when csrf-token meta tag is missing", async () => {
-      document.head.innerHTML = "";
-      emit("ui_utub_create_open");
-      await flush();
-      expect(fetch).toHaveBeenCalledOnce();
-      const init = (fetch as unknown as Mock).mock.calls[0][1];
-      expect(init.headers["X-CSRFToken"]).toBe("");
-    });
   });
 
   describe("emit() dedupe with cooldown window", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -146,7 +134,6 @@ describe("metrics-client", () => {
   describe("initMetricsClient() / resetMetricsClient() interval lifecycle", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -196,7 +183,6 @@ describe("metrics-client", () => {
   describe("threshold flush at BATCH_THRESHOLD", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -228,7 +214,6 @@ describe("metrics-client", () => {
 
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({
@@ -255,7 +240,7 @@ describe("metrics-client", () => {
       delete (navigator as Partial<Navigator>).sendBeacon;
     });
 
-    it("sendBeacon on visibilitychange-hidden carries CSRF in body and is called exactly once", () => {
+    it("sendBeacon on visibilitychange-hidden posts batch and is called exactly once", () => {
       initMetricsClient();
       emit("ui_utub_create_open");
       Object.defineProperty(document, "visibilityState", {
@@ -270,7 +255,6 @@ describe("metrics-client", () => {
       expect((blob as Blob).type).toBe("application/json");
       return (blob as Blob).text().then((text) => {
         const body = JSON.parse(text);
-        expect(body.csrf_token).toBe("test-token");
         expect(body.events[0].event_name).toBe("ui_utub_create_open");
         expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
       });
@@ -369,23 +353,6 @@ describe("metrics-client", () => {
       await Promise.resolve();
     });
 
-    it("flushBeacon does not fire when _csrfDeadForLifetime is true", async () => {
-      (fetch as unknown as Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-      } as Response);
-      initMetricsClient();
-      emit("ui_utub_create_open");
-      await flush();
-      emit("ui_url_copy", { result: "success" });
-      Object.defineProperty(document, "visibilityState", {
-        value: "hidden",
-        configurable: true,
-      });
-      document.dispatchEvent(new Event("visibilitychange"));
-      expect(sendBeaconMock).not.toHaveBeenCalled();
-    });
-
     it("flushBeacon swallows exceptions thrown by sendBeacon", () => {
       sendBeaconMock.mockImplementation(() => {
         throw new Error("beacon failure");
@@ -406,7 +373,6 @@ describe("metrics-client", () => {
   describe("retry-with-backoff on transient failures", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal("fetch", vi.fn());
     });
 
@@ -520,20 +486,44 @@ describe("metrics-client", () => {
       vi.useRealTimers();
     });
 
-    it("drops the batch on 403 and short-circuits subsequent flushes", async () => {
+    it("flush() on unexpected 403 clears in-flight without retry", async () => {
       vi.useFakeTimers();
-      (fetch as unknown as Mock).mockResolvedValueOnce({
-        ok: false,
-        status: 403,
-      } as Response);
+      const sendBeaconMock = vi.fn(() => true);
+      Object.defineProperty(navigator, "sendBeacon", {
+        value: sendBeaconMock,
+        configurable: true,
+        writable: true,
+      });
+      (fetch as unknown as Mock)
+        .mockResolvedValueOnce({
+          ok: false,
+          status: 403,
+        } as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: vi.fn(),
+        } as unknown as Response);
       emit("ui_utub_create_open");
-      void flush();
+      await flush();
       await vi.advanceTimersByTimeAsync(10000);
       expect(fetch).toHaveBeenCalledOnce();
+      expect(sendBeaconMock).not.toHaveBeenCalled();
+
       emit("ui_url_copy", { result: "success" });
-      void flush();
-      await vi.advanceTimersByTimeAsync(10000);
-      expect(fetch).toHaveBeenCalledOnce();
+      await flush();
+      expect(fetch).toHaveBeenCalledTimes(2);
+      const secondBody = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[1][1].body,
+      );
+      expect(secondBody.events).toHaveLength(1);
+      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+      const firstBatchId = JSON.parse(
+        (fetch as unknown as Mock).mock.calls[0][1].body,
+      ).batch_id;
+      expect(secondBody.batch_id).not.toBe(firstBatchId);
+
+      delete (navigator as Partial<Navigator>).sendBeacon;
       vi.useRealTimers();
     });
   });
@@ -541,7 +531,6 @@ describe("metrics-client", () => {
   describe("concurrent-flush guard", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal("fetch", vi.fn());
     });
 
@@ -613,7 +602,6 @@ describe("metrics-client", () => {
   describe("MAX_BATCH_SIZE slicing", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal("fetch", vi.fn());
     });
 
@@ -673,7 +661,6 @@ describe("metrics-client", () => {
   describe("dimension allow-list filter", () => {
     beforeEach(() => {
       resetMetricsClient();
-      document.head.innerHTML = '<meta name="csrf-token" content="test-token">';
       vi.stubGlobal(
         "fetch",
         vi.fn().mockResolvedValue({

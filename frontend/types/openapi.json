@@ -1977,18 +1977,6 @@
             ],
             "default": null,
             "description": "Client-generated batch identifier; used server-side for SET NX EX idempotency on retries"
-          },
-          "csrf_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional CSRF token in the JSON body for navigator.sendBeacon callers that cannot set headers"
           }
         },
         "required": ["events"],
