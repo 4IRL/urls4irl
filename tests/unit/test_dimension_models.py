@@ -15,59 +15,101 @@ pytestmark = pytest.mark.unit
 
 # Table-driven cases — sourced from
 # plans/anonymous-metrics-ingest/tmp/research-schemas.md (the §2b matrix).
-# Each tuple: (EventName member, valid dimensions dict).
+# Each tuple: (EventName member, valid dimensions dict). UI-category entries
+# include `device_type` (required on all UI events via `UIBaseDimensions`).
 PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     (
         EventName.API_HIT,
         {"endpoint": "/utubs", "method": "POST", "status_code": 200},
     ),
-    (EventName.UI_UTUB_SELECT, {"search_active": "true"}),
-    (EventName.UI_UTUB_NAME_EDIT_OPEN, {"trigger": "pencil_icon"}),
-    (EventName.UI_UTUB_DESC_EDIT_OPEN, {"trigger": "create_button"}),
+    (EventName.UI_UTUB_SELECT, {"search_active": "true", "device_type": "mobile"}),
+    (
+        EventName.UI_UTUB_NAME_EDIT_OPEN,
+        {"trigger": "pencil_icon", "device_type": "desktop"},
+    ),
+    (
+        EventName.UI_UTUB_DESC_EDIT_OPEN,
+        {"trigger": "create_button", "device_type": "mobile"},
+    ),
     (
         EventName.UI_URL_ACCESS,
         {
             "trigger": "corner_button",
             "search_active": "false",
             "active_tag_count": 3,
+            "device_type": "desktop",
         },
     ),
     (
         EventName.UI_URL_CARD_CLICK,
-        {"search_active": "true", "active_tag_count": 0},
+        {"search_active": "true", "active_tag_count": 0, "device_type": "mobile"},
     ),
-    (EventName.UI_URL_COPY, {"result": "success"}),
-    (EventName.UI_SEARCH_OPEN, {"target": "urls"}),
-    (EventName.UI_SEARCH_CLOSE, {"target": "utubs"}),
-    (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub"}),
-    (EventName.UI_TAG_CREATE_OPEN, {"scope": "url"}),
-    (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub"}),
-    (EventName.UI_TAG_DELETE_OPEN, {"scope": "url"}),
-    (EventName.UI_TAG_DELETE_CONFIRM, {"scope": "utub"}),
-    (EventName.UI_TAG_DELETE_CONFIRM, {"scope": "url"}),
-    (EventName.UI_TAG_DELETE_CANCEL, {"scope": "utub"}),
-    (EventName.UI_TAG_DELETE_CANCEL, {"scope": "url"}),
-    (EventName.UI_FORM_SUBMIT, {"trigger": "enter_key", "form": "url_create"}),
-    (EventName.UI_FORM_SUBMIT, {"trigger": "button_click", "form": "url_title_edit"}),
-    (EventName.UI_FORM_SUBMIT, {"trigger": "enter_key", "form": "url_string_edit"}),
-    (EventName.UI_FORM_SUBMIT, {"trigger": "button_click", "form": "utub_name_edit"}),
-    (EventName.UI_FORM_SUBMIT, {"trigger": "enter_key", "form": "utub_desc_edit"}),
-    (EventName.UI_FORM_SUBMIT, {"trigger": "button_click", "form": "member_invite"}),
+    (EventName.UI_URL_COPY, {"result": "success", "device_type": "desktop"}),
+    (EventName.UI_SEARCH_OPEN, {"target": "urls", "device_type": "mobile"}),
+    (EventName.UI_SEARCH_CLOSE, {"target": "utubs", "device_type": "desktop"}),
+    (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": "mobile"}),
+    (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": "desktop"}),
+    (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub", "device_type": "mobile"}),
+    (EventName.UI_TAG_DELETE_OPEN, {"scope": "url", "device_type": "desktop"}),
+    (EventName.UI_TAG_DELETE_CONFIRM, {"scope": "utub", "device_type": "mobile"}),
+    (EventName.UI_TAG_DELETE_CONFIRM, {"scope": "url", "device_type": "desktop"}),
+    (EventName.UI_TAG_DELETE_CANCEL, {"scope": "utub", "device_type": "mobile"}),
+    (EventName.UI_TAG_DELETE_CANCEL, {"scope": "url", "device_type": "desktop"}),
     (
-        EventName.UI_FORM_CANCEL,
-        {"trigger": "escape_key", "form": "tag_create"},
+        EventName.UI_FORM_SUBMIT,
+        {"trigger": "enter_key", "form": "url_create", "device_type": "mobile"},
     ),
     (
-        EventName.UI_FORM_CANCEL,
-        {"trigger": "escape_key", "form": "url_title_edit"},
+        EventName.UI_FORM_SUBMIT,
+        {
+            "trigger": "button_click",
+            "form": "url_title_edit",
+            "device_type": "desktop",
+        },
     ),
-    (EventName.UI_VALIDATION_ERROR, {"form": "utub_create"}),
-    (EventName.UI_VALIDATION_ERROR, {"form": "utub_name_edit"}),
-    (EventName.UI_VALIDATION_ERROR, {"form": "url_string_edit"}),
-    (EventName.UI_DECK_COLLAPSE, {"deck": "members"}),
-    (EventName.UI_DECK_EXPAND, {"deck": "urls"}),
-    (EventName.UI_MOBILE_NAV, {"target": "tags"}),
-    (EventName.UI_AUTH_FORM_SWITCH, {"target": "register"}),
+    (
+        EventName.UI_FORM_SUBMIT,
+        {"trigger": "enter_key", "form": "url_string_edit", "device_type": "mobile"},
+    ),
+    (
+        EventName.UI_FORM_SUBMIT,
+        {
+            "trigger": "button_click",
+            "form": "utub_name_edit",
+            "device_type": "desktop",
+        },
+    ),
+    (
+        EventName.UI_FORM_SUBMIT,
+        {"trigger": "enter_key", "form": "utub_desc_edit", "device_type": "mobile"},
+    ),
+    (
+        EventName.UI_FORM_SUBMIT,
+        {"trigger": "button_click", "form": "member_invite", "device_type": "desktop"},
+    ),
+    (
+        EventName.UI_FORM_CANCEL,
+        {"trigger": "escape_key", "form": "tag_create", "device_type": "mobile"},
+    ),
+    (
+        EventName.UI_FORM_CANCEL,
+        {"trigger": "escape_key", "form": "url_title_edit", "device_type": "desktop"},
+    ),
+    (EventName.UI_VALIDATION_ERROR, {"form": "utub_create", "device_type": "mobile"}),
+    (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "utub_name_edit", "device_type": "desktop"},
+    ),
+    (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "url_string_edit", "device_type": "mobile"},
+    ),
+    (EventName.UI_DECK_COLLAPSE, {"deck": "members", "device_type": "desktop"}),
+    (EventName.UI_DECK_EXPAND, {"deck": "urls", "device_type": "mobile"}),
+    (EventName.UI_MOBILE_NAV, {"target": "tags", "device_type": "mobile"}),
+    (EventName.UI_AUTH_FORM_SWITCH, {"target": "register", "device_type": "desktop"}),
+    # `_DimDeviceOnly` event — exercises the model that replaces formerly-None UI entries.
+    (EventName.UI_UTUB_CREATE_OPEN, {"device_type": "mobile"}),
 )
 
 
@@ -77,9 +119,13 @@ def test_every_eventname_member_has_an_entry():
 
 
 def test_none_entries_reject_non_empty_dimensions():
-    """For events with `DIMENSION_MODELS[event] is None`, non-empty dims fail."""
-    none_events = [event for event, model in DIMENSION_MODELS.items() if model is None]
-    assert none_events, "expected at least one event with no dim model"
+    """For non-UI events with `DIMENSION_MODELS[event] is None` (domain events), non-empty dims fail."""
+    none_events = [
+        event
+        for event, model in DIMENSION_MODELS.items()
+        if model is None and EVENT_CATEGORY[event] != EventCategory.UI
+    ]
+    assert none_events, "expected at least one non-UI event with no dim model"
     for event in none_events:
         # Empty dict and None pass silently
         validate_dimensions(event, {})
@@ -87,6 +133,23 @@ def test_none_entries_reject_non_empty_dimensions():
         # Non-empty dict fails
         with pytest.raises(ValidationError):
             validate_dimensions(event, {"x": 1})
+
+
+def test_device_only_events_require_device_type():
+    """Formerly-None UI events now require `device_type` via `_DimDeviceOnly`."""
+    device_only_events = [
+        event
+        for event, model in DIMENSION_MODELS.items()
+        if EVENT_CATEGORY[event] == EventCategory.UI
+        and model is not None
+        and set(model.model_fields.keys()) == {"device_type"}
+    ]
+    assert device_only_events, "expected at least one `_DimDeviceOnly` event"
+    for event in device_only_events:
+        with pytest.raises(ValidationError):
+            validate_dimensions(event, {})
+        validate_dimensions(event, {"device_type": "mobile"})
+        validate_dimensions(event, {"device_type": "desktop"})
 
 
 def test_per_event_models_accept_documented_values():
@@ -113,7 +176,7 @@ def test_per_event_models_reject_unknown_literal_values():
     """A non-Literal value for a Literal field raises ValidationError."""
     with pytest.raises(ValidationError):
         DIMENSION_MODELS[EventName.UI_UTUB_NAME_EDIT_OPEN].model_validate(
-            {"trigger": "pencil"}
+            {"trigger": "pencil", "device_type": "mobile"}
         )
 
 

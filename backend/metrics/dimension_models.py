@@ -43,42 +43,52 @@ class _NoDims(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# UI base dimension model — every UI-category event inherits this so that
+# `device_type` (auto-injected by the frontend metrics-client) is required
+# uniformly. Adding fields here propagates to all UI events automatically.
+# ---------------------------------------------------------------------------
+
+
+class UIBaseDimensions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    device_type: Literal["mobile", "desktop"]
+
+
+# ---------------------------------------------------------------------------
 # UI dimension models — one per event whose Registry row documents a non-empty
 # `Dimensions` cell. Sourced verbatim from
 # plans/anonymous-metrics/anonymous-metrics-master.md § Event Registry.
 # ---------------------------------------------------------------------------
 
 
-class _DimUtubSelect(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimDeviceOnly(UIBaseDimensions):
+    """UI event with no per-event dimensions beyond the inherited `device_type`."""
+
+
+class _DimUtubSelect(UIBaseDimensions):
     search_active: SearchActive
 
 
-class _DimUtubNameEditOpen(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimUtubNameEditOpen(UIBaseDimensions):
     trigger: Literal["pencil_icon", "keyboard"]
 
 
-class _DimUtubDescEditOpen(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimUtubDescEditOpen(UIBaseDimensions):
     trigger: Literal["pencil_icon", "keyboard", "create_button"]
 
 
-class _DimUrlAccess(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimUrlAccess(UIBaseDimensions):
     trigger: Literal["corner_button", "url_text", "main_button"]
     search_active: SearchActive
     active_tag_count: int
 
 
-class _DimUrlCardClick(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimUrlCardClick(UIBaseDimensions):
     search_active: SearchActive
     active_tag_count: int
 
 
-class _DimUrlCopy(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimUrlCopy(UIBaseDimensions):
     result: Literal["success", "failure"]
 
 
@@ -86,50 +96,41 @@ class _DimUrlCopy(BaseModel):
 # but are deliberately defined as separate classes (one per `EventName`) so
 # each event has a 1:1 grep-able dim model. The pair may diverge as the
 # search UI grows; keep them split.
-class _DimSearchOpen(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimSearchOpen(UIBaseDimensions):
     target: Literal["utubs", "urls"]
 
 
-class _DimSearchClose(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimSearchClose(UIBaseDimensions):
     target: Literal["utubs", "urls"]
 
 
-class _DimTagCreateOpen(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimTagCreateOpen(UIBaseDimensions):
     scope: TagScope
 
 
-class _DimTagDeleteOpen(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimTagDeleteOpen(UIBaseDimensions):
     scope: TagScope
 
 
-class _DimTagDeleteConfirm(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimTagDeleteConfirm(UIBaseDimensions):
     scope: TagScope
 
 
-class _DimTagDeleteCancel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimTagDeleteCancel(UIBaseDimensions):
     scope: TagScope
 
 
-class _DimFormSubmit(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimFormSubmit(UIBaseDimensions):
     trigger: Literal["enter_key", "button_click"]
     form: Form
 
 
-class _DimFormCancel(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimFormCancel(UIBaseDimensions):
     trigger: Literal["escape_key", "cancel_button"]
     form: Form
 
 
-class _DimValidationError(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimValidationError(UIBaseDimensions):
     form: Form
 
 
@@ -137,23 +138,19 @@ class _DimValidationError(BaseModel):
 # but are deliberately defined as separate classes (one per `EventName`) so
 # each event has a 1:1 grep-able dim model. The pair may diverge as the
 # deck UI grows; keep them split.
-class _DimDeckCollapse(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimDeckCollapse(UIBaseDimensions):
     deck: Literal["members", "tags", "urls"]
 
 
-class _DimDeckExpand(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimDeckExpand(UIBaseDimensions):
     deck: Literal["members", "tags", "urls"]
 
 
-class _DimMobileNav(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimMobileNav(UIBaseDimensions):
     target: Literal["utubs", "urls", "members", "tags"]
 
 
-class _DimAuthFormSwitch(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class _DimAuthFormSwitch(UIBaseDimensions):
     target: Literal["login", "register", "forgot_password"]
 
 
@@ -204,43 +201,43 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UTUB_DESC_UPDATED: None,
     # UI — UTubs
     EventName.UI_UTUB_SELECT: _DimUtubSelect,
-    EventName.UI_UTUB_CREATE_OPEN: None,
-    EventName.UI_UTUB_DELETE_OPEN: None,
-    EventName.UI_UTUB_DELETE_CONFIRM: None,
-    EventName.UI_UTUB_DELETE_CANCEL: None,
+    EventName.UI_UTUB_CREATE_OPEN: _DimDeviceOnly,
+    EventName.UI_UTUB_DELETE_OPEN: _DimDeviceOnly,
+    EventName.UI_UTUB_DELETE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_UTUB_DELETE_CANCEL: _DimDeviceOnly,
     EventName.UI_UTUB_NAME_EDIT_OPEN: _DimUtubNameEditOpen,
     EventName.UI_UTUB_DESC_EDIT_OPEN: _DimUtubDescEditOpen,
     # UI — URLs
     EventName.UI_URL_ACCESS: _DimUrlAccess,
     EventName.UI_URL_CARD_CLICK: _DimUrlCardClick,
-    EventName.UI_URL_CREATE_OPEN: None,
-    EventName.UI_URL_TITLE_EDIT_OPEN: None,
-    EventName.UI_URL_STRING_EDIT_OPEN: None,
-    EventName.UI_URL_DELETE_OPEN: None,
-    EventName.UI_URL_DELETE_CONFIRM: None,
-    EventName.UI_URL_DELETE_CANCEL: None,
+    EventName.UI_URL_CREATE_OPEN: _DimDeviceOnly,
+    EventName.UI_URL_TITLE_EDIT_OPEN: _DimDeviceOnly,
+    EventName.UI_URL_STRING_EDIT_OPEN: _DimDeviceOnly,
+    EventName.UI_URL_DELETE_OPEN: _DimDeviceOnly,
+    EventName.UI_URL_DELETE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_URL_DELETE_CANCEL: _DimDeviceOnly,
     EventName.UI_URL_COPY: _DimUrlCopy,
-    EventName.UI_URL_ACCESS_WARNING: None,
-    EventName.UI_URL_ACCESS_WARNING_DISMISS: None,
+    EventName.UI_URL_ACCESS_WARNING: _DimDeviceOnly,
+    EventName.UI_URL_ACCESS_WARNING_DISMISS: _DimDeviceOnly,
     # UI — Search
     EventName.UI_SEARCH_OPEN: _DimSearchOpen,
     EventName.UI_SEARCH_CLOSE: _DimSearchClose,
     # UI — Tags
-    EventName.UI_TAG_APPLY: None,
-    EventName.UI_TAG_REMOVE: None,
+    EventName.UI_TAG_APPLY: _DimDeviceOnly,
+    EventName.UI_TAG_REMOVE: _DimDeviceOnly,
     EventName.UI_TAG_CREATE_OPEN: _DimTagCreateOpen,
     EventName.UI_TAG_DELETE_OPEN: _DimTagDeleteOpen,
     EventName.UI_TAG_DELETE_CONFIRM: _DimTagDeleteConfirm,
     EventName.UI_TAG_DELETE_CANCEL: _DimTagDeleteCancel,
-    EventName.UI_TAG_FILTER_TOGGLE: None,
+    EventName.UI_TAG_FILTER_TOGGLE: _DimDeviceOnly,
     # UI — Members
-    EventName.UI_MEMBER_INVITE_OPEN: None,
-    EventName.UI_MEMBER_REMOVE_OPEN: None,
-    EventName.UI_MEMBER_REMOVE_CONFIRM: None,
-    EventName.UI_MEMBER_REMOVE_CANCEL: None,
-    EventName.UI_MEMBER_LEAVE_OPEN: None,
-    EventName.UI_MEMBER_LEAVE_CONFIRM: None,
-    EventName.UI_MEMBER_LEAVE_CANCEL: None,
+    EventName.UI_MEMBER_INVITE_OPEN: _DimDeviceOnly,
+    EventName.UI_MEMBER_REMOVE_OPEN: _DimDeviceOnly,
+    EventName.UI_MEMBER_REMOVE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_MEMBER_REMOVE_CANCEL: _DimDeviceOnly,
+    EventName.UI_MEMBER_LEAVE_OPEN: _DimDeviceOnly,
+    EventName.UI_MEMBER_LEAVE_CONFIRM: _DimDeviceOnly,
+    EventName.UI_MEMBER_LEAVE_CANCEL: _DimDeviceOnly,
     # UI — Forms
     EventName.UI_FORM_SUBMIT: _DimFormSubmit,
     EventName.UI_FORM_CANCEL: _DimFormCancel,
@@ -248,16 +245,16 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # UI — Layout & Navigation
     EventName.UI_DECK_COLLAPSE: _DimDeckCollapse,
     EventName.UI_DECK_EXPAND: _DimDeckExpand,
-    EventName.UI_NAVBAR_MOBILE_MENU_OPEN: None,
-    EventName.UI_NAVBAR_MOBILE_MENU_CLOSE: None,
+    EventName.UI_NAVBAR_MOBILE_MENU_OPEN: _DimDeviceOnly,
+    EventName.UI_NAVBAR_MOBILE_MENU_CLOSE: _DimDeviceOnly,
     EventName.UI_MOBILE_NAV: _DimMobileNav,
     # UI — Auth (splash)
-    EventName.UI_LOGIN_SUBMIT: None,
-    EventName.UI_REGISTER_SUBMIT: None,
-    EventName.UI_FORGOT_PASSWORD_SUBMIT: None,
+    EventName.UI_LOGIN_SUBMIT: _DimDeviceOnly,
+    EventName.UI_REGISTER_SUBMIT: _DimDeviceOnly,
+    EventName.UI_FORGOT_PASSWORD_SUBMIT: _DimDeviceOnly,
     EventName.UI_AUTH_FORM_SWITCH: _DimAuthFormSwitch,
     # UI — Errors
-    EventName.UI_RATE_LIMIT_HIT: None,
+    EventName.UI_RATE_LIMIT_HIT: _DimDeviceOnly,
 }
 
 
@@ -305,6 +302,7 @@ def validate_dimensions(event: EventName, dimensions: dict | None) -> None:
 
 __all__ = [
     "DIMENSION_MODELS",
+    "UIBaseDimensions",
     "get_all_dimension_keys",
     "validate_dimensions",
 ]

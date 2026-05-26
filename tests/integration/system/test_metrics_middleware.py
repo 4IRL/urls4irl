@@ -90,7 +90,7 @@ def test_middleware_skips_metrics_blueprint_self(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success"},
+                    "dimensions": {"result": "success", "device_type": "mobile"},
                 }
             ]
         },

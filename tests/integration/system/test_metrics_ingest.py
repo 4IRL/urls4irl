@@ -56,7 +56,7 @@ def test_ingest_happy_path_no_csrf(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success"},
+                    "dimensions": {"result": "success", "device_type": "mobile"},
                 }
             ]
         },
@@ -88,7 +88,7 @@ def test_ingest_ignores_invalid_csrf_header(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success"},
+                    "dimensions": {"result": "success", "device_type": "mobile"},
                 }
             ]
         },
@@ -211,9 +211,9 @@ def test_ingest_rejects_non_empty_dimensions_for_none_model(
     client: FlaskClient,
 ):
     """
-    GIVEN an event whose dimension model is None (no dims allowed)
-    WHEN posting non-empty dimensions
-    THEN the response is 400 (route-level validate_dimensions raises).
+    GIVEN a formerly-None-mapped UI event (now `_DimDeviceOnly`)
+    WHEN posting an unknown dimension key
+    THEN the response is 400 — extra="forbid" still rejects unknown keys.
     """
     response = client.post(
         INGEST_URL,
@@ -232,16 +232,27 @@ def test_ingest_rejects_non_empty_dimensions_for_none_model(
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
-def test_ingest_accepts_empty_dimensions_for_none_model(
+def test_ingest_accepts_device_type_dimension_for_formerly_none_model(
     metrics_enabled_app: Flask,
     client: FlaskClient,
     provide_metrics_redis: Redis,
 ):
     """
-    GIVEN an event whose dimension model is None and an omitted/empty dims field
-    WHEN posting
-    THEN the response is 200.
+    GIVEN a formerly-None-mapped UI event (now `_DimDeviceOnly`)
+    WHEN posting with `device_type` (200), with omitted dimensions (422), or with empty dimensions (422)
+    THEN only the `device_type`-bearing payload succeeds; both missing-field cases are rejected.
     """
+    response_with_device = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
+                    "dimensions": {"device_type": "mobile"},
+                }
+            ]
+        },
+    )
     response_omitted = client.post(
         INGEST_URL,
         json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
@@ -255,8 +266,9 @@ def test_ingest_accepts_empty_dimensions_for_none_model(
         },
     )
 
-    assert response_omitted.status_code == 200
-    assert response_empty.status_code == 200
+    assert response_with_device.status_code == 200
+    assert response_omitted.status_code == 400
+    assert response_empty.status_code == 400
 
 
 def test_ingest_rejects_top_level_extra_key(
@@ -342,7 +354,7 @@ def test_ingest_batch_nonce_idempotent(
         "events": [
             {
                 "event_name": EventName.UI_URL_COPY.value,
-                "dimensions": {"result": "success"},
+                "dimensions": {"result": "success", "device_type": "mobile"},
             }
         ],
         "batch_id": "idempotent-batch-1",
@@ -377,7 +389,7 @@ def test_ingest_batch_nonce_distinct_ids_double_count(
         "events": [
             {
                 "event_name": EventName.UI_URL_COPY.value,
-                "dimensions": {"result": "success"},
+                "dimensions": {"result": "success", "device_type": "mobile"},
             }
         ]
     }
@@ -417,7 +429,12 @@ def test_ingest_batch_nonce_ttl_set(
     response = client.post(
         INGEST_URL,
         json={
-            "events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}],
+            "events": [
+                {
+                    "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
+                    "dimensions": {"device_type": "mobile"},
+                }
+            ],
             "batch_id": batch_id,
         },
     )
@@ -455,7 +472,14 @@ def test_ingest_writer_log_and_drop_does_not_500(
         with mock.patch.object(app_metrics_writer, "_redis", _BrokenPipelineRedis()):
             response = client.post(
                 INGEST_URL,
-                json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
+                json={
+                    "events": [
+                        {
+                            "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
+                            "dimensions": {"device_type": "mobile"},
+                        }
+                    ]
+                },
             )
 
     assert response.status_code == 200
@@ -475,7 +499,14 @@ def test_ingest_anonymous_user_accepted(
     """
     response = client.post(
         INGEST_URL,
-        json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
+                    "dimensions": {"device_type": "mobile"},
+                }
+            ]
+        },
     )
 
     assert response.status_code == 200
@@ -494,7 +525,14 @@ def test_ingest_authenticated_user_accepted(
 
     response = logged_in_client.post(
         INGEST_URL,
-        json={"events": [{"event_name": EventName.UI_UTUB_CREATE_OPEN.value}]},
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
+                    "dimensions": {"device_type": "mobile"},
+                }
+            ]
+        },
     )
 
     assert response.status_code == 200

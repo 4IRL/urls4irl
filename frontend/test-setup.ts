@@ -88,6 +88,7 @@ const appConfig = {
     DIMENSION_KEYS: [
       "active_tag_count",
       "deck",
+      "device_type",
       "form",
       "result",
       "scope",

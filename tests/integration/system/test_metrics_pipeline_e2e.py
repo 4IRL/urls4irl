@@ -70,10 +70,22 @@ def _truncate_metrics_tables(pg_conn: Any) -> None:
 
 
 MULTI_EVENT_PAYLOAD: list[dict[str, object]] = [
-    {"event_name": EventName.UI_URL_COPY.value, "dimensions": {"result": "success"}},
-    {"event_name": EventName.UI_TAG_APPLY.value, "dimensions": None},
-    {"event_name": EventName.UI_UTUB_CREATE_OPEN.value, "dimensions": None},
-    {"event_name": EventName.UI_URL_CREATE_OPEN.value, "dimensions": None},
+    {
+        "event_name": EventName.UI_URL_COPY.value,
+        "dimensions": {"result": "success", "device_type": "mobile"},
+    },
+    {
+        "event_name": EventName.UI_TAG_APPLY.value,
+        "dimensions": {"device_type": "mobile"},
+    },
+    {
+        "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
+        "dimensions": {"device_type": "mobile"},
+    },
+    {
+        "event_name": EventName.UI_URL_CREATE_OPEN.value,
+        "dimensions": {"device_type": "mobile"},
+    },
 ]
 
 # Set of event names used in MULTI_EVENT_PAYLOAD (for assertion lookups).
@@ -144,7 +156,7 @@ def test_metrics_pipeline_end_to_end(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success"},
+                    "dimensions": {"result": "success", "device_type": "mobile"},
                 }
             ]
         },
@@ -176,7 +188,7 @@ def test_metrics_pipeline_end_to_end(
         assert len(rows) == 1
         event_name, dimensions, count = rows[0]
         assert event_name == EventName.UI_URL_COPY.value
-        assert dimensions == {"result": "success"}
+        assert dimensions == {"result": "success", "device_type": "mobile"}
         assert count == 1
 
         remaining_counter_keys = list(
@@ -253,14 +265,21 @@ def test_metrics_pipeline_multi_event_payload(
         flushed_event_names = {row[0] for row in rows}
         assert flushed_event_names == MULTI_EVENT_NAMES
 
+        device_only_event_names = {
+            EventName.UI_TAG_APPLY.value,
+            EventName.UI_UTUB_CREATE_OPEN.value,
+            EventName.UI_URL_CREATE_OPEN.value,
+        }
         for event_name_value, dimensions, count in rows:
             assert count == 1
-            # ui_url_copy carries a dimensions dict; the rest were sent as None
-            # but the writer stores the key without dimensions (empty dict or
-            # absent). Assert the dimension shape is consistent with the payload.
+            # ui_url_copy carries an event-specific dim (`result`) alongside the
+            # auto-injected `device_type`. The formerly-None events now carry
+            # only `device_type` via `_DimDeviceOnly`.
             if event_name_value == EventName.UI_URL_COPY.value:
-                expected_dims = {"result": "success"}
+                expected_dims = {"result": "success", "device_type": "mobile"}
                 assert dimensions == expected_dims
+            elif event_name_value in device_only_event_names:
+                assert dimensions == {"device_type": "mobile"}
 
         remaining_counter_keys = list(
             provide_metrics_redis.scan_iter(
