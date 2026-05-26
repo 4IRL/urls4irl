@@ -539,10 +539,10 @@ export interface components {
        */
       batch_id: string | null;
       /**
-       * @description Optional CSRF token in the JSON body for navigator.sendBeacon callers that cannot set headers
+       * @description DEPRECATED — ignored by the server as of 2026-05-17. Will be removed after one release.
        * @default null
        */
-      csrf_token?: string | null;
+      csrf_token: string | null;
     };
     /**
      * @description Response payload returned by `POST /api/metrics`.

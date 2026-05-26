@@ -1988,7 +1988,7 @@
               }
             ],
             "default": null,
-            "description": "Optional CSRF token in the JSON body for navigator.sendBeacon callers that cannot set headers"
+            "description": "DEPRECATED \u2014 ignored by the server as of 2026-05-17. Will be removed after one release."
           }
         },
         "required": ["events"],
