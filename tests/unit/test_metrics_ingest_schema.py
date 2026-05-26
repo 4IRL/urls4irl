@@ -63,6 +63,19 @@ def test_event_name_accepts_only_ui_category():
             )
 
 
+def test_dimensions_field_is_required():
+    """Omitting `dimensions` raises ValidationError — the field is required.
+
+    `MetricsIngestEvent.dimensions` is a required field (no default); a payload
+    missing the key must be rejected by Pydantic's schema validation before
+    reaching the route-level `validate_dimensions()` per-event check.
+    """
+    with pytest.raises(ValidationError):
+        MetricsIngestRequest.model_validate(
+            {"events": [{"event_name": EventName.UI_URL_COPY.value}]}
+        )
+
+
 def test_top_level_extra_keys_rejected():
     """Top-level `extra="forbid"` blocks unknown keys."""
     with pytest.raises(ValidationError):

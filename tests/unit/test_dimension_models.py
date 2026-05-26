@@ -152,6 +152,26 @@ def test_device_only_events_require_device_type():
         validate_dimensions(event, {"device_type": "desktop"})
 
 
+def test_device_only_events_reject_unknown_device_type_literal():
+    """A `device_type` value outside the `Literal['mobile','desktop']` set raises.
+
+    Proves the schema rejects future device classes (e.g., `'tablet'`) rather
+    than silently accepting any string — the constraint comes from `UIBaseDimensions`,
+    not just from caller discipline.
+    """
+    device_only_events = [
+        event
+        for event, model in DIMENSION_MODELS.items()
+        if EVENT_CATEGORY[event] == EventCategory.UI
+        and model is not None
+        and set(model.model_fields.keys()) == {"device_type"}
+    ]
+    assert device_only_events, "expected at least one `_DimDeviceOnly` event"
+    for event in device_only_events:
+        with pytest.raises(ValidationError):
+            validate_dimensions(event, {"device_type": "tablet"})
+
+
 def test_per_event_models_accept_documented_values():
     """Each documented (event, dims) pair from §2b validates cleanly."""
     for event, valid_dims in PER_EVENT_VALID_DIMS:
