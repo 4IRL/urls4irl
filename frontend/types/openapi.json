@@ -1977,18 +1977,6 @@
             ],
             "default": null,
             "description": "Client-generated batch identifier; used server-side for SET NX EX idempotency on retries"
-          },
-          "csrf_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "DEPRECATED \u2014 ignored by the server as of 2026-05-17. Will be removed after one release."
           }
         },
         "required": ["events"],

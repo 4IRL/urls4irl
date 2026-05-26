@@ -105,7 +105,6 @@ export async function flush(): Promise<void> {
   const payload: MetricsIngestRequest = {
     events: _inFlightEvents,
     batch_id: _inFlightBatchId,
-    csrf_token: null,
   };
 
   _postInFlight = true;
@@ -146,7 +145,6 @@ function flushBeacon(): void {
   const payload: MetricsIngestRequest = {
     events: beaconEvents,
     batch_id: beaconBatchId,
-    csrf_token: null,
   };
   const serialized = JSON.stringify(payload);
   try {

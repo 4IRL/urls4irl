@@ -71,11 +71,3 @@ class MetricsIngestRequest(BaseModel):
             "idempotency on retries"
         ),
     )
-    # TODO: remove csrf_token field — deprecated as of 2026-05-17 deploy date; kept for one-release canary window
-    csrf_token: str | None = Field(
-        default=None,
-        description=(
-            "DEPRECATED — ignored by the server as of 2026-05-17. Will be removed "
-            "after one release."
-        ),
-    )

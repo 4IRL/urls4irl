@@ -538,11 +538,6 @@ export interface components {
        * @default null
        */
       batch_id: string | null;
-      /**
-       * @description DEPRECATED — ignored by the server as of 2026-05-17. Will be removed after one release.
-       * @default null
-       */
-      csrf_token: string | null;
     };
     /**
      * @description Response payload returned by `POST /api/metrics`.

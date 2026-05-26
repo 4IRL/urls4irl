@@ -102,39 +102,6 @@ def test_ingest_ignores_invalid_csrf_header(
     assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
-def test_ingest_ignores_invalid_csrf_body_token(
-    metrics_enabled_app: Flask,
-    client: FlaskClient,
-    provide_metrics_redis: Redis,
-):
-    """
-    GIVEN an anonymous client sending a garbage csrf_token in the JSON body
-    WHEN POSTing a valid single-event payload
-    THEN the response is 200 (the body field is accepted but ignored server-side)
-    AND the corresponding Redis counter is incremented.
-    """
-    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 0
-
-    response = client.post(
-        INGEST_URL,
-        json={
-            "events": [
-                {
-                    "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success"},
-                }
-            ],
-            "csrf_token": "garbage-body-token-not-real",
-        },
-    )
-
-    assert response.status_code == 200
-    response_json = response.get_json()
-    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert response_json["accepted"] == 1
-    assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
-
-
 def test_ingest_rejects_domain_category_event_name(
     metrics_enabled_app: Flask,
     client: FlaskClient,
