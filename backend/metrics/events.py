@@ -12,10 +12,7 @@ class EventCategory(StrEnum):
 # Wire-format identifiers for the auto-injected `device_type` UI dimension.
 # Int values are shipped across both the backend Pydantic boundary and the
 # frontend metrics-client (via APP_CONFIG.constants.DEVICE_TYPE) so the two
-# layers reference a single source of truth instead of duplicated string
-# literals. Values are explicit and gap-tolerant — `0` is intentionally
-# reserved for a future `UNKNOWN` sentinel, and new device classes (e.g.,
-# `TABLET = 3`) append without renumbering existing rows.
+# layers reference a single source of truth instead of duplicated string literals.
 class DeviceType(IntEnum):
     MOBILE = 1
     DESKTOP = 2
