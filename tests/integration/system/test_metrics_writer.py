@@ -11,7 +11,7 @@ from redis import Redis
 
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import MetricsWriter, record_event
-from backend.metrics.events import EventName
+from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from tests.integration.system.metrics_helpers import find_counter_keys
 
@@ -62,11 +62,13 @@ def test_writer_uses_canonical_dimensions_in_key(
                 "trigger": "main_button",
                 "search_active": "false",
                 "active_tag_count": 0,
+                "device_type": DeviceType.MOBILE,
             },
         )
         record_event(
             EventName.UI_URL_ACCESS,
             dimensions={
+                "device_type": DeviceType.MOBILE,
                 "active_tag_count": 0,
                 "search_active": "false",
                 "trigger": "main_button",
@@ -124,7 +126,7 @@ def test_writer_log_and_drop_on_invalid_dimensions(
     with app.app_context():
         result = record_event(
             EventName.UI_URL_COPY,
-            dimensions={"result": "maybe"},
+            dimensions={"result": "maybe", "device_type": DeviceType.MOBILE},
         )
 
     assert result is None
@@ -241,11 +243,13 @@ def test_writer_increments_redis_counter_for_ui_event(
     with app.app_context():
         record_event(
             EventName.UI_UTUB_SELECT,
-            dimensions={"search_active": "true"},
+            dimensions={"search_active": "true", "device_type": DeviceType.MOBILE},
         )
 
     keys = find_counter_keys(provide_metrics_redis, EventName.UI_UTUB_SELECT)
     assert len(keys) == 1
     assert provide_metrics_redis.get(keys[0]) == b"1"
-    canonical_dims = canonicalize_dimensions({"search_active": "true"})
+    canonical_dims = canonicalize_dimensions(
+        {"search_active": "true", "device_type": DeviceType.MOBILE}
+    )
     assert canonical_dims.encode() in keys[0]

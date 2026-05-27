@@ -521,13 +521,10 @@ export interface components {
         | "ui_forgot_password_submit"
         | "ui_auth_form_switch"
         | "ui_rate_limit_hit";
-      /**
-       * @description Optional per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model
-       * @default null
-       */
+      /** @description Per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model. Auto-injected with `device_type` by the metrics-client for all UI events, so the dict is always non-empty when sent from the browser. */
       dimensions: {
         [key: string]: string | number | boolean;
-      } | null;
+      };
     };
     /** @description Top-level batch payload for `POST /api/metrics`. */
     MetricsIngestRequest: {

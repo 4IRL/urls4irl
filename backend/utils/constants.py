@@ -1,4 +1,5 @@
 from backend.metrics.dimension_models import get_all_dimension_keys
+from backend.metrics.events import DeviceType
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_routes_js
@@ -179,6 +180,8 @@ def generate_constants_js() -> (
         },
         # Metrics dimension allow-list (source of truth: DIMENSION_MODELS)
         "DIMENSION_KEYS": list(get_all_dimension_keys()),
+        # Metrics device-type wire values (source of truth: backend.metrics.events.DeviceType)
+        "DEVICE_TYPE": {member.name: member.value for member in DeviceType},
     }
 
 

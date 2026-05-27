@@ -1,12 +1,21 @@
 from __future__ import annotations
 
-from enum import StrEnum
+from enum import IntEnum, StrEnum
 
 
 class EventCategory(StrEnum):
     API = "api"
     DOMAIN = "domain"
     UI = "ui"
+
+
+# Wire-format identifiers for the auto-injected `device_type` UI dimension.
+# Int values are shipped across both the backend Pydantic boundary and the
+# frontend metrics-client (via APP_CONFIG.constants.DEVICE_TYPE) so the two
+# layers reference a single source of truth instead of duplicated string literals.
+class DeviceType(IntEnum):
+    MOBILE = 1
+    DESKTOP = 2
 
 
 class EventName(StrEnum):

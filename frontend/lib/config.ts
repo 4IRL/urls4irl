@@ -57,6 +57,11 @@ export interface MemberRoles {
   readonly CO_CREATOR: string;
 }
 
+export interface DeviceTypeValues {
+  readonly MOBILE: 1;
+  readonly DESKTOP: 2;
+}
+
 export interface AppConstants {
   readonly MEMBER_ROLES: MemberRoles;
   readonly UTUBS_MIN_NAME_LENGTH: number;
@@ -70,6 +75,7 @@ export interface AppConstants {
   readonly TAGS_MAX_ON_URL: number;
   readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
   readonly DIMENSION_KEYS: readonly string[];
+  readonly DEVICE_TYPE: DeviceTypeValues;
 }
 
 export interface AppConfig {

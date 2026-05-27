@@ -1,6 +1,7 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 
 import { APP_CONFIG } from "./config.js";
+import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
 
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
 type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
@@ -55,17 +56,14 @@ function _scheduleRetry(): void {
   }, backoffMs);
 }
 
-function filterDimensions(
-  dimensions: EmitDimensions | undefined,
-): EmitDimensions | null {
-  if (dimensions === undefined) return null;
+function filterDimensions(dimensions: EmitDimensions): EmitDimensions {
   const filtered: EmitDimensions = {};
   for (const key of Object.keys(dimensions)) {
     if (_allowedDimensionKeys.has(key)) {
       filtered[key] = dimensions[key];
     }
   }
-  return Object.keys(filtered).length === 0 ? null : filtered;
+  return filtered;
 }
 
 function pruneDedupeMap(now: number): void {
@@ -80,14 +78,25 @@ export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
   // performance.now() is monotonic high-resolution time relative to page navigation start;
   // it cannot be persisted across page loads and is safe from NTP/clock jumps.
   const now = performance.now();
+  // Auto-inject device_type as the FIRST step so it (a) survives the allow-list
+  // filter, (b) participates in the dedupe-key bucket (mobile vs desktop emits
+  // for the same event/dims are distinct), and (c) is impossible for callers
+  // to forget. Caller-supplied dimensions win via spread order.
+  const dimensionsWithDevice: EmitDimensions = {
+    device_type: getDeviceType(),
+    ...(dimensions ?? {}),
+  };
   pruneDedupeMap(now);
-  const dedupeKey = `${event}|${JSON.stringify(dimensions ?? null)}`;
+  const dedupeKey = `${event}|${JSON.stringify(dimensionsWithDevice)}`;
   const lastEmittedAt = _dedupe.get(dedupeKey);
   if (lastEmittedAt !== undefined && now - lastEmittedAt < DEDUPE_COOLDOWN_MS) {
     return;
   }
   _dedupe.set(dedupeKey, now);
-  _buffer.push({ event_name: event, dimensions: filterDimensions(dimensions) });
+  _buffer.push({
+    event_name: event,
+    dimensions: filterDimensions(dimensionsWithDevice),
+  });
   if (_buffer.length >= BATCH_THRESHOLD) {
     void flush();
   }
@@ -169,6 +178,7 @@ function flushBeacon(): void {
 
 export function initMetricsClient(): void {
   if (_intervalId !== null) return;
+  initDeviceTypeListener();
   _intervalId = setInterval(() => {
     void flush();
   }, FLUSH_INTERVAL_MS);
