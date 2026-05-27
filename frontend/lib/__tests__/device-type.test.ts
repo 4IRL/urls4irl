@@ -1,8 +1,12 @@
 import type { Mock } from "vitest";
 
 import { resetDeviceTypeCache } from "../../__tests__/helpers/device-type-test-utils.js";
+import { APP_CONFIG } from "../config.js";
 import { TABLET_WIDTH } from "../constants.js";
 import { getDeviceType, initDeviceTypeListener } from "../device-type.js";
+
+const DEVICE_TYPE_MOBILE = APP_CONFIG.constants.DEVICE_TYPE.MOBILE;
+const DEVICE_TYPE_DESKTOP = APP_CONFIG.constants.DEVICE_TYPE.DESKTOP;
 
 const MOBILE_MEDIA_QUERY = "(max-width: " + (TABLET_WIDTH - 1) + "px)";
 
@@ -35,21 +39,21 @@ describe("device-type", () => {
   });
 
   describe("getDeviceType()", () => {
-    it("returns 'mobile' when matchMedia matches", () => {
+    it("returns DEVICE_TYPE.MOBILE when matchMedia matches", () => {
       const mockMediaQueryList = makeMockMediaQueryList(true);
       const matchMediaMock = vi.fn().mockReturnValue(mockMediaQueryList);
       vi.stubGlobal("matchMedia", matchMediaMock);
 
-      expect(getDeviceType()).toBe("mobile");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_MOBILE);
       expect(matchMediaMock).toHaveBeenCalledWith(MOBILE_MEDIA_QUERY);
     });
 
-    it("returns 'desktop' when matchMedia does not match", () => {
+    it("returns DEVICE_TYPE.DESKTOP when matchMedia does not match", () => {
       const mockMediaQueryList = makeMockMediaQueryList(false);
       const matchMediaMock = vi.fn().mockReturnValue(mockMediaQueryList);
       vi.stubGlobal("matchMedia", matchMediaMock);
 
-      expect(getDeviceType()).toBe("desktop");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_DESKTOP);
       expect(matchMediaMock).toHaveBeenCalledWith(MOBILE_MEDIA_QUERY);
     });
 
@@ -58,9 +62,9 @@ describe("device-type", () => {
       const matchMediaMock = vi.fn().mockReturnValue(mockMediaQueryList);
       vi.stubGlobal("matchMedia", matchMediaMock);
 
-      expect(getDeviceType()).toBe("mobile");
-      expect(getDeviceType()).toBe("mobile");
-      expect(getDeviceType()).toBe("mobile");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_MOBILE);
+      expect(getDeviceType()).toBe(DEVICE_TYPE_MOBILE);
+      expect(getDeviceType()).toBe(DEVICE_TYPE_MOBILE);
       expect(matchMediaMock).toHaveBeenCalledTimes(1);
     });
   });
@@ -86,7 +90,7 @@ describe("device-type", () => {
       const matchMediaMock = vi.fn().mockReturnValue(mockMediaQueryList);
       vi.stubGlobal("matchMedia", matchMediaMock);
 
-      expect(getDeviceType()).toBe("desktop");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_DESKTOP);
       initDeviceTypeListener();
 
       const [, registeredListener] =
@@ -94,7 +98,7 @@ describe("device-type", () => {
       const fireListener = registeredListener as MediaQueryListener;
       fireListener({ matches: true } as MediaQueryListEvent);
 
-      expect(getDeviceType()).toBe("mobile");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_MOBILE);
     });
 
     it("updates the cached value when the listener fires with matches=false", () => {
@@ -102,7 +106,7 @@ describe("device-type", () => {
       const matchMediaMock = vi.fn().mockReturnValue(mockMediaQueryList);
       vi.stubGlobal("matchMedia", matchMediaMock);
 
-      expect(getDeviceType()).toBe("mobile");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_MOBILE);
       initDeviceTypeListener();
 
       const [, registeredListener] =
@@ -110,7 +114,7 @@ describe("device-type", () => {
       const fireListener = registeredListener as MediaQueryListener;
       fireListener({ matches: false } as MediaQueryListEvent);
 
-      expect(getDeviceType()).toBe("desktop");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_DESKTOP);
     });
 
     it("uses event.matches from the MediaQueryListEvent, not a re-query of matchMedia", () => {
@@ -122,7 +126,7 @@ describe("device-type", () => {
       const matchMediaMock = vi.fn().mockReturnValue(mockMediaQueryList);
       vi.stubGlobal("matchMedia", matchMediaMock);
 
-      expect(getDeviceType()).toBe("desktop");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_DESKTOP);
       initDeviceTypeListener();
 
       // Mutate the underlying list: a re-query would now report mobile.
@@ -135,7 +139,7 @@ describe("device-type", () => {
       // not the (now mutated) MediaQueryList.matches getter.
       fireListener({ matches: false } as MediaQueryListEvent);
 
-      expect(getDeviceType()).toBe("desktop");
+      expect(getDeviceType()).toBe(DEVICE_TYPE_DESKTOP);
     });
   });
 });

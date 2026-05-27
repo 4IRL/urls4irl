@@ -96,6 +96,11 @@ const appConfig = {
       "target",
       "trigger",
     ],
+    // Source of truth: backend/metrics/events.py (DeviceType IntEnum).
+    DEVICE_TYPE: {
+      MOBILE: 1,
+      DESKTOP: 2,
+    },
   },
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",

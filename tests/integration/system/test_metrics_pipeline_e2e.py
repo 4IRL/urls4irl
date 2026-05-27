@@ -10,7 +10,7 @@ from redis import Redis
 
 from backend import db, metrics_writer as app_metrics_writer
 from backend.extensions.metrics.registry_sync import sync_event_registry
-from backend.metrics.events import EventName
+from backend.metrics.events import DeviceType, EventName
 from backend.models.event_registry import Event_Registry
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
@@ -72,19 +72,19 @@ def _truncate_metrics_tables(pg_conn: Any) -> None:
 MULTI_EVENT_PAYLOAD: list[dict[str, object]] = [
     {
         "event_name": EventName.UI_URL_COPY.value,
-        "dimensions": {"result": "success", "device_type": "mobile"},
+        "dimensions": {"result": "success", "device_type": DeviceType.MOBILE},
     },
     {
         "event_name": EventName.UI_TAG_APPLY.value,
-        "dimensions": {"device_type": "mobile"},
+        "dimensions": {"device_type": DeviceType.MOBILE},
     },
     {
         "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
-        "dimensions": {"device_type": "mobile"},
+        "dimensions": {"device_type": DeviceType.MOBILE},
     },
     {
         "event_name": EventName.UI_URL_CREATE_OPEN.value,
-        "dimensions": {"device_type": "mobile"},
+        "dimensions": {"device_type": DeviceType.MOBILE},
     },
 ]
 
@@ -156,7 +156,10 @@ def test_metrics_pipeline_end_to_end(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success", "device_type": "mobile"},
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
                 }
             ]
         },
@@ -188,7 +191,7 @@ def test_metrics_pipeline_end_to_end(
         assert len(rows) == 1
         event_name, dimensions, count = rows[0]
         assert event_name == EventName.UI_URL_COPY.value
-        assert dimensions == {"result": "success", "device_type": "mobile"}
+        assert dimensions == {"result": "success", "device_type": DeviceType.MOBILE}
         assert count == 1
 
         remaining_counter_keys = list(
@@ -276,10 +279,10 @@ def test_metrics_pipeline_multi_event_payload(
             # auto-injected `device_type`. The formerly-None events now carry
             # only `device_type` via `_DimDeviceOnly`.
             if event_name_value == EventName.UI_URL_COPY.value:
-                expected_dims = {"result": "success", "device_type": "mobile"}
+                expected_dims = {"result": "success", "device_type": DeviceType.MOBILE}
                 assert dimensions == expected_dims
             elif event_name_value in device_only_event_names:
-                assert dimensions == {"device_type": "mobile"}
+                assert dimensions == {"device_type": DeviceType.MOBILE}
 
         remaining_counter_keys = list(
             provide_metrics_redis.scan_iter(

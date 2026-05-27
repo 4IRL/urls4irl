@@ -8,7 +8,7 @@ from flask.testing import FlaskClient
 from redis import Redis
 
 from backend import metrics_writer as app_metrics_writer
-from backend.metrics.events import EventName
+from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import parse_dims
@@ -90,7 +90,10 @@ def test_middleware_skips_metrics_blueprint_self(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success", "device_type": "mobile"},
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
                 }
             ]
         },

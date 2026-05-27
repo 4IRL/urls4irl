@@ -10,7 +10,7 @@ from redis import Redis
 
 from backend import metrics_writer as app_metrics_writer
 from backend.metrics.constants import MetricsErrorCodes
-from backend.metrics.events import EventName
+from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
@@ -56,7 +56,10 @@ def test_ingest_happy_path_no_csrf(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success", "device_type": "mobile"},
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
                 }
             ]
         },
@@ -88,7 +91,10 @@ def test_ingest_ignores_invalid_csrf_header(
             "events": [
                 {
                     "event_name": EventName.UI_URL_COPY.value,
-                    "dimensions": {"result": "success", "device_type": "mobile"},
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
                 }
             ]
         },
@@ -248,7 +254,7 @@ def test_ingest_accepts_device_type_dimension_for_formerly_none_model(
             "events": [
                 {
                     "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
-                    "dimensions": {"device_type": "mobile"},
+                    "dimensions": {"device_type": DeviceType.MOBILE},
                 }
             ]
         },
@@ -354,7 +360,7 @@ def test_ingest_batch_nonce_idempotent(
         "events": [
             {
                 "event_name": EventName.UI_URL_COPY.value,
-                "dimensions": {"result": "success", "device_type": "mobile"},
+                "dimensions": {"result": "success", "device_type": DeviceType.MOBILE},
             }
         ],
         "batch_id": "idempotent-batch-1",
@@ -389,7 +395,7 @@ def test_ingest_batch_nonce_distinct_ids_double_count(
         "events": [
             {
                 "event_name": EventName.UI_URL_COPY.value,
-                "dimensions": {"result": "success", "device_type": "mobile"},
+                "dimensions": {"result": "success", "device_type": DeviceType.MOBILE},
             }
         ]
     }
@@ -432,7 +438,7 @@ def test_ingest_batch_nonce_ttl_set(
             "events": [
                 {
                     "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
-                    "dimensions": {"device_type": "mobile"},
+                    "dimensions": {"device_type": DeviceType.MOBILE},
                 }
             ],
             "batch_id": batch_id,
@@ -476,7 +482,7 @@ def test_ingest_writer_log_and_drop_does_not_500(
                     "events": [
                         {
                             "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
-                            "dimensions": {"device_type": "mobile"},
+                            "dimensions": {"device_type": DeviceType.MOBILE},
                         }
                     ]
                 },
@@ -503,7 +509,7 @@ def test_ingest_anonymous_user_accepted(
             "events": [
                 {
                     "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
-                    "dimensions": {"device_type": "mobile"},
+                    "dimensions": {"device_type": DeviceType.MOBILE},
                 }
             ]
         },
@@ -529,7 +535,7 @@ def test_ingest_authenticated_user_accepted(
             "events": [
                 {
                     "event_name": EventName.UI_UTUB_CREATE_OPEN.value,
-                    "dimensions": {"device_type": "mobile"},
+                    "dimensions": {"device_type": DeviceType.MOBILE},
                 }
             ]
         },

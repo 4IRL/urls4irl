@@ -3,7 +3,12 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
-from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+from backend.metrics.events import (
+    EVENT_CATEGORY,
+    DeviceType,
+    EventCategory,
+    EventName,
+)
 from backend.schemas.requests.metrics import MetricsIngestRequest
 
 pytestmark = pytest.mark.unit
@@ -30,7 +35,10 @@ def test_event_name_accepts_only_ui_category():
         MetricsIngestRequest.model_validate(
             {
                 "events": [
-                    {"event_name": ui_value, "dimensions": {"device_type": "mobile"}}
+                    {
+                        "event_name": ui_value,
+                        "dimensions": {"device_type": DeviceType.MOBILE},
+                    }
                 ]
             }
         )
@@ -42,7 +50,7 @@ def test_event_name_accepts_only_ui_category():
                 "events": [
                     {
                         "event_name": EventName.API_HIT.value,
-                        "dimensions": {"device_type": "mobile"},
+                        "dimensions": {"device_type": DeviceType.MOBILE},
                     }
                 ]
             }
@@ -56,7 +64,7 @@ def test_event_name_accepts_only_ui_category():
                     "events": [
                         {
                             "event_name": domain_value,
-                            "dimensions": {"device_type": "mobile"},
+                            "dimensions": {"device_type": DeviceType.MOBILE},
                         }
                     ]
                 }
@@ -84,7 +92,7 @@ def test_top_level_extra_keys_rejected():
                 "events": [
                     {
                         "event_name": EventName.UI_URL_COPY.value,
-                        "dimensions": {"device_type": "mobile"},
+                        "dimensions": {"device_type": DeviceType.MOBILE},
                     }
                 ],
                 "unknown_top_key": 1,
@@ -149,7 +157,7 @@ def test_max_events_limit():
     too_many = [
         {
             "event_name": EventName.UI_URL_COPY.value,
-            "dimensions": {"device_type": "mobile"},
+            "dimensions": {"device_type": DeviceType.MOBILE},
         }
         for _ in range(101)
     ]
@@ -160,7 +168,7 @@ def test_max_events_limit():
     exactly_max = [
         {
             "event_name": EventName.UI_URL_COPY.value,
-            "dimensions": {"device_type": "mobile"},
+            "dimensions": {"device_type": DeviceType.MOBILE},
         }
         for _ in range(100)
     ]
@@ -171,7 +179,7 @@ def test_batch_id_optional():
     """`batch_id` accepts None, str; rejects non-str."""
     base_event = {
         "event_name": EventName.UI_URL_COPY.value,
-        "dimensions": {"device_type": "mobile"},
+        "dimensions": {"device_type": DeviceType.MOBILE},
     }
 
     # None is allowed
@@ -200,7 +208,7 @@ def test_batch_id_max_length_boundary_accepts_128_chars():
     """
     base_event = {
         "event_name": EventName.UI_URL_COPY.value,
-        "dimensions": {"device_type": "mobile"},
+        "dimensions": {"device_type": DeviceType.MOBILE},
     }
 
     MetricsIngestRequest.model_validate({"events": [base_event], "batch_id": "a" * 128})
@@ -210,7 +218,7 @@ def test_batch_id_max_length_boundary_rejects_129_chars():
     """`batch_id` with 129 characters raises ValidationError (boundary exclusive)."""
     base_event = {
         "event_name": EventName.UI_URL_COPY.value,
-        "dimensions": {"device_type": "mobile"},
+        "dimensions": {"device_type": DeviceType.MOBILE},
     }
 
     with pytest.raises(ValidationError):

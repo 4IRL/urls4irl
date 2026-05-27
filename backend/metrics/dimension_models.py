@@ -4,7 +4,12 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+from backend.metrics.events import (
+    EVENT_CATEGORY,
+    DeviceType,
+    EventCategory,
+    EventName,
+)
 
 # ---------------------------------------------------------------------------
 # Shared dimension literal aliases — extracted only when a literal appears in
@@ -51,7 +56,7 @@ class _NoDims(BaseModel):
 
 class UIBaseDimensions(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    device_type: Literal["mobile", "desktop"]
+    device_type: DeviceType
 
 
 # ---------------------------------------------------------------------------
