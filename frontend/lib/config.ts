@@ -58,8 +58,8 @@ export interface MemberRoles {
 }
 
 export interface DeviceTypeValues {
-  readonly MOBILE: number;
-  readonly DESKTOP: number;
+  readonly MOBILE: 1;
+  readonly DESKTOP: 2;
 }
 
 export interface AppConstants {

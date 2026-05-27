@@ -215,8 +215,11 @@ def test_device_only_events_reject_unknown_device_type_value():
     """A `device_type` value outside the `DeviceType` int enum raises.
 
     Proves the schema rejects out-of-range integers (a future TABLET=3 must
-    be added to the enum, not silently accepted) and rejects the legacy
-    string form ("mobile"/"desktop") so int-only wire format is enforced.
+    be added to the enum, not silently accepted), rejects the legacy string
+    form ("mobile"/"desktop") so int-only wire format is enforced, and —
+    because `device_type` uses a `BeforeValidator` that rejects strings —
+    also rejects stringified int inputs ("1", "2") that Pydantic v2 lax mode
+    would otherwise coerce.
     """
     device_only_events = [
         event
@@ -235,6 +238,10 @@ def test_device_only_events_reject_unknown_device_type_value():
             validate_dimensions(event, {"device_type": "mobile"})
         with pytest.raises(ValidationError):
             validate_dimensions(event, {"device_type": "tablet"})
+        with pytest.raises(ValidationError):
+            validate_dimensions(event, {"device_type": "1"})
+        with pytest.raises(ValidationError):
+            validate_dimensions(event, {"device_type": "2"})
 
 
 def test_per_event_models_accept_documented_values():

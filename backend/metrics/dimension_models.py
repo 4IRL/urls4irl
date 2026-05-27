@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 from backend.metrics.events import (
     EVENT_CATEGORY,
@@ -54,9 +54,27 @@ class _NoDims(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _reject_string_device_type(raw_value: object) -> object:
+    """Block string inputs ("1", "2") for `device_type`.
+
+    Pydantic v2 lax mode coerces stringified ints to `IntEnum` values.
+    This before-validator rejects that path so only true int wire values
+    (sent by the browser metrics-client) are accepted, matching the intent of
+    `_DimApiHit.status_code: Annotated[int, Field(strict=True)]`.
+    """
+    if isinstance(raw_value, str):
+        raise ValueError("device_type must be an integer, not a string")
+    return raw_value
+
+
+# `BeforeValidator` wraps `_reject_string_device_type` in a Pydantic v2
+# before-validator that runs before type coercion, blocking string inputs.
+_StrictDeviceType = Annotated[DeviceType, BeforeValidator(_reject_string_device_type)]
+
+
 class UIBaseDimensions(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    device_type: DeviceType
+    device_type: _StrictDeviceType
 
 
 # ---------------------------------------------------------------------------
