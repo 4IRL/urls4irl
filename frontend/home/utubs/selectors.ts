@@ -17,7 +17,7 @@ import {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc,
   showCreateDescriptionButtonAlways,
 } from "../urls/update-description.js";
-import { isUtubSearchActive } from "./search.js";
+import { isUTubSearchActive } from "./search.js";
 
 type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 
@@ -135,7 +135,7 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   if (currentlySelected.is($(utubSelector))) return;
 
   recordUIEvent("ui_utub_select", {
-    search_active: isUtubSearchActive() ? "true" : "false",
+    search_active: isUTubSearchActive() ? "true" : "false",
   });
 
   currentlySelected.removeClass("active");
@@ -244,7 +244,7 @@ function makeUTubRoleIcon(memberRole: string): string {
 export function makeUTubSelectableAgainIfMobile(utub: JQuery): void {
   $(utub).offAndOnExact("click.selectUTubMobile", function () {
     recordUIEvent("ui_utub_select", {
-      search_active: isUtubSearchActive() ? "true" : "false",
+      search_active: isUTubSearchActive() ? "true" : "false",
     });
     getSelectedUTubInfo(parseInt($(this).attr("utubid")!));
     $(this).off("click.selectUTubMobile");

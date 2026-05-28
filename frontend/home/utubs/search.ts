@@ -8,7 +8,7 @@ type UTubSelectorEntry = { id: number; name: string };
 
 let _utubSearchOpen: boolean = false;
 
-export function isUtubSearchActive(): boolean {
+export function isUTubSearchActive(): boolean {
   const value = $("#UTubNameSearch").val();
   return (
     typeof value === "string" &&
@@ -67,8 +67,8 @@ export function setUTubSelectorSearchEventListener(): void {
         "keydown.searchInputEsc",
         function (event: JQuery.TriggeredEvent) {
           if (event.key === KEYS.ESCAPE) {
-            searchInput.blur();
             resetUTubSearch();
+            searchInput.blur();
             const firstVisibleSelector = $(".UTubSelector")
               .not(".hidden")
               .first();
@@ -121,6 +121,7 @@ export function setUTubSelectorSearchEventListener(): void {
 export function resetUTubSearch(): void {
   if (_utubSearchOpen) {
     emit("ui_search_close", { target: "utubs" });
+    _utubSearchOpen = false;
   }
   const searchInput = $("#UTubNameSearch");
   searchInput.val("");

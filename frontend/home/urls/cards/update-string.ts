@@ -8,8 +8,10 @@ import {
   enableTabbableChildElements,
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
+import { emit } from "../../../lib/metrics-client.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
+import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -30,8 +32,6 @@ import {
 import { createEditURLIcon } from "./options/edit-string-btn.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { getState, setState } from "../../../store/app-store.js";
-import { emit } from "../../../lib/metrics-client.js";
-import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 
 type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
