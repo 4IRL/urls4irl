@@ -1,5 +1,6 @@
 import { setupUpdateUTubNameEventListeners } from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
+import { ajaxCall } from "../../../lib/ajax.js";
 
 vi.mock("../../../lib/metrics-client.js", () => ({
   emit: vi.fn(),
@@ -44,12 +45,30 @@ vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
 
-vi.mock("../../btns-forms.js", () => ({
-  showInput: vi.fn(),
-  hideInput: vi.fn(),
-  highlightInput: vi.fn(),
-  hideInputs: vi.fn(),
-}));
+vi.mock("../../btns-forms.js", async () => {
+  const { emit } = await import("../../../lib/metrics-client.js");
+  return {
+    showInput: vi.fn(),
+    hideInput: vi.fn(),
+    highlightInput: vi.fn(),
+    hideInputs: vi.fn(),
+    emitFormSubmit: (
+      form: string,
+      trigger: "enter_key" | "button_click",
+    ): void => {
+      emit("ui_form_submit", { trigger, form } as Record<string, string>);
+    },
+    emitFormCancel: (
+      form: string,
+      trigger: "escape_key" | "cancel_button",
+    ): void => {
+      emit("ui_form_cancel", { trigger, form } as Record<string, string>);
+    },
+    emitValidationError: (form: string): void => {
+      emit("ui_validation_error", { form } as Record<string, string>);
+    },
+  };
+});
 
 vi.mock("../search.js", () => ({
   temporarilyHideSearchForEdit: vi.fn(),
@@ -141,6 +160,34 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     $("#UTubNameUpdateWrap .edit-pencil-icon").trigger(tabEvent);
 
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("utub_name_edit unchanged value: emits submit but fires no AJAX", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+
+    setupUpdateUTubNameEventListeners(UTUB_ID);
+    // Pre-state: name input equals current header text — unchanged-value guard.
+    $("#utubNameUpdate").val("Test UTub");
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+
+    $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+
+    expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+      trigger: "button_click",
+      form: "utub_name_edit",
+    });
+    expect(
+      vi
+        .mocked(emit)
+        .mock.calls.filter(
+          (call) =>
+            call[0] === "ui_form_submit" &&
+            (call[1] as { form?: string } | undefined)?.form ===
+              "utub_name_edit",
+        ),
+    ).toHaveLength(1);
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
 
   it("emits ui_utub_desc_edit_open with trigger 'create_button' when the rebind path fires", async () => {

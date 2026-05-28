@@ -3,6 +3,7 @@ import {
   showCreateDescriptionButtonAlways,
 } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
+import { ajaxCall } from "../../../lib/ajax.js";
 
 vi.mock("../../../lib/metrics-client.js", () => ({
   emit: vi.fn(),
@@ -41,10 +42,25 @@ vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
 
-vi.mock("../../btns-forms.js", () => ({
-  showInput: vi.fn(),
-  hideInput: vi.fn(),
-}));
+vi.mock("../../btns-forms.js", async () => {
+  const { emit } = await import("../../../lib/metrics-client.js");
+  return {
+    showInput: vi.fn(),
+    hideInput: vi.fn(),
+    emitFormSubmit: (
+      form: string,
+      trigger: "enter_key" | "button_click",
+    ): void => {
+      emit("ui_form_submit", { trigger, form } as Record<string, string>);
+    },
+    emitFormCancel: (
+      form: string,
+      trigger: "escape_key" | "cancel_button",
+    ): void => {
+      emit("ui_form_cancel", { trigger, form } as Record<string, string>);
+    },
+  };
+});
 
 vi.mock("../update-name.js", () => ({
   updateUTubNameHideInput: vi.fn(),
@@ -138,6 +154,34 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     expect(emit).toHaveBeenCalledWith("ui_utub_desc_edit_open", {
       trigger: "create_button",
     });
+  });
+
+  it("utub_desc_edit unchanged value: emits submit but fires no AJAX", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+
+    setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+    // Pre-state: description input equals current subheader text — unchanged-value guard.
+    $("#utubDescriptionUpdate").val("Description");
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+
+    $("#utubDescriptionSubmitBtnUpdate").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+      trigger: "button_click",
+      form: "utub_desc_edit",
+    });
+    expect(
+      vi
+        .mocked(emit)
+        .mock.calls.filter(
+          (call) =>
+            call[0] === "ui_form_submit" &&
+            (call[1] as { form?: string } | undefined)?.form ===
+              "utub_desc_edit",
+        ),
+    ).toHaveLength(1);
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
 
   it("does not emit when keydown is a non-activation key", async () => {

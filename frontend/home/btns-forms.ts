@@ -1,10 +1,41 @@
 import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
+import { emit } from "../lib/metrics-client.js";
 import { isHidden } from "./visibility.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { updateUTubNameHideInput } from "./urls/update-name.js";
 import { updateUTubDescriptionHideInput } from "./urls/update-description.js";
 import { createMemberHideInput } from "./members/create.js";
+
+// `FormName` mirrors `backend/metrics/dimension_models.py::Form` literal (lines 26-35).
+// If that Pydantic literal is extended, extend this union in lockstep.
+export type FormName =
+  | "url_create"
+  | "url_title_edit"
+  | "url_string_edit"
+  | "utub_create"
+  | "utub_name_edit"
+  | "utub_desc_edit"
+  | "tag_create"
+  | "member_invite";
+
+export function emitFormSubmit(
+  form: FormName,
+  trigger: "enter_key" | "button_click",
+): void {
+  emit("ui_form_submit", { trigger, form });
+}
+
+export function emitFormCancel(
+  form: FormName,
+  trigger: "escape_key" | "cancel_button",
+): void {
+  emit("ui_form_cancel", { trigger, form });
+}
+
+export function emitValidationError(form: FormName): void {
+  emit("ui_validation_error", { form });
+}
 
 // Handle focus for the text input box
 function handleFocus(event: JQuery.TriggeredEvent): void {

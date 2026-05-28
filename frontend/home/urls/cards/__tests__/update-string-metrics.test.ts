@@ -74,6 +74,7 @@ vi.mock("../../../mobile.js", () => ({
 
 vi.mock("../../../btns-forms.js", () => ({
   highlightInput: vi.fn(),
+  emitValidationError: vi.fn(),
 }));
 
 vi.mock("../conflict-handler.js", () => ({

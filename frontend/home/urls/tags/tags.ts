@@ -2,6 +2,7 @@ import type { UtubTag } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
+import { emitFormCancel, emitFormSubmit } from "../../btns-forms.js";
 import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
 import { deleteURLTag } from "./delete.js";
 
@@ -66,10 +67,12 @@ export function setFocusEventListenersOnCreateURLTagInput(
         switch (keyupEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
+            emitFormSubmit("tag_create", "enter_key");
             createURLTag(urlTagInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
+            emitFormCancel("tag_create", "escape_key");
             hideAndResetCreateURLTagForm(urlCard);
             break;
           default:

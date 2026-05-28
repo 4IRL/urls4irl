@@ -1,6 +1,7 @@
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { emitFormCancel, emitFormSubmit } from "../../btns-forms.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {
@@ -212,10 +213,12 @@ export function newURLInputAddEventListeners(
   const createURLInput = urlInputForm.find("#urlStringCreate");
 
   $(urlBtnCreate).onExact("click.createURL", function () {
+    emitFormSubmit("url_create", "button_click");
     createURL(createURLTitleInput, createURLInput, utubID);
   });
 
   $(urlBtnDelete).onExact("click.createURL", function () {
+    emitFormCancel("url_create", "cancel_button");
     createURLHideInput();
   });
 

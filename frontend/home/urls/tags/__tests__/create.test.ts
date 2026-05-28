@@ -51,6 +51,8 @@ vi.mock("../../btns-forms.js", () => ({
   ),
   makeSubmitButton: vi.fn(() => window.jQuery("<button></button>")),
   makeCancelButton: vi.fn(() => window.jQuery("<button></button>")),
+  emitFormSubmit: vi.fn(),
+  emitFormCancel: vi.fn(),
 }));
 
 vi.mock("../../cards/options/tag-btn.js", () => ({

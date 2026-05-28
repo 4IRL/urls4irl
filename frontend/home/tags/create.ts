@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { $, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
+import { emitFormCancel, emitFormSubmit } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import { buildTagFilterInDeck } from "./tags.js";
@@ -34,6 +35,7 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
   utubTagSubmitBtnCreate.offAndOnExact(
     "click.createUTubTagSubmit",
     function () {
+      emitFormSubmit("tag_create", "button_click");
       createUTubTag(utubID);
     },
   );
@@ -41,6 +43,7 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
   utubTagCancelBtnCreate.offAndOnExact(
     "click.createUTubTagEscape",
     function () {
+      emitFormCancel("tag_create", "cancel_button");
       createUTubTagHideInput();
     },
   );
@@ -70,10 +73,12 @@ function bindCreateUTubTagFocusEventListeners(
       switch (event.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
+          emitFormSubmit("tag_create", "enter_key");
           createUTubTag(utubID);
           break;
         case KEYS.ESCAPE:
           // Handle escape  key pressed
+          emitFormCancel("tag_create", "escape_key");
           createUTubTagHideInput();
           break;
         default:

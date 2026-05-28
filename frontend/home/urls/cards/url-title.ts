@@ -12,6 +12,8 @@ import {
   hideAndResetUpdateURLTitleForm,
 } from "./update-title.js";
 import {
+  emitFormCancel,
+  emitFormSubmit,
   makeUpdateButton,
   makeTextInput,
   makeSubmitButton,
@@ -103,9 +105,11 @@ function createUpdateURLTitleInput(
         if ((event.originalEvent as KeyboardEvent).repeat) return;
         switch (event.key) {
           case KEYS.ENTER:
+            emitFormSubmit("url_title_edit", "enter_key");
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
+            emitFormCancel("url_title_edit", "escape_key");
             hideAndResetUpdateURLTitleForm(urlCard);
             break;
           default:
@@ -125,6 +129,7 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
+    emitFormSubmit("url_title_edit", "button_click");
     updateURLTitle(urlTitleTextInput, urlCard, utubID);
   });
 
@@ -134,6 +139,7 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function () {
+    emitFormCancel("url_title_edit", "cancel_button");
     hideAndResetUpdateURLTitleForm(urlCard);
   });
 

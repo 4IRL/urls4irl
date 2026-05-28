@@ -31,7 +31,11 @@ vi.mock("../search.js", () => ({
 vi.mock("../deck.js", () => ({
   removeCreateUTubEventListeners: vi.fn(),
 }));
-vi.mock("../../btns-forms.js", () => ({ highlightInput: vi.fn() }));
+vi.mock("../../btns-forms.js", () => ({
+  highlightInput: vi.fn(),
+  emitFormSubmit: vi.fn(),
+  emitFormCancel: vi.fn(),
+}));
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ utubs: [] })),
   setState: vi.fn(),

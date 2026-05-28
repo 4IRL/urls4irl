@@ -12,7 +12,13 @@ import {
   sameNameWarningHideModal,
 } from "../utubs/utils.js";
 import { getState, setState } from "../../store/app-store.js";
-import { highlightInput, showInput, hideInput } from "../btns-forms.js";
+import {
+  emitFormCancel,
+  emitFormSubmit,
+  highlightInput,
+  showInput,
+  hideInput,
+} from "../btns-forms.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
   updateUTubDescriptionHideInput,
@@ -83,6 +89,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
 
   utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function () {
+    emitFormSubmit("utub_name_edit", "button_click");
     // Skip if update is identical to original
     if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
       updateUTubNameHideInput();
@@ -92,6 +99,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   });
 
   utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function () {
+    emitFormCancel("utub_name_edit", "cancel_button");
     updateUTubNameHideInput();
   });
 }
@@ -106,6 +114,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
         switch (keyEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
+            emitFormSubmit("utub_name_edit", "enter_key");
             // Skip if update is identical
             if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
               updateUTubNameHideInput();
@@ -115,6 +124,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
+            emitFormCancel("utub_name_edit", "escape_key");
             updateUTubNameHideInput();
             break;
           default:
@@ -127,6 +137,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
     });
 
   // Bind clicking outside the window
+  // metrics: outside-click is not in _DimFormCancel.trigger; intentionally not emitted (see plans/anonymous-metrics-ui-hooks)
   $(window).offAndOn("click.updateUTubname", function (windowClickEvent) {
     // Ignore clicks on the header wrapper (title text, pencil icon, gap)
     if ($(windowClickEvent.target).closest("#UTubNameUpdateWrap").length)

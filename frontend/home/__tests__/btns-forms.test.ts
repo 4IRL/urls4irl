@@ -20,6 +20,13 @@ const mockUpdateUTubDescriptionHideInput = vi.fn();
 const mockCreateMemberHideInput = vi.fn();
 const mockIsHidden = vi.fn();
 
+vi.mock("../../lib/metrics-client.js", () => ({
+  emit: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
+  initMetricsClient: vi.fn(),
+  resetMetricsClient: vi.fn(),
+}));
+
 vi.mock("../visibility.js", () => ({
   isHidden: (...args: unknown[]) => mockIsHidden(...args),
 }));

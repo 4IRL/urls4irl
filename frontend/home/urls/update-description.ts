@@ -5,7 +5,12 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
-import { showInput, hideInput } from "../btns-forms.js";
+import {
+  emitFormCancel,
+  emitFormSubmit,
+  showInput,
+  hideInput,
+} from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
@@ -68,10 +73,12 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   }
 
   utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
+    emitFormSubmit("utub_desc_edit", "button_click");
     updateUTubDescription(utubID);
   });
 
   utubDescriptionCancelBtnUpdate.onExact("click", function () {
+    emitFormCancel("utub_desc_edit", "cancel_button");
     updateUTubDescriptionHideInput(utubID);
   });
 }
@@ -88,10 +95,12 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
           switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed
+              emitFormSubmit("utub_desc_edit", "enter_key");
               updateUTubDescription(utubID);
               break;
             case KEYS.ESCAPE:
               // Handle escape key pressed
+              emitFormCancel("utub_desc_edit", "escape_key");
               updateUTubDescriptionHideInput(utubID);
               break;
             default:
@@ -105,6 +114,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
     });
 
   // Bind clicking outside the window
+  // metrics: outside-click is not in _DimFormCancel.trigger; intentionally not emitted (see plans/anonymous-metrics-ui-hooks)
   $(window).offAndOn(
     "click.updateUTubDescription",
     function (windowClickEvent) {

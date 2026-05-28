@@ -8,6 +8,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { emitFormCancel, emitFormSubmit } from "../btns-forms.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -48,10 +49,12 @@ function setupCreateMemberEventListeners(utubID: number): void {
   const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
   memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function () {
+    emitFormSubmit("member_invite", "button_click");
     createMember(utubID);
   });
 
   memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function () {
+    emitFormCancel("member_invite", "cancel_button");
     createMemberHideInput();
   });
 
@@ -80,10 +83,12 @@ function bindCreateMemberFocusEventListeners(
       switch (event.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
+          emitFormSubmit("member_invite", "enter_key");
           createMember(utubID);
           break;
         case KEYS.ESCAPE:
           // Handle escape  key pressed
+          emitFormCancel("member_invite", "escape_key");
           createMemberHideInput();
           break;
         default:

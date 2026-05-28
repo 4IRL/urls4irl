@@ -6,6 +6,11 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
+import {
+  emitFormCancel,
+  emitFormSubmit,
+  emitValidationError,
+} from "../../btns-forms.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";
@@ -49,10 +54,12 @@ export function bindCreateURLFocusEventListeners(
     switch (event.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
+        emitFormSubmit("url_create", "enter_key");
         createURL(createURLTitleInput, createURLInput, utubID);
         break;
       case KEYS.ESCAPE:
         // Handle escape key pressed
+        emitFormCancel("url_create", "escape_key");
         createURLHideInput();
         break;
       default:
@@ -131,6 +138,7 @@ export function createURL(
   );
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+    emitValidationError("url_create");
     createURLShowFormErrors({
       urlString: [APP_CONFIG.strings.INVALID_URL],
     });

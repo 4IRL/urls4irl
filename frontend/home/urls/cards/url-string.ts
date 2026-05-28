@@ -11,6 +11,8 @@ import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
 import {
+  emitFormCancel,
+  emitFormSubmit,
   makeTextInput,
   makeSubmitButton,
   makeCancelButton,
@@ -94,6 +96,7 @@ function createUpdateURLStringInput(
   );
 
   urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
+    emitFormSubmit("url_string_edit", "button_click");
     updateURL(urlStringTextInput, urlCard, utubID);
   });
 
@@ -103,6 +106,7 @@ function createUpdateURLStringInput(
   );
 
   urlStringCancelBtnUpdate.onExact("click.updateUrlString", function () {
+    emitFormCancel("url_string_edit", "cancel_button");
     hideAndResetUpdateURLStringForm(urlCard);
   });
 
@@ -125,10 +129,12 @@ function setFocusEventListenersOnUpdateURLStringInput(
         switch (event.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
+            emitFormSubmit("url_string_edit", "enter_key");
             updateURL(urlStringInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
+            emitFormCancel("url_string_edit", "escape_key");
             hideAndResetUpdateURLStringForm(urlCard);
             break;
           default:

@@ -7,6 +7,8 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import {
+  emitFormCancel,
+  emitFormSubmit,
   makeTextInput,
   makeSubmitButton,
   makeCancelButton,
@@ -80,6 +82,7 @@ export function createTagInputBlock(
   );
 
   urlTagSubmitBtnCreate.onExact("click.createURLTag", function () {
+    emitFormSubmit("tag_create", "button_click");
     createURLTag(urlTagTextInput, urlCard, utubID);
   });
 
@@ -89,6 +92,7 @@ export function createTagInputBlock(
   );
 
   urlTagCancelBtnCreate.onExact("click.createURLTag", function () {
+    emitFormCancel("tag_create", "cancel_button");
     hideAndResetCreateURLTagForm(urlCard);
   });
 

@@ -1,10 +1,28 @@
 import { showUpdateURLTitleForm } from "../update-title.js";
+import { createURLTitleAndUpdateBlock } from "../url-title.js";
+import { ajaxCall } from "../../../../lib/ajax.js";
 
 vi.mock("../../../../lib/metrics-client.js", () => ({
   emit: vi.fn(),
   flush: vi.fn().mockResolvedValue(undefined),
   initMetricsClient: vi.fn(),
   resetMetricsClient: vi.fn(),
+}));
+
+vi.mock("../../../../lib/ajax.js", () => ({
+  ajaxCall: vi.fn(),
+  is429Handled: vi.fn(() => false),
+}));
+
+vi.mock("../../../../lib/config.js", () => ({
+  APP_CONFIG: {
+    routes: { updateURLTitle: () => "/dummy" },
+    constants: {
+      URLS_TITLE_MIN_LENGTH: 1,
+      URLS_TITLE_MAX_LENGTH: 100,
+    },
+    strings: {},
+  },
 }));
 
 vi.mock("../selection.js", () => ({
@@ -64,5 +82,61 @@ describe("update-title metrics — UI_URL_TITLE_EDIT_OPEN", () => {
     showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard);
 
     expect(emit).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("url-title metrics — url_title_edit unchanged value", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+  });
+
+  it("url_title_edit unchanged value: emits submit but fires no AJAX", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
+    const { getState } = await import("../../../../store/app-store.js");
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "Same Title",
+          utubUrlTagIDs: [],
+          canDelete: true,
+        },
+      ],
+    } as unknown as ReturnType<typeof getState>);
+
+    const urlRow = $('<div class="urlRow" utuburlid="1"></div>');
+    $(document.body).append(urlRow);
+    const block = createURLTitleAndUpdateBlock("Same Title", urlRow, 1);
+    urlRow.append(block);
+
+    const submitBtn = urlRow.find(".urlTitleSubmitBtnUpdate");
+    const titleInput = urlRow.find("input.urlTitleUpdate");
+    titleInput.val("Same Title");
+    // .urlTitle text element is created inside the block with text "Same Title"
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
+
+    submitBtn.trigger("click.updateUrlTitle");
+
+    // Wait for the async updateURLTitle to complete its unchanged-value short-circuit
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+      trigger: "button_click",
+      form: "url_title_edit",
+    });
+    expect(
+      vi
+        .mocked(emit)
+        .mock.calls.filter(
+          (call) =>
+            call[0] === "ui_form_submit" &&
+            (call[1] as { form?: string } | undefined)?.form ===
+              "url_title_edit",
+        ),
+    ).toHaveLength(1);
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
 });
