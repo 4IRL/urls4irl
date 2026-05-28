@@ -35,6 +35,13 @@ vi.mock("../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
+vi.mock("../../../lib/metrics-client.js", () => ({
+  emit: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
+  initMetricsClient: vi.fn(),
+  resetMetricsClient: vi.fn(),
+}));
+
 vi.mock("../../utubs/utils.js", () => ({
   getCurrentUTubName: vi.fn(() => "Test UTub"),
   getAllAccessibleUTubNames: vi.fn(() => []),

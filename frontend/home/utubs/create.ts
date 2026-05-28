@@ -5,6 +5,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
 import { highlightInput } from "../btns-forms.js";
 import {
   getAllAccessibleUTubNames,
@@ -152,6 +153,7 @@ function sameUTubNameOnNewUTubWarningShowModal(): void {
 
 // Shows new UTub input fields
 function createUTubShowInput(): void {
+  emit("ui_utub_create_open");
   $("#createUTubWrap").showClassFlex();
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");

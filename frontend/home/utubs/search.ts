@@ -5,6 +5,14 @@ import { filterUTubsByName } from "../../logic/utub-search.js";
 
 type UTubSelectorEntry = { id: number; name: string };
 
+export function isUtubSearchActive(): boolean {
+  const value = $("#UTubNameSearch").val();
+  return (
+    typeof value === "string" &&
+    value.trim().length >= APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH
+  );
+}
+
 function readUTubsFromDOM(): UTubSelectorEntry[] {
   return $.map($(".UTubSelector").toArray(), (el: HTMLElement) => ({
     id: parseInt($(el).attr("utubid")!),

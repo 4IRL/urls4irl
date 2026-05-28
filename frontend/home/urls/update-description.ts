@@ -4,6 +4,7 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
 import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { updateUTubNameHideInput } from "./update-name.js";
@@ -45,7 +46,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     $("#UTubDescriptionSubheaderWrap").addClass("editable-wrap");
     descPencilIcon.removeClass("hidden");
 
-    function openDescriptionEdit(): void {
+    function openDescriptionEdit(trigger: "pencil_icon" | "keyboard"): void {
+      emit("ui_utub_desc_edit_open", { trigger });
       deselectAllURLs();
       updateUTubNameHideInput();
       updateUTubDescriptionShowInput(utubID);
@@ -53,14 +55,14 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
 
     $("#UTubDescriptionSubheaderWrap").offAndOnExact(
       "click.updateUTubDesc",
-      openDescriptionEdit,
+      () => openDescriptionEdit("pencil_icon"),
     );
 
     descPencilIcon.offAndOnExact("keydown.updateUTubDesc", function (keyEvent) {
       if (keyEvent.key === KEYS.ENTER || keyEvent.key === KEYS.SPACE) {
         keyEvent.preventDefault();
         descEditOpenedViaKeyboard = true;
-        openDescriptionEdit();
+        openDescriptionEdit("keyboard");
       }
     });
   }
@@ -137,6 +139,7 @@ export function showCreateDescriptionButtonAlways(utubID: number): void {
   clickToCreateDesc.enableTab();
 
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
+    emit("ui_utub_desc_edit_open", { trigger: "create_button" });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0 width-0");

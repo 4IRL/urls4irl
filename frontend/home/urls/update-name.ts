@@ -5,6 +5,7 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
 import {
   getCurrentUTubName,
   getAllAccessibleUTubNames,
@@ -59,19 +60,22 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   $("#UTubNameUpdateWrap").addClass("editable-wrap");
   namePencilIcon.removeClass("hidden");
 
-  function openNameEdit(): void {
+  function openNameEdit(trigger: "pencil_icon" | "keyboard"): void {
+    emit("ui_utub_name_edit_open", { trigger });
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
   }
 
-  $("#UTubNameUpdateWrap").offAndOnExact("click.updateUTubname", openNameEdit);
+  $("#UTubNameUpdateWrap").offAndOnExact("click.updateUTubname", () =>
+    openNameEdit("pencil_icon"),
+  );
 
   namePencilIcon.offAndOnExact("keydown.updateUTubname", function (keyEvent) {
     if (keyEvent.key === KEYS.ENTER || keyEvent.key === KEYS.SPACE) {
       keyEvent.preventDefault();
       nameEditOpenedViaKeyboard = true;
-      openNameEdit();
+      openNameEdit("keyboard");
     }
   });
 
@@ -197,6 +201,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID: number): void {
 function rebindCreateDescriptionForNameUpdate(utubID: number): void {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
+    emit("ui_utub_desc_edit_open", { trigger: "create_button" });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0");
