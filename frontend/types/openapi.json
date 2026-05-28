@@ -1919,6 +1919,7 @@
               "ui_register_submit",
               "ui_forgot_password_submit",
               "ui_auth_form_switch",
+              "ui_auth_modal_open",
               "ui_rate_limit_hit"
             ],
             "type": "string"

@@ -4,7 +4,6 @@
  */
 
 import { $ } from "./globals.js";
-import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
 
 export interface RateLimitedXHR extends JQuery.jqXHR {
   _429Handled: boolean;
@@ -12,15 +11,19 @@ export interface RateLimitedXHR extends JQuery.jqXHR {
 
 /**
  * Returns true if the jqXHR failure has already been handled by the global
- * 429 rate-limit handler in `ajaxCall`. Callers can early-return on this to
- * avoid double-dispatching user-visible error UI for rate-limited responses.
+ * 429 rate-limit handler in the `$.ajaxPrefilter` registered in `csrf.ts`.
+ * Callers can early-return on this to avoid double-dispatching user-visible
+ * error UI for HTML 429 responses (the page is being replaced).
  */
 export function is429Handled(xhr: JQuery.jqXHR): boolean {
   return !!(xhr as RateLimitedXHR)._429Handled;
 }
 
 /**
- * Makes an AJAX request with global 429 rate limit handling
+ * Makes an AJAX request. The global `$.ajaxPrefilter` in `csrf.ts` is the
+ * single canonical handler for 429 rate-limit responses (emits
+ * `ui_rate_limit_hit` and replaces the page on HTML 429s); this wrapper
+ * is now purely a JSON-body convenience helper.
  * @param {string} type - HTTP method (GET, POST, etc.)
  * @param {string} url - Target URL
  * @param {Record<string, unknown> | unknown[] | null | undefined} data - Request data
@@ -39,7 +42,7 @@ export function ajaxCall(
     !Array.isArray(data) &&
     Object.keys(data).length > 0;
 
-  let request = $.ajax({
+  return $.ajax({
     type: type,
     url: url,
     ...(isJsonBody
@@ -47,22 +50,6 @@ export function ajaxCall(
       : {}),
     timeout: timeout,
   });
-
-  request.fail(function (xhr: JQuery.jqXHR) {
-    const rateLimitedXhr = xhr as RateLimitedXHR;
-    // Initialize _429Handled to false on every .fail() invocation so callers can
-    // safely read the flag for any error response, not just 429s.
-    rateLimitedXhr._429Handled = false;
-    if (xhr.status === 429) {
-      const contentType = xhr.getResponseHeader("Content-Type");
-      if (contentType && contentType.includes("text/html")) {
-        rateLimitedXhr._429Handled = true;
-        showNewPageOnAJAXHTMLResponse(xhr.responseText);
-      }
-    }
-  });
-
-  return request;
 }
 
 /**

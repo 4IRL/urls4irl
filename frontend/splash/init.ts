@@ -1,6 +1,7 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { emit } from "../lib/metrics-client.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
@@ -72,7 +73,19 @@ export function createLogoutOnExit(): () => void {
   };
 }
 
+function targetFromSelector(
+  selector: string,
+): "login" | "register" | "forgot_password" | null {
+  if (selector === "#LoginModal") return "login";
+  if (selector === "#RegisterModal") return "register";
+  if (selector === "#ForgotPasswordModal") return "forgot_password";
+  return null;
+}
+
 export function switchModal($fromModal: JQuery, toSelector: string): void {
+  const target = targetFromSelector(toSelector);
+  if (target !== null) emit("ui_auth_form_switch", { target });
+
   const fromModal = bootstrap.Modal.getInstance($fromModal[0]);
   if (fromModal) {
     $fromModal.one("hidden.bs.modal", () => {
@@ -85,10 +98,12 @@ export function switchModal($fromModal: JQuery, toSelector: string): void {
 }
 
 export function loginModalOpener(): void {
+  emit("ui_auth_modal_open", { form: "login" });
   bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
 export function registerModalOpener(): void {
+  emit("ui_auth_modal_open", { form: "register" });
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 

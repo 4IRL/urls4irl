@@ -1,6 +1,13 @@
 import { createMockXhr } from "../../__tests__/helpers/mock-jquery.js";
 import { setupCSRF } from "../csrf.js";
 
+vi.mock("../metrics-client.js", () => ({
+  emit: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
+  initMetricsClient: vi.fn(),
+  resetMetricsClient: vi.fn(),
+}));
+
 const $ = window.jQuery;
 
 describe("setupCSRF", () => {

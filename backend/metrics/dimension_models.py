@@ -177,6 +177,10 @@ class _DimAuthFormSwitch(UIBaseDimensions):
     target: Literal["login", "register", "forgot_password"]
 
 
+class _DimAuthModalOpen(UIBaseDimensions):
+    form: Literal["login", "register"]
+
+
 # ---------------------------------------------------------------------------
 # API dimension model — `API_HIT` keeps endpoint/method/status_code in dims so
 # the `(bucketStart, eventName, dimensions)` unique constraint can distinguish
@@ -276,6 +280,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_REGISTER_SUBMIT: _DimDeviceOnly,
     EventName.UI_FORGOT_PASSWORD_SUBMIT: _DimDeviceOnly,
     EventName.UI_AUTH_FORM_SWITCH: _DimAuthFormSwitch,
+    EventName.UI_AUTH_MODAL_OPEN: _DimAuthModalOpen,
     # UI — Errors
     EventName.UI_RATE_LIMIT_HIT: _DimDeviceOnly,
 }

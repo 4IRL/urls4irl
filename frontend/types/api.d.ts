@@ -520,6 +520,7 @@ export interface components {
         | "ui_register_submit"
         | "ui_forgot_password_submit"
         | "ui_auth_form_switch"
+        | "ui_auth_modal_open"
         | "ui_rate_limit_hit";
       /** @description Per-event dimension dict; shape enforced server-side via the matching `_Dim<EventName>` Pydantic model. Auto-injected with `device_type` by the metrics-client for all UI events, so the dict is always non-empty when sent from the browser. */
       dimensions: {

@@ -165,6 +165,14 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         EventName.UI_AUTH_FORM_SWITCH,
         {"target": "register", "device_type": DeviceType.DESKTOP},
     ),
+    (
+        EventName.UI_AUTH_MODAL_OPEN,
+        {"form": "login", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_AUTH_MODAL_OPEN,
+        {"form": "register", "device_type": DeviceType.MOBILE},
+    ),
     # `_DimDeviceOnly` event — exercises the model that replaces formerly-None UI entries.
     (EventName.UI_UTUB_CREATE_OPEN, {"device_type": DeviceType.MOBILE}),
 )

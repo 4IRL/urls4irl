@@ -2,6 +2,13 @@ import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initRegisterForm } from "../register-form.js";
 
+vi.mock("../../lib/metrics-client.js", () => ({
+  emit: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
+  initMetricsClient: vi.fn(),
+  resetMetricsClient: vi.fn(),
+}));
+
 vi.mock("../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
 }));
@@ -92,5 +99,29 @@ describe("register-form 429 HTML response", () => {
     expect(showNewPageOnAJAXHTMLResponse).toHaveBeenCalledWith(
       "<html>Forbidden</html>",
     );
+  });
+});
+
+describe("register-form metrics — UI_REGISTER_SUBMIT", () => {
+  beforeEach(() => {
+    document.body.innerHTML = REGISTER_MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("emits ui_register_submit once per submit-button click", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith("ui_register_submit");
+    expect(emit).toHaveBeenCalledTimes(1);
   });
 });

@@ -91,6 +91,7 @@ class EventName(StrEnum):
     UI_REGISTER_SUBMIT = "ui_register_submit"
     UI_FORGOT_PASSWORD_SUBMIT = "ui_forgot_password_submit"
     UI_AUTH_FORM_SWITCH = "ui_auth_form_switch"
+    UI_AUTH_MODAL_OPEN = "ui_auth_modal_open"
     # — Errors
     UI_RATE_LIMIT_HIT = "ui_rate_limit_hit"
 
@@ -158,6 +159,7 @@ EVENT_CATEGORY: dict[EventName, EventCategory] = {
     EventName.UI_REGISTER_SUBMIT: EventCategory.UI,
     EventName.UI_FORGOT_PASSWORD_SUBMIT: EventCategory.UI,
     EventName.UI_AUTH_FORM_SWITCH: EventCategory.UI,
+    EventName.UI_AUTH_MODAL_OPEN: EventCategory.UI,
     EventName.UI_RATE_LIMIT_HIT: EventCategory.UI,
 }
 
@@ -225,5 +227,6 @@ EVENT_DESCRIPTIONS: dict[EventName, str] = {
     EventName.UI_REGISTER_SUBMIT: "Registration form submitted",
     EventName.UI_FORGOT_PASSWORD_SUBMIT: "Forgot password form submitted",
     EventName.UI_AUTH_FORM_SWITCH: "Auth form switched",
+    EventName.UI_AUTH_MODAL_OPEN: "Auth modal opened from initial CTA (navbar/header link) — not a form-to-form switch",
     EventName.UI_RATE_LIMIT_HIT: "429 rate limit response shown to user",
 }

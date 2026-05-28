@@ -5,6 +5,8 @@ import {
 import {
   createLogoutOnExit,
   switchModal,
+  loginModalOpener,
+  registerModalOpener,
   displayFormErrors,
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
@@ -14,6 +16,13 @@ import {
   emailValidationModalOpener,
 } from "../init.js";
 import { initEmailValidationForm } from "../email-validation-form.js";
+
+vi.mock("../../lib/metrics-client.js", () => ({
+  emit: vi.fn(),
+  flush: vi.fn().mockResolvedValue(undefined),
+  initMetricsClient: vi.fn(),
+  resetMetricsClient: vi.fn(),
+}));
 
 vi.mock("../navbar.js", () => ({
   NAVBAR_TOGGLER: { toggler: { hide: vi.fn() } },
@@ -163,6 +172,115 @@ describe("switchModal", () => {
     // Second trigger should NOT show again (one-time listener)
     $("#LoginModal").trigger("hidden.bs.modal");
     expect(mockToModal.show).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits ui_auth_form_switch with target=login when toSelector is #LoginModal", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    switchModal($("#RegisterModal"), "#LoginModal");
+
+    expect(emit).toHaveBeenCalledWith("ui_auth_form_switch", {
+      target: "login",
+    });
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits ui_auth_form_switch with target=register when toSelector is #RegisterModal", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    switchModal($("#LoginModal"), "#RegisterModal");
+
+    expect(emit).toHaveBeenCalledWith("ui_auth_form_switch", {
+      target: "register",
+    });
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits ui_auth_form_switch with target=forgot_password when toSelector is #ForgotPasswordModal", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    switchModal($("#LoginModal"), "#ForgotPasswordModal");
+
+    expect(emit).toHaveBeenCalledWith("ui_auth_form_switch", {
+      target: "forgot_password",
+    });
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it("does NOT emit ui_auth_form_switch when toSelector is #EmailValidationModal", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    switchModal($("#RegisterModal"), "#EmailValidationModal");
+
+    expect(emit).not.toHaveBeenCalled();
+  });
+});
+
+describe("loginModalOpener", () => {
+  beforeEach(() => {
+    document.body.innerHTML = modalShell("LoginModal");
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("emits ui_auth_modal_open with form=login and shows the login modal", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockToModal = createMockModal() as MockBootstrapModal;
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    loginModalOpener();
+
+    expect(emit).toHaveBeenCalledWith("ui_auth_modal_open", { form: "login" });
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(mockToModal.show).toHaveBeenCalled();
+  });
+});
+
+describe("registerModalOpener", () => {
+  beforeEach(() => {
+    document.body.innerHTML = modalShell("RegisterModal");
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("emits ui_auth_modal_open with form=register and shows the register modal", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockToModal = createMockModal() as MockBootstrapModal;
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    registerModalOpener();
+
+    expect(emit).toHaveBeenCalledWith("ui_auth_modal_open", {
+      form: "register",
+    });
+    expect(emit).toHaveBeenCalledTimes(1);
+    expect(mockToModal.show).toHaveBeenCalled();
   });
 });
 
