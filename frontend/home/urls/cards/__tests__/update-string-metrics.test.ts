@@ -2,12 +2,12 @@ import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jqu
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { updateURL, showUpdateURLStringForm } from "../update-string.js";
 
-vi.mock("../../../../lib/metrics-client.js", () => ({
-  emit: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  initMetricsClient: vi.fn(),
-  resetMetricsClient: vi.fn(),
-}));
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../../../lib/globals.js", async () => {
   const jquery = (await import("jquery")).default;

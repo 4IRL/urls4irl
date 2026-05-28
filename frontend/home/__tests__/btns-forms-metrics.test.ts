@@ -4,12 +4,11 @@ import {
   emitValidationError,
 } from "../btns-forms.js";
 
-vi.mock("../../lib/metrics-client.js", () => ({
-  emit: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  initMetricsClient: vi.fn(),
-  resetMetricsClient: vi.fn(),
-}));
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../visibility.js", () => ({
   isHidden: vi.fn(() => false),

@@ -1,13 +1,13 @@
 import { setupUpdateUTubNameEventListeners } from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import { emitFormSubmit } from "../../btns-forms.js";
 
-vi.mock("../../../lib/metrics-client.js", () => ({
-  emit: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  initMetricsClient: vi.fn(),
-  resetMetricsClient: vi.fn(),
-}));
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../../lib/globals.js", async () => {
   const jquery = (await import("jquery")).default;
@@ -45,30 +45,15 @@ vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
 
-vi.mock("../../btns-forms.js", async () => {
-  const { emit } = await import("../../../lib/metrics-client.js");
-  return {
-    showInput: vi.fn(),
-    hideInput: vi.fn(),
-    highlightInput: vi.fn(),
-    hideInputs: vi.fn(),
-    emitFormSubmit: (
-      form: string,
-      trigger: "enter_key" | "button_click",
-    ): void => {
-      emit("ui_form_submit", { trigger, form } as Record<string, string>);
-    },
-    emitFormCancel: (
-      form: string,
-      trigger: "escape_key" | "cancel_button",
-    ): void => {
-      emit("ui_form_cancel", { trigger, form } as Record<string, string>);
-    },
-    emitValidationError: (form: string): void => {
-      emit("ui_validation_error", { form } as Record<string, string>);
-    },
-  };
-});
+vi.mock("../../btns-forms.js", () => ({
+  showInput: vi.fn(),
+  hideInput: vi.fn(),
+  highlightInput: vi.fn(),
+  hideInputs: vi.fn(),
+  emitFormSubmit: vi.fn(),
+  emitFormCancel: vi.fn(),
+  emitValidationError: vi.fn(),
+}));
 
 vi.mock("../search.js", () => ({
   temporarilyHideSearchForEdit: vi.fn(),
@@ -170,22 +155,18 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     $("#utubNameUpdate").val("Test UTub");
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
     expect(emit).not.toHaveBeenCalled();
+    expect(vi.mocked(emitFormSubmit)).not.toHaveBeenCalled();
 
     $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
 
-    expect(emit).toHaveBeenCalledWith("ui_form_submit", {
-      trigger: "button_click",
-      form: "utub_name_edit",
-    });
+    expect(vi.mocked(emitFormSubmit)).toHaveBeenCalledWith(
+      "utub_name_edit",
+      "button_click",
+    );
     expect(
       vi
-        .mocked(emit)
-        .mock.calls.filter(
-          (call) =>
-            call[0] === "ui_form_submit" &&
-            (call[1] as { form?: string } | undefined)?.form ===
-              "utub_name_edit",
-        ),
+        .mocked(emitFormSubmit)
+        .mock.calls.filter((call) => call[0] === "utub_name_edit"),
     ).toHaveLength(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });

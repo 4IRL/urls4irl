@@ -1,5 +1,6 @@
 import { createMockJqXHR } from "./helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
+import { initMetricsClient } from "../lib/metrics-client.js";
 import {
   handleContactSubmit,
   clearFieldErrors,
@@ -7,6 +8,12 @@ import {
   showBanner,
   startSubmitCountdown,
 } from "../contact.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("./helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
@@ -246,6 +253,24 @@ describe("contact form AJAX submission", () => {
     expect(showNewPageOnAJAXHTMLResponse).toHaveBeenCalledWith(
       "<html>Rate limited</html>",
     );
+  });
+});
+
+describe("contact module — metrics client initialization", () => {
+  it("calls initMetricsClient on DOM ready", async () => {
+    // Re-import the contact module after clearing the mock so we can verify
+    // that loading contact.ts registers a ready handler that invokes
+    // initMetricsClient when DOM ready fires.
+    vi.mocked(initMetricsClient).mockClear();
+    vi.resetModules();
+    await import("../contact.js");
+
+    // happy-dom's document is already 'complete' at import time, so jQuery
+    // fires the ready callback synchronously; however vi.resetModules + dynamic
+    // import may defer callback execution to the next microtask — flush it.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(vi.mocked(initMetricsClient)).toHaveBeenCalled();
   });
 });
 

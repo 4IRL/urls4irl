@@ -5,6 +5,7 @@ import { $ } from "./lib/globals.js";
 import "./lib/security-check.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { APP_CONFIG } from "./lib/config.js";
+import { initMetricsClient } from "./lib/metrics-client.js";
 import { showNewPageOnAJAXHTMLResponse } from "./lib/page-utils.js";
 import { initNavbarRouting } from "./lib/navbar-shared.js";
 
@@ -119,6 +120,8 @@ export function handleContactSubmit(
 }
 
 $(document).ready(() => {
+  initMetricsClient();
+
   // Initialize navbar routing
   initNavbarRouting();
 

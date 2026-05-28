@@ -1,11 +1,10 @@
 import { initCollapsibleDecks } from "../collapsible-decks.js";
 
-vi.mock("../../lib/metrics-client.js", () => ({
-  emit: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  initMetricsClient: vi.fn(),
-  resetMetricsClient: vi.fn(),
-}));
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
 vi.mock("../utubs/utils.js", () => ({ isUTubSelected: vi.fn(() => false) }));

@@ -1,11 +1,16 @@
-import { setFocusEventListenersOnURLCard } from "../cards.js";
+import {
+  newURLInputAddEventListeners,
+  setFocusEventListenersOnURLCard,
+} from "../cards.js";
+import { emitFormCancel, emitFormSubmit } from "../../../btns-forms.js";
+import { createURL, createURLHideInput } from "../create.js";
 
-vi.mock("../../../../lib/metrics-client.js", () => ({
-  emit: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  initMetricsClient: vi.fn(),
-  resetMetricsClient: vi.fn(),
-}));
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../url-context.js", () => ({
   isURLSearchActive: vi.fn(() => false),
@@ -15,6 +20,22 @@ vi.mock("../../url-context.js", () => ({
 vi.mock("../selection.js", () => ({
   selectURLCard: vi.fn(),
   setURLCardSelectionEventListener: vi.fn(),
+}));
+
+vi.mock("../../../btns-forms.js", () => ({
+  emitFormSubmit: vi.fn(),
+  emitFormCancel: vi.fn(),
+  emitValidationError: vi.fn(),
+  showInput: vi.fn(),
+  hideInput: vi.fn(),
+}));
+
+vi.mock("../create.js", () => ({
+  createURL: vi.fn(),
+  createURLHideInput: vi.fn(),
+  bindCreateURLFocusEventListeners: vi.fn(),
+  unbindCreateURLFocusEventListeners: vi.fn(),
+  resetCreateURLFailErrors: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -85,5 +106,56 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
       search_active: "true",
       active_tag_count: 2,
     });
+  });
+});
+
+describe("cards metrics — url_create form via newURLInputAddEventListeners", () => {
+  const UTUB_ID = 1;
+
+  const NEW_URL_INPUT_HTML = `
+    <form id="newURLInput">
+      <input id="urlTitleCreate" type="text" />
+      <input id="urlStringCreate" type="text" />
+      <button id="urlSubmitBtnCreate" type="button"></button>
+      <button id="urlCancelBtnCreate" type="button"></button>
+    </form>
+  `;
+
+  beforeEach(() => {
+    document.body.innerHTML = NEW_URL_INPUT_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    $("#urlSubmitBtnCreate").off();
+    $("#urlCancelBtnCreate").off();
+    $("#urlTitleCreate").off();
+    $("#urlStringCreate").off();
+  });
+
+  it("submit button click emits ui_form_submit('url_create', 'button_click')", () => {
+    const urlInputForm = $("#newURLInput");
+    newURLInputAddEventListeners(urlInputForm, UTUB_ID);
+
+    $("#urlSubmitBtnCreate").trigger("click.createURL");
+
+    expect(vi.mocked(emitFormSubmit)).toHaveBeenCalledWith(
+      "url_create",
+      "button_click",
+    );
+    expect(vi.mocked(createURL)).toHaveBeenCalledTimes(1);
+  });
+
+  it("cancel button click emits ui_form_cancel('url_create', 'cancel_button')", () => {
+    const urlInputForm = $("#newURLInput");
+    newURLInputAddEventListeners(urlInputForm, UTUB_ID);
+
+    $("#urlCancelBtnCreate").trigger("click.createURL");
+
+    expect(vi.mocked(emitFormCancel)).toHaveBeenCalledWith(
+      "url_create",
+      "cancel_button",
+    );
+    expect(vi.mocked(createURLHideInput)).toHaveBeenCalledTimes(1);
   });
 });

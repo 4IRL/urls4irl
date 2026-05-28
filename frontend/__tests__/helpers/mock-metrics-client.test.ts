@@ -36,4 +36,9 @@ describe("mockMetricsClient", () => {
     expect(firstInvocation.emit).toHaveBeenCalledTimes(1);
     expect(secondInvocation.emit).not.toHaveBeenCalled();
   });
+
+  it("flush resolves to undefined to match metrics-client signature", async () => {
+    const mocks = mockMetricsClient();
+    await expect(mocks.flush()).resolves.toBeUndefined();
+  });
 });

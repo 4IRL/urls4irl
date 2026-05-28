@@ -2,12 +2,11 @@ import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initRegisterForm } from "../register-form.js";
 
-vi.mock("../../lib/metrics-client.js", () => ({
-  emit: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  initMetricsClient: vi.fn(),
-  resetMetricsClient: vi.fn(),
-}));
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
