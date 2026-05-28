@@ -1,4 +1,5 @@
 import { $ } from "../lib/globals.js";
+import { emit } from "../lib/metrics-client.js";
 import { isMobile } from "./mobile.js";
 import { isUTubSelected } from "./utubs/utils.js";
 import { resetUTubSearch } from "./utubs/search.js";
@@ -80,7 +81,9 @@ function setupUTubHeaderForMaximizeMinimize() {
   headerAndCaret.offAndOn("click.collapsibleUTubDeck", () => {
     if (isMobile()) return;
     const caret = $("#UTubDeckHeaderAndCaret .title-caret");
-    if (caret.hasClass("closed")) {
+    const willExpand = caret.hasClass("closed");
+    emit(willExpand ? "ui_deck_expand" : "ui_deck_collapse", { deck: "utubs" });
+    if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_DECK_CSS_SELECTOR).removeClass("collapsed");
       return;
@@ -108,7 +111,11 @@ function setupMemberHeaderForMaximizeMinimize() {
   headerAndCaret.offAndOn("click.collapsibleMemberDeck", () => {
     if (isMobile()) return;
     const caret = $("#MemberDeckHeaderAndCaret .title-caret");
-    if (caret.hasClass("closed")) {
+    const willExpand = caret.hasClass("closed");
+    emit(willExpand ? "ui_deck_expand" : "ui_deck_collapse", {
+      deck: "members",
+    });
+    if (willExpand) {
       caret.removeClass("closed");
       $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
       if (!isUTubSelected()) {
@@ -139,7 +146,9 @@ function setupTagHeaderForMaximizeMinimize() {
   headerAndCaret.offAndOn("click.collapsibleUTubTagDeck", () => {
     if (isMobile()) return;
     const caret = $("#TagDeckHeaderAndCaret .title-caret");
-    if (caret.hasClass("closed")) {
+    const willExpand = caret.hasClass("closed");
+    emit(willExpand ? "ui_deck_expand" : "ui_deck_collapse", { deck: "tags" });
+    if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
       if (!isUTubSelected()) {

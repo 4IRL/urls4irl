@@ -1,4 +1,5 @@
 import { $, bootstrap } from "../lib/globals.js";
+import { emit } from "../lib/metrics-client.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 import {
   setMobileUIWhenMemberDeckSelected,
@@ -11,20 +12,34 @@ export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
   toggler: null,
 };
 
+let _suppressNextNavbarCloseEmit: boolean = false;
+
+function suppressNextNavbarCloseEmit(): void {
+  _suppressNextNavbarCloseEmit = true;
+}
+
 /**
  * Initialize navbar and mobile navigation buttons
  */
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
+    suppressNextNavbarCloseEmit();
+    emit("ui_mobile_nav", { target: "members" });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
+    suppressNextNavbarCloseEmit();
+    emit("ui_mobile_nav", { target: "urls" });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
+    suppressNextNavbarCloseEmit();
+    emit("ui_mobile_nav", { target: "utubs" });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
+    suppressNextNavbarCloseEmit();
+    emit("ui_mobile_nav", { target: "tags" });
     setMobileUIWhenTagDeckSelected();
   });
 
@@ -47,6 +62,7 @@ export function initNavbar(): void {
 }
 
 export function onMobileNavbarOpened(): void {
+  emit("ui_navbar_mobile_menu_open");
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -67,6 +83,11 @@ export function onMobileNavbarOpened(): void {
 }
 
 export function onMobileNavbarClosed(): void {
+  if (_suppressNextNavbarCloseEmit) {
+    _suppressNextNavbarCloseEmit = false;
+  } else {
+    emit("ui_navbar_mobile_menu_close");
+  }
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
 
