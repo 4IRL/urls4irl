@@ -1,9 +1,12 @@
 import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { emit } from "../../lib/metrics-client.js";
 import { filterUTubsByName } from "../../logic/utub-search.js";
 
 type UTubSelectorEntry = { id: number; name: string };
+
+let _utubSearchOpen: boolean = false;
 
 export function isUtubSearchActive(): boolean {
   const value = $("#UTubNameSearch").val();
@@ -56,6 +59,10 @@ export function setUTubSelectorSearchEventListener(): void {
 
   searchInput
     .offAndOn("focus.searchInputEsc", function () {
+      if (!_utubSearchOpen) {
+        _utubSearchOpen = true;
+        emit("ui_search_open", { target: "utubs" });
+      }
       searchInput.offAndOn(
         "keydown.searchInputEsc",
         function (event: JQuery.TriggeredEvent) {
@@ -75,6 +82,7 @@ export function setUTubSelectorSearchEventListener(): void {
       );
     })
     .offAndOn("blur.searchInputEsc", function () {
+      _utubSearchOpen = false;
       searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
@@ -111,6 +119,9 @@ export function setUTubSelectorSearchEventListener(): void {
 }
 
 export function resetUTubSearch(): void {
+  if (_utubSearchOpen) {
+    emit("ui_search_close", { target: "utubs" });
+  }
   const searchInput = $("#UTubNameSearch");
   searchInput.val("");
   searchInput.off("keydown.searchInputEsc");

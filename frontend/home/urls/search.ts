@@ -2,6 +2,7 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { AppEvents, emit, on } from "../../lib/event-bus.js";
+import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { filterURLsBySearchTerm } from "../../logic/url-search.js";
 import { getState } from "../../store/app-store.js";
 
@@ -85,6 +86,7 @@ export function setURLSearchEventListener(): void {
   const searchInput = $("#URLContentSearch");
 
   searchIcon.offAndOnExact("click.urlSearchInputShow", function () {
+    recordUIEvent("ui_search_open", { target: "urls" });
     wrapper.addClass("visible-flex").removeClass("hidden");
     $("#URLDeckSubheaderCreateDescription").addClass("hidden");
     $("#URLDeckNoDescription").hideClass();
@@ -148,6 +150,9 @@ export function setURLSearchEventListener(): void {
 }
 
 export function closeURLSearchAndEraseInput(): void {
+  if ($("#SearchURLWrap").hasClass("visible-flex")) {
+    recordUIEvent("ui_search_close", { target: "urls" });
+  }
   if (searchDebounceTimer !== null) {
     clearTimeout(searchDebounceTimer);
     searchDebounceTimer = null;
