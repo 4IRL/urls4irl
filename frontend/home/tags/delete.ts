@@ -4,9 +4,14 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
+import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { getState, setState } from "../../store/app-store.js";
 
 type DeleteUtubTagResponse = SuccessResponse<"deleteUtubTag">;
+
+// scope: "url" is currently unused — a future per-URL tag-delete confirmation
+// modal would activate the literal in _DimTagDelete* dimension models.
+let _tagDeleteConfirmed: boolean = false;
 
 function deleteUTubTagHideModal(): void {
   $("#confirmModal").modal("hide");
@@ -17,6 +22,9 @@ export function deleteUTubTagShowModal(
   utubTagID: number,
   tagString: string,
 ): void {
+  _tagDeleteConfirmed = false;
+  recordUIEvent("ui_tag_delete_open", { scope: "utub" });
+
   const modalTitle = "Are you sure you want to delete this Tag?";
   const $strong = $("<strong>").text(`'${tagString}'`);
   const modalBody = `${APP_CONFIG.strings.UTUB_TAG_DELETE_WARNING}`.replace(
@@ -45,8 +53,16 @@ export function deleteUTubTagShowModal(
     .text(buttonTextSubmit)
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
+      _tagDeleteConfirmed = true;
+      recordUIEvent("ui_tag_delete_confirm", { scope: "utub" });
       deleteUTubTag(utubID, utubTagID);
     });
+
+  $("#confirmModal").offAndOnExact("hidden.bs.modal.tagDelete", function () {
+    if (!_tagDeleteConfirmed) {
+      recordUIEvent("ui_tag_delete_cancel", { scope: "utub" });
+    }
+  });
 
   $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");

@@ -1,6 +1,7 @@
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { $ } from "../../lib/globals.js";
+import { emit } from "../../lib/metrics-client.js";
 import { setState } from "../../store/app-store.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { deleteUTubTagShowModal } from "./delete.js";
@@ -106,6 +107,7 @@ export function buildTagFilterInDeck(
 
 // Handle tag filtered selected - tags are filtered based on a URL having one tag AND another tag.. etc
 export function toggleTagFilterSelected(activeTagFilter: JQuery): void {
+  emit("ui_tag_filter_toggle");
   const currentSelectedTagIDs = $.map(
     $(".tagFilter.selected").toArray(),
     (tagFilter: HTMLElement) =>

@@ -4,6 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { emit } from "../../../lib/metrics-client.js";
 import { isTagInURL } from "./tags.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -83,6 +84,7 @@ function deleteURLTagSuccess(
   tagBadge: JQuery,
   urlCard: JQuery,
 ): void {
+  emit("ui_tag_remove");
   const tagID = response.utubTag.utubTagID;
   const urlID = parseInt(urlCard.attr("utuburlid") as string);
   setState({
