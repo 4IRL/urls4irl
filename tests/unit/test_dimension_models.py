@@ -159,7 +159,7 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         EventName.UI_DECK_COLLAPSE,
         {"deck": "members", "device_type": DeviceType.DESKTOP},
     ),
-    (EventName.UI_DECK_EXPAND, {"deck": "urls", "device_type": DeviceType.MOBILE}),
+    (EventName.UI_DECK_EXPAND, {"deck": "utubs", "device_type": DeviceType.MOBILE}),
     (EventName.UI_MOBILE_NAV, {"target": "tags", "device_type": DeviceType.MOBILE}),
     (
         EventName.UI_AUTH_FORM_SWITCH,

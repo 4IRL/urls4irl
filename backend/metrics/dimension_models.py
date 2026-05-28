@@ -162,11 +162,11 @@ class _DimValidationError(UIBaseDimensions):
 # each event has a 1:1 grep-able dim model. The pair may diverge as the
 # deck UI grows; keep them split.
 class _DimDeckCollapse(UIBaseDimensions):
-    deck: Literal["members", "tags", "urls"]
+    deck: Literal["members", "tags", "utubs"]
 
 
 class _DimDeckExpand(UIBaseDimensions):
-    deck: Literal["members", "tags", "urls"]
+    deck: Literal["members", "tags", "utubs"]
 
 
 class _DimMobileNav(UIBaseDimensions):
