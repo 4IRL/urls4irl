@@ -8,6 +8,7 @@ import { loadInitialUtubState } from "./lib/initial-state.js";
 import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
+import { initMetricsClient } from "./lib/metrics-client.js";
 
 import { initBtnsForms } from "./home/btns-forms.js";
 import { initVisibilityHandlers } from "./home/visibility.js";
@@ -43,6 +44,7 @@ $(document).ready(() => {
   initUpdateAllTags();
   initURLDeck();
   initCookieBanner();
+  initMetricsClient();
 });
 
 // Initialize window events (must be outside DOM ready)
