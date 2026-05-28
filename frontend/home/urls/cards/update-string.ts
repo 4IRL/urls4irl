@@ -30,6 +30,8 @@ import {
 import { createEditURLIcon } from "./options/edit-string-btn.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 
 type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
@@ -50,6 +52,7 @@ export function showUpdateURLStringForm(
   urlCard: JQuery,
   urlStringBtnUpdate: JQuery,
 ): void {
+  emit("ui_url_string_edit_open");
   urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
@@ -259,12 +262,24 @@ function updateURLSuccess(
     .attr({ href: updatedURLString })
     .text(updatedURLString);
 
-  // Update URL options
+  // Update URL options. Dimensions (search_active, active_tag_count) are read
+  // at click time so values reflect the deck state at the moment the user
+  // activates the rebound button — not at updateURLSuccess time.
   urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
+    emit("ui_url_access", {
+      trigger: "main_button",
+      search_active: isURLSearchActive() ? "true" : "false",
+      active_tag_count: getActiveTagCount(),
+    });
     accessLink(updatedURLString);
   });
 
   urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
+    emit("ui_url_access", {
+      trigger: "corner_button",
+      search_active: isURLSearchActive() ? "true" : "false",
+      active_tag_count: getActiveTagCount(),
+    });
     accessLink(updatedURLString);
   });
 

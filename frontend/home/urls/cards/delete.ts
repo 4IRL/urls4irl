@@ -4,6 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { emit } from "../../../lib/metrics-client.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -11,6 +12,8 @@ import { hideURLSearchIcon } from "../search.js";
 import { showURLsEmptyState } from "../empty-state.js";
 
 type DeleteUrlResponse = SuccessResponse<"deleteUrl">;
+
+let _urlDeleteConfirmed: boolean = false;
 
 // Hide confirmation modal for removal of the selected URL
 export function deleteURLHideModal(): void {
@@ -23,6 +26,9 @@ export function deleteURLShowModal(
   urlCard: JQuery,
   utubID: number,
 ): void {
+  _urlDeleteConfirmed = false;
+  emit("ui_url_delete_open");
+
   const modalTitle = "Are you sure you want to delete this URL from the UTub?";
   const modalText = `${APP_CONFIG.strings.DELETE_URL_WARNING}`;
   const buttonTextDismiss = "Just kidding";
@@ -41,15 +47,23 @@ export function deleteURLShowModal(
   $("#modalSubmit")
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
+      _urlDeleteConfirmed = true;
+      emit("ui_url_delete_confirm");
       deleteURL(utubUrlID, urlCard, utubID);
     })
     .text(buttonTextSubmit);
+
+  $("#confirmModal").offAndOnExact("hidden.bs.modal.urlDelete", function () {
+    if (!_urlDeleteConfirmed) {
+      emit("ui_url_delete_cancel");
+    }
+  });
 
   $("#modalSubmit").prop("disabled", false);
   $("#confirmModal")
     .addClass("deleteUrlModal")
     .modal("show")
-    .on("hidden.bs.modal", () => {
+    .offAndOn("hidden.bs.modal.deleteUrlCleanup", () => {
       $("#confirmModal").removeClass("deleteUrlModal");
     });
   $("#modalRedirect").hide();

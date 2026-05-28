@@ -1,7 +1,10 @@
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { emit } from "../../../lib/metrics-client.js";
 
 const ACCESS_URL_MODAL_STRING_ID = "AccessURLModalURLString";
+
+let _wasSubmitted: boolean = false;
 
 // Opens new tab
 export function accessLink(urlString: string): void {
@@ -31,6 +34,9 @@ function urlStringInAccessModal(urlString: string): JQuery<HTMLElement> {
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function accessURLWarningShowModal(urlString: string): void {
+  _wasSubmitted = false;
+  emit("ui_url_access_warning");
+
   const modalTitle = "🚦 Caution! 🚦";
   const modalText = `${APP_CONFIG.strings.ACCESS_URL_WARNING}\n\n`;
   const buttonTextDismiss = "Nevermind";
@@ -52,18 +58,26 @@ function accessURLWarningShowModal(urlString: string): void {
   $("#modalSubmit")
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
+      _wasSubmitted = true;
       window.open(urlString, "_blank")?.focus();
     })
     .text(buttonTextSubmit);
 
-  $("#confirmModal")
-    .addClass("accessExternalURLModal")
-    .modal("show")
-    .on("hidden.bs.modal", () => {
-      $("#confirmModal").removeClass("accessExternalURLModal");
-      $("#confirmModalBody").removeClass("white-space-pre-line");
+  // Cleanup runs unconditionally on every dismiss; the dismiss emit is gated
+  // by !_wasSubmitted so a successful "Let's go!" does not double-count as a
+  // dismiss. offAndOnExact rebinds without accumulation across repeat opens.
+  $("#confirmModal").addClass("accessExternalURLModal").modal("show");
+  $("#confirmModal").offAndOnExact(
+    "hidden.bs.modal.accessWarning",
+    function () {
       $("#" + ACCESS_URL_MODAL_STRING_ID).remove();
-    });
+      $("#confirmModalBody").removeClass("white-space-pre-line");
+      $("#confirmModal").removeClass("accessExternalURLModal");
+      if (!_wasSubmitted) {
+        emit("ui_url_access_warning_dismiss");
+      }
+    },
+  );
   $("#modalRedirect").hide();
   $("#modalRedirect").hideClass();
 }

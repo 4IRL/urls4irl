@@ -1,5 +1,7 @@
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {
   selectURLCard,
@@ -144,6 +146,10 @@ export function setFocusEventListenersOnURLCard(urlCard: JQuery): void {
       "keyup.focusURLCard" + utubUrlID,
       function (event: JQuery.TriggeredEvent) {
         if (event.key === KEYS.ENTER) {
+          emit("ui_url_card_click", {
+            search_active: isURLSearchActive() ? "true" : "false",
+            active_tag_count: getActiveTagCount(),
+          });
           selectURLCard(urlCard);
           urlCard.trigger("focusout");
         }

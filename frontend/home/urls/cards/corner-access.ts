@@ -1,4 +1,6 @@
 import { $ } from "../../../lib/globals.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 
 // Icon to visit URL, situated in top right corner of URL card
@@ -30,6 +32,11 @@ export function createGoToURLIcon(urlString: string): JQuery<HTMLElement> {
     .addClass("self-start goToUrlIcon")
     .enableTab()
     .onExact("click", () => {
+      emit("ui_url_access", {
+        trigger: "corner_button",
+        search_active: isURLSearchActive() ? "true" : "false",
+        active_tag_count: getActiveTagCount(),
+      });
       accessLink(urlString);
     });
 

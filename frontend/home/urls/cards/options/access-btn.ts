@@ -1,5 +1,7 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+import { emit } from "../../../../lib/metrics-client.js";
+import { isURLSearchActive, getActiveTagCount } from "../../url-context.js";
 import { accessLink } from "../access.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
 
@@ -70,6 +72,11 @@ export function createAccessLinkBtn(url: UtubUrlItem): JQuery<HTMLElement> {
     .onExact("click", function (this: HTMLElement) {
       const tooltip = bootstrap.Tooltip.getInstance(this);
       if (tooltip) tooltip.hide();
+      emit("ui_url_access", {
+        trigger: "main_button",
+        search_active: isURLSearchActive() ? "true" : "false",
+        active_tag_count: getActiveTagCount(),
+      });
       accessLink(url.urlString);
     });
 
