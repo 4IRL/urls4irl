@@ -3,6 +3,7 @@ import type { MemberModifiedResponse } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -13,6 +14,9 @@ import {
   resetUTubDeckIfNoUTubs,
 } from "../utubs/deck.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
+
+let _memberActionConfirmed: boolean = false;
+let _removeMemberIsCreator: boolean = false;
 
 // Dynamically generates the remove member icon when needed
 export function createMemberRemoveBtn(): JQuery<HTMLButtonElement> {
@@ -71,6 +75,10 @@ export function removeMemberShowModal(
   isCreator: boolean,
   utubID: number,
 ): void {
+  _memberActionConfirmed = false;
+  _removeMemberIsCreator = isCreator;
+  emit(isCreator ? "ui_member_remove_open" : "ui_member_leave_open");
+
   const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
@@ -98,9 +106,21 @@ export function removeMemberShowModal(
     .text(buttonTextSubmit)
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
+      _memberActionConfirmed = true;
+      emit(isCreator ? "ui_member_remove_confirm" : "ui_member_leave_confirm");
       removeMember(memberID, isCreator, utubID);
     })
     .text(buttonTextSubmit);
+
+  $("#confirmModal").offAndOnExact("hidden.bs.modal.memberAction", function () {
+    if (!_memberActionConfirmed) {
+      emit(
+        _removeMemberIsCreator
+          ? "ui_member_remove_cancel"
+          : "ui_member_leave_cancel",
+      );
+    }
+  });
 
   $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");
