@@ -6,7 +6,7 @@ EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all addmock
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built test-metrics-ui-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all addmock
 
 .DEFAULT_GOAL := help
 
@@ -64,6 +64,9 @@ test-marker-parallel: ## Run tests for a specific marker in parallel: make test-
 
 test-marker-parallel-built: start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=4]
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
+
+test-metrics-ui-built: start-built ## Run anonymous-metrics UI tests against built assets: make test-metrics-ui-built [n=4]
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m metrics_ui -n $(or $(n),4) --dist=loadscope -v"
 
 test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"

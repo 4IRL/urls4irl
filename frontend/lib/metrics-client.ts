@@ -83,6 +83,38 @@ function pruneDedupeMap(now: number): void {
   }
 }
 
+// `crypto.randomUUID()` requires a secure context (HTTPS or localhost). In
+// non-secure HTTP origins (e.g. dev stacks served from a hostname like
+// `http://web:8080`), `crypto.randomUUID` is `undefined` and calling it
+// throws a TypeError that aborts the in-flight flush, so the buffered
+// events are never POSTed. The shape only needs to be unique-per-page-load
+// enough for the ingest route's `reserve_batch` dedupe key — full RFC 4122
+// compliance is not required. Fall back to a `getRandomValues`-based v4
+// shape when the native helper is missing.
+function generateBatchId(): string {
+  if (typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byteValue) =>
+    byteValue.toString(16).padStart(2, "0"),
+  ).join("");
+  return (
+    hex.slice(0, 8) +
+    "-" +
+    hex.slice(8, 12) +
+    "-" +
+    hex.slice(12, 16) +
+    "-" +
+    hex.slice(16, 20) +
+    "-" +
+    hex.slice(20, 32)
+  );
+}
+
 // Variadic rest tuple: events whose CallerDimensions is `{}` (i.e. the
 // Pydantic model has only `device_type`) get a single-arg signature
 // `emit(event)`; events with extra caller-supplied dims require the second
@@ -130,7 +162,7 @@ export async function flush(): Promise<void> {
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
-    _inFlightBatchId = crypto.randomUUID();
+    _inFlightBatchId = generateBatchId();
   }
 
   const payload: MetricsIngestRequest = {
@@ -172,7 +204,7 @@ function flushBeacon(): void {
   if (_buffer.length === 0) return;
   if (_inFlightBatchId !== null) return;
   const beaconEvents = _buffer.splice(0, MAX_BATCH_SIZE);
-  const beaconBatchId = crypto.randomUUID();
+  const beaconBatchId = generateBatchId();
   const payload: MetricsIngestRequest = {
     events: beaconEvents,
     batch_id: beaconBatchId,
