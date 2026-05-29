@@ -44,3 +44,5 @@ describe("error entry point", () => {
     await expect(import("../error.js")).resolves.not.toThrow();
   });
 });
+
+export {};

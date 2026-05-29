@@ -35,14 +35,14 @@ describe("getActiveTagCount", () => {
   it("returns 0 when no tag filters are selected", () => {
     vi.mocked(getState).mockReturnValue({
       selectedTagIDs: [],
-    } as ReturnType<typeof getState>);
+    } as unknown as ReturnType<typeof getState>);
     expect(getActiveTagCount()).toBe(0);
   });
 
   it("returns the length of selectedTagIDs from the store", () => {
     vi.mocked(getState).mockReturnValue({
       selectedTagIDs: [1, 2, 3],
-    } as ReturnType<typeof getState>);
+    } as unknown as ReturnType<typeof getState>);
     expect(getActiveTagCount()).toBe(3);
   });
 });

@@ -1,3 +1,5 @@
+import type { Mock } from "vitest";
+
 import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   createImmediateAlwaysJqXHR,
@@ -75,8 +77,8 @@ function modalShell(id: string, innerHTML: string = ""): string {
 const ALERT_BANNER = `<div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>`;
 
 interface MockBootstrapModal extends bootstrap.Modal {
-  show: ReturnType<typeof vi.fn>;
-  hide: ReturnType<typeof vi.fn>;
+  show: Mock<(relatedTarget?: HTMLElement) => void>;
+  hide: Mock<() => void>;
 }
 
 describe("createLogoutOnExit", () => {
