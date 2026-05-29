@@ -115,8 +115,6 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
     });
 
   // Bind clicking outside the window
-  // Outside-click cancel is not tracked: the trigger dimension only covers
-  // keyboard/button interactions (see _DimFormCancel in backend/metrics/dimension_models.py).
   $(window).offAndOn(
     "click.updateUTubDescription",
     function (windowClickEvent) {
@@ -134,6 +132,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       )
         return;
 
+      emitFormCancel("utub_desc_edit", "outside_click");
       // Hide UTub description update fields
       updateUTubDescriptionHideInput(utubID);
     },

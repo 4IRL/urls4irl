@@ -117,4 +117,25 @@ describe("forgot-password-form metrics — UI_FORGOT_PASSWORD_SUBMIT", () => {
     expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORGOT_PASSWORD_SUBMIT);
     expect(emit).toHaveBeenCalledTimes(1);
   });
+
+  it("emits ui_validation_error with form=forgot_password on 400 errorCode response", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#ForgotPasswordModal");
+    initForgotPasswordForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    const fakeXhr = {
+      status: 400,
+      responseJSON: { errorCode: 1, message: "Invalid" },
+      getResponseHeader: vi.fn(),
+    };
+    mockDeferred.reject(fakeXhr, "error", "Bad Request");
+
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+      form: "forgot_password",
+    });
+  });
 });

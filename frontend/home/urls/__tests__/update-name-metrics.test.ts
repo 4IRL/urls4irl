@@ -2,7 +2,7 @@ import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { setupUpdateUTubNameEventListeners } from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
-import { emitFormSubmit } from "../../btns-forms.js";
+import { emitFormCancel, emitFormSubmit } from "../../btns-forms.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -188,5 +188,23 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
       trigger: "create_button",
     });
+  });
+
+  it("emitFormCancel fires with trigger=outside_click when window-click handler triggers cancel", () => {
+    // Open the edit form first (rebinds window-click cancel handler).
+    setupUpdateUTubNameEventListeners(UTUB_ID);
+    $("#UTubNameUpdateWrap").trigger("click.updateUTubname");
+    vi.mocked(emitFormCancel).mockClear();
+
+    // Simulate a click on an element outside the editor (e.g. body itself).
+    $(window).trigger({
+      type: "click.updateUTubname",
+      target: document.body,
+    } as unknown as JQuery.TriggeredEvent);
+
+    expect(vi.mocked(emitFormCancel)).toHaveBeenCalledWith(
+      "utub_name_edit",
+      "outside_click",
+    );
   });
 });

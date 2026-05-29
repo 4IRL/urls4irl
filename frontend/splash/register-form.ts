@@ -101,6 +101,7 @@ function handleRegisterFailure(
 
   if ("errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as RegisterError;
+    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "register" });
     switch (xhr.status) {
       case 400: {
         handleImproperFormErrors($modal, errorJson);

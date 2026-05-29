@@ -29,7 +29,7 @@ export function emitFormSubmit(
 
 export function emitFormCancel(
   form: FormName,
-  trigger: "escape_key" | "cancel_button",
+  trigger: "escape_key" | "cancel_button" | "outside_click",
 ): void {
   emit(UI_EVENTS.UI_FORM_CANCEL, { trigger, form });
 }

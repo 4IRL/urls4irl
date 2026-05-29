@@ -5,7 +5,7 @@ import {
 } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
-import { emitFormSubmit } from "../../btns-forms.js";
+import { emitFormCancel, emitFormSubmit } from "../../btns-forms.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -176,5 +176,23 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").trigger(tabEvent);
 
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  it("emitFormCancel fires with trigger=outside_click when window-click handler triggers cancel", () => {
+    // Open the edit form first (rebinds window-click cancel handler).
+    setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+    $("#UTubDescriptionSubheaderWrap").trigger("click.updateUTubDesc");
+    vi.mocked(emitFormCancel).mockClear();
+
+    // Simulate a click outside the editor (e.g. body itself).
+    $(window).trigger({
+      type: "click.updateUTubDescription",
+      target: document.body,
+    } as unknown as JQuery.TriggeredEvent);
+
+    expect(vi.mocked(emitFormCancel)).toHaveBeenCalledWith(
+      "utub_desc_edit",
+      "outside_click",
+    );
   });
 });

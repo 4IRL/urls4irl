@@ -106,6 +106,7 @@ function handleLoginFailure(
     "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
+    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "login" });
     switch (errorJson.errorCode) {
       case 1: {
         // User found but email not yet validated

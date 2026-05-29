@@ -124,4 +124,25 @@ describe("register-form metrics — UI_REGISTER_SUBMIT", () => {
     expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_REGISTER_SUBMIT);
     expect(emit).toHaveBeenCalledTimes(1);
   });
+
+  it("emits ui_validation_error with form=register on 400 errorCode response", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    const fakeXhr = {
+      status: 400,
+      responseJSON: { errorCode: 1, message: "Invalid" },
+      getResponseHeader: vi.fn(),
+    };
+    mockDeferred.reject(fakeXhr, "error", "Bad Request");
+
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+      form: "register",
+    });
+  });
 });

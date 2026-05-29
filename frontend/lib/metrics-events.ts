@@ -76,8 +76,12 @@ export const UI_EVENTS = {
   UI_FORGOT_PASSWORD_SUBMIT: "ui_forgot_password_submit",
   UI_AUTH_FORM_SWITCH: "ui_auth_form_switch",
   UI_AUTH_MODAL_OPEN: "ui_auth_modal_open",
+  UI_RESET_PASSWORD_SUBMIT: "ui_reset_password_submit",
+  UI_EMAIL_VALIDATION_SUBMIT: "ui_email_validation_submit",
 
-  // — Errors
+  // — Contact / errors
+  UI_CONTACT_SUBMIT: "ui_contact_submit",
+  UI_ERROR_PAGE_REFRESH: "ui_error_page_refresh",
   UI_RATE_LIMIT_HIT: "ui_rate_limit_hit",
 } as const satisfies Record<string, UIEventName>;
 

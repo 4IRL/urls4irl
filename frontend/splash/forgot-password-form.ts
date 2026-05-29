@@ -104,6 +104,7 @@ function handleForgotPasswordFailure(
 
   if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ForgotPasswordError;
+    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "forgot_password" });
     switch (errorJson.errorCode) {
       case 1: {
         handleImproperFormErrors($modal, errorJson);

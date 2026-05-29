@@ -92,7 +92,11 @@ class EventName(StrEnum):
     UI_FORGOT_PASSWORD_SUBMIT = "ui_forgot_password_submit"
     UI_AUTH_FORM_SWITCH = "ui_auth_form_switch"
     UI_AUTH_MODAL_OPEN = "ui_auth_modal_open"
-    # — Errors
+    UI_RESET_PASSWORD_SUBMIT = "ui_reset_password_submit"
+    UI_EMAIL_VALIDATION_SUBMIT = "ui_email_validation_submit"
+    # — Contact / errors
+    UI_CONTACT_SUBMIT = "ui_contact_submit"
+    UI_ERROR_PAGE_REFRESH = "ui_error_page_refresh"
     UI_RATE_LIMIT_HIT = "ui_rate_limit_hit"
 
 
@@ -160,6 +164,10 @@ EVENT_CATEGORY: dict[EventName, EventCategory] = {
     EventName.UI_FORGOT_PASSWORD_SUBMIT: EventCategory.UI,
     EventName.UI_AUTH_FORM_SWITCH: EventCategory.UI,
     EventName.UI_AUTH_MODAL_OPEN: EventCategory.UI,
+    EventName.UI_RESET_PASSWORD_SUBMIT: EventCategory.UI,
+    EventName.UI_EMAIL_VALIDATION_SUBMIT: EventCategory.UI,
+    EventName.UI_CONTACT_SUBMIT: EventCategory.UI,
+    EventName.UI_ERROR_PAGE_REFRESH: EventCategory.UI,
     EventName.UI_RATE_LIMIT_HIT: EventCategory.UI,
 }
 
@@ -228,5 +236,9 @@ EVENT_DESCRIPTIONS: dict[EventName, str] = {
     EventName.UI_FORGOT_PASSWORD_SUBMIT: "Forgot password form submitted",
     EventName.UI_AUTH_FORM_SWITCH: "Auth form switched",
     EventName.UI_AUTH_MODAL_OPEN: "Auth modal opened from initial CTA (navbar/header link) — not a form-to-form switch",
+    EventName.UI_RESET_PASSWORD_SUBMIT: "Reset-password form submitted",
+    EventName.UI_EMAIL_VALIDATION_SUBMIT: "Email-validation request submitted (manual click or post-register auto-send)",
+    EventName.UI_CONTACT_SUBMIT: "Contact form submitted",
+    EventName.UI_ERROR_PAGE_REFRESH: "User clicked refresh on the error page",
     EventName.UI_RATE_LIMIT_HIT: "429 rate limit response shown to user",
 }

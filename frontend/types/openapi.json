@@ -1920,6 +1920,10 @@
               "ui_forgot_password_submit",
               "ui_auth_form_switch",
               "ui_auth_modal_open",
+              "ui_reset_password_submit",
+              "ui_email_validation_submit",
+              "ui_contact_submit",
+              "ui_error_page_refresh",
               "ui_rate_limit_hit"
             ],
             "type": "string"

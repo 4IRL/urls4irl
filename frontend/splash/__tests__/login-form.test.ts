@@ -121,4 +121,25 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
     expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_LOGIN_SUBMIT);
     expect(emit).toHaveBeenCalledTimes(1);
   });
+
+  it("emits ui_validation_error with form=login on 400 errorCode response", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    const fakeXhr = {
+      status: 400,
+      responseJSON: { errorCode: 2, message: "Invalid" },
+      getResponseHeader: vi.fn(),
+    };
+    mockDeferred.reject(fakeXhr, "error", "Bad Request");
+
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+      form: "login",
+    });
+  });
 });

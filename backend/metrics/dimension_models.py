@@ -32,6 +32,15 @@ Form = Literal[
     "utub_desc_edit",
     "tag_create",
     "member_invite",
+    # Splash / contact forms — used by UI_VALIDATION_ERROR. The submit/cancel
+    # paths for these forms use dedicated `UI_<form>_SUBMIT` events instead of
+    # `UI_FORM_SUBMIT` / `UI_FORM_CANCEL`, so by convention `_DimFormSubmit`
+    # and `_DimFormCancel` are never emitted with these values.
+    "login",
+    "register",
+    "forgot_password",
+    "reset_password",
+    "email_validation",
 ]
 
 
@@ -149,7 +158,7 @@ class _DimFormSubmit(UIBaseDimensions):
 
 
 class _DimFormCancel(UIBaseDimensions):
-    trigger: Literal["escape_key", "cancel_button"]
+    trigger: Literal["escape_key", "cancel_button", "outside_click"]
     form: Form
 
 
@@ -179,6 +188,13 @@ class _DimAuthFormSwitch(UIBaseDimensions):
 
 class _DimAuthModalOpen(UIBaseDimensions):
     form: Literal["login", "register"]
+
+
+class _DimEmailValidationSubmit(UIBaseDimensions):
+    # `manual_click` covers the user explicitly clicking the resend button;
+    # `auto_after_register` covers the modal auto-firing the request on
+    # `shown.bs.modal` immediately after the post-register flow opens it.
+    trigger: Literal["manual_click", "auto_after_register"]
 
 
 # ---------------------------------------------------------------------------
@@ -281,7 +297,11 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_FORGOT_PASSWORD_SUBMIT: _DimDeviceOnly,
     EventName.UI_AUTH_FORM_SWITCH: _DimAuthFormSwitch,
     EventName.UI_AUTH_MODAL_OPEN: _DimAuthModalOpen,
-    # UI — Errors
+    EventName.UI_RESET_PASSWORD_SUBMIT: _DimDeviceOnly,
+    EventName.UI_EMAIL_VALIDATION_SUBMIT: _DimEmailValidationSubmit,
+    # UI — Contact / errors
+    EventName.UI_CONTACT_SUBMIT: _DimDeviceOnly,
+    EventName.UI_ERROR_PAGE_REFRESH: _DimDeviceOnly,
     EventName.UI_RATE_LIMIT_HIT: _DimDeviceOnly,
 }
 
