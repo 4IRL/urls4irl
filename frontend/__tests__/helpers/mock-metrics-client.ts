@@ -23,7 +23,7 @@
  *
  * // Inside the test:
  * const { emit } = await import("<relative-path>/lib/metrics-client.js");
- * expect(emit).toHaveBeenCalledWith("ui_utub_select", { search_active: "false" });
+ * expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_SELECT, { search_active: "false" });
  * ```
  *
  * NEVER include `device_type` in the asserted dimensions — `metrics-client`

@@ -4,6 +4,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -77,7 +78,11 @@ export function removeMemberShowModal(
 ): void {
   _memberActionConfirmed = false;
   _removeMemberIsCreator = isCreator;
-  emit(isCreator ? "ui_member_remove_open" : "ui_member_leave_open");
+  emit(
+    isCreator
+      ? UI_EVENTS.UI_MEMBER_REMOVE_OPEN
+      : UI_EVENTS.UI_MEMBER_LEAVE_OPEN,
+  );
 
   const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
@@ -107,7 +112,11 @@ export function removeMemberShowModal(
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       _memberActionConfirmed = true;
-      emit(isCreator ? "ui_member_remove_confirm" : "ui_member_leave_confirm");
+      emit(
+        isCreator
+          ? UI_EVENTS.UI_MEMBER_REMOVE_CONFIRM
+          : UI_EVENTS.UI_MEMBER_LEAVE_CONFIRM,
+      );
       removeMember(memberID, isCreator, utubID);
     })
     .text(buttonTextSubmit);
@@ -116,8 +125,8 @@ export function removeMemberShowModal(
     if (!_memberActionConfirmed) {
       emit(
         _removeMemberIsCreator
-          ? "ui_member_remove_cancel"
-          : "ui_member_leave_cancel",
+          ? UI_EVENTS.UI_MEMBER_REMOVE_CANCEL
+          : UI_EVENTS.UI_MEMBER_LEAVE_CANCEL,
       );
     }
   });

@@ -13,6 +13,7 @@ import { setUIWhenNoUTubSelected } from "../init.js";
 import { hideInputsAndUpdateUTubDeck, resetUTubDeckIfNoUTubs } from "./deck.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { getNumOfUTubs } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
 import { resetUTubSearch } from "./search.js";
@@ -43,7 +44,7 @@ function deleteUTubHideModal(): void {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal(utubID: number): void {
   _utubDeleteConfirmed = false;
-  recordUIEvent("ui_utub_delete_open");
+  recordUIEvent(UI_EVENTS.UI_UTUB_DELETE_OPEN);
 
   const modalTitle = "Are you sure you want to delete this UTub?";
   const modalBody = `${APP_CONFIG.strings.UTUB_DELETE_WARNING}`;
@@ -70,14 +71,14 @@ function deleteUTubShowModal(utubID: number): void {
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       _utubDeleteConfirmed = true;
-      recordUIEvent("ui_utub_delete_confirm");
+      recordUIEvent(UI_EVENTS.UI_UTUB_DELETE_CONFIRM);
       deleteUTub(utubID);
       resetUTubSearch();
     });
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.utubDelete", function () {
     if (!_utubDeleteConfirmed) {
-      recordUIEvent("ui_utub_delete_cancel");
+      recordUIEvent(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
     }
   });
 

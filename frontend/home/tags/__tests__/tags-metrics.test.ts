@@ -88,7 +88,7 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
     toggleTagFilterSelected(secondFilter);
 
     expect(emit).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenNthCalledWith(1, "ui_tag_filter_toggle");
-    expect(emit).toHaveBeenNthCalledWith(2, "ui_tag_filter_toggle");
+    expect(emit).toHaveBeenNthCalledWith(1, UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_TAG_FILTER_TOGGLE);
   });
 });

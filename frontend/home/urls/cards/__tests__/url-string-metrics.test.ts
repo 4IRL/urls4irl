@@ -121,7 +121,7 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
         .mocked(emit)
         .mock.calls.filter(
           (call) =>
-            call[0] === "ui_form_submit" &&
+            call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
             (call[1] as { form?: string } | undefined)?.form ===
               "url_string_edit",
         ),

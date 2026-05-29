@@ -151,13 +151,16 @@ describe("navbar metrics emitters", () => {
 
       const calls = (emit as ReturnType<typeof vi.fn>).mock.calls;
       const mobileNavCalls = calls.filter(
-        (call) => call[0] === "ui_mobile_nav",
+        (call) => call[0] === UI_EVENTS.UI_MOBILE_NAV,
       );
       const closeCalls = calls.filter(
-        (call) => call[0] === "ui_navbar_mobile_menu_close",
+        (call) => call[0] === UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
       );
       expect(mobileNavCalls).toHaveLength(1);
-      expect(mobileNavCalls[0]).toEqual(["ui_mobile_nav", { target: "tags" }]);
+      expect(mobileNavCalls[0]).toEqual([
+        UI_EVENTS.UI_MOBILE_NAV,
+        { target: "tags" },
+      ]);
       expect(closeCalls).toHaveLength(0);
     });
   });

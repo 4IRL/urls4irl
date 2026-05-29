@@ -108,7 +108,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     const dismissCalls = vi
       .mocked(emit)
-      .mock.calls.filter((call) => call[0] === "ui_url_access_warning_dismiss");
+      .mock.calls.filter(
+        (call) => call[0] === UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
+      );
     expect(dismissCalls.length).toBe(1);
   });
 });

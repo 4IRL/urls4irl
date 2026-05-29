@@ -8,6 +8,7 @@ import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,
@@ -134,7 +135,7 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   // Avoid reselecting if choosing the same UTub selector
   if (currentlySelected.is($(utubSelector))) return;
 
-  recordUIEvent("ui_utub_select", {
+  recordUIEvent(UI_EVENTS.UI_UTUB_SELECT, {
     search_active: isUTubSearchActive() ? "true" : "false",
   });
 
@@ -243,7 +244,7 @@ function makeUTubRoleIcon(memberRole: string): string {
 
 export function makeUTubSelectableAgainIfMobile(utub: JQuery): void {
   $(utub).offAndOnExact("click.selectUTubMobile", function () {
-    recordUIEvent("ui_utub_select", {
+    recordUIEvent(UI_EVENTS.UI_UTUB_SELECT, {
       search_active: isUTubSearchActive() ? "true" : "false",
     });
     getSelectedUTubInfo(parseInt($(this).attr("utubid")!));

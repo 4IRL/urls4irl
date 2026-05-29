@@ -78,11 +78,11 @@ describe("metrics-client", () => {
       expect(init.headers["Content-Type"]).toBe("application/json");
       const body = JSON.parse(init.body);
       expect(body.events).toHaveLength(2);
-      expect(body.events[0].event_name).toBe("ui_utub_create_open");
+      expect(body.events[0].event_name).toBe(UI_EVENTS.UI_UTUB_CREATE_OPEN);
       expect(body.events[0].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
       });
-      expect(body.events[1].event_name).toBe("ui_url_copy");
+      expect(body.events[1].event_name).toBe(UI_EVENTS.UI_URL_COPY);
       expect(body.events[1].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
         result: "success",
@@ -336,7 +336,7 @@ describe("metrics-client", () => {
       expect((blob as Blob).type).toBe("application/json");
       return (blob as Blob).text().then((text) => {
         const body = JSON.parse(text);
-        expect(body.events[0].event_name).toBe("ui_utub_create_open");
+        expect(body.events[0].event_name).toBe(UI_EVENTS.UI_UTUB_CREATE_OPEN);
         expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
       });
     });
@@ -598,7 +598,7 @@ describe("metrics-client", () => {
         (fetch as unknown as Mock).mock.calls[1][1].body,
       );
       expect(secondBody.events).toHaveLength(1);
-      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+      expect(secondBody.events[0].event_name).toBe(UI_EVENTS.UI_URL_COPY);
       const firstBatchId = JSON.parse(
         (fetch as unknown as Mock).mock.calls[0][1].body,
       ).batch_id;
@@ -676,7 +676,7 @@ describe("metrics-client", () => {
         (fetch as unknown as Mock).mock.calls[1][1].body,
       );
       expect(secondBody.events).toHaveLength(1);
-      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+      expect(secondBody.events[0].event_name).toBe(UI_EVENTS.UI_URL_COPY);
     });
   });
 

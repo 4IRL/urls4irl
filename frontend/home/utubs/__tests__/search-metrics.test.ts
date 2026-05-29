@@ -77,10 +77,10 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     $("#UTubNameSearch").trigger("focus.searchInputEsc");
 
     expect(emit).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenNthCalledWith(1, "ui_search_open", {
+    expect(emit).toHaveBeenNthCalledWith(1, UI_EVENTS.UI_SEARCH_OPEN, {
       target: "utubs",
     });
-    expect(emit).toHaveBeenNthCalledWith(2, "ui_search_open", {
+    expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_SEARCH_OPEN, {
       target: "utubs",
     });
   });

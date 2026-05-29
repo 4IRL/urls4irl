@@ -1,5 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { isMobile } from "./mobile.js";
 import { isUTubSelected } from "./utubs/utils.js";
 import { resetUTubSearch } from "./utubs/search.js";
@@ -82,7 +83,9 @@ function setupUTubHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#UTubDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
-    emit(willExpand ? "ui_deck_expand" : "ui_deck_collapse", { deck: "utubs" });
+    emit(willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE, {
+      deck: "utubs",
+    });
     if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_DECK_CSS_SELECTOR).removeClass("collapsed");
@@ -112,7 +115,7 @@ function setupMemberHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#MemberDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
-    emit(willExpand ? "ui_deck_expand" : "ui_deck_collapse", {
+    emit(willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE, {
       deck: "members",
     });
     if (willExpand) {
@@ -147,7 +150,9 @@ function setupTagHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#TagDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
-    emit(willExpand ? "ui_deck_expand" : "ui_deck_collapse", { deck: "tags" });
+    emit(willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE, {
+      deck: "tags",
+    });
     if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");

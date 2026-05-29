@@ -67,10 +67,10 @@ describe("collapsible-decks metrics emitters", () => {
       $("#UTubDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(2);
-      expect(emit).toHaveBeenNthCalledWith(1, "ui_deck_collapse", {
+      expect(emit).toHaveBeenNthCalledWith(1, UI_EVENTS.UI_DECK_COLLAPSE, {
         deck: "utubs",
       });
-      expect(emit).toHaveBeenNthCalledWith(2, "ui_deck_expand", {
+      expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_DECK_EXPAND, {
         deck: "utubs",
       });
     });
@@ -107,7 +107,7 @@ describe("collapsible-decks metrics emitters", () => {
       $("#MemberDeckHeaderAndCaret").trigger("click");
       $("#MemberDeckHeaderAndCaret").trigger("click");
 
-      expect(emit).toHaveBeenNthCalledWith(2, "ui_deck_expand", {
+      expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_DECK_EXPAND, {
         deck: "members",
       });
     });
@@ -144,7 +144,7 @@ describe("collapsible-decks metrics emitters", () => {
       $("#TagDeckHeaderAndCaret").trigger("click");
       $("#TagDeckHeaderAndCaret").trigger("click");
 
-      expect(emit).toHaveBeenNthCalledWith(2, "ui_deck_expand", {
+      expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_DECK_EXPAND, {
         deck: "tags",
       });
     });
