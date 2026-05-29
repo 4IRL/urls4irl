@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import {
   resetUTubSearch,
   setUTubSelectorSearchEventListener,
@@ -53,7 +54,9 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     $("#UTubNameSearch").trigger("focus.searchInputEsc");
 
-    expect(emit).toHaveBeenCalledWith("ui_search_open", { target: "utubs" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_SEARCH_OPEN, {
+      target: "utubs",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -90,7 +93,9 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     resetUTubSearch();
 
-    expect(emit).toHaveBeenCalledWith("ui_search_close", { target: "utubs" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_SEARCH_CLOSE, {
+      target: "utubs",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

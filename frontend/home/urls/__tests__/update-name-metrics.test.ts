@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { setupUpdateUTubNameEventListeners } from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
@@ -108,7 +109,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     setupUpdateUTubNameEventListeners(UTUB_ID);
     $("#UTubNameUpdateWrap").trigger("click.updateUTubname");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_name_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, {
       trigger: "pencil_icon",
     });
   });
@@ -120,7 +121,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     const enterEvent = $.Event("keydown.updateUTubname", { key: "Enter" });
     $("#UTubNameUpdateWrap .edit-pencil-icon").trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_name_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, {
       trigger: "keyboard",
     });
   });
@@ -132,7 +133,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     const spaceEvent = $.Event("keydown.updateUTubname", { key: " " });
     $("#UTubNameUpdateWrap .edit-pencil-icon").trigger(spaceEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_name_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, {
       trigger: "keyboard",
     });
   });
@@ -184,7 +185,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       "click.createUTubdescription",
     );
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_desc_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
       trigger: "create_button",
     });
   });

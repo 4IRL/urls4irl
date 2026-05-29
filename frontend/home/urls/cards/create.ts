@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import {
   emitFormCancel,
   emitFormSubmit,
@@ -92,7 +93,7 @@ export function createURLHideInput(): void {
 
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
-  emit("ui_url_create_open");
+  emit(UI_EVENTS.UI_URL_CREATE_OPEN);
   if (!getNumOfURLs()) {
     hideURLsEmptyState();
   }

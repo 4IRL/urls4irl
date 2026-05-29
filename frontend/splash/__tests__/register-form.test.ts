@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initRegisterForm } from "../register-form.js";
@@ -120,7 +121,7 @@ describe("register-form metrics — UI_REGISTER_SUBMIT", () => {
     initRegisterForm($modal);
     $modal.find("#submit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_register_submit");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_REGISTER_SUBMIT);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 });

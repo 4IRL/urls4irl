@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -53,7 +54,9 @@ describe("tags/create metrics — UI_TAG_CREATE_OPEN (scope:utub)", () => {
     setupOpenCreateUTubTagEventListeners(1);
     $("#utubTagBtnCreate").trigger("click.createUTubTag");
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_create_open", { scope: "utub" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_CREATE_OPEN, {
+      scope: "utub",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

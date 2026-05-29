@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initForgotPasswordForm } from "../forgot-password-form.js";
@@ -113,7 +114,7 @@ describe("forgot-password-form metrics — UI_FORGOT_PASSWORD_SUBMIT", () => {
     initForgotPasswordForm($modal);
     $modal.find("#submit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_forgot_password_submit");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORGOT_PASSWORD_SUBMIT);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 });

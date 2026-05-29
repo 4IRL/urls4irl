@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import {
   newURLInputAddEventListeners,
   setFocusEventListenersOnURLCard,
@@ -67,7 +68,7 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
     const enterEvent = $.Event("keyup.focusURLCard7", { key: "Enter" });
     $(document).trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_card_click", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_CARD_CLICK, {
       search_active: "false",
       active_tag_count: 0,
     });
@@ -102,7 +103,7 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
     const enterEvent = $.Event("keyup.focusURLCard7", { key: "Enter" });
     $(document).trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_card_click", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_CARD_CLICK, {
       search_active: "true",
       active_tag_count: 2,
     });

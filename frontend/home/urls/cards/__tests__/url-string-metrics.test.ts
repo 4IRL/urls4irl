@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import {
   createURLString,
   createURLStringAndUpdateBlock,
@@ -65,7 +66,7 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     urlAnchor.trigger("click.defaultlinkbehavior");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "url_text",
       search_active: "false",
       active_tag_count: 0,
@@ -111,7 +112,7 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     submitBtn.trigger("click.updateUrlString");
 
-    expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
       trigger: "button_click",
       form: "url_string_edit",
     });
@@ -145,7 +146,7 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     urlAnchor.trigger("click.defaultlinkbehavior");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "url_text",
       search_active: "true",
       active_tag_count: 3,

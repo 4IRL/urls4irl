@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   emitFormSubmit,
   emitFormCancel,
@@ -38,7 +39,7 @@ describe("btns-forms metrics helpers", () => {
       emitFormSubmit("utub_create", "button_click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
         trigger: "button_click",
         form: "utub_create",
       });
@@ -49,7 +50,7 @@ describe("btns-forms metrics helpers", () => {
 
       emitFormSubmit("url_title_edit", "enter_key");
 
-      expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
         trigger: "enter_key",
         form: "url_title_edit",
       });
@@ -63,7 +64,7 @@ describe("btns-forms metrics helpers", () => {
       emitFormCancel("tag_create", "cancel_button");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_form_cancel", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
         trigger: "cancel_button",
         form: "tag_create",
       });
@@ -74,7 +75,7 @@ describe("btns-forms metrics helpers", () => {
 
       emitFormCancel("member_invite", "escape_key");
 
-      expect(emit).toHaveBeenCalledWith("ui_form_cancel", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
         trigger: "escape_key",
         form: "member_invite",
       });
@@ -88,7 +89,7 @@ describe("btns-forms metrics helpers", () => {
       emitValidationError("url_create");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_validation_error", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
         form: "url_create",
       });
     });
@@ -98,7 +99,7 @@ describe("btns-forms metrics helpers", () => {
 
       emitValidationError("url_string_edit");
 
-      expect(emit).toHaveBeenCalledWith("ui_validation_error", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
         form: "url_string_edit",
       });
     });

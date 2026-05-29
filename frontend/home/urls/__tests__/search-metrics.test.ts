@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import {
   closeURLSearchAndEraseInput,
   disableURLSearch,
@@ -51,7 +52,9 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     setURLSearchEventListener();
     $("#URLSearchFilterIcon").trigger("click.urlSearchInputShow");
 
-    expect(emit).toHaveBeenCalledWith("ui_search_open", { target: "urls" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_SEARCH_OPEN, {
+      target: "urls",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -64,7 +67,9 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     closeURLSearchAndEraseInput();
 
-    expect(emit).toHaveBeenCalledWith("ui_search_close", { target: "urls" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_SEARCH_CLOSE, {
+      target: "urls",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -99,7 +104,9 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     $("#URLContentSearch").trigger("focus.searchInputEsc");
     $("#URLContentSearch").trigger(escEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_search_close", { target: "urls" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_SEARCH_CLOSE, {
+      target: "urls",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

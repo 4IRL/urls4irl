@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { setCreateUTubEventListeners } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -73,7 +74,7 @@ describe("create metrics — UI_UTUB_CREATE_OPEN", () => {
     setCreateUTubEventListeners();
     $("#utubBtnCreate").trigger("click.createUTub");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_create_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_CREATE_OPEN);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

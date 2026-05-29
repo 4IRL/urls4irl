@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { accessLink } from "../access.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -45,7 +46,7 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     accessLink("ftp://example.com");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access_warning");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS_WARNING);
   });
 
   it("does NOT show modal or emit warning for http:// URLs (direct open)", async () => {
@@ -53,7 +54,7 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     accessLink("https://example.com");
 
-    expect(emit).not.toHaveBeenCalledWith("ui_url_access_warning");
+    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS_WARNING);
     expect(openSpy).toHaveBeenCalledWith("https://example.com", "_blank");
   });
 
@@ -65,7 +66,7 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.accessWarning");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access_warning_dismiss");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS);
   });
 
   it("does NOT emit dismiss when user clicked 'Let's go!' submit then hidden fires", async () => {
@@ -77,7 +78,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.accessWarning");
 
-    expect(emit).not.toHaveBeenCalledWith("ui_url_access_warning_dismiss");
+    expect(emit).not.toHaveBeenCalledWith(
+      UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
+    );
   });
 
   it("cleanup (removeClass + remove URL span) always runs on hidden, even after submit", () => {

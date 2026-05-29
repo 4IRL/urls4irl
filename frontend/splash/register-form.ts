@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
@@ -34,7 +35,7 @@ export function initRegisterForm($modal: JQuery): void {
 
 function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
-  emit("ui_register_submit");
+  emit(UI_EVENTS.UI_REGISTER_SUBMIT);
   $modal.find("#submit").attr("disabled", "disabled");
 
   const username: string = String($modal.find("#username").val() ?? "");

@@ -6,6 +6,7 @@ import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   emitFormCancel,
   emitFormSubmit,
@@ -161,7 +162,7 @@ function sameUTubNameOnNewUTubWarningShowModal(): void {
 
 // Shows new UTub input fields
 function createUTubShowInput(): void {
-  emit("ui_utub_create_open");
+  emit(UI_EVENTS.UI_UTUB_CREATE_OPEN);
   $("#createUTubWrap").showClassFlex();
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");

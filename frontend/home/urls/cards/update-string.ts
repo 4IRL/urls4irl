@@ -9,6 +9,7 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
@@ -52,7 +53,7 @@ export function showUpdateURLStringForm(
   urlCard: JQuery,
   urlStringBtnUpdate: JQuery,
 ): void {
-  emit("ui_url_string_edit_open");
+  emit(UI_EVENTS.UI_URL_STRING_EDIT_OPEN);
   urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
@@ -267,7 +268,7 @@ function updateURLSuccess(
   // at click time so values reflect the deck state at the moment the user
   // activates the rebound button — not at updateURLSuccess time.
   urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
-    emit("ui_url_access", {
+    emit(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "main_button",
       search_active: isURLSearchActive() ? "true" : "false",
       active_tag_count: getActiveTagCount(),
@@ -276,7 +277,7 @@ function updateURLSuccess(
   });
 
   urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
-    emit("ui_url_access", {
+    emit(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "corner_button",
       search_active: isURLSearchActive() ? "true" : "false",
       active_tag_count: getActiveTagCount(),

@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
@@ -114,7 +115,7 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")
         return;
 
-      emit("ui_url_card_click", {
+      emit(UI_EVENTS.UI_URL_CARD_CLICK, {
         search_active: isURLSearchActive() ? "true" : "false",
         active_tag_count: getActiveTagCount(),
       });

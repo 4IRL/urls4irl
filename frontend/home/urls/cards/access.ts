@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { emit } from "../../../lib/metrics-client.js";
 
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 const ACCESS_URL_MODAL_STRING_ID = "AccessURLModalURLString";
 
 let _wasSubmitted: boolean = false;
@@ -35,7 +36,7 @@ function urlStringInAccessModal(urlString: string): JQuery<HTMLElement> {
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function accessURLWarningShowModal(urlString: string): void {
   _wasSubmitted = false;
-  emit("ui_url_access_warning");
+  emit(UI_EVENTS.UI_URL_ACCESS_WARNING);
 
   const modalTitle = "🚦 Caution! 🚦";
   const modalText = `${APP_CONFIG.strings.ACCESS_URL_WARNING}\n\n`;
@@ -74,7 +75,7 @@ function accessURLWarningShowModal(urlString: string): void {
       $("#confirmModalBody").removeClass("white-space-pre-line");
       $("#confirmModal").removeClass("accessExternalURLModal");
       if (!_wasSubmitted) {
-        emit("ui_url_access_warning_dismiss");
+        emit(UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS);
       }
     },
   );

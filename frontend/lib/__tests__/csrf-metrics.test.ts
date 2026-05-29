@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../metrics-events.js";
 import { setupCSRF } from "../csrf.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -54,7 +55,7 @@ describe("csrf prefilter 429 handling — metrics", () => {
       "Too Many Requests",
     );
 
-    expect(emit).toHaveBeenCalledWith("ui_rate_limit_hit");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_RATE_LIMIT_HIT);
     expect(emit).toHaveBeenCalledTimes(1);
     expect(showNewPageOnAJAXHTMLResponse).toHaveBeenCalledWith(
       "<html>Rate limited</html>",
@@ -89,7 +90,7 @@ describe("csrf prefilter 429 handling — metrics", () => {
       "Too Many Requests",
     );
 
-    expect(emit).toHaveBeenCalledWith("ui_rate_limit_hit");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_RATE_LIMIT_HIT);
     expect(emit).toHaveBeenCalledTimes(1);
     expect(showNewPageOnAJAXHTMLResponse).not.toHaveBeenCalled();
     expect(

@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { removeMemberShowModal } from "../delete.js";
@@ -64,7 +65,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       removeMemberShowModal(5, true, 1);
 
-      expect(emit).toHaveBeenCalledWith("ui_member_remove_open");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_REMOVE_OPEN);
     });
 
     it("emits ui_member_remove_confirm when the modal submit is clicked", async () => {
@@ -75,7 +76,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#modalSubmit").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith("ui_member_remove_confirm");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_REMOVE_CONFIRM);
     });
 
     it("emits ui_member_remove_cancel when the modal is dismissed without confirming", async () => {
@@ -86,7 +87,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      expect(emit).toHaveBeenCalledWith("ui_member_remove_cancel");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_REMOVE_CANCEL);
     });
 
     it("does not emit ui_member_remove_cancel when the modal hides after confirm", async () => {
@@ -98,7 +99,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      expect(emit).not.toHaveBeenCalledWith("ui_member_remove_cancel");
+      expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_REMOVE_CANCEL);
     });
   });
 
@@ -108,7 +109,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       removeMemberShowModal(5, false, 1);
 
-      expect(emit).toHaveBeenCalledWith("ui_member_leave_open");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_LEAVE_OPEN);
     });
 
     it("emits ui_member_leave_confirm when the modal submit is clicked", async () => {
@@ -119,7 +120,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#modalSubmit").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith("ui_member_leave_confirm");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_LEAVE_CONFIRM);
     });
 
     it("emits ui_member_leave_cancel when the modal is dismissed without confirming", async () => {
@@ -130,7 +131,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      expect(emit).toHaveBeenCalledWith("ui_member_leave_cancel");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_LEAVE_CANCEL);
     });
 
     it("does not emit ui_member_leave_cancel when the modal hides after confirm", async () => {
@@ -142,7 +143,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      expect(emit).not.toHaveBeenCalledWith("ui_member_leave_cancel");
+      expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_LEAVE_CANCEL);
     });
   });
 
@@ -159,7 +160,7 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
 
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      expect(emit).toHaveBeenCalledWith("ui_member_remove_cancel");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_REMOVE_CANCEL);
     });
 
     it("uses the latest isCreator value when emitting cancel after a re-open with different role", async () => {
@@ -174,8 +175,8 @@ describe("delete-metrics — UI_MEMBER_REMOVE_* / UI_MEMBER_LEAVE_*", () => {
       vi.mocked(emit).mockClear();
       $("#confirmModal").trigger("hidden.bs.modal.memberAction");
 
-      expect(emit).toHaveBeenCalledWith("ui_member_leave_cancel");
-      expect(emit).not.toHaveBeenCalledWith("ui_member_remove_cancel");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_LEAVE_CANCEL);
+      expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_REMOVE_CANCEL);
     });
   });
 });

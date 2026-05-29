@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
@@ -35,7 +36,7 @@ function handleForgotPassword(
   $modal: JQuery,
 ): void {
   event.preventDefault();
-  emit("ui_forgot_password_submit");
+  emit(UI_EVENTS.UI_FORGOT_PASSWORD_SUBMIT);
   $modal.find("#submit").attr("disabled", "disabled");
 
   const payload: ForgotPasswordRequest = {

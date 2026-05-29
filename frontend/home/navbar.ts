@@ -1,5 +1,6 @@
 import { $, bootstrap } from "../lib/globals.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 import {
   setMobileUIWhenMemberDeckSelected,
@@ -24,22 +25,22 @@ function suppressNextNavbarCloseEmit(): void {
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit("ui_mobile_nav", { target: "members" });
+    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "members" });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit("ui_mobile_nav", { target: "urls" });
+    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "urls" });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit("ui_mobile_nav", { target: "utubs" });
+    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "utubs" });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit("ui_mobile_nav", { target: "tags" });
+    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "tags" });
     setMobileUIWhenTagDeckSelected();
   });
 
@@ -62,7 +63,7 @@ export function initNavbar(): void {
 }
 
 export function onMobileNavbarOpened(): void {
-  emit("ui_navbar_mobile_menu_open");
+  emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN);
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -86,7 +87,7 @@ export function onMobileNavbarClosed(): void {
   if (_suppressNextNavbarCloseEmit) {
     _suppressNextNavbarCloseEmit = false;
   } else {
-    emit("ui_navbar_mobile_menu_close");
+    emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
   }
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");

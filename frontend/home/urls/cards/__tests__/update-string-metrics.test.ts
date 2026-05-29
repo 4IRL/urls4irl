@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { updateURL, showUpdateURLStringForm } from "../update-string.js";
@@ -126,7 +127,7 @@ describe("update-string metrics — UI_URL_STRING_EDIT_OPEN", () => {
 
     showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_string_edit_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_STRING_EDIT_OPEN);
   });
 });
 
@@ -174,7 +175,7 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     urlCard.find(".urlBtnAccess").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "main_button",
       search_active: "false",
       active_tag_count: 0,
@@ -194,7 +195,7 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     urlCard.find(".goToUrlIcon").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "corner_button",
       search_active: "false",
       active_tag_count: 0,
@@ -220,7 +221,7 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     urlCard.find(".urlBtnAccess").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "main_button",
       search_active: "true",
       active_tag_count: 7,

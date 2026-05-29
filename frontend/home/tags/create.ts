@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { $, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { emitFormCancel, emitFormSubmit } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
@@ -93,7 +94,7 @@ function unbindCreateUTubTagFocusEventListeners(utubTagInput: JQuery): void {
 }
 
 function createUTubTagShowInput(utubID: number): void {
-  emit("ui_tag_create_open", { scope: "utub" });
+  emit(UI_EVENTS.UI_TAG_CREATE_OPEN, { scope: "utub" });
   $("#createUTubTagWrap").showClassFlex();
   $("#listTags").hideClass();
   $("#utubTagStandardBtns").hideClass();

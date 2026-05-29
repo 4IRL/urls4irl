@@ -2,6 +2,7 @@ import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
@@ -84,7 +85,7 @@ function targetFromSelector(
 
 export function switchModal($fromModal: JQuery, toSelector: string): void {
   const target = targetFromSelector(toSelector);
-  if (target !== null) emit("ui_auth_form_switch", { target });
+  if (target !== null) emit(UI_EVENTS.UI_AUTH_FORM_SWITCH, { target });
 
   const fromModal = bootstrap.Modal.getInstance($fromModal[0]);
   if (fromModal) {
@@ -98,12 +99,12 @@ export function switchModal($fromModal: JQuery, toSelector: string): void {
 }
 
 export function loginModalOpener(): void {
-  emit("ui_auth_modal_open", { form: "login" });
+  emit(UI_EVENTS.UI_AUTH_MODAL_OPEN, { form: "login" });
   bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
 export function registerModalOpener(): void {
-  emit("ui_auth_modal_open", { form: "register" });
+  emit(UI_EVENTS.UI_AUTH_MODAL_OPEN, { form: "register" });
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 

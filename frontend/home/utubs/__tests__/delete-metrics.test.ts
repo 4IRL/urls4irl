@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { setDeleteEventListeners } from "../delete.js";
@@ -81,7 +82,7 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
     setDeleteEventListeners(42);
     $("#utubBtnDelete").trigger("click.deleteUTub");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_delete_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_OPEN);
   });
 
   it("emits ui_utub_delete_confirm when the modal submit button is clicked", async () => {
@@ -93,7 +94,7 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#modalSubmit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_delete_confirm");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CONFIRM);
   });
 
   it("emits ui_utub_delete_cancel when the modal is dismissed without confirming", async () => {
@@ -105,7 +106,7 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.utubDelete");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_delete_cancel");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
   });
 
   it("does not emit ui_utub_delete_cancel when the modal hides after confirm", async () => {
@@ -118,7 +119,7 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.utubDelete");
 
-    expect(emit).not.toHaveBeenCalledWith("ui_utub_delete_cancel");
+    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
   });
 
   it("resets confirmed flag across multiple modal opens (cancel after re-open emits cancel)", async () => {
@@ -134,6 +135,6 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.utubDelete");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_delete_cancel");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
   });
 });

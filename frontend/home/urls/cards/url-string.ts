@@ -7,6 +7,7 @@ import {
   METHOD_TYPES,
 } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
@@ -34,7 +35,7 @@ export function createURLString(urlStringText: string): JQuery<HTMLElement> {
         // Only allow a URL to be clickable when the Card is selected
         event.preventDefault();
         if ($(event.target).closest(".urlRow").attr("urlSelected") === "true") {
-          emit("ui_url_access", {
+          emit(UI_EVENTS.UI_URL_ACCESS, {
             trigger: "url_text",
             search_active: isURLSearchActive() ? "true" : "false",
             active_tag_count: getActiveTagCount(),

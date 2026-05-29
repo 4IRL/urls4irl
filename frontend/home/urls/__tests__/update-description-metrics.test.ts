@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import {
   setupUpdateUTubDescriptionEventListeners,
   showCreateDescriptionButtonAlways,
@@ -101,7 +102,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     setupUpdateUTubDescriptionEventListeners(UTUB_ID);
     $("#UTubDescriptionSubheaderWrap").trigger("click.updateUTubDesc");
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_desc_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
       trigger: "pencil_icon",
     });
   });
@@ -113,7 +114,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     const enterEvent = $.Event("keydown.updateUTubDesc", { key: "Enter" });
     $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_desc_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
       trigger: "keyboard",
     });
   });
@@ -125,7 +126,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     const spaceEvent = $.Event("keydown.updateUTubDesc", { key: " " });
     $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").trigger(spaceEvent);
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_desc_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
       trigger: "keyboard",
     });
   });
@@ -138,7 +139,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       "click.createUTubdescription",
     );
 
-    expect(emit).toHaveBeenCalledWith("ui_utub_desc_edit_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
       trigger: "create_button",
     });
   });

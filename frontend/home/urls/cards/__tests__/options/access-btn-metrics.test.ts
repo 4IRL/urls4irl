@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../../lib/metrics-events.js";
 import type { UtubUrlItem } from "../../../../../types/url.js";
 
 import { createAccessLinkBtn } from "../../options/access-btn.js";
@@ -67,7 +68,7 @@ describe("access-btn metrics — UI_URL_ACCESS { trigger: main_button }", () => 
     $(document.body).append(btn);
     btn.trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "main_button",
       search_active: "false",
       active_tag_count: 0,
@@ -86,7 +87,7 @@ describe("access-btn metrics — UI_URL_ACCESS { trigger: main_button }", () => 
     $(document.body).append(btn);
     btn.trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_access", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
       trigger: "main_button",
       search_active: "true",
       active_tag_count: 5,

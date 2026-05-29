@@ -1,5 +1,6 @@
 import { mockMetricsClient } from "./mock-metrics-client.js";
 
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 describe("mockMetricsClient", () => {
   it("returns four distinct Mock fns", () => {
     const mocks = mockMetricsClient();
@@ -32,7 +33,7 @@ describe("mockMetricsClient", () => {
       secondInvocation.resetMetricsClient,
     );
 
-    firstInvocation.emit("ui_utub_select", { search_active: "false" });
+    firstInvocation.emit(UI_EVENTS.UI_UTUB_SELECT, { search_active: "false" });
     expect(firstInvocation.emit).toHaveBeenCalledTimes(1);
     expect(secondInvocation.emit).not.toHaveBeenCalled();
   });

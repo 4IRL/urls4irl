@@ -5,6 +5,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   emitFormCancel,
   emitFormSubmit,
@@ -52,7 +53,7 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     descPencilIcon.removeClass("hidden");
 
     function openDescriptionEdit(trigger: "pencil_icon" | "keyboard"): void {
-      emit("ui_utub_desc_edit_open", { trigger });
+      emit(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, { trigger });
       deselectAllURLs();
       updateUTubNameHideInput();
       updateUTubDescriptionShowInput(utubID);
@@ -150,7 +151,7 @@ export function showCreateDescriptionButtonAlways(utubID: number): void {
   clickToCreateDesc.enableTab();
 
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
-    emit("ui_utub_desc_edit_open", { trigger: "create_button" });
+    emit(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, { trigger: "create_button" });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0 width-0");

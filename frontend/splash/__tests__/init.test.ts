@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   createImmediateAlwaysJqXHR,
   createMockModal,
@@ -182,7 +183,7 @@ describe("switchModal", () => {
 
     switchModal($("#RegisterModal"), "#LoginModal");
 
-    expect(emit).toHaveBeenCalledWith("ui_auth_form_switch", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_AUTH_FORM_SWITCH, {
       target: "login",
     });
     expect(emit).toHaveBeenCalledTimes(1);
@@ -197,7 +198,7 @@ describe("switchModal", () => {
 
     switchModal($("#LoginModal"), "#RegisterModal");
 
-    expect(emit).toHaveBeenCalledWith("ui_auth_form_switch", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_AUTH_FORM_SWITCH, {
       target: "register",
     });
     expect(emit).toHaveBeenCalledTimes(1);
@@ -212,7 +213,7 @@ describe("switchModal", () => {
 
     switchModal($("#LoginModal"), "#ForgotPasswordModal");
 
-    expect(emit).toHaveBeenCalledWith("ui_auth_form_switch", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_AUTH_FORM_SWITCH, {
       target: "forgot_password",
     });
     expect(emit).toHaveBeenCalledTimes(1);
@@ -250,7 +251,9 @@ describe("loginModalOpener", () => {
 
     loginModalOpener();
 
-    expect(emit).toHaveBeenCalledWith("ui_auth_modal_open", { form: "login" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_AUTH_MODAL_OPEN, {
+      form: "login",
+    });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(mockToModal.show).toHaveBeenCalled();
   });
@@ -275,7 +278,7 @@ describe("registerModalOpener", () => {
 
     registerModalOpener();
 
-    expect(emit).toHaveBeenCalledWith("ui_auth_modal_open", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_AUTH_MODAL_OPEN, {
       form: "register",
     });
     expect(emit).toHaveBeenCalledTimes(1);

@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { toggleTagFilterSelected, buildTagFilterInDeck } from "../tags.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -41,7 +42,7 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
 
     toggleTagFilterSelected(filter);
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_filter_toggle");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -55,7 +56,7 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
 
     toggleTagFilterSelected(filter);
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_filter_toggle");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -67,7 +68,7 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
 
     tag.trigger("click.tagFilterSelected");
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_filter_toggle");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

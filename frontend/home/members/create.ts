@@ -8,6 +8,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { emitFormCancel, emitFormSubmit } from "../btns-forms.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
@@ -109,7 +110,7 @@ function resetNewMemberForm(): void {
 
 // Shows new Member input fields
 function createMemberShowInput(utubID: number): void {
-  emit("ui_member_invite_open");
+  emit(UI_EVENTS.UI_MEMBER_INVITE_OPEN);
   $("#createMemberWrap").showClassFlex();
   $("#displayMemberWrap").hideClass();
   $("#memberBtnCreate").hideClass();

@@ -5,6 +5,7 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -27,7 +28,7 @@ export function deleteURLShowModal(
   utubID: number,
 ): void {
   _urlDeleteConfirmed = false;
-  emit("ui_url_delete_open");
+  emit(UI_EVENTS.UI_URL_DELETE_OPEN);
 
   const modalTitle = "Are you sure you want to delete this URL from the UTub?";
   const modalText = `${APP_CONFIG.strings.DELETE_URL_WARNING}`;
@@ -48,14 +49,14 @@ export function deleteURLShowModal(
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       _urlDeleteConfirmed = true;
-      emit("ui_url_delete_confirm");
+      emit(UI_EVENTS.UI_URL_DELETE_CONFIRM);
       deleteURL(utubUrlID, urlCard, utubID);
     })
     .text(buttonTextSubmit);
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.urlDelete", function () {
     if (!_urlDeleteConfirmed) {
-      emit("ui_url_delete_cancel");
+      emit(UI_EVENTS.UI_URL_DELETE_CANCEL);
     }
   });
 

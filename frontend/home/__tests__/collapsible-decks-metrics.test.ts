@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { initCollapsibleDecks } from "../collapsible-decks.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -53,7 +54,9 @@ describe("collapsible-decks metrics emitters", () => {
       $("#UTubDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_deck_collapse", { deck: "utubs" });
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_DECK_COLLAPSE, {
+        deck: "utubs",
+      });
     });
 
     it("emits ui_deck_expand with deck=utubs on second click (collapsed -> expanded)", async () => {
@@ -92,7 +95,7 @@ describe("collapsible-decks metrics emitters", () => {
       $("#MemberDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_deck_collapse", {
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_DECK_COLLAPSE, {
         deck: "members",
       });
     });
@@ -129,7 +132,9 @@ describe("collapsible-decks metrics emitters", () => {
       $("#TagDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_deck_collapse", { deck: "tags" });
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_DECK_COLLAPSE, {
+        deck: "tags",
+      });
     });
 
     it("emits ui_deck_expand with deck=tags on second click", async () => {

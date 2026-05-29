@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { showUpdateURLTitleForm } from "../update-title.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
@@ -69,7 +70,7 @@ describe("update-title metrics — UI_URL_TITLE_EDIT_OPEN", () => {
     );
     showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_title_edit_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_TITLE_EDIT_OPEN);
   });
 
   it("emits exactly once per call", async () => {
@@ -123,7 +124,7 @@ describe("url-title metrics — url_title_edit unchanged value", () => {
     // Wait for the async updateURLTitle to complete its unchanged-value short-circuit
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(emit).toHaveBeenCalledWith("ui_form_submit", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
       trigger: "button_click",
       form: "url_title_edit",
     });

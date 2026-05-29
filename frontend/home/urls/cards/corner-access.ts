@@ -1,5 +1,6 @@
 import { $ } from "../../../lib/globals.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 
@@ -32,7 +33,7 @@ export function createGoToURLIcon(urlString: string): JQuery<HTMLElement> {
     .addClass("self-start goToUrlIcon")
     .enableTab()
     .onExact("click", () => {
-      emit("ui_url_access", {
+      emit(UI_EVENTS.UI_URL_ACCESS, {
         trigger: "corner_button",
         search_active: isURLSearchActive() ? "true" : "false",
         active_tag_count: getActiveTagCount(),

@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createURL, createURLShowInput } from "../create.js";
 import { emitValidationError } from "../../../btns-forms.js";
 import { isValidURL } from "../../validation.js";
@@ -105,7 +106,7 @@ describe("create metrics — UI_URL_CREATE_OPEN", () => {
 
     createURLShowInput(1);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_create_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_CREATE_OPEN);
   });
 
   it("emits once per call", async () => {

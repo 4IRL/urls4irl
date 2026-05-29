@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   getCurrentUTubName,
   getAllAccessibleUTubNames,
@@ -67,7 +68,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   namePencilIcon.removeClass("hidden");
 
   function openNameEdit(trigger: "pencil_icon" | "keyboard"): void {
-    emit("ui_utub_name_edit_open", { trigger });
+    emit(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, { trigger });
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
@@ -213,7 +214,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID: number): void {
 function rebindCreateDescriptionForNameUpdate(utubID: number): void {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
-    emit("ui_utub_desc_edit_open", { trigger: "create_button" });
+    emit(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, { trigger: "create_button" });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0");

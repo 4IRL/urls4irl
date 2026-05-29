@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
@@ -37,7 +38,7 @@ export function initLoginForm($modal: JQuery): void {
 
 function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
-  emit("ui_login_submit");
+  emit(UI_EVENTS.UI_LOGIN_SUBMIT);
 
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently

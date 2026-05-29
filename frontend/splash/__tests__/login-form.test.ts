@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initLoginForm } from "../login-form.js";
@@ -117,7 +118,7 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
     initLoginForm($modal);
     $modal.find("#submit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_login_submit");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_LOGIN_SUBMIT);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 });

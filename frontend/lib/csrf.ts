@@ -6,6 +6,7 @@
 import type { RateLimitedXHR } from "./ajax.js";
 import { $ } from "./globals.js";
 import { emit } from "./metrics-client.js";
+import { UI_EVENTS } from "./metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
 
 /**
@@ -49,7 +50,7 @@ export function setupCSRF(): void {
         // metrics-client uses raw fetch() (not jQuery AJAX), so a 429 from /api/metrics
         // never re-enters this prefilter. Retry-with-same-batch_id at the metrics
         // layer protects against double-counting. Safe to emit here.
-        emit("ui_rate_limit_hit");
+        emit(UI_EVENTS.UI_RATE_LIMIT_HIT);
         if (contentType && contentType.includes("text/html")) {
           // _429Handled is set only for HTML 429s so domain `.fail()` handlers
           // that read `is429Handled(xhr)` short-circuit before rendering a stale

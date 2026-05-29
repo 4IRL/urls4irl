@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../lib/metrics-events.js";
 import {
   initNavbar,
   onMobileNavbarOpened,
@@ -55,7 +56,7 @@ describe("navbar metrics emitters", () => {
       onMobileNavbarOpened();
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_navbar_mobile_menu_open");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN);
     });
   });
 
@@ -66,7 +67,7 @@ describe("navbar metrics emitters", () => {
       onMobileNavbarClosed();
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_navbar_mobile_menu_close");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
     });
 
     it("suppresses the next close emit when a section button was clicked first", async () => {
@@ -92,7 +93,7 @@ describe("navbar metrics emitters", () => {
       onMobileNavbarClosed();
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith("ui_navbar_mobile_menu_close");
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
     });
   });
 
@@ -103,7 +104,9 @@ describe("navbar metrics emitters", () => {
 
       $("button#toMembers").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith("ui_mobile_nav", { target: "members" });
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+        target: "members",
+      });
     });
 
     it("emits ui_mobile_nav with target=urls on #toURLs click", async () => {
@@ -112,7 +115,9 @@ describe("navbar metrics emitters", () => {
 
       $("button#toURLs").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith("ui_mobile_nav", { target: "urls" });
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+        target: "urls",
+      });
     });
 
     it("emits ui_mobile_nav with target=utubs on #toUTubs click", async () => {
@@ -121,7 +126,9 @@ describe("navbar metrics emitters", () => {
 
       $("button#toUTubs").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith("ui_mobile_nav", { target: "utubs" });
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+        target: "utubs",
+      });
     });
 
     it("emits ui_mobile_nav with target=tags on #toTags click", async () => {
@@ -130,7 +137,9 @@ describe("navbar metrics emitters", () => {
 
       $("button#toTags").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith("ui_mobile_nav", { target: "tags" });
+      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+        target: "tags",
+      });
     });
 
     it("a section button click emits ui_mobile_nav once and the subsequent navbar-hide does NOT emit ui_navbar_mobile_menu_close", async () => {

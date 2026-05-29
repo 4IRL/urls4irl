@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { copyURLString } from "../copy.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -57,7 +58,9 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     await copyURLString("https://example.com", urlBtnCopy);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_copy", { result: "success" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_COPY, {
+      result: "success",
+    });
   });
 
   it("emits ui_url_copy with result 'failure' when clipboard write rejects", async () => {
@@ -72,7 +75,9 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     await copyURLString("https://example.com", urlBtnCopy);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_copy", { result: "failure" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_COPY, {
+      result: "failure",
+    });
   });
 
   it("does NOT emit success when clipboard write rejects", async () => {
@@ -87,7 +92,9 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     await copyURLString("https://example.com", urlBtnCopy);
 
-    expect(emit).not.toHaveBeenCalledWith("ui_url_copy", { result: "success" });
+    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_URL_COPY, {
+      result: "success",
+    });
   });
 });
 

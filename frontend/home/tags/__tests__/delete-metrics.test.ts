@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { deleteUTubTagShowModal } from "../delete.js";
@@ -64,7 +65,9 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     deleteUTubTagShowModal(1, 7, "important");
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_delete_open", { scope: "utub" });
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_OPEN, {
+      scope: "utub",
+    });
   });
 
   it("emits ui_tag_delete_confirm with scope:utub when the modal submit button is clicked", async () => {
@@ -75,7 +78,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#modalSubmit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_delete_confirm", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CONFIRM, {
       scope: "utub",
     });
   });
@@ -88,7 +91,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#confirmModal").trigger("hidden.bs.modal.tagDelete");
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_delete_cancel", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CANCEL, {
       scope: "utub",
     });
   });
@@ -102,7 +105,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#confirmModal").trigger("hidden.bs.modal.tagDelete");
 
-    expect(emit).not.toHaveBeenCalledWith("ui_tag_delete_cancel", {
+    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CANCEL, {
       scope: "utub",
     });
   });
@@ -119,7 +122,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#confirmModal").trigger("hidden.bs.modal.tagDelete");
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_delete_cancel", {
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CANCEL, {
       scope: "utub",
     });
   });

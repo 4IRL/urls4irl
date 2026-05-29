@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { deleteURLTag } from "../delete.js";
@@ -80,7 +81,7 @@ describe("urls/tags delete metrics — UI_TAG_REMOVE", () => {
 
     await deleteURLTag(7, tagBadge, urlCard, 1);
 
-    expect(emit).toHaveBeenCalledWith("ui_tag_remove");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_REMOVE);
   });
 
   it("does not emit ui_tag_remove when the AJAX call fails", async () => {
@@ -99,6 +100,6 @@ describe("urls/tags delete metrics — UI_TAG_REMOVE", () => {
 
     await deleteURLTag(7, tagBadge, urlCard, 1);
 
-    expect(emit).not.toHaveBeenCalledWith("ui_tag_remove");
+    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_TAG_REMOVE);
   });
 });

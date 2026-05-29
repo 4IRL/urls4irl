@@ -1,6 +1,7 @@
 import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
 import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../lib/metrics-events.js";
 import { isHidden } from "./visibility.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { updateUTubNameHideInput } from "./urls/update-name.js";
@@ -23,18 +24,18 @@ export function emitFormSubmit(
   form: FormName,
   trigger: "enter_key" | "button_click",
 ): void {
-  emit("ui_form_submit", { trigger, form });
+  emit(UI_EVENTS.UI_FORM_SUBMIT, { trigger, form });
 }
 
 export function emitFormCancel(
   form: FormName,
   trigger: "escape_key" | "cancel_button",
 ): void {
-  emit("ui_form_cancel", { trigger, form });
+  emit(UI_EVENTS.UI_FORM_CANCEL, { trigger, form });
 }
 
 export function emitValidationError(form: FormName): void {
-  emit("ui_validation_error", { form });
+  emit(UI_EVENTS.UI_VALIDATION_ERROR, { form });
 }
 
 // Handle focus for the text input box

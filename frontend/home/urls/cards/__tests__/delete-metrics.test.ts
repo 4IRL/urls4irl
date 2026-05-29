@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { deleteURLShowModal } from "../delete.js";
@@ -76,7 +77,7 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     deleteURLShowModal(42, buildUrlCard(42), 1);
 
-    expect(emit).toHaveBeenCalledWith("ui_url_delete_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_OPEN);
   });
 
   it("emits ui_url_delete_confirm when the modal submit button is clicked", async () => {
@@ -87,7 +88,7 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#modalSubmit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_delete_confirm");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CONFIRM);
   });
 
   it("emits ui_url_delete_cancel when modal hides without confirm", async () => {
@@ -98,7 +99,7 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.urlDelete");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_delete_cancel");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CANCEL);
   });
 
   it("does NOT emit cancel when the modal hides after confirm", async () => {
@@ -110,7 +111,7 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.urlDelete");
 
-    expect(emit).not.toHaveBeenCalledWith("ui_url_delete_cancel");
+    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CANCEL);
   });
 
   it("resets confirmed flag across multiple modal opens (cancel after re-open emits cancel)", async () => {
@@ -125,7 +126,7 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.urlDelete");
 
-    expect(emit).toHaveBeenCalledWith("ui_url_delete_cancel");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CANCEL);
   });
 
   it("does not accumulate hidden.bs.modal.deleteUrlCleanup listeners across multiple opens", async () => {

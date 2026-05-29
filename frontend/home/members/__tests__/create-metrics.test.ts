@@ -1,3 +1,4 @@
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { setupShowCreateMemberFormEventListeners } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -47,7 +48,7 @@ describe("create-metrics — UI_MEMBER_INVITE_OPEN", () => {
     setupShowCreateMemberFormEventListeners(7);
     $("#memberBtnCreate").trigger("click.createMember");
 
-    expect(emit).toHaveBeenCalledWith("ui_member_invite_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_INVITE_OPEN);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -59,7 +60,7 @@ describe("create-metrics — UI_MEMBER_INVITE_OPEN", () => {
     const event = $.Event("keydown.createMember", { key: "Enter" });
     $("#memberBtnCreate").trigger(event);
 
-    expect(emit).toHaveBeenCalledWith("ui_member_invite_open");
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_INVITE_OPEN);
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

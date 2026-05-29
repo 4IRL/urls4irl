@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import {
   emitFormCancel,
   emitFormSubmit,
@@ -110,7 +111,7 @@ export function showCreateURLTagForm(
   urlCard: JQuery,
   urlTagBtnCreate: JQuery,
 ): void {
-  emit("ui_tag_create_open", { scope: "url" });
+  emit(UI_EVENTS.UI_TAG_CREATE_OPEN, { scope: "url" });
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);
@@ -278,7 +279,7 @@ function createURLTagSuccess(
   urlCard: JQuery,
   utubID: number,
 ): void {
-  emit("ui_tag_apply");
+  emit(UI_EVENTS.UI_TAG_APPLY);
   // Clear and reset input field
   hideAndResetCreateURLTagForm(urlCard);
 
