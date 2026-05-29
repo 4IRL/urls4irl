@@ -322,7 +322,7 @@ Base path: `/api/metrics`
 
 #### Forward references (future phases)
 
-- **Phase 7 — `/api/metrics/query/*` (read endpoints)**: future read-side blueprint surfaces (e.g., `GET /api/metrics/query/events`, `GET /api/metrics/query/summary`) for the internal admin dashboard. Will live alongside the ingest route under the same `metrics` blueprint. Not yet present in the codebase — routes/schemas/handlers will be added in Phase 7.
+- **Phase 9 — `/api/metrics/query/*` (read endpoints)**: future read-side blueprint surfaces — `GET /api/metrics/query/top`, `GET /api/metrics/query/timeseries`, `GET /api/metrics/query/summary` — gated by `@metrics_admin_required` + `@login_required`, accepting `window=day|week|year|PT1H|...` and optional `category=api|ui|domain`. Backed by `backend/metrics/query_service.py` (Postgres-only reads) and surfaced to the Phase 10 admin dashboard at `/admin/metrics`. Will live alongside the ingest route under the same `metrics` blueprint. Not yet present in the codebase — routes/schemas/handlers will be added in Phase 9.
 
 ---
 
