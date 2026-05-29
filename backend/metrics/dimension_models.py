@@ -23,7 +23,12 @@ from backend.metrics.events import (
 
 SearchActive = Literal["true", "false"]
 TagScope = Literal["utub", "url"]
-Form = Literal[
+
+# Home-page forms. Used by `_DimFormSubmit` and `_DimFormCancel` only — the
+# splash/contact forms have dedicated `UI_<form>_SUBMIT` events instead of
+# routing through `UI_FORM_SUBMIT`, so the convention is enforced via type
+# narrowing rather than runtime guard.
+HomeForm = Literal[
     "url_create",
     "url_title_edit",
     "url_string_edit",
@@ -32,10 +37,20 @@ Form = Literal[
     "utub_desc_edit",
     "tag_create",
     "member_invite",
-    # Splash / contact forms — used by UI_VALIDATION_ERROR. The submit/cancel
-    # paths for these forms use dedicated `UI_<form>_SUBMIT` events instead of
-    # `UI_FORM_SUBMIT` / `UI_FORM_CANCEL`, so by convention `_DimFormSubmit`
-    # and `_DimFormCancel` are never emitted with these values.
+]
+
+# All forms that can surface a client-side validation error — home forms
+# plus the splash/contact forms (which DO emit `UI_VALIDATION_ERROR` for
+# field-level errors even though their submit path is a dedicated event).
+ValidationForm = Literal[
+    "url_create",
+    "url_title_edit",
+    "url_string_edit",
+    "utub_create",
+    "utub_name_edit",
+    "utub_desc_edit",
+    "tag_create",
+    "member_invite",
     "login",
     "register",
     "forgot_password",
@@ -154,16 +169,16 @@ class _DimTagDeleteCancel(UIBaseDimensions):
 
 class _DimFormSubmit(UIBaseDimensions):
     trigger: Literal["enter_key", "button_click"]
-    form: Form
+    form: HomeForm
 
 
 class _DimFormCancel(UIBaseDimensions):
     trigger: Literal["escape_key", "cancel_button", "outside_click"]
-    form: Form
+    form: HomeForm
 
 
 class _DimValidationError(UIBaseDimensions):
-    form: Form
+    form: ValidationForm
 
 
 # `_DimDeckCollapse` and `_DimDeckExpand` share the same field shape today,

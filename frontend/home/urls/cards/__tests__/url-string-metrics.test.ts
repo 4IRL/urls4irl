@@ -122,8 +122,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
         .mock.calls.filter(
           (call) =>
             call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
-            (call[1] as { form?: string } | undefined)?.form ===
-              "url_string_edit",
+            (call as unknown as [string, { form?: string } | undefined])[1]
+              ?.form === "url_string_edit",
         ),
     ).toHaveLength(1);
     expect(vi.mocked(updateURL)).toHaveBeenCalledTimes(1);

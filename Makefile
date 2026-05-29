@@ -80,10 +80,11 @@ vite-build: ## Build Vite to verify no import/syntax errors
 typecheck: ## Run TypeScript typecheck
 	$(EXEC_VITE) npm run typecheck
 
-generate-types: ## Generate TypeScript API types from backend OpenAPI spec
+generate-types: ## Generate TypeScript API types from backend OpenAPI spec + per-event dim shapes
 	$(EXEC_WEB) "$(FLASK) openapi generate --output /code/u4i/frontend/types/openapi.json --strict"
 	$(EXEC_VITE) npx openapi-typescript frontend/types/openapi.json -o frontend/types/api.d.ts
-	$(EXEC_VITE) npx prettier --write frontend/types/api.d.ts frontend/types/openapi.json
+	$(EXEC_WEB) "$(FLASK) metrics generate-dim-types --output /code/u4i/frontend/types/metrics-dimensions.d.ts"
+	$(EXEC_VITE) npx prettier --write frontend/types/api.d.ts frontend/types/openapi.json frontend/types/metrics-dimensions.d.ts
 
 addmock: ## Seed the dev database with all mock data (flask addmock all)
 	$(EXEC_WEB) "$(FLASK) addmock all"

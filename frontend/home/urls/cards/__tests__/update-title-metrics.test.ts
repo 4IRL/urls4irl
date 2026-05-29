@@ -134,8 +134,8 @@ describe("url-title metrics — url_title_edit unchanged value", () => {
         .mock.calls.filter(
           (call) =>
             call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
-            (call[1] as { form?: string } | undefined)?.form ===
-              "url_title_edit",
+            (call as unknown as [string, { form?: string } | undefined])[1]
+              ?.form === "url_title_edit",
         ),
     ).toHaveLength(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();

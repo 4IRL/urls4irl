@@ -1,3 +1,9 @@
+import type {
+  DimFormCancel,
+  DimFormSubmit,
+  DimValidationError,
+} from "../types/metrics-dimensions.d.ts";
+
 import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
 import { emit } from "../lib/metrics-client.js";
@@ -8,33 +14,29 @@ import { updateUTubNameHideInput } from "./urls/update-name.js";
 import { updateUTubDescriptionHideInput } from "./urls/update-description.js";
 import { createMemberHideInput } from "./members/create.js";
 
-// `FormName` mirrors `backend/metrics/dimension_models.py::Form` literal (lines 26-35).
-// If that Pydantic literal is extended, extend this union in lockstep.
-export type FormName =
-  | "url_create"
-  | "url_title_edit"
-  | "url_string_edit"
-  | "utub_create"
-  | "utub_name_edit"
-  | "utub_desc_edit"
-  | "tag_create"
-  | "member_invite";
+// `FormName` (home forms only) is the `form` literal from the generated
+// `DimFormSubmit` shape — narrower than `DimValidationError["form"]`, which
+// also accepts splash/contact forms because validation errors fire on every
+// form path. Both literal sets are codegen-derived from
+// `backend/metrics/dimension_models.py::HomeForm` / `ValidationForm` via
+// `make generate-types`, so no hand-mirroring is needed.
+export type FormName = DimFormSubmit["form"];
 
 export function emitFormSubmit(
   form: FormName,
-  trigger: "enter_key" | "button_click",
+  trigger: DimFormSubmit["trigger"],
 ): void {
   emit(UI_EVENTS.UI_FORM_SUBMIT, { trigger, form });
 }
 
 export function emitFormCancel(
   form: FormName,
-  trigger: "escape_key" | "cancel_button" | "outside_click",
+  trigger: DimFormCancel["trigger"],
 ): void {
   emit(UI_EVENTS.UI_FORM_CANCEL, { trigger, form });
 }
 
-export function emitValidationError(form: FormName): void {
+export function emitValidationError(form: DimValidationError["form"]): void {
   emit(UI_EVENTS.UI_VALIDATION_ERROR, { form });
 }
 

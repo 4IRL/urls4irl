@@ -2,7 +2,7 @@ import type { Mock } from "vitest";
 
 import { resetDeviceTypeCache } from "../../__tests__/helpers/device-type-test-utils.js";
 import { APP_CONFIG } from "../config.js";
-import type { EmitDimensions } from "../metrics-client.js";
+import type { CallerDimensions, EmitDimensions } from "../metrics-client.js";
 import {
   emit,
   flush,
@@ -153,7 +153,10 @@ describe("metrics-client", () => {
     it("bounds dedupe map memory via prune across cooldown windows", async () => {
       vi.useFakeTimers();
       for (let index = 0; index < 5; index++) {
-        emit(UI_EVENTS.UI_URL_CARD_CLICK, { active_tag_count: index });
+        emit(UI_EVENTS.UI_URL_CARD_CLICK, {
+          search_active: "false",
+          active_tag_count: index,
+        });
         vi.advanceTimersByTime(1001);
       }
       await flush();
@@ -281,7 +284,10 @@ describe("metrics-client", () => {
 
     it("flushes immediately when buffer reaches BATCH_THRESHOLD", async () => {
       for (let index = 0; index < 50; index++) {
-        emit(UI_EVENTS.UI_URL_CARD_CLICK, { active_tag_count: index });
+        emit(UI_EVENTS.UI_URL_CARD_CLICK, {
+          search_active: "false",
+          active_tag_count: index,
+        });
       }
       await Promise.resolve();
       expect(fetch).toHaveBeenCalledOnce();
@@ -712,7 +718,10 @@ describe("metrics-client", () => {
       void flush();
 
       for (let index = 0; index < 110; index++) {
-        emit(UI_EVENTS.UI_URL_CARD_CLICK, { active_tag_count: index });
+        emit(UI_EVENTS.UI_URL_CARD_CLICK, {
+          search_active: "false",
+          active_tag_count: index,
+        });
       }
 
       resolveFirst({
@@ -758,11 +767,14 @@ describe("metrics-client", () => {
     });
 
     it("strips disallowed dimension keys before serialization", async () => {
+      // Test exercises the runtime allow-list filter, so the cast bypasses
+      // the strict per-event dimension type to simulate a caller smuggling
+      // disallowed keys past `emit()`'s compile-time check.
       emit(UI_EVENTS.UI_URL_COPY, {
         result: "success",
         userId: 42,
         email: "user@example.com",
-      } as unknown as EmitDimensions);
+      } as unknown as CallerDimensions<"ui_url_copy">);
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
@@ -788,7 +800,15 @@ describe("metrics-client", () => {
     });
 
     it("keeps auto-injected device_type when all caller-supplied keys are disallowed", async () => {
-      emit(UI_EVENTS.UI_UTUB_CREATE_OPEN, {
+      // Cast bypasses the variadic typed signature: UI_UTUB_CREATE_OPEN is a
+      // device-only event (no caller dims), but the runtime allow-list must
+      // still strip foreign keys if a caller smuggles them past TS.
+      (
+        emit as (
+          event: typeof UI_EVENTS.UI_UTUB_CREATE_OPEN,
+          dims: EmitDimensions,
+        ) => void
+      )(UI_EVENTS.UI_UTUB_CREATE_OPEN, {
         userId: 42,
       } as unknown as EmitDimensions);
       await flush();
@@ -835,7 +855,15 @@ describe("metrics-client", () => {
     });
 
     it("caller-supplied device_type wins over the auto-injected value", async () => {
-      emit(UI_EVENTS.UI_UTUB_CREATE_OPEN, {
+      // Same intent as above: device-only event + caller-injected dim that
+      // would normally be auto-handled. The cast lets the test exercise the
+      // override path at runtime.
+      (
+        emit as (
+          event: typeof UI_EVENTS.UI_UTUB_CREATE_OPEN,
+          dims: EmitDimensions,
+        ) => void
+      )(UI_EVENTS.UI_UTUB_CREATE_OPEN, {
         device_type: DEVICE_TYPE_MOBILE,
       } as EmitDimensions);
       await flush();

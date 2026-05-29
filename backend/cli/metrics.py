@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from pathlib import Path
+
+import click
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 
+from backend.extensions.metrics.dim_types_generator import generate_dim_types_ts
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -28,6 +32,31 @@ def sync_registry_command():
     # function's `app: Flask` typed signature is satisfied without `# type: ignore`.
     sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
     print("metrics: synced event_registry from EventName enum.")
+
+
+@metrics_cli.command(
+    "generate-dim-types",
+    help="Emit TypeScript per-event dimension types from DIMENSION_MODELS.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Target path for the generated .ts file.",
+)
+def generate_dim_types_command(output_path: str):
+    """Render `frontend/lib/metrics-dimensions.ts` from the backend Pydantic models.
+
+    Intentionally does NOT require an app context: the codegen is a pure
+    walk of `DIMENSION_MODELS` + `EVENT_CATEGORY` and does not touch the
+    database, Redis, or app config. Skipping `@with_appcontext` lets the
+    CLI run inside a fresh process without booting Flask extensions.
+    """
+    source = generate_dim_types_ts()
+    target = Path(output_path)
+    target.write_text(source, encoding="utf-8")
+    click.echo(f"metrics: wrote dim types → {target}")
 
 
 def register_metrics_cli(app: Flask):

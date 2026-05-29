@@ -1,4 +1,5 @@
 import type { Schema } from "../types/api-helpers.d.ts";
+import type { UIEventDimensions } from "../types/metrics-dimensions.d.ts";
 
 import { APP_CONFIG } from "./config.js";
 import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
@@ -8,6 +9,14 @@ type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
 
 export type UIEventName = MetricsIngestEvent["event_name"];
 export type EmitDimensions = Record<string, string | number | boolean>;
+export type { UIEventDimensions };
+
+// The caller's view of an event's dimensions: the Pydantic shape minus
+// `device_type` (which `emit()` auto-injects from `getDeviceType()`).
+export type CallerDimensions<EventT extends UIEventName> = Omit<
+  UIEventDimensions[EventT],
+  "device_type"
+>;
 
 const METRICS_INGEST_URL = "/api/metrics" as const;
 const DEDUPE_COOLDOWN_MS = 1000;
@@ -74,7 +83,20 @@ function pruneDedupeMap(now: number): void {
   }
 }
 
-export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
+// Variadic rest tuple: events whose CallerDimensions is `{}` (i.e. the
+// Pydantic model has only `device_type`) get a single-arg signature
+// `emit(event)`; events with extra caller-supplied dims require the second
+// argument with the exact narrow shape from `UIEventDimensions[E]`.
+type EmitRest<EventT extends UIEventName> =
+  keyof CallerDimensions<EventT> extends never
+    ? []
+    : [dimensions: CallerDimensions<EventT>];
+
+export function emit<EventT extends UIEventName>(
+  event: EventT,
+  ...rest: EmitRest<EventT>
+): void {
+  const dimensions = rest[0] as EmitDimensions | undefined;
   // performance.now() is monotonic high-resolution time relative to page navigation start;
   // it cannot be persisted across page loads and is safe from NTP/clock jumps.
   const now = performance.now();
