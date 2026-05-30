@@ -12,14 +12,14 @@ from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_to_home_page
-from tests.functional.metrics_ui.db_utils import wait_for_metrics_row
+from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
 from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_then_get_element,
 )
 from tests.functional.utubs_ui.selenium_utils import create_utub
 
-pytestmark = pytest.mark.metrics_ui
+pytestmark = pytest.mark.utubs_ui
 
 # UI_TEST_STRINGS does not ship a dedicated UTub description constant; the
 # create-UTub test only needs a non-empty placeholder for the description
