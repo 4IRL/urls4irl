@@ -6,7 +6,7 @@
 import type { RateLimitedXHR } from "./ajax.js";
 import { $ } from "./globals.js";
 import { emit } from "./metrics-client.js";
-import { UI_EVENTS } from "./metrics-events.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
 
 /**

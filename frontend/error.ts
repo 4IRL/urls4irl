@@ -1,7 +1,7 @@
 import "./lib/security-check.js";
 import { $ } from "./lib/globals.js";
 import { emit, initMetricsClient } from "./lib/metrics-client.js";
-import { UI_EVENTS } from "./lib/metrics-events.js";
+import { UI_EVENTS } from "./types/metrics-events.js";
 
 $(document).ready(() => {
   initMetricsClient();

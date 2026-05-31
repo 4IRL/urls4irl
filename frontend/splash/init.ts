@@ -2,7 +2,7 @@ import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
-import { UI_EVENTS } from "../lib/metrics-events.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";

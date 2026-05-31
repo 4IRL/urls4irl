@@ -2,7 +2,7 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { emit } from "../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { filterUTubsByName } from "../../logic/utub-search.js";
 import {
   SEARCH_CLOSE_TARGET,

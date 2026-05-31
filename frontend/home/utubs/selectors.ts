@@ -8,7 +8,7 @@ import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,

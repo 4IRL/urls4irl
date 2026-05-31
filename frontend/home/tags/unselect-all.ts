@@ -2,7 +2,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { $ } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { setState } from "../../store/app-store.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { toggleTagFilterSelected } from "./tags.js";

@@ -3,7 +3,7 @@ import type { UtubTag } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
 import { deleteURLTag } from "./delete.js";
 import {

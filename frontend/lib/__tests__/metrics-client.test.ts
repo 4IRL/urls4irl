@@ -9,7 +9,7 @@ import {
   resetMetricsClient,
 } from "../metrics-client.js";
 
-import { UI_EVENTS } from "../metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   SEARCH_ACTIVE,
   URL_ACCESS_TRIGGER,

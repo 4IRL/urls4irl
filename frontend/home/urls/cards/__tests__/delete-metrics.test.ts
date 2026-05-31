@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { deleteURLShowModal } from "../delete.js";

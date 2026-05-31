@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../../../types/metrics-events.js";
 import type { UtubUrlItem } from "../../../../../types/url.js";
 
 import { createAccessLinkBtn } from "../../options/access-btn.js";

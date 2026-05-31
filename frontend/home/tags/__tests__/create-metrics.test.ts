@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { setupOpenCreateUTubTagEventListeners } from "../create.js";
 import { TAG_SCOPE } from "../../../types/metrics-dim-values.js";
 

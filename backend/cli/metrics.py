@@ -9,6 +9,7 @@ from flask.cli import AppGroup, with_appcontext
 from backend.extensions.metrics.dim_types_generator import (
     generate_dim_types_ts,
     generate_dim_values_ts,
+    generate_ui_events_ts,
 )
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.utils.strings.config_strs import CONFIG_ENVS
@@ -85,6 +86,32 @@ def generate_dim_values_command(output_path: str):
     target = Path(output_path)
     target.write_text(source, encoding="utf-8")
     click.echo(f"metrics: wrote dim values → {target}")
+
+
+@metrics_cli.command(
+    "generate-events",
+    help="Emit TypeScript UI_EVENTS const + UIEventName type from the EventName enum.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Target path for the generated .ts file.",
+)
+def generate_events_command(output_path: str):
+    """Render `frontend/types/metrics-events.ts` from the backend `EventName` enum.
+
+    Walks `EventName` filtered to UI events; emits a `UI_EVENTS` `as const`
+    object with a derived `UIEventName` type. Companion to `generate-dim-types`
+    and `generate-dim-values` — together they keep the frontend metrics
+    contract locked to the Python source of truth. Pure walk of `EventName` +
+    `EVENT_CATEGORY`; no app context needed.
+    """
+    source = generate_ui_events_ts()
+    target = Path(output_path)
+    target.write_text(source, encoding="utf-8")
+    click.echo(f"metrics: wrote ui events → {target}")
 
 
 def register_metrics_cli(app: Flask):

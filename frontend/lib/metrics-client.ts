@@ -1,5 +1,6 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 import type { UIEventDimensions } from "../types/metrics-dimensions.d.ts";
+import type { UIEventName } from "../types/metrics-events.js";
 
 import { APP_CONFIG } from "./config.js";
 import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
@@ -7,9 +8,12 @@ import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
 type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
 
-export type UIEventName = MetricsIngestEvent["event_name"];
+// Re-export `UIEventName` from the codegen module so `emit()` callers continue
+// to import it from `metrics-client.js`. The const object in
+// `metrics-events.ts` is now the single source of truth for both the wire
+// strings and the type.
+export type { UIEventDimensions, UIEventName };
 export type EmitDimensions = Record<string, string | number | boolean>;
-export type { UIEventDimensions };
 
 // The caller's view of an event's dimensions: the Pydantic shape minus
 // `device_type` (which `emit()` auto-injects from `getDeviceType()`).

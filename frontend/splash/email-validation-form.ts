@@ -2,7 +2,7 @@ import type { Schema } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
-import { UI_EVENTS } from "../lib/metrics-events.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { showSplashModalAlertBanner, resetModalFormState } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 

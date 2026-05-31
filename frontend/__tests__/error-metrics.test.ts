@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../lib/metrics-events.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { initMetricsClient } from "../lib/metrics-client.js";
 
 vi.mock("../lib/security-check.js", () => ({}));

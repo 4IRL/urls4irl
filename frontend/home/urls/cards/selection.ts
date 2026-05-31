@@ -2,7 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { AppEvents, on } from "../../../lib/event-bus.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";

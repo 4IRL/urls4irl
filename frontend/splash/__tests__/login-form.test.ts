@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initLoginForm } from "../login-form.js";

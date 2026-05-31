@@ -1,6 +1,6 @@
 import { mockMetricsClient } from "./mock-metrics-client.js";
 
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
 describe("mockMetricsClient", () => {
   it("returns four distinct Mock fns", () => {

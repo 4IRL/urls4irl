@@ -6,7 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";

@@ -9,7 +9,7 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";

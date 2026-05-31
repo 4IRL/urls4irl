@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { setupCSRF } from "../csrf.js";
 
 const { mockMetricsClient } = await vi.hoisted(

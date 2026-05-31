@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { showUpdateURLTitleForm } from "../update-title.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { ajaxCall } from "../../../../lib/ajax.js";

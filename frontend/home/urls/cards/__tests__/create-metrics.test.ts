@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { createURL, createURLShowInput } from "../create.js";
 import { isValidURL } from "../../validation.js";
 import { ajaxCall } from "../../../../lib/ajax.js";

@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { toggleTagFilterSelected, buildTagFilterInDeck } from "../tags.js";
 
 const { mockMetricsClient } = await vi.hoisted(

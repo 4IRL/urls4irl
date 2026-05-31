@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { copyURLString } from "../copy.js";
 import { URL_COPY_RESULT } from "../../../../types/metrics-dim-values.js";
 

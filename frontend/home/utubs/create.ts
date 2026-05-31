@@ -6,7 +6,7 @@ import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { highlightInput } from "../btns-forms.js";
 import {
   getAllAccessibleUTubNames,

@@ -1,7 +1,7 @@
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {

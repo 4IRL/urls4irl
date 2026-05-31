@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import { setURLCardSelectionEventListener } from "../selection.js";
 import { SEARCH_ACTIVE } from "../../../../types/metrics-dim-values.js";
 

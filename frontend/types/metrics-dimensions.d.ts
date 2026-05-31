@@ -5,6 +5,14 @@
 // Frontend `emit()` narrows its second argument against `UIEventDimensions[E]`
 // so any literal that drifts from the backend Pydantic literal fails to compile.
 
+/**
+ * Device type emitted with every UI event. Values match the
+ * `DeviceType` IntEnum in `backend/metrics/events.py` — see the
+ * `DEVICE_TYPE` constant in `./metrics-dim-values.js` for the named
+ * mapping (`MOBILE`, `DESKTOP`).
+ */
+export type DeviceType = 1 | 2;
+
 export type SearchActive = "true" | "false";
 
 export type TagScope = "utub" | "url";
@@ -35,74 +43,74 @@ export type ValidationForm =
   | "email_validation";
 
 export type DimUtubSelect = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   search_active: "true" | "false";
 };
 
 export type DimDeviceOnly = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
 };
 
 export type DimUtubNameEditOpen = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   trigger: "pencil_icon" | "keyboard";
 };
 
 export type DimUtubDescEditOpen = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   trigger: "pencil_icon" | "keyboard" | "create_button";
 };
 
 export type DimUrlAccess = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   trigger: "corner_button" | "url_text" | "main_button";
   search_active: "true" | "false";
   active_tag_count: number;
 };
 
 export type DimUrlCardClick = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   search_active: "true" | "false";
   active_tag_count: number;
 };
 
 export type DimUrlCopy = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   result: "success" | "failure";
 };
 
 export type DimSearchOpen = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   target: "utubs" | "urls";
 };
 
 export type DimSearchClose = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   target: "utubs" | "urls";
 };
 
 export type DimTagCreateOpen = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   scope: "utub" | "url";
 };
 
 export type DimTagDeleteOpen = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   scope: "utub" | "url";
 };
 
 export type DimTagDeleteConfirm = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   scope: "utub" | "url";
 };
 
 export type DimTagDeleteCancel = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   scope: "utub" | "url";
 };
 
 export type DimFormSubmit = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   trigger: "enter_key" | "button_click";
   form:
     | "url_create"
@@ -116,7 +124,7 @@ export type DimFormSubmit = {
 };
 
 export type DimFormCancel = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   trigger: "escape_key" | "cancel_button" | "outside_click";
   form:
     | "url_create"
@@ -130,7 +138,7 @@ export type DimFormCancel = {
 };
 
 export type DimValidationError = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   form:
     | "url_create"
     | "url_title_edit"
@@ -148,32 +156,32 @@ export type DimValidationError = {
 };
 
 export type DimDeckCollapse = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   deck: "members" | "tags" | "utubs";
 };
 
 export type DimDeckExpand = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   deck: "members" | "tags" | "utubs";
 };
 
 export type DimMobileNav = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   target: "utubs" | "urls" | "members" | "tags";
 };
 
 export type DimAuthFormSwitch = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   target: "login" | "register" | "forgot_password";
 };
 
 export type DimAuthModalOpen = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   form: "login" | "register";
 };
 
 export type DimEmailValidationSubmit = {
-  device_type: 1 | 2;
+  device_type: DeviceType;
   trigger: "manual_click" | "auto_after_register";
 };
 

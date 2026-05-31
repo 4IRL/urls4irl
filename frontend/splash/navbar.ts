@@ -1,6 +1,6 @@
 import { $, bootstrap } from "../lib/globals.js";
 import { emit } from "../lib/metrics-client.js";
-import { UI_EVENTS } from "../lib/metrics-events.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 
 // Navbar toggler object (shared state)

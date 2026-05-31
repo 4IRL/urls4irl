@@ -3,7 +3,7 @@ import { KEYS } from "../../lib/constants.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { AppEvents, emit, on } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { filterURLsBySearchTerm } from "../../logic/url-search.js";
 import { getState } from "../../store/app-store.js";
 import {

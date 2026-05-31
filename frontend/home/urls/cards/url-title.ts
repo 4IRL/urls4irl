@@ -7,7 +7,7 @@ import {
   METHOD_TYPES,
 } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { UI_EVENTS } from "../../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   updateURLTitle,
   showUpdateURLTitleForm,

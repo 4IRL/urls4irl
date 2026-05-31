@@ -1,6 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { emit } from "../lib/metrics-client.js";
-import { UI_EVENTS } from "../lib/metrics-events.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { isMobile } from "./mobile.js";
 import { isUTubSelected } from "./utubs/utils.js";
 import { resetUTubSearch } from "./utubs/search.js";

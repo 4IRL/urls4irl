@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { initResetPasswordForm } from "../reset-password-form.js";
 import { VALIDATION_FORM } from "../../types/metrics-dim-values.js";

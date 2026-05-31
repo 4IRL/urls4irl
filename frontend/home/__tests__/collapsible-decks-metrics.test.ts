@@ -1,4 +1,4 @@
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { initCollapsibleDecks } from "../collapsible-decks.js";
 import {
   DECK_COLLAPSE_DECK,

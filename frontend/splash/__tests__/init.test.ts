@@ -1,6 +1,6 @@
 import type { Mock } from "vitest";
 
-import { UI_EVENTS } from "../../lib/metrics-events.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   createImmediateAlwaysJqXHR,
   createMockModal,
