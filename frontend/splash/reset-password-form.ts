@@ -34,7 +34,7 @@ function handleResetPassword(
   $modal: JQuery,
 ): void {
   event.preventDefault();
-  emit(UI_EVENTS.UI_RESET_PASSWORD_SUBMIT);
+  emit({ event: UI_EVENTS.UI_RESET_PASSWORD_SUBMIT });
 
   const payload: ResetPasswordRequest = {
     newPassword: String($modal.find("#newPassword").val() ?? ""),
@@ -110,7 +110,7 @@ function handleResetPasswordFailure(
     const errorJson = xhr.responseJSON as ResetPasswordError;
     switch (errorJson.errorCode) {
       case 1:
-        emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "reset_password" });
+        emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "reset_password" });
         $modal.find(".form-control").removeClass("is-invalid");
         $modal.find(".invalid-feedback").remove();
         handleImproperFormErrors($modal, errorJson);

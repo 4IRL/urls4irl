@@ -62,7 +62,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   namePencilIcon.removeClass("hidden");
 
   function openNameEdit(trigger: "pencil_icon" | "keyboard"): void {
-    emit(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, { trigger });
+    emit({ event: UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, trigger });
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
@@ -84,7 +84,8 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
 
   utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "utub_name_edit",
       trigger: "button_click",
     });
@@ -97,7 +98,8 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   });
 
   utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "utub_name_edit",
       trigger: "cancel_button",
     });
@@ -115,7 +117,8 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
         switch (keyEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
-            emit(UI_EVENTS.UI_FORM_SUBMIT, {
+            emit({
+              event: UI_EVENTS.UI_FORM_SUBMIT,
               form: "utub_name_edit",
               trigger: "enter_key",
             });
@@ -128,7 +131,8 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
-            emit(UI_EVENTS.UI_FORM_CANCEL, {
+            emit({
+              event: UI_EVENTS.UI_FORM_CANCEL,
               form: "utub_name_edit",
               trigger: "escape_key",
             });
@@ -160,7 +164,8 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
     if ($(windowClickEvent.target).closest("#utubNameCancelBtnUpdate").length)
       return;
 
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "utub_name_edit",
       trigger: "outside_click",
     });
@@ -222,7 +227,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID: number): void {
 function rebindCreateDescriptionForNameUpdate(utubID: number): void {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
-    emit(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, { trigger: "create_button" });
+    emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger: "create_button" });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0");

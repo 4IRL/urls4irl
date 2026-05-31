@@ -54,7 +54,8 @@ describe("tags/create metrics — UI_TAG_CREATE_OPEN (scope:utub)", () => {
     setupOpenCreateUTubTagEventListeners(1);
     $("#utubTagBtnCreate").trigger("click.createUTubTag");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_CREATE_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_CREATE_OPEN,
       scope: "utub",
     });
     expect(emit).toHaveBeenCalledTimes(1);

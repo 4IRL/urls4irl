@@ -38,7 +38,7 @@ export function initLoginForm($modal: JQuery): void {
 
 function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
-  emit(UI_EVENTS.UI_LOGIN_SUBMIT);
+  emit({ event: UI_EVENTS.UI_LOGIN_SUBMIT });
 
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
@@ -106,7 +106,7 @@ function handleLoginFailure(
     "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
-    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "login" });
+    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "login" });
     switch (errorJson.errorCode) {
       case 1: {
         // User found but email not yet validated

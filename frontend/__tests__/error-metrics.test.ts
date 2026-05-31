@@ -42,7 +42,9 @@ describe("error module — UI_ERROR_PAGE_REFRESH metric", () => {
     const { emit } = await import("../lib/metrics-client.js");
     document.getElementById("refreshBtn")!.click();
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_ERROR_PAGE_REFRESH);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_ERROR_PAGE_REFRESH,
+    });
   });
 
   it("calls initMetricsClient on DOM ready", async () => {

@@ -147,7 +147,8 @@ export function setFocusEventListenersOnURLCard(urlCard: JQuery): void {
       "keyup.focusURLCard" + utubUrlID,
       function (event: JQuery.TriggeredEvent) {
         if (event.key === KEYS.ENTER) {
-          emit(UI_EVENTS.UI_URL_CARD_CLICK, {
+          emit({
+            event: UI_EVENTS.UI_URL_CARD_CLICK,
             search_active: isURLSearchActive() ? "true" : "false",
             active_tag_count: getActiveTagCount(),
           });
@@ -213,7 +214,8 @@ export function newURLInputAddEventListeners(
   const createURLInput = urlInputForm.find("#urlStringCreate");
 
   $(urlBtnCreate).onExact("click.createURL", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "url_create",
       trigger: "button_click",
     });
@@ -221,7 +223,8 @@ export function newURLInputAddEventListeners(
   });
 
   $(urlBtnDelete).onExact("click.createURL", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "url_create",
       trigger: "cancel_button",
     });

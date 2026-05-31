@@ -56,7 +56,8 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
       const utubSelector = $(".UTubSelector[utubid='1']");
       selectUTub(1, utubSelector);
 
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_SELECT, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SELECT,
         search_active: "false",
       });
     });
@@ -68,7 +69,8 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
       const utubSelector = $(".UTubSelector[utubid='1']");
       selectUTub(1, utubSelector);
 
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_SELECT, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SELECT,
         search_active: "true",
       });
     });
@@ -94,7 +96,8 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
       utubElement.trigger("click.selectUTubMobile");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_SELECT, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SELECT,
         search_active: "false",
       });
     });
@@ -108,7 +111,8 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
       utubElement.trigger("click.selectUTubMobile");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_SELECT, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SELECT,
         search_active: "true",
       });
     });

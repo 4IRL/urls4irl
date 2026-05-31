@@ -36,7 +36,7 @@ export function showUpdateURLTitleForm(
   urlTitleAndShowUpdateIconWrap: JQuery,
   urlCard: JQuery,
 ): void {
-  emit(UI_EVENTS.UI_URL_TITLE_EDIT_OPEN);
+  emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
   urlTitleAndShowUpdateIconWrap.hideClass();
   const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
     ".updateUrlTitleWrap",

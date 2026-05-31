@@ -28,7 +28,7 @@ export function initNavbar(): void {
 }
 
 function onMobileNavbarOpened(): void {
-  emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN);
+  emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN });
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -49,7 +49,7 @@ function onMobileNavbarOpened(): void {
 }
 
 function onMobileNavbarClosed(): void {
-  emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
+  emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE });
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
 

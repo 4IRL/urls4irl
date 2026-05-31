@@ -66,7 +66,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     urlAnchor.trigger("click.defaultlinkbehavior");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "url_text",
       search_active: "false",
       active_tag_count: 0,
@@ -112,19 +113,19 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     submitBtn.trigger("click.updateUrlString");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       trigger: "button_click",
       form: "url_string_edit",
     });
     expect(
-      vi
-        .mocked(emit)
-        .mock.calls.filter(
-          (call) =>
-            call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
-            (call as unknown as [string, { form?: string } | undefined])[1]
-              ?.form === "url_string_edit",
-        ),
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string; form?: string };
+        return (
+          args.event === UI_EVENTS.UI_FORM_SUBMIT &&
+          args.form === "url_string_edit"
+        );
+      }),
     ).toHaveLength(1);
     expect(vi.mocked(updateURL)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
@@ -146,7 +147,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     urlAnchor.trigger("click.defaultlinkbehavior");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "url_text",
       search_active: "true",
       active_tag_count: 3,

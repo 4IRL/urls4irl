@@ -54,7 +54,8 @@ describe("collapsible-decks metrics emitters", () => {
       $("#UTubDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_DECK_COLLAPSE, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_DECK_COLLAPSE,
         deck: "utubs",
       });
     });
@@ -67,10 +68,12 @@ describe("collapsible-decks metrics emitters", () => {
       $("#UTubDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(2);
-      expect(emit).toHaveBeenNthCalledWith(1, UI_EVENTS.UI_DECK_COLLAPSE, {
+      expect(emit).toHaveBeenNthCalledWith(1, {
+        event: UI_EVENTS.UI_DECK_COLLAPSE,
         deck: "utubs",
       });
-      expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_DECK_EXPAND, {
+      expect(emit).toHaveBeenNthCalledWith(2, {
+        event: UI_EVENTS.UI_DECK_EXPAND,
         deck: "utubs",
       });
     });
@@ -95,7 +98,8 @@ describe("collapsible-decks metrics emitters", () => {
       $("#MemberDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_DECK_COLLAPSE, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_DECK_COLLAPSE,
         deck: "members",
       });
     });
@@ -107,7 +111,8 @@ describe("collapsible-decks metrics emitters", () => {
       $("#MemberDeckHeaderAndCaret").trigger("click");
       $("#MemberDeckHeaderAndCaret").trigger("click");
 
-      expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_DECK_EXPAND, {
+      expect(emit).toHaveBeenNthCalledWith(2, {
+        event: UI_EVENTS.UI_DECK_EXPAND,
         deck: "members",
       });
     });
@@ -132,7 +137,8 @@ describe("collapsible-decks metrics emitters", () => {
       $("#TagDeckHeaderAndCaret").trigger("click");
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_DECK_COLLAPSE, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_DECK_COLLAPSE,
         deck: "tags",
       });
     });
@@ -144,7 +150,8 @@ describe("collapsible-decks metrics emitters", () => {
       $("#TagDeckHeaderAndCaret").trigger("click");
       $("#TagDeckHeaderAndCaret").trigger("click");
 
-      expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_DECK_EXPAND, {
+      expect(emit).toHaveBeenNthCalledWith(2, {
+        event: UI_EVENTS.UI_DECK_EXPAND,
         deck: "tags",
       });
     });

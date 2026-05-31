@@ -119,7 +119,8 @@ describe("urls/tags create metrics — UI_TAG_CREATE_OPEN + UI_TAG_APPLY", () =>
 
     showCreateURLTagForm(urlCard, urlTagBtnCreate);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_CREATE_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_CREATE_OPEN,
       scope: "url",
     });
   });
@@ -149,7 +150,7 @@ describe("urls/tags create metrics — UI_TAG_CREATE_OPEN + UI_TAG_APPLY", () =>
     const fakeInput = $('<input type="text" />').val("important");
     await createURLTag(fakeInput, urlCard, 1);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_APPLY);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_TAG_APPLY });
   });
 
   it("does not emit ui_tag_apply when the AJAX call fails", async () => {
@@ -171,6 +172,6 @@ describe("urls/tags create metrics — UI_TAG_CREATE_OPEN + UI_TAG_APPLY", () =>
     const fakeInput = $('<input type="text" />').val("bad-tag");
     await createURLTag(fakeInput, urlCard, 1);
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_TAG_APPLY);
+    expect(emit).not.toHaveBeenCalledWith({ event: UI_EVENTS.UI_TAG_APPLY });
   });
 });

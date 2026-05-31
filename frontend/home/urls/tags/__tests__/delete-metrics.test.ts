@@ -81,7 +81,7 @@ describe("urls/tags delete metrics — UI_TAG_REMOVE", () => {
 
     await deleteURLTag(7, tagBadge, urlCard, 1);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_REMOVE);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_TAG_REMOVE });
   });
 
   it("does not emit ui_tag_remove when the AJAX call fails", async () => {
@@ -100,6 +100,6 @@ describe("urls/tags delete metrics — UI_TAG_REMOVE", () => {
 
     await deleteURLTag(7, tagBadge, urlCard, 1);
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_TAG_REMOVE);
+    expect(emit).not.toHaveBeenCalledWith({ event: UI_EVENTS.UI_TAG_REMOVE });
   });
 });

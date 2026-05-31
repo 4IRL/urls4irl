@@ -81,7 +81,8 @@ export function createTagInputBlock(
   );
 
   urlTagSubmitBtnCreate.onExact("click.createURLTag", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "tag_create",
       trigger: "button_click",
     });
@@ -94,7 +95,8 @@ export function createTagInputBlock(
   );
 
   urlTagCancelBtnCreate.onExact("click.createURLTag", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "tag_create",
       trigger: "cancel_button",
     });
@@ -115,7 +117,7 @@ export function showCreateURLTagForm(
   urlCard: JQuery,
   urlTagBtnCreate: JQuery,
 ): void {
-  emit(UI_EVENTS.UI_TAG_CREATE_OPEN, { scope: "url" });
+  emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: "url" });
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);
@@ -283,7 +285,7 @@ function createURLTagSuccess(
   urlCard: JQuery,
   utubID: number,
 ): void {
-  emit(UI_EVENTS.UI_TAG_APPLY);
+  emit({ event: UI_EVENTS.UI_TAG_APPLY });
   // Clear and reset input field
   hideAndResetCreateURLTagForm(urlCard);
 

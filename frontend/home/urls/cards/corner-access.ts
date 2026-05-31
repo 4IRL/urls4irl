@@ -33,7 +33,8 @@ export function createGoToURLIcon(urlString: string): JQuery<HTMLElement> {
     .addClass("self-start goToUrlIcon")
     .enableTab()
     .onExact("click", () => {
-      emit(UI_EVENTS.UI_URL_ACCESS, {
+      emit({
+        event: UI_EVENTS.UI_URL_ACCESS,
         trigger: "corner_button",
         search_active: isURLSearchActive() ? "true" : "false",
         active_tag_count: getActiveTagCount(),

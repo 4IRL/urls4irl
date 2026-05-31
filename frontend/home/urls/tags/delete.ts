@@ -85,7 +85,7 @@ function deleteURLTagSuccess(
   tagBadge: JQuery,
   urlCard: JQuery,
 ): void {
-  emit(UI_EVENTS.UI_TAG_REMOVE);
+  emit({ event: UI_EVENTS.UI_TAG_REMOVE });
   const tagID = response.utubTag.utubTagID;
   const urlID = parseInt(urlCard.attr("utuburlid") as string);
   setState({

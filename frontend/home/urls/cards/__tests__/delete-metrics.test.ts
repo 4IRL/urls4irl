@@ -77,7 +77,7 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     deleteURLShowModal(42, buildUrlCard(42), 1);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_OPEN);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_URL_DELETE_OPEN });
   });
 
   it("emits ui_url_delete_confirm when the modal submit button is clicked", async () => {
@@ -88,7 +88,9 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#modalSubmit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CONFIRM);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_DELETE_CONFIRM,
+    });
   });
 
   it("emits ui_url_delete_cancel when modal hides without confirm", async () => {
@@ -99,7 +101,9 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.urlDelete");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CANCEL);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_DELETE_CANCEL,
+    });
   });
 
   it("does NOT emit cancel when the modal hides after confirm", async () => {
@@ -111,7 +115,9 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.urlDelete");
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CANCEL);
+    expect(emit).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_DELETE_CANCEL,
+    });
   });
 
   it("resets confirmed flag across multiple modal opens (cancel after re-open emits cancel)", async () => {
@@ -126,7 +132,9 @@ describe("delete metrics — UI_URL_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.urlDelete");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_DELETE_CANCEL);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_DELETE_CANCEL,
+    });
   });
 
   it("does not accumulate hidden.bs.modal.deleteUrlCleanup listeners across multiple opens", async () => {

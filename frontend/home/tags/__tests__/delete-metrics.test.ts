@@ -65,7 +65,8 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     deleteUTubTagShowModal(1, 7, "important");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_DELETE_OPEN,
       scope: "utub",
     });
   });
@@ -78,7 +79,8 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#modalSubmit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CONFIRM, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_DELETE_CONFIRM,
       scope: "utub",
     });
   });
@@ -91,7 +93,8 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#confirmModal").trigger("hidden.bs.modal.tagDelete");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CANCEL, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
       scope: "utub",
     });
   });
@@ -105,7 +108,8 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#confirmModal").trigger("hidden.bs.modal.tagDelete");
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CANCEL, {
+    expect(emit).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
       scope: "utub",
     });
   });
@@ -122,7 +126,8 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     $("#confirmModal").trigger("hidden.bs.modal.tagDelete");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_DELETE_CANCEL, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
       scope: "utub",
     });
   });

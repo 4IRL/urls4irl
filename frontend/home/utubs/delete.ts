@@ -44,7 +44,7 @@ function deleteUTubHideModal(): void {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal(utubID: number): void {
   _utubDeleteConfirmed = false;
-  recordUIEvent(UI_EVENTS.UI_UTUB_DELETE_OPEN);
+  recordUIEvent({ event: UI_EVENTS.UI_UTUB_DELETE_OPEN });
 
   const modalTitle = "Are you sure you want to delete this UTub?";
   const modalBody = `${APP_CONFIG.strings.UTUB_DELETE_WARNING}`;
@@ -71,14 +71,14 @@ function deleteUTubShowModal(utubID: number): void {
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       _utubDeleteConfirmed = true;
-      recordUIEvent(UI_EVENTS.UI_UTUB_DELETE_CONFIRM);
+      recordUIEvent({ event: UI_EVENTS.UI_UTUB_DELETE_CONFIRM });
       deleteUTub(utubID);
       resetUTubSearch();
     });
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.utubDelete", function () {
     if (!_utubDeleteConfirmed) {
-      recordUIEvent(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
+      recordUIEvent({ event: UI_EVENTS.UI_UTUB_DELETE_CANCEL });
     }
   });
 

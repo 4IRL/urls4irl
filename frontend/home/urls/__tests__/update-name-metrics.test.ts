@@ -105,7 +105,8 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     setupUpdateUTubNameEventListeners(UTUB_ID);
     $("#UTubNameUpdateWrap").trigger("click.updateUTubname");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN,
       trigger: "pencil_icon",
     });
   });
@@ -117,7 +118,8 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     const enterEvent = $.Event("keydown.updateUTubname", { key: "Enter" });
     $("#UTubNameUpdateWrap .edit-pencil-icon").trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN,
       trigger: "keyboard",
     });
   });
@@ -129,7 +131,8 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     const spaceEvent = $.Event("keydown.updateUTubname", { key: " " });
     $("#UTubNameUpdateWrap .edit-pencil-icon").trigger(spaceEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN,
       trigger: "keyboard",
     });
   });
@@ -155,21 +158,19 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
 
     $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "utub_name_edit",
       trigger: "button_click",
     });
     expect(
-      vi
-        .mocked(emit)
-        .mock.calls.filter(
-          (call) =>
-            call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
-            (
-              (call as unknown as [string, { form?: string } | undefined])[1] ??
-              {}
-            ).form === "utub_name_edit",
-        ),
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string; form?: string };
+        return (
+          args.event === UI_EVENTS.UI_FORM_SUBMIT &&
+          args.form === "utub_name_edit"
+        );
+      }),
     ).toHaveLength(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
@@ -187,7 +188,8 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       "click.createUTubdescription",
     );
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
       trigger: "create_button",
     });
   });
@@ -206,7 +208,8 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       target: document.body,
     } as unknown as JQuery.TriggeredEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "utub_name_edit",
       trigger: "outside_click",
     });

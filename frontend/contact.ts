@@ -70,7 +70,7 @@ export function handleContactSubmit(
   $form: JQuery,
 ): void {
   event.preventDefault();
-  emit(UI_EVENTS.UI_CONTACT_SUBMIT);
+  emit({ event: UI_EVENTS.UI_CONTACT_SUBMIT });
 
   const $banner = $form.find("#Banner");
   const $submitBtn = $form.find("#submit");

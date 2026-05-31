@@ -99,7 +99,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     setupUpdateUTubDescriptionEventListeners(UTUB_ID);
     $("#UTubDescriptionSubheaderWrap").trigger("click.updateUTubDesc");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
       trigger: "pencil_icon",
     });
   });
@@ -111,7 +112,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     const enterEvent = $.Event("keydown.updateUTubDesc", { key: "Enter" });
     $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
       trigger: "keyboard",
     });
   });
@@ -123,7 +125,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     const spaceEvent = $.Event("keydown.updateUTubDesc", { key: " " });
     $("#UTubDescriptionSubheaderWrap .edit-pencil-icon").trigger(spaceEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
       trigger: "keyboard",
     });
   });
@@ -136,7 +139,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       "click.createUTubdescription",
     );
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
       trigger: "create_button",
     });
   });
@@ -152,21 +156,19 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     $("#utubDescriptionSubmitBtnUpdate").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "utub_desc_edit",
       trigger: "button_click",
     });
     expect(
-      vi
-        .mocked(emit)
-        .mock.calls.filter(
-          (call) =>
-            call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
-            (
-              (call as unknown as [string, { form?: string } | undefined])[1] ??
-              {}
-            ).form === "utub_desc_edit",
-        ),
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string; form?: string };
+        return (
+          args.event === UI_EVENTS.UI_FORM_SUBMIT &&
+          args.form === "utub_desc_edit"
+        );
+      }),
     ).toHaveLength(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
@@ -195,7 +197,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       target: document.body,
     } as unknown as JQuery.TriggeredEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "utub_desc_edit",
       trigger: "outside_click",
     });

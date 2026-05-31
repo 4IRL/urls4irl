@@ -18,6 +18,12 @@ export type CallerDimensions<EventT extends UIEventName> = Omit<
   "device_type"
 >;
 
+// The single args-object accepted by `emit()`. `event` is the discriminator;
+// the rest of the keys are the flat caller-supplied dimensions for that event.
+export type EmitArgs<EventT extends UIEventName> = {
+  event: EventT;
+} & CallerDimensions<EventT>;
+
 const METRICS_INGEST_URL = "/api/metrics" as const;
 const DEDUPE_COOLDOWN_MS = 1000;
 const FLUSH_INTERVAL_MS = 60000;
@@ -115,20 +121,13 @@ function generateBatchId(): string {
   );
 }
 
-// Variadic rest tuple: events whose CallerDimensions is `{}` (i.e. the
-// Pydantic model has only `device_type`) get a single-arg signature
-// `emit(event)`; events with extra caller-supplied dims require the second
-// argument with the exact narrow shape from `UIEventDimensions[E]`.
-type EmitRest<EventT extends UIEventName> =
-  keyof CallerDimensions<EventT> extends never
-    ? []
-    : [dimensions: CallerDimensions<EventT>];
-
-export function emit<EventT extends UIEventName>(
-  event: EventT,
-  ...rest: EmitRest<EventT>
-): void {
-  const dimensions = rest[0] as EmitDimensions | undefined;
+// `emit()` takes a single args object: `{ event, ...dimensions }`. For events
+// whose `CallerDimensions` is `{}` (i.e. only `device_type` in the Pydantic
+// model), the intersection adds nothing and the caller passes just
+// `{ event: UI_EVENTS.UI_X }`. For events with caller-supplied dims, the keys
+// are required flat on the args object — a typo on any dim key fails `tsc`.
+export function emit<EventT extends UIEventName>(args: EmitArgs<EventT>): void {
+  const { event, ...dimensions } = args;
   // performance.now() is monotonic high-resolution time relative to page navigation start;
   // it cannot be persisted across page loads and is safe from NTP/clock jumps.
   const now = performance.now();
@@ -138,7 +137,7 @@ export function emit<EventT extends UIEventName>(
   // to forget. Caller-supplied dimensions win via spread order.
   const dimensionsWithDevice: EmitDimensions = {
     device_type: getDeviceType(),
-    ...(dimensions ?? {}),
+    ...(dimensions as EmitDimensions),
   };
   pruneDedupeMap(now);
   const dedupeKey = `${event}|${JSON.stringify(dimensionsWithDevice)}`;

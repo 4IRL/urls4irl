@@ -105,14 +105,16 @@ function createUpdateURLTitleInput(
         if ((event.originalEvent as KeyboardEvent).repeat) return;
         switch (event.key) {
           case KEYS.ENTER:
-            emit(UI_EVENTS.UI_FORM_SUBMIT, {
+            emit({
+              event: UI_EVENTS.UI_FORM_SUBMIT,
               form: "url_title_edit",
               trigger: "enter_key",
             });
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
-            emit(UI_EVENTS.UI_FORM_CANCEL, {
+            emit({
+              event: UI_EVENTS.UI_FORM_CANCEL,
               form: "url_title_edit",
               trigger: "escape_key",
             });
@@ -135,7 +137,8 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "url_title_edit",
       trigger: "button_click",
     });
@@ -148,7 +151,8 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "url_title_edit",
       trigger: "cancel_button",
     });

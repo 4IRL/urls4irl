@@ -82,7 +82,7 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
     setDeleteEventListeners(42);
     $("#utubBtnDelete").trigger("click.deleteUTub");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_OPEN);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_UTUB_DELETE_OPEN });
   });
 
   it("emits ui_utub_delete_confirm when the modal submit button is clicked", async () => {
@@ -94,7 +94,9 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#modalSubmit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CONFIRM);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DELETE_CONFIRM,
+    });
   });
 
   it("emits ui_utub_delete_cancel when the modal is dismissed without confirming", async () => {
@@ -106,7 +108,9 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.utubDelete");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DELETE_CANCEL,
+    });
   });
 
   it("does not emit ui_utub_delete_cancel when the modal hides after confirm", async () => {
@@ -119,7 +123,9 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.utubDelete");
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
+    expect(emit).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DELETE_CANCEL,
+    });
   });
 
   it("resets confirmed flag across multiple modal opens (cancel after re-open emits cancel)", async () => {
@@ -135,6 +141,8 @@ describe("delete metrics — UI_UTUB_DELETE_OPEN / _CONFIRM / _CANCEL", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.utubDelete");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_DELETE_CANCEL);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_UTUB_DELETE_CANCEL,
+    });
   });
 });

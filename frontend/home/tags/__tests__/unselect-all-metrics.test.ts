@@ -48,7 +48,9 @@ describe("unselect-all metrics — UI_TAG_FILTER_TOGGLE", () => {
     initUnselectAllTags();
     $("#unselectAllTagFilters").trigger("click.unselectAllTags");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -58,7 +60,9 @@ describe("unselect-all metrics — UI_TAG_FILTER_TOGGLE", () => {
     enableUnselectAllButtonAfterTagFilterApplied();
     $("#unselectAllTagFilters").trigger("click.unselectAllTags");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 });

@@ -10,7 +10,7 @@ $(document).ready(() => {
   const refreshBtn = document.getElementById("refreshBtn");
   if (refreshBtn) {
     refreshBtn.addEventListener("click", () => {
-      emit(UI_EVENTS.UI_ERROR_PAGE_REFRESH);
+      emit({ event: UI_EVENTS.UI_ERROR_PAGE_REFRESH });
       window.location.href = window.location.href.split("#")[0];
     });
   }

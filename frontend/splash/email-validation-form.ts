@@ -39,7 +39,8 @@ function handleValidateEmail(
   $modal: JQuery,
   event: JQuery.TriggeredEvent | null = null,
 ): void {
-  emit(UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT, {
+  emit({
+    event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
     trigger: event !== null ? "manual_click" : "auto_after_register",
   });
   if (event !== null) {
@@ -91,7 +92,7 @@ function handleValidateEmailFailure(
 
   if (!("errorCode" in xhr.responseJSON)) {
     // Handle other errors here
-    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "email_validation" });
+    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "email_validation" });
     showSplashModalAlertBanner(
       $modal,
       "Unable to process request...",
@@ -105,7 +106,7 @@ function handleValidateEmailFailure(
     string,
     number
   >;
-  emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "email_validation" });
+  emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "email_validation" });
   switch (errorJson.errorCode) {
     case errorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS:
       showSplashModalAlertBanner($modal, errorJson.message, "danger");

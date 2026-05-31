@@ -55,7 +55,7 @@ describe("csrf prefilter 429 handling — metrics", () => {
       "Too Many Requests",
     );
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_RATE_LIMIT_HIT);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_RATE_LIMIT_HIT });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(showNewPageOnAJAXHTMLResponse).toHaveBeenCalledWith(
       "<html>Rate limited</html>",
@@ -90,7 +90,7 @@ describe("csrf prefilter 429 handling — metrics", () => {
       "Too Many Requests",
     );
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_RATE_LIMIT_HIT);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_RATE_LIMIT_HIT });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(showNewPageOnAJAXHTMLResponse).not.toHaveBeenCalled();
     expect(

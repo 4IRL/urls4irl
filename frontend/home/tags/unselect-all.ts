@@ -38,7 +38,7 @@ export function resetCountOfTagFiltersApplied(): void {
 }
 
 function unselectAllTags(): void {
-  emit(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+  emit({ event: UI_EVENTS.UI_TAG_FILTER_TOGGLE });
   $(".tagFilter")
     .removeClass("selected unselected disabled")
     .addClass("unselected")

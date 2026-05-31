@@ -33,7 +33,8 @@ export function createURLString(urlStringText: string): JQuery<HTMLElement> {
         // Only allow a URL to be clickable when the Card is selected
         event.preventDefault();
         if ($(event.target).closest(".urlRow").attr("urlSelected") === "true") {
-          emit(UI_EVENTS.UI_URL_ACCESS, {
+          emit({
+            event: UI_EVENTS.UI_URL_ACCESS,
             trigger: "url_text",
             search_active: isURLSearchActive() ? "true" : "false",
             active_tag_count: getActiveTagCount(),
@@ -95,7 +96,8 @@ function createUpdateURLStringInput(
   );
 
   urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "url_string_edit",
       trigger: "button_click",
     });
@@ -108,7 +110,8 @@ function createUpdateURLStringInput(
   );
 
   urlStringCancelBtnUpdate.onExact("click.updateUrlString", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "url_string_edit",
       trigger: "cancel_button",
     });
@@ -134,7 +137,8 @@ function setFocusEventListenersOnUpdateURLStringInput(
         switch (event.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
-            emit(UI_EVENTS.UI_FORM_SUBMIT, {
+            emit({
+              event: UI_EVENTS.UI_FORM_SUBMIT,
               form: "url_string_edit",
               trigger: "enter_key",
             });
@@ -142,7 +146,8 @@ function setFocusEventListenersOnUpdateURLStringInput(
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
-            emit(UI_EVENTS.UI_FORM_CANCEL, {
+            emit({
+              event: UI_EVENTS.UI_FORM_CANCEL,
               form: "url_string_edit",
               trigger: "escape_key",
             });

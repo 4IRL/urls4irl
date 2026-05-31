@@ -36,7 +36,7 @@ function urlStringInAccessModal(urlString: string): JQuery<HTMLElement> {
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function accessURLWarningShowModal(urlString: string): void {
   _wasSubmitted = false;
-  emit(UI_EVENTS.UI_URL_ACCESS_WARNING);
+  emit({ event: UI_EVENTS.UI_URL_ACCESS_WARNING });
 
   const modalTitle = "🚦 Caution! 🚦";
   const modalText = `${APP_CONFIG.strings.ACCESS_URL_WARNING}\n\n`;
@@ -75,7 +75,7 @@ function accessURLWarningShowModal(urlString: string): void {
       $("#confirmModalBody").removeClass("white-space-pre-line");
       $("#confirmModal").removeClass("accessExternalURLModal");
       if (!_wasSubmitted) {
-        emit(UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS);
+        emit({ event: UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS });
       }
     },
   );

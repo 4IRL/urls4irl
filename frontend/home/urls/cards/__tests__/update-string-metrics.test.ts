@@ -126,7 +126,9 @@ describe("update-string metrics — UI_URL_STRING_EDIT_OPEN", () => {
 
     showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_STRING_EDIT_OPEN);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN,
+    });
   });
 });
 
@@ -174,7 +176,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     urlCard.find(".urlBtnAccess").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "main_button",
       search_active: "false",
       active_tag_count: 0,
@@ -194,7 +197,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     urlCard.find(".goToUrlIcon").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "corner_button",
       search_active: "false",
       active_tag_count: 0,
@@ -220,7 +224,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     urlCard.find(".urlBtnAccess").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "main_button",
       search_active: "true",
       active_tag_count: 7,

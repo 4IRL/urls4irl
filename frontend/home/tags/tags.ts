@@ -108,7 +108,7 @@ export function buildTagFilterInDeck(
 
 // Handle tag filtered selected - tags are filtered based on a URL having one tag AND another tag.. etc
 export function toggleTagFilterSelected(activeTagFilter: JQuery): void {
-  emit(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+  emit({ event: UI_EVENTS.UI_TAG_FILTER_TOGGLE });
   const currentSelectedTagIDs = $.map(
     $(".tagFilter.selected").toArray(),
     (tagFilter: HTMLElement) =>

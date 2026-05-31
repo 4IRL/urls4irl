@@ -35,7 +35,8 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
   utubTagSubmitBtnCreate.offAndOnExact(
     "click.createUTubTagSubmit",
     function () {
-      emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
         form: "tag_create",
         trigger: "button_click",
       });
@@ -46,7 +47,8 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
   utubTagCancelBtnCreate.offAndOnExact(
     "click.createUTubTagEscape",
     function () {
-      emit(UI_EVENTS.UI_FORM_CANCEL, {
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
         form: "tag_create",
         trigger: "cancel_button",
       });
@@ -79,7 +81,8 @@ function bindCreateUTubTagFocusEventListeners(
       switch (event.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
-          emit(UI_EVENTS.UI_FORM_SUBMIT, {
+          emit({
+            event: UI_EVENTS.UI_FORM_SUBMIT,
             form: "tag_create",
             trigger: "enter_key",
           });
@@ -87,7 +90,8 @@ function bindCreateUTubTagFocusEventListeners(
           break;
         case KEYS.ESCAPE:
           // Handle escape  key pressed
-          emit(UI_EVENTS.UI_FORM_CANCEL, {
+          emit({
+            event: UI_EVENTS.UI_FORM_CANCEL,
             form: "tag_create",
             trigger: "escape_key",
           });
@@ -105,7 +109,7 @@ function unbindCreateUTubTagFocusEventListeners(utubTagInput: JQuery): void {
 }
 
 function createUTubTagShowInput(utubID: number): void {
-  emit(UI_EVENTS.UI_TAG_CREATE_OPEN, { scope: "utub" });
+  emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: "utub" });
   $("#createUTubTagWrap").showClassFlex();
   $("#listTags").hideClass();
   $("#utubTagStandardBtns").hideClass();

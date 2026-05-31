@@ -49,7 +49,8 @@ function setupCreateMemberEventListeners(utubID: number): void {
   const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
   memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "member_invite",
       trigger: "button_click",
     });
@@ -57,7 +58,8 @@ function setupCreateMemberEventListeners(utubID: number): void {
   });
 
   memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "member_invite",
       trigger: "cancel_button",
     });
@@ -89,7 +91,8 @@ function bindCreateMemberFocusEventListeners(
       switch (event.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
-          emit(UI_EVENTS.UI_FORM_SUBMIT, {
+          emit({
+            event: UI_EVENTS.UI_FORM_SUBMIT,
             form: "member_invite",
             trigger: "enter_key",
           });
@@ -97,7 +100,8 @@ function bindCreateMemberFocusEventListeners(
           break;
         case KEYS.ESCAPE:
           // Handle escape  key pressed
-          emit(UI_EVENTS.UI_FORM_CANCEL, {
+          emit({
+            event: UI_EVENTS.UI_FORM_CANCEL,
             form: "member_invite",
             trigger: "escape_key",
           });
@@ -121,7 +125,7 @@ function resetNewMemberForm(): void {
 
 // Shows new Member input fields
 function createMemberShowInput(utubID: number): void {
-  emit(UI_EVENTS.UI_MEMBER_INVITE_OPEN);
+  emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
   $("#createMemberWrap").showClassFlex();
   $("#displayMemberWrap").hideClass();
   $("#memberBtnCreate").hideClass();

@@ -44,7 +44,9 @@ describe("splash/navbar metrics emitters", () => {
     initNavbar();
     $("#NavbarNavDropdown").trigger("show.bs.collapse");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN,
+    });
   });
 
   it("emits ui_navbar_mobile_menu_close on hide.bs.collapse", async () => {
@@ -53,6 +55,8 @@ describe("splash/navbar metrics emitters", () => {
     initNavbar();
     $("#NavbarNavDropdown").trigger("hide.bs.collapse");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+    });
   });
 });

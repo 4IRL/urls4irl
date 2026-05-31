@@ -46,7 +46,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     accessLink("ftp://example.com");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS_WARNING);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS_WARNING,
+    });
   });
 
   it("does NOT show modal or emit warning for http:// URLs (direct open)", async () => {
@@ -54,7 +56,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     accessLink("https://example.com");
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS_WARNING);
+    expect(emit).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS_WARNING,
+    });
     expect(openSpy).toHaveBeenCalledWith("https://example.com", "_blank");
   });
 
@@ -66,7 +70,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.accessWarning");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
+    });
   });
 
   it("does NOT emit dismiss when user clicked 'Let's go!' submit then hidden fires", async () => {
@@ -78,9 +84,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
 
     $("#confirmModal").trigger("hidden.bs.modal.accessWarning");
 
-    expect(emit).not.toHaveBeenCalledWith(
-      UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
-    );
+    expect(emit).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
+    });
   });
 
   it("cleanup (removeClass + remove URL span) always runs on hidden, even after submit", () => {
@@ -109,7 +115,9 @@ describe("access-warning metrics — UI_URL_ACCESS_WARNING / _DISMISS", () => {
     const dismissCalls = vi
       .mocked(emit)
       .mock.calls.filter(
-        (call) => call[0] === UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
+        (call) =>
+          (call[0] as { event?: string }).event ===
+          UI_EVENTS.UI_URL_ACCESS_WARNING_DISMISS,
       );
     expect(dismissCalls.length).toBe(1);
   });

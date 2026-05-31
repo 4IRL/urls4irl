@@ -46,7 +46,8 @@ function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
   utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "utub_create",
       trigger: "button_click",
     });
@@ -54,7 +55,8 @@ function createNewUTubEventListeners(): void {
   });
 
   utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "utub_create",
       trigger: "cancel_button",
     });
@@ -107,7 +109,8 @@ function handleOnFocusEventListenersForCreateUTub(
   switch (event.key) {
     case KEYS.ENTER:
       // Handle enter key pressed
-      emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
         form: "utub_create",
         trigger: "enter_key",
       });
@@ -115,7 +118,8 @@ function handleOnFocusEventListenersForCreateUTub(
       break;
     case KEYS.ESCAPE:
       // Handle escape key pressed
-      emit(UI_EVENTS.UI_FORM_CANCEL, {
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
         form: "utub_create",
         trigger: "escape_key",
       });
@@ -170,7 +174,7 @@ function sameUTubNameOnNewUTubWarningShowModal(): void {
 
 // Shows new UTub input fields
 function createUTubShowInput(): void {
-  emit(UI_EVENTS.UI_UTUB_CREATE_OPEN);
+  emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
   $("#createUTubWrap").showClassFlex();
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");

@@ -33,7 +33,10 @@ describe("mockMetricsClient", () => {
       secondInvocation.resetMetricsClient,
     );
 
-    firstInvocation.emit(UI_EVENTS.UI_UTUB_SELECT, { search_active: "false" });
+    firstInvocation.emit({
+      event: UI_EVENTS.UI_UTUB_SELECT,
+      search_active: "false",
+    });
     expect(firstInvocation.emit).toHaveBeenCalledTimes(1);
     expect(secondInvocation.emit).not.toHaveBeenCalled();
   });

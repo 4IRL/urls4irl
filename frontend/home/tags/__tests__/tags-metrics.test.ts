@@ -42,7 +42,9 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
 
     toggleTagFilterSelected(filter);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -56,7 +58,9 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
 
     toggleTagFilterSelected(filter);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -68,7 +72,9 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
 
     tag.trigger("click.tagFilterSelected");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -88,7 +94,11 @@ describe("tags metrics — UI_TAG_FILTER_TOGGLE", () => {
     toggleTagFilterSelected(secondFilter);
 
     expect(emit).toHaveBeenCalledTimes(2);
-    expect(emit).toHaveBeenNthCalledWith(1, UI_EVENTS.UI_TAG_FILTER_TOGGLE);
-    expect(emit).toHaveBeenNthCalledWith(2, UI_EVENTS.UI_TAG_FILTER_TOGGLE);
+    expect(emit).toHaveBeenNthCalledWith(1, {
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
+    expect(emit).toHaveBeenNthCalledWith(2, {
+      event: UI_EVENTS.UI_TAG_FILTER_TOGGLE,
+    });
   });
 });

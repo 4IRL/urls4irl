@@ -48,7 +48,9 @@ describe("create-metrics — UI_MEMBER_INVITE_OPEN", () => {
     setupShowCreateMemberFormEventListeners(7);
     $("#memberBtnCreate").trigger("click.createMember");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_INVITE_OPEN);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_MEMBER_INVITE_OPEN,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -60,7 +62,9 @@ describe("create-metrics — UI_MEMBER_INVITE_OPEN", () => {
     const event = $.Event("keydown.createMember", { key: "Enter" });
     $("#memberBtnCreate").trigger(event);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MEMBER_INVITE_OPEN);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_MEMBER_INVITE_OPEN,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

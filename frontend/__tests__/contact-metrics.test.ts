@@ -68,7 +68,7 @@ describe("contact-form metrics — UI_CONTACT_SUBMIT", () => {
     } as unknown as JQuery.TriggeredEvent;
     handleContactSubmit(fakeEvent, $form);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_CONTACT_SUBMIT);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_CONTACT_SUBMIT });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 });

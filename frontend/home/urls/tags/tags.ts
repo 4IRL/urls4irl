@@ -68,7 +68,8 @@ export function setFocusEventListenersOnCreateURLTagInput(
         switch (keyupEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
-            emit(UI_EVENTS.UI_FORM_SUBMIT, {
+            emit({
+              event: UI_EVENTS.UI_FORM_SUBMIT,
               form: "tag_create",
               trigger: "enter_key",
             });
@@ -76,7 +77,8 @@ export function setFocusEventListenersOnCreateURLTagInput(
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
-            emit(UI_EVENTS.UI_FORM_CANCEL, {
+            emit({
+              event: UI_EVENTS.UI_FORM_CANCEL,
               form: "tag_create",
               trigger: "escape_key",
             });

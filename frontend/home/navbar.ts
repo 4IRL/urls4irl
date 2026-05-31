@@ -25,22 +25,22 @@ function suppressNextNavbarCloseEmit(): void {
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "members" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "members" });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "urls" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "urls" });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "utubs" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "utubs" });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit(UI_EVENTS.UI_MOBILE_NAV, { target: "tags" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "tags" });
     setMobileUIWhenTagDeckSelected();
   });
 
@@ -63,7 +63,7 @@ export function initNavbar(): void {
 }
 
 export function onMobileNavbarOpened(): void {
-  emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN);
+  emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN });
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -87,7 +87,7 @@ export function onMobileNavbarClosed(): void {
   if (_suppressNextNavbarCloseEmit) {
     _suppressNextNavbarCloseEmit = false;
   } else {
-    emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
+    emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE });
   }
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");

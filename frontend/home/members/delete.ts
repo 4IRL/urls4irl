@@ -78,11 +78,11 @@ export function removeMemberShowModal(
 ): void {
   _memberActionConfirmed = false;
   _removeMemberIsCreator = isCreator;
-  emit(
-    isCreator
+  emit({
+    event: isCreator
       ? UI_EVENTS.UI_MEMBER_REMOVE_OPEN
       : UI_EVENTS.UI_MEMBER_LEAVE_OPEN,
-  );
+  });
 
   const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
@@ -112,22 +112,22 @@ export function removeMemberShowModal(
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       _memberActionConfirmed = true;
-      emit(
-        isCreator
+      emit({
+        event: isCreator
           ? UI_EVENTS.UI_MEMBER_REMOVE_CONFIRM
           : UI_EVENTS.UI_MEMBER_LEAVE_CONFIRM,
-      );
+      });
       removeMember(memberID, isCreator, utubID);
     })
     .text(buttonTextSubmit);
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.memberAction", function () {
     if (!_memberActionConfirmed) {
-      emit(
-        _removeMemberIsCreator
+      emit({
+        event: _removeMemberIsCreator
           ? UI_EVENTS.UI_MEMBER_REMOVE_CANCEL
           : UI_EVENTS.UI_MEMBER_LEAVE_CANCEL,
-      );
+      });
     }
   });
 

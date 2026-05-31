@@ -73,7 +73,8 @@ export function createAccessLinkBtn(url: UtubUrlItem): JQuery<HTMLElement> {
     .onExact("click", function (this: HTMLElement) {
       const tooltip = bootstrap.Tooltip.getInstance(this);
       if (tooltip) tooltip.hide();
-      emit(UI_EVENTS.UI_URL_ACCESS, {
+      emit({
+        event: UI_EVENTS.UI_URL_ACCESS,
         trigger: "main_button",
         search_active: isURLSearchActive() ? "true" : "false",
         active_tag_count: getActiveTagCount(),

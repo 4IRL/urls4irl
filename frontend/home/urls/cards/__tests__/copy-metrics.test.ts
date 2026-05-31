@@ -58,7 +58,8 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     await copyURLString("https://example.com", urlBtnCopy);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_COPY, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_COPY,
       result: "success",
     });
   });
@@ -75,7 +76,8 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     await copyURLString("https://example.com", urlBtnCopy);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_COPY, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_COPY,
       result: "failure",
     });
   });
@@ -92,7 +94,8 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     await copyURLString("https://example.com", urlBtnCopy);
 
-    expect(emit).not.toHaveBeenCalledWith(UI_EVENTS.UI_URL_COPY, {
+    expect(emit).not.toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_COPY,
       result: "success",
     });
   });

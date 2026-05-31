@@ -118,7 +118,7 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
     initLoginForm($modal);
     $modal.find("#submit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_LOGIN_SUBMIT);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_LOGIN_SUBMIT });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
@@ -138,7 +138,8 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: "login",
     });
   });

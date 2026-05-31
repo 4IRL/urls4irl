@@ -99,7 +99,7 @@ describe("create metrics — UI_URL_CREATE_OPEN", () => {
 
     createURLShowInput(1);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_CREATE_OPEN);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_URL_CREATE_OPEN });
   });
 
   it("emits once per call", async () => {
@@ -142,7 +142,8 @@ describe("create metrics — UI_VALIDATION_ERROR (url_create sad path)", () => {
 
     createURL($("#urlTitleCreate"), $("#urlStringCreate"), UTUB_ID);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: "url_create",
     });
     expect(emit).toHaveBeenCalledTimes(1);

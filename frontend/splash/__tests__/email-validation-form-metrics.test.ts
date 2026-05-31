@@ -59,7 +59,8 @@ describe("email-validation-form metrics — UI_EMAIL_VALIDATION_SUBMIT", () => {
     initEmailValidationForm($modal, SKIP_INITIAL_EMAIL);
     $modal.find("#submit").trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
       trigger: "manual_click",
     });
   });
@@ -73,7 +74,8 @@ describe("email-validation-form metrics — UI_EMAIL_VALIDATION_SUBMIT", () => {
     initEmailValidationForm($modal, SEND_INITIAL_EMAIL);
     $modal.trigger("shown.bs.modal");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
       trigger: "auto_after_register",
     });
   });
@@ -105,7 +107,8 @@ describe("email-validation-form metrics — UI_VALIDATION_ERROR", () => {
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: "email_validation",
     });
   });

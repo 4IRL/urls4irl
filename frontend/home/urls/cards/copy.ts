@@ -10,7 +10,7 @@ export async function copyURLString(
   const urlBtnCopyTooltip = bootstrap.Tooltip.getOrCreateInstance(urlBtnCopy);
   try {
     await navigator.clipboard.writeText(url);
-    emit(UI_EVENTS.UI_URL_COPY, { result: "success" });
+    emit({ event: UI_EVENTS.UI_URL_COPY, result: "success" });
 
     urlBtnCopyTooltip.setContent({
       ".tooltip-inner": `${APP_CONFIG.strings.COPIED_URL_TOOLTIP}`,
@@ -28,7 +28,7 @@ export async function copyURLString(
       }, 200);
     }, 1500);
   } catch {
-    emit(UI_EVENTS.UI_URL_COPY, { result: "failure" });
+    emit({ event: UI_EVENTS.UI_URL_COPY, result: "failure" });
     urlBtnCopyTooltip.setContent({
       ".tooltip-inner": `${APP_CONFIG.strings.COPIED_URL_FAILURE_TOOLIP}`,
     });

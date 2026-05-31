@@ -87,7 +87,7 @@ export function setURLSearchEventListener(): void {
   const searchInput = $("#URLContentSearch");
 
   searchIcon.offAndOnExact("click.urlSearchInputShow", function () {
-    recordUIEvent(UI_EVENTS.UI_SEARCH_OPEN, { target: "urls" });
+    recordUIEvent({ event: UI_EVENTS.UI_SEARCH_OPEN, target: "urls" });
     wrapper.addClass("visible-flex").removeClass("hidden");
     $("#URLDeckSubheaderCreateDescription").addClass("hidden");
     $("#URLDeckNoDescription").hideClass();
@@ -152,7 +152,7 @@ export function setURLSearchEventListener(): void {
 
 export function closeURLSearchAndEraseInput(): void {
   if ($("#SearchURLWrap").hasClass("visible-flex")) {
-    recordUIEvent(UI_EVENTS.UI_SEARCH_CLOSE, { target: "urls" });
+    recordUIEvent({ event: UI_EVENTS.UI_SEARCH_CLOSE, target: "urls" });
   }
   if (searchDebounceTimer !== null) {
     clearTimeout(searchDebounceTimer);

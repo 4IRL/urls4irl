@@ -37,7 +37,8 @@ describe("corner-access metrics — UI_URL_ACCESS { trigger: corner_button }", (
     $(document.body).append(btn);
     btn.trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "corner_button",
       search_active: "false",
       active_tag_count: 0,
@@ -56,7 +57,8 @@ describe("corner-access metrics — UI_URL_ACCESS { trigger: corner_button }", (
     $(document.body).append(btn);
     btn.trigger("click");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_ACCESS, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "corner_button",
       search_active: "true",
       active_tag_count: 2,

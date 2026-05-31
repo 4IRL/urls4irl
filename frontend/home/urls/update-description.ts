@@ -48,7 +48,7 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     descPencilIcon.removeClass("hidden");
 
     function openDescriptionEdit(trigger: "pencil_icon" | "keyboard"): void {
-      emit(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, { trigger });
+      emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger });
       deselectAllURLs();
       updateUTubNameHideInput();
       updateUTubDescriptionShowInput(utubID);
@@ -69,7 +69,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   }
 
   utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
-    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "utub_desc_edit",
       trigger: "button_click",
     });
@@ -77,7 +78,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   });
 
   utubDescriptionCancelBtnUpdate.onExact("click", function () {
-    emit(UI_EVENTS.UI_FORM_CANCEL, {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "utub_desc_edit",
       trigger: "cancel_button",
     });
@@ -97,7 +99,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
           switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed
-              emit(UI_EVENTS.UI_FORM_SUBMIT, {
+              emit({
+                event: UI_EVENTS.UI_FORM_SUBMIT,
                 form: "utub_desc_edit",
                 trigger: "enter_key",
               });
@@ -105,7 +108,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
               break;
             case KEYS.ESCAPE:
               // Handle escape key pressed
-              emit(UI_EVENTS.UI_FORM_CANCEL, {
+              emit({
+                event: UI_EVENTS.UI_FORM_CANCEL,
                 form: "utub_desc_edit",
                 trigger: "escape_key",
               });
@@ -139,7 +143,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       )
         return;
 
-      emit(UI_EVENTS.UI_FORM_CANCEL, {
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
         form: "utub_desc_edit",
         trigger: "outside_click",
       });
@@ -160,7 +165,7 @@ export function showCreateDescriptionButtonAlways(utubID: number): void {
   clickToCreateDesc.enableTab();
 
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
-    emit(UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, { trigger: "create_button" });
+    emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger: "create_button" });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0 width-0");

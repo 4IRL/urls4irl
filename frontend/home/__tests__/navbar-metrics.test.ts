@@ -56,7 +56,9 @@ describe("navbar metrics emitters", () => {
       onMobileNavbarOpened();
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN);
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN,
+      });
     });
   });
 
@@ -67,7 +69,9 @@ describe("navbar metrics emitters", () => {
       onMobileNavbarClosed();
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+      });
     });
 
     it("suppresses the next close emit when a section button was clicked first", async () => {
@@ -93,7 +97,9 @@ describe("navbar metrics emitters", () => {
       onMobileNavbarClosed();
 
       expect(emit).toHaveBeenCalledTimes(1);
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE);
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+      });
     });
   });
 
@@ -104,7 +110,8 @@ describe("navbar metrics emitters", () => {
 
       $("button#toMembers").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_MOBILE_NAV,
         target: "members",
       });
     });
@@ -115,7 +122,8 @@ describe("navbar metrics emitters", () => {
 
       $("button#toURLs").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_MOBILE_NAV,
         target: "urls",
       });
     });
@@ -126,7 +134,8 @@ describe("navbar metrics emitters", () => {
 
       $("button#toUTubs").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_MOBILE_NAV,
         target: "utubs",
       });
     });
@@ -137,7 +146,8 @@ describe("navbar metrics emitters", () => {
 
       $("button#toTags").trigger("click");
 
-      expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_MOBILE_NAV, {
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_MOBILE_NAV,
         target: "tags",
       });
     });
@@ -151,15 +161,17 @@ describe("navbar metrics emitters", () => {
 
       const calls = (emit as ReturnType<typeof vi.fn>).mock.calls;
       const mobileNavCalls = calls.filter(
-        (call) => call[0] === UI_EVENTS.UI_MOBILE_NAV,
+        (call) =>
+          (call[0] as { event?: string }).event === UI_EVENTS.UI_MOBILE_NAV,
       );
       const closeCalls = calls.filter(
-        (call) => call[0] === UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+        (call) =>
+          (call[0] as { event?: string }).event ===
+          UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
       );
       expect(mobileNavCalls).toHaveLength(1);
       expect(mobileNavCalls[0]).toEqual([
-        UI_EVENTS.UI_MOBILE_NAV,
-        { target: "tags" },
+        { event: UI_EVENTS.UI_MOBILE_NAV, target: "tags" },
       ]);
       expect(closeCalls).toHaveLength(0);
     });

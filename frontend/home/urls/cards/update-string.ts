@@ -53,7 +53,7 @@ export function showUpdateURLStringForm(
   urlCard: JQuery,
   urlStringBtnUpdate: JQuery,
 ): void {
-  emit(UI_EVENTS.UI_URL_STRING_EDIT_OPEN);
+  emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
   urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
@@ -196,7 +196,7 @@ export async function updateURL(
     }
 
     if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
-      emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "url_string_edit" });
+      emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "url_string_edit" });
       displayUpdateURLErrors(
         "urlString",
         APP_CONFIG.strings.INVALID_URL,
@@ -268,7 +268,8 @@ function updateURLSuccess(
   // at click time so values reflect the deck state at the moment the user
   // activates the rebound button — not at updateURLSuccess time.
   urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
-    emit(UI_EVENTS.UI_URL_ACCESS, {
+    emit({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "main_button",
       search_active: isURLSearchActive() ? "true" : "false",
       active_tag_count: getActiveTagCount(),
@@ -277,7 +278,8 @@ function updateURLSuccess(
   });
 
   urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
-    emit(UI_EVENTS.UI_URL_ACCESS, {
+    emit({
+      event: UI_EVENTS.UI_URL_ACCESS,
       trigger: "corner_button",
       search_active: isURLSearchActive() ? "true" : "false",
       active_tag_count: getActiveTagCount(),

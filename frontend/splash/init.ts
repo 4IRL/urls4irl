@@ -85,7 +85,7 @@ function targetFromSelector(
 
 export function switchModal($fromModal: JQuery, toSelector: string): void {
   const target = targetFromSelector(toSelector);
-  if (target !== null) emit(UI_EVENTS.UI_AUTH_FORM_SWITCH, { target });
+  if (target !== null) emit({ event: UI_EVENTS.UI_AUTH_FORM_SWITCH, target });
 
   const fromModal = bootstrap.Modal.getInstance($fromModal[0]);
   if (fromModal) {
@@ -99,12 +99,12 @@ export function switchModal($fromModal: JQuery, toSelector: string): void {
 }
 
 export function loginModalOpener(): void {
-  emit(UI_EVENTS.UI_AUTH_MODAL_OPEN, { form: "login" });
+  emit({ event: UI_EVENTS.UI_AUTH_MODAL_OPEN, form: "login" });
   bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
 export function registerModalOpener(): void {
-  emit(UI_EVENTS.UI_AUTH_MODAL_OPEN, { form: "register" });
+  emit({ event: UI_EVENTS.UI_AUTH_MODAL_OPEN, form: "register" });
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 

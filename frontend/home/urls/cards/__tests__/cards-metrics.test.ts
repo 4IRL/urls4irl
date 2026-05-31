@@ -59,7 +59,8 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
     const enterEvent = $.Event("keyup.focusURLCard7", { key: "Enter" });
     $(document).trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_CARD_CLICK, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_CARD_CLICK,
       search_active: "false",
       active_tag_count: 0,
     });
@@ -94,7 +95,8 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
     const enterEvent = $.Event("keyup.focusURLCard7", { key: "Enter" });
     $(document).trigger(enterEvent);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_CARD_CLICK, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_CARD_CLICK,
       search_active: "true",
       active_tag_count: 2,
     });
@@ -132,7 +134,8 @@ describe("cards metrics — url_create form via newURLInputAddEventListeners", (
 
     $("#urlSubmitBtnCreate").trigger("click.createURL");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       form: "url_create",
       trigger: "button_click",
     });
@@ -146,7 +149,8 @@ describe("cards metrics — url_create form via newURLInputAddEventListeners", (
 
     $("#urlCancelBtnCreate").trigger("click.createURL");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_CANCEL,
       form: "url_create",
       trigger: "cancel_button",
     });

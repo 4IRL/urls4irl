@@ -72,7 +72,7 @@ describe("create metrics — UI_UTUB_CREATE_OPEN", () => {
     setCreateUTubEventListeners();
     $("#utubBtnCreate").trigger("click.createUTub");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_UTUB_CREATE_OPEN);
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 

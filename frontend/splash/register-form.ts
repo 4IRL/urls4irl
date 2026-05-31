@@ -35,7 +35,7 @@ export function initRegisterForm($modal: JQuery): void {
 
 function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
-  emit(UI_EVENTS.UI_REGISTER_SUBMIT);
+  emit({ event: UI_EVENTS.UI_REGISTER_SUBMIT });
   $modal.find("#submit").attr("disabled", "disabled");
 
   const username: string = String($modal.find("#username").val() ?? "");
@@ -101,7 +101,7 @@ function handleRegisterFailure(
 
   if ("errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as RegisterError;
-    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "register" });
+    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "register" });
     switch (xhr.status) {
       case 400: {
         handleImproperFormErrors($modal, errorJson);

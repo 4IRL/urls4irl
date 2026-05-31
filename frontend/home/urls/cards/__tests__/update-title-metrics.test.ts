@@ -70,7 +70,9 @@ describe("update-title metrics — UI_URL_TITLE_EDIT_OPEN", () => {
     );
     showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard);
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_URL_TITLE_EDIT_OPEN);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN,
+    });
   });
 
   it("emits exactly once per call", async () => {
@@ -124,19 +126,19 @@ describe("url-title metrics — url_title_edit unchanged value", () => {
     // Wait for the async updateURLTitle to complete its unchanged-value short-circuit
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
       trigger: "button_click",
       form: "url_title_edit",
     });
     expect(
-      vi
-        .mocked(emit)
-        .mock.calls.filter(
-          (call) =>
-            call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
-            (call as unknown as [string, { form?: string } | undefined])[1]
-              ?.form === "url_title_edit",
-        ),
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string; form?: string };
+        return (
+          args.event === UI_EVENTS.UI_FORM_SUBMIT &&
+          args.form === "url_title_edit"
+        );
+      }),
     ).toHaveLength(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });

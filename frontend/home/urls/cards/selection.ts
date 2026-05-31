@@ -115,7 +115,8 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")
         return;
 
-      emit(UI_EVENTS.UI_URL_CARD_CLICK, {
+      emit({
+        event: UI_EVENTS.UI_URL_CARD_CLICK,
         search_active: isURLSearchActive() ? "true" : "false",
         active_tag_count: getActiveTagCount(),
       });

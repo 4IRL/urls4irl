@@ -61,7 +61,9 @@ describe("reset-password-form metrics — UI_RESET_PASSWORD_SUBMIT", () => {
     initResetPasswordForm($modal);
     $modal.find("form").trigger("submit");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_RESET_PASSWORD_SUBMIT);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_RESET_PASSWORD_SUBMIT,
+    });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 });
@@ -92,7 +94,8 @@ describe("reset-password-form metrics — UI_VALIDATION_ERROR", () => {
     };
     mockDeferred.reject(fakeXhr, "error", "Bad Request");
 
-    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: "reset_password",
     });
   });

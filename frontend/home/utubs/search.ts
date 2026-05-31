@@ -62,7 +62,7 @@ export function setUTubSelectorSearchEventListener(): void {
     .offAndOn("focus.searchInputEsc", function () {
       if (!_utubSearchOpen) {
         _utubSearchOpen = true;
-        emit(UI_EVENTS.UI_SEARCH_OPEN, { target: "utubs" });
+        emit({ event: UI_EVENTS.UI_SEARCH_OPEN, target: "utubs" });
       }
       searchInput.offAndOn(
         "keydown.searchInputEsc",
@@ -121,7 +121,7 @@ export function setUTubSelectorSearchEventListener(): void {
 
 export function resetUTubSearch(): void {
   if (_utubSearchOpen) {
-    emit(UI_EVENTS.UI_SEARCH_CLOSE, { target: "utubs" });
+    emit({ event: UI_EVENTS.UI_SEARCH_CLOSE, target: "utubs" });
     _utubSearchOpen = false;
   }
   const searchInput = $("#UTubNameSearch");

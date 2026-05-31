@@ -50,7 +50,8 @@ export function bindCreateURLFocusEventListeners(
     switch (event.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
-        emit(UI_EVENTS.UI_FORM_SUBMIT, {
+        emit({
+          event: UI_EVENTS.UI_FORM_SUBMIT,
           form: "url_create",
           trigger: "enter_key",
         });
@@ -58,7 +59,8 @@ export function bindCreateURLFocusEventListeners(
         break;
       case KEYS.ESCAPE:
         // Handle escape key pressed
-        emit(UI_EVENTS.UI_FORM_CANCEL, {
+        emit({
+          event: UI_EVENTS.UI_FORM_CANCEL,
           form: "url_create",
           trigger: "escape_key",
         });
@@ -94,7 +96,7 @@ export function createURLHideInput(): void {
 
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
-  emit(UI_EVENTS.UI_URL_CREATE_OPEN);
+  emit({ event: UI_EVENTS.UI_URL_CREATE_OPEN });
   if (!getNumOfURLs()) {
     hideURLsEmptyState();
   }
@@ -140,7 +142,7 @@ export function createURL(
   );
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
-    emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "url_create" });
+    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "url_create" });
     createURLShowFormErrors({
       urlString: [APP_CONFIG.strings.INVALID_URL],
     });

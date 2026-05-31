@@ -83,7 +83,8 @@ function setupUTubHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#UTubDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
-    emit(willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE, {
+    emit({
+      event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
       deck: "utubs",
     });
     if (willExpand) {
@@ -115,7 +116,8 @@ function setupMemberHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#MemberDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
-    emit(willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE, {
+    emit({
+      event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
       deck: "members",
     });
     if (willExpand) {
@@ -150,7 +152,8 @@ function setupTagHeaderForMaximizeMinimize() {
     if (isMobile()) return;
     const caret = $("#TagDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
-    emit(willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE, {
+    emit({
+      event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
       deck: "tags",
     });
     if (willExpand) {

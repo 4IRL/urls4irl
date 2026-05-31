@@ -135,7 +135,8 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   // Avoid reselecting if choosing the same UTub selector
   if (currentlySelected.is($(utubSelector))) return;
 
-  recordUIEvent(UI_EVENTS.UI_UTUB_SELECT, {
+  recordUIEvent({
+    event: UI_EVENTS.UI_UTUB_SELECT,
     search_active: isUTubSearchActive() ? "true" : "false",
   });
 
@@ -244,7 +245,8 @@ function makeUTubRoleIcon(memberRole: string): string {
 
 export function makeUTubSelectableAgainIfMobile(utub: JQuery): void {
   $(utub).offAndOnExact("click.selectUTubMobile", function () {
-    recordUIEvent(UI_EVENTS.UI_UTUB_SELECT, {
+    recordUIEvent({
+      event: UI_EVENTS.UI_UTUB_SELECT,
       search_active: isUTubSearchActive() ? "true" : "false",
     });
     getSelectedUTubInfo(parseInt($(this).attr("utubid")!));
