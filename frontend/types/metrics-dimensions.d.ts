@@ -4,47 +4,22 @@
 // Per-event dimension shapes mirrored from the Pydantic `_Dim<Event>` models.
 // Frontend `emit()` narrows its second argument against `UIEventDimensions[E]`
 // so any literal that drifts from the backend Pydantic literal fails to compile.
+//
+// The named `DeviceType`/`HomeForm`/`ValidationForm`/`SearchActive`/`TagScope`
+// aliases are imported from `./metrics-dim-values.js` so the runtime const and
+// the compile-time type share a single source of truth (the const object).
 
-/**
- * Device type emitted with every UI event. Values match the
- * `DeviceType` IntEnum in `backend/metrics/events.py` — see the
- * `DEVICE_TYPE` constant in `./metrics-dim-values.js` for the named
- * mapping (`MOBILE`, `DESKTOP`).
- */
-export type DeviceType = 1 | 2;
-
-export type SearchActive = "true" | "false";
-
-export type TagScope = "utub" | "url";
-
-export type HomeForm =
-  | "url_create"
-  | "url_title_edit"
-  | "url_string_edit"
-  | "utub_create"
-  | "utub_name_edit"
-  | "utub_desc_edit"
-  | "tag_create"
-  | "member_invite";
-
-export type ValidationForm =
-  | "url_create"
-  | "url_title_edit"
-  | "url_string_edit"
-  | "utub_create"
-  | "utub_name_edit"
-  | "utub_desc_edit"
-  | "tag_create"
-  | "member_invite"
-  | "login"
-  | "register"
-  | "forgot_password"
-  | "reset_password"
-  | "email_validation";
+import type {
+  DeviceType,
+  HomeForm,
+  SearchActive,
+  TagScope,
+  ValidationForm,
+} from "./metrics-dim-values.js";
 
 export type DimUtubSelect = {
   device_type: DeviceType;
-  search_active: "true" | "false";
+  search_active: SearchActive;
 };
 
 export type DimDeviceOnly = {
@@ -64,13 +39,13 @@ export type DimUtubDescEditOpen = {
 export type DimUrlAccess = {
   device_type: DeviceType;
   trigger: "corner_button" | "url_text" | "main_button";
-  search_active: "true" | "false";
+  search_active: SearchActive;
   active_tag_count: number;
 };
 
 export type DimUrlCardClick = {
   device_type: DeviceType;
-  search_active: "true" | "false";
+  search_active: SearchActive;
   active_tag_count: number;
 };
 
@@ -91,68 +66,39 @@ export type DimSearchClose = {
 
 export type DimTagCreateOpen = {
   device_type: DeviceType;
-  scope: "utub" | "url";
+  scope: TagScope;
 };
 
 export type DimTagDeleteOpen = {
   device_type: DeviceType;
-  scope: "utub" | "url";
+  scope: TagScope;
 };
 
 export type DimTagDeleteConfirm = {
   device_type: DeviceType;
-  scope: "utub" | "url";
+  scope: TagScope;
 };
 
 export type DimTagDeleteCancel = {
   device_type: DeviceType;
-  scope: "utub" | "url";
+  scope: TagScope;
 };
 
 export type DimFormSubmit = {
   device_type: DeviceType;
   trigger: "enter_key" | "button_click";
-  form:
-    | "url_create"
-    | "url_title_edit"
-    | "url_string_edit"
-    | "utub_create"
-    | "utub_name_edit"
-    | "utub_desc_edit"
-    | "tag_create"
-    | "member_invite";
+  form: HomeForm;
 };
 
 export type DimFormCancel = {
   device_type: DeviceType;
   trigger: "escape_key" | "cancel_button" | "outside_click";
-  form:
-    | "url_create"
-    | "url_title_edit"
-    | "url_string_edit"
-    | "utub_create"
-    | "utub_name_edit"
-    | "utub_desc_edit"
-    | "tag_create"
-    | "member_invite";
+  form: HomeForm;
 };
 
 export type DimValidationError = {
   device_type: DeviceType;
-  form:
-    | "url_create"
-    | "url_title_edit"
-    | "url_string_edit"
-    | "utub_create"
-    | "utub_name_edit"
-    | "utub_desc_edit"
-    | "tag_create"
-    | "member_invite"
-    | "login"
-    | "register"
-    | "forgot_password"
-    | "reset_password"
-    | "email_validation";
+  form: ValidationForm;
 };
 
 export type DimDeckCollapse = {

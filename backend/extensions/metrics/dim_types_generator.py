@@ -16,6 +16,10 @@ _DIMENSIONS_FILE_HEADER = """\
 // Per-event dimension shapes mirrored from the Pydantic `_Dim<Event>` models.
 // Frontend `emit()` narrows its second argument against `UIEventDimensions[E]`
 // so any literal that drifts from the backend Pydantic literal fails to compile.
+//
+// The named `DeviceType`/`HomeForm`/`ValidationForm`/`SearchActive`/`TagScope`
+// aliases are imported from `./metrics-dim-values.js` so the runtime const and
+// the compile-time type share a single source of truth (the const object).
 """
 
 _VALUES_FILE_HEADER = """\
@@ -38,15 +42,15 @@ _EVENTS_FILE_HEADER = """\
 // backend Pydantic validator expects.
 """
 
-# JSDoc emitted above the named `DeviceType` alias in `metrics-dimensions.d.ts`.
-# Points readers to the runtime constants module so they can resolve magic
-# numbers (1/2) back to the named MOBILE/DESKTOP enum entries.
+# JSDoc emitted above the `DEVICE_TYPE` runtime const in `metrics-dim-values.ts`.
+# Points readers to the backend IntEnum that defines the int values so the
+# named mapping (`MOBILE`, `DESKTOP`) can be cross-referenced.
 _DEVICE_TYPE_JSDOC = """\
 /**
  * Device type emitted with every UI event. Values match the
- * `DeviceType` IntEnum in `backend/metrics/events.py` — see the
- * `DEVICE_TYPE` constant in `./metrics-dim-values.js` for the named
- * mapping (`MOBILE`, `DESKTOP`).
+ * `DeviceType` IntEnum in `backend/metrics/events.py`. The derived
+ * `DeviceType` type below makes this const the single source of
+ * truth for both the runtime values and the compile-time type.
  */"""
 
 # Named module-level Literal aliases declared in dimension_models. Each pairs
@@ -59,10 +63,35 @@ _NAMED_LITERAL_ALIASES: tuple[tuple[str, str], ...] = (
 )
 
 
+def _named_alias_annotations() -> dict[int, str]:
+    """Map ``id(alias)`` -> alias_name for every named Pydantic Literal alias.
+
+    Identity-keyed so callers can detect when a Pydantic field's annotation
+    IS the named module-level alias (e.g. ``form: HomeForm``) and emit the
+    alias name instead of inlining the literal union. Pydantic preserves
+    identity for typing-alias annotations, so ``finfo.annotation is HomeForm``
+    holds.
+    """
+    dimension_module = importlib.import_module("backend.metrics.dimension_models")
+    identity_to_name: dict[int, str] = {}
+    for alias_name, _constant_name in _NAMED_LITERAL_ALIASES:
+        alias_annotation = getattr(dimension_module, alias_name)
+        identity_to_name[id(alias_annotation)] = alias_name
+    return identity_to_name
+
+
 def _ts_for_annotation(annotation: object) -> str:
     """Map a Pydantic field annotation to a TypeScript type expression."""
     if get_origin(annotation) is Annotated:
         annotation = get_args(annotation)[0]
+    # Detect named Pydantic Literal aliases by identity BEFORE the Literal
+    # branch fires, so e.g. `form: HomeForm` emits `HomeForm` instead of
+    # inlining the eight-member literal union. The named aliases are imported
+    # from `./metrics-dim-values.js` at the top of the dim-types file.
+    named_aliases = _named_alias_annotations()
+    alias_name = named_aliases.get(id(annotation))
+    if alias_name is not None:
+        return alias_name
     origin = get_origin(annotation)
     if origin is Literal:
         members = get_args(annotation)
@@ -76,8 +105,8 @@ def _ts_for_annotation(annotation: object) -> str:
     if isinstance(annotation, type) and issubclass(annotation, IntEnum):
         # Return the IntEnum class name so callers reference a named TS alias
         # (e.g. `DeviceType`) instead of an opaque inline literal union like
-        # `1 | 2`. The named alias is emitted once at the top of the dim-types
-        # file (see `generate_dim_types_ts`).
+        # `1 | 2`. The named alias lives in `./metrics-dim-values.js` and is
+        # imported at the top of the dim-types file.
         return annotation.__name__
     if annotation is int:
         return "number"
@@ -105,11 +134,6 @@ def _emit_class_type(model: type[BaseModel]) -> str:
     return "\n".join(lines)
 
 
-def _emit_named_literal_alias(alias_name: str, annotation: object) -> str:
-    ts_type = _ts_for_annotation(annotation)
-    return f"export type {alias_name} = {ts_type};"
-
-
 def generate_dim_types_ts() -> str:
     """Render the TS source for per-event dim types + the UIEventDimensions map.
 
@@ -119,9 +143,11 @@ def generate_dim_types_ts() -> str:
     final `UIEventDimensions` map names every UI `EventName` so the TS
     compiler enforces exhaustive coverage at the consumer.
 
-    Also emits sibling `export type` aliases for each named Pydantic Literal
-    alias (`SearchActive`, `TagScope`, `HomeForm`, `ValidationForm`) so the
-    runtime-constants module can import them for `satisfies` constraints.
+    The `DeviceType` IntEnum and named Pydantic Literal aliases (`HomeForm`,
+    `ValidationForm`, `SearchActive`, `TagScope`) live in
+    `./metrics-dim-values.js` — derived directly from each runtime const via
+    `(typeof CONST)[keyof typeof CONST]`. They are imported here so dim-class
+    field annotations like `form: HomeForm` resolve to the named alias.
     """
     seen_classes: dict[type[BaseModel], None] = {}
     for event_name, model in DIMENSION_MODELS.items():
@@ -133,21 +159,19 @@ def generate_dim_types_ts() -> str:
 
     parts: list[str] = [_DIMENSIONS_FILE_HEADER]
 
-    # Named `DeviceType` alias — emitted once so every dim model can reference
-    # it instead of inlining the literal union (`1 | 2`). The IntEnum's int
-    # values define the alias; `metrics-dim-values.ts` ships the matching
-    # named constants (`MOBILE`/`DESKTOP`).
-    device_type_values = sorted({int(member.value) for member in DeviceType})
-    device_type_union = " | ".join(str(value) for value in device_type_values)
+    # Import the named types from the runtime-constants file so dim-class
+    # fields (`device_type: DeviceType`, `form: HomeForm`, etc.) resolve to a
+    # single source of truth — the `as const` object — instead of being
+    # inlined twice. Alphabetized per project style.
+    imported_alias_names = sorted(
+        [DeviceType.__name__]
+        + [alias_name for alias_name, _constant_name in _NAMED_LITERAL_ALIASES]
+    )
     parts.append("")
-    parts.append(_DEVICE_TYPE_JSDOC)
-    parts.append(f"export type {DeviceType.__name__} = {device_type_union};")
-
-    dimension_module = importlib.import_module("backend.metrics.dimension_models")
-    for alias_name, _constant_name in _NAMED_LITERAL_ALIASES:
-        alias_annotation = getattr(dimension_module, alias_name)
-        parts.append("")
-        parts.append(_emit_named_literal_alias(alias_name, alias_annotation))
+    parts.append("import type {")
+    for alias_name in imported_alias_names:
+        parts.append(f"  {alias_name},")
+    parts.append('} from "./metrics-dim-values.js";')
 
     for model in seen_classes:
         parts.append("")
@@ -199,6 +223,20 @@ def _format_const_object(
     return "\n".join(body_lines)
 
 
+def _emit_derived_type(alias_name: str, constant_name: str) -> str:
+    """Return ``export type Alias = (typeof CONST)[keyof typeof CONST];``.
+
+    Derives the type from the const object so the const is the single source
+    of truth for both runtime values and the compile-time type. Any drift
+    between the two becomes impossible — TS infers the type from the literal
+    const values directly.
+    """
+    return (
+        f"export type {alias_name} = "
+        f"(typeof {constant_name})[keyof typeof {constant_name}];"
+    )
+
+
 def _event_name_to_field_prefix(class_name: str) -> str:
     """Convert ``_DimFormSubmit`` -> ``FORM_SUBMIT`` for inline-field constant naming."""
     bare = class_name.lstrip("_")
@@ -225,6 +263,11 @@ def generate_dim_values_ts() -> str:
         subsequent names as aliases (so `DECK_EXPAND_DECK = DECK_COLLAPSE_DECK`).
       * The `DeviceType` IntEnum — keyed `DEVICE_TYPE` with the int values.
 
+    For the `DeviceType` IntEnum and each named Literal alias, also emits a
+    derived ``export type Alias = (typeof CONST)[keyof typeof CONST];`` so the
+    const object is the single source of truth for both runtime values and the
+    compile-time type. The dim-types file imports these named types from here.
+
     Skips fields whose annotation is not a Literal/IntEnum (e.g. `int`, `bool`,
     `str`) — there is no meaningful constant to emit for arbitrary numbers.
     """
@@ -232,13 +275,10 @@ def generate_dim_values_ts() -> str:
 
     parts: list[str] = [_VALUES_FILE_HEADER]
 
-    # Import all named-alias types so the `satisfies Record<string, Alias>` clauses
-    # narrow the const-object values to the corresponding Pydantic Literal alias.
-    parts.append("")
-    alias_imports = ", ".join(name for name, _ in _NAMED_LITERAL_ALIASES)
-    parts.append(f'import type {{ {alias_imports} }} from "./metrics-dimensions.js";')
-
-    # Named module-level Literal aliases — emit one const per alias.
+    # Named module-level Literal aliases — emit one const + derived type per
+    # alias. The derived type makes the const the single source of truth, so
+    # the `satisfies Record<string, X>` guard is no longer needed: any drift
+    # between const and type is structurally impossible.
     for alias_name, constant_name in _NAMED_LITERAL_ALIASES:
         alias_annotation = getattr(dimension_module, alias_name)
         members = _literal_members(alias_annotation)
@@ -256,17 +296,24 @@ def generate_dim_values_ts() -> str:
             _format_const_object(
                 constant_name,
                 string_members,
-                satisfies_clause=f"Record<string, {alias_name}>",
+                satisfies_clause=None,
             )
         )
+        parts.append("")
+        parts.append(_emit_derived_type(alias_name, constant_name))
 
-    # DeviceType IntEnum.
+    # DeviceType IntEnum + derived type. The derived `DeviceType` type takes
+    # its values from the const, so the named MOBILE/DESKTOP entries and the
+    # `1 | 2` compile-time literal can never disagree.
     parts.append("")
+    parts.append(_DEVICE_TYPE_JSDOC)
     device_lines = ["export const DEVICE_TYPE = {"]
     for member in DeviceType:
         device_lines.append(f"  {member.name}: {int(member.value)},")
     device_lines.append("} as const;")
     parts.append("\n".join(device_lines))
+    parts.append("")
+    parts.append(_emit_derived_type(DeviceType.__name__, "DEVICE_TYPE"))
 
     # Inline Literal fields on `_Dim<Event>` UI models. Collect each
     # (class_name, field_name, members) where `members` is the Literal tuple

@@ -7,22 +7,19 @@
 // value, locked to Pydantic via codegen, available at both compile time AND
 // runtime for query-service and dashboard consumption.
 
-import type {
-  SearchActive,
-  TagScope,
-  HomeForm,
-  ValidationForm,
-} from "./metrics-dimensions.js";
-
 export const SEARCH_ACTIVE = {
   TRUE: "true",
   FALSE: "false",
-} as const satisfies Record<string, SearchActive>;
+} as const;
+
+export type SearchActive = (typeof SEARCH_ACTIVE)[keyof typeof SEARCH_ACTIVE];
 
 export const TAG_SCOPE = {
   UTUB: "utub",
   URL: "url",
-} as const satisfies Record<string, TagScope>;
+} as const;
+
+export type TagScope = (typeof TAG_SCOPE)[keyof typeof TAG_SCOPE];
 
 export const HOME_FORM = {
   URL_CREATE: "url_create",
@@ -33,7 +30,9 @@ export const HOME_FORM = {
   UTUB_DESC_EDIT: "utub_desc_edit",
   TAG_CREATE: "tag_create",
   MEMBER_INVITE: "member_invite",
-} as const satisfies Record<string, HomeForm>;
+} as const;
+
+export type HomeForm = (typeof HOME_FORM)[keyof typeof HOME_FORM];
 
 export const VALIDATION_FORM = {
   URL_CREATE: "url_create",
@@ -49,12 +48,23 @@ export const VALIDATION_FORM = {
   FORGOT_PASSWORD: "forgot_password",
   RESET_PASSWORD: "reset_password",
   EMAIL_VALIDATION: "email_validation",
-} as const satisfies Record<string, ValidationForm>;
+} as const;
 
+export type ValidationForm =
+  (typeof VALIDATION_FORM)[keyof typeof VALIDATION_FORM];
+
+/**
+ * Device type emitted with every UI event. Values match the
+ * `DeviceType` IntEnum in `backend/metrics/events.py`. The derived
+ * `DeviceType` type below makes this const the single source of
+ * truth for both the runtime values and the compile-time type.
+ */
 export const DEVICE_TYPE = {
   MOBILE: 1,
   DESKTOP: 2,
 } as const;
+
+export type DeviceType = (typeof DEVICE_TYPE)[keyof typeof DEVICE_TYPE];
 
 export const AUTH_FORM_SWITCH_TARGET = {
   LOGIN: "login",
