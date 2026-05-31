@@ -7,11 +7,7 @@ import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../lib/metrics-events.js";
-import {
-  emitFormCancel,
-  emitFormSubmit,
-  highlightInput,
-} from "../btns-forms.js";
+import { highlightInput } from "../btns-forms.js";
 import {
   getAllAccessibleUTubNames,
   getNumOfUTubs,
@@ -50,12 +46,18 @@ function createNewUTubEventListeners(): void {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
   utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
-    emitFormSubmit("utub_create", "button_click");
+    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "utub_create",
+      trigger: "button_click",
+    });
     checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
   });
 
   utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
-    emitFormCancel("utub_create", "cancel_button");
+    emit(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "utub_create",
+      trigger: "cancel_button",
+    });
     createUTubHideInput();
   });
 
@@ -105,12 +107,18 @@ function handleOnFocusEventListenersForCreateUTub(
   switch (event.key) {
     case KEYS.ENTER:
       // Handle enter key pressed
-      emitFormSubmit("utub_create", "enter_key");
+      emit(UI_EVENTS.UI_FORM_SUBMIT, {
+        form: "utub_create",
+        trigger: "enter_key",
+      });
       checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
       break;
     case KEYS.ESCAPE:
       // Handle escape key pressed
-      emitFormCancel("utub_create", "escape_key");
+      emit(UI_EVENTS.UI_FORM_CANCEL, {
+        form: "utub_create",
+        trigger: "escape_key",
+      });
       $("#utubNameCreate").trigger("blur");
       $("#utubDescriptionCreate").trigger("blur");
       createUTubHideInput();

@@ -12,8 +12,6 @@ import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
 import {
-  emitFormCancel,
-  emitFormSubmit,
   makeTextInput,
   makeSubmitButton,
   makeCancelButton,
@@ -97,7 +95,10 @@ function createUpdateURLStringInput(
   );
 
   urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
-    emitFormSubmit("url_string_edit", "button_click");
+    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "url_string_edit",
+      trigger: "button_click",
+    });
     updateURL(urlStringTextInput, urlCard, utubID);
   });
 
@@ -107,7 +108,10 @@ function createUpdateURLStringInput(
   );
 
   urlStringCancelBtnUpdate.onExact("click.updateUrlString", function () {
-    emitFormCancel("url_string_edit", "cancel_button");
+    emit(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "url_string_edit",
+      trigger: "cancel_button",
+    });
     hideAndResetUpdateURLStringForm(urlCard);
   });
 
@@ -130,12 +134,18 @@ function setFocusEventListenersOnUpdateURLStringInput(
         switch (event.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
-            emitFormSubmit("url_string_edit", "enter_key");
+            emit(UI_EVENTS.UI_FORM_SUBMIT, {
+              form: "url_string_edit",
+              trigger: "enter_key",
+            });
             updateURL(urlStringInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
-            emitFormCancel("url_string_edit", "escape_key");
+            emit(UI_EVENTS.UI_FORM_CANCEL, {
+              form: "url_string_edit",
+              trigger: "escape_key",
+            });
             hideAndResetUpdateURLStringForm(urlCard);
             break;
           default:

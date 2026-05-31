@@ -25,7 +25,7 @@ import {
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
 import { isMobile } from "../../mobile.js";
-import { emitValidationError, highlightInput } from "../../btns-forms.js";
+import { highlightInput } from "../../btns-forms.js";
 import {
   disableTagRemovalInURLCard,
   enableTagRemovalInURLCard,
@@ -196,7 +196,7 @@ export async function updateURL(
     }
 
     if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
-      emitValidationError("url_string_edit");
+      emit(UI_EVENTS.UI_VALIDATION_ERROR, { form: "url_string_edit" });
       displayUpdateURLErrors(
         "urlString",
         APP_CONFIG.strings.INVALID_URL,

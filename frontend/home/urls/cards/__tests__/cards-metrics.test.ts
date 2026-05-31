@@ -3,7 +3,6 @@ import {
   newURLInputAddEventListeners,
   setFocusEventListenersOnURLCard,
 } from "../cards.js";
-import { emitFormCancel, emitFormSubmit } from "../../../btns-forms.js";
 import { createURL, createURLHideInput } from "../create.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -21,14 +20,6 @@ vi.mock("../../url-context.js", () => ({
 vi.mock("../selection.js", () => ({
   selectURLCard: vi.fn(),
   setURLCardSelectionEventListener: vi.fn(),
-}));
-
-vi.mock("../../../btns-forms.js", () => ({
-  emitFormSubmit: vi.fn(),
-  emitFormCancel: vi.fn(),
-  emitValidationError: vi.fn(),
-  showInput: vi.fn(),
-  hideInput: vi.fn(),
 }));
 
 vi.mock("../create.js", () => ({
@@ -134,29 +125,31 @@ describe("cards metrics — url_create form via newURLInputAddEventListeners", (
     $("#urlStringCreate").off();
   });
 
-  it("submit button click emits ui_form_submit('url_create', 'button_click')", () => {
+  it("submit button click emits ui_form_submit('url_create', 'button_click')", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
     const urlInputForm = $("#newURLInput");
     newURLInputAddEventListeners(urlInputForm, UTUB_ID);
 
     $("#urlSubmitBtnCreate").trigger("click.createURL");
 
-    expect(vi.mocked(emitFormSubmit)).toHaveBeenCalledWith(
-      "url_create",
-      "button_click",
-    );
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "url_create",
+      trigger: "button_click",
+    });
     expect(vi.mocked(createURL)).toHaveBeenCalledTimes(1);
   });
 
-  it("cancel button click emits ui_form_cancel('url_create', 'cancel_button')", () => {
+  it("cancel button click emits ui_form_cancel('url_create', 'cancel_button')", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
     const urlInputForm = $("#newURLInput");
     newURLInputAddEventListeners(urlInputForm, UTUB_ID);
 
     $("#urlCancelBtnCreate").trigger("click.createURL");
 
-    expect(vi.mocked(emitFormCancel)).toHaveBeenCalledWith(
-      "url_create",
-      "cancel_button",
-    );
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "url_create",
+      trigger: "cancel_button",
+    });
     expect(vi.mocked(createURLHideInput)).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,44 +1,10 @@
-import type {
-  DimFormCancel,
-  DimFormSubmit,
-  DimValidationError,
-} from "../types/metrics-dimensions.d.ts";
-
 import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
-import { emit } from "../lib/metrics-client.js";
-import { UI_EVENTS } from "../lib/metrics-events.js";
 import { isHidden } from "./visibility.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { updateUTubNameHideInput } from "./urls/update-name.js";
 import { updateUTubDescriptionHideInput } from "./urls/update-description.js";
 import { createMemberHideInput } from "./members/create.js";
-
-// `FormName` (home forms only) is the `form` literal from the generated
-// `DimFormSubmit` shape — narrower than `DimValidationError["form"]`, which
-// also accepts splash/contact forms because validation errors fire on every
-// form path. Both literal sets are codegen-derived from
-// `backend/metrics/dimension_models.py::HomeForm` / `ValidationForm` via
-// `make generate-types`, so no hand-mirroring is needed.
-export type FormName = DimFormSubmit["form"];
-
-export function emitFormSubmit(
-  form: FormName,
-  trigger: DimFormSubmit["trigger"],
-): void {
-  emit(UI_EVENTS.UI_FORM_SUBMIT, { trigger, form });
-}
-
-export function emitFormCancel(
-  form: FormName,
-  trigger: DimFormCancel["trigger"],
-): void {
-  emit(UI_EVENTS.UI_FORM_CANCEL, { trigger, form });
-}
-
-export function emitValidationError(form: DimValidationError["form"]): void {
-  emit(UI_EVENTS.UI_VALIDATION_ERROR, { form });
-}
 
 // Handle focus for the text input box
 function handleFocus(event: JQuery.TriggeredEvent): void {

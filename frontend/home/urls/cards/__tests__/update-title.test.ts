@@ -102,10 +102,10 @@ describe("url_title_edit unchanged value", () => {
     const urlTitleInput = urlCard.find(".urlTitleUpdate");
 
     // updateURLTitle's unchanged-value guard short-circuits before ajaxCall is invoked.
-    // The emit-before-early-return convention places emitFormSubmit at the top of the
-    // submit-button click handler in url-title.ts (not inside updateURLTitle itself),
-    // so here we only assert that no AJAX is invoked — the emit is asserted in the
-    // url-title.ts vitest below.
+    // The emit-before-early-return convention places the emit(UI_FORM_SUBMIT) call at the
+    // top of the submit-button click handler in url-title.ts (not inside updateURLTitle
+    // itself), so here we only assert that no AJAX is invoked — the emit is asserted in
+    // the url-title.ts vitest below.
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
 
     await updateURLTitle(urlTitleInput, urlCard, 1);

@@ -1,6 +1,5 @@
 import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createURL, createURLShowInput } from "../create.js";
-import { emitValidationError } from "../../../btns-forms.js";
 import { isValidURL } from "../../validation.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 
@@ -53,12 +52,6 @@ vi.mock("../conflict-handler.js", () => ({
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ urls: [] })),
   setState: vi.fn(),
-}));
-
-vi.mock("../../../btns-forms.js", () => ({
-  emitFormSubmit: vi.fn(),
-  emitFormCancel: vi.fn(),
-  emitValidationError: vi.fn(),
 }));
 
 vi.mock("../../validation.js", () => ({
@@ -142,14 +135,17 @@ describe("create metrics — UI_VALIDATION_ERROR (url_create sad path)", () => {
     document.body.innerHTML = "";
   });
 
-  it("emits ui_validation_error('url_create') when createURL is called with an invalid URL", () => {
-    expect(vi.mocked(emitValidationError)).not.toHaveBeenCalled();
+  it("emits ui_validation_error('url_create') when createURL is called with an invalid URL", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
+    expect(emit).not.toHaveBeenCalled();
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
 
     createURL($("#urlTitleCreate"), $("#urlStringCreate"), UTUB_ID);
 
-    expect(vi.mocked(emitValidationError)).toHaveBeenCalledWith("url_create");
-    expect(vi.mocked(emitValidationError)).toHaveBeenCalledTimes(1);
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_VALIDATION_ERROR, {
+      form: "url_create",
+    });
+    expect(emit).toHaveBeenCalledTimes(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
 });

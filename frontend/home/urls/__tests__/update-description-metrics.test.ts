@@ -5,7 +5,6 @@ import {
 } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
-import { emitFormCancel, emitFormSubmit } from "../../btns-forms.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -46,8 +45,6 @@ vi.mock("../../../store/app-store.js", () => ({
 vi.mock("../../btns-forms.js", () => ({
   showInput: vi.fn(),
   hideInput: vi.fn(),
-  emitFormSubmit: vi.fn(),
-  emitFormCancel: vi.fn(),
 }));
 
 vi.mock("../update-name.js", () => ({
@@ -152,18 +149,24 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     $("#utubDescriptionUpdate").val("Description");
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
     expect(emit).not.toHaveBeenCalled();
-    expect(vi.mocked(emitFormSubmit)).not.toHaveBeenCalled();
 
     $("#utubDescriptionSubmitBtnUpdate").trigger("click");
 
-    expect(vi.mocked(emitFormSubmit)).toHaveBeenCalledWith(
-      "utub_desc_edit",
-      "button_click",
-    );
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "utub_desc_edit",
+      trigger: "button_click",
+    });
     expect(
       vi
-        .mocked(emitFormSubmit)
-        .mock.calls.filter((call) => call[0] === "utub_desc_edit"),
+        .mocked(emit)
+        .mock.calls.filter(
+          (call) =>
+            call[0] === UI_EVENTS.UI_FORM_SUBMIT &&
+            (
+              (call as unknown as [string, { form?: string } | undefined])[1] ??
+              {}
+            ).form === "utub_desc_edit",
+        ),
     ).toHaveLength(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
   });
@@ -178,11 +181,13 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
-  it("emitFormCancel fires with trigger=outside_click when window-click handler triggers cancel", () => {
+  it("emits ui_form_cancel with trigger=outside_click when window-click handler triggers cancel", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+
     // Open the edit form first (rebinds window-click cancel handler).
     setupUpdateUTubDescriptionEventListeners(UTUB_ID);
     $("#UTubDescriptionSubheaderWrap").trigger("click.updateUTubDesc");
-    vi.mocked(emitFormCancel).mockClear();
+    vi.mocked(emit).mockClear();
 
     // Simulate a click outside the editor (e.g. body itself).
     $(window).trigger({
@@ -190,9 +195,9 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       target: document.body,
     } as unknown as JQuery.TriggeredEvent);
 
-    expect(vi.mocked(emitFormCancel)).toHaveBeenCalledWith(
-      "utub_desc_edit",
-      "outside_click",
-    );
+    expect(emit).toHaveBeenCalledWith(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "utub_desc_edit",
+      trigger: "outside_click",
+    });
   });
 });

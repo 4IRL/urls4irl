@@ -6,12 +6,7 @@ import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../lib/metrics-events.js";
-import {
-  emitFormCancel,
-  emitFormSubmit,
-  showInput,
-  hideInput,
-} from "../btns-forms.js";
+import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
@@ -74,12 +69,18 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   }
 
   utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
-    emitFormSubmit("utub_desc_edit", "button_click");
+    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "utub_desc_edit",
+      trigger: "button_click",
+    });
     updateUTubDescription(utubID);
   });
 
   utubDescriptionCancelBtnUpdate.onExact("click", function () {
-    emitFormCancel("utub_desc_edit", "cancel_button");
+    emit(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "utub_desc_edit",
+      trigger: "cancel_button",
+    });
     updateUTubDescriptionHideInput(utubID);
   });
 }
@@ -96,12 +97,18 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
           switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed
-              emitFormSubmit("utub_desc_edit", "enter_key");
+              emit(UI_EVENTS.UI_FORM_SUBMIT, {
+                form: "utub_desc_edit",
+                trigger: "enter_key",
+              });
               updateUTubDescription(utubID);
               break;
             case KEYS.ESCAPE:
               // Handle escape key pressed
-              emitFormCancel("utub_desc_edit", "escape_key");
+              emit(UI_EVENTS.UI_FORM_CANCEL, {
+                form: "utub_desc_edit",
+                trigger: "escape_key",
+              });
               updateUTubDescriptionHideInput(utubID);
               break;
             default:
@@ -132,7 +139,10 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       )
         return;
 
-      emitFormCancel("utub_desc_edit", "outside_click");
+      emit(UI_EVENTS.UI_FORM_CANCEL, {
+        form: "utub_desc_edit",
+        trigger: "outside_click",
+      });
       // Hide UTub description update fields
       updateUTubDescriptionHideInput(utubID);
     },

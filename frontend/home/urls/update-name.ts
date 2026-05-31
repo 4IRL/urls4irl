@@ -13,13 +13,7 @@ import {
   sameNameWarningHideModal,
 } from "../utubs/utils.js";
 import { getState, setState } from "../../store/app-store.js";
-import {
-  emitFormCancel,
-  emitFormSubmit,
-  highlightInput,
-  showInput,
-  hideInput,
-} from "../btns-forms.js";
+import { highlightInput, showInput, hideInput } from "../btns-forms.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
   updateUTubDescriptionHideInput,
@@ -90,7 +84,10 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
 
   utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function () {
-    emitFormSubmit("utub_name_edit", "button_click");
+    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "utub_name_edit",
+      trigger: "button_click",
+    });
     // Skip if update is identical to original
     if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
       updateUTubNameHideInput();
@@ -100,7 +97,10 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   });
 
   utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function () {
-    emitFormCancel("utub_name_edit", "cancel_button");
+    emit(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "utub_name_edit",
+      trigger: "cancel_button",
+    });
     updateUTubNameHideInput();
   });
 }
@@ -115,7 +115,10 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
         switch (keyEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
-            emitFormSubmit("utub_name_edit", "enter_key");
+            emit(UI_EVENTS.UI_FORM_SUBMIT, {
+              form: "utub_name_edit",
+              trigger: "enter_key",
+            });
             // Skip if update is identical
             if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
               updateUTubNameHideInput();
@@ -125,7 +128,10 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
-            emitFormCancel("utub_name_edit", "escape_key");
+            emit(UI_EVENTS.UI_FORM_CANCEL, {
+              form: "utub_name_edit",
+              trigger: "escape_key",
+            });
             updateUTubNameHideInput();
             break;
           default:
@@ -154,7 +160,10 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
     if ($(windowClickEvent.target).closest("#utubNameCancelBtnUpdate").length)
       return;
 
-    emitFormCancel("utub_name_edit", "outside_click");
+    emit(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "utub_name_edit",
+      trigger: "outside_click",
+    });
     // Hide UTub name update fields
     updateUTubNameHideInput();
   });

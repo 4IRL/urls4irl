@@ -57,8 +57,6 @@ vi.mock("../../btns-forms.js", () => ({
   hideInput: vi.fn(),
   highlightInput: vi.fn(),
   hideInputs: vi.fn(),
-  emitFormSubmit: vi.fn(),
-  emitFormCancel: vi.fn(),
 }));
 
 vi.mock("../search.js", () => ({

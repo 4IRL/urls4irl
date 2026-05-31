@@ -8,8 +8,6 @@ import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import {
-  emitFormCancel,
-  emitFormSubmit,
   makeTextInput,
   makeSubmitButton,
   makeCancelButton,
@@ -83,7 +81,10 @@ export function createTagInputBlock(
   );
 
   urlTagSubmitBtnCreate.onExact("click.createURLTag", function () {
-    emitFormSubmit("tag_create", "button_click");
+    emit(UI_EVENTS.UI_FORM_SUBMIT, {
+      form: "tag_create",
+      trigger: "button_click",
+    });
     createURLTag(urlTagTextInput, urlCard, utubID);
   });
 
@@ -93,7 +94,10 @@ export function createTagInputBlock(
   );
 
   urlTagCancelBtnCreate.onExact("click.createURLTag", function () {
-    emitFormCancel("tag_create", "cancel_button");
+    emit(UI_EVENTS.UI_FORM_CANCEL, {
+      form: "tag_create",
+      trigger: "cancel_button",
+    });
     hideAndResetCreateURLTagForm(urlCard);
   });
 

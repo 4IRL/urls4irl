@@ -34,8 +34,6 @@ vi.mock("../deck.js", () => ({
 
 vi.mock("../../btns-forms.js", () => ({
   highlightInput: vi.fn(),
-  emitFormSubmit: vi.fn(),
-  emitFormCancel: vi.fn(),
 }));
 
 vi.mock("../../../store/app-store.js", () => ({
