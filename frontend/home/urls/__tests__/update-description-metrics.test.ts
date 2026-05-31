@@ -5,6 +5,12 @@ import {
 } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  UTUB_DESC_EDIT_OPEN_TRIGGER,
+} from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -101,7 +107,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
-      trigger: "pencil_icon",
+      trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.PENCIL_ICON,
     });
   });
 
@@ -114,7 +120,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
-      trigger: "keyboard",
+      trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.KEYBOARD,
     });
   });
 
@@ -127,7 +133,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
-      trigger: "keyboard",
+      trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.KEYBOARD,
     });
   });
 
@@ -141,7 +147,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
-      trigger: "create_button",
+      trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.CREATE_BUTTON,
     });
   });
 
@@ -158,8 +164,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "utub_desc_edit",
-      trigger: "button_click",
+      form: HOME_FORM.UTUB_DESC_EDIT,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     expect(
       vi.mocked(emit).mock.calls.filter((call) => {
@@ -199,8 +205,8 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "utub_desc_edit",
-      trigger: "outside_click",
+      form: HOME_FORM.UTUB_DESC_EDIT,
+      trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
     });
   });
 });

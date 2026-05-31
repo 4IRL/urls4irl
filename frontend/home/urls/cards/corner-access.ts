@@ -3,6 +3,10 @@ import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../types/metrics-dim-values.js";
 
 // Icon to visit URL, situated in top right corner of URL card
 export function createGoToURLIcon(urlString: string): JQuery<HTMLElement> {
@@ -35,8 +39,10 @@ export function createGoToURLIcon(urlString: string): JQuery<HTMLElement> {
     .onExact("click", () => {
       emit({
         event: UI_EVENTS.UI_URL_ACCESS,
-        trigger: "corner_button",
-        search_active: isURLSearchActive() ? "true" : "false",
+        trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+        search_active: isURLSearchActive()
+          ? SEARCH_ACTIVE.TRUE
+          : SEARCH_ACTIVE.FALSE,
         active_tag_count: getActiveTagCount(),
       });
       accessLink(urlString);

@@ -1,5 +1,6 @@
 import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { makeUTubSelectableAgainIfMobile, selectUTub } from "../selectors.js";
+import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -58,7 +59,7 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
 
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_UTUB_SELECT,
-        search_active: "false",
+        search_active: SEARCH_ACTIVE.FALSE,
       });
     });
 
@@ -71,7 +72,7 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
 
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_UTUB_SELECT,
-        search_active: "true",
+        search_active: SEARCH_ACTIVE.TRUE,
       });
     });
 
@@ -98,7 +99,7 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_UTUB_SELECT,
-        search_active: "false",
+        search_active: SEARCH_ACTIVE.FALSE,
       });
     });
 
@@ -113,7 +114,7 @@ describe("selectors metrics — UI_UTUB_SELECT", () => {
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_UTUB_SELECT,
-        search_active: "true",
+        search_active: SEARCH_ACTIVE.TRUE,
       });
     });
 

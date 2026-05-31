@@ -11,6 +11,12 @@ import { getState, setState } from "../../store/app-store.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  UTUB_DESC_EDIT_OPEN_TRIGGER,
+} from "../../types/metrics-dim-values.js";
 
 let descEditOpenedViaKeyboard = false;
 
@@ -71,8 +77,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "utub_desc_edit",
-      trigger: "button_click",
+      form: HOME_FORM.UTUB_DESC_EDIT,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     updateUTubDescription(utubID);
   });
@@ -80,8 +86,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   utubDescriptionCancelBtnUpdate.onExact("click", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "utub_desc_edit",
-      trigger: "cancel_button",
+      form: HOME_FORM.UTUB_DESC_EDIT,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     updateUTubDescriptionHideInput(utubID);
   });
@@ -101,8 +107,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
               // Handle enter key pressed
               emit({
                 event: UI_EVENTS.UI_FORM_SUBMIT,
-                form: "utub_desc_edit",
-                trigger: "enter_key",
+                form: HOME_FORM.UTUB_DESC_EDIT,
+                trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
               });
               updateUTubDescription(utubID);
               break;
@@ -110,8 +116,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
               // Handle escape key pressed
               emit({
                 event: UI_EVENTS.UI_FORM_CANCEL,
-                form: "utub_desc_edit",
-                trigger: "escape_key",
+                form: HOME_FORM.UTUB_DESC_EDIT,
+                trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
               });
               updateUTubDescriptionHideInput(utubID);
               break;
@@ -145,8 +151,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
 
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
-        form: "utub_desc_edit",
-        trigger: "outside_click",
+        form: HOME_FORM.UTUB_DESC_EDIT,
+        trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
       });
       // Hide UTub description update fields
       updateUTubDescriptionHideInput(utubID);
@@ -165,7 +171,10 @@ export function showCreateDescriptionButtonAlways(utubID: number): void {
   clickToCreateDesc.enableTab();
 
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
-    emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger: "create_button" });
+    emit({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
+      trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.CREATE_BUTTON,
+    });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0 width-0");

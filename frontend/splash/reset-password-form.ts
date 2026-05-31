@@ -9,6 +9,7 @@ import {
   hideSplashModalAlertBanner,
   handleImproperFormErrors,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type ResetPasswordRequest = Schema<"ResetPasswordRequest">;
 type ResetPasswordSuccess = SuccessResponse<"resetPassword">;
@@ -110,7 +111,10 @@ function handleResetPasswordFailure(
     const errorJson = xhr.responseJSON as ResetPasswordError;
     switch (errorJson.errorCode) {
       case 1:
-        emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "reset_password" });
+        emit({
+          event: UI_EVENTS.UI_VALIDATION_ERROR,
+          form: VALIDATION_FORM.RESET_PASSWORD,
+        });
         $modal.find(".form-control").removeClass("is-invalid");
         $modal.find(".invalid-feedback").remove();
         handleImproperFormErrors($modal, errorJson);

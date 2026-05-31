@@ -16,6 +16,13 @@ import {
   makeSubmitButton,
   makeCancelButton,
 } from "../../btns-forms.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../types/metrics-dim-values.js";
 
 // Element to displayu the URL string
 export function createURLString(urlStringText: string): JQuery<HTMLElement> {
@@ -35,8 +42,10 @@ export function createURLString(urlStringText: string): JQuery<HTMLElement> {
         if ($(event.target).closest(".urlRow").attr("urlSelected") === "true") {
           emit({
             event: UI_EVENTS.UI_URL_ACCESS,
-            trigger: "url_text",
-            search_active: isURLSearchActive() ? "true" : "false",
+            trigger: URL_ACCESS_TRIGGER.URL_TEXT,
+            search_active: isURLSearchActive()
+              ? SEARCH_ACTIVE.TRUE
+              : SEARCH_ACTIVE.FALSE,
             active_tag_count: getActiveTagCount(),
           });
           accessLink(urlStringText);
@@ -98,8 +107,8 @@ function createUpdateURLStringInput(
   urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "url_string_edit",
-      trigger: "button_click",
+      form: HOME_FORM.URL_STRING_EDIT,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     updateURL(urlStringTextInput, urlCard, utubID);
   });
@@ -112,8 +121,8 @@ function createUpdateURLStringInput(
   urlStringCancelBtnUpdate.onExact("click.updateUrlString", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "url_string_edit",
-      trigger: "cancel_button",
+      form: HOME_FORM.URL_STRING_EDIT,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     hideAndResetUpdateURLStringForm(urlCard);
   });
@@ -139,8 +148,8 @@ function setFocusEventListenersOnUpdateURLStringInput(
             // Handle enter key pressed
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,
-              form: "url_string_edit",
-              trigger: "enter_key",
+              form: HOME_FORM.URL_STRING_EDIT,
+              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
             updateURL(urlStringInput, urlCard, utubID);
             break;
@@ -148,8 +157,8 @@ function setFocusEventListenersOnUpdateURLStringInput(
             // Handle escape key pressed
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
-              form: "url_string_edit",
-              trigger: "escape_key",
+              form: HOME_FORM.URL_STRING_EDIT,
+              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             hideAndResetUpdateURLStringForm(urlCard);
             break;

@@ -8,6 +8,7 @@ import {
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenTagDeckSelected,
 } from "./mobile.js";
+import { MOBILE_NAV_TARGET } from "../types/metrics-dim-values.js";
 
 export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
   toggler: null,
@@ -25,22 +26,22 @@ function suppressNextNavbarCloseEmit(): void {
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "members" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.MEMBERS });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "urls" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.URLS });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "utubs" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.UTUBS });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
     suppressNextNavbarCloseEmit();
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: "tags" });
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
     setMobileUIWhenTagDeckSelected();
   });
 

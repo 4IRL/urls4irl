@@ -1,6 +1,7 @@
 import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { initResetPasswordForm } from "../reset-password-form.js";
+import { VALIDATION_FORM } from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
@@ -96,7 +97,7 @@ describe("reset-password-form metrics — UI_VALIDATION_ERROR", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_VALIDATION_ERROR,
-      form: "reset_password",
+      form: VALIDATION_FORM.RESET_PASSWORD,
     });
   });
 });

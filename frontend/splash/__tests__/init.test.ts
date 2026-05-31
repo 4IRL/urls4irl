@@ -19,6 +19,10 @@ import {
   emailValidationModalOpener,
 } from "../init.js";
 import { initEmailValidationForm } from "../email-validation-form.js";
+import {
+  AUTH_FORM_SWITCH_TARGET,
+  AUTH_MODAL_OPEN_FORM,
+} from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
@@ -187,7 +191,7 @@ describe("switchModal", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_AUTH_FORM_SWITCH,
-      target: "login",
+      target: AUTH_FORM_SWITCH_TARGET.LOGIN,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -203,7 +207,7 @@ describe("switchModal", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_AUTH_FORM_SWITCH,
-      target: "register",
+      target: AUTH_FORM_SWITCH_TARGET.REGISTER,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -219,7 +223,7 @@ describe("switchModal", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_AUTH_FORM_SWITCH,
-      target: "forgot_password",
+      target: AUTH_FORM_SWITCH_TARGET.FORGOT_PASSWORD,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -258,7 +262,7 @@ describe("loginModalOpener", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
-      form: "login",
+      form: AUTH_MODAL_OPEN_FORM.LOGIN,
     });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(mockToModal.show).toHaveBeenCalled();
@@ -286,7 +290,7 @@ describe("registerModalOpener", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
-      form: "register",
+      form: AUTH_MODAL_OPEN_FORM.REGISTER,
     });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(mockToModal.show).toHaveBeenCalled();

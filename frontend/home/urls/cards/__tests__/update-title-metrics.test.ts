@@ -2,6 +2,10 @@ import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { showUpdateURLTitleForm } from "../update-title.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import {
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -128,8 +132,8 @@ describe("url-title metrics — url_title_edit unchanged value", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      trigger: "button_click",
-      form: "url_title_edit",
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      form: HOME_FORM.URL_TITLE_EDIT,
     });
     expect(
       vi.mocked(emit).mock.calls.filter((call) => {

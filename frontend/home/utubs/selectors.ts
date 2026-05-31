@@ -19,6 +19,7 @@ import {
   showCreateDescriptionButtonAlways,
 } from "../urls/update-description.js";
 import { isUTubSearchActive } from "./search.js";
+import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
 
 type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 
@@ -137,7 +138,9 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
 
   recordUIEvent({
     event: UI_EVENTS.UI_UTUB_SELECT,
-    search_active: isUTubSearchActive() ? "true" : "false",
+    search_active: isUTubSearchActive()
+      ? SEARCH_ACTIVE.TRUE
+      : SEARCH_ACTIVE.FALSE,
   });
 
   currentlySelected.removeClass("active");
@@ -247,7 +250,9 @@ export function makeUTubSelectableAgainIfMobile(utub: JQuery): void {
   $(utub).offAndOnExact("click.selectUTubMobile", function () {
     recordUIEvent({
       event: UI_EVENTS.UI_UTUB_SELECT,
-      search_active: isUTubSearchActive() ? "true" : "false",
+      search_active: isUTubSearchActive()
+        ? SEARCH_ACTIVE.TRUE
+        : SEARCH_ACTIVE.FALSE,
     });
     getSelectedUTubInfo(parseInt($(this).attr("utubid")!));
     $(this).off("click.selectUTubMobile");

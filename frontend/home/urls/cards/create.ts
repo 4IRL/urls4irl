@@ -26,6 +26,12 @@ import {
   showURLSearchIcon,
 } from "../search.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  VALIDATION_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -52,8 +58,8 @@ export function bindCreateURLFocusEventListeners(
         // Handle enter key pressed
         emit({
           event: UI_EVENTS.UI_FORM_SUBMIT,
-          form: "url_create",
-          trigger: "enter_key",
+          form: HOME_FORM.URL_CREATE,
+          trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
         });
         createURL(createURLTitleInput, createURLInput, utubID);
         break;
@@ -61,8 +67,8 @@ export function bindCreateURLFocusEventListeners(
         // Handle escape key pressed
         emit({
           event: UI_EVENTS.UI_FORM_CANCEL,
-          form: "url_create",
-          trigger: "escape_key",
+          form: HOME_FORM.URL_CREATE,
+          trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
         });
         createURLHideInput();
         break;
@@ -142,7 +148,10 @@ export function createURL(
   );
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
-    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "url_create" });
+    emit({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.URL_CREATE,
+    });
     createURLShowFormErrors({
       urlString: [APP_CONFIG.strings.INVALID_URL],
     });

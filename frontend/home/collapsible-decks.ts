@@ -7,6 +7,7 @@ import { resetUTubSearch } from "./utubs/search.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
+import { DECK_EXPAND_DECK } from "../types/metrics-dim-values.js";
 
 const UTUB_DECK_CSS_SELECTOR = ".deck#UTubDeck";
 const MEMBER_DECK_CSS_SELECTOR = ".deck#MemberDeck";
@@ -85,7 +86,7 @@ function setupUTubHeaderForMaximizeMinimize() {
     const willExpand = caret.hasClass("closed");
     emit({
       event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
-      deck: "utubs",
+      deck: DECK_EXPAND_DECK.UTUBS,
     });
     if (willExpand) {
       caret.removeClass("closed");
@@ -118,7 +119,7 @@ function setupMemberHeaderForMaximizeMinimize() {
     const willExpand = caret.hasClass("closed");
     emit({
       event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
-      deck: "members",
+      deck: DECK_EXPAND_DECK.MEMBERS,
     });
     if (willExpand) {
       caret.removeClass("closed");
@@ -154,7 +155,7 @@ function setupTagHeaderForMaximizeMinimize() {
     const willExpand = caret.hasClass("closed");
     emit({
       event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
-      deck: "tags",
+      deck: DECK_EXPAND_DECK.TAGS,
     });
     if (willExpand) {
       caret.removeClass("closed");

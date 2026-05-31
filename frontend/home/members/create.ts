@@ -12,6 +12,11 @@ import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../types/metrics-dim-values.js";
 
 const MEMBER_FIELD_NAMES = ["username"] as const;
 
@@ -51,8 +56,8 @@ function setupCreateMemberEventListeners(utubID: number): void {
   memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function () {
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "member_invite",
-      trigger: "button_click",
+      form: HOME_FORM.MEMBER_INVITE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     createMember(utubID);
   });
@@ -60,8 +65,8 @@ function setupCreateMemberEventListeners(utubID: number): void {
   memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "member_invite",
-      trigger: "cancel_button",
+      form: HOME_FORM.MEMBER_INVITE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     createMemberHideInput();
   });
@@ -93,8 +98,8 @@ function bindCreateMemberFocusEventListeners(
           // Handle enter key pressed
           emit({
             event: UI_EVENTS.UI_FORM_SUBMIT,
-            form: "member_invite",
-            trigger: "enter_key",
+            form: HOME_FORM.MEMBER_INVITE,
+            trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
           });
           createMember(utubID);
           break;
@@ -102,8 +107,8 @@ function bindCreateMemberFocusEventListeners(
           // Handle escape  key pressed
           emit({
             event: UI_EVENTS.UI_FORM_CANCEL,
-            form: "member_invite",
-            trigger: "escape_key",
+            form: HOME_FORM.MEMBER_INVITE,
+            trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
           });
           createMemberHideInput();
           break;

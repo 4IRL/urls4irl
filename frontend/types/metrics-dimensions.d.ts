@@ -5,6 +5,35 @@
 // Frontend `emit()` narrows its second argument against `UIEventDimensions[E]`
 // so any literal that drifts from the backend Pydantic literal fails to compile.
 
+export type SearchActive = "true" | "false";
+
+export type TagScope = "utub" | "url";
+
+export type HomeForm =
+  | "url_create"
+  | "url_title_edit"
+  | "url_string_edit"
+  | "utub_create"
+  | "utub_name_edit"
+  | "utub_desc_edit"
+  | "tag_create"
+  | "member_invite";
+
+export type ValidationForm =
+  | "url_create"
+  | "url_title_edit"
+  | "url_string_edit"
+  | "utub_create"
+  | "utub_name_edit"
+  | "utub_desc_edit"
+  | "tag_create"
+  | "member_invite"
+  | "login"
+  | "register"
+  | "forgot_password"
+  | "reset_password"
+  | "email_validation";
+
 export type DimUtubSelect = {
   device_type: 1 | 2;
   search_active: "true" | "false";

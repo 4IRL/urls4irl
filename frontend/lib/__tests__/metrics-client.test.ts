@@ -10,6 +10,11 @@ import {
 } from "../metrics-client.js";
 
 import { UI_EVENTS } from "../metrics-events.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+  URL_COPY_RESULT,
+} from "../../types/metrics-dim-values.js";
 const DEVICE_TYPE_MOBILE = APP_CONFIG.constants.DEVICE_TYPE.MOBILE;
 const DEVICE_TYPE_DESKTOP = APP_CONFIG.constants.DEVICE_TYPE.DESKTOP;
 
@@ -68,7 +73,7 @@ describe("metrics-client", () => {
 
     it("flush() POSTs buffered events as application/json with batch_id", async () => {
       emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
-      emit({ event: UI_EVENTS.UI_URL_COPY, result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       await flush();
       expect(fetch).toHaveBeenCalledOnce();
       const [url, init] = (fetch as unknown as Mock).mock.calls[0];
@@ -84,7 +89,7 @@ describe("metrics-client", () => {
       expect(body.events[1].event_name).toBe(UI_EVENTS.UI_URL_COPY);
       expect(body.events[1].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
-        result: "success",
+        result: URL_COPY_RESULT.SUCCESS,
       });
       expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
     });
@@ -131,8 +136,8 @@ describe("metrics-client", () => {
     });
 
     it("treats same event with different dimensions as distinct", async () => {
-      emit({ event: UI_EVENTS.UI_URL_COPY, result: "success" });
-      emit({ event: UI_EVENTS.UI_URL_COPY, result: "failure" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.FAILURE });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events).toHaveLength(2);
@@ -154,7 +159,7 @@ describe("metrics-client", () => {
       for (let index = 0; index < 5; index++) {
         emit({
           event: UI_EVENTS.UI_URL_CARD_CLICK,
-          search_active: "false",
+          search_active: SEARCH_ACTIVE.FALSE,
           active_tag_count: index,
         });
         vi.advanceTimersByTime(1001);
@@ -286,7 +291,7 @@ describe("metrics-client", () => {
       for (let index = 0; index < 50; index++) {
         emit({
           event: UI_EVENTS.UI_URL_CARD_CLICK,
-          search_active: "false",
+          search_active: SEARCH_ACTIVE.FALSE,
           active_tag_count: index,
         });
       }
@@ -598,7 +603,7 @@ describe("metrics-client", () => {
       expect(fetch).toHaveBeenCalledOnce();
       expect(sendBeaconMock).not.toHaveBeenCalled();
 
-      emit({ event: UI_EVENTS.UI_URL_COPY, result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       await flush();
       expect(fetch).toHaveBeenCalledTimes(2);
       const secondBody = JSON.parse(
@@ -642,7 +647,7 @@ describe("metrics-client", () => {
         } as unknown as Response);
       emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
-      emit({ event: UI_EVENTS.UI_URL_COPY, result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       void flush();
       expect(fetch).toHaveBeenCalledOnce();
       resolveFetch({
@@ -669,7 +674,7 @@ describe("metrics-client", () => {
         } as unknown as Response);
       emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
-      emit({ event: UI_EVENTS.UI_URL_COPY, result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       resolveFirst({
         ok: true,
         status: 200,
@@ -721,7 +726,7 @@ describe("metrics-client", () => {
       for (let index = 0; index < 110; index++) {
         emit({
           event: UI_EVENTS.UI_URL_CARD_CLICK,
-          search_active: "false",
+          search_active: SEARCH_ACTIVE.FALSE,
           active_tag_count: index,
         });
       }
@@ -774,7 +779,7 @@ describe("metrics-client", () => {
       // disallowed keys past `emit()`'s compile-time check.
       emit({
         event: UI_EVENTS.UI_URL_COPY,
-        result: "success",
+        result: URL_COPY_RESULT.SUCCESS,
         userId: 42,
         email: "user@example.com",
       } as unknown as Parameters<typeof emit>[0]);
@@ -782,23 +787,23 @@ describe("metrics-client", () => {
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
-        result: "success",
+        result: URL_COPY_RESULT.SUCCESS,
       });
     });
 
     it("passes through all allow-listed keys", async () => {
       emit({
         event: UI_EVENTS.UI_URL_ACCESS,
-        trigger: "corner_button",
-        search_active: "true",
+        trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+        search_active: SEARCH_ACTIVE.TRUE,
         active_tag_count: 3,
       });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
-        trigger: "corner_button",
-        search_active: "true",
+        trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+        search_active: SEARCH_ACTIVE.TRUE,
         active_tag_count: 3,
       });
     });

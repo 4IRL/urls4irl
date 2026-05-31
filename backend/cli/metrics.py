@@ -6,7 +6,10 @@ import click
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 
-from backend.extensions.metrics.dim_types_generator import generate_dim_types_ts
+from backend.extensions.metrics.dim_types_generator import (
+    generate_dim_types_ts,
+    generate_dim_values_ts,
+)
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -57,6 +60,31 @@ def generate_dim_types_command(output_path: str):
     target = Path(output_path)
     target.write_text(source, encoding="utf-8")
     click.echo(f"metrics: wrote dim types → {target}")
+
+
+@metrics_cli.command(
+    "generate-dim-values",
+    help="Emit TypeScript runtime constants for every dim-value Literal alias from DIMENSION_MODELS.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Target path for the generated .ts file.",
+)
+def generate_dim_values_command(output_path: str):
+    """Render `frontend/types/metrics-dim-values.ts` from the backend Pydantic models.
+
+    Companion to `generate-dim-types`: the type-only `.d.ts` ships compile-time
+    narrowings, this `.ts` ships the matching runtime constants so every
+    `emit({ … })` call site can reference a single source of truth. Pure walk
+    of `DIMENSION_MODELS`; no app context needed.
+    """
+    source = generate_dim_values_ts()
+    target = Path(output_path)
+    target.write_text(source, encoding="utf-8")
+    click.echo(f"metrics: wrote dim values → {target}")
 
 
 def register_metrics_cli(app: Flask):

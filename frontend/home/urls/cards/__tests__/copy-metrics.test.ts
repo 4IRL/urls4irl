@@ -1,5 +1,6 @@
 import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { copyURLString } from "../copy.js";
+import { URL_COPY_RESULT } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -60,7 +61,7 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_COPY,
-      result: "success",
+      result: URL_COPY_RESULT.SUCCESS,
     });
   });
 
@@ -78,7 +79,7 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_COPY,
-      result: "failure",
+      result: URL_COPY_RESULT.FAILURE,
     });
   });
 
@@ -96,7 +97,7 @@ describe("copy metrics — UI_URL_COPY { result: success | failure }", () => {
 
     expect(emit).not.toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_COPY,
-      result: "success",
+      result: URL_COPY_RESULT.SUCCESS,
     });
   });
 });

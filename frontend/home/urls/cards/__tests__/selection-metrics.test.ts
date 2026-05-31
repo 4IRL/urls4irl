@@ -1,5 +1,6 @@
 import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { setURLCardSelectionEventListener } from "../selection.js";
+import { SEARCH_ACTIVE } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -58,7 +59,7 @@ describe("selection metrics — UI_URL_CARD_CLICK", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_CARD_CLICK,
-      search_active: "false",
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -93,7 +94,7 @@ describe("selection metrics — UI_URL_CARD_CLICK", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_CARD_CLICK,
-      search_active: "true",
+      search_active: SEARCH_ACTIVE.TRUE,
       active_tag_count: 4,
     });
   });

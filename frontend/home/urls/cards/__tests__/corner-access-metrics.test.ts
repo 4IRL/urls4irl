@@ -1,5 +1,9 @@
 import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createGoToURLIcon } from "../corner-access.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -39,8 +43,8 @@ describe("corner-access metrics — UI_URL_ACCESS { trigger: corner_button }", (
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "corner_button",
-      search_active: "false",
+      trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -59,8 +63,8 @@ describe("corner-access metrics — UI_URL_ACCESS { trigger: corner_button }", (
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "corner_button",
-      search_active: "true",
+      trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+      search_active: SEARCH_ACTIVE.TRUE,
       active_tag_count: 2,
     });
   });

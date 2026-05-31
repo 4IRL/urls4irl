@@ -3,6 +3,10 @@ import {
   resetUTubSearch,
   setUTubSelectorSearchEventListener,
 } from "../search.js";
+import {
+  SEARCH_CLOSE_TARGET,
+  SEARCH_OPEN_TARGET,
+} from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -56,7 +60,7 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: "utubs",
+      target: SEARCH_OPEN_TARGET.UTUBS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -80,11 +84,11 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     expect(emit).toHaveBeenCalledTimes(2);
     expect(emit).toHaveBeenNthCalledWith(1, {
       event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: "utubs",
+      target: SEARCH_OPEN_TARGET.UTUBS,
     });
     expect(emit).toHaveBeenNthCalledWith(2, {
       event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: "utubs",
+      target: SEARCH_OPEN_TARGET.UTUBS,
     });
   });
 
@@ -98,7 +102,7 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: "utubs",
+      target: SEARCH_CLOSE_TARGET.UTUBS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });

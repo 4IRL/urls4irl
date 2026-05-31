@@ -10,6 +10,12 @@ import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import { buildTagFilterInDeck } from "./tags.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  TAG_SCOPE,
+} from "../../types/metrics-dim-values.js";
 
 type AddTagRequest = Schema<"AddTagRequest">;
 type CreateUtubTagResponse = SuccessResponse<"createUtubTag">;
@@ -37,8 +43,8 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
     function () {
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
-        form: "tag_create",
-        trigger: "button_click",
+        form: HOME_FORM.TAG_CREATE,
+        trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
       });
       createUTubTag(utubID);
     },
@@ -49,8 +55,8 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
     function () {
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
-        form: "tag_create",
-        trigger: "cancel_button",
+        form: HOME_FORM.TAG_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
       });
       createUTubTagHideInput();
     },
@@ -83,8 +89,8 @@ function bindCreateUTubTagFocusEventListeners(
           // Handle enter key pressed
           emit({
             event: UI_EVENTS.UI_FORM_SUBMIT,
-            form: "tag_create",
-            trigger: "enter_key",
+            form: HOME_FORM.TAG_CREATE,
+            trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
           });
           createUTubTag(utubID);
           break;
@@ -92,8 +98,8 @@ function bindCreateUTubTagFocusEventListeners(
           // Handle escape  key pressed
           emit({
             event: UI_EVENTS.UI_FORM_CANCEL,
-            form: "tag_create",
-            trigger: "escape_key",
+            form: HOME_FORM.TAG_CREATE,
+            trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
           });
           createUTubTagHideInput();
           break;
@@ -109,7 +115,7 @@ function unbindCreateUTubTagFocusEventListeners(utubTagInput: JQuery): void {
 }
 
 function createUTubTagShowInput(utubID: number): void {
-  emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: "utub" });
+  emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: TAG_SCOPE.UTUB });
   $("#createUTubTagWrap").showClassFlex();
   $("#listTags").hideClass();
   $("#utubTagStandardBtns").hideClass();

@@ -12,6 +12,7 @@ import {
 } from "./utils.js";
 import { hideAndResetCreateURLTagForm } from "../tags/create.js";
 import { setFocusEventListenersOnURLCard } from "./cards.js";
+import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 
 // Streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
 export function getSelectedURLCard(): JQuery | null {
@@ -117,7 +118,9 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
 
       emit({
         event: UI_EVENTS.UI_URL_CARD_CLICK,
-        search_active: isURLSearchActive() ? "true" : "false",
+        search_active: isURLSearchActive()
+          ? SEARCH_ACTIVE.TRUE
+          : SEARCH_ACTIVE.FALSE,
         active_tag_count: getActiveTagCount(),
       });
       selectURLCard(urlCard);

@@ -19,6 +19,11 @@ import {
   makeSubmitButton,
   makeCancelButton,
 } from "../../btns-forms.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 // Element to display the URL title
 export function createURLTitle(urlTitleText: string): JQuery<HTMLElement> {
@@ -107,16 +112,16 @@ function createUpdateURLTitleInput(
           case KEYS.ENTER:
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,
-              form: "url_title_edit",
-              trigger: "enter_key",
+              form: HOME_FORM.URL_TITLE_EDIT,
+              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
-              form: "url_title_edit",
-              trigger: "escape_key",
+              form: HOME_FORM.URL_TITLE_EDIT,
+              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             hideAndResetUpdateURLTitleForm(urlCard);
             break;
@@ -139,8 +144,8 @@ function createUpdateURLTitleInput(
   urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "url_title_edit",
-      trigger: "button_click",
+      form: HOME_FORM.URL_TITLE_EDIT,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     updateURLTitle(urlTitleTextInput, urlCard, utubID);
   });
@@ -153,8 +158,8 @@ function createUpdateURLTitleInput(
   urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "url_title_edit",
-      trigger: "cancel_button",
+      form: HOME_FORM.URL_TITLE_EDIT,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     hideAndResetUpdateURLTitleForm(urlCard);
   });

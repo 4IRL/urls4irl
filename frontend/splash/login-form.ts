@@ -11,6 +11,7 @@ import {
   handleUserHasAccountNotEmailValidated,
   switchModal,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type LoginRequest = Schema<"LoginRequest">;
 type LoginSuccess = SuccessResponse<"login">;
@@ -106,7 +107,7 @@ function handleLoginFailure(
     "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
-    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "login" });
+    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: VALIDATION_FORM.LOGIN });
     switch (errorJson.errorCode) {
       case 1: {
         // User found but email not yet validated

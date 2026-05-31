@@ -12,6 +12,7 @@ import {
   switchModal,
   emailValidationModalOpener,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type RegisterRequest = Schema<"RegisterRequest">;
 type RegisterSuccess = SuccessResponse<"registerUser", 201>;
@@ -101,7 +102,10 @@ function handleRegisterFailure(
 
   if ("errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as RegisterError;
-    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "register" });
+    emit({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.REGISTER,
+    });
     switch (xhr.status) {
       case 400: {
         handleImproperFormErrors($modal, errorJson);

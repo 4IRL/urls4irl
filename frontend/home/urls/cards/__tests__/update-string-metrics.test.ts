@@ -2,6 +2,10 @@ import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { updateURL, showUpdateURLStringForm } from "../update-string.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -178,8 +182,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "main_button",
-      search_active: "false",
+      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -199,8 +203,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "corner_button",
-      search_active: "false",
+      trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -226,8 +230,8 @@ describe("update-string metrics — UI_URL_ACCESS via updateURLSuccess rebinds",
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "main_button",
-      search_active: "true",
+      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
+      search_active: SEARCH_ACTIVE.TRUE,
       active_tag_count: 7,
     });
   });

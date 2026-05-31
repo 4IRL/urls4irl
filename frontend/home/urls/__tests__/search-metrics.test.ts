@@ -4,6 +4,10 @@ import {
   disableURLSearch,
   setURLSearchEventListener,
 } from "../search.js";
+import {
+  SEARCH_CLOSE_TARGET,
+  SEARCH_OPEN_TARGET,
+} from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -54,7 +58,7 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: "urls",
+      target: SEARCH_OPEN_TARGET.URLS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -70,7 +74,7 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: "urls",
+      target: SEARCH_CLOSE_TARGET.URLS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -108,7 +112,7 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: "urls",
+      target: SEARCH_CLOSE_TARGET.URLS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });

@@ -6,6 +6,11 @@ import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
 import { deleteURLTag } from "./delete.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 /**
  * Hide tag deletion button when needed
@@ -70,8 +75,8 @@ export function setFocusEventListenersOnCreateURLTagInput(
             // Handle enter key pressed
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,
-              form: "tag_create",
-              trigger: "enter_key",
+              form: HOME_FORM.TAG_CREATE,
+              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
             createURLTag(urlTagInput, urlCard, utubID);
             break;
@@ -79,8 +84,8 @@ export function setFocusEventListenersOnCreateURLTagInput(
             // Handle escape key pressed
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
-              form: "tag_create",
-              trigger: "escape_key",
+              form: HOME_FORM.TAG_CREATE,
+              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             hideAndResetCreateURLTagForm(urlCard);
             break;

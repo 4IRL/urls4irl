@@ -10,6 +10,7 @@ import {
   handleImproperFormErrors,
   switchModal,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type ForgotPasswordRequest = Schema<"ForgotPasswordRequest">;
 type ForgotPasswordSuccess = SuccessResponse<"forgotPassword">;
@@ -104,7 +105,10 @@ function handleForgotPasswordFailure(
 
   if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ForgotPasswordError;
-    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: "forgot_password" });
+    emit({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.FORGOT_PASSWORD,
+    });
     switch (errorJson.errorCode) {
       case 1: {
         handleImproperFormErrors($modal, errorJson);

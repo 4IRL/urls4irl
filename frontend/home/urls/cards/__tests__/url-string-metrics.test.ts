@@ -4,6 +4,12 @@ import {
   createURLStringAndUpdateBlock,
 } from "../url-string.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import {
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -68,8 +74,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "url_text",
-      search_active: "false",
+      trigger: URL_ACCESS_TRIGGER.URL_TEXT,
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -115,8 +121,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      trigger: "button_click",
-      form: "url_string_edit",
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      form: HOME_FORM.URL_STRING_EDIT,
     });
     expect(
       vi.mocked(emit).mock.calls.filter((call) => {
@@ -149,8 +155,8 @@ describe("url-string metrics — UI_URL_ACCESS { trigger: url_text }", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "url_text",
-      search_active: "true",
+      trigger: URL_ACCESS_TRIGGER.URL_TEXT,
+      search_active: SEARCH_ACTIVE.TRUE,
       active_tag_count: 3,
     });
   });

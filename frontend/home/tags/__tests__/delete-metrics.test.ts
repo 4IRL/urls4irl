@@ -2,6 +2,7 @@ import { UI_EVENTS } from "../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { deleteUTubTagShowModal } from "../delete.js";
+import { TAG_SCOPE } from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -67,7 +68,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_DELETE_OPEN,
-      scope: "utub",
+      scope: TAG_SCOPE.UTUB,
     });
   });
 
@@ -81,7 +82,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_DELETE_CONFIRM,
-      scope: "utub",
+      scope: TAG_SCOPE.UTUB,
     });
   });
 
@@ -95,7 +96,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
-      scope: "utub",
+      scope: TAG_SCOPE.UTUB,
     });
   });
 
@@ -110,7 +111,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     expect(emit).not.toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
-      scope: "utub",
+      scope: TAG_SCOPE.UTUB,
     });
   });
 
@@ -128,7 +129,7 @@ describe("tags/delete metrics — UI_TAG_DELETE_OPEN / _CONFIRM / _CANCEL (scope
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
-      scope: "utub",
+      scope: TAG_SCOPE.UTUB,
     });
   });
 });

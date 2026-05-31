@@ -1,5 +1,9 @@
 import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { initCollapsibleDecks } from "../collapsible-decks.js";
+import {
+  DECK_COLLAPSE_DECK,
+  DECK_EXPAND_DECK,
+} from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
@@ -56,7 +60,7 @@ describe("collapsible-decks metrics emitters", () => {
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_DECK_COLLAPSE,
-        deck: "utubs",
+        deck: DECK_COLLAPSE_DECK.UTUBS,
       });
     });
 
@@ -70,11 +74,11 @@ describe("collapsible-decks metrics emitters", () => {
       expect(emit).toHaveBeenCalledTimes(2);
       expect(emit).toHaveBeenNthCalledWith(1, {
         event: UI_EVENTS.UI_DECK_COLLAPSE,
-        deck: "utubs",
+        deck: DECK_COLLAPSE_DECK.UTUBS,
       });
       expect(emit).toHaveBeenNthCalledWith(2, {
         event: UI_EVENTS.UI_DECK_EXPAND,
-        deck: "utubs",
+        deck: DECK_EXPAND_DECK.UTUBS,
       });
     });
 
@@ -100,7 +104,7 @@ describe("collapsible-decks metrics emitters", () => {
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_DECK_COLLAPSE,
-        deck: "members",
+        deck: DECK_COLLAPSE_DECK.MEMBERS,
       });
     });
 
@@ -113,7 +117,7 @@ describe("collapsible-decks metrics emitters", () => {
 
       expect(emit).toHaveBeenNthCalledWith(2, {
         event: UI_EVENTS.UI_DECK_EXPAND,
-        deck: "members",
+        deck: DECK_EXPAND_DECK.MEMBERS,
       });
     });
 
@@ -139,7 +143,7 @@ describe("collapsible-decks metrics emitters", () => {
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_DECK_COLLAPSE,
-        deck: "tags",
+        deck: DECK_COLLAPSE_DECK.TAGS,
       });
     });
 
@@ -152,7 +156,7 @@ describe("collapsible-decks metrics emitters", () => {
 
       expect(emit).toHaveBeenNthCalledWith(2, {
         event: UI_EVENTS.UI_DECK_EXPAND,
-        deck: "tags",
+        deck: DECK_EXPAND_DECK.TAGS,
       });
     });
 

@@ -2,6 +2,7 @@ import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createURL, createURLShowInput } from "../create.js";
 import { isValidURL } from "../../validation.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import { VALIDATION_FORM } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -144,7 +145,7 @@ describe("create metrics — UI_VALIDATION_ERROR (url_create sad path)", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_VALIDATION_ERROR,
-      form: "url_create",
+      form: VALIDATION_FORM.URL_CREATE,
     });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();

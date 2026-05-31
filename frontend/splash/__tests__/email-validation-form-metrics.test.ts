@@ -5,6 +5,10 @@ import {
   SEND_INITIAL_EMAIL,
   SKIP_INITIAL_EMAIL,
 } from "../email-validation-form.js";
+import {
+  EMAIL_VALIDATION_SUBMIT_TRIGGER,
+  VALIDATION_FORM,
+} from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
@@ -61,7 +65,7 @@ describe("email-validation-form metrics — UI_EMAIL_VALIDATION_SUBMIT", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
-      trigger: "manual_click",
+      trigger: EMAIL_VALIDATION_SUBMIT_TRIGGER.MANUAL_CLICK,
     });
   });
 
@@ -76,7 +80,7 @@ describe("email-validation-form metrics — UI_EMAIL_VALIDATION_SUBMIT", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
-      trigger: "auto_after_register",
+      trigger: EMAIL_VALIDATION_SUBMIT_TRIGGER.AUTO_AFTER_REGISTER,
     });
   });
 });
@@ -109,7 +113,7 @@ describe("email-validation-form metrics — UI_VALIDATION_ERROR", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_VALIDATION_ERROR,
-      form: "email_validation",
+      form: VALIDATION_FORM.EMAIL_VALIDATION,
     });
   });
 });

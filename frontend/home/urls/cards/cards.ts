@@ -24,6 +24,12 @@ import {
   unbindCreateURLFocusEventListeners,
   resetCreateURLFailErrors,
 } from "./create.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  SEARCH_ACTIVE,
+} from "../../../types/metrics-dim-values.js";
 
 export function updateURLAfterFindingStaleData(
   urlCard: JQuery,
@@ -149,7 +155,9 @@ export function setFocusEventListenersOnURLCard(urlCard: JQuery): void {
         if (event.key === KEYS.ENTER) {
           emit({
             event: UI_EVENTS.UI_URL_CARD_CLICK,
-            search_active: isURLSearchActive() ? "true" : "false",
+            search_active: isURLSearchActive()
+              ? SEARCH_ACTIVE.TRUE
+              : SEARCH_ACTIVE.FALSE,
             active_tag_count: getActiveTagCount(),
           });
           selectURLCard(urlCard);
@@ -216,8 +224,8 @@ export function newURLInputAddEventListeners(
   $(urlBtnCreate).onExact("click.createURL", function () {
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "url_create",
-      trigger: "button_click",
+      form: HOME_FORM.URL_CREATE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     createURL(createURLTitleInput, createURLInput, utubID);
   });
@@ -225,8 +233,8 @@ export function newURLInputAddEventListeners(
   $(urlBtnDelete).onExact("click.createURL", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "url_create",
-      trigger: "cancel_button",
+      form: HOME_FORM.URL_CREATE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     createURLHideInput();
   });

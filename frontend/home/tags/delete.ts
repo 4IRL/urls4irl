@@ -7,6 +7,7 @@ import { $ } from "../../lib/globals.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../lib/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
+import { TAG_SCOPE } from "../../types/metrics-dim-values.js";
 
 type DeleteUtubTagResponse = SuccessResponse<"deleteUtubTag">;
 
@@ -24,7 +25,7 @@ export function deleteUTubTagShowModal(
   tagString: string,
 ): void {
   _tagDeleteConfirmed = false;
-  recordUIEvent({ event: UI_EVENTS.UI_TAG_DELETE_OPEN, scope: "utub" });
+  recordUIEvent({ event: UI_EVENTS.UI_TAG_DELETE_OPEN, scope: TAG_SCOPE.UTUB });
 
   const modalTitle = "Are you sure you want to delete this Tag?";
   const $strong = $("<strong>").text(`'${tagString}'`);
@@ -55,13 +56,19 @@ export function deleteUTubTagShowModal(
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
       _tagDeleteConfirmed = true;
-      recordUIEvent({ event: UI_EVENTS.UI_TAG_DELETE_CONFIRM, scope: "utub" });
+      recordUIEvent({
+        event: UI_EVENTS.UI_TAG_DELETE_CONFIRM,
+        scope: TAG_SCOPE.UTUB,
+      });
       deleteUTubTag(utubID, utubTagID);
     });
 
   $("#confirmModal").offAndOnExact("hidden.bs.modal.tagDelete", function () {
     if (!_tagDeleteConfirmed) {
-      recordUIEvent({ event: UI_EVENTS.UI_TAG_DELETE_CANCEL, scope: "utub" });
+      recordUIEvent({
+        event: UI_EVENTS.UI_TAG_DELETE_CANCEL,
+        scope: TAG_SCOPE.UTUB,
+      });
     }
   });
 

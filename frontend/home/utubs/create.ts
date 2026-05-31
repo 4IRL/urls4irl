@@ -17,6 +17,11 @@ import { createUTubSelector, selectUTub } from "./selectors.js";
 import { resetUTubSearch, showUTubSearchBar } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../types/metrics-dim-values.js";
 
 type CreateUtubRequest = Schema<"CreateUTubRequest">;
 type CreateUtubResponse = SuccessResponse<"createUtub">;
@@ -48,8 +53,8 @@ function createNewUTubEventListeners(): void {
   utubSubmitBtnCreate.offAndOnExact("click.createUTub", function () {
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "utub_create",
-      trigger: "button_click",
+      form: HOME_FORM.UTUB_CREATE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
   });
@@ -57,8 +62,8 @@ function createNewUTubEventListeners(): void {
   utubCancelBtnCreate.offAndOnExact("click.createUTub", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "utub_create",
-      trigger: "cancel_button",
+      form: HOME_FORM.UTUB_CREATE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     createUTubHideInput();
   });
@@ -111,8 +116,8 @@ function handleOnFocusEventListenersForCreateUTub(
       // Handle enter key pressed
       emit({
         event: UI_EVENTS.UI_FORM_SUBMIT,
-        form: "utub_create",
-        trigger: "enter_key",
+        form: HOME_FORM.UTUB_CREATE,
+        trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
       });
       checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
       break;
@@ -120,8 +125,8 @@ function handleOnFocusEventListenersForCreateUTub(
       // Handle escape key pressed
       emit({
         event: UI_EVENTS.UI_FORM_CANCEL,
-        form: "utub_create",
-        trigger: "escape_key",
+        form: HOME_FORM.UTUB_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
       });
       $("#utubNameCreate").trigger("blur");
       $("#utubDescriptionCreate").trigger("blur");

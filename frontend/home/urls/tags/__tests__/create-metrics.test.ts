@@ -2,6 +2,7 @@ import { UI_EVENTS } from "../../../../lib/metrics-events.js";
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { createURLTag, showCreateURLTagForm } from "../create.js";
+import { TAG_SCOPE } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -121,7 +122,7 @@ describe("urls/tags create metrics — UI_TAG_CREATE_OPEN + UI_TAG_APPLY", () =>
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_CREATE_OPEN,
-      scope: "url",
+      scope: TAG_SCOPE.URL,
     });
   });
 

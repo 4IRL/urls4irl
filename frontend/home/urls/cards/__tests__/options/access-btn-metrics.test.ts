@@ -2,6 +2,10 @@ import { UI_EVENTS } from "../../../../../lib/metrics-events.js";
 import type { UtubUrlItem } from "../../../../../types/url.js";
 
 import { createAccessLinkBtn } from "../../options/access-btn.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -70,8 +74,8 @@ describe("access-btn metrics — UI_URL_ACCESS { trigger: main_button }", () => 
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "main_button",
-      search_active: "false",
+      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -90,8 +94,8 @@ describe("access-btn metrics — UI_URL_ACCESS { trigger: main_button }", () => 
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_ACCESS,
-      trigger: "main_button",
-      search_active: "true",
+      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
+      search_active: SEARCH_ACTIVE.TRUE,
       active_tag_count: 5,
     });
   });

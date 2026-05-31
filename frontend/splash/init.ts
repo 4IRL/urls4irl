@@ -11,6 +11,7 @@ import {
   initEmailValidationForm,
   SEND_INITIAL_EMAIL,
 } from "./email-validation-form.js";
+import { AUTH_MODAL_OPEN_FORM } from "../types/metrics-dim-values.js";
 
 type ErrorResponse = Schema<"ErrorResponse">;
 
@@ -99,12 +100,18 @@ export function switchModal($fromModal: JQuery, toSelector: string): void {
 }
 
 export function loginModalOpener(): void {
-  emit({ event: UI_EVENTS.UI_AUTH_MODAL_OPEN, form: "login" });
+  emit({
+    event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
+    form: AUTH_MODAL_OPEN_FORM.LOGIN,
+  });
   bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
 export function registerModalOpener(): void {
-  emit({ event: UI_EVENTS.UI_AUTH_MODAL_OPEN, form: "register" });
+  emit({
+    event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
+    form: AUTH_MODAL_OPEN_FORM.REGISTER,
+  });
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 

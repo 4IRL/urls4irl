@@ -4,6 +4,12 @@ import {
   setFocusEventListenersOnURLCard,
 } from "../cards.js";
 import { createURL, createURLHideInput } from "../create.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  SEARCH_ACTIVE,
+} from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -61,7 +67,7 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_CARD_CLICK,
-      search_active: "false",
+      search_active: SEARCH_ACTIVE.FALSE,
       active_tag_count: 0,
     });
   });
@@ -97,7 +103,7 @@ describe("cards metrics — UI_URL_CARD_CLICK (Enter key branch)", () => {
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_CARD_CLICK,
-      search_active: "true",
+      search_active: SEARCH_ACTIVE.TRUE,
       active_tag_count: 2,
     });
   });
@@ -136,8 +142,8 @@ describe("cards metrics — url_create form via newURLInputAddEventListeners", (
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: "url_create",
-      trigger: "button_click",
+      form: HOME_FORM.URL_CREATE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     expect(vi.mocked(createURL)).toHaveBeenCalledTimes(1);
   });
@@ -151,8 +157,8 @@ describe("cards metrics — url_create form via newURLInputAddEventListeners", (
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_CANCEL,
-      form: "url_create",
-      trigger: "cancel_button",
+      form: HOME_FORM.URL_CREATE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     expect(vi.mocked(createURLHideInput)).toHaveBeenCalledTimes(1);
   });
