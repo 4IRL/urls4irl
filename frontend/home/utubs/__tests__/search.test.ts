@@ -1,5 +1,6 @@
 import {
   hideUTubSearchBar,
+  isUTubSearchActive,
   resetUTubSearch,
   setUTubSelectorSearchEventListener,
   showUTubSearchBar,
@@ -39,6 +40,30 @@ describe("UTub Search", () => {
     document.body.innerHTML = SEARCH_HTML;
     vi.mocked(filterUTubsByName).mockReset().mockReturnValue([]);
     setUTubSelectorSearchEventListener();
+  });
+
+  describe("isUTubSearchActive", () => {
+    it("returns false for an empty input value", () => {
+      $("#UTubNameSearch").val("");
+
+      expect(isUTubSearchActive()).toBe(false);
+    });
+
+    it("returns true at the UTUBS_MIN_NAME_LENGTH threshold", () => {
+      const thresholdValue = "x".repeat(
+        APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH,
+      );
+
+      $("#UTubNameSearch").val(thresholdValue);
+
+      expect(isUTubSearchActive()).toBe(true);
+    });
+
+    it("returns false when #UTubNameSearch is absent from the DOM", () => {
+      $("#UTubNameSearch").remove();
+
+      expect(isUTubSearchActive()).toBe(false);
+    });
   });
 
   describe("resetUTubSearch", () => {
