@@ -184,7 +184,7 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 | `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
 | `make vite-build` | Vite build verification |
-| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec |
+| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
 | `make help` | List all available make commands |
 
 ### Metrics Verification (local stack)
