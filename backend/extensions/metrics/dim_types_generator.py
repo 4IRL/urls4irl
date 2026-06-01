@@ -80,15 +80,19 @@ def _named_alias_annotations() -> dict[int, str]:
     return identity_to_name
 
 
-def _ts_for_annotation(annotation: object) -> str:
-    """Map a Pydantic field annotation to a TypeScript type expression."""
+def _ts_for_annotation(annotation: object, named_aliases: dict[int, str]) -> str:
+    """Map a Pydantic field annotation to a TypeScript type expression.
+
+    ``named_aliases`` is the identity-keyed map produced once per codegen run
+    by ``_named_alias_annotations()`` and threaded through ``_emit_class_type``
+    so this function never re-imports the dimension module on a hot path.
+    """
     if get_origin(annotation) is Annotated:
         annotation = get_args(annotation)[0]
     # Detect named Pydantic Literal aliases by identity BEFORE the Literal
     # branch fires, so e.g. `form: HomeForm` emits `HomeForm` instead of
     # inlining the eight-member literal union. The named aliases are imported
     # from `./metrics-dim-values.js` at the top of the dim-types file.
-    named_aliases = _named_alias_annotations()
     alias_name = named_aliases.get(id(annotation))
     if alias_name is not None:
         return alias_name
@@ -125,10 +129,10 @@ def _ts_type_name_for_class(model: type[BaseModel]) -> str:
     return model.__name__.lstrip("_")
 
 
-def _emit_class_type(model: type[BaseModel]) -> str:
+def _emit_class_type(model: type[BaseModel], named_aliases: dict[int, str]) -> str:
     lines = [f"export type {_ts_type_name_for_class(model)} = {{"]
     for field_name, field_info in model.model_fields.items():
-        ts_type = _ts_for_annotation(field_info.annotation)
+        ts_type = _ts_for_annotation(field_info.annotation, named_aliases)
         lines.append(f"  {field_name}: {ts_type};")
     lines.append("};")
     return "\n".join(lines)
@@ -157,6 +161,11 @@ def generate_dim_types_ts() -> str:
             continue
         seen_classes.setdefault(model, None)
 
+    # Build the identity-keyed named-alias map ONCE per codegen run and thread
+    # it through `_emit_class_type` -> `_ts_for_annotation`. Avoids the
+    # importlib + alias-lookup work firing for every dim field.
+    named_aliases = _named_alias_annotations()
+
     parts: list[str] = [_DIMENSIONS_FILE_HEADER]
 
     # Import the named types from the runtime-constants file so dim-class
@@ -175,7 +184,7 @@ def generate_dim_types_ts() -> str:
 
     for model in seen_classes:
         parts.append("")
-        parts.append(_emit_class_type(model))
+        parts.append(_emit_class_type(model, named_aliases))
 
     parts.append("")
     parts.append("export type UIEventDimensions = {")
