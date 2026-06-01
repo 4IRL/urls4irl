@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 import pytest
 
 from backend.extensions.metrics.dim_types_generator import (
@@ -9,6 +11,7 @@ from backend.extensions.metrics.dim_types_generator import (
     generate_dim_values_ts,
     generate_ui_events_ts,
 )
+from backend.metrics.dimension_models import HomeForm
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 
 pytestmark = pytest.mark.unit
@@ -131,3 +134,53 @@ def test_ts_for_annotation_raises_value_error_on_unsupported_annotation() -> Non
 
     with pytest.raises(ValueError, match="Unsupported annotation in dim codegen"):
         _ts_for_annotation(_SyntheticUnsupportedAnnotation, named_aliases)
+
+
+def test_ts_for_annotation_int_returns_number() -> None:
+    """
+    GIVEN the primitive `int` annotation
+    WHEN _ts_for_annotation() is called with it
+    THEN the function returns the TS primitive `'number'`.
+    """
+    assert _ts_for_annotation(int, {}) == "number"
+
+
+def test_ts_for_annotation_bool_returns_boolean() -> None:
+    """
+    GIVEN the primitive `bool` annotation
+    WHEN _ts_for_annotation() is called with it
+    THEN the function returns the TS primitive `'boolean'`.
+    """
+    assert _ts_for_annotation(bool, {}) == "boolean"
+
+
+def test_ts_for_annotation_str_returns_string() -> None:
+    """
+    GIVEN the primitive `str` annotation
+    WHEN _ts_for_annotation() is called with it
+    THEN the function returns the TS primitive `'string'`.
+    """
+    assert _ts_for_annotation(str, {}) == "string"
+
+
+def test_ts_for_annotation_inline_literal_returns_quoted_union() -> None:
+    """
+    GIVEN an inline `Literal['a', 'b']` annotation (not a named alias)
+    WHEN _ts_for_annotation() is called with an empty named_aliases map
+    THEN the function returns the quoted TS string union `'"a" | "b"'`.
+    """
+    assert _ts_for_annotation(Literal["a", "b"], {}) == '"a" | "b"'
+
+
+def test_ts_for_annotation_named_alias_returns_alias_name() -> None:
+    """
+    GIVEN a named module-level Pydantic Literal alias (`HomeForm`)
+    WHEN _ts_for_annotation() is called with the real
+        identity-keyed named_aliases map from `_named_alias_annotations()`
+    THEN the function short-circuits the Literal branch and returns the
+        alias name (`'HomeForm'`) so the generated TS imports the named type
+        from `./metrics-dim-values.js` instead of inlining the union.
+    """
+    named_aliases = _named_alias_annotations()
+
+    assert _ts_for_annotation(HomeForm, named_aliases) == "HomeForm"
