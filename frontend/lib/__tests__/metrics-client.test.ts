@@ -2,7 +2,6 @@ import type { Mock } from "vitest";
 
 import { resetDeviceTypeCache } from "../../__tests__/helpers/device-type-test-utils.js";
 import { APP_CONFIG } from "../config.js";
-import type { EmitDimensions } from "../metrics-client.js";
 import {
   emit,
   flush,
@@ -10,6 +9,12 @@ import {
   resetMetricsClient,
 } from "../metrics-client.js";
 
+import { UI_EVENTS } from "../../types/metrics-events.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+  URL_COPY_RESULT,
+} from "../../types/metrics-dim-values.js";
 const DEVICE_TYPE_MOBILE = APP_CONFIG.constants.DEVICE_TYPE.MOBILE;
 const DEVICE_TYPE_DESKTOP = APP_CONFIG.constants.DEVICE_TYPE.DESKTOP;
 
@@ -45,7 +50,7 @@ describe("metrics-client", () => {
 
   it("rejects non-UI EventName values at compile time", () => {
     // @ts-expect-error utub_created is a domain-category EventName, not a UI event name
-    emit("utub_created", undefined);
+    emit({ event: "utub_created" });
   });
 
   describe("flush() POST contract", () => {
@@ -67,8 +72,8 @@ describe("metrics-client", () => {
     });
 
     it("flush() POSTs buffered events as application/json with batch_id", async () => {
-      emit("ui_utub_create_open");
-      emit("ui_url_copy", { result: "success" });
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       await flush();
       expect(fetch).toHaveBeenCalledOnce();
       const [url, init] = (fetch as unknown as Mock).mock.calls[0];
@@ -77,14 +82,14 @@ describe("metrics-client", () => {
       expect(init.headers["Content-Type"]).toBe("application/json");
       const body = JSON.parse(init.body);
       expect(body.events).toHaveLength(2);
-      expect(body.events[0].event_name).toBe("ui_utub_create_open");
+      expect(body.events[0].event_name).toBe(UI_EVENTS.UI_UTUB_CREATE_OPEN);
       expect(body.events[0].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
       });
-      expect(body.events[1].event_name).toBe("ui_url_copy");
+      expect(body.events[1].event_name).toBe(UI_EVENTS.UI_URL_COPY);
       expect(body.events[1].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
-        result: "success",
+        result: URL_COPY_RESULT.SUCCESS,
       });
       expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
     });
@@ -95,7 +100,7 @@ describe("metrics-client", () => {
     });
 
     it("flush() drains the buffer on success", async () => {
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       await flush();
       await flush();
       expect(fetch).toHaveBeenCalledOnce();
@@ -122,8 +127,8 @@ describe("metrics-client", () => {
 
     it("dedupes identical (event, dimensions) pairs within cooldown", async () => {
       vi.useFakeTimers();
-      emit("ui_utub_create_open");
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events).toHaveLength(1);
@@ -131,8 +136,8 @@ describe("metrics-client", () => {
     });
 
     it("treats same event with different dimensions as distinct", async () => {
-      emit("ui_url_copy", { result: "success" });
-      emit("ui_url_copy", { result: "failure" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.FAILURE });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events).toHaveLength(2);
@@ -140,9 +145,9 @@ describe("metrics-client", () => {
 
     it("allows re-emit after cooldown expires", async () => {
       vi.useFakeTimers();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       vi.advanceTimersByTime(1001);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events).toHaveLength(2);
@@ -152,7 +157,11 @@ describe("metrics-client", () => {
     it("bounds dedupe map memory via prune across cooldown windows", async () => {
       vi.useFakeTimers();
       for (let index = 0; index < 5; index++) {
-        emit("ui_url_card_click", { active_tag_count: index });
+        emit({
+          event: UI_EVENTS.UI_URL_CARD_CLICK,
+          search_active: SEARCH_ACTIVE.FALSE,
+          active_tag_count: index,
+        });
         vi.advanceTimersByTime(1001);
       }
       await flush();
@@ -165,7 +174,7 @@ describe("metrics-client", () => {
     it("treats mobile↔desktop transition as distinct dedupe buckets", async () => {
       // Outer-scope beforeEach already stubbed matchMedia=matches=false (desktop).
       // First emit captures DEVICE_TYPE.DESKTOP into the dedupe key.
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
 
       // Toggle viewport to mobile and reset the device-type cache so the next
       // getDeviceType() call re-queries matchMedia and returns MOBILE.
@@ -178,7 +187,7 @@ describe("metrics-client", () => {
         }),
       );
       resetDeviceTypeCache();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
 
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
@@ -213,7 +222,7 @@ describe("metrics-client", () => {
     it("initMetricsClient registers a 60s flush interval", async () => {
       vi.useFakeTimers();
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       expect(fetch).not.toHaveBeenCalled();
       await vi.advanceTimersByTimeAsync(60000);
       expect(fetch).toHaveBeenCalledOnce();
@@ -223,7 +232,7 @@ describe("metrics-client", () => {
     it("resetMetricsClient clears the interval and state", async () => {
       vi.useFakeTimers();
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       resetMetricsClient();
       await vi.advanceTimersByTimeAsync(120000);
       expect(fetch).not.toHaveBeenCalled();
@@ -234,7 +243,7 @@ describe("metrics-client", () => {
       vi.useFakeTimers();
       initMetricsClient();
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       await vi.advanceTimersByTimeAsync(60000);
       expect(fetch).toHaveBeenCalledOnce();
       vi.useRealTimers();
@@ -280,7 +289,11 @@ describe("metrics-client", () => {
 
     it("flushes immediately when buffer reaches BATCH_THRESHOLD", async () => {
       for (let index = 0; index < 50; index++) {
-        emit("ui_url_card_click", { active_tag_count: index });
+        emit({
+          event: UI_EVENTS.UI_URL_CARD_CLICK,
+          search_active: SEARCH_ACTIVE.FALSE,
+          active_tag_count: index,
+        });
       }
       await Promise.resolve();
       expect(fetch).toHaveBeenCalledOnce();
@@ -322,7 +335,7 @@ describe("metrics-client", () => {
 
     it("sendBeacon on visibilitychange-hidden posts batch and is called exactly once", () => {
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       Object.defineProperty(document, "visibilityState", {
         value: "hidden",
         configurable: true,
@@ -335,14 +348,14 @@ describe("metrics-client", () => {
       expect((blob as Blob).type).toBe("application/json");
       return (blob as Blob).text().then((text) => {
         const body = JSON.parse(text);
-        expect(body.events[0].event_name).toBe("ui_utub_create_open");
+        expect(body.events[0].event_name).toBe(UI_EVENTS.UI_UTUB_CREATE_OPEN);
         expect(body.batch_id).toMatch(/^[0-9a-f-]{36}$/i);
       });
     });
 
     it("sendBeacon is never retried — single call only", async () => {
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       Object.defineProperty(document, "visibilityState", {
         value: "hidden",
         configurable: true,
@@ -357,7 +370,7 @@ describe("metrics-client", () => {
     it("falls back to fetch with keepalive when sendBeacon returns false", () => {
       sendBeaconMock.mockReturnValueOnce(false);
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       Object.defineProperty(document, "visibilityState", {
         value: "hidden",
         configurable: true,
@@ -370,14 +383,14 @@ describe("metrics-client", () => {
 
     it("pagehide triggers the unload flush path", () => {
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       window.dispatchEvent(new Event("pagehide"));
       expect(sendBeaconMock).toHaveBeenCalledOnce();
     });
 
     it("visibilitychange while still visible is a no-op", () => {
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       Object.defineProperty(document, "visibilityState", {
         value: "visible",
         configurable: true,
@@ -388,7 +401,7 @@ describe("metrics-client", () => {
 
     it("does not double-send when both visibilitychange and pagehide fire", () => {
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       Object.defineProperty(document, "visibilityState", {
         value: "hidden",
         configurable: true,
@@ -416,7 +429,7 @@ describe("metrics-client", () => {
         }),
       );
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
       Object.defineProperty(document, "visibilityState", {
         value: "hidden",
@@ -438,7 +451,7 @@ describe("metrics-client", () => {
         throw new Error("beacon failure");
       });
       initMetricsClient();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       Object.defineProperty(document, "visibilityState", {
         value: "hidden",
         configurable: true,
@@ -470,7 +483,7 @@ describe("metrics-client", () => {
           status: 200,
           json: vi.fn(),
         } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
       await Promise.resolve();
       await Promise.resolve();
@@ -495,7 +508,7 @@ describe("metrics-client", () => {
           status: 200,
           json: vi.fn(),
         } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
       await Promise.resolve();
       await Promise.resolve();
@@ -520,7 +533,7 @@ describe("metrics-client", () => {
           status: 200,
           json: vi.fn(),
         } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
       await Promise.resolve();
       await Promise.resolve();
@@ -542,7 +555,7 @@ describe("metrics-client", () => {
         ok: false,
         status: 503,
       } as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
       await Promise.resolve();
       await Promise.resolve();
@@ -559,7 +572,7 @@ describe("metrics-client", () => {
         status: 400,
         json: vi.fn().mockResolvedValue({ errorCode: 1 }),
       } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
       await vi.advanceTimersByTimeAsync(10000);
       expect(fetch).toHaveBeenCalledOnce();
@@ -584,20 +597,20 @@ describe("metrics-client", () => {
           status: 200,
           json: vi.fn(),
         } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       await flush();
       await vi.advanceTimersByTimeAsync(10000);
       expect(fetch).toHaveBeenCalledOnce();
       expect(sendBeaconMock).not.toHaveBeenCalled();
 
-      emit("ui_url_copy", { result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       await flush();
       expect(fetch).toHaveBeenCalledTimes(2);
       const secondBody = JSON.parse(
         (fetch as unknown as Mock).mock.calls[1][1].body,
       );
       expect(secondBody.events).toHaveLength(1);
-      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+      expect(secondBody.events[0].event_name).toBe(UI_EVENTS.UI_URL_COPY);
       const firstBatchId = JSON.parse(
         (fetch as unknown as Mock).mock.calls[0][1].body,
       ).batch_id;
@@ -632,9 +645,9 @@ describe("metrics-client", () => {
           status: 200,
           json: vi.fn(),
         } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
-      emit("ui_url_copy", { result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       void flush();
       expect(fetch).toHaveBeenCalledOnce();
       resolveFetch({
@@ -659,9 +672,9 @@ describe("metrics-client", () => {
           status: 200,
           json: vi.fn(),
         } as unknown as Response);
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
-      emit("ui_url_copy", { result: "success" });
+      emit({ event: UI_EVENTS.UI_URL_COPY, result: URL_COPY_RESULT.SUCCESS });
       resolveFirst({
         ok: true,
         status: 200,
@@ -675,7 +688,7 @@ describe("metrics-client", () => {
         (fetch as unknown as Mock).mock.calls[1][1].body,
       );
       expect(secondBody.events).toHaveLength(1);
-      expect(secondBody.events[0].event_name).toBe("ui_url_copy");
+      expect(secondBody.events[0].event_name).toBe(UI_EVENTS.UI_URL_COPY);
     });
   });
 
@@ -707,11 +720,15 @@ describe("metrics-client", () => {
           json: vi.fn(),
         } as unknown as Response);
 
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       void flush();
 
       for (let index = 0; index < 110; index++) {
-        emit("ui_url_card_click", { active_tag_count: index });
+        emit({
+          event: UI_EVENTS.UI_URL_CARD_CLICK,
+          search_active: SEARCH_ACTIVE.FALSE,
+          active_tag_count: index,
+        });
       }
 
       resolveFirst({
@@ -757,39 +774,48 @@ describe("metrics-client", () => {
     });
 
     it("strips disallowed dimension keys before serialization", async () => {
-      emit("ui_url_copy", {
-        result: "success",
+      // Test exercises the runtime allow-list filter, so the cast bypasses
+      // the strict per-event dimension type to simulate a caller smuggling
+      // disallowed keys past `emit()`'s compile-time check.
+      emit({
+        event: UI_EVENTS.UI_URL_COPY,
+        result: URL_COPY_RESULT.SUCCESS,
         userId: 42,
         email: "user@example.com",
-      } as unknown as EmitDimensions);
+      } as unknown as Parameters<typeof emit>[0]);
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
-        result: "success",
+        result: URL_COPY_RESULT.SUCCESS,
       });
     });
 
     it("passes through all allow-listed keys", async () => {
-      emit("ui_url_access", {
-        trigger: "corner_button",
-        search_active: "true",
+      emit({
+        event: UI_EVENTS.UI_URL_ACCESS,
+        trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+        search_active: SEARCH_ACTIVE.TRUE,
         active_tag_count: 3,
       });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
         device_type: DEVICE_TYPE_DESKTOP,
-        trigger: "corner_button",
-        search_active: "true",
+        trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+        search_active: SEARCH_ACTIVE.TRUE,
         active_tag_count: 3,
       });
     });
 
     it("keeps auto-injected device_type when all caller-supplied keys are disallowed", async () => {
-      emit("ui_utub_create_open", {
+      // Cast bypasses the args-object typed signature: UI_UTUB_CREATE_OPEN is a
+      // device-only event (no caller dims), but the runtime allow-list must
+      // still strip foreign keys if a caller smuggles them past TS.
+      emit({
+        event: UI_EVENTS.UI_UTUB_CREATE_OPEN,
         userId: 42,
-      } as unknown as EmitDimensions);
+      } as unknown as Parameters<typeof emit>[0]);
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
@@ -825,7 +851,7 @@ describe("metrics-client", () => {
         }),
       );
       resetDeviceTypeCache();
-      emit("ui_utub_create_open");
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({
@@ -834,9 +860,13 @@ describe("metrics-client", () => {
     });
 
     it("caller-supplied device_type wins over the auto-injected value", async () => {
-      emit("ui_utub_create_open", {
+      // Same intent as above: device-only event + caller-injected dim that
+      // would normally be auto-handled. The cast lets the test exercise the
+      // override path at runtime.
+      emit({
+        event: UI_EVENTS.UI_UTUB_CREATE_OPEN,
         device_type: DEVICE_TYPE_MOBILE,
-      } as EmitDimensions);
+      } as unknown as Parameters<typeof emit>[0]);
       await flush();
       const body = JSON.parse((fetch as unknown as Mock).mock.calls[0][1].body);
       expect(body.events[0].dimensions).toEqual({

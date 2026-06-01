@@ -1,4 +1,6 @@
 import { $, bootstrap } from "../lib/globals.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 
 // Navbar toggler object (shared state)
@@ -26,6 +28,7 @@ export function initNavbar(): void {
 }
 
 function onMobileNavbarOpened(): void {
+  emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN });
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -46,6 +49,7 @@ function onMobileNavbarOpened(): void {
 }
 
 function onMobileNavbarClosed(): void {
+  emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE });
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
 

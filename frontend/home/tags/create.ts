@@ -5,9 +5,17 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { $, getInputValue } from "../../lib/globals.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import { buildTagFilterInDeck } from "./tags.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  TAG_SCOPE,
+} from "../../types/metrics-dim-values.js";
 
 type AddTagRequest = Schema<"AddTagRequest">;
 type CreateUtubTagResponse = SuccessResponse<"createUtubTag">;
@@ -33,6 +41,11 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
   utubTagSubmitBtnCreate.offAndOnExact(
     "click.createUTubTagSubmit",
     function () {
+      emit({
+        event: UI_EVENTS.UI_FORM_SUBMIT,
+        form: HOME_FORM.TAG_CREATE,
+        trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+      });
       createUTubTag(utubID);
     },
   );
@@ -40,6 +53,11 @@ function setupCreateUTubTagEventListeners(utubID: number): void {
   utubTagCancelBtnCreate.offAndOnExact(
     "click.createUTubTagEscape",
     function () {
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.TAG_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+      });
       createUTubTagHideInput();
     },
   );
@@ -69,10 +87,20 @@ function bindCreateUTubTagFocusEventListeners(
       switch (event.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
+          emit({
+            event: UI_EVENTS.UI_FORM_SUBMIT,
+            form: HOME_FORM.TAG_CREATE,
+            trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+          });
           createUTubTag(utubID);
           break;
         case KEYS.ESCAPE:
           // Handle escape  key pressed
+          emit({
+            event: UI_EVENTS.UI_FORM_CANCEL,
+            form: HOME_FORM.TAG_CREATE,
+            trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+          });
           createUTubTagHideInput();
           break;
         default:
@@ -87,6 +115,7 @@ function unbindCreateUTubTagFocusEventListeners(utubTagInput: JQuery): void {
 }
 
 function createUTubTagShowInput(utubID: number): void {
+  emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: TAG_SCOPE.UTUB });
   $("#createUTubTagWrap").showClassFlex();
   $("#listTags").hideClass();
   $("#utubTagStandardBtns").hideClass();

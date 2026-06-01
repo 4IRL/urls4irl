@@ -1,9 +1,17 @@
 import "./lib/security-check.js";
+import { $ } from "./lib/globals.js";
+import { emit, initMetricsClient } from "./lib/metrics-client.js";
+import { UI_EVENTS } from "./types/metrics-events.js";
 
-// Refresh button handler - removes hash and reloads
-const refreshBtn = document.getElementById("refreshBtn");
-if (refreshBtn) {
-  refreshBtn.addEventListener("click", () => {
-    window.location.href = window.location.href.split("#")[0];
-  });
-}
+$(document).ready(() => {
+  initMetricsClient();
+
+  // Refresh button handler - removes hash and reloads
+  const refreshBtn = document.getElementById("refreshBtn");
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", () => {
+      emit({ event: UI_EVENTS.UI_ERROR_PAGE_REFRESH });
+      window.location.href = window.location.href.split("#")[0];
+    });
+  }
+});

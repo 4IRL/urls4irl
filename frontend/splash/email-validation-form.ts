@@ -1,7 +1,10 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { showSplashModalAlertBanner, resetModalFormState } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type EmailValidationSuccess = Schema<"EmailValidationResponseSchema">;
 type EmailValidationError = Schema<"ErrorResponse">;
@@ -37,6 +40,10 @@ function handleValidateEmail(
   $modal: JQuery,
   event: JQuery.TriggeredEvent | null = null,
 ): void {
+  emit({
+    event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
+    trigger: event !== null ? "manual_click" : "auto_after_register",
+  });
   if (event !== null) {
     event.preventDefault();
   }
@@ -86,6 +93,10 @@ function handleValidateEmailFailure(
 
   if (!("errorCode" in xhr.responseJSON)) {
     // Handle other errors here
+    emit({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.EMAIL_VALIDATION,
+    });
     showSplashModalAlertBanner(
       $modal,
       "Unable to process request...",
@@ -99,6 +110,10 @@ function handleValidateEmailFailure(
     string,
     number
   >;
+  emit({
+    event: UI_EVENTS.UI_VALIDATION_ERROR,
+    form: VALIDATION_FORM.EMAIL_VALIDATION,
+  });
   switch (errorJson.errorCode) {
     case errorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS:
       showSplashModalAlertBanner($modal, errorJson.message, "danger");

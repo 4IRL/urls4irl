@@ -1,10 +1,16 @@
 import { $ } from "../lib/globals.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { isMobile } from "./mobile.js";
 import { isUTubSelected } from "./utubs/utils.js";
 import { resetUTubSearch } from "./utubs/search.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
+import {
+  DECK_COLLAPSE_DECK,
+  DECK_EXPAND_DECK,
+} from "../types/metrics-dim-values.js";
 
 const UTUB_DECK_CSS_SELECTOR = ".deck#UTubDeck";
 const MEMBER_DECK_CSS_SELECTOR = ".deck#MemberDeck";
@@ -80,7 +86,12 @@ function setupUTubHeaderForMaximizeMinimize() {
   headerAndCaret.offAndOn("click.collapsibleUTubDeck", () => {
     if (isMobile()) return;
     const caret = $("#UTubDeckHeaderAndCaret .title-caret");
-    if (caret.hasClass("closed")) {
+    const willExpand = caret.hasClass("closed");
+    emit({
+      event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
+      deck: willExpand ? DECK_EXPAND_DECK.UTUBS : DECK_COLLAPSE_DECK.UTUBS,
+    });
+    if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_DECK_CSS_SELECTOR).removeClass("collapsed");
       return;
@@ -108,7 +119,12 @@ function setupMemberHeaderForMaximizeMinimize() {
   headerAndCaret.offAndOn("click.collapsibleMemberDeck", () => {
     if (isMobile()) return;
     const caret = $("#MemberDeckHeaderAndCaret .title-caret");
-    if (caret.hasClass("closed")) {
+    const willExpand = caret.hasClass("closed");
+    emit({
+      event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
+      deck: willExpand ? DECK_EXPAND_DECK.MEMBERS : DECK_COLLAPSE_DECK.MEMBERS,
+    });
+    if (willExpand) {
       caret.removeClass("closed");
       $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
       if (!isUTubSelected()) {
@@ -139,7 +155,12 @@ function setupTagHeaderForMaximizeMinimize() {
   headerAndCaret.offAndOn("click.collapsibleUTubTagDeck", () => {
     if (isMobile()) return;
     const caret = $("#TagDeckHeaderAndCaret .title-caret");
-    if (caret.hasClass("closed")) {
+    const willExpand = caret.hasClass("closed");
+    emit({
+      event: willExpand ? UI_EVENTS.UI_DECK_EXPAND : UI_EVENTS.UI_DECK_COLLAPSE,
+      deck: willExpand ? DECK_EXPAND_DECK.TAGS : DECK_COLLAPSE_DECK.TAGS,
+    });
+    if (willExpand) {
       caret.removeClass("closed");
       $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
       if (!isUTubSelected()) {

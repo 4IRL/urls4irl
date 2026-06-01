@@ -3,6 +3,8 @@ import type { MemberModifiedResponse } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -13,6 +15,9 @@ import {
   resetUTubDeckIfNoUTubs,
 } from "../utubs/deck.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
+
+let _memberActionConfirmed: boolean = false;
+let _removeMemberIsCreator: boolean = false;
 
 // Dynamically generates the remove member icon when needed
 export function createMemberRemoveBtn(): JQuery<HTMLButtonElement> {
@@ -71,6 +76,14 @@ export function removeMemberShowModal(
   isCreator: boolean,
   utubID: number,
 ): void {
+  _memberActionConfirmed = false;
+  _removeMemberIsCreator = isCreator;
+  emit({
+    event: isCreator
+      ? UI_EVENTS.UI_MEMBER_REMOVE_OPEN
+      : UI_EVENTS.UI_MEMBER_LEAVE_OPEN,
+  });
+
   const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
@@ -98,9 +111,25 @@ export function removeMemberShowModal(
     .text(buttonTextSubmit)
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
+      _memberActionConfirmed = true;
+      emit({
+        event: isCreator
+          ? UI_EVENTS.UI_MEMBER_REMOVE_CONFIRM
+          : UI_EVENTS.UI_MEMBER_LEAVE_CONFIRM,
+      });
       removeMember(memberID, isCreator, utubID);
     })
     .text(buttonTextSubmit);
+
+  $("#confirmModal").offAndOnExact("hidden.bs.modal.memberAction", function () {
+    if (!_memberActionConfirmed) {
+      emit({
+        event: _removeMemberIsCreator
+          ? UI_EVENTS.UI_MEMBER_REMOVE_CANCEL
+          : UI_EVENTS.UI_MEMBER_LEAVE_CANCEL,
+      });
+    }
+  });
 
   $("#modalSubmit").prop("disabled", false);
   $("#confirmModal").modal("show");

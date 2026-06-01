@@ -4,11 +4,19 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  UTUB_DESC_EDIT_OPEN_TRIGGER,
+} from "../../types/metrics-dim-values.js";
 
 let descEditOpenedViaKeyboard = false;
 
@@ -45,7 +53,8 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     $("#UTubDescriptionSubheaderWrap").addClass("editable-wrap");
     descPencilIcon.removeClass("hidden");
 
-    function openDescriptionEdit(): void {
+    function openDescriptionEdit(trigger: "pencil_icon" | "keyboard"): void {
+      emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger });
       deselectAllURLs();
       updateUTubNameHideInput();
       updateUTubDescriptionShowInput(utubID);
@@ -53,23 +62,33 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
 
     $("#UTubDescriptionSubheaderWrap").offAndOnExact(
       "click.updateUTubDesc",
-      openDescriptionEdit,
+      () => openDescriptionEdit("pencil_icon"),
     );
 
     descPencilIcon.offAndOnExact("keydown.updateUTubDesc", function (keyEvent) {
       if (keyEvent.key === KEYS.ENTER || keyEvent.key === KEYS.SPACE) {
         keyEvent.preventDefault();
         descEditOpenedViaKeyboard = true;
-        openDescriptionEdit();
+        openDescriptionEdit("keyboard");
       }
     });
   }
 
   utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
+      form: HOME_FORM.UTUB_DESC_EDIT,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+    });
     updateUTubDescription(utubID);
   });
 
   utubDescriptionCancelBtnUpdate.onExact("click", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
+      form: HOME_FORM.UTUB_DESC_EDIT,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+    });
     updateUTubDescriptionHideInput(utubID);
   });
 }
@@ -86,10 +105,20 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
           switch (keyEvent.key) {
             case KEYS.ENTER:
               // Handle enter key pressed
+              emit({
+                event: UI_EVENTS.UI_FORM_SUBMIT,
+                form: HOME_FORM.UTUB_DESC_EDIT,
+                trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+              });
               updateUTubDescription(utubID);
               break;
             case KEYS.ESCAPE:
               // Handle escape key pressed
+              emit({
+                event: UI_EVENTS.UI_FORM_CANCEL,
+                form: HOME_FORM.UTUB_DESC_EDIT,
+                trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+              });
               updateUTubDescriptionHideInput(utubID);
               break;
             default:
@@ -120,6 +149,11 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
       )
         return;
 
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.UTUB_DESC_EDIT,
+        trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
+      });
       // Hide UTub description update fields
       updateUTubDescriptionHideInput(utubID);
     },
@@ -137,6 +171,10 @@ export function showCreateDescriptionButtonAlways(utubID: number): void {
   clickToCreateDesc.enableTab();
 
   clickToCreateDesc.offAndOnExact("click.createUTubdescription", function () {
+    emit({
+      event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
+      trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.CREATE_BUTTON,
+    });
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0 width-0");

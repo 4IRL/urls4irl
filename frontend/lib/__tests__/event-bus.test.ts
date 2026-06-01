@@ -18,7 +18,7 @@ describe("event-bus", () => {
     event: K,
     handler: (payload: AppEventMap[K]) => void,
   ): () => void {
-    const unsub = on(event, handler);
+    const unsub = on(event, handler as Parameters<typeof on<K>>[1]);
     cleanups.push(unsub);
     return unsub;
   }

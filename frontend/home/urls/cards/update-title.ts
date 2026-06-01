@@ -4,6 +4,8 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -34,6 +36,7 @@ export function showUpdateURLTitleForm(
   urlTitleAndShowUpdateIconWrap: JQuery,
   urlCard: JQuery,
 ): void {
+  emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
   urlTitleAndShowUpdateIconWrap.hideClass();
   const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
     ".updateUrlTitleWrap",

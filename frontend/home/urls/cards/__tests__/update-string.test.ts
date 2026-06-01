@@ -8,6 +8,13 @@ import {
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),

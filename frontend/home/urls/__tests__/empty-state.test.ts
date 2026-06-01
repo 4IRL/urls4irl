@@ -117,7 +117,8 @@ describe("UTub empty state", () => {
         utubUrlID: 1,
         urlString: "https://example.com",
         urlTitle: "Example",
-        urlTagIDs: [],
+        utubUrlTagIDs: [],
+        canDelete: true,
       },
     ];
 

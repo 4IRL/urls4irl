@@ -64,7 +64,8 @@ Code should be concise, but readable. We are looking for maintainability and fut
 
 1. Never use window globals for module communication
 2. **User-facing strings must go through `APP_CONFIG.strings`** — never hardcode display strings in TypeScript. Define them in `backend/utils/strings/<domain>_strs.py`, register in the `STRINGS` class and `generate_strings_js()` in `backend/utils/constants.py`, add to `frontend/test-setup.ts` mock config, and access as `APP_CONFIG.strings.KEY_NAME`. UI test constants in `ui_testing_strs.py` should import from the backend source, not duplicate the literal.
-3. **Established TS patterns** — use these existing patterns rather than inventing new ones:
+3. **Destructured object parameters** — any function taking 2+ parameters (or even a single boolean/enum-ish parameter where the call site would otherwise be a bare literal) must accept a single destructured object so call sites are self-documenting. Prefer `emitMetric({ name, utubId, urlId })` over `emitMetric(name, utubId, urlId)`; `openModal({ dismissible: false })` over `openModal(false)`. Applies to new functions and to edits that touch an existing signature — when modifying a positional-args function, convert it as part of the change.
+4. **Established TS patterns** — use these existing patterns rather than inventing new ones:
    - **Type-guard dispatch** for field-level validation errors: `const FIELDS = [...] as const` + `isFieldName()` guard (see `splash/init.ts`, `tags/create.ts`)
    - **is429Handled(xhr)** guard at the top of every `.fail()` handler (`frontend/lib/ajax.ts`)
    - **Schema<>/SuccessResponse<>** type helpers from `frontend/types/api-helpers.d.ts` for typed AJAX
@@ -183,7 +184,7 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 | `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
 | `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
 | `make vite-build` | Vite build verification |
-| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec |
+| `make generate-types` | Regenerate TypeScript API types from OpenAPI spec + per-event dim shapes (metrics-dimensions.d.ts, metrics-dim-values.ts, metrics-events.ts) |
 | `make help` | List all available make commands |
 
 ### Metrics Verification (local stack)

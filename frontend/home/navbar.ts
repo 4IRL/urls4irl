@@ -1,4 +1,6 @@
 import { $, bootstrap } from "../lib/globals.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { initNavbarRouting } from "../lib/navbar-shared.js";
 import {
   setMobileUIWhenMemberDeckSelected,
@@ -6,25 +8,36 @@ import {
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenTagDeckSelected,
 } from "./mobile.js";
+import { MOBILE_NAV_TARGET } from "../types/metrics-dim-values.js";
 
 export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
   toggler: null,
 };
+
+let _suppressNextNavbarCloseEmit: boolean = false;
 
 /**
  * Initialize navbar and mobile navigation buttons
  */
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
+    _suppressNextNavbarCloseEmit = true;
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.MEMBERS });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
+    _suppressNextNavbarCloseEmit = true;
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.URLS });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
+    _suppressNextNavbarCloseEmit = true;
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.UTUBS });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
+    _suppressNextNavbarCloseEmit = true;
+    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
     setMobileUIWhenTagDeckSelected();
   });
 
@@ -47,6 +60,7 @@ export function initNavbar(): void {
 }
 
 export function onMobileNavbarOpened(): void {
+  emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN });
   const navbarBackdrop = $(document.createElement("div")).addClass(
     "navbar-backdrop",
   );
@@ -67,6 +81,11 @@ export function onMobileNavbarOpened(): void {
 }
 
 export function onMobileNavbarClosed(): void {
+  if (_suppressNextNavbarCloseEmit) {
+    _suppressNextNavbarCloseEmit = false;
+  } else {
+    emit({ event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE });
+  }
   const navbarBackdrop = $(".navbar-backdrop");
   navbarBackdrop.addClass("navbar-backdrop-fade");
 

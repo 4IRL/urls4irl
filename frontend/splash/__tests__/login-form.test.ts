@@ -1,6 +1,14 @@
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initLoginForm } from "../login-form.js";
+import { VALIDATION_FORM } from "../../types/metrics-dim-values.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
@@ -89,5 +97,51 @@ describe("login-form 429 HTML response", () => {
     expect(showNewPageOnAJAXHTMLResponse).toHaveBeenCalledWith(
       "<html>Forbidden</html>",
     );
+  });
+});
+
+describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
+  beforeEach(() => {
+    document.body.innerHTML = LOGIN_MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("emits ui_login_submit once per submit-button click", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_LOGIN_SUBMIT });
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits ui_validation_error with form=login on 400 errorCode response", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    const fakeXhr = {
+      status: 400,
+      responseJSON: { errorCode: 2, message: "Invalid" },
+      getResponseHeader: vi.fn(),
+    };
+    mockDeferred.reject(fakeXhr, "error", "Bad Request");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.LOGIN,
+    });
   });
 });

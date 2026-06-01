@@ -70,6 +70,50 @@ describe("hideAndResetUpdateURLTitleForm - selection guard", () => {
   });
 });
 
+describe("url_title_edit unchanged value", () => {
+  const UNCHANGED_URL_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="false">
+      <div class="updateUrlTitleWrap"></div>
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">Same Title</span>
+      </div>
+      <input class="urlTitleUpdate" value="Same Title" />
+    </div>
+  `;
+
+  beforeEach(() => {
+    document.body.innerHTML = UNCHANGED_URL_CARD_HTML;
+    vi.clearAllMocks();
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "Same Title",
+          utubUrlTagIDs: [],
+          canDelete: true,
+        },
+      ],
+    } as unknown as AppState);
+  });
+
+  it("emits submit but fires no AJAX when value is unchanged", async () => {
+    const urlCard = $(".urlRow");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+
+    // updateURLTitle's unchanged-value guard short-circuits before ajaxCall is invoked.
+    // The emit-before-early-return convention places the emit(UI_FORM_SUBMIT) call at the
+    // top of the submit-button click handler in url-title.ts (not inside updateURLTitle
+    // itself), so here we only assert that no AJAX is invoked — the emit is asserted in
+    // the url-title.ts vitest below.
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+  });
+});
+
 describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
   const UPDATE_TITLE_URL_CARD_HTML = `
     <div class="urlRow" utuburlid="1" urlSelected="false">

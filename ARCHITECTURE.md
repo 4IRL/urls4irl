@@ -27,6 +27,7 @@ Custom Flask extensions registered on `app.extensions` and initialized via `init
 - **`url_validation/url_validator.py`** - `UrlValidator`: Two-step URL processing used when users add URLs to UTubs. `normalize_url()` strips whitespace, prepends `https://` if no scheme, blocks credential-containing URLs (`user:pass@host`), and validates scheme against a whitelist. `validate_url()` parses with `ada_url` (Rust-based WHATWG URL parser), verifies hostname/TLD validity, and returns the canonicalized URL. Raises `InvalidURLError`, `URLWithCredentialsError`, or `AdaUrlParsingError`.
 - **`email_sender/email_sender.py`** - `EmailSender`: Wraps the Mailjet REST API (`mailjet_rest.Client`) for transactional emails. Sends account email confirmations and password reset emails using Jinja2 templates from `backend/templates/email_templates/`. Uses sandbox mode during tests. Production mode toggled via `in_production()`.
 - **`notifications/notifications.py`** - `NotificationSender`: Sends webhook notifications (Discord) via HTTP POST. `send_notification()` is fire-and-forget (runs in a background `threading.Thread`). `send_contact_form_details()` is synchronous and returns success/failure. Non-production messages are wrapped with a testing disclaimer.
+- **`metrics/dim_types_generator.py`** - Pure codegen module that renders the frontend metrics contract from the backend Pydantic source of truth. `generate_dim_types_ts()` emits per-event dimension TypeScript types from `DIMENSION_MODELS`; `generate_dim_values_ts()` emits runtime constants for every dim-value `Literal` alias; `generate_ui_events_ts()` emits the `UI_EVENTS` `as const` object plus the derived `UIEventName` type from the `EventName` enum. Invoked by the `flask metrics generate-*` CLI commands; no app context, DB, or Redis access.
 
 ## Schemas (`backend/schemas/`)
 
@@ -307,6 +308,7 @@ Organized by domain with per-feature conftest files:
 
 - `backend/utils/strings/ui_testing_strs.py` — `UI_TEST_STRINGS` class: test usernames, passwords, URLs, search keywords, UTub/tag names, cookie banner text
 - `backend/cli/mock_constants.py` — Mock data templates (USERNAME_BASE, MOCK_URL_STRINGS, etc.)
+- `backend/cli/metrics.py` — Registers the `flask metrics` Click group: `generate-dim-types`, `generate-dim-values`, `generate-events` (each writes a TypeScript file via the codegen functions in `backend/extensions/metrics/dim_types_generator.py`), and `sync-registry` (reconciles the `EventRegistry` table from the `EventName` enum).
 - `tests/models_for_test.py` — Typed test data objects
 
 ## Docker

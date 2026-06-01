@@ -1,6 +1,8 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
@@ -9,6 +11,7 @@ import {
   initEmailValidationForm,
   SEND_INITIAL_EMAIL,
 } from "./email-validation-form.js";
+import { AUTH_MODAL_OPEN_FORM } from "../types/metrics-dim-values.js";
 
 type ErrorResponse = Schema<"ErrorResponse">;
 
@@ -72,7 +75,19 @@ export function createLogoutOnExit(): () => void {
   };
 }
 
+function targetFromSelector(
+  selector: string,
+): "login" | "register" | "forgot_password" | null {
+  if (selector === "#LoginModal") return "login";
+  if (selector === "#RegisterModal") return "register";
+  if (selector === "#ForgotPasswordModal") return "forgot_password";
+  return null;
+}
+
 export function switchModal($fromModal: JQuery, toSelector: string): void {
+  const target = targetFromSelector(toSelector);
+  if (target !== null) emit({ event: UI_EVENTS.UI_AUTH_FORM_SWITCH, target });
+
   const fromModal = bootstrap.Modal.getInstance($fromModal[0]);
   if (fromModal) {
     $fromModal.one("hidden.bs.modal", () => {
@@ -85,10 +100,18 @@ export function switchModal($fromModal: JQuery, toSelector: string): void {
 }
 
 export function loginModalOpener(): void {
+  emit({
+    event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
+    form: AUTH_MODAL_OPEN_FORM.LOGIN,
+  });
   bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
 export function registerModalOpener(): void {
+  emit({
+    event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
+    form: AUTH_MODAL_OPEN_FORM.REGISTER,
+  });
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 

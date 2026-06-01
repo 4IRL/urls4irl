@@ -6,6 +6,8 @@ import {
   KEYS,
   METHOD_TYPES,
 } from "../../../lib/constants.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   updateURLTitle,
   showUpdateURLTitleForm,
@@ -17,6 +19,11 @@ import {
   makeSubmitButton,
   makeCancelButton,
 } from "../../btns-forms.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 // Element to display the URL title
 export function createURLTitle(urlTitleText: string): JQuery<HTMLElement> {
@@ -103,9 +110,19 @@ function createUpdateURLTitleInput(
         if ((event.originalEvent as KeyboardEvent).repeat) return;
         switch (event.key) {
           case KEYS.ENTER:
+            emit({
+              event: UI_EVENTS.UI_FORM_SUBMIT,
+              form: HOME_FORM.URL_TITLE_EDIT,
+              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+            });
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
+            emit({
+              event: UI_EVENTS.UI_FORM_CANCEL,
+              form: HOME_FORM.URL_TITLE_EDIT,
+              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+            });
             hideAndResetUpdateURLTitleForm(urlCard);
             break;
           default:
@@ -125,6 +142,11 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
+      form: HOME_FORM.URL_TITLE_EDIT,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+    });
     updateURLTitle(urlTitleTextInput, urlCard, utubID);
   });
 
@@ -134,6 +156,11 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
+      form: HOME_FORM.URL_TITLE_EDIT,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+    });
     hideAndResetUpdateURLTitleForm(urlCard);
   });
 

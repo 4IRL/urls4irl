@@ -23,7 +23,12 @@ from backend.metrics.events import (
 
 SearchActive = Literal["true", "false"]
 TagScope = Literal["utub", "url"]
-Form = Literal[
+
+# Home-page forms. Used by `_DimFormSubmit` and `_DimFormCancel` only — the
+# splash/contact forms have dedicated `UI_<form>_SUBMIT` events instead of
+# routing through `UI_FORM_SUBMIT`, so the convention is enforced via type
+# narrowing rather than runtime guard.
+HomeForm = Literal[
     "url_create",
     "url_title_edit",
     "url_string_edit",
@@ -32,6 +37,25 @@ Form = Literal[
     "utub_desc_edit",
     "tag_create",
     "member_invite",
+]
+
+# All forms that can surface a client-side validation error — home forms
+# plus the splash/contact forms (which DO emit `UI_VALIDATION_ERROR` for
+# field-level errors even though their submit path is a dedicated event).
+ValidationForm = Literal[
+    "url_create",
+    "url_title_edit",
+    "url_string_edit",
+    "utub_create",
+    "utub_name_edit",
+    "utub_desc_edit",
+    "tag_create",
+    "member_invite",
+    "login",
+    "register",
+    "forgot_password",
+    "reset_password",
+    "email_validation",
 ]
 
 
@@ -145,16 +169,16 @@ class _DimTagDeleteCancel(UIBaseDimensions):
 
 class _DimFormSubmit(UIBaseDimensions):
     trigger: Literal["enter_key", "button_click"]
-    form: Form
+    form: HomeForm
 
 
 class _DimFormCancel(UIBaseDimensions):
-    trigger: Literal["escape_key", "cancel_button"]
-    form: Form
+    trigger: Literal["escape_key", "cancel_button", "outside_click"]
+    form: HomeForm
 
 
 class _DimValidationError(UIBaseDimensions):
-    form: Form
+    form: ValidationForm
 
 
 # `_DimDeckCollapse` and `_DimDeckExpand` share the same field shape today,
@@ -162,11 +186,11 @@ class _DimValidationError(UIBaseDimensions):
 # each event has a 1:1 grep-able dim model. The pair may diverge as the
 # deck UI grows; keep them split.
 class _DimDeckCollapse(UIBaseDimensions):
-    deck: Literal["members", "tags", "urls"]
+    deck: Literal["members", "tags", "utubs"]
 
 
 class _DimDeckExpand(UIBaseDimensions):
-    deck: Literal["members", "tags", "urls"]
+    deck: Literal["members", "tags", "utubs"]
 
 
 class _DimMobileNav(UIBaseDimensions):
@@ -175,6 +199,17 @@ class _DimMobileNav(UIBaseDimensions):
 
 class _DimAuthFormSwitch(UIBaseDimensions):
     target: Literal["login", "register", "forgot_password"]
+
+
+class _DimAuthModalOpen(UIBaseDimensions):
+    form: Literal["login", "register"]
+
+
+class _DimEmailValidationSubmit(UIBaseDimensions):
+    # `manual_click` covers the user explicitly clicking the resend button;
+    # `auto_after_register` covers the modal auto-firing the request on
+    # `shown.bs.modal` immediately after the post-register flow opens it.
+    trigger: Literal["manual_click", "auto_after_register"]
 
 
 # ---------------------------------------------------------------------------
@@ -276,7 +311,12 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_REGISTER_SUBMIT: _DimDeviceOnly,
     EventName.UI_FORGOT_PASSWORD_SUBMIT: _DimDeviceOnly,
     EventName.UI_AUTH_FORM_SWITCH: _DimAuthFormSwitch,
-    # UI — Errors
+    EventName.UI_AUTH_MODAL_OPEN: _DimAuthModalOpen,
+    EventName.UI_RESET_PASSWORD_SUBMIT: _DimDeviceOnly,
+    EventName.UI_EMAIL_VALIDATION_SUBMIT: _DimEmailValidationSubmit,
+    # UI — Contact / errors
+    EventName.UI_CONTACT_SUBMIT: _DimDeviceOnly,
+    EventName.UI_ERROR_PAGE_REFRESH: _DimDeviceOnly,
     EventName.UI_RATE_LIMIT_HIT: _DimDeviceOnly,
 }
 

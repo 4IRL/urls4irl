@@ -1,5 +1,17 @@
 vi.mock("../lib/security-check.js", () => ({}));
 
+vi.mock("../lib/globals.js", () => ({
+  $: window.jQuery,
+  jQuery: window.jQuery,
+  bootstrap: window.bootstrap,
+}));
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("./helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../lib/metrics-client.js", () => mockMetricsClient());
+
 describe("error entry point", () => {
   const ORIGINAL_HREF = "http://127.0.0.1:8659/error#some-hash";
 
@@ -19,6 +31,7 @@ describe("error entry point", () => {
 
   it("sets location.href to hash-stripped value on refreshBtn click", async () => {
     await import("../error.js");
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     document.getElementById("refreshBtn")!.click();
 
@@ -31,3 +44,5 @@ describe("error entry point", () => {
     await expect(import("../error.js")).resolves.not.toThrow();
   });
 });
+
+export {};

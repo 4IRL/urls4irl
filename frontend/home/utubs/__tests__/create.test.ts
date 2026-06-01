@@ -9,6 +9,12 @@ import { getState, setState } from "../../../store/app-store.js";
 import { setCreateUTubEventListeners } from "../create.js";
 import { showUTubSearchBar } from "../search.js";
 
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
+
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
@@ -31,7 +37,9 @@ vi.mock("../search.js", () => ({
 vi.mock("../deck.js", () => ({
   removeCreateUTubEventListeners: vi.fn(),
 }));
-vi.mock("../../btns-forms.js", () => ({ highlightInput: vi.fn() }));
+vi.mock("../../btns-forms.js", () => ({
+  highlightInput: vi.fn(),
+}));
 vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ utubs: [] })),
   setState: vi.fn(),

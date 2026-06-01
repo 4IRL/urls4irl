@@ -38,8 +38,14 @@ pytestmark = pytest.mark.splash_ui
 
 
 def wait_for_reset_password_close_button(browser: WebDriver) -> None:
-    """Wait for handleUserChangedPassword to run, which changes the submit button to 'Close'."""
-    WebDriverWait(browser, 5).until(
+    """Wait for handleUserChangedPassword to run, which changes the submit button to 'Close'.
+
+    Timeout raised from 5s to 10s: under the documented n=8 UI parallelism cap,
+    worst-case AJAX round-trip + handleUserChangedPassword DOM update is ~6s
+    (observed in `slowest 10 durations` for `test_password_reset_successful_reset_key`).
+    10s provides headroom for Postgres / Flask contention spikes.
+    """
+    WebDriverWait(browser, 10).until(
         lambda driver: driver.find_element(
             By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
         ).get_attribute("value")

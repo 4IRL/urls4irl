@@ -2,8 +2,15 @@ import type { UtubTag } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
 import { deleteURLTag } from "./delete.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 /**
  * Hide tag deletion button when needed
@@ -66,10 +73,20 @@ export function setFocusEventListenersOnCreateURLTagInput(
         switch (keyupEvent.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
+            emit({
+              event: UI_EVENTS.UI_FORM_SUBMIT,
+              form: HOME_FORM.TAG_CREATE,
+              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+            });
             createURLTag(urlTagInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
+            emit({
+              event: UI_EVENTS.UI_FORM_CANCEL,
+              form: HOME_FORM.TAG_CREATE,
+              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+            });
             hideAndResetCreateURLTagForm(urlCard);
             break;
           default:

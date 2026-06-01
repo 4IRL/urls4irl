@@ -7,6 +7,7 @@ import { $, bootstrap } from "./lib/globals.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
+import { initMetricsClient } from "./lib/metrics-client.js";
 import { initNavbar } from "./splash/navbar.js";
 import { initSplash, createLogoutOnExit } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
@@ -45,6 +46,7 @@ function initEmailValidationIfPresent(): void {
 
 // Initialize on document ready
 $(document).ready(function () {
+  initMetricsClient();
   initSplash();
   initNavbar();
 

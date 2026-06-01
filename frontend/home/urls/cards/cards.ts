@@ -1,5 +1,8 @@
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
+import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
 import {
   selectURLCard,
@@ -21,6 +24,12 @@ import {
   unbindCreateURLFocusEventListeners,
   resetCreateURLFailErrors,
 } from "./create.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  SEARCH_ACTIVE,
+} from "../../../types/metrics-dim-values.js";
 
 export function updateURLAfterFindingStaleData(
   urlCard: JQuery,
@@ -144,6 +153,13 @@ export function setFocusEventListenersOnURLCard(urlCard: JQuery): void {
       "keyup.focusURLCard" + utubUrlID,
       function (event: JQuery.TriggeredEvent) {
         if (event.key === KEYS.ENTER) {
+          emit({
+            event: UI_EVENTS.UI_URL_CARD_CLICK,
+            search_active: isURLSearchActive()
+              ? SEARCH_ACTIVE.TRUE
+              : SEARCH_ACTIVE.FALSE,
+            active_tag_count: getActiveTagCount(),
+          });
           selectURLCard(urlCard);
           urlCard.trigger("focusout");
         }
@@ -206,10 +222,20 @@ export function newURLInputAddEventListeners(
   const createURLInput = urlInputForm.find("#urlStringCreate");
 
   $(urlBtnCreate).onExact("click.createURL", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
+      form: HOME_FORM.URL_CREATE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+    });
     createURL(createURLTitleInput, createURLInput, utubID);
   });
 
   $(urlBtnDelete).onExact("click.createURL", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
+      form: HOME_FORM.URL_CREATE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+    });
     createURLHideInput();
   });
 

@@ -144,6 +144,22 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         },
     ),
     (
+        EventName.UI_FORM_CANCEL,
+        {
+            "trigger": "outside_click",
+            "form": "utub_name_edit",
+            "device_type": DeviceType.MOBILE,
+        },
+    ),
+    (
+        EventName.UI_FORM_CANCEL,
+        {
+            "trigger": "outside_click",
+            "form": "utub_desc_edit",
+            "device_type": DeviceType.DESKTOP,
+        },
+    ),
+    (
         EventName.UI_VALIDATION_ERROR,
         {"form": "utub_create", "device_type": DeviceType.MOBILE},
     ),
@@ -156,14 +172,62 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         {"form": "url_string_edit", "device_type": DeviceType.MOBILE},
     ),
     (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "login", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "register", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "forgot_password", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "reset_password", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_VALIDATION_ERROR,
+        {"form": "email_validation", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_EMAIL_VALIDATION_SUBMIT,
+        {"trigger": "manual_click", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_EMAIL_VALIDATION_SUBMIT,
+        {"trigger": "auto_after_register", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_RESET_PASSWORD_SUBMIT,
+        {"device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_CONTACT_SUBMIT,
+        {"device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_ERROR_PAGE_REFRESH,
+        {"device_type": DeviceType.MOBILE},
+    ),
+    (
         EventName.UI_DECK_COLLAPSE,
         {"deck": "members", "device_type": DeviceType.DESKTOP},
     ),
-    (EventName.UI_DECK_EXPAND, {"deck": "urls", "device_type": DeviceType.MOBILE}),
+    (EventName.UI_DECK_EXPAND, {"deck": "utubs", "device_type": DeviceType.MOBILE}),
     (EventName.UI_MOBILE_NAV, {"target": "tags", "device_type": DeviceType.MOBILE}),
     (
         EventName.UI_AUTH_FORM_SWITCH,
         {"target": "register", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_AUTH_MODAL_OPEN,
+        {"form": "login", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_AUTH_MODAL_OPEN,
+        {"form": "register", "device_type": DeviceType.MOBILE},
     ),
     # `_DimDeviceOnly` event — exercises the model that replaces formerly-None UI entries.
     (EventName.UI_UTUB_CREATE_OPEN, {"device_type": DeviceType.MOBILE}),

@@ -1,4 +1,6 @@
 import type { Schema } from "../types/api-helpers.d.ts";
+import type { UIEventDimensions } from "../types/metrics-dimensions.d.ts";
+import type { UIEventName } from "../types/metrics-events.js";
 
 import { APP_CONFIG } from "./config.js";
 import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
@@ -6,8 +8,25 @@ import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
 type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
 
-export type UIEventName = MetricsIngestEvent["event_name"];
+// Re-export `UIEventName` from the codegen module so `emit()` callers continue
+// to import it from `metrics-client.js`. The const object in
+// `metrics-events.ts` is now the single source of truth for both the wire
+// strings and the type.
+export type { UIEventDimensions, UIEventName };
 export type EmitDimensions = Record<string, string | number | boolean>;
+
+// The caller's view of an event's dimensions: the Pydantic shape minus
+// `device_type` (which `emit()` auto-injects from `getDeviceType()`).
+export type CallerDimensions<EventT extends UIEventName> = Omit<
+  UIEventDimensions[EventT],
+  "device_type"
+>;
+
+// The single args-object accepted by `emit()`. `event` is the discriminator;
+// the rest of the keys are the flat caller-supplied dimensions for that event.
+export type EmitArgs<EventT extends UIEventName> = {
+  event: EventT;
+} & CallerDimensions<EventT>;
 
 const METRICS_INGEST_URL = "/api/metrics" as const;
 const DEDUPE_COOLDOWN_MS = 1000;
@@ -74,7 +93,45 @@ function pruneDedupeMap(now: number): void {
   }
 }
 
-export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
+// `crypto.randomUUID()` requires a secure context (HTTPS or localhost). In
+// non-secure HTTP origins (e.g. dev stacks served from a hostname like
+// `http://web:8080`), `crypto.randomUUID` is `undefined` and calling it
+// throws a TypeError that aborts the in-flight flush, so the buffered
+// events are never POSTed. The shape only needs to be unique-per-page-load
+// enough for the ingest route's `reserve_batch` dedupe key — full RFC 4122
+// compliance is not required. Fall back to a `getRandomValues`-based v4
+// shape when the native helper is missing.
+function generateBatchId(): string {
+  if (typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byteValue) =>
+    byteValue.toString(16).padStart(2, "0"),
+  ).join("");
+  return (
+    hex.slice(0, 8) +
+    "-" +
+    hex.slice(8, 12) +
+    "-" +
+    hex.slice(12, 16) +
+    "-" +
+    hex.slice(16, 20) +
+    "-" +
+    hex.slice(20, 32)
+  );
+}
+
+// `emit()` takes a single args object: `{ event, ...dimensions }`. For events
+// whose `CallerDimensions` is `{}` (i.e. only `device_type` in the Pydantic
+// model), the intersection adds nothing and the caller passes just
+// `{ event: UI_EVENTS.UI_X }`. For events with caller-supplied dims, the keys
+// are required flat on the args object — a typo on any dim key fails `tsc`.
+export function emit<EventT extends UIEventName>(args: EmitArgs<EventT>): void {
+  const { event, ...dimensions } = args;
   // performance.now() is monotonic high-resolution time relative to page navigation start;
   // it cannot be persisted across page loads and is safe from NTP/clock jumps.
   const now = performance.now();
@@ -84,7 +141,7 @@ export function emit(event: UIEventName, dimensions?: EmitDimensions): void {
   // to forget. Caller-supplied dimensions win via spread order.
   const dimensionsWithDevice: EmitDimensions = {
     device_type: getDeviceType(),
-    ...(dimensions ?? {}),
+    ...(dimensions as EmitDimensions),
   };
   pruneDedupeMap(now);
   const dedupeKey = `${event}|${JSON.stringify(dimensionsWithDevice)}`;
@@ -108,7 +165,7 @@ export async function flush(): Promise<void> {
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
-    _inFlightBatchId = crypto.randomUUID();
+    _inFlightBatchId = generateBatchId();
   }
 
   const payload: MetricsIngestRequest = {
@@ -150,7 +207,7 @@ function flushBeacon(): void {
   if (_buffer.length === 0) return;
   if (_inFlightBatchId !== null) return;
   const beaconEvents = _buffer.splice(0, MAX_BATCH_SIZE);
-  const beaconBatchId = crypto.randomUUID();
+  const beaconBatchId = generateBatchId();
   const payload: MetricsIngestRequest = {
     events: beaconEvents,
     batch_id: beaconBatchId,

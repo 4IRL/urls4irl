@@ -1,6 +1,8 @@
 import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
@@ -9,6 +11,7 @@ import {
   handleUserHasAccountNotEmailValidated,
   switchModal,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type LoginRequest = Schema<"LoginRequest">;
 type LoginSuccess = SuccessResponse<"login">;
@@ -36,6 +39,7 @@ export function initLoginForm($modal: JQuery): void {
 
 function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
+  emit({ event: UI_EVENTS.UI_LOGIN_SUBMIT });
 
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
@@ -103,6 +107,7 @@ function handleLoginFailure(
     "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
+    emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: VALIDATION_FORM.LOGIN });
     switch (errorJson.errorCode) {
       case 1: {
         // User found but email not yet validated

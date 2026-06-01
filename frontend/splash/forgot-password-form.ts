@@ -1,6 +1,8 @@
 import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
@@ -8,6 +10,7 @@ import {
   handleImproperFormErrors,
   switchModal,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type ForgotPasswordRequest = Schema<"ForgotPasswordRequest">;
 type ForgotPasswordSuccess = SuccessResponse<"forgotPassword">;
@@ -34,6 +37,7 @@ function handleForgotPassword(
   $modal: JQuery,
 ): void {
   event.preventDefault();
+  emit({ event: UI_EVENTS.UI_FORGOT_PASSWORD_SUBMIT });
   $modal.find("#submit").attr("disabled", "disabled");
 
   const payload: ForgotPasswordRequest = {
@@ -101,6 +105,10 @@ function handleForgotPasswordFailure(
 
   if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ForgotPasswordError;
+    emit({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.FORGOT_PASSWORD,
+    });
     switch (errorJson.errorCode) {
       case 1: {
         handleImproperFormErrors($modal, errorJson);

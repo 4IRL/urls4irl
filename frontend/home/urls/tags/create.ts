@@ -5,6 +5,8 @@ import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -41,6 +43,12 @@ import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  TAG_SCOPE,
+} from "../../../types/metrics-dim-values.js";
 
 type AddTagRequest = Schema<"AddTagRequest">;
 type UrlTagModifiedResponse = SuccessResponse<"createUtubUrlTag">;
@@ -79,6 +87,11 @@ export function createTagInputBlock(
   );
 
   urlTagSubmitBtnCreate.onExact("click.createURLTag", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
+      form: HOME_FORM.TAG_CREATE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+    });
     createURLTag(urlTagTextInput, urlCard, utubID);
   });
 
@@ -88,6 +101,11 @@ export function createTagInputBlock(
   );
 
   urlTagCancelBtnCreate.onExact("click.createURLTag", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
+      form: HOME_FORM.TAG_CREATE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+    });
     hideAndResetCreateURLTagForm(urlCard);
   });
 
@@ -105,6 +123,7 @@ export function showCreateURLTagForm(
   urlCard: JQuery,
   urlTagBtnCreate: JQuery,
 ): void {
+  emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: TAG_SCOPE.URL });
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);
@@ -272,6 +291,7 @@ function createURLTagSuccess(
   urlCard: JQuery,
   utubID: number,
 ): void {
+  emit({ event: UI_EVENTS.UI_TAG_APPLY });
   // Clear and reset input field
   hideAndResetCreateURLTagForm(urlCard);
 

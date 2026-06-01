@@ -1,9 +1,25 @@
 import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { filterUTubsByName } from "../../logic/utub-search.js";
+import {
+  SEARCH_CLOSE_TARGET,
+  SEARCH_OPEN_TARGET,
+} from "../../types/metrics-dim-values.js";
 
 type UTubSelectorEntry = { id: number; name: string };
+
+let _utubSearchOpen: boolean = false;
+
+export function isUTubSearchActive(): boolean {
+  const value = $("#UTubNameSearch").val();
+  return (
+    typeof value === "string" &&
+    value.trim().length >= APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH
+  );
+}
 
 function readUTubsFromDOM(): UTubSelectorEntry[] {
   return $.map($(".UTubSelector").toArray(), (el: HTMLElement) => ({
@@ -48,12 +64,19 @@ export function setUTubSelectorSearchEventListener(): void {
 
   searchInput
     .offAndOn("focus.searchInputEsc", function () {
+      if (!_utubSearchOpen) {
+        _utubSearchOpen = true;
+        emit({
+          event: UI_EVENTS.UI_SEARCH_OPEN,
+          target: SEARCH_OPEN_TARGET.UTUBS,
+        });
+      }
       searchInput.offAndOn(
         "keydown.searchInputEsc",
         function (event: JQuery.TriggeredEvent) {
           if (event.key === KEYS.ESCAPE) {
-            searchInput.blur();
             resetUTubSearch();
+            searchInput.blur();
             const firstVisibleSelector = $(".UTubSelector")
               .not(".hidden")
               .first();
@@ -67,6 +90,7 @@ export function setUTubSelectorSearchEventListener(): void {
       );
     })
     .offAndOn("blur.searchInputEsc", function () {
+      _utubSearchOpen = false;
       searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
@@ -103,6 +127,13 @@ export function setUTubSelectorSearchEventListener(): void {
 }
 
 export function resetUTubSearch(): void {
+  if (_utubSearchOpen) {
+    emit({
+      event: UI_EVENTS.UI_SEARCH_CLOSE,
+      target: SEARCH_CLOSE_TARGET.UTUBS,
+    });
+    _utubSearchOpen = false;
+  }
   const searchInput = $("#UTubNameSearch");
   searchInput.val("");
   searchInput.off("keydown.searchInputEsc");

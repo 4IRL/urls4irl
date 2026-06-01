@@ -1,6 +1,14 @@
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initRegisterForm } from "../register-form.js";
+import { VALIDATION_FORM } from "../../types/metrics-dim-values.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../lib/page-utils.js", () => ({
   showNewPageOnAJAXHTMLResponse: vi.fn(),
@@ -92,5 +100,51 @@ describe("register-form 429 HTML response", () => {
     expect(showNewPageOnAJAXHTMLResponse).toHaveBeenCalledWith(
       "<html>Forbidden</html>",
     );
+  });
+});
+
+describe("register-form metrics — UI_REGISTER_SUBMIT", () => {
+  beforeEach(() => {
+    document.body.innerHTML = REGISTER_MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("emits ui_register_submit once per submit-button click", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_REGISTER_SUBMIT });
+    expect(emit).toHaveBeenCalledTimes(1);
+  });
+
+  it("emits ui_validation_error with form=register on 400 errorCode response", async () => {
+    const { emit } = await import("../../lib/metrics-client.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    const fakeXhr = {
+      status: 400,
+      responseJSON: { errorCode: 1, message: "Invalid" },
+      getResponseHeader: vi.fn(),
+    };
+    mockDeferred.reject(fakeXhr, "error", "Bad Request");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.REGISTER,
+    });
   });
 });

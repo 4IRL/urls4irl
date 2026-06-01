@@ -8,8 +8,11 @@ import {
   enableTabbableChildElements,
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
+import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -30,6 +33,11 @@ import {
 import { createEditURLIcon } from "./options/edit-string-btn.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { getState, setState } from "../../../store/app-store.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+  VALIDATION_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
@@ -50,6 +58,7 @@ export function showUpdateURLStringForm(
   urlCard: JQuery,
   urlStringBtnUpdate: JQuery,
 ): void {
+  emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
   urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
@@ -192,6 +201,10 @@ export async function updateURL(
     }
 
     if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+      emit({
+        event: UI_EVENTS.UI_VALIDATION_ERROR,
+        form: VALIDATION_FORM.URL_STRING_EDIT,
+      });
       displayUpdateURLErrors(
         "urlString",
         APP_CONFIG.strings.INVALID_URL,
@@ -259,12 +272,30 @@ function updateURLSuccess(
     .attr({ href: updatedURLString })
     .text(updatedURLString);
 
-  // Update URL options
+  // Update URL options. Dimensions (search_active, active_tag_count) are read
+  // at click time so values reflect the deck state at the moment the user
+  // activates the rebound button — not at updateURLSuccess time.
   urlCard.find(".urlBtnAccess").offAndOnExact("click", function () {
+    emit({
+      event: UI_EVENTS.UI_URL_ACCESS,
+      trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
+      search_active: isURLSearchActive()
+        ? SEARCH_ACTIVE.TRUE
+        : SEARCH_ACTIVE.FALSE,
+      active_tag_count: getActiveTagCount(),
+    });
     accessLink(updatedURLString);
   });
 
   urlCard.find(".goToUrlIcon").offAndOnExact("click", function () {
+    emit({
+      event: UI_EVENTS.UI_URL_ACCESS,
+      trigger: URL_ACCESS_TRIGGER.CORNER_BUTTON,
+      search_active: isURLSearchActive()
+        ? SEARCH_ACTIVE.TRUE
+        : SEARCH_ACTIVE.FALSE,
+      active_tag_count: getActiveTagCount(),
+    });
     accessLink(updatedURLString);
   });
 

@@ -5,6 +5,8 @@ import { $ } from "./lib/globals.js";
 import "./lib/security-check.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { APP_CONFIG } from "./lib/config.js";
+import { emit, initMetricsClient } from "./lib/metrics-client.js";
+import { UI_EVENTS } from "./types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "./lib/page-utils.js";
 import { initNavbarRouting } from "./lib/navbar-shared.js";
 
@@ -68,6 +70,7 @@ export function handleContactSubmit(
   $form: JQuery,
 ): void {
   event.preventDefault();
+  emit({ event: UI_EVENTS.UI_CONTACT_SUBMIT });
 
   const $banner = $form.find("#Banner");
   const $submitBtn = $form.find("#submit");
@@ -119,6 +122,8 @@ export function handleContactSubmit(
 }
 
 $(document).ready(() => {
+  initMetricsClient();
+
   // Initialize navbar routing
   initNavbarRouting();
 

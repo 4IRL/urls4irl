@@ -7,9 +7,16 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+} from "../../types/metrics-dim-values.js";
 
 const MEMBER_FIELD_NAMES = ["username"] as const;
 
@@ -47,10 +54,20 @@ function setupCreateMemberEventListeners(utubID: number): void {
   const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
   memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_SUBMIT,
+      form: HOME_FORM.MEMBER_INVITE,
+      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
+    });
     createMember(utubID);
   });
 
   memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function () {
+    emit({
+      event: UI_EVENTS.UI_FORM_CANCEL,
+      form: HOME_FORM.MEMBER_INVITE,
+      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+    });
     createMemberHideInput();
   });
 
@@ -79,10 +96,20 @@ function bindCreateMemberFocusEventListeners(
       switch (event.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
+          emit({
+            event: UI_EVENTS.UI_FORM_SUBMIT,
+            form: HOME_FORM.MEMBER_INVITE,
+            trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+          });
           createMember(utubID);
           break;
         case KEYS.ESCAPE:
           // Handle escape  key pressed
+          emit({
+            event: UI_EVENTS.UI_FORM_CANCEL,
+            form: HOME_FORM.MEMBER_INVITE,
+            trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+          });
           createMemberHideInput();
           break;
         default:
@@ -103,6 +130,7 @@ function resetNewMemberForm(): void {
 
 // Shows new Member input fields
 function createMemberShowInput(utubID: number): void {
+  emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
   $("#createMemberWrap").showClassFlex();
   $("#displayMemberWrap").hideClass();
   $("#memberBtnCreate").hideClass();

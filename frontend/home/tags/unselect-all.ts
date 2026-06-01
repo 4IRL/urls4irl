@@ -1,6 +1,8 @@
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { $ } from "../../lib/globals.js";
+import { emit } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { setState } from "../../store/app-store.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { toggleTagFilterSelected } from "./tags.js";
@@ -36,6 +38,7 @@ export function resetCountOfTagFiltersApplied(): void {
 }
 
 function unselectAllTags(): void {
+  emit({ event: UI_EVENTS.UI_TAG_FILTER_TOGGLE });
   $(".tagFilter")
     .removeClass("selected unselected disabled")
     .addClass("unselected")

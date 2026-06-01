@@ -59,6 +59,17 @@ from tests.models_for_test import (
 # `redis-metrics` service or rebasing the metrics DB block to a lower start.
 _METRICS_REDIS_DB_BASE = 8
 
+# Make the shared metrics-UI fixtures (metrics_redis_client,
+# metrics_enabled_for_ui, metrics_registry_synced, clear_metrics_state(_mobile),
+# pg_conn_for_metrics(_mobile)) available to every UI test that requests
+# them. Declared at the top-level `tests/` conftest because pytest disallows
+# `pytest_plugins` in non-root conftests (it would scope the plugin to the
+# entire test suite rather than just the subtree, which pytest treats as a
+# misuse). The fixtures themselves only resolve their session-scoped
+# dependencies (`worker_metrics_redis_uri`, `parallelize_app`, etc.) when a
+# test actually requests one of them, so integration tests are unaffected.
+pytest_plugins = ["tests.functional.metrics_helpers.conftest_fragment"]
+
 
 class AjaxFlaskClient(FlaskClient):
     """FlaskClient subclass that injects X-Requested-With: XMLHttpRequest on every request."""

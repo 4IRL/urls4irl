@@ -1,12 +1,15 @@
 import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
   handleImproperFormErrors,
 } from "./init.js";
+import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
 
 type ResetPasswordRequest = Schema<"ResetPasswordRequest">;
 type ResetPasswordSuccess = SuccessResponse<"resetPassword">;
@@ -32,6 +35,7 @@ function handleResetPassword(
   $modal: JQuery,
 ): void {
   event.preventDefault();
+  emit({ event: UI_EVENTS.UI_RESET_PASSWORD_SUBMIT });
 
   const payload: ResetPasswordRequest = {
     newPassword: String($modal.find("#newPassword").val() ?? ""),
@@ -107,6 +111,10 @@ function handleResetPasswordFailure(
     const errorJson = xhr.responseJSON as ResetPasswordError;
     switch (errorJson.errorCode) {
       case 1:
+        emit({
+          event: UI_EVENTS.UI_VALIDATION_ERROR,
+          form: VALIDATION_FORM.RESET_PASSWORD,
+        });
         $modal.find(".form-control").removeClass("is-invalid");
         $modal.find(".invalid-feedback").remove();
         handleImproperFormErrors($modal, errorJson);

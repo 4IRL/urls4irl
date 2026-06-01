@@ -35,6 +35,12 @@ vi.mock("../../../lib/ajax.js", () => ({
   is429Handled: vi.fn(() => false),
 }));
 
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
+
 vi.mock("../../utubs/utils.js", () => ({
   getCurrentUTubName: vi.fn(() => "Test UTub"),
   getAllAccessibleUTubNames: vi.fn(() => []),

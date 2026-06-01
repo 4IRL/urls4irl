@@ -1,7 +1,14 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+import { emit } from "../../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
+import { isURLSearchActive, getActiveTagCount } from "../../url-context.js";
 import { accessLink } from "../access.js";
 import type { UtubUrlItem } from "../../../../types/url.js";
+import {
+  SEARCH_ACTIVE,
+  URL_ACCESS_TRIGGER,
+} from "../../../../types/metrics-dim-values.js";
 
 function createAccessLinkIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "20px";
@@ -70,6 +77,14 @@ export function createAccessLinkBtn(url: UtubUrlItem): JQuery<HTMLElement> {
     .onExact("click", function (this: HTMLElement) {
       const tooltip = bootstrap.Tooltip.getInstance(this);
       if (tooltip) tooltip.hide();
+      emit({
+        event: UI_EVENTS.UI_URL_ACCESS,
+        trigger: URL_ACCESS_TRIGGER.MAIN_BUTTON,
+        search_active: isURLSearchActive()
+          ? SEARCH_ACTIVE.TRUE
+          : SEARCH_ACTIVE.FALSE,
+        active_tag_count: getActiveTagCount(),
+      });
       accessLink(url.urlString);
     });
 

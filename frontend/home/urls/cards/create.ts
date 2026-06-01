@@ -5,6 +5,8 @@ import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { emit } from "../../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { getNumOfVisibleURLs, getNumOfURLs } from "../utils.js";
@@ -24,6 +26,12 @@ import {
   showURLSearchIcon,
 } from "../search.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
+import {
+  FORM_CANCEL_TRIGGER,
+  FORM_SUBMIT_TRIGGER,
+  HOME_FORM,
+  VALIDATION_FORM,
+} from "../../../types/metrics-dim-values.js";
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -48,10 +56,20 @@ export function bindCreateURLFocusEventListeners(
     switch (event.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
+        emit({
+          event: UI_EVENTS.UI_FORM_SUBMIT,
+          form: HOME_FORM.URL_CREATE,
+          trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+        });
         createURL(createURLTitleInput, createURLInput, utubID);
         break;
       case KEYS.ESCAPE:
         // Handle escape key pressed
+        emit({
+          event: UI_EVENTS.UI_FORM_CANCEL,
+          form: HOME_FORM.URL_CREATE,
+          trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+        });
         createURLHideInput();
         break;
       default:
@@ -84,6 +102,7 @@ export function createURLHideInput(): void {
 
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
+  emit({ event: UI_EVENTS.UI_URL_CREATE_OPEN });
   if (!getNumOfURLs()) {
     hideURLsEmptyState();
   }
@@ -129,6 +148,10 @@ export function createURL(
   );
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+    emit({
+      event: UI_EVENTS.UI_VALIDATION_ERROR,
+      form: VALIDATION_FORM.URL_CREATE,
+    });
     createURLShowFormErrors({
       urlString: [APP_CONFIG.strings.INVALID_URL],
     });

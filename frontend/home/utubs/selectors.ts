@@ -7,6 +7,8 @@ import { setState } from "../../store/app-store.js";
 import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
+import { emit as recordUIEvent } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,
@@ -16,6 +18,8 @@ import {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc,
   showCreateDescriptionButtonAlways,
 } from "../urls/update-description.js";
+import { isUTubSearchActive } from "./search.js";
+import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
 
 type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 
@@ -132,6 +136,13 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   // Avoid reselecting if choosing the same UTub selector
   if (currentlySelected.is($(utubSelector))) return;
 
+  recordUIEvent({
+    event: UI_EVENTS.UI_UTUB_SELECT,
+    search_active: isUTubSearchActive()
+      ? SEARCH_ACTIVE.TRUE
+      : SEARCH_ACTIVE.FALSE,
+  });
+
   currentlySelected.removeClass("active");
   utubSelector.addClass("active");
   getSelectedUTubInfo(selectedUTubID);
@@ -237,6 +248,12 @@ function makeUTubRoleIcon(memberRole: string): string {
 
 export function makeUTubSelectableAgainIfMobile(utub: JQuery): void {
   $(utub).offAndOnExact("click.selectUTubMobile", function () {
+    recordUIEvent({
+      event: UI_EVENTS.UI_UTUB_SELECT,
+      search_active: isUTubSearchActive()
+        ? SEARCH_ACTIVE.TRUE
+        : SEARCH_ACTIVE.FALSE,
+    });
     getSelectedUTubInfo(parseInt($(this).attr("utubid")!));
     $(this).off("click.selectUTubMobile");
   });
