@@ -17,13 +17,11 @@ services:
     environment:
       - PRODUCTION=true
       - FLASK_DEBUG=false
-      # Anonymous metrics knobs (Phase 2: Redis-backed writer active; domain hooks land in Phase 3)
       # METRICS_REDIS_URI is assembled in backend/config.py from the
       # REDIS_PASSWORD secret; do not set it here in prod.
-      - METRICS_ENABLED=false
-      - METRICS_FLUSH_INTERVAL_SECONDS=60
-      - METRICS_BUCKET_SECONDS=3600
-      - METRICS_BATCH_NONCE_TTL_SECONDS=120
+      # Tuning knobs (METRICS_FLUSH_INTERVAL_SECONDS, METRICS_BUCKET_SECONDS,
+      # METRICS_BATCH_NONCE_TTL_SECONDS) inherit from backend/config.py defaults.
+      - METRICS_ENABLED=true
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
