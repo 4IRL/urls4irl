@@ -16,31 +16,27 @@ export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
 
 let _suppressNextNavbarCloseEmit: boolean = false;
 
-function suppressNextNavbarCloseEmit(): void {
-  _suppressNextNavbarCloseEmit = true;
-}
-
 /**
  * Initialize navbar and mobile navigation buttons
  */
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
-    suppressNextNavbarCloseEmit();
+    _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.MEMBERS });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
-    suppressNextNavbarCloseEmit();
+    _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.URLS });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
-    suppressNextNavbarCloseEmit();
+    _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.UTUBS });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
-    suppressNextNavbarCloseEmit();
+    _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
     setMobileUIWhenTagDeckSelected();
   });
