@@ -293,6 +293,18 @@ def build_driver_mobile_portrait(
 
     driver.set_window_size(width=420, height=900)
 
+    driver.execute_cdp_cmd(
+        "Emulation.setEmulatedMedia",
+        {
+            "features": [
+                {"name": "any-pointer", "value": "coarse"},
+                {"name": "pointer", "value": "coarse"},
+                {"name": "hover", "value": "none"},
+                {"name": "any-hover", "value": "none"},
+            ],
+        },
+    )
+
     ping_server(url + str(open_port))
 
     yield driver
