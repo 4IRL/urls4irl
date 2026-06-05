@@ -172,28 +172,34 @@ a.urlString {
 
 @media (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
-        display: flex;
-        min-width: 2.75rem;
-        min-height: 1.75rem;
+        display: inline-flex;
         align-items: center;
-        justify-content: center;
-        opacity: 0.85;
+        cursor: pointer;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap {
+        min-height: 2.75rem;
+        padding-block: 0.5rem;
         cursor: pointer;
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
         width: 100%;
-        justify-content: space-between;
+        justify-content: flex-start;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.35rem;
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
-        flex: 1 1 auto;
+        flex: 0 1 auto;
         min-width: 0;
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:active .urlTitle {
+        text-decoration: underline;
     }
 }
 

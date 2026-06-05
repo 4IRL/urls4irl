@@ -20,16 +20,18 @@ const $ = window.jQuery;
 const UTUB_ID = 1;
 const URL_TITLE_TEXT = "My Title";
 
-function mountTitleBlock(): {
+function mountTitleBlock(selected: boolean = true): {
   urlCard: JQuery;
   pencil: JQuery;
+  wrap: JQuery;
 } {
-  document.body.innerHTML = `<div class="urlRow" utuburlid="1" urlSelected="true" filterable="true"></div>`;
+  document.body.innerHTML = `<div class="urlRow" utuburlid="1" urlSelected="${selected}" filterable="true"></div>`;
   const urlCard = $(".urlRow");
   const block = createURLTitleAndUpdateBlock(URL_TITLE_TEXT, urlCard, UTUB_ID);
   urlCard.append(block);
   const pencil = urlCard.find(".urlTitleBtnUpdate");
-  return { urlCard, pencil };
+  const wrap = urlCard.find(".urlTitleAndUpdateIconWrap");
+  return { urlCard, pencil, wrap };
 }
 
 describe("createShowUpdateURLTitleIcon - accessibility attributes", () => {
@@ -73,6 +75,28 @@ describe("createShowUpdateURLTitleIcon - keyboard activation", () => {
 
     const event = $.Event("keydown.showUpdateURLTitle", { key: "a" });
     pencil.trigger(event);
+
+    expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
+  });
+});
+
+describe("urlTitleAndUpdateIconWrap - row-level click (UTub edit pattern)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("invokes showUpdateURLTitleForm when wrap is clicked on a selected card", () => {
+    const { wrap } = mountTitleBlock(true);
+
+    wrap.trigger("click");
+
+    expect(vi.mocked(showUpdateURLTitleForm)).toHaveBeenCalledOnce();
+  });
+
+  it("does NOT invoke showUpdateURLTitleForm when wrap is clicked on an unselected card", () => {
+    const { wrap } = mountTitleBlock(false);
+
+    wrap.trigger("click");
 
     expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
   });

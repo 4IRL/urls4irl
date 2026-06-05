@@ -43,10 +43,23 @@ export function createURLTitleAndUpdateBlock(
     "flex-row ninetyfive-width",
   );
 
-  // Contains the url title and icon to show the updating input box
-  const urlTitleAndShowUpdateIconWrap = $(
-    document.createElement("div"),
-  ).addClass("flex-row ninetyfive-width urlTitleAndUpdateIconWrap");
+  // Contains the url title and icon to show the updating input box.
+  // The wrap itself is the click target — tapping anywhere on the row
+  // opens the edit form when the card is selected, mirroring the UTub
+  // name/description edit pattern (see #UTubNameUpdateWrap in
+  // backend/templates/components/home/URLDeck/URLDeckHeader.html).
+  const urlTitleAndShowUpdateIconWrap = $(document.createElement("div"))
+    .addClass(
+      "flex-row ninetyfive-width urlTitleAndUpdateIconWrap editable-wrap",
+    )
+    .onExact(
+      "click.showUpdateURLTitle",
+      function (event: JQuery.TriggeredEvent) {
+        if (urlCard.attr("urlSelected") !== "true") return;
+        const wrapEl = $(event.currentTarget) as JQuery;
+        showUpdateURLTitleForm(wrapEl, urlCard);
+      },
+    );
   // Parent container with both show update icon and url title, allows hover to show the update icon
   const urlTitleAndShowUpdateIconInnerWrap = $(
     document.createElement("div"),
@@ -66,24 +79,18 @@ export function createURLTitleAndUpdateBlock(
   return urlTitleAndUpdateWrap;
 }
 
-// Create the icon that will show the update URL title form
+// Create the icon hint that the title row is editable.
+// Click is handled by the surrounding wrap (see urlTitleAndShowUpdateIconWrap
+// above) — keydown stays here so a keyboard user who tabs onto the pencil
+// can activate edit mode with Enter/Space.
 function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
   return makeUpdateButton(ICON_SIZE_SM)
-    .addClass("urlTitleBtnUpdate")
+    .addClass("urlTitleBtnUpdate edit-pencil-icon")
     .addClass("tabbable")
     .attr({
       "aria-label": APP_CONFIG.strings.EDIT_URL_TITLE_TOOLTIP,
       type: "button",
     })
-    .onExact(
-      "click.showUpdateURLTitle",
-      function (event: JQuery.TriggeredEvent) {
-        const urlTitleAndIcon = $(event.target).closest(
-          ".urlTitleAndUpdateIconWrap",
-        );
-        showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
-      },
-    )
     .onExact(
       "keydown.showUpdateURLTitle",
       function (event: JQuery.TriggeredEvent) {
