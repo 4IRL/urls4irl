@@ -49,9 +49,7 @@ export function createURLTitleAndUpdateBlock(
   // name/description edit pattern (see #UTubNameUpdateWrap in
   // backend/templates/components/home/URLDeck/URLDeckHeader.html).
   const urlTitleAndShowUpdateIconWrap = $(document.createElement("div"))
-    .addClass(
-      "flex-row ninetyfive-width urlTitleAndUpdateIconWrap editable-wrap",
-    )
+    .addClass("flex-row ninetyfive-width urlTitleAndUpdateIconWrap")
     .onExact(
       "click.showUpdateURLTitle",
       function (event: JQuery.TriggeredEvent) {
