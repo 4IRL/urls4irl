@@ -10,7 +10,11 @@ import {
 } from "../../../lib/jquery-plugins.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import { isEmptyString } from "./utils.js";
+import {
+  disableEditingURLTitle,
+  enableEditingURLTitle,
+  isEmptyString,
+} from "./utils.js";
 import { isValidURL } from "../validation.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
@@ -79,6 +83,7 @@ export function showUpdateURLStringForm(
   urlCard.find(".urlTagBtnCreate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
   urlCard.find(".urlBtnCopy").hideClass();
+  disableEditingURLTitle(urlCard);
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
@@ -140,6 +145,7 @@ export function hideAndResetUpdateURLStringForm(urlCard: JQuery): void {
   urlCard.find(".urlTagBtnCreate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
   urlCard.find(".urlBtnCopy").showClassFlex();
+  enableEditingURLTitle(urlCard);
 
   // Enable Go To URL Icon
   const selected = urlCard.attr("urlSelected");

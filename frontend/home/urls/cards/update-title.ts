@@ -15,6 +15,7 @@ import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
+import { disableEditingURLString, enableEditingURLString } from "./utils.js";
 import { getState, setState } from "../../../store/app-store.js";
 
 type UpdateUrlTitleRequest = Schema<"UpdateURLTitleRequest">;
@@ -48,6 +49,7 @@ export function showUpdateURLTitleForm(
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
   disableClickOnSelectedURLCardToHide(urlCard);
+  disableEditingURLString(urlCard);
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
@@ -60,6 +62,7 @@ export function hideAndResetUpdateURLTitleForm(urlCard: JQuery): void {
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
 
   resetUpdateURLTitleFailErrors(urlCard);
+  enableEditingURLString(urlCard);
   const selected = urlCard.attr("urlSelected");
   if (typeof selected === "string" && selected.toLowerCase() === "true") {
     enableClickOnSelectedURLCardToHide(urlCard);

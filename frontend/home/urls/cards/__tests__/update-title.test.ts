@@ -1,11 +1,19 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import {
   hideAndResetUpdateURLTitleForm,
+  showUpdateURLTitleForm,
   updateURLTitle,
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../selection.js", () => ({
   disableClickOnSelectedURLCardToHide: vi.fn(),
@@ -177,5 +185,39 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
       (existingUrl) => existingUrl.utubUrlID === 1,
     );
     expect(updatedUrl!.utubUrlTagIDs).toEqual([11, 22]);
+  });
+});
+
+describe("URL title edit hides string-edit button for mutual exclusivity", () => {
+  const CONCURRENT_EDIT_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <button class="urlStringBtnUpdate"></button>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hides .urlStringBtnUpdate while title-edit form is open and restores it on close", () => {
+    document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+
+    hideAndResetUpdateURLTitleForm(urlCard);
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
   });
 });

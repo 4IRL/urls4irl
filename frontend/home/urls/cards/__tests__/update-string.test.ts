@@ -4,6 +4,7 @@ import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   updateURL,
   hideAndResetUpdateURLStringForm,
+  showUpdateURLStringForm,
 } from "../update-string.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
@@ -14,6 +15,31 @@ const { mockMetricsClient } = await vi.hoisted(
 );
 
 vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+
+vi.mock("../../../../lib/globals.js", async () => {
+  const jquery = (await import("jquery")).default;
+  const tooltipInstance = {
+    setContent: vi.fn(),
+    show: vi.fn(),
+    hide: vi.fn(),
+    enable: vi.fn(),
+    disable: vi.fn(),
+  };
+  return {
+    $: jquery,
+    jQuery: jquery,
+    bootstrap: {
+      Tooltip: {
+        getInstance: vi.fn(() => tooltipInstance),
+        getOrCreateInstance: vi.fn(() => tooltipInstance),
+      },
+    },
+    getInputValue: (input: string | JQuery) => {
+      const element = typeof input === "string" ? jquery(input) : input;
+      return element.val() as string;
+    },
+  };
+});
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -89,6 +115,18 @@ const HIDE_RESET_URL_CARD_HTML = `
     <input class="urlStringUpdate" value="https://ex.com" />
   </div>
 `;
+
+const CONCURRENT_EDIT_CARD_HTML = `<div class="urlRow" utuburlid="42" urlSelected="true" filterable="true">
+    <a class="urlString" href="https://example.com">https://example.com</a>
+    <div class="updateUrlStringWrap hidden"><input class="urlStringUpdate" type="text" value="https://example.com" /></div>
+    <button class="urlStringBtnUpdate"></button>
+    <button class="urlTitleBtnUpdate"></button>
+    <button class="urlBtnAccess"></button>
+    <button class="urlTagBtnCreate"></button>
+    <button class="urlBtnDelete"></button>
+    <button class="urlBtnCopy"></button>
+    <span class="goToUrlIcon"></span>
+</div>`;
 
 describe("hideAndResetUpdateURLStringForm - selection guard", () => {
   beforeEach(() => {
@@ -243,5 +281,25 @@ describe("updateURL - 409 conflict delegates to checkForStaleDataOn409", () => {
 
     expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
     expect(checkForStaleDataOn409).toHaveBeenCalledWith(responseJSON, 99);
+  });
+});
+
+describe("URL string edit hides title pencil for mutual exclusivity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hides .urlTitleBtnUpdate while string-edit form is open and restores it on close", () => {
+    document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+
+    showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
+
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(true);
+
+    hideAndResetUpdateURLStringForm(urlCard);
+
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
   });
 });

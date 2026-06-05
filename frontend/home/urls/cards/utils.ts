@@ -40,3 +40,15 @@ export function enableEditingURLTitle(urlCard: JQuery): void {
     showUpdateURLTitleFormIcon.removeHideClass();
   }
 }
+
+// Prevent editing URL string when needed
+export function disableEditingURLString(urlCard: JQuery): void {
+  urlCard.find(".urlStringBtnUpdate, .urlStringCancelBigBtnUpdate").hideClass();
+}
+
+// Allow editing URL string when needed
+export function enableEditingURLString(urlCard: JQuery): void {
+  urlCard
+    .find(".urlStringBtnUpdate, .urlStringCancelBigBtnUpdate")
+    .removeHideClass();
+}
