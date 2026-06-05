@@ -170,15 +170,21 @@ a.urlString {
     width: max-content;
 }
 
+/* Editability affordance on the selected url-title row, mirroring the UTub
+   name/description pattern in utubs.css (#URLDeckHeader.editable cursor +
+   hover/active underline, .edit-pencil-icon opacity fade on hover). */
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap {
+    cursor: pointer;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:active .urlTitle {
+    text-decoration: underline;
+}
+
 @media (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
         display: inline-flex;
         align-items: center;
-        cursor: pointer;
-    }
-
-    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap {
-        cursor: pointer;
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
@@ -194,10 +200,6 @@ a.urlString {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
-    }
-
-    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:active .urlTitle {
-        text-decoration: underline;
     }
 }
 
@@ -435,8 +437,21 @@ a.urlString {
         cursor: pointer;
     }
 
-    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover>.urlTitleBtnUpdate {
-        display: flex;
+    /* Desktop: pencil is layout-present on selected card so the
+       .edit-pencil-icon opacity transition can fade it in/out without
+       jolting the title's horizontal position. */
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:hover .urlTitleBtnUpdate:not(.hidden),
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:focus-within .urlTitleBtnUpdate:not(.hidden) {
+        opacity: 1;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:hover .urlTitle {
+        text-decoration: underline;
     }
 
     .urlBtnAccess:hover {
