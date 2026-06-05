@@ -177,8 +177,23 @@ a.urlString {
         min-height: 2.75rem;
         align-items: center;
         justify-content: center;
-        opacity: 0.6;
+        opacity: 0.85;
         cursor: pointer;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
+        width: 100%;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
+        flex: 1 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }
 
@@ -239,9 +254,11 @@ a.urlString {
 }
 
 
-.urlRow[filterable="true"][urlSelected="true"] .urlTitle {
-    white-space: normal;
-    text-overflow: unset;
+@media not all and (any-pointer: coarse) {
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
+        white-space: normal;
+        text-overflow: unset;
+    }
 }
 
 .urlBtnAccess {
