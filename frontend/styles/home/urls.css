@@ -174,7 +174,7 @@ a.urlString {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
         display: flex;
         min-width: 2.75rem;
-        min-height: 2.75rem;
+        min-height: 1.75rem;
         align-items: center;
         justify-content: center;
         opacity: 0.85;
