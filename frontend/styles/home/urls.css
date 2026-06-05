@@ -178,8 +178,6 @@ a.urlString {
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap {
-        min-height: 2.75rem;
-        padding-block: 0.5rem;
         cursor: pointer;
     }
 
