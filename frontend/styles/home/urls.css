@@ -164,6 +164,12 @@ a.urlString {
     width: max-content;
 }
 
+@media (any-pointer: coarse) {
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
+        display: flex;
+    }
+}
+
 .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {
     width: 65%;
 }
