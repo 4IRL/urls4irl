@@ -6,6 +6,7 @@ import {
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
+import { isMobile } from "../../../mobile.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -203,6 +204,7 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
         <input class="urlTitleUpdate" value="My Title" />
       </div>
       <button class="urlStringBtnUpdate"></button>
+      <button class="urlStringCancelBigBtnUpdate"></button>
       <div class="tagBadge"></div>
     </div>
   `;
@@ -211,7 +213,7 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
     vi.clearAllMocks();
   });
 
-  it("hides .urlStringBtnUpdate while title-edit form is open and restores it on close", () => {
+  it("hides .urlStringBtnUpdate and .urlStringCancelBigBtnUpdate while title-edit form is open and restores them on close", () => {
     document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
     const urlCard = $(".urlRow");
     const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
@@ -219,10 +221,16 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
     showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(
+      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
+    ).toBe(true);
 
     hideAndResetUpdateURLTitleForm(urlCard);
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+    expect(
+      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
+    ).toBe(false);
   });
 });
 
@@ -256,5 +264,23 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
     expect(focusSpy).toHaveBeenCalled();
 
     focusSpy.mockRestore();
+  });
+
+  it("uses jQuery .trigger('focus') on non-mobile rather than the native input.focus()", () => {
+    document.body.innerHTML = MOBILE_FOCUS_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    vi.mocked(isMobile).mockReturnValueOnce(false);
+    const triggerSpy = vi.spyOn($.fn, "trigger");
+
+    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+
+    const focusTriggerCall = triggerSpy.mock.calls.find(
+      (callArgs) => callArgs[0] === "focus",
+    );
+    expect(focusTriggerCall).toBeDefined();
+
+    triggerSpy.mockRestore();
   });
 });

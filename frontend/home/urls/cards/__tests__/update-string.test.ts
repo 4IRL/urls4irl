@@ -120,6 +120,7 @@ const CONCURRENT_EDIT_CARD_HTML = `<div class="urlRow" utuburlid="42" urlSelecte
     <a class="urlString" href="https://example.com">https://example.com</a>
     <div class="updateUrlStringWrap hidden"><input class="urlStringUpdate" type="text" value="https://example.com" /></div>
     <button class="urlStringBtnUpdate"></button>
+    <button class="urlStringCancelBigBtnUpdate"></button>
     <button class="urlTitleBtnUpdate"></button>
     <button class="urlBtnAccess"></button>
     <button class="urlTagBtnCreate"></button>
