@@ -44,11 +44,13 @@ export function showUpdateURLTitleForm(
     ".updateUrlTitleWrap",
   );
   updateTitleForm.showClassFlex();
-  updateTitleForm.find("input").trigger("focus");
+  const titleInput = updateTitleForm.find("input");
 
   // Handle case where iOS needs a direct focus not in a timeout, even with animation
   if (isMobile()) {
-    updateTitleForm.find("input").focus();
+    titleInput.get(0)?.focus();
+  } else {
+    titleInput.trigger("focus");
   }
 
   // Prevent hovering on tags from adding padding

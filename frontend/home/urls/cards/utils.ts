@@ -27,18 +27,12 @@ export function disableTabbingOnURLCardElements(urlCard: JQuery): void {
 
 // Prevent editing URL title when needed
 export function disableEditingURLTitle(urlCard: JQuery): void {
-  const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
-  if (showUpdateURLTitleFormIcon.length > 0) {
-    showUpdateURLTitleFormIcon.hideClass();
-  }
+  urlCard.find(".urlTitleBtnUpdate").hideClass();
 }
 
 // Allow editing URL title when needed
 export function enableEditingURLTitle(urlCard: JQuery): void {
-  const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
-  if (showUpdateURLTitleFormIcon.length > 0) {
-    showUpdateURLTitleFormIcon.removeHideClass();
-  }
+  urlCard.find(".urlTitleBtnUpdate").removeHideClass();
 }
 
 // Prevent editing URL string when needed

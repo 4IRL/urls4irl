@@ -1,3 +1,4 @@
+import { APP_CONFIG } from "../../../../lib/config.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
 import { showUpdateURLTitleForm } from "../update-title.js";
 
@@ -36,7 +37,9 @@ describe("createShowUpdateURLTitleIcon - accessibility attributes", () => {
     const { pencil } = mountTitleBlock();
 
     expect(pencil.length).toBe(1);
-    expect(pencil.attr("aria-label")).toBe("Edit URL title");
+    expect(pencil.attr("aria-label")).toBe(
+      APP_CONFIG.strings.EDIT_URL_TITLE_TOOLTIP,
+    );
     expect(pencil.attr("type")).toBe("button");
     expect(pencil.hasClass("tabbable")).toBe(true);
   });
