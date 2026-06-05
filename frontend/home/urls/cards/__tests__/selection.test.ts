@@ -121,6 +121,14 @@ describe("URL Card Selection", () => {
       urlCard.find(".urlBtnDelete").trigger("click");
       expect(urlCard.attr("urlSelected")).toBe("true");
     });
+
+    it("clicking the urlTitleBtnUpdate pencil does NOT deselect the URL card", () => {
+      document.body.innerHTML = `<div class="urlRow" utuburlid="42" urlSelected="false" filterable="true"><button class="urlTitleBtnUpdate"></button><span class="goToUrlIcon"></span></div>`;
+      urlCard = $(".urlRow");
+      selectURLCard(urlCard);
+      urlCard.find(".urlTitleBtnUpdate").trigger("click");
+      expect(urlCard.attr("urlSelected")).toBe("true");
+    });
   });
 
   describe("disableClickOnSelectedURLCardToHide", () => {
