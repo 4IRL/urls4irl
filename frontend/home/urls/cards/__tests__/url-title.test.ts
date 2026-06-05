@@ -35,15 +35,28 @@ function mountTitleBlock(selected: boolean = true): {
 }
 
 describe("createShowUpdateURLTitleIcon - accessibility attributes", () => {
-  it("renders pencil with aria-label, type=button, and tabbable class", () => {
+  it("renders pencil span with aria-label, role=button, tabindex, edit-pencil-icon, and tabbable classes", () => {
     const { pencil } = mountTitleBlock();
 
     expect(pencil.length).toBe(1);
+    expect(pencil.is("span")).toBe(true);
     expect(pencil.attr("aria-label")).toBe(
       APP_CONFIG.strings.EDIT_URL_TITLE_TOOLTIP,
     );
-    expect(pencil.attr("type")).toBe("button");
+    expect(pencil.attr("role")).toBe("button");
+    expect(pencil.attr("tabindex")).toBe("0");
+    expect(pencil.hasClass("edit-pencil-icon")).toBe(true);
     expect(pencil.hasClass("tabbable")).toBe(true);
+  });
+
+  it("renders the same 14x14 bi-pencil SVG as the UTub name/description edit icons", () => {
+    const { pencil } = mountTitleBlock();
+    const svg = pencil.find("svg");
+
+    expect(svg.length).toBe(1);
+    expect(svg.attr("width")).toBe("14");
+    expect(svg.attr("height")).toBe("14");
+    expect(svg.hasClass("bi-pencil")).toBe(true);
   });
 });
 
