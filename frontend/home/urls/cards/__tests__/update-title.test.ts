@@ -40,6 +40,10 @@ vi.mock("../../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
 
+vi.mock("../../../mobile.js", () => ({
+  isMobile: vi.fn(() => true),
+}));
+
 const $ = window.jQuery;
 
 const URL_CARD_HTML = `
@@ -219,5 +223,38 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
     hideAndResetUpdateURLTitleForm(urlCard);
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
+  const MOBILE_FOCUS_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <button class="urlStringBtnUpdate"></button>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("calls native input.focus() directly on mobile so iOS surfaces the soft keyboard", () => {
+    document.body.innerHTML = MOBILE_FOCUS_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    const focusSpy = vi.spyOn(HTMLInputElement.prototype, "focus");
+
+    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+
+    expect(focusSpy).toHaveBeenCalled();
+
+    focusSpy.mockRestore();
   });
 });

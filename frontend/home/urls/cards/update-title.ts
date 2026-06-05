@@ -16,6 +16,7 @@ import {
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
 import { disableEditingURLString, enableEditingURLString } from "./utils.js";
+import { isMobile } from "../../mobile.js";
 import { getState, setState } from "../../../store/app-store.js";
 
 type UpdateUrlTitleRequest = Schema<"UpdateURLTitleRequest">;
@@ -44,6 +45,11 @@ export function showUpdateURLTitleForm(
   );
   updateTitleForm.showClassFlex();
   updateTitleForm.find("input").trigger("focus");
+
+  // Handle case where iOS needs a direct focus not in a timeout, even with animation
+  if (isMobile()) {
+    updateTitleForm.find("input").focus();
+  }
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
