@@ -70,6 +70,11 @@ export function createURLTitleAndUpdateBlock(
 function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
   return makeUpdateButton(ICON_SIZE_SM)
     .addClass("urlTitleBtnUpdate")
+    .addClass("tabbable")
+    .attr({
+      "aria-label": APP_CONFIG.strings.EDIT_URL_TITLE_TOOLTIP,
+      type: "button",
+    })
     .onExact(
       "click.showUpdateURLTitle",
       function (event: JQuery.TriggeredEvent) {
@@ -77,6 +82,18 @@ function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
           ".urlTitleAndUpdateIconWrap",
         );
         showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+      },
+    )
+    .onExact(
+      "keydown.showUpdateURLTitle",
+      function (event: JQuery.TriggeredEvent) {
+        if (event.key === KEYS.ENTER || event.key === KEYS.SPACE) {
+          event.preventDefault();
+          const urlTitleAndIcon = $(event.target).closest(
+            ".urlTitleAndUpdateIconWrap",
+          );
+          showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+        }
       },
     );
 }
