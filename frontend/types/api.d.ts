@@ -1299,7 +1299,14 @@ export interface operations {
   };
   queryTop: {
     parameters: {
-      query?: never;
+      query: {
+        /** @description Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. */
+        window: string;
+        /** @description Optional category filter (api | domain | ui). */
+        category?: "api" | "domain" | "ui";
+        /** @description Maximum number of rows to return (1-100). */
+        limit?: number;
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -1347,7 +1354,79 @@ export interface operations {
   };
   queryTimeseries: {
     parameters: {
-      query?: never;
+      query: {
+        /** @description Any EventName value (api, domain, or ui). */
+        event_name:
+          | "api_hit"
+          | "utub_created"
+          | "utub_deleted"
+          | "utub_opened"
+          | "url_accessed"
+          | "tag_applied"
+          | "tag_removed"
+          | "tag_deleted"
+          | "member_added"
+          | "member_removed"
+          | "url_title_updated"
+          | "utub_title_updated"
+          | "utub_desc_updated"
+          | "ui_utub_select"
+          | "ui_utub_create_open"
+          | "ui_utub_delete_open"
+          | "ui_utub_delete_confirm"
+          | "ui_utub_delete_cancel"
+          | "ui_utub_name_edit_open"
+          | "ui_utub_desc_edit_open"
+          | "ui_url_access"
+          | "ui_url_card_click"
+          | "ui_url_create_open"
+          | "ui_url_title_edit_open"
+          | "ui_url_string_edit_open"
+          | "ui_url_delete_open"
+          | "ui_url_delete_confirm"
+          | "ui_url_delete_cancel"
+          | "ui_url_copy"
+          | "ui_url_access_warning"
+          | "ui_url_access_warning_dismiss"
+          | "ui_search_open"
+          | "ui_search_close"
+          | "ui_tag_apply"
+          | "ui_tag_remove"
+          | "ui_tag_create_open"
+          | "ui_tag_delete_open"
+          | "ui_tag_delete_confirm"
+          | "ui_tag_delete_cancel"
+          | "ui_tag_filter_toggle"
+          | "ui_member_invite_open"
+          | "ui_member_remove_open"
+          | "ui_member_remove_confirm"
+          | "ui_member_remove_cancel"
+          | "ui_member_leave_open"
+          | "ui_member_leave_confirm"
+          | "ui_member_leave_cancel"
+          | "ui_form_submit"
+          | "ui_form_cancel"
+          | "ui_validation_error"
+          | "ui_deck_collapse"
+          | "ui_deck_expand"
+          | "ui_navbar_mobile_menu_open"
+          | "ui_navbar_mobile_menu_close"
+          | "ui_mobile_nav"
+          | "ui_login_submit"
+          | "ui_register_submit"
+          | "ui_forgot_password_submit"
+          | "ui_auth_form_switch"
+          | "ui_auth_modal_open"
+          | "ui_reset_password_submit"
+          | "ui_email_validation_submit"
+          | "ui_contact_submit"
+          | "ui_error_page_refresh"
+          | "ui_rate_limit_hit";
+        /** @description Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. */
+        window: string;
+        /** @description date_trunc resolution: hour (default) or day. */
+        resolution?: "hour" | "day";
+      };
       header?: never;
       path?: never;
       cookie?: never;
@@ -1395,7 +1474,10 @@ export interface operations {
   };
   querySummary: {
     parameters: {
-      query?: never;
+      query: {
+        /** @description Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. */
+        window: string;
+      };
       header?: never;
       path?: never;
       cookie?: never;

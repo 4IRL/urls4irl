@@ -110,6 +110,7 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
 @metrics.route("/api/metrics/query/top", methods=["GET"])
 @metrics_admin_required
 @api_route(
+    query_schema=TopEventsQuerySchema,
     response_schema=TopEventsResponseSchema,
     ajax_required=True,
     tags=[OPEN_API.METRICS],
@@ -160,6 +161,7 @@ def query_top() -> FlaskResponse:
 @metrics.route("/api/metrics/query/timeseries", methods=["GET"])
 @metrics_admin_required
 @api_route(
+    query_schema=TimeseriesQuerySchema,
     response_schema=TimeseriesResponseSchema,
     ajax_required=True,
     tags=[OPEN_API.METRICS],
@@ -206,6 +208,7 @@ def query_timeseries() -> FlaskResponse:
 @metrics.route("/api/metrics/query/summary", methods=["GET"])
 @metrics_admin_required
 @api_route(
+    query_schema=SummaryQuerySchema,
     response_schema=SummaryResponseSchema,
     ajax_required=True,
     tags=[OPEN_API.METRICS],

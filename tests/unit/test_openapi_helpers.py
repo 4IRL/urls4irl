@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 from enum import IntEnum
+from typing import Literal
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.cli.openapi import (
     _build_typed_error_response_schema,
+    _extract_query_parameters,
     _humanize_class_name,
     _response_description,
     _schema_has_status_property,
@@ -392,3 +394,86 @@ class TestBuildTypedErrorResponseSchema:
 
         assert first_name == second_name
         assert components_schemas[first_name] is sentinel
+
+
+class _QueryParamProbeSchema(BaseModel):
+    """Fixture query schema covering the four field shapes the generator must
+    flatten: a required string, an optional string with a default, an int with
+    `ge`/`le` bounds, and a `Literal` enum.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str = Field(description="Required window value")
+    category: str | None = Field(default=None, description="Optional category filter")
+    limit: int = Field(default=10, ge=1, le=100, description="Max rows to return")
+    resolution: Literal["hour", "day"] = Field(
+        default="hour", description="date_trunc resolution"
+    )
+
+
+class TestExtractQueryParameters:
+    """Tests for `_extract_query_parameters` — the helper that turns a Pydantic
+    query model into the OpenAPI `parameters` list emitted on GET routes.
+    """
+
+    def test_emits_one_parameter_per_field_with_query_location(self) -> None:
+        """
+        GIVEN a Pydantic query schema with four fields
+        WHEN _extract_query_parameters is called
+        THEN one parameter per field is emitted, each marked `in: query`,
+            in the order the fields are declared on the model.
+        """
+        params = _extract_query_parameters(_QueryParamProbeSchema)
+
+        assert [param["name"] for param in params] == [
+            "window",
+            "category",
+            "limit",
+            "resolution",
+        ]
+        assert all(param["in"] == "query" for param in params)
+
+    def test_required_flag_reflects_pydantic_default_presence(self) -> None:
+        """
+        GIVEN a query schema with one required field and three defaulted fields
+        WHEN _extract_query_parameters is called
+        THEN only the field without a default is marked `required: True`.
+        """
+        params = _extract_query_parameters(_QueryParamProbeSchema)
+        required_map = {param["name"]: param["required"] for param in params}
+
+        assert required_map == {
+            "window": True,
+            "category": False,
+            "limit": False,
+            "resolution": False,
+        }
+
+    def test_literal_field_emits_enum_schema(self) -> None:
+        """
+        GIVEN a query schema whose field is typed as `Literal["hour", "day"]`
+        WHEN _extract_query_parameters is called
+        THEN the corresponding parameter's schema contains an `enum` list with
+            both literal values.
+        """
+        params = _extract_query_parameters(_QueryParamProbeSchema)
+        resolution_param = next(
+            param for param in params if param["name"] == "resolution"
+        )
+
+        assert "enum" in resolution_param["schema"]
+        assert sorted(resolution_param["schema"]["enum"]) == ["day", "hour"]
+
+    def test_optional_field_collapses_anyof_null_wrapper(self) -> None:
+        """
+        GIVEN a field typed as `str | None` with a default of None
+        WHEN _extract_query_parameters is called
+        THEN the parameter's schema is the non-null branch (no `anyOf` with
+            `{type: "null"}` leaking into the generated TypeScript types).
+        """
+        params = _extract_query_parameters(_QueryParamProbeSchema)
+        category_param = next(param for param in params if param["name"] == "category")
+
+        assert "anyOf" not in category_param["schema"]
+        assert category_param["schema"].get("type") == "string"

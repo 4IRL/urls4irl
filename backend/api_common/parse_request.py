@@ -46,6 +46,7 @@ def _schema_name_to_kwarg(schema_cls: Type[BaseModel]) -> str:
 def api_route(
     *,
     request_schema: Type[SchemaT] | None = None,
+    query_schema: Type[BaseModel] | None = None,
     response_schema: Type[BaseSchema] | None = None,
     error_message: str | None = None,
     error_code: IntEnum | int | None = None,
@@ -64,6 +65,12 @@ def api_route(
 
     When ``request_schema`` is ``None``, skips body parsing entirely (useful for
     GET/DELETE routes).
+
+    ``query_schema`` is OpenAPI-only metadata: it advertises the Pydantic model
+    that describes the GET route's accepted query parameters so the OpenAPI
+    generator can emit ``in: query`` parameter entries. Runtime query validation
+    still lives at the route layer (``_parse_query_args``); this kwarg never
+    changes request handling.
 
     ``response_schema`` is stashed on the wrapped function for introspection
     (e.g. OpenAPI generation) and has no runtime effect.
@@ -134,6 +141,7 @@ def api_route(
 
         # Stashed for OpenAPI schema generation via route introspection.
         wrapper._api_route_request_schema = request_schema
+        wrapper._api_route_query_schema = query_schema
         wrapper._api_route_response_schema = response_schema
         wrapper._api_route_ajax_required = ajax_required
         wrapper._api_route_tags = tags

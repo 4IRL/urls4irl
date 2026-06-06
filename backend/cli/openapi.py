@@ -138,6 +138,66 @@ def _extract_path_parameters(rule_path: str) -> list[dict[str, Any]]:
     return params
 
 
+def _build_query_parameter_schema(field_schema: dict[str, Any]) -> dict[str, Any]:
+    """Reduce a Pydantic field JSON schema fragment to its OpenAPI-friendly form.
+
+    Strips Pydantic's nullable `anyOf [..., {type: null}]` wrapper produced by
+    `Optional[...]` fields, drops the auto-injected `default` key (already
+    reflected by `required` at the parameter level), and preserves constraints
+    such as `enum`, `minimum`, and `maximum` so the resulting parameter schema
+    matches what `openapi-typescript` expects.
+    """
+    schema_copy = dict(field_schema)
+    schema_copy.pop("title", None)
+    schema_copy.pop("description", None)
+    schema_copy.pop("default", None)
+
+    # Pydantic v2 expresses `Field | None` as `anyOf: [{...}, {type: "null"}]`.
+    # Collapse to the non-null branch since OpenAPI query params can be omitted
+    # via `required: false`.
+    any_of = schema_copy.get("anyOf")
+    if isinstance(any_of, list):
+        non_null = [
+            branch
+            for branch in any_of
+            if not (isinstance(branch, dict) and branch.get("type") == "null")
+        ]
+        if len(non_null) == 1 and isinstance(non_null[0], dict):
+            return _build_query_parameter_schema(non_null[0])
+
+    return schema_copy
+
+
+def _extract_query_parameters(
+    query_schema_cls: Type[BaseModel],
+) -> list[dict[str, Any]]:
+    """Build OpenAPI `parameters` entries from a Pydantic query model.
+
+    Each model field becomes one `in: query` parameter. A field is `required`
+    only when it has no default in the Pydantic model (mirrored from the JSON
+    schema's `required` list). The per-field schema is reduced via
+    `_build_query_parameter_schema` so OpenAPI consumers see plain
+    `type`/`enum` shapes rather than Pydantic's `anyOf null` wrapper.
+    """
+    json_schema = query_schema_cls.model_json_schema()
+    required_field_names = set(json_schema.get("required", []))
+    properties = json_schema.get("properties", {})
+
+    parameters: list[dict[str, Any]] = []
+    for field_name, field_schema in properties.items():
+        description = field_schema.get("description")
+        parameter: dict[str, Any] = {
+            "name": field_name,
+            "in": "query",
+            "required": field_name in required_field_names,
+            "schema": _build_query_parameter_schema(field_schema),
+        }
+        if description:
+            parameter["description"] = description
+        parameters.append(parameter)
+    return parameters
+
+
 def _endpoint_to_operation_id(endpoint: str) -> str:
     """Convert Flask endpoint to camelCase operationId.
 
@@ -357,6 +417,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
         # Read stashed attributes
         request_schema = view_fn._api_route_request_schema
+        query_schema = getattr(view_fn, "_api_route_query_schema", None)
         response_schema = view_fn._api_route_response_schema
         tags = view_fn._api_route_tags
         description = view_fn._api_route_description
@@ -369,6 +430,11 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
         # Extract path parameters
         path_params = _extract_path_parameters(rule.rule)
+
+        # Extract query parameters from the optional query schema
+        query_params: list[dict[str, Any]] = (
+            _extract_query_parameters(query_schema) if query_schema is not None else []
+        )
 
         # Determine effective HTTP methods (exclude HEAD/OPTIONS)
         effective_methods = sorted(
@@ -403,9 +469,11 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
             if description:
                 operation["description"] = description
 
-            # Path parameters
-            if path_params:
-                operation["parameters"] = path_params
+            # Path + query parameters (merged so multi-parameter routes emit a
+            # single `parameters` list per OpenAPI spec).
+            combined_parameters = [*path_params, *query_params]
+            if combined_parameters:
+                operation["parameters"] = combined_parameters
 
             # Request body
             if request_schema is not None:
