@@ -13,6 +13,8 @@ pytestmark = pytest.mark.cli
 
 _BEHAVIORAL_TEST_KEY_COUNT = 15000
 _BEHAVIORAL_MEMORY_CAP = "1mb"
+_BEHAVIORAL_TEST_LOCK_KEY = "metrics:test:behavioral-isolation-lock"
+_BEHAVIORAL_TEST_LOCK_TTL_SECONDS = 120
 
 
 def test_metrics_redis_isolated_from_shared_redis(
@@ -51,10 +53,6 @@ def test_metrics_redis_isolated_from_shared_redis(
         ), "redis-metrics must have a maxmemory cap so counters age out under load"
     finally:
         shared_client.close()
-
-
-_BEHAVIORAL_TEST_LOCK_KEY = "metrics:test:behavioral-isolation-lock"
-_BEHAVIORAL_TEST_LOCK_TTL_SECONDS = 120
 
 
 def test_metrics_redis_eviction_does_not_affect_shared_redis(
