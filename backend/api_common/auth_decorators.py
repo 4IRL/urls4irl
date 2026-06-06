@@ -6,6 +6,7 @@ from functools import wraps
 from backend.api_common.request_utils import is_current_utub_creator
 from backend.schemas.errors import build_message_error_response
 from backend.app_logger import critical_log, warning_log
+from backend.models.users import User_Role
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -14,6 +15,9 @@ from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
+
+_NOT_AUTHENTICATED_MESSAGE: str = "Authentication required."
+_NOT_FOUND_MESSAGE: str = "Not found."
 
 
 def no_authenticated_users_allowed(func: Callable) -> Callable:
@@ -211,8 +215,37 @@ SESSION_AUTH_DECORATORS: frozenset[str] = frozenset(
     }
 )
 
+
+def admin_required(func: Callable) -> Callable:
+    """Gate a view on `current_user.role == User_Role.ADMIN`.
+
+    Anonymous requests receive a 401 JSON envelope (not a 302 redirect) so
+    AJAX callers never follow Flask-Login's HTML splash redirect.
+    Authenticated non-admin requests receive a 404 JSON envelope to avoid
+    advertising the surface.
+
+    The wrapper stashes `_auth_decorator = admin_required.__name__` so the
+    OpenAPI spec generator (`backend/cli/openapi.py`) can introspect the
+    auth requirement at codegen time.
+    """
+
+    @wraps(func)
+    def decorated_view(*args, **kwargs):
+        if not current_user.is_authenticated:
+            return build_message_error_response(
+                message=_NOT_AUTHENTICATED_MESSAGE,
+                status_code=401,
+            )
+        if current_user.role != User_Role.ADMIN:
+            return build_message_error_response(
+                message=_NOT_FOUND_MESSAGE,
+                status_code=404,
+            )
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = admin_required.__name__
+    return decorated_view
+
+
 # Auth decorators that require admin privileges (additive on top of session auth).
-# Listed as string literals because the decorators themselves live in other
-# modules (e.g. backend/extensions/metrics/admin_auth.py); importing across
-# modules just to call `.__name__` would invite circular-import risk.
-ADMIN_AUTH_DECORATORS: frozenset[str] = frozenset({"metrics_admin_required"})
+ADMIN_AUTH_DECORATORS: frozenset[str] = frozenset({admin_required.__name__})

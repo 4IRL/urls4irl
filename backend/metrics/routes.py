@@ -4,10 +4,10 @@ from flask import Blueprint, request
 from pydantic import BaseModel, ValidationError
 
 from backend import csrf, limiter, metrics_writer
+from backend.api_common.auth_decorators import admin_required
 from backend.api_common.parse_request import api_route
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.extensions.metrics.admin_auth import metrics_admin_required
 from backend.extensions.metrics.buckets import parse_window, previous_window
 from backend.extensions.metrics.writer import record_event
 from backend.metrics import query_service
@@ -108,7 +108,7 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
 
 
 @metrics.route("/api/metrics/query/top", methods=["GET"])
-@metrics_admin_required
+@admin_required
 @api_route(
     query_schema=TopEventsQuerySchema,
     response_schema=TopEventsResponseSchema,
@@ -159,7 +159,7 @@ def query_top() -> FlaskResponse:
 
 
 @metrics.route("/api/metrics/query/timeseries", methods=["GET"])
-@metrics_admin_required
+@admin_required
 @api_route(
     query_schema=TimeseriesQuerySchema,
     response_schema=TimeseriesResponseSchema,
@@ -206,7 +206,7 @@ def query_timeseries() -> FlaskResponse:
 
 
 @metrics.route("/api/metrics/query/summary", methods=["GET"])
-@metrics_admin_required
+@admin_required
 @api_route(
     query_schema=SummaryQuerySchema,
     response_schema=SummaryResponseSchema,

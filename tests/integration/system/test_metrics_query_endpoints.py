@@ -379,7 +379,7 @@ def test_query_endpoint_admin_missing_ajax_header_redirects_to_home(
     GIVEN an admin client
     WHEN GETing any /api/metrics/query/* endpoint WITHOUT X-Requested-With
     THEN the response is a 302 redirect to /home — the `ajax_required=True`
-        gate fires AFTER `@metrics_admin_required` admits the admin user.
+        gate fires AFTER `@admin_required` admits the admin user.
 
     Suppress the auto-injected AJAX header by passing the key with an empty
     value (`AjaxFlaskLoginClient.open` skips injection only when the key is

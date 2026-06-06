@@ -8,8 +8,8 @@ from flask import Flask, jsonify
 from backend.api_common.auth_decorators import (
     ADMIN_AUTH_DECORATORS,
     SESSION_AUTH_DECORATORS,
+    admin_required,
 )
-from backend.extensions.metrics.admin_auth import metrics_admin_required
 from backend.models.users import User_Role
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
@@ -17,7 +17,7 @@ pytestmark = pytest.mark.unit
 
 
 AUTH_DECORATOR_ATTR = "_auth_decorator"
-EXPECTED_DECORATOR_NAME = "metrics_admin_required"
+EXPECTED_DECORATOR_NAME = "admin_required"
 
 
 def _stub_view():
@@ -29,21 +29,21 @@ def _build_app_with_decorated_view() -> Flask:
     """Build a minimal Flask app that exposes a single admin-gated route."""
     app = Flask(__name__)
     app.config["TESTING"] = True
-    decorated = metrics_admin_required(_stub_view)
+    decorated = admin_required(_stub_view)
     app.add_url_rule("/admin-stub", view_func=decorated, methods=["GET"])
     return app
 
 
-class TestMetricsAdminRequiredAttribute:
+class TestAdminRequiredAttribute:
     """The decorator must stash its name on the wrapper for OpenAPI introspection."""
 
     def test_decorated_view_has_auth_decorator_attribute(self):
-        decorated = metrics_admin_required(_stub_view)
+        decorated = admin_required(_stub_view)
         assert hasattr(decorated, AUTH_DECORATOR_ATTR)
         assert getattr(decorated, AUTH_DECORATOR_ATTR) == EXPECTED_DECORATOR_NAME
 
 
-class TestMetricsAdminRequiredRegistry:
+class TestAdminRequiredRegistry:
     """The decorator name must live in ADMIN_AUTH_DECORATORS (not SESSION)."""
 
     def test_decorator_name_in_admin_registry(self):
@@ -54,7 +54,7 @@ class TestMetricsAdminRequiredRegistry:
         assert EXPECTED_DECORATOR_NAME not in SESSION_AUTH_DECORATORS
 
 
-class TestMetricsAdminRequiredAnonymous:
+class TestAdminRequiredAnonymous:
     """Anonymous requests must receive a 401 JSON envelope (NOT a 302 redirect)."""
 
     def test_anonymous_returns_401_json_envelope(self):
@@ -63,9 +63,7 @@ class TestMetricsAdminRequiredAnonymous:
         anonymous_user = MagicMock()
         anonymous_user.is_authenticated = False
 
-        with patch(
-            "backend.extensions.metrics.admin_auth.current_user", anonymous_user
-        ):
+        with patch("backend.api_common.auth_decorators.current_user", anonymous_user):
             client = app.test_client()
             response = client.get("/admin-stub")
 
@@ -75,7 +73,7 @@ class TestMetricsAdminRequiredAnonymous:
         assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
-class TestMetricsAdminRequiredNonAdmin:
+class TestAdminRequiredNonAdmin:
     """Authenticated non-admin requests must receive a 404 JSON envelope."""
 
     def test_authenticated_non_admin_returns_404_json_envelope(self):
@@ -85,9 +83,7 @@ class TestMetricsAdminRequiredNonAdmin:
         non_admin_user.is_authenticated = True
         non_admin_user.role = User_Role.USER
 
-        with patch(
-            "backend.extensions.metrics.admin_auth.current_user", non_admin_user
-        ):
+        with patch("backend.api_common.auth_decorators.current_user", non_admin_user):
             client = app.test_client()
             response = client.get("/admin-stub")
 
@@ -97,7 +93,7 @@ class TestMetricsAdminRequiredNonAdmin:
         assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
-class TestMetricsAdminRequiredAdminPassThrough:
+class TestAdminRequiredAdminPassThrough:
     """Authenticated admin requests must reach the wrapped handler."""
 
     def test_authenticated_admin_passes_through_to_handler(self):
@@ -107,7 +103,7 @@ class TestMetricsAdminRequiredAdminPassThrough:
         admin_user.is_authenticated = True
         admin_user.role = User_Role.ADMIN
 
-        with patch("backend.extensions.metrics.admin_auth.current_user", admin_user):
+        with patch("backend.api_common.auth_decorators.current_user", admin_user):
             client = app.test_client()
             response = client.get("/admin-stub")
 
