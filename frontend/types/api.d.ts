@@ -72,6 +72,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metrics/query/top": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return the top events by total count for an admin time window. */
+    get: operations["queryTop"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/timeseries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return per-bucket counts for a single event over an admin time window. */
+    get: operations["queryTimeseries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return per-category totals for the current and immediately-preceding window. */
+    get: operations["querySummary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -563,7 +614,113 @@ export interface components {
      * @description Error codes for MetricsErrorCodes
      * @enum {integer}
      */
-    MetricsErrorCodes: 1;
+    MetricsErrorCodes: 1 | 2;
+    /** @description One row of the `top` query response — a single event aggregated over the window. */
+    TopEventRow: {
+      /** @description EventName value (e.g. utub_opened) */
+      event_name: string;
+      /** @description EventCategory value (api | domain | ui) */
+      category: string;
+      /** @description Human-readable event description from EventRegistry */
+      description: string;
+      /** @description Sum of counts across all buckets in the window */
+      total_count: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/top`. */
+    TopEventsResponseSchema: {
+      /** @description Window value as supplied by the client */
+      window: string;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /**
+       * @description EventCategory filter applied to the query, or null if none
+       * @default null
+       */
+      category: string | null;
+      /** @description Top-N rows ordered by total_count descending */
+      events: components["schemas"]["TopEventRow"][];
+    };
+    /** @description One bucket of the `timeseries` query response. */
+    TimeseriesBucketSchema: {
+      /**
+       * Format: date-time
+       * @description Bucket start (UTC, date_trunc'd to resolution)
+       */
+      bucket: string;
+      /** @description Sum of counts within this bucket */
+      count: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/timeseries`. */
+    TimeseriesResponseSchema: {
+      /** @description EventName the series is filtered to */
+      event_name: string;
+      /** @description Window value as supplied by the client */
+      window: string;
+      /** @description date_trunc resolution (hour | day) */
+      resolution: string;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /** @description Buckets in chronological order */
+      buckets: components["schemas"]["TimeseriesBucketSchema"][];
+    };
+    /**
+     * @description Per-category current/previous totals for the `summary` query response.
+     *
+     *     Returned as a list (not a dict) because `APIResponse` spreads payloads into
+     *     the top-level JSON body — a dict-of-category-to-int would collide with the
+     *     envelope's reserved keys.
+     */
+    SummaryCategoryCount: {
+      /** @description EventCategory value (api | domain | ui) */
+      category: string;
+      /** @description Sum of counts in the current window */
+      current: number;
+      /** @description Sum of counts in the immediately-preceding window */
+      previous: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/summary`. */
+    SummaryResponseSchema: {
+      /** @description Window value as supplied by the client */
+      window: string;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the immediately-preceding window
+       */
+      previous_window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the immediately-preceding window
+       */
+      previous_window_end: string;
+      /** @description Per-category current vs. previous totals */
+      by_category: components["schemas"]["SummaryCategoryCount"][];
+    };
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -1136,6 +1293,150 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_MetricsErrorCodes"];
+        };
+      };
+    };
+  };
+  queryTop: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/top`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TopEventsResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryTimeseries: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/timeseries`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TimeseriesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  querySummary: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/summary`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["SummaryResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };
