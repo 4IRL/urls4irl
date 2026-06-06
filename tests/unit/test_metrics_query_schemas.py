@@ -15,12 +15,44 @@ from backend.schemas.metrics import (
     TopEventsResponseSchema,
 )
 from backend.schemas.requests.metrics import (
+    _BOTH_WINDOW_AND_RANGE_ERROR,
+    _MISSING_WINDOW_OR_RANGE_ERROR,
+    _PARTIAL_RANGE_ERROR,
+    _RANGE_ORDER_ERROR,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,
 )
 
 pytestmark = pytest.mark.unit
+
+ABS_RANGE_START_ISO: str = "2026-01-01T00:00:00+00:00"
+ABS_RANGE_END_ISO: str = "2026-02-01T00:00:00+00:00"
+ABS_RANGE_START: datetime = datetime(2026, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+ABS_RANGE_END: datetime = datetime(2026, 2, 1, 0, 0, 0, tzinfo=timezone.utc)
+
+QUERY_SCHEMAS_WITH_BASE_PAYLOAD: tuple[tuple[type, dict[str, str]], ...] = (
+    (TopEventsQuerySchema, {}),
+    (
+        TimeseriesQuerySchema,
+        {"event_name": EventName.UTUB_OPENED.value},
+    ),
+    (SummaryQuerySchema, {}),
+)
+
+
+def _assert_first_validation_message(
+    validation_error: ValidationError, expected_message: str
+) -> None:
+    """Assert the first error in `validation_error` matches the verbatim string.
+
+    Pydantic v2 wraps `ValueError("foo")` inside an `errors()[0]["msg"]` of
+    "Value error, foo" — the `Value error, ` prefix is added by the wrapper,
+    so the helper strips it before comparison.
+    """
+    raw_message = validation_error.errors()[0]["msg"]
+    stripped = raw_message.removeprefix("Value error, ")
+    assert stripped == expected_message
 
 
 # -------------------------- TopEventsQuerySchema ---------------------------
@@ -173,16 +205,164 @@ def test_summary_query_happy_path():
     assert parsed.window == "day"
 
 
-def test_summary_query_rejects_missing_window():
-    """`window` is required."""
-    with pytest.raises(ValidationError):
+def test_summary_query_rejects_missing_window_and_range():
+    """No `window` and no `start`/`end` → 400 via the XOR validator."""
+    with pytest.raises(ValidationError) as exc_info:
         SummaryQuerySchema.model_validate({})
+    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
 
 
 def test_summary_query_rejects_extra_keys():
     """`extra="forbid"` rejects unknown query params."""
     with pytest.raises(ValidationError):
         SummaryQuerySchema.model_validate({"window": "day", "category": "api"})
+
+
+# -------------------- Window XOR Absolute-Range Validation -----------------
+
+
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_absolute_range_happy_path(schema_cls: type, base_payload: dict[str, str]):
+    """`start`+`end` alone (no `window`) is accepted on every query schema."""
+    payload = {**base_payload, "start": ABS_RANGE_START_ISO, "end": ABS_RANGE_END_ISO}
+    parsed = schema_cls.model_validate(payload)
+    assert parsed.window is None
+    assert parsed.start == ABS_RANGE_START
+    assert parsed.end == ABS_RANGE_END
+
+
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_window_and_range_together_rejected(
+    schema_cls: type, base_payload: dict[str, str]
+):
+    """Supplying both `window` and `start`+`end` is ambiguous → 400."""
+    payload = {
+        **base_payload,
+        "window": "day",
+        "start": ABS_RANGE_START_ISO,
+        "end": ABS_RANGE_END_ISO,
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        schema_cls.model_validate(payload)
+    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+
+
+@pytest.mark.parametrize(
+    "partial_field,partial_value",
+    [
+        ("start", ABS_RANGE_START_ISO),
+        ("end", ABS_RANGE_END_ISO),
+    ],
+)
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_partial_range_rejected(
+    schema_cls: type,
+    base_payload: dict[str, str],
+    partial_field: str,
+    partial_value: str,
+):
+    """`start` without `end` (and vice versa) is incomplete → 400."""
+    payload = {**base_payload, partial_field: partial_value}
+    with pytest.raises(ValidationError) as exc_info:
+        schema_cls.model_validate(payload)
+    _assert_first_validation_message(exc_info.value, _PARTIAL_RANGE_ERROR)
+
+
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_neither_window_nor_range_rejected(
+    schema_cls: type, base_payload: dict[str, str]
+):
+    """Empty spec (no window, no range) → 400 with the missing-spec message."""
+    with pytest.raises(ValidationError) as exc_info:
+        schema_cls.model_validate(base_payload)
+    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+
+
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_start_equal_to_end_rejected(schema_cls: type, base_payload: dict[str, str]):
+    """An empty-duration range (start == end) is rejected."""
+    payload = {
+        **base_payload,
+        "start": ABS_RANGE_START_ISO,
+        "end": ABS_RANGE_START_ISO,
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        schema_cls.model_validate(payload)
+    _assert_first_validation_message(exc_info.value, _RANGE_ORDER_ERROR)
+
+
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_start_after_end_rejected(schema_cls: type, base_payload: dict[str, str]):
+    """`start` after `end` is rejected — admin cannot ask for a reversed range."""
+    payload = {
+        **base_payload,
+        "start": ABS_RANGE_END_ISO,
+        "end": ABS_RANGE_START_ISO,
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        schema_cls.model_validate(payload)
+    _assert_first_validation_message(exc_info.value, _RANGE_ORDER_ERROR)
+
+
+@pytest.mark.parametrize(
+    "naive_field,naive_value",
+    [
+        ("start", "2026-01-01T00:00:00"),
+        ("end", "2026-02-01T00:00:00"),
+    ],
+)
+@pytest.mark.parametrize(
+    "schema_cls,base_payload",
+    QUERY_SCHEMAS_WITH_BASE_PAYLOAD,
+    ids=["top", "timeseries", "summary"],
+)
+def test_naive_datetime_rejected(
+    schema_cls: type,
+    base_payload: dict[str, str],
+    naive_field: str,
+    naive_value: str,
+):
+    """`AwareDatetime` rejects ISO-8601 strings without a timezone designator.
+
+    The other half of the range is supplied as a valid `Z`-suffixed ISO so the
+    failure is unambiguously the AwareDatetime check, not the partial-range
+    or missing-spec branch of the XOR validator.
+    """
+    paired_field = "end" if naive_field == "start" else "start"
+    paired_value = ABS_RANGE_END_ISO if naive_field == "start" else ABS_RANGE_START_ISO
+    payload = {
+        **base_payload,
+        naive_field: naive_value,
+        paired_field: paired_value,
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        schema_cls.model_validate(payload)
+    failing_fields = {error["loc"][0] for error in exc_info.value.errors()}
+    assert naive_field in failing_fields
 
 
 # ------------------------------- TopEventRow -------------------------------

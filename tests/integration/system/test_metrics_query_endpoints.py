@@ -391,3 +391,201 @@ def test_query_endpoint_admin_missing_ajax_header_redirects_to_home(
 
     assert response.status_code == 302
     assert response.location.endswith("/home")
+
+
+# ---------------------------------------------------------------------------
+# Absolute (`start`, `end`) range — admin happy paths across all three endpoints
+# ---------------------------------------------------------------------------
+
+
+def _absolute_range_around(bucket: datetime) -> tuple[str, str]:
+    """Return a `(start_iso, end_iso)` tuple that brackets `bucket` by ±1h.
+
+    Returns `Z`-suffixed ISO strings so they pass through Flask's query-string
+    parsing without URL-encoding the `+` in `+00:00`. Pydantic v2 datetime
+    fields accept both `Z` and `+HH:MM` offsets.
+    """
+    start = (bucket - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    end = (bucket + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return start, end
+
+
+def test_query_top_absolute_range_returns_seeded_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and one seeded row inside an absolute (start, end)
+    WHEN GETing /api/metrics/query/top?start=...&end=...
+    THEN the response is 200, `window` echoes null (no named window supplied),
+        and the seeded row is returned with the absolute bounds reflected in
+        `window_start`/`window_end`.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        bucket = _bucket_inside_window()
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=bucket,
+            count=7,
+        )
+    start_iso, end_iso = _absolute_range_around(bucket)
+
+    url = f"{_TOP_URL}?start={start_iso}&end={end_iso}"
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["window"] is None
+    assert len(body["events"]) == 1
+    assert body["events"][0]["total_count"] == 7
+
+
+def test_query_timeseries_absolute_range_returns_seeded_buckets(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and one seeded UTUB_OPENED row inside an absolute range
+    WHEN GETing /api/metrics/query/timeseries?event_name=...&start=...&end=...
+    THEN the response is 200, `window` is null, and the bucket count matches.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        bucket = _bucket_inside_window()
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=bucket,
+            count=4,
+        )
+    start_iso, end_iso = _absolute_range_around(bucket)
+
+    url = (
+        f"{_TIMESERIES_URL}?event_name={EventName.UTUB_OPENED.value}"
+        f"&start={start_iso}&end={end_iso}&resolution=hour"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["window"] is None
+    assert body["resolution"] == "hour"
+    assert sum(bucket["count"] for bucket in body["buckets"]) == 4
+
+
+def test_query_summary_absolute_range_returns_by_category_list(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and seeded rows inside an absolute range
+    WHEN GETing /api/metrics/query/summary?start=...&end=...
+    THEN the response is 200, `window` is null, `previous_window_start` /
+        `previous_window_end` reflect the equal-length preceding interval,
+        and the domain category sum matches the seeded count.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        bucket = _bucket_inside_window()
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=bucket,
+            count=11,
+        )
+    start_iso, end_iso = _absolute_range_around(bucket)
+
+    url = f"{_SUMMARY_URL}?start={start_iso}&end={end_iso}"
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["window"] is None
+    assert "previous_window_start" in body
+    assert "previous_window_end" in body
+    domain_row = next(
+        (
+            row
+            for row in body["by_category"]
+            if row["category"] == EventCategory.DOMAIN.value
+        ),
+        None,
+    )
+    assert domain_row is not None
+    assert domain_row["current"] == 11
+
+
+# ---------------------------------------------------------------------------
+# Absolute-range sad paths — shared XOR validator failures across endpoints
+# ---------------------------------------------------------------------------
+
+
+_ABS_START_QUERY: str = "start=2026-01-01T00:00:00Z"
+_ABS_END_QUERY: str = "end=2026-02-01T00:00:00Z"
+_ABS_REVERSED_QUERY: str = "start=2026-02-01T00:00:00Z&end=2026-01-01T00:00:00Z"
+
+
+def _admin_get(logged_in_client: FlaskClient, base_url: str, query: str):
+    return logged_in_client.get(f"{base_url}?{query}", headers=_AJAX_HEADERS)
+
+
+@pytest.mark.parametrize(
+    "base_url,extra_required",
+    [
+        (_TOP_URL, ""),
+        (_TIMESERIES_URL, f"&event_name={EventName.UTUB_OPENED.value}"),
+        (_SUMMARY_URL, ""),
+    ],
+    ids=["top", "timeseries", "summary"],
+)
+@pytest.mark.parametrize(
+    "bad_query",
+    [
+        # Both `window` and absolute range supplied
+        f"window=day&{_ABS_START_QUERY}&{_ABS_END_QUERY}",
+        # Partial range: start without end
+        _ABS_START_QUERY,
+        # Partial range: end without start
+        _ABS_END_QUERY,
+        # Neither window nor range
+        "",
+        # Reversed range (start > end)
+        _ABS_REVERSED_QUERY,
+    ],
+    ids=[
+        "window_and_range_together",
+        "start_without_end",
+        "end_without_start",
+        "neither_window_nor_range",
+        "reversed_range",
+    ],
+)
+def test_query_endpoint_absolute_range_xor_failures_return_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    base_url: str,
+    extra_required: str,
+    bad_query: str,
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing any of the three /api/metrics/query/* endpoints with an
+        invalid combination of `window` / `start` / `end`
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` and the
+        field-errors map contains the model-level `__root__` entry produced
+        by the shared `_validate_window_xor_range` validator.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    # `extra_required` is empty for endpoints without additional required
+    # fields; for timeseries it injects the mandatory event_name so the
+    # 400 we observe is unambiguously the XOR failure, not a missing field.
+    query = bad_query + extra_required if bad_query else extra_required.lstrip("&")
+
+    response = _admin_get(logged_in_client, base_url, query)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    # Either the model-level XOR validator (loc=()) or the field-level
+    # `event_name` failure for the timeseries empty-query case lands here;
+    # the assertion only requires that there's at least one error field.
+    assert body[STD_JSON.ERRORS]

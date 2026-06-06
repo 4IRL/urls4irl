@@ -628,8 +628,11 @@ export interface components {
     };
     /** @description Envelope returned by `GET /api/metrics/query/top`. */
     TopEventsResponseSchema: {
-      /** @description Window value as supplied by the client */
-      window: string;
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
       /**
        * Format: date-time
        * @description Inclusive UTC start of the window
@@ -662,8 +665,11 @@ export interface components {
     TimeseriesResponseSchema: {
       /** @description EventName the series is filtered to */
       event_name: string;
-      /** @description Window value as supplied by the client */
-      window: string;
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
       /** @description date_trunc resolution (hour | day) */
       resolution: string;
       /**
@@ -696,8 +702,11 @@ export interface components {
     };
     /** @description Envelope returned by `GET /api/metrics/query/summary`. */
     SummaryResponseSchema: {
-      /** @description Window value as supplied by the client */
-      window: string;
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
       /**
        * Format: date-time
        * @description Inclusive UTC start of the window
@@ -1299,9 +1308,13 @@ export interface operations {
   };
   queryTop: {
     parameters: {
-      query: {
-        /** @description Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. */
-        window: string;
+      query?: {
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
         /** @description Optional category filter (api | domain | ui). */
         category?: "api" | "domain" | "ui";
         /** @description Maximum number of rows to return (1-100). */
@@ -1422,8 +1435,12 @@ export interface operations {
           | "ui_contact_submit"
           | "ui_error_page_refresh"
           | "ui_rate_limit_hit";
-        /** @description Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. */
-        window: string;
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
         /** @description date_trunc resolution: hour (default) or day. */
         resolution?: "hour" | "day";
       };
@@ -1474,9 +1491,13 @@ export interface operations {
   };
   querySummary: {
     parameters: {
-      query: {
-        /** @description Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. */
-        window: string;
+      query?: {
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
       };
       header?: never;
       path?: never;

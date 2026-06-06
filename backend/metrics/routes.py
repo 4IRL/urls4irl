@@ -8,7 +8,7 @@ from backend.api_common.auth_decorators import admin_required
 from backend.api_common.parse_request import api_route
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.extensions.metrics.buckets import parse_window, previous_window
+from backend.extensions.metrics.buckets import previous_window, resolve_query_window
 from backend.extensions.metrics.writer import record_event
 from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
@@ -128,7 +128,12 @@ def query_top() -> FlaskResponse:
         return parsed
 
     try:
-        window_start, window_end = parse_window(parsed.window, utc_now())
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
     except ValueError as validation_error:
         return build_field_error_response(
             message=MetricsFailureMessages.INVALID_WINDOW,
@@ -179,7 +184,12 @@ def query_timeseries() -> FlaskResponse:
         return parsed
 
     try:
-        window_start, window_end = parse_window(parsed.window, utc_now())
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
     except ValueError as validation_error:
         return build_field_error_response(
             message=MetricsFailureMessages.INVALID_WINDOW,
@@ -225,10 +235,13 @@ def query_summary() -> FlaskResponse:
     if not isinstance(parsed, BaseModel):
         return parsed
 
-    now = utc_now()
     try:
-        window_start, window_end = parse_window(parsed.window, now)
-        previous_window_start, previous_window_end = previous_window(parsed.window, now)
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
     except ValueError as validation_error:
         return build_field_error_response(
             message=MetricsFailureMessages.INVALID_WINDOW,
@@ -237,6 +250,9 @@ def query_summary() -> FlaskResponse:
             status_code=400,
         )
 
+    previous_window_start, previous_window_end = previous_window(
+        window_start, window_end
+    )
     by_category = query_service.summary(
         window_start=window_start,
         window_end=window_end,

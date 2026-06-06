@@ -38,7 +38,13 @@ class TopEventRow(BaseSchema):
 class TopEventsResponseSchema(BaseSchema):
     """Envelope returned by `GET /api/metrics/query/top`."""
 
-    window: str = Field(description="Window value as supplied by the client")
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
     window_start: datetime = Field(description="Inclusive UTC start of the window")
     window_end: datetime = Field(description="Exclusive UTC end of the window")
     category: str | None = Field(
@@ -63,7 +69,13 @@ class TimeseriesResponseSchema(BaseSchema):
     """Envelope returned by `GET /api/metrics/query/timeseries`."""
 
     event_name: str = Field(description="EventName the series is filtered to")
-    window: str = Field(description="Window value as supplied by the client")
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
     resolution: str = Field(description="date_trunc resolution (hour | day)")
     window_start: datetime = Field(description="Inclusive UTC start of the window")
     window_end: datetime = Field(description="Exclusive UTC end of the window")
@@ -90,7 +102,13 @@ class SummaryCategoryCount(BaseSchema):
 class SummaryResponseSchema(BaseSchema):
     """Envelope returned by `GET /api/metrics/query/summary`."""
 
-    window: str = Field(description="Window value as supplied by the client")
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
     window_start: datetime = Field(description="Inclusive UTC start of the window")
     window_end: datetime = Field(description="Exclusive UTC end of the window")
     previous_window_start: datetime = Field(

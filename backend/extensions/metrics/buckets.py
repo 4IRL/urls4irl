@@ -1,20 +1,21 @@
 from __future__ import annotations
 
+import calendar
 import re
 from datetime import datetime, timedelta, timezone
 
 WINDOW_NAMED: tuple[str, ...] = ("day", "week", "month", "year")
-WINDOW_NAMED_DELTAS: dict[str, timedelta] = {
+_WINDOW_NAMED_DELTAS: dict[str, timedelta] = {
     "day": timedelta(days=1),
     "week": timedelta(days=7),
-    "month": timedelta(days=30),
-    "year": timedelta(days=365),
 }
 _WINDOW_SHORTHAND_RE: re.Pattern = re.compile(r"^(\d+)([hd])$")
 _WINDOW_PARSE_ERROR_FMT: str = (
     "Invalid window: {value!r}. Expected one of {names} or NhNd shorthand "
     "(e.g. 24h, 7d)."
 )
+_RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
+_MISSING_WINDOW_ERROR: str = "Provide `window` or both `start` and `end`."
 
 
 def compute_bucket_start_epoch(now_epoch_seconds: int, bucket_seconds: int) -> int:
@@ -36,22 +37,58 @@ def epoch_to_aware_datetime(epoch_seconds: int) -> datetime:
     return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc)
 
 
+def _shift_calendar_month(reference: datetime, months: int) -> datetime:
+    """Shift `reference` back by `months` calendar months.
+
+    Clamps the day to the last valid day of the target month so callers like
+    `parse_window("month", 2026-03-31)` resolve to `2026-02-28` (or `2026-02-29`
+    in a leap year) rather than raising `ValueError`. Used by the `month` and
+    `year` (months=12) named-window branches.
+    """
+    zero_indexed_month = reference.month - 1 - months
+    target_year = reference.year + zero_indexed_month // 12
+    target_month = zero_indexed_month % 12 + 1
+    last_day_of_target_month = calendar.monthrange(target_year, target_month)[1]
+    return reference.replace(
+        year=target_year,
+        month=target_month,
+        day=min(reference.day, last_day_of_target_month),
+    )
+
+
+def _named_window_start(name: str, now: datetime) -> datetime | None:
+    """Return the start datetime for a named window, or None if unrecognized.
+
+    `month` and `year` use calendar-aware arithmetic via `_shift_calendar_month`
+    (Feb 29 + 1 year → Feb 28; Mar 31 - 1 month → Feb 28/29). `day` and `week`
+    stay on fixed `timedelta` deltas because their semantics are unambiguous.
+    """
+    fixed_delta = _WINDOW_NAMED_DELTAS.get(name)
+    if fixed_delta is not None:
+        return now - fixed_delta
+    if name == "month":
+        return _shift_calendar_month(now, 1)
+    if name == "year":
+        return _shift_calendar_month(now, 12)
+    return None
+
+
 def parse_window(value: str, now: datetime) -> tuple[datetime, datetime]:
     """Convert a window spec to a `(start, end)` UTC-aware datetime tuple.
 
     Accepts named windows (`day` | `week` | `month` | `year`) and `Nh` / `Nd`
-    shorthand. `month` and `year` are intentionally fixed-length (30 days and
-    365 days) — calendar-month and leap-year math are deferred until a concrete
-    need.
+    shorthand. `month` and `year` use calendar-aware arithmetic — the day is
+    clamped to the last valid day of the target month so Feb 29 - 1 year and
+    Mar 31 - 1 month resolve correctly without raising.
 
     Raises:
         ValueError: when `value` is not a recognized window string. The message
             uses `_WINDOW_PARSE_ERROR_FMT` so callers (including tests) can
             assert against the exact text.
     """
-    named_delta = WINDOW_NAMED_DELTAS.get(value)
-    if named_delta is not None:
-        return (now - named_delta, now)
+    named_start = _named_window_start(value, now)
+    if named_start is not None:
+        return (named_start, now)
 
     shorthand_match = _WINDOW_SHORTHAND_RE.match(value)
     if shorthand_match is not None:
@@ -67,12 +104,43 @@ def parse_window(value: str, now: datetime) -> tuple[datetime, datetime]:
     raise ValueError(_WINDOW_PARSE_ERROR_FMT.format(value=value, names=WINDOW_NAMED))
 
 
-def previous_window(window_value: str, now: datetime) -> tuple[datetime, datetime]:
-    """Return the interval of equal length immediately preceding the current one.
+def resolve_query_window(
+    *,
+    window: str | None,
+    start: datetime | None,
+    end: datetime | None,
+    now: datetime,
+) -> tuple[datetime, datetime]:
+    """Resolve a query-schema window specification to a `(start, end)` tuple.
 
-    Used by the summary endpoint to compute period-over-period deltas. For
-    `window_value="day"` and `now=t`, returns `(t - 2*day, t - day)`.
+    Accepts either a relative `window` string (delegates to `parse_window`)
+    or an absolute `(start, end)` range. Pydantic-level XOR validation in
+    each query schema guarantees exactly one shape arrives here, so the
+    `ValueError` branches act as a defense-in-depth invariant check.
+
+    Raises:
+        ValueError: when neither a window nor a full range is provided, or
+            when `start >= end`. Window parsing errors propagate verbatim
+            from `parse_window`.
     """
-    current_start, current_end = parse_window(window_value, now)
-    interval_length = current_end - current_start
-    return (current_start - interval_length, current_start)
+    if start is not None and end is not None:
+        if start >= end:
+            raise ValueError(_RANGE_ORDER_ERROR)
+        return (start, end)
+    if window is not None:
+        return parse_window(window, now)
+    raise ValueError(_MISSING_WINDOW_ERROR)
+
+
+def previous_window(
+    window_start: datetime, window_end: datetime
+) -> tuple[datetime, datetime]:
+    """Return the interval of equal length immediately preceding `(start, end)`.
+
+    Used by the summary endpoint to compute period-over-period deltas. For a
+    24-hour window ending at `t`, returns `(t - 48h, t - 24h)`. Works for any
+    interval — relative `parse_window` output or an absolute admin range —
+    because it operates on the resolved tuple, not the original spec.
+    """
+    interval_length = window_end - window_start
+    return (window_start - interval_length, window_start)

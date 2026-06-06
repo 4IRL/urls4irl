@@ -290,11 +290,31 @@
           {
             "name": "window",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer."
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
           },
           {
             "name": "category",
@@ -460,11 +480,31 @@
           {
             "name": "window",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer."
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
           },
           {
             "name": "resolution",
@@ -543,11 +583,31 @@
           {
             "name": "window",
             "in": "query",
-            "required": true,
+            "required": false,
             "schema": {
               "type": "string"
             },
-            "description": "Time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer."
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
           }
         ],
         "responses": {
@@ -2364,8 +2424,16 @@
         "description": "Envelope returned by `GET /api/metrics/query/top`.",
         "properties": {
           "window": {
-            "description": "Window value as supplied by the client",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
           },
           "window_start": {
             "description": "Inclusive UTC start of the window",
@@ -2397,7 +2465,7 @@
             "type": "array"
           }
         },
-        "required": ["window", "window_start", "window_end", "events"],
+        "required": ["window_start", "window_end", "events"],
         "type": "object"
       },
       "TimeseriesBucketSchema": {
@@ -2424,8 +2492,16 @@
             "type": "string"
           },
           "window": {
-            "description": "Window value as supplied by the client",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
           },
           "resolution": {
             "description": "date_trunc resolution (hour | day)",
@@ -2451,7 +2527,6 @@
         },
         "required": [
           "event_name",
-          "window",
           "resolution",
           "window_start",
           "window_end",
@@ -2482,8 +2557,16 @@
         "description": "Envelope returned by `GET /api/metrics/query/summary`.",
         "properties": {
           "window": {
-            "description": "Window value as supplied by the client",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
           },
           "window_start": {
             "description": "Inclusive UTC start of the window",
@@ -2514,7 +2597,6 @@
           }
         },
         "required": [
-          "window",
           "window_start",
           "window_end",
           "previous_window_start",
