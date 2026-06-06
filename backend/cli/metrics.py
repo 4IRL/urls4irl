@@ -6,7 +6,9 @@ import click
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 
-from backend.extensions.metrics.buckets import parse_window
+from pydantic import ValidationError
+
+from backend.extensions.metrics.buckets import resolve_query_window
 from backend.extensions.metrics.dim_types_generator import (
     generate_dim_types_ts,
     generate_dim_values_ts,
@@ -15,6 +17,7 @@ from backend.extensions.metrics.dim_types_generator import (
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
 from backend.metrics.events import EventCategory
+from backend.schemas.requests.metrics import TopEventsQuerySchema
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -124,9 +127,21 @@ def generate_events_command(output_path: str):
 @metrics_cli.command("top", help="Show top events by count for a time window.")
 @click.option(
     "--window",
-    required=True,
     type=str,
-    help="day | week | month | year | Nh | Nd",
+    default=None,
+    help="day | week | month | year | Nh | Nd (mutually exclusive with --start/--end)",
+)
+@click.option(
+    "--start",
+    type=str,
+    default=None,
+    help="ISO-8601 with timezone (e.g., 2026-06-06T00:00:00Z); pair with --end",
+)
+@click.option(
+    "--end",
+    type=str,
+    default=None,
+    help="ISO-8601 with timezone (e.g., 2026-06-06T00:00:00Z); pair with --start",
 )
 @click.option(
     "--category",
@@ -135,26 +150,59 @@ def generate_events_command(output_path: str):
 )
 @click.option("--limit", type=click.IntRange(1, 100), default=10)
 @with_appcontext
-def top_command(window: str, category: str | None, limit: int) -> None:
+def top_command(
+    window: str | None,
+    start: str | None,
+    end: str | None,
+    category: str | None,
+    limit: int,
+) -> None:
     """Parity CLI for the `/api/metrics/query/top` endpoint.
 
-    Calls the same `query_service.top_events` function used by the HTTP
-    route so the CLI and dashboard always agree on the underlying SQL.
+    Validates input through the same `TopEventsQuerySchema` the HTTP route
+    uses, so window/range XOR enforcement and `AwareDatetime` naive-rejection
+    behave identically in terminal and dashboard contexts.
     """
     try:
-        window_start, window_end = parse_window(window, utc_now())
-    except ValueError as window_parse_error:
-        click.echo(str(window_parse_error), err=True)
+        parsed = TopEventsQuerySchema.model_validate(
+            {
+                "window": window,
+                "start": start,
+                "end": end,
+                "category": category,
+                "limit": limit,
+            }
+        )
+    except ValidationError as schema_validation_error:
+        for error in schema_validation_error.errors():
+            field_path = ".".join(str(part) for part in error["loc"]) or "__root__"
+            click.echo(f"{field_path}: {error['msg']}", err=True)
         raise SystemExit(1)
 
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as range_resolution_error:
+        click.echo(str(range_resolution_error), err=True)
+        raise SystemExit(1)
+
+    bounds_label = f"window: {parsed.window}" if parsed.window is not None else "range:"
+    click.echo(
+        f"{bounds_label} [{window_start.isoformat()} .. {window_end.isoformat()}]"
+    )
+
     category_enum: EventCategory | None = (
-        EventCategory(category) if category is not None else None
+        EventCategory(parsed.category) if parsed.category is not None else None
     )
     rows = query_service.top_events(
         window_start=window_start,
         window_end=window_end,
         category=category_enum,
-        limit=limit,
+        limit=parsed.limit,
     )
 
     if not rows:

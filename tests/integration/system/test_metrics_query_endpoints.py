@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Tuple
 
@@ -17,6 +18,15 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.cli
+
+# Pydantic v2 `model_dump(mode="json")` serializes UTC datetimes as
+# `YYYY-MM-DDTHH:MM:SS[.ffffff]<tz>` where `<tz>` is `Z` or `+00:00`
+# depending on Pydantic minor version. The HTTP-Date (RFC 822) format
+# Flask jsonify emits by default ("Sat, 06 Jun 2026 17:00:00 GMT") is the
+# regression this regex guards against — either ISO-8601 spelling is fine.
+_ISO_8601_UTC_REGEX = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|\+00:00)$"
+)
 
 
 _TOP_URL = "/api/metrics/query/top"
@@ -589,3 +599,40 @@ def test_query_endpoint_absolute_range_xor_failures_return_400(
     # `event_name` failure for the timeseries empty-query case lands here;
     # the assertion only requires that there's at least one error field.
     assert body[STD_JSON.ERRORS]
+
+
+# ---------------------------------------------------------------------------
+# Wire format: window_start / window_end serialize as ISO-8601 with UTC offset
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _TOP_URL + "?window=day",
+        _TIMESERIES_URL + "?window=day&event_name=" + EventName.UTUB_OPENED.value,
+        _SUMMARY_URL + "?window=day",
+    ],
+    ids=["top", "timeseries", "summary"],
+)
+def test_query_endpoint_datetime_fields_serialize_as_iso_8601(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    url: str,
+) -> None:
+    """
+    GIVEN an admin client requesting any /api/metrics/query/* endpoint
+    WHEN the response JSON is decoded
+    THEN `window_start` and `window_end` are ISO-8601 strings with a
+        `+00:00` UTC offset, NOT Flask's default HTTP-Date (RFC 822) format
+        (which would look like "Sat, 06 Jun 2026 16:00:00 GMT"). This is
+        the wire-format contract that lets TypeScript consumers `new Date`
+        the value AND parse it against an ISO regex.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert _ISO_8601_UTC_REGEX.match(body["window_start"]), body["window_start"]
+    assert _ISO_8601_UTC_REGEX.match(body["window_end"]), body["window_end"]

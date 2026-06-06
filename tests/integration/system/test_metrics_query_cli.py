@@ -214,3 +214,134 @@ def test_flask_metrics_top_invalid_window_exits_nonzero_with_parse_error(
     assert result.exit_code != 0
     combined_output = result.output + (result.stderr if result.stderr_bytes else "")
     assert expected_message in combined_output
+
+
+def test_flask_metrics_top_prints_window_bounds_header_for_relative_window(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN any invocation with --window=<relative>
+    WHEN `flask metrics top --window=day` runs
+    THEN the output starts with a `window: day [<iso-start> .. <iso-end>]`
+        header so the resolved bounds are visible in the terminal.
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(args=["metrics", "top", "--window=day"])
+
+    assert result.exit_code == 0, result.output
+    first_line = result.output.splitlines()[0]
+    assert first_line.startswith("window: day [")
+    assert " .. " in first_line
+
+
+def test_flask_metrics_top_absolute_range_happy_path(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN seeded UTUB_OPENED rows inside an absolute UTC range
+    WHEN `flask metrics top --start=<iso-Z> --end=<iso-Z>` runs
+    THEN the CLI exits 0, prints `range: [<iso-start> .. <iso-end>]`,
+        and the seeded row appears in the data section.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+    range_start = (inside - timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    range_end = (inside + timedelta(hours=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    with app.app_context():
+        _seed_event_with_count(
+            EventName.UTUB_OPENED, EventCategory.DOMAIN, inside, count=11
+        )
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=[
+            "metrics",
+            "top",
+            f"--start={range_start}",
+            f"--end={range_end}",
+        ]
+    )
+
+    assert result.exit_code == 0, result.output
+    first_line = result.output.splitlines()[0]
+    assert first_line.startswith("range: [")
+    assert TOP_EVENTS_HEADER in result.output
+    data_lines = result.output.splitlines()[
+        result.output.splitlines().index(TOP_EVENTS_HEADER) + 1 :
+    ]
+    first_data_columns = data_lines[0].split("\t")
+    assert first_data_columns[0] == EventName.UTUB_OPENED.value
+    assert first_data_columns[-1] == "11"
+
+
+def test_flask_metrics_top_naive_datetime_exits_nonzero_with_tz_error(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN ISO-8601 strings WITHOUT a timezone designator
+    WHEN `flask metrics top --start=<naive> --end=<naive>` runs
+    THEN the CLI exits non-zero and the error mentions the missing timezone
+        (the same `AwareDatetime` check the HTTP route enforces).
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(
+        args=[
+            "metrics",
+            "top",
+            "--start=2026-06-06T13:00:00",
+            "--end=2026-06-06T17:00:00",
+        ]
+    )
+
+    assert result.exit_code != 0
+    combined_output = result.output + (result.stderr if result.stderr_bytes else "")
+    assert "timezone" in combined_output.lower()
+
+
+def test_flask_metrics_top_window_and_range_together_exits_nonzero(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN both --window and --start/--end supplied
+    WHEN `flask metrics top --window=day --start=<iso-Z> --end=<iso-Z>` runs
+    THEN the CLI exits non-zero with the XOR validator's verbatim message.
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(
+        args=[
+            "metrics",
+            "top",
+            "--window=day",
+            "--start=2026-06-06T13:00:00Z",
+            "--end=2026-06-06T17:00:00Z",
+        ]
+    )
+
+    assert result.exit_code != 0
+    combined_output = result.output + (result.stderr if result.stderr_bytes else "")
+    assert "Provide either `window` or `start`+`end`, not both." in combined_output
+
+
+def test_flask_metrics_top_missing_window_and_range_exits_nonzero(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN neither --window nor --start/--end supplied
+    WHEN `flask metrics top` runs with no time-spec
+    THEN the CLI exits non-zero with the missing-spec validator message.
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(args=["metrics", "top"])
+
+    assert result.exit_code != 0
+    combined_output = result.output + (result.stderr if result.stderr_bytes else "")
+    assert "Provide `window` or both `start` and `end`." in combined_output
