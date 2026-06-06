@@ -416,6 +416,48 @@ def test_summary_current_vs_previous_window(
         pg_conn.close()
 
 
+def test_summary_empty_window_returns_empty_list(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN no rows exist for the current OR previous windows
+    WHEN summary is called
+    THEN the result is [] (assert-before-state: confirm no rows in either
+        window first).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_metrics_and_registry(pg_conn)
+
+        with pg_conn.cursor() as cur:
+            cur.execute(
+                'SELECT COUNT(*) FROM "AnonymousMetrics"'
+                ' WHERE "bucketStart" >= %s AND "bucketStart" < %s',
+                (previous_window_start, window_end),
+            )
+            existing_count = cur.fetchone()[0]
+        assert existing_count == 0
+
+        with app.app_context():
+            result = summary(
+                window_start=window_start,
+                window_end=window_end,
+                previous_window_start=previous_window_start,
+                previous_window_end=previous_window_end,
+            )
+
+        assert result == []
+    finally:
+        _truncate_metrics_and_registry(pg_conn)
+        pg_conn.close()
+
+
 def test_query_service_join_includes_description_for_every_event(
     metrics_enabled_runner_app: Flask,
 ) -> None:
