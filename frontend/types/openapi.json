@@ -282,7 +282,7 @@
         "security": [
           {
             "sessionAuth": [],
-            "adminRole": []
+            "adminSession": []
           }
         ],
         "description": "Return the top events by total count for an admin time window.",
@@ -344,7 +344,7 @@
         "security": [
           {
             "sessionAuth": [],
-            "adminRole": []
+            "adminSession": []
           }
         ],
         "description": "Return per-bucket counts for a single event over an admin time window.",
@@ -406,7 +406,7 @@
         "security": [
           {
             "sessionAuth": [],
-            "adminRole": []
+            "adminSession": []
           }
         ],
         "description": "Return per-category totals for the current and immediately-preceding window.",
@@ -3321,10 +3321,10 @@
         "in": "header",
         "name": "X-CSRFToken"
       },
-      "adminRole": {
-        "type": "apiKey",
-        "in": "header",
-        "name": "X-Admin-Role"
+      "adminSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Admin authorization is enforced by a Flask-Login session-role check (User_Role.ADMIN), NOT a request header or bearer token. This scheme is declared only to mark routes that additionally require admin role on top of an authenticated session."
       }
     }
   }

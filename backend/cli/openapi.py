@@ -312,7 +312,7 @@ def _build_security(
 
     if has_admin_auth:
         # Admin routes are additive on top of an authenticated session.
-        security_obj: dict[str, list] = {"sessionAuth": [], "adminRole": []}
+        security_obj: dict[str, list] = {"sessionAuth": [], "adminSession": []}
         if is_mutating:
             security_obj["csrfToken"] = []
         return [security_obj]
@@ -525,10 +525,16 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                     "in": "header",
                     "name": "X-CSRFToken",
                 },
-                "adminRole": {
-                    "type": "apiKey",
-                    "in": "header",
-                    "name": "X-Admin-Role",
+                "adminSession": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "description": (
+                        "Admin authorization is enforced by a Flask-Login "
+                        "session-role check (User_Role.ADMIN), NOT a request "
+                        "header or bearer token. This scheme is declared only "
+                        "to mark routes that additionally require admin role "
+                        "on top of an authenticated session."
+                    ),
                 },
             },
         },
