@@ -29,7 +29,7 @@ from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.models.users import Users
+from backend.models.users import User_Role, Users
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
@@ -641,6 +641,38 @@ def login_first_user_with_register(
         logged_in_response = logged_in_client.get("/home")
         csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
         yield logged_in_client, csrf_token_string, user_to_login, app
+
+
+@pytest.fixture
+def login_admin_user_with_register(
+    app: Flask, register_first_user
+) -> Generator[Tuple[FlaskClient, str, Users, Flask], None, None]:
+    """
+    After registering the user with ID == 1, promotes them to User_Role.ADMIN
+    and logs them in via flask_login. Used by the metrics-query and other
+    admin-gated endpoint tests.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        register_first_user (pytest fixture): Registers the user with ID == 1
+
+    Yields:
+        (FlaskLoginClient): Flask client that logs in the admin user
+        (str): The CSRF token string
+        (Users): The User model of the currently logged-in admin user
+        (Flask): The Flask client for providing an app context
+    """
+
+    app.test_client_class = AjaxFlaskLoginClient
+    with app.app_context():
+        admin_user: Users = Users.query.get(1)
+        admin_user.role = User_Role.ADMIN
+        db.session.commit()
+
+    with app.test_client(user=admin_user) as logged_in_client:
+        logged_in_response = logged_in_client.get("/home")
+        csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
+        yield logged_in_client, csrf_token_string, admin_user, app
 
 
 @pytest.fixture

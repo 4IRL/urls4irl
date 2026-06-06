@@ -210,3 +210,9 @@ SESSION_AUTH_DECORATORS: frozenset[str] = frozenset(
         utub_membership_with_valid_utub_tag.__name__,
     }
 )
+
+# Auth decorators that require admin privileges (additive on top of session auth).
+# Listed as string literals because the decorators themselves live in other
+# modules (e.g. backend/extensions/metrics/admin_auth.py); importing across
+# modules just to call `.__name__` would invite circular-import risk.
+ADMIN_AUTH_DECORATORS: frozenset[str] = frozenset({"metrics_admin_required"})

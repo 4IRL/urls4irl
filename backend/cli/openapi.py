@@ -14,7 +14,10 @@ from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 from pydantic import BaseModel
 
-from backend.api_common.auth_decorators import SESSION_AUTH_DECORATORS
+from backend.api_common.auth_decorators import (
+    ADMIN_AUTH_DECORATORS,
+    SESSION_AUTH_DECORATORS,
+)
 from backend.schemas.base import StatusMessageResponseSchema
 
 openapi_cli = AppGroup(
@@ -305,9 +308,17 @@ def _build_security(
     is_mutating = method.upper() in MUTATING_METHODS
 
     has_session_auth = auth_decorator in SESSION_AUTH_DECORATORS
+    has_admin_auth = auth_decorator in ADMIN_AUTH_DECORATORS
+
+    if has_admin_auth:
+        # Admin routes are additive on top of an authenticated session.
+        security_obj: dict[str, list] = {"sessionAuth": [], "adminRole": []}
+        if is_mutating:
+            security_obj["csrfToken"] = []
+        return [security_obj]
 
     if has_session_auth:
-        security_obj: dict[str, list] = {"sessionAuth": []}
+        security_obj = {"sessionAuth": []}
         if is_mutating:
             security_obj["csrfToken"] = []
         return [security_obj]
@@ -513,6 +524,11 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                     "type": "apiKey",
                     "in": "header",
                     "name": "X-CSRFToken",
+                },
+                "adminRole": {
+                    "type": "apiKey",
+                    "in": "header",
+                    "name": "X-Admin-Role",
                 },
             },
         },
