@@ -1,0 +1,332 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+from typing import Tuple
+
+import pytest
+from flask import Flask
+from flask.testing import FlaskClient
+
+from backend import db
+from backend.metrics.constants import MetricsErrorCodes
+from backend.metrics.events import EVENT_DESCRIPTIONS, EventCategory, EventName
+from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.event_registry import Event_Registry
+from backend.models.users import Users
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
+
+pytestmark = pytest.mark.cli
+
+
+_TOP_URL = "/api/metrics/query/top"
+_TIMESERIES_URL = "/api/metrics/query/timeseries"
+_SUMMARY_URL = "/api/metrics/query/summary"
+_AJAX_HEADERS = {URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST}
+
+
+def _bucket_inside_window() -> datetime:
+    """Return a UTC-aware bucket_start guaranteed to fall inside a 1-day
+    lookback from `utc_now()`. We use `now - 1h` so the row sits comfortably
+    inside the `day` / `week` windows the tests exercise.
+    """
+    return datetime.now(timezone.utc) - timedelta(hours=1)
+
+
+def _seed_event_with_count(
+    event_name: EventName,
+    category: EventCategory,
+    bucket_start: datetime,
+    count: int,
+    dimensions: dict | None = None,
+) -> None:
+    """Seed one EventRegistry + AnonymousMetrics row through SQLAlchemy.
+
+    Why ORM (not raw psycopg2): `login_admin_user_with_register` depends on
+    the SAVEPOINT-based `app` fixture; raw psycopg2 writes would land outside
+    the savepoint and roll back independently.
+    """
+    if Event_Registry.query.filter_by(name=event_name.value).one_or_none() is None:
+        db.session.add(
+            Event_Registry(
+                name=event_name.value,
+                category=category,
+                description=EVENT_DESCRIPTIONS[event_name],
+            )
+        )
+        db.session.flush()
+    db.session.add(
+        Anonymous_Metrics(
+            event_name=event_name.value,
+            bucket_start=bucket_start,
+            dimensions=dimensions if dimensions is not None else {},
+            count=count,
+        )
+    )
+    db.session.commit()
+
+
+# ---------------------------------------------------------------------------
+# Anonymous → 401 JSON envelope (NOT a 302 redirect to splash)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _TOP_URL + "?window=day",
+        _TIMESERIES_URL + "?window=day&event_name=" + EventName.UTUB_OPENED.value,
+        _SUMMARY_URL + "?window=day",
+    ],
+)
+def test_query_endpoint_anonymous_returns_401_json_envelope(
+    app: Flask, client: FlaskClient, url: str
+) -> None:
+    """
+    GIVEN an anonymous client (no session)
+    WHEN GETing any of the three /api/metrics/query/* endpoints
+    THEN the response is 401 with a JSON failure envelope (NOT a 302 redirect
+        to splash) — the metrics-admin decorator short-circuits before AJAX
+        gating so the dashboard's fetch loop never follows a redirect.
+    """
+    response = client.get(url)
+
+    assert response.status_code == 401
+    assert response.is_json
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ---------------------------------------------------------------------------
+# Authenticated non-admin → 404 JSON envelope
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _TOP_URL + "?window=day",
+        _TIMESERIES_URL + "?window=day&event_name=" + EventName.UTUB_OPENED.value,
+        _SUMMARY_URL + "?window=day",
+    ],
+)
+def test_query_endpoint_non_admin_returns_404_json_envelope(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask], url: str
+) -> None:
+    """
+    GIVEN a logged-in user with the default User_Role.USER
+    WHEN GETing any of the three /api/metrics/query/* endpoints
+    THEN the response is 404 with a JSON failure envelope (the surface is not
+        advertised to non-admins).
+    """
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    response = logged_in_client.get(url)
+
+    assert response.status_code == 404
+    assert response.is_json
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ---------------------------------------------------------------------------
+# `top` — admin happy path
+# ---------------------------------------------------------------------------
+
+
+def test_query_top_admin_happy_path_returns_seeded_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and one seeded UTUB_OPENED row inside the window
+    WHEN GETing /api/metrics/query/top?window=day
+    THEN the response is 200, JSON contains `events`, `window`, `window_start`,
+        `window_end`, `category` aliases, and the description round-trips
+        through the EventRegistry JOIN.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=5,
+        )
+
+    response = logged_in_client.get(_TOP_URL + "?window=day", headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert "events" in body
+    assert "window" in body
+    assert "window_start" in body
+    assert "window_end" in body
+    assert "category" in body
+    assert body["window"] == "day"
+    assert len(body["events"]) == 1
+    seeded_event = body["events"][0]
+    assert seeded_event["event_name"] == EventName.UTUB_OPENED.value
+    assert seeded_event["total_count"] == 5
+    assert seeded_event["description"] == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
+
+
+# ---------------------------------------------------------------------------
+# `top` — 400 on bad window
+# ---------------------------------------------------------------------------
+
+
+def test_query_top_bad_window_returns_400_with_field_error(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/top?window=bogus
+    THEN the response is 400 with error_code=INVALID_QUERY_PARAM and the field
+        errors map contains a "window" key.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(_TOP_URL + "?window=bogus", headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "window" in body[STD_JSON.ERRORS]
+
+
+# ---------------------------------------------------------------------------
+# `top` — 400 on extra query param (extra="forbid")
+# ---------------------------------------------------------------------------
+
+
+def test_query_top_extra_query_param_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/top with an unknown query param
+    THEN the response is 400 (TopEventsQuerySchema.model_config has
+        `extra="forbid"`).
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&foo=bar", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ---------------------------------------------------------------------------
+# `timeseries` — 400 on missing event_name
+# ---------------------------------------------------------------------------
+
+
+def test_query_timeseries_missing_event_name_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/timeseries?window=day (missing event_name)
+    THEN the response is 400 — TimeseriesQuerySchema requires event_name.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _TIMESERIES_URL + "?window=day", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert "event_name" in body[STD_JSON.ERRORS]
+
+
+# ---------------------------------------------------------------------------
+# `summary` — admin happy path
+# ---------------------------------------------------------------------------
+
+
+def test_query_summary_admin_happy_path_returns_by_category_list(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and seeded rows in both the current and previous
+        window for category=domain
+    WHEN GETing /api/metrics/query/summary?window=day
+    THEN the response is 200 and `by_category` is a list of
+        {category, current, previous} objects with the domain row reflecting
+        the seeded sums.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        current_bucket = _bucket_inside_window()
+        previous_bucket = current_bucket - timedelta(days=1)
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=current_bucket,
+            count=10,
+        )
+        _seed_event_with_count(
+            event_name=EventName.UTUB_CREATED,
+            category=EventCategory.DOMAIN,
+            bucket_start=previous_bucket,
+            count=4,
+        )
+
+    response = logged_in_client.get(_SUMMARY_URL + "?window=day", headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert "by_category" in body
+    assert isinstance(body["by_category"], list)
+    domain_row = next(
+        (
+            row
+            for row in body["by_category"]
+            if row["category"] == EventCategory.DOMAIN.value
+        ),
+        None,
+    )
+    assert domain_row is not None
+    assert domain_row["current"] == 10
+    assert domain_row["previous"] == 4
+
+
+# ---------------------------------------------------------------------------
+# Admin missing X-Requested-With → 302 redirect to /home
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _TOP_URL + "?window=day",
+        _TIMESERIES_URL + "?window=day&event_name=" + EventName.UTUB_OPENED.value,
+        _SUMMARY_URL + "?window=day",
+    ],
+)
+def test_query_endpoint_admin_missing_ajax_header_redirects_to_home(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    url: str,
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing any /api/metrics/query/* endpoint WITHOUT X-Requested-With
+    THEN the response is a 302 redirect to /home — the `ajax_required=True`
+        gate fires AFTER `@metrics_admin_required` admits the admin user.
+
+    Suppress the auto-injected AJAX header by passing the key with an empty
+    value (`AjaxFlaskLoginClient.open` skips injection only when the key is
+    already present, regardless of value).
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(url, headers={URL_VALIDATION.X_REQUESTED_WITH: ""})
+
+    assert response.status_code == 302
+    assert response.location.endswith("/home")
