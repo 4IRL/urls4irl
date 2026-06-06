@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from flask import Flask, jsonify
 import pytest
+from flask import Flask, jsonify
 
-from backend.api_common.auth_decorators import ADMIN_AUTH_DECORATORS
+from backend.api_common.auth_decorators import (
+    ADMIN_AUTH_DECORATORS,
+    SESSION_AUTH_DECORATORS,
+)
 from backend.extensions.metrics.admin_auth import metrics_admin_required
 from backend.models.users import User_Role
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -48,8 +51,6 @@ class TestMetricsAdminRequiredRegistry:
 
     def test_admin_registry_does_not_contain_session_only_names(self):
         # Sanity check: ADMIN_AUTH_DECORATORS is its own set, not overlapping.
-        from backend.api_common.auth_decorators import SESSION_AUTH_DECORATORS
-
         assert EXPECTED_DECORATOR_NAME not in SESSION_AUTH_DECORATORS
 
 
