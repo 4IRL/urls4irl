@@ -260,7 +260,6 @@ def test_top_events_empty_window_returns_empty_list(
             )
 
         assert rows == []
-        assert len(rows) == 0
     finally:
         _truncate_metrics_and_registry(pg_conn)
         pg_conn.close()
