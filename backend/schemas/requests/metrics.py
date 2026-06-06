@@ -72,3 +72,87 @@ class MetricsIngestRequest(BaseModel):
             "idempotency on retries"
         ),
     )
+
+
+# Module-level tuple of every EventName value (api + domain + ui). Used by the
+# timeseries query schema, which accepts any event the registry tracks — not
+# just the UI subset that the ingest endpoint admits.
+ALL_EVENT_NAMES: tuple[str, ...] = tuple(member.value for member in EventName)
+
+
+# Star-unpack into Literal mirrors the UIEventNameLiteral pattern above.
+AllEventNameLiteral = Literal[*ALL_EVENT_NAMES]  # type: ignore[valid-type]
+
+
+# Categories accepted by the `top` query endpoint's optional filter. Derived
+# from `EventCategory` to stay in lockstep with the source of truth.
+_ALL_EVENT_CATEGORIES: tuple[str, ...] = tuple(member.value for member in EventCategory)
+CategoryLiteral = Literal[*_ALL_EVENT_CATEGORIES]  # type: ignore[valid-type]
+
+
+# `date_trunc` resolutions supported by the timeseries endpoint. Hour is the
+# minimum useful resolution because writer.record floors bucket_start to the
+# nearest METRICS_BUCKET_SECONDS=3600 boundary.
+ResolutionLiteral = Literal["hour", "day"]
+
+
+class TopEventsQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/top`.
+
+    `window` is a free-form string so the route can lean on
+    `parse_window()`'s `ValueError → 400` plumbing for both named windows
+    (`day`, `week`, ...) and `Nh`/`Nd` shorthand. Pydantic `Literal` cannot
+    express both shapes simultaneously, so validation is route-level.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str = Field(
+        description=(
+            "Time window: day | week | month | year | Nh | Nd. "
+            "Validated by parse_window() at the route layer."
+        ),
+    )
+    category: CategoryLiteral | None = Field(
+        default=None,
+        description="Optional category filter (api | domain | ui).",
+    )
+    limit: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of rows to return (1-100).",
+    )
+
+
+class TimeseriesQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/timeseries`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_name: AllEventNameLiteral = Field(
+        description="Any EventName value (api, domain, or ui).",
+    )
+    window: str = Field(
+        description=(
+            "Time window: day | week | month | year | Nh | Nd. "
+            "Validated by parse_window() at the route layer."
+        ),
+    )
+    resolution: ResolutionLiteral = Field(
+        default="hour",
+        description="date_trunc resolution: hour (default) or day.",
+    )
+
+
+class SummaryQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/summary`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str = Field(
+        description=(
+            "Time window: day | week | month | year | Nh | Nd. "
+            "Validated by parse_window() at the route layer."
+        ),
+    )
