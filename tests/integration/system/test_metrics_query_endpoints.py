@@ -171,22 +171,83 @@ def test_query_top_admin_happy_path_returns_seeded_rows(
 
 
 # ---------------------------------------------------------------------------
-# `top` — 400 on bad window
+# `timeseries` — admin happy path
 # ---------------------------------------------------------------------------
 
 
-def test_query_top_bad_window_returns_400_with_field_error(
+def test_query_timeseries_admin_happy_path_returns_seeded_buckets(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
+    GIVEN an admin client and one seeded UTUB_OPENED row inside the window
+    WHEN GETing /api/metrics/query/timeseries?window=day&event_name=<valid>
+        &resolution=hour
+    THEN the response is 200, JSON contains the full timeseries envelope
+        (`event_name`, `window`, `resolution`, `window_start`, `window_end`,
+        `buckets`) and at least one bucket reflects the seeded row's count.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=3,
+        )
+
+    url = (
+        _TIMESERIES_URL
+        + "?window=day&event_name="
+        + EventName.UTUB_OPENED.value
+        + "&resolution=hour"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert "event_name" in body
+    assert "window" in body
+    assert "resolution" in body
+    assert "window_start" in body
+    assert "window_end" in body
+    assert "buckets" in body
+    assert body["event_name"] == EventName.UTUB_OPENED.value
+    assert body["window"] == "day"
+    assert body["resolution"] == "hour"
+    assert isinstance(body["buckets"], list)
+    assert len(body["buckets"]) >= 1
+    assert sum(bucket["count"] for bucket in body["buckets"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# Bad window 400 — shared envelope across all three query endpoints
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _TOP_URL + "?window=bogus",
+        _TIMESERIES_URL + "?window=bogus&event_name=" + EventName.UTUB_OPENED.value,
+        _SUMMARY_URL + "?window=bogus",
+    ],
+)
+def test_query_endpoint_bad_window_returns_400_with_field_error(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    url: str,
+) -> None:
+    """
     GIVEN an admin client
-    WHEN GETing /api/metrics/query/top?window=bogus
-    THEN the response is 400 with error_code=INVALID_QUERY_PARAM and the field
-        errors map contains a "window" key.
+    WHEN GETing any of the three /api/metrics/query/* endpoints with
+        window=bogus
+    THEN the response is 400 with error_code=INVALID_QUERY_PARAM and the
+        field errors map contains a "window" key — guards the shared
+        `_parse_query_args` + `parse_window(ValueError → 400)` code path
+        across `top`, `timeseries`, and `summary`.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
 
-    response = logged_in_client.get(_TOP_URL + "?window=bogus", headers=_AJAX_HEADERS)
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
 
     assert response.status_code == 400
     body = response.get_json()
