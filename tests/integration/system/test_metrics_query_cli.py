@@ -7,6 +7,7 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 
 from backend import db
+from backend.cli.metrics import EMPTY_TOP_EVENTS_OUTPUT, TOP_EVENTS_HEADER
 from backend.extensions.metrics.buckets import (
     _WINDOW_PARSE_ERROR_FMT,
     WINDOW_NAMED,
@@ -20,10 +21,6 @@ from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 
 pytestmark = pytest.mark.cli
-
-
-_EMPTY_OUTPUT_SENTINEL = "No metrics rows in the requested window."
-_HEADER_LINE = "event_name\tcategory\tdescription\ttotal_count"
 
 
 def _seed_event_with_count(
@@ -84,7 +81,7 @@ def test_flask_metrics_top_with_empty_window_prints_sentinel(
     result = runner.invoke(args=["metrics", "top", "--window=day"])
 
     assert result.exit_code == 0, result.output
-    assert _EMPTY_OUTPUT_SENTINEL in result.output
+    assert EMPTY_TOP_EVENTS_OUTPUT in result.output
 
 
 def test_flask_metrics_top_prints_header_and_rows_in_descending_total(
@@ -115,10 +112,10 @@ def test_flask_metrics_top_prints_header_and_rows_in_descending_total(
     result = runner.invoke(args=["metrics", "top", "--window=day"])
 
     assert result.exit_code == 0, result.output
-    assert _HEADER_LINE in result.output
+    assert TOP_EVENTS_HEADER in result.output
 
     lines = [line for line in result.output.splitlines() if line.strip()]
-    header_index = lines.index(_HEADER_LINE)
+    header_index = lines.index(TOP_EVENTS_HEADER)
     data_lines = lines[header_index + 1 :]
     assert len(data_lines) == 2
 
@@ -192,10 +189,10 @@ def test_flask_metrics_top_respects_limit_flag(
     result = runner.invoke(args=["metrics", "top", "--window=day", "--limit=2"])
 
     assert result.exit_code == 0, result.output
-    assert _HEADER_LINE in result.output
+    assert TOP_EVENTS_HEADER in result.output
 
     lines = [line for line in result.output.splitlines() if line.strip()]
-    header_index = lines.index(_HEADER_LINE)
+    header_index = lines.index(TOP_EVENTS_HEADER)
     data_lines = lines[header_index + 1 :]
     assert len(data_lines) == 2
 
