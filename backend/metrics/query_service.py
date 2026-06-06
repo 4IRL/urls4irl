@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
 from sqlalchemy import func
 
@@ -76,14 +77,17 @@ def timeseries(
     event_name: EventName,
     window_start: datetime,
     window_end: datetime,
-    resolution: str,
+    resolution: Literal["hour", "day"],
 ) -> list[TimeseriesBucketSchema]:
     """Return per-bucket counts for `event_name` inside the half-open window.
 
-    `resolution` is a Postgres `date_trunc` field name ("hour" or "day").
-    Buckets are returned in chronological order; the underlying rows are
-    already hour-aligned at write time, so passing "hour" returns the raw
-    buckets and "day" aggregates them.
+    `resolution` is a Postgres `date_trunc` field name — narrowed to the
+    `Literal["hour", "day"]` set so any caller passing arbitrary text is
+    flagged at type-check time, providing defense-in-depth on top of the
+    Pydantic schema validation at the HTTP boundary. Buckets are returned
+    in chronological order; the underlying rows are already hour-aligned
+    at write time, so passing "hour" returns the raw buckets and "day"
+    aggregates them.
     """
     bucket = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label("bucket")
     rows = (
