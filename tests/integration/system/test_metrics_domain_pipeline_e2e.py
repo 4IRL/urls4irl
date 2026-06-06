@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-from typing import Generator
-
 import pytest
 from flask import Flask, url_for
-from flask.testing import FlaskCliRunner
 from redis import Redis
 
-from backend import db, metrics_writer as app_metrics_writer
+from backend import db
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 from backend.models.urls import Urls
@@ -17,7 +14,6 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.form_strs import ADD_USER_FORM, TAG_FORM, URL_FORM, UTUB_FORM
 from scripts.flush_metrics import run_flush
 from tests.conftest import AjaxFlaskLoginClient
@@ -29,45 +25,6 @@ from tests.integration.system.metrics_helpers import (
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
-
-
-@pytest.fixture
-def metrics_enabled_runner_app(
-    runner: tuple[Flask, FlaskCliRunner],
-    provide_metrics_redis: Redis,
-) -> Generator[Flask, None, None]:
-    """Activate the metrics_writer extension on the `runner` fixture's app.
-
-    Defined locally (not in conftest) so this file owns its fixture
-    without conflicting with `test_metrics_pipeline_e2e.py`'s identical
-    fixture. The `runner` fixture is required (instead of `app`) because
-    this test calls `sync_event_registry(...)` and `run_flush(...)` —
-    both open their own DB transactions. The `app` fixture wraps every
-    test in a SAVEPOINT that deadlocks when an inline psycopg2 connection
-    writes rows the SAVEPOINT-bound session cannot see (and vice versa).
-    `runner` uses `clear_database` teardown instead, so inline psycopg2 +
-    SQLAlchemy can coexist.
-
-    Mutates the module-level `metrics_writer` singleton in place (rather
-    than swapping a fresh instance) so the route's
-    `from backend import metrics_writer` import and the proxy's
-    `current_app.extensions["metrics_writer"]` lookup both resolve to the
-    same writer this fixture has just enabled.
-    """
-    app = runner[0]
-
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    original_redis = app_metrics_writer._redis
-    original_enabled = app_metrics_writer._enabled
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    app_metrics_writer.init_app(app)
-
-    yield app
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
-    app_metrics_writer._redis = original_redis
-    app_metrics_writer._enabled = original_enabled
 
 
 def test_domain_events_flush_with_intact_fk_joins(
