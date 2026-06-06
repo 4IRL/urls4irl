@@ -156,12 +156,51 @@ a.urlString {
     display: none;
 }
 
+.urlTitleBtnUpdate:focus-visible {
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+
 .urlRow[filterable="true"][urlSelected=false] .urlTitle {
     width: 95%;
 }
 
 .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
     width: max-content;
+}
+
+/* Editability affordance on the selected url-title row, mirroring the UTub
+   name/description pattern in utubs.css (#URLDeckHeader.editable cursor +
+   hover/active underline, .edit-pencil-icon opacity fade on hover). */
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap {
+    cursor: pointer;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:active .urlTitle {
+    text-decoration: underline;
+}
+
+@media (any-pointer: coarse) {
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
+        width: 100%;
+        justify-content: flex-start;
+        align-items: center;
+        gap: 0.35rem;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
+        flex: 0 1 auto;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
 }
 
 .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {
@@ -221,9 +260,11 @@ a.urlString {
 }
 
 
-.urlRow[filterable="true"][urlSelected="true"] .urlTitle {
-    white-space: normal;
-    text-overflow: unset;
+@media not all and (any-pointer: coarse) {
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
+        white-space: normal;
+        text-overflow: unset;
+    }
 }
 
 .urlBtnAccess {
@@ -396,8 +437,21 @@ a.urlString {
         cursor: pointer;
     }
 
-    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover>.urlTitleBtnUpdate {
-        display: flex;
+    /* Desktop: pencil is layout-present on selected card so the
+       .edit-pencil-icon opacity transition can fade it in/out without
+       jolting the title's horizontal position. */
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
+        display: inline-flex;
+        align-items: center;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:hover .urlTitleBtnUpdate:not(.hidden),
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:focus-within .urlTitleBtnUpdate:not(.hidden) {
+        opacity: 1;
+    }
+
+    .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconWrap:hover .urlTitle {
+        text-decoration: underline;
     }
 
     .urlBtnAccess:hover {

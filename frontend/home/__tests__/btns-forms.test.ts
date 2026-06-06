@@ -2,7 +2,6 @@ import {
   highlightInput,
   hideInputs,
   makeTextInput,
-  makeUpdateButton,
   makeSubmitButton,
   makeCancelButton,
   handleFocus,
@@ -12,7 +11,7 @@ import {
   disable,
   enable,
 } from "../btns-forms.js";
-import { ICON_SIZE_SM, ICON_SIZE_LG } from "../../lib/constants.js";
+import { ICON_SIZE_LG } from "../../lib/constants.js";
 
 const mockCreateUTubHideInput = vi.fn();
 const mockUpdateUTubNameHideInput = vi.fn();
@@ -146,17 +145,6 @@ describe("btns-forms", () => {
 
       const input = result.find("input.text-input");
       expect(input.attr("type")).toBe("email");
-    });
-  });
-
-  describe("makeUpdateButton", () => {
-    it("creates a button with an SVG pencil icon at specified size", () => {
-      const btn = makeUpdateButton(ICON_SIZE_SM);
-
-      expect(btn.is("button")).toBe(true);
-      expect(btn.hasClass("mx-1")).toBe(true);
-      expect(btn.find("svg.updateIcon").length).toBe(1);
-      expect(btn.find("svg").attr("width")).toBe(String(ICON_SIZE_SM));
     });
   });
 

@@ -39,6 +39,8 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
       ".urlStringBtnUpdate",
       ".urlStringCancelBtnUpdate",
       ".urlTagCancelBtnCreate",
+      ".urlTitleAndUpdateIconWrap",
+      ".urlTitleBtnUpdate",
       ".urlTitleCancelBtnUpdate",
       ".urlTagBtnDelete",
       ".urlBtnCopy",

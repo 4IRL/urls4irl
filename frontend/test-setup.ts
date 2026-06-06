@@ -79,6 +79,8 @@ const appConfig = {
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,
     URLS_MIN_LENGTH: 1,
+    URLS_TITLE_MIN_LENGTH: 1,
+    URLS_TITLE_MAX_LENGTH: 100,
     MEMBER_ROLES: {
       CREATOR: "CREATOR",
       CO_CREATOR: "CO_CREATOR",
@@ -104,6 +106,7 @@ const appConfig = {
   },
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
+    EDIT_URL_TITLE_TOOLTIP: "Edit URL title",
     INVALID_URL: "This is not a valid URL.",
     TAG_FILTER_NO_RESULTS: "No URLs match selected tags",
     URL_SEARCH_NO_RESULTS: "No URLs found",

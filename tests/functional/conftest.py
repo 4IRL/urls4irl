@@ -293,6 +293,26 @@ def build_driver_mobile_portrait(
 
     driver.set_window_size(width=420, height=900)
 
+    # Emulate a coarse-pointer touch device. Touch emulation is required for
+    # `(any-pointer: coarse)` / `(pointer: coarse)` to match — without it,
+    # `Emulation.setEmulatedMedia` silently no-ops for the pointer feature.
+    driver.execute_cdp_cmd(
+        "Emulation.setTouchEmulationEnabled",
+        {"enabled": True, "maxTouchPoints": 5},
+    )
+
+    driver.execute_cdp_cmd(
+        "Emulation.setEmulatedMedia",
+        {
+            "features": [
+                {"name": "any-pointer", "value": "coarse"},
+                {"name": "pointer", "value": "coarse"},
+                {"name": "hover", "value": "none"},
+                {"name": "any-hover", "value": "none"},
+            ],
+        },
+    )
+
     ping_server(url + str(open_port))
 
     yield driver

@@ -41,7 +41,9 @@ vi.mock("../tags.js", () => ({
 }));
 
 vi.mock("../../cards/utils.js", () => ({
+  disableEditingURLString: vi.fn(),
   disableEditingURLTitle: vi.fn(),
+  enableEditingURLString: vi.fn(),
   enableEditingURLTitle: vi.fn(),
 }));
 

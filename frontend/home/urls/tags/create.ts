@@ -26,7 +26,9 @@ import {
 } from "../cards/loading.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "../cards/get.js";
 import {
+  disableEditingURLString,
   disableEditingURLTitle,
+  enableEditingURLString,
   enableEditingURLTitle,
 } from "../cards/utils.js";
 import {
@@ -141,7 +143,7 @@ export function showCreateURLTagForm(
 
   // Disable URL Buttons as url Tag is being created
   urlCard.find(".urlBtnAccess").hideClass();
-  urlCard.find(".urlStringBtnUpdate").hideClass();
+  disableEditingURLString(urlCard);
   urlCard.find(".urlBtnDelete").hideClass();
   urlCard.find(".urlBtnCopy").hideClass();
 
@@ -196,7 +198,7 @@ export function hideAndResetCreateURLTagForm(urlCard: JQuery): void {
 
   // Enable URL Buttons as url Tag creation form is hidden
   urlCard.find(".urlBtnAccess").showClassFlex();
-  urlCard.find(".urlStringBtnUpdate").showClassFlex();
+  enableEditingURLString(urlCard);
   urlCard.find(".urlBtnDelete").showClassFlex();
   urlCard.find(".urlBtnCopy").showClassFlex();
 
