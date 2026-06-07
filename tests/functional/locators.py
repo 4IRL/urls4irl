@@ -315,3 +315,47 @@ class ModalLocators:
     ELEMENT_MODAL = ".modal"
     BUTTON_MODAL_DISMISS = ".btn-close"
     BUTTON_X_MODAL_DISMISS = ".btn-close"
+
+
+class MetricsDashboardLocators(GenericPageLocator):
+    """A collector class for admin metrics dashboard locators.
+
+    Selectors mirror the IDs defined in
+    `backend/templates/pages/admin_metrics.html` and the included
+    `backend/templates/components/admin/metrics_panel.html` partial.
+    """
+
+    # Root containers
+    DASHBOARD_ROOT = "#MetricsDashboard"
+    DASHBOARD_TITLE = "#MetricsDashboardTitle"
+
+    # Last-flush badge + refresh button
+    LAST_FLUSH_BADGE = "#MetricsLastFlush"
+    REFRESH_NOW_BUTTON = "#MetricsRefreshNowBtn"
+    ERROR_BANNER = "#MetricsErrorBanner"
+
+    # Window selector buttons
+    WINDOW_DAY_BUTTON = "#MetricsWindowDay"
+    WINDOW_WEEK_BUTTON = "#MetricsWindowWeek"
+    WINDOW_MONTH_BUTTON = "#MetricsWindowMonth"
+    WINDOW_YEAR_BUTTON = "#MetricsWindowYear"
+
+    # Tab buttons
+    TAB_API_BUTTON = "#MetricsTabApi"
+    TAB_UI_BUTTON = "#MetricsTabUi"
+    TAB_DOMAIN_BUTTON = "#MetricsTabDomain"
+
+    # Per-section table IDs
+    TOP_TABLE_API = "#MetricsTopTableApi"
+    TOP_TABLE_UI = "#MetricsTopTableUi"
+    TOP_TABLE_DOMAIN = "#MetricsTopTableDomain"
+
+    # Per-section chart IDs
+    CHART_API = "#MetricsChartApi"
+    CHART_UI = "#MetricsChartUi"
+    CHART_DOMAIN = "#MetricsChartDomain"
+
+    # Per-section summary panel IDs
+    SUMMARY_API = "#MetricsPanelApi-summary"
+    SUMMARY_UI = "#MetricsPanelUi-summary"
+    SUMMARY_DOMAIN = "#MetricsPanelDomain-summary"

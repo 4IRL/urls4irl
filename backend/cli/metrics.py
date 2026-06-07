@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import timedelta
 from pathlib import Path
 
 import click
@@ -8,6 +9,7 @@ from flask.cli import AppGroup, with_appcontext
 
 from pydantic import ValidationError
 
+from backend import db
 from backend.extensions.metrics.buckets import resolve_query_window
 from backend.extensions.metrics.dim_types_generator import (
     generate_dim_types_ts,
@@ -16,10 +18,13 @@ from backend.extensions.metrics.dim_types_generator import (
 )
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
-from backend.metrics.events import EventCategory
+from backend.metrics.events import DeviceType, EventCategory, EventName
+from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.schemas.requests.metrics import TopEventsQuerySchema
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.config_strs import CONFIG_ENVS
+
+SEED_TEST_DATA_HOUR_OFFSETS: tuple[int, ...] = (0, 1, 2)
 
 EMPTY_TOP_EVENTS_OUTPUT = "No metrics rows in the requested window."
 TOP_EVENTS_HEADER = "event_name\tcategory\tdescription\ttotal_count"
@@ -216,6 +221,69 @@ def top_command(
                 [row.event_name, row.category, row.description, str(row.total_count)]
             )
         )
+
+
+@metrics_cli.command(
+    "seed-uniform-test-data",
+    help="Seed a small fixed set of AnonymousMetrics rows for Selenium tests.",
+)
+@with_appcontext
+def seed_uniform_test_data_command() -> None:
+    """Insert a deterministic set of AnonymousMetrics rows for UI tests.
+
+    Bypasses Redis and writes directly to Postgres so the admin metrics
+    dashboard renders non-empty tables/charts during the Selenium smoke
+    test. Covers all three event categories (API, UI, DOMAIN) with known
+    hour-bucket-aligned `bucket_start` values.
+
+    Consistent with the `flask addmock` seeding pattern: idempotent on
+    `(bucket_start, event_name, dimensions)` via the table's
+    `unique_metric_bucket` constraint — repeated runs are safe.
+
+    Examples:
+        Local: ``flask metrics seed-uniform-test-data`` writes nine rows
+        across three hour buckets ending at the current hour, one row per
+        bucket for each of: api_hit (API), ui_login_submit (UI),
+        utub_created (DOMAIN).
+    """
+    sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
+
+    seed_events: tuple[tuple[EventName, dict], ...] = (
+        (
+            EventName.API_HIT,
+            {"endpoint": "/api/utubs", "method": "GET", "status_code": 200},
+        ),
+        (EventName.UI_LOGIN_SUBMIT, {"device_type": DeviceType.DESKTOP.value}),
+        (EventName.UTUB_CREATED, {}),
+    )
+
+    now = utc_now()
+    current_hour_aligned = now.replace(minute=0, second=0, microsecond=0)
+    rows_written = 0
+    for hour_offset in SEED_TEST_DATA_HOUR_OFFSETS:
+        # Hour-aligned bucket start matches the epoch-aligned bucket key
+        # written by `MetricsWriter`, so the query service can group rows.
+        bucket_start = current_hour_aligned - timedelta(hours=hour_offset)
+
+        for event_name, dimensions in seed_events:
+            existing_row = Anonymous_Metrics.query.filter_by(
+                bucket_start=bucket_start,
+                event_name=event_name.value,
+                dimensions=dimensions,
+            ).one_or_none()
+            if existing_row is not None:
+                continue
+            db.session.add(
+                Anonymous_Metrics(
+                    event_name=event_name.value,
+                    bucket_start=bucket_start,
+                    dimensions=dimensions,
+                    count=1 + hour_offset,
+                )
+            )
+            rows_written += 1
+    db.session.commit()
+    click.echo(f"metrics: seeded {rows_written} AnonymousMetrics rows for UI tests.")
 
 
 def register_metrics_cli(app: Flask):
