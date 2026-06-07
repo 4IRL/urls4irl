@@ -147,6 +147,7 @@ def create_app(
     # imports are kept inside `create_app()` to avoid module-scope circular
     # imports — every blueprint module ultimately imports from `backend.*`,
     # which transitively imports this module. Mirrors the existing pattern.
+    from backend.admin.routes import admin as admin_blueprint
     from backend.contact.routes import contact
     from backend.members.routes import members
     from backend.metrics.routes import metrics
@@ -162,6 +163,7 @@ def create_app(
     def asset_processor():
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
 
+    app.register_blueprint(admin_blueprint)
     app.register_blueprint(contact)
     app.register_blueprint(members)
     app.register_blueprint(metrics)

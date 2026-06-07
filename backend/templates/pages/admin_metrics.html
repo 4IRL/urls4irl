@@ -1,0 +1,38 @@
+{% extends "pages/layout.html" %}
+{% block modal_extender %}{% endblock %}
+{% block mainbody %}
+<main id="MetricsDashboard" class="flex-column pad-in-15p" aria-busy="false">
+    <header id="MetricsDashboardHeader" class="flex-row align-center jc-sb">
+        <h1 id="MetricsDashboardTitle">{{ CONFIG.strings.METRICS_DASHBOARD_TITLE }}</h1>
+        <div class="flex-row g-0-5r align-center">
+            <span id="MetricsLastFlush" aria-live="off"></span>
+            <span id="MetricsLastFlushAnnouncement" class="visually-hidden" aria-live="polite"></span>
+            <button id="MetricsRefreshNowBtn" type="button" class="btn btn-sm btn-outline-secondary" aria-label="{{ CONFIG.strings.METRICS_REFRESH_BUTTON_ARIA }}">{{ CONFIG.strings.METRICS_REFRESH_BUTTON_LABEL }}</button>
+        </div>
+    </header>
+
+    <div id="MetricsWindowSelector" role="group" aria-label="{{ CONFIG.strings.METRICS_WINDOW_GROUP_ARIA }}" class="flex-row g-0-5r">
+        <button type="button" id="MetricsWindowDay"   class="btn btn-sm btn-outline-secondary MetricsWindowButton" data-window="day"   aria-pressed="true">{{ CONFIG.strings.METRICS_WINDOW_DAY }}</button>
+        <button type="button" id="MetricsWindowWeek"  class="btn btn-sm btn-outline-secondary MetricsWindowButton" data-window="week"  aria-pressed="false">{{ CONFIG.strings.METRICS_WINDOW_WEEK }}</button>
+        <button type="button" id="MetricsWindowMonth" class="btn btn-sm btn-outline-secondary MetricsWindowButton" data-window="month" aria-pressed="false">{{ CONFIG.strings.METRICS_WINDOW_MONTH }}</button>
+        <button type="button" id="MetricsWindowYear"  class="btn btn-sm btn-outline-secondary MetricsWindowButton" data-window="year"  aria-pressed="false">{{ CONFIG.strings.METRICS_WINDOW_YEAR }}</button>
+    </div>
+
+    <div id="MetricsTablist" role="tablist" aria-label="{{ CONFIG.strings.METRICS_TABLIST_ARIA }}" class="flex-row g-0-5r">
+        <button id="MetricsTabApi"    role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"    tabindex="0"  data-category="api">{{    CONFIG.strings.METRICS_TAB_API }}</button>
+        <button id="MetricsTabUi"     role="tab" aria-selected="false" aria-controls="MetricsPanelUi"     tabindex="-1" data-category="ui">{{     CONFIG.strings.METRICS_TAB_UI }}</button>
+        <button id="MetricsTabDomain" role="tab" aria-selected="false" aria-controls="MetricsPanelDomain" tabindex="-1" data-category="domain">{{ CONFIG.strings.METRICS_TAB_DOMAIN }}</button>
+    </div>
+
+    <section id="MetricsPanelApi"    role="tabpanel" aria-labelledby="MetricsTabApi"    tabindex="0">{% with panel_id='MetricsPanelApi', chart_id='MetricsChartApi', table_id='MetricsTopTableApi', category='api' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
+    <section id="MetricsPanelUi"     role="tabpanel" aria-labelledby="MetricsTabUi"     tabindex="0" hidden>{% with panel_id='MetricsPanelUi', chart_id='MetricsChartUi', table_id='MetricsTopTableUi', category='ui' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
+    <section id="MetricsPanelDomain" role="tabpanel" aria-labelledby="MetricsTabDomain" tabindex="0" hidden>{% with panel_id='MetricsPanelDomain', chart_id='MetricsChartDomain', table_id='MetricsTopTableDomain', category='domain' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
+
+    <div id="MetricsErrorBanner" class="alert alert-warning hidden" role="alert"></div>
+
+    {% if config.VITE_DEV_SERVER %}
+    <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>
+    {% endif %}
+    <script nonce="{{ nonce }}" type="module" src="{{ vite_asset('admin-metrics.ts') }}"></script>
+</main>
+{% endblock %}
