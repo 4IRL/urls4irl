@@ -130,6 +130,7 @@ const appConfig = {
     METRICS_TAB_API: "API endpoints",
     METRICS_TAB_UI: "UI events",
     METRICS_TAB_DOMAIN: "Domain actions",
+    METRICS_TIMESERIES_SELECT_ARIA: "Select event for timeseries chart",
     METRICS_LAST_FLUSH_JUST_NOW: "Last flush: just now",
     METRICS_LAST_FLUSH_SECONDS: "Last flush: {{ n }} seconds ago",
     METRICS_LAST_FLUSH_MINUTES: "Last flush: {{ n }} minutes ago",

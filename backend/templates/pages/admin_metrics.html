@@ -24,9 +24,9 @@
         <button id="MetricsTabDomain" role="tab" aria-selected="false" aria-controls="MetricsPanelDomain" tabindex="-1" data-category="domain">{{ CONFIG.strings.METRICS_TAB_DOMAIN }}</button>
     </div>
 
-    <section id="MetricsPanelApi"    role="tabpanel" aria-labelledby="MetricsTabApi"    tabindex="0">{% with panel_id='MetricsPanelApi', chart_id='MetricsChartApi', table_id='MetricsTopTableApi', category='api' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
-    <section id="MetricsPanelUi"     role="tabpanel" aria-labelledby="MetricsTabUi"     tabindex="0" hidden>{% with panel_id='MetricsPanelUi', chart_id='MetricsChartUi', table_id='MetricsTopTableUi', category='ui' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
-    <section id="MetricsPanelDomain" role="tabpanel" aria-labelledby="MetricsTabDomain" tabindex="0" hidden>{% with panel_id='MetricsPanelDomain', chart_id='MetricsChartDomain', table_id='MetricsTopTableDomain', category='domain' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
+    <section id="MetricsPanelApi"    role="tabpanel" aria-labelledby="MetricsTabApi"    tabindex="0">{% with panel_id='MetricsPanelApi', chart_id='MetricsChartApi', table_id='MetricsTopTableApi', select_id='MetricsTimeseriesEventApi', category='api' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
+    <section id="MetricsPanelUi"     role="tabpanel" aria-labelledby="MetricsTabUi"     tabindex="0" hidden>{% with panel_id='MetricsPanelUi', chart_id='MetricsChartUi', table_id='MetricsTopTableUi', select_id='MetricsTimeseriesEventUi', category='ui' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
+    <section id="MetricsPanelDomain" role="tabpanel" aria-labelledby="MetricsTabDomain" tabindex="0" hidden>{% with panel_id='MetricsPanelDomain', chart_id='MetricsChartDomain', table_id='MetricsTopTableDomain', select_id='MetricsTimeseriesEventDomain', category='domain' %}{% include 'components/admin/metrics_panel.html' %}{% endwith %}</section>
 
     <div id="MetricsErrorBanner" class="alert alert-warning hidden" role="alert"></div>
 
