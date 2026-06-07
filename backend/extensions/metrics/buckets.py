@@ -127,24 +127,41 @@ def parse_window(value: str, now: datetime) -> tuple[datetime, datetime]:
     Examples:
         Named window "day" — returns (now - 24h, now):
         >>> now = datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc)
-        >>> parse_window("day", now)
-        (datetime.datetime(2026, 6, 4, 12, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 5, 12, 0, tzinfo=datetime.timezone.utc))
+        >>> start, end = parse_window("day", now)
+        >>> start
+        datetime.datetime(2026, 6, 4, 12, 0, tzinfo=datetime.timezone.utc)
+        >>> end
+        datetime.datetime(2026, 6, 5, 12, 0, tzinfo=datetime.timezone.utc)
 
         Shorthand "24h" — identical result to "day":
-        >>> parse_window("24h", now)
-        (datetime.datetime(2026, 6, 4, 12, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 5, 12, 0, tzinfo=datetime.timezone.utc))
+        >>> start, end = parse_window("24h", now)
+        >>> start
+        datetime.datetime(2026, 6, 4, 12, 0, tzinfo=datetime.timezone.utc)
+        >>> end
+        datetime.datetime(2026, 6, 5, 12, 0, tzinfo=datetime.timezone.utc)
 
         Shorthand "7d" — returns (now - 7 days, now):
-        >>> parse_window("7d", now)
-        (datetime.datetime(2026, 5, 29, 12, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 6, 5, 12, 0, tzinfo=datetime.timezone.utc))
+        >>> start, end = parse_window("7d", now)
+        >>> start
+        datetime.datetime(2026, 5, 29, 12, 0, tzinfo=datetime.timezone.utc)
+        >>> end
+        datetime.datetime(2026, 6, 5, 12, 0, tzinfo=datetime.timezone.utc)
 
         Named window "month" on Mar 31 — clamps to Feb 28 (non-leap year):
-        >>> parse_window("month", datetime(2026, 3, 31, tzinfo=timezone.utc))
-        (datetime.datetime(2026, 2, 28, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2026, 3, 31, 0, 0, tzinfo=datetime.timezone.utc))
+        >>> mar31 = datetime(2026, 3, 31, tzinfo=timezone.utc)
+        >>> start, end = parse_window("month", mar31)
+        >>> start
+        datetime.datetime(2026, 2, 28, 0, 0, tzinfo=datetime.timezone.utc)
+        >>> end
+        datetime.datetime(2026, 3, 31, 0, 0, tzinfo=datetime.timezone.utc)
 
         Named window "year" on leap day — clamps Feb 29 2024 back to Feb 28 2023:
-        >>> parse_window("year", datetime(2024, 2, 29, tzinfo=timezone.utc))
-        (datetime.datetime(2023, 2, 28, 0, 0, tzinfo=datetime.timezone.utc), datetime.datetime(2024, 2, 29, 0, 0, tzinfo=datetime.timezone.utc))
+        >>> leap_day = datetime(2024, 2, 29, tzinfo=timezone.utc)
+        >>> start, end = parse_window("year", leap_day)
+        >>> start
+        datetime.datetime(2023, 2, 28, 0, 0, tzinfo=datetime.timezone.utc)
+        >>> end
+        datetime.datetime(2024, 2, 29, 0, 0, tzinfo=datetime.timezone.utc)
 
         Invalid spec raises ValueError:
         >>> parse_window("quarter", now)

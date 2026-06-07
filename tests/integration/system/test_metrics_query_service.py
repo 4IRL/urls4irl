@@ -34,11 +34,11 @@ def _truncate_metrics_and_registry(pg_conn: Any) -> None:
 
 @pytest.fixture
 def metrics_pg_conn(metrics_enabled_runner_app: Flask) -> Generator[Any, None, None]:
-    """Open a raw psycopg2 connection for the test, truncate metrics tables and
-    EventRegistry before AND after, then close the connection.
+    """Yield an already-truncated psycopg2 connection to the caller.
 
-    Using this fixture eliminates the repetitive ``try/finally`` teardown
-    block that would otherwise appear in every test body.
+    Before yielding, truncates ``AnonymousMetrics`` and ``EventRegistry`` so
+    each test starts from a clean slate.  After the test completes — even on
+    failure — teardown truncates both tables again and closes the connection.
     """
     pg_conn = build_pg_conn(metrics_enabled_runner_app)
     _truncate_metrics_and_registry(pg_conn)
