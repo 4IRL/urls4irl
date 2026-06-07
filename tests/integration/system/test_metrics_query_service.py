@@ -228,6 +228,56 @@ def test_top_events_respects_limit(
         pg_conn.close()
 
 
+def test_top_events_breaks_ties_alphabetically_by_event_name(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN three events with identical total_count in the window
+    WHEN top_events is called
+    THEN the rows are returned in ascending event_name order, so the same
+        query always returns the same rank — no flip-flop under ties.
+
+    Without the secondary `event_name ASC` sort, Postgres can return tied
+    rows in either order across calls, and `LIMIT N` would silently
+    promote/demote rows on the rank-N boundary.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    pg_conn = build_pg_conn(app)
+    try:
+        _truncate_metrics_and_registry(pg_conn)
+        # All three events get count=5 so total_count is identical.
+        for event_name in (
+            EventName.UTUB_OPENED,
+            EventName.UTUB_CREATED,
+            EventName.UTUB_DELETED,
+        ):
+            _insert_metric_row(
+                pg_conn,
+                event_name=event_name,
+                bucket_start=inside,
+                count=5,
+            )
+
+        with app.app_context():
+            rows = top_events(
+                window_start=window_start,
+                window_end=window_end,
+                category=None,
+                limit=10,
+            )
+
+        returned_names = [row.event_name for row in rows]
+        assert returned_names == sorted(returned_names)
+        assert {row.total_count for row in rows} == {5}
+    finally:
+        _truncate_metrics_and_registry(pg_conn)
+        pg_conn.close()
+
+
 def test_top_events_empty_window_returns_empty_list(
     metrics_enabled_runner_app: Flask,
 ) -> None:

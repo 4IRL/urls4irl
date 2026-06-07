@@ -53,7 +53,10 @@ def top_events(
             Event_Registry.category,
             Event_Registry.description,
         )
-        .order_by(func.sum(Anonymous_Metrics.count).desc())
+        .order_by(
+            func.sum(Anonymous_Metrics.count).desc(),
+            Anonymous_Metrics.event_name.asc(),
+        )
         .limit(limit)
         .all()
     )
