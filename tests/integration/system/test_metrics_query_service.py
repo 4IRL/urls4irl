@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Generator
 
 import pytest
 from flask import Flask
@@ -30,6 +30,21 @@ def _truncate_metrics_and_registry(pg_conn: Any) -> None:
     with pg_conn.cursor() as cur:
         cur.execute('DELETE FROM "EventRegistry"')
     pg_conn.commit()
+
+
+@pytest.fixture
+def metrics_pg_conn(metrics_enabled_runner_app: Flask) -> Generator[Any, None, None]:
+    """Open a raw psycopg2 connection for the test, truncate metrics tables and
+    EventRegistry before AND after, then close the connection.
+
+    Using this fixture eliminates the repetitive ``try/finally`` teardown
+    block that would otherwise appear in every test body.
+    """
+    pg_conn = build_pg_conn(metrics_enabled_runner_app)
+    _truncate_metrics_and_registry(pg_conn)
+    yield pg_conn
+    _truncate_metrics_and_registry(pg_conn)
+    pg_conn.close()
 
 
 def _insert_metric_row(
@@ -83,6 +98,7 @@ def _insert_metric_row(
 
 def test_top_events_aggregates_by_event_name(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN three rows for UTUB_OPENED (counts 5, 7, 2) and one row for API_HIT
@@ -96,53 +112,48 @@ def test_top_events_aggregates_by_event_name(
     window_start = window_end - timedelta(days=1)
     inside = window_start + timedelta(hours=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        _insert_metric_row(
-            pg_conn, event_name=EventName.UTUB_OPENED, bucket_start=inside, count=5
-        )
-        _insert_metric_row(
-            pg_conn,
-            event_name=EventName.UTUB_OPENED,
-            bucket_start=inside + timedelta(hours=1),
-            count=7,
-        )
-        _insert_metric_row(
-            pg_conn,
-            event_name=EventName.UTUB_OPENED,
-            bucket_start=inside + timedelta(hours=2),
-            count=2,
-        )
-        _insert_metric_row(
-            pg_conn,
-            event_name=EventName.API_HIT,
-            bucket_start=inside + timedelta(hours=3),
-            count=100,
+    _insert_metric_row(
+        metrics_pg_conn, event_name=EventName.UTUB_OPENED, bucket_start=inside, count=5
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside + timedelta(hours=1),
+        count=7,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside + timedelta(hours=2),
+        count=2,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=3),
+        count=100,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            category=None,
+            limit=10,
         )
 
-        with app.app_context():
-            rows = top_events(
-                window_start=window_start,
-                window_end=window_end,
-                category=None,
-                limit=10,
-            )
-
-        assert len(rows) == 2
-        assert rows[0].event_name == EventName.API_HIT.value
-        assert rows[0].total_count == 100
-        assert rows[0].description == EVENT_DESCRIPTIONS[EventName.API_HIT]
-        assert rows[1].event_name == EventName.UTUB_OPENED.value
-        assert rows[1].total_count == 14
-        assert rows[1].description == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert len(rows) == 2
+    assert rows[0].event_name == EventName.API_HIT.value
+    assert rows[0].total_count == 100
+    assert rows[0].description == EVENT_DESCRIPTIONS[EventName.API_HIT]
+    assert rows[1].event_name == EventName.UTUB_OPENED.value
+    assert rows[1].total_count == 14
+    assert rows[1].description == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
 
 
 def test_top_events_filters_by_category(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN UTUB_OPENED (domain) and API_HIT (api) rows in the window
@@ -154,37 +165,32 @@ def test_top_events_filters_by_category(
     window_start = window_end - timedelta(days=1)
     inside = window_start + timedelta(hours=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        _insert_metric_row(
-            pg_conn, event_name=EventName.UTUB_OPENED, bucket_start=inside, count=5
-        )
-        _insert_metric_row(
-            pg_conn,
-            event_name=EventName.API_HIT,
-            bucket_start=inside + timedelta(hours=1),
-            count=100,
+    _insert_metric_row(
+        metrics_pg_conn, event_name=EventName.UTUB_OPENED, bucket_start=inside, count=5
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=1),
+        count=100,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            category=EventCategory.DOMAIN,
+            limit=10,
         )
 
-        with app.app_context():
-            rows = top_events(
-                window_start=window_start,
-                window_end=window_end,
-                category=EventCategory.DOMAIN,
-                limit=10,
-            )
-
-        assert len(rows) == 1
-        assert rows[0].event_name == EventName.UTUB_OPENED.value
-        assert rows[0].category == EventCategory.DOMAIN.value
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert len(rows) == 1
+    assert rows[0].event_name == EventName.UTUB_OPENED.value
+    assert rows[0].category == EventCategory.DOMAIN.value
 
 
 def test_top_events_respects_limit(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN five distinct events in the window
@@ -196,40 +202,35 @@ def test_top_events_respects_limit(
     window_start = window_end - timedelta(days=1)
     inside = window_start + timedelta(hours=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        seeded_events = [
-            EventName.UTUB_OPENED,
-            EventName.UTUB_CREATED,
-            EventName.UTUB_DELETED,
-            EventName.URL_ACCESSED,
-            EventName.API_HIT,
-        ]
-        for offset, event_name in enumerate(seeded_events):
-            _insert_metric_row(
-                pg_conn,
-                event_name=event_name,
-                bucket_start=inside + timedelta(hours=offset),
-                count=offset + 1,
-            )
+    seeded_events = [
+        EventName.UTUB_OPENED,
+        EventName.UTUB_CREATED,
+        EventName.UTUB_DELETED,
+        EventName.URL_ACCESSED,
+        EventName.API_HIT,
+    ]
+    for offset, event_name in enumerate(seeded_events):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=event_name,
+            bucket_start=inside + timedelta(hours=offset),
+            count=offset + 1,
+        )
 
-        with app.app_context():
-            rows = top_events(
-                window_start=window_start,
-                window_end=window_end,
-                category=None,
-                limit=3,
-            )
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            category=None,
+            limit=3,
+        )
 
-        assert len(rows) == 3
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert len(rows) == 3
 
 
 def test_top_events_breaks_ties_alphabetically_by_event_name(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN three events with identical total_count in the window
@@ -246,40 +247,35 @@ def test_top_events_breaks_ties_alphabetically_by_event_name(
     window_start = window_end - timedelta(days=1)
     inside = window_start + timedelta(hours=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        # All three events get count=5 so total_count is identical.
-        for event_name in (
-            EventName.UTUB_OPENED,
-            EventName.UTUB_CREATED,
-            EventName.UTUB_DELETED,
-        ):
-            _insert_metric_row(
-                pg_conn,
-                event_name=event_name,
-                bucket_start=inside,
-                count=5,
-            )
+    # All three events get count=5 so total_count is identical.
+    for event_name in (
+        EventName.UTUB_OPENED,
+        EventName.UTUB_CREATED,
+        EventName.UTUB_DELETED,
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=event_name,
+            bucket_start=inside,
+            count=5,
+        )
 
-        with app.app_context():
-            rows = top_events(
-                window_start=window_start,
-                window_end=window_end,
-                category=None,
-                limit=10,
-            )
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            category=None,
+            limit=10,
+        )
 
-        returned_names = [row.event_name for row in rows]
-        assert returned_names == sorted(returned_names)
-        assert {row.total_count for row in rows} == {5}
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    returned_names = [row.event_name for row in rows]
+    assert returned_names == sorted(returned_names)
+    assert {row.total_count for row in rows} == {5}
 
 
 def test_top_events_empty_window_returns_empty_list(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN rows seeded with bucket_start BEFORE the window
@@ -291,32 +287,27 @@ def test_top_events_empty_window_returns_empty_list(
     window_start = window_end - timedelta(days=1)
     before_window = window_start - timedelta(days=2)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        _insert_metric_row(
-            pg_conn,
-            event_name=EventName.UTUB_OPENED,
-            bucket_start=before_window,
-            count=5,
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=before_window,
+        count=5,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            category=None,
+            limit=10,
         )
 
-        with app.app_context():
-            rows = top_events(
-                window_start=window_start,
-                window_end=window_end,
-                category=None,
-                limit=10,
-            )
-
-        assert rows == []
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert rows == []
 
 
 def test_timeseries_groups_by_resolution(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN two UTUB_OPENED rows in two distinct hour buckets within one day
@@ -330,50 +321,45 @@ def test_timeseries_groups_by_resolution(
     first_bucket = window_start + timedelta(hours=1)
     second_bucket = first_bucket + timedelta(hours=2)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        _insert_metric_row(
-            pg_conn,
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=first_bucket,
+        count=3,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=second_bucket,
+        count=4,
+    )
+
+    with app.app_context():
+        hourly = timeseries(
             event_name=EventName.UTUB_OPENED,
-            bucket_start=first_bucket,
-            count=3,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
         )
-        _insert_metric_row(
-            pg_conn,
+        daily = timeseries(
             event_name=EventName.UTUB_OPENED,
-            bucket_start=second_bucket,
-            count=4,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="day",
         )
 
-        with app.app_context():
-            hourly = timeseries(
-                event_name=EventName.UTUB_OPENED,
-                window_start=window_start,
-                window_end=window_end,
-                resolution="hour",
-            )
-            daily = timeseries(
-                event_name=EventName.UTUB_OPENED,
-                window_start=window_start,
-                window_end=window_end,
-                resolution="day",
-            )
+    assert len(hourly) == 2
+    assert hourly[0].bucket < hourly[1].bucket
+    assert hourly[0].count == 3
+    assert hourly[1].count == 4
 
-        assert len(hourly) == 2
-        assert hourly[0].bucket < hourly[1].bucket
-        assert hourly[0].count == 3
-        assert hourly[1].count == 4
-
-        assert len(daily) == 1
-        assert daily[0].count == 7
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert len(daily) == 1
+    assert daily[0].count == 7
 
 
 def test_timeseries_empty_window_returns_empty_list(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN no rows exist for the event in the window
@@ -384,36 +370,30 @@ def test_timeseries_empty_window_returns_empty_list(
     window_end = _WINDOW_REFERENCE
     window_start = window_end - timedelta(days=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
+    with metrics_pg_conn.cursor() as cur:
+        cur.execute(
+            'SELECT COUNT(*) FROM "AnonymousMetrics"'
+            ' WHERE "eventName" = %s AND "bucketStart" >= %s'
+            ' AND "bucketStart" < %s',
+            (EventName.UTUB_OPENED.value, window_start, window_end),
+        )
+        existing_count = cur.fetchone()[0]
+    assert existing_count == 0
 
-        with pg_conn.cursor() as cur:
-            cur.execute(
-                'SELECT COUNT(*) FROM "AnonymousMetrics"'
-                ' WHERE "eventName" = %s AND "bucketStart" >= %s'
-                ' AND "bucketStart" < %s',
-                (EventName.UTUB_OPENED.value, window_start, window_end),
-            )
-            existing_count = cur.fetchone()[0]
-        assert existing_count == 0
+    with app.app_context():
+        rows = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+        )
 
-        with app.app_context():
-            rows = timeseries(
-                event_name=EventName.UTUB_OPENED,
-                window_start=window_start,
-                window_end=window_end,
-                resolution="hour",
-            )
-
-        assert rows == []
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert rows == []
 
 
 def test_summary_current_vs_previous_window(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN 6 API_HIT rows in the current window (sum 60) and 3 API_HIT rows
@@ -431,43 +411,38 @@ def test_summary_current_vs_previous_window(
     current_inside = window_start + timedelta(hours=1)
     previous_inside = previous_window_start + timedelta(hours=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        for offset in range(6):
-            _insert_metric_row(
-                pg_conn,
-                event_name=EventName.API_HIT,
-                bucket_start=current_inside + timedelta(hours=offset),
-                count=10,
-            )
-        for offset in range(3):
-            _insert_metric_row(
-                pg_conn,
-                event_name=EventName.API_HIT,
-                bucket_start=previous_inside + timedelta(hours=offset),
-                count=10,
-            )
+    for offset in range(6):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.API_HIT,
+            bucket_start=current_inside + timedelta(hours=offset),
+            count=10,
+        )
+    for offset in range(3):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=EventName.API_HIT,
+            bucket_start=previous_inside + timedelta(hours=offset),
+            count=10,
+        )
 
-        with app.app_context():
-            result = summary(
-                window_start=window_start,
-                window_end=window_end,
-                previous_window_start=previous_window_start,
-                previous_window_end=previous_window_end,
-            )
+    with app.app_context():
+        result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
 
-        api_row = next(row for row in result if row.category == "api")
-        assert api_row.current == 60
-        assert api_row.previous == 30
-        assert isinstance(api_row.category, str)
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    api_row = next(row for row in result if row.category == "api")
+    assert api_row.current == 60
+    assert api_row.previous == 30
+    assert isinstance(api_row.category, str)
 
 
 def test_summary_empty_window_returns_empty_list(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN no rows exist for the current OR previous windows
@@ -481,35 +456,29 @@ def test_summary_empty_window_returns_empty_list(
     previous_window_end = window_start
     previous_window_start = previous_window_end - timedelta(days=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
+    with metrics_pg_conn.cursor() as cur:
+        cur.execute(
+            'SELECT COUNT(*) FROM "AnonymousMetrics"'
+            ' WHERE "bucketStart" >= %s AND "bucketStart" < %s',
+            (previous_window_start, window_end),
+        )
+        existing_count = cur.fetchone()[0]
+    assert existing_count == 0
 
-        with pg_conn.cursor() as cur:
-            cur.execute(
-                'SELECT COUNT(*) FROM "AnonymousMetrics"'
-                ' WHERE "bucketStart" >= %s AND "bucketStart" < %s',
-                (previous_window_start, window_end),
-            )
-            existing_count = cur.fetchone()[0]
-        assert existing_count == 0
+    with app.app_context():
+        result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
 
-        with app.app_context():
-            result = summary(
-                window_start=window_start,
-                window_end=window_end,
-                previous_window_start=previous_window_start,
-                previous_window_end=previous_window_end,
-            )
-
-        assert result == []
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert result == []
 
 
 def test_query_service_join_includes_description_for_every_event(
     metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN seeded rows across multiple event names
@@ -521,31 +490,25 @@ def test_query_service_join_includes_description_for_every_event(
     window_start = window_end - timedelta(days=1)
     inside = window_start + timedelta(hours=1)
 
-    pg_conn = build_pg_conn(app)
-    try:
-        _truncate_metrics_and_registry(pg_conn)
-        for offset, event_name in enumerate(
-            (EventName.UTUB_OPENED, EventName.API_HIT, EventName.URL_ACCESSED)
-        ):
-            _insert_metric_row(
-                pg_conn,
-                event_name=event_name,
-                bucket_start=inside + timedelta(hours=offset),
-                count=offset + 1,
-            )
+    for offset, event_name in enumerate(
+        (EventName.UTUB_OPENED, EventName.API_HIT, EventName.URL_ACCESSED)
+    ):
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=event_name,
+            bucket_start=inside + timedelta(hours=offset),
+            count=offset + 1,
+        )
 
-        with app.app_context():
-            rows = top_events(
-                window_start=window_start,
-                window_end=window_end,
-                category=None,
-                limit=10,
-            )
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            category=None,
+            limit=10,
+        )
 
-        assert len(rows) == 3
-        for row in rows:
-            assert row.description != ""
-            assert row.description is not None
-    finally:
-        _truncate_metrics_and_registry(pg_conn)
-        pg_conn.close()
+    assert len(rows) == 3
+    for row in rows:
+        assert row.description != ""
+        assert row.description is not None
