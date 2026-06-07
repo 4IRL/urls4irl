@@ -653,7 +653,8 @@ def wait_for_modal_hidden(
         try:
             return "show" not in modal.get_attribute("class")
         except StaleElementReferenceException:
-            return False
+            # Stale element = modal removed from DOM = hidden (the positive signal we want)
+            return True
 
     wait.until(modal_class_lacks_show)
     wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
