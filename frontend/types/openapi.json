@@ -2588,6 +2588,19 @@
             "format": "date-time",
             "type": "string"
           },
+          "last_flush_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Wall-clock timestamp of the most recent AnonymousMetrics bucket (MAX(bucket_start)); null when the table is empty. Surfaces freshness so the admin dashboard can render a 'last flush N seconds ago' badge without an extra round trip."
+          },
           "by_category": {
             "description": "Per-category current vs. previous totals",
             "items": {

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import AwareDatetime, Field
 
 from backend.schemas.base import BaseSchema
 
@@ -116,6 +116,15 @@ class SummaryResponseSchema(BaseSchema):
     )
     previous_window_end: datetime = Field(
         description="Exclusive UTC end of the immediately-preceding window",
+    )
+    last_flush_at: AwareDatetime | None = Field(
+        default=None,
+        description=(
+            "Wall-clock timestamp of the most recent AnonymousMetrics bucket "
+            "(MAX(bucket_start)); null when the table is empty. Surfaces "
+            "freshness so the admin dashboard can render a 'last flush N "
+            "seconds ago' badge without an extra round trip."
+        ),
     )
     by_category: list[SummaryCategoryCount] = Field(
         description="Per-category current vs. previous totals",

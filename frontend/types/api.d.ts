@@ -727,6 +727,11 @@ export interface components {
        * @description Exclusive UTC end of the immediately-preceding window
        */
       previous_window_end: string;
+      /**
+       * @description Wall-clock timestamp of the most recent AnonymousMetrics bucket (MAX(bucket_start)); null when the table is empty. Surfaces freshness so the admin dashboard can render a 'last flush N seconds ago' badge without an extra round trip.
+       * @default null
+       */
+      last_flush_at: string | null;
       /** @description Per-category current vs. previous totals */
       by_category: components["schemas"]["SummaryCategoryCount"][];
     };

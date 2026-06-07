@@ -144,16 +144,21 @@ def summary(
     window_end: datetime,
     previous_window_start: datetime,
     previous_window_end: datetime,
-) -> list[SummaryCategoryCount]:
-    """Return per-category totals for current + immediately-preceding windows.
+) -> tuple[list[SummaryCategoryCount], datetime | None]:
+    """Return per-category totals plus the most recent bucket timestamp.
 
     Missing categories are filled with 0 so both `current` and `previous`
     are always integers. Result is sorted by category value so the wire
     shape is deterministic across calls.
+
+    The second tuple element is `MAX(bucket_start)` across the entire
+    `AnonymousMetrics` table — NOT restricted to the queried window — so the
+    admin dashboard's freshness badge keeps ticking even when the current
+    window is empty. Returns `None` when the table is empty.
     """
     current_dict = _by_category(window_start, window_end)
     previous_dict = _by_category(previous_window_start, previous_window_end)
-    return [
+    by_category_list = [
         SummaryCategoryCount(
             category=category_value,
             current=current_dict.get(category_value, 0),
@@ -161,3 +166,7 @@ def summary(
         )
         for category_value in sorted({*current_dict, *previous_dict})
     ]
+    last_flush_at: datetime | None = db.session.query(
+        func.max(Anonymous_Metrics.bucket_start)
+    ).scalar()
+    return by_category_list, last_flush_at

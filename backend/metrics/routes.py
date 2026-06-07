@@ -253,7 +253,7 @@ def query_summary() -> FlaskResponse:
     previous_window_start, previous_window_end = previous_window(
         window_start, window_end
     )
-    by_category = query_service.summary(
+    by_category, last_flush_at = query_service.summary(
         window_start=window_start,
         window_end=window_end,
         previous_window_start=previous_window_start,
@@ -265,6 +265,7 @@ def query_summary() -> FlaskResponse:
         window_end=window_end,
         previous_window_start=previous_window_start,
         previous_window_end=previous_window_end,
+        last_flush_at=last_flush_at,
         by_category=by_category,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()

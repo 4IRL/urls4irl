@@ -427,7 +427,7 @@ def test_summary_current_vs_previous_window(
         )
 
     with app.app_context():
-        result = summary(
+        result, _ = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
@@ -466,14 +466,82 @@ def test_summary_empty_window_returns_empty_list(
     assert existing_count == 0
 
     with app.app_context():
-        result = summary(
+        category_list, _ = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    assert result == []
+    assert category_list == []
+
+
+def test_summary_includes_last_flush_at_when_metrics_exist(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a single seeded AnonymousMetrics row with a known bucket_start
+    WHEN summary(...) is called
+    THEN the second tuple element equals that bucket_start exactly, so the
+        dashboard's freshness badge can render `now - last_flush_at` without
+        an additional round trip.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+    seeded_bucket_start = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=seeded_bucket_start,
+    )
+
+    with app.app_context():
+        _, last_flush_at = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
+
+    assert last_flush_at == seeded_bucket_start
+
+
+def test_summary_last_flush_at_is_null_when_no_metrics(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an empty AnonymousMetrics table (assert-before-state)
+    WHEN summary(...) is called
+    THEN the second tuple element is None — the badge falls back to its
+        empty-state text rather than rendering a stale timestamp.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    with metrics_pg_conn.cursor() as cur:
+        cur.execute('SELECT COUNT(*) FROM "AnonymousMetrics"')
+        existing_count = cur.fetchone()[0]
+    assert existing_count == 0
+
+    with app.app_context():
+        category_list, last_flush_at = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
+
+    assert category_list == []
+    assert last_flush_at is None
 
 
 def test_query_service_join_includes_description_for_every_event(

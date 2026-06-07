@@ -366,6 +366,9 @@ def test_query_summary_admin_happy_path_returns_by_category_list(
     assert domain_row is not None
     assert domain_row["current"] == 10
     assert domain_row["previous"] == 4
+    assert "last_flush_at" in body
+    last_flush_at_value = body["last_flush_at"]
+    assert last_flush_at_value is None or _ISO_8601_UTC_REGEX.match(last_flush_at_value)
 
 
 # ---------------------------------------------------------------------------
