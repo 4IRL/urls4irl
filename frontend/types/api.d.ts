@@ -72,6 +72,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metrics/query/top": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return the top events by total count for an admin time window. */
+    get: operations["queryTop"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/timeseries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return per-bucket counts for a single event over an admin time window. */
+    get: operations["queryTimeseries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/summary": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return per-category totals for the current and immediately-preceding window. */
+    get: operations["querySummary"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -563,7 +614,122 @@ export interface components {
      * @description Error codes for MetricsErrorCodes
      * @enum {integer}
      */
-    MetricsErrorCodes: 1;
+    MetricsErrorCodes: 1 | 2;
+    /** @description One row of the `top` query response — a single event aggregated over the window. */
+    TopEventRow: {
+      /** @description EventName value (e.g. utub_opened) */
+      event_name: string;
+      /** @description EventCategory value (api | domain | ui) */
+      category: string;
+      /** @description Human-readable event description from EventRegistry */
+      description: string;
+      /** @description Sum of counts across all buckets in the window */
+      total_count: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/top`. */
+    TopEventsResponseSchema: {
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /**
+       * @description EventCategory filter applied to the query, or null if none
+       * @default null
+       */
+      category: string | null;
+      /** @description Top-N rows ordered by total_count descending */
+      events: components["schemas"]["TopEventRow"][];
+    };
+    /** @description One bucket of the `timeseries` query response. */
+    TimeseriesBucketSchema: {
+      /**
+       * Format: date-time
+       * @description Bucket start (UTC, date_trunc'd to resolution)
+       */
+      bucket: string;
+      /** @description Sum of counts within this bucket */
+      count: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/timeseries`. */
+    TimeseriesResponseSchema: {
+      /** @description EventName the series is filtered to */
+      event_name: string;
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /** @description date_trunc resolution (hour | day) */
+      resolution: string;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /** @description Buckets in chronological order */
+      buckets: components["schemas"]["TimeseriesBucketSchema"][];
+    };
+    /**
+     * @description Per-category current/previous totals for the `summary` query response.
+     *
+     *     Returned as a list (not a dict) because `APIResponse` spreads payloads into
+     *     the top-level JSON body — a dict-of-category-to-int would collide with the
+     *     envelope's reserved keys.
+     */
+    SummaryCategoryCount: {
+      /** @description EventCategory value (api | domain | ui) */
+      category: string;
+      /** @description Sum of counts in the current window */
+      current: number;
+      /** @description Sum of counts in the immediately-preceding window */
+      previous: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/summary`. */
+    SummaryResponseSchema: {
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the immediately-preceding window
+       */
+      previous_window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the immediately-preceding window
+       */
+      previous_window_end: string;
+      /** @description Per-category current vs. previous totals */
+      by_category: components["schemas"]["SummaryCategoryCount"][];
+    };
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -1136,6 +1302,244 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_MetricsErrorCodes"];
+        };
+      };
+    };
+  };
+  queryTop: {
+    parameters: {
+      query?: {
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+        /** @description Optional category filter (api | domain | ui). */
+        category?: "api" | "domain" | "ui";
+        /** @description Maximum number of rows to return (1-100). */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/top`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TopEventsResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryTimeseries: {
+    parameters: {
+      query: {
+        /** @description Any EventName value (api, domain, or ui). */
+        event_name:
+          | "api_hit"
+          | "utub_created"
+          | "utub_deleted"
+          | "utub_opened"
+          | "url_accessed"
+          | "tag_applied"
+          | "tag_removed"
+          | "tag_deleted"
+          | "member_added"
+          | "member_removed"
+          | "url_title_updated"
+          | "utub_title_updated"
+          | "utub_desc_updated"
+          | "ui_utub_select"
+          | "ui_utub_create_open"
+          | "ui_utub_delete_open"
+          | "ui_utub_delete_confirm"
+          | "ui_utub_delete_cancel"
+          | "ui_utub_name_edit_open"
+          | "ui_utub_desc_edit_open"
+          | "ui_url_access"
+          | "ui_url_card_click"
+          | "ui_url_create_open"
+          | "ui_url_title_edit_open"
+          | "ui_url_string_edit_open"
+          | "ui_url_delete_open"
+          | "ui_url_delete_confirm"
+          | "ui_url_delete_cancel"
+          | "ui_url_copy"
+          | "ui_url_access_warning"
+          | "ui_url_access_warning_dismiss"
+          | "ui_search_open"
+          | "ui_search_close"
+          | "ui_tag_apply"
+          | "ui_tag_remove"
+          | "ui_tag_create_open"
+          | "ui_tag_delete_open"
+          | "ui_tag_delete_confirm"
+          | "ui_tag_delete_cancel"
+          | "ui_tag_filter_toggle"
+          | "ui_member_invite_open"
+          | "ui_member_remove_open"
+          | "ui_member_remove_confirm"
+          | "ui_member_remove_cancel"
+          | "ui_member_leave_open"
+          | "ui_member_leave_confirm"
+          | "ui_member_leave_cancel"
+          | "ui_form_submit"
+          | "ui_form_cancel"
+          | "ui_validation_error"
+          | "ui_deck_collapse"
+          | "ui_deck_expand"
+          | "ui_navbar_mobile_menu_open"
+          | "ui_navbar_mobile_menu_close"
+          | "ui_mobile_nav"
+          | "ui_login_submit"
+          | "ui_register_submit"
+          | "ui_forgot_password_submit"
+          | "ui_auth_form_switch"
+          | "ui_auth_modal_open"
+          | "ui_reset_password_submit"
+          | "ui_email_validation_submit"
+          | "ui_contact_submit"
+          | "ui_error_page_refresh"
+          | "ui_rate_limit_hit";
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+        /** @description date_trunc resolution: hour (default) or day. */
+        resolution?: "hour" | "day";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/timeseries`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["TimeseriesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  querySummary: {
+    parameters: {
+      query?: {
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/summary`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["SummaryResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };

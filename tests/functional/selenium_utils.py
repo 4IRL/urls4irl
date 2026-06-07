@@ -611,7 +611,16 @@ def wait_for_modal_ready(browser, modal_selector, timeout=10):
         EC.element_to_be_clickable((By.CSS_SELECTOR, modal_selector))
     )
 
-    time.sleep(0.2)
+    # Bootstrap 5 Modal.hide() returns early when _isTransitioning is true,
+    # so clicking .btn-close mid-show silently no-ops. Block until Bootstrap
+    # reports the show animation has actually finished.
+    wait.until(
+        lambda driver: driver.execute_script(
+            "var i = bootstrap.Modal.getInstance(arguments[0]);"
+            "return !i || i._isTransitioning === false;",
+            final_modal,
+        )
+    )
     return final_modal
 
 

@@ -1,10 +1,42 @@
 from __future__ import annotations
 
-from typing import Literal
+from datetime import datetime
+from typing import Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+
+_BOTH_WINDOW_AND_RANGE_ERROR: str = (
+    "Provide either `window` or `start`+`end`, not both."
+)
+_PARTIAL_RANGE_ERROR: str = "Both `start` and `end` are required for an absolute range."
+_MISSING_WINDOW_OR_RANGE_ERROR: str = "Provide `window` or both `start` and `end`."
+_RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
+
+
+def _validate_window_xor_range(
+    window: str | None, start: datetime | None, end: datetime | None
+) -> None:
+    """Enforce: exactly one of (`window`) or (`start` AND `end`) is provided.
+
+    Raises `ValueError` so Pydantic v2's `@model_validator(mode="after")`
+    wraps it into a `ValidationError` that the metrics routes' shared
+    `_parse_query_args` helper converts to a 400 envelope.
+    """
+    has_window = window is not None
+    has_start = start is not None
+    has_end = end is not None
+    if has_start != has_end:
+        raise ValueError(_PARTIAL_RANGE_ERROR)
+    has_range = has_start and has_end
+    if has_window and has_range:
+        raise ValueError(_BOTH_WINDOW_AND_RANGE_ERROR)
+    if not has_window and not has_range:
+        raise ValueError(_MISSING_WINDOW_OR_RANGE_ERROR)
+    if has_range and start >= end:
+        raise ValueError(_RANGE_ORDER_ERROR)
+
 
 # Module-level tuple of every UI-category EventName value. Reused by:
 #   * `MetricsIngestEvent.event_name` Literal definition (HTTP-boundary
@@ -72,3 +104,118 @@ class MetricsIngestRequest(BaseModel):
             "idempotency on retries"
         ),
     )
+
+
+# Module-level tuple of every EventName value (api + domain + ui). Used by the
+# timeseries query schema, which accepts any event the registry tracks — not
+# just the UI subset that the ingest endpoint admits.
+ALL_EVENT_NAMES: tuple[str, ...] = tuple(member.value for member in EventName)
+
+
+# Star-unpack into Literal mirrors the UIEventNameLiteral pattern above.
+AllEventNameLiteral = Literal[*ALL_EVENT_NAMES]  # type: ignore[valid-type]
+
+
+# Categories accepted by the `top` query endpoint's optional filter. Derived
+# from `EventCategory` to stay in lockstep with the source of truth.
+_ALL_EVENT_CATEGORIES: tuple[str, ...] = tuple(member.value for member in EventCategory)
+CategoryLiteral = Literal[*_ALL_EVENT_CATEGORIES]  # type: ignore[valid-type]
+
+
+# `date_trunc` resolutions supported by the timeseries endpoint. Hour is the
+# minimum useful resolution because writer.record floors bucket_start to the
+# nearest METRICS_BUCKET_SECONDS=3600 boundary.
+ResolutionLiteral = Literal["hour", "day"]
+
+
+_WINDOW_FIELD_DESCRIPTION: str = (
+    "Relative time window: day | week | month | year | Nh | Nd. "
+    "Validated by parse_window() at the route layer. Mutually exclusive "
+    "with `start`+`end`."
+)
+_START_FIELD_DESCRIPTION: str = (
+    "Inclusive start of an absolute range (ISO-8601 with timezone — e.g., "
+    "`2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive "
+    "datetimes are rejected at the schema layer via `AwareDatetime`. "
+    "Must be paired with `end` and is mutually exclusive with `window`."
+)
+_END_FIELD_DESCRIPTION: str = (
+    "Exclusive end of an absolute range (ISO-8601 with timezone — same "
+    "format as `start`). Must be paired with `start` and is mutually "
+    "exclusive with `window`."
+)
+
+
+class TopEventsQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/top`.
+
+    Accepts either a relative `window` (named or `Nh`/`Nd` shorthand,
+    validated route-side by `parse_window()`) or an absolute `(start, end)`
+    range. Pydantic `Literal` cannot express the named/shorthand union, so
+    window validation stays at the route layer; the XOR between window and
+    range is enforced by `_validate_window_xor_range` here.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+    category: CategoryLiteral | None = Field(
+        default=None,
+        description="Optional category filter (api | domain | ui).",
+    )
+    limit: int = Field(
+        default=10,
+        ge=1,
+        le=100,
+        description="Maximum number of rows to return (1-100).",
+    )
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+
+class TimeseriesQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/timeseries`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_name: AllEventNameLiteral = Field(
+        description="Any EventName value (api, domain, or ui).",
+    )
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+    resolution: ResolutionLiteral = Field(
+        default="hour",
+        description="date_trunc resolution: hour (default) or day.",
+    )
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+
+class SummaryQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/summary`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self

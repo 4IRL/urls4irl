@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, Generator
+from typing import Any, Generator, Tuple
 
 import pytest
 from flask import Flask
+from flask.testing import FlaskCliRunner
 from redis import Redis
 
+from backend import metrics_writer as app_metrics_writer
 from backend.extensions.metrics.writer import MetricsWriter
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -49,3 +51,41 @@ def writer_with_metrics_enabled(
     metrics_writer.init_app(app)
     yield metrics_writer
     app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
+
+
+@pytest.fixture
+def metrics_enabled_runner_app(
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_metrics_redis: Redis,
+) -> Generator[Flask, None, None]:
+    """Activate the metrics_writer extension on the `runner` fixture's app.
+
+    The `runner` fixture is required (instead of the `app` fixture) because
+    callers of this fixture typically call into `sync_event_registry(...)`,
+    `run_flush(...)`, or seed `AnonymousMetrics` rows via raw psycopg2 — all
+    of which open their own DB transactions. The `app` fixture wraps every
+    test in a SAVEPOINT and rolls back at teardown, which deadlocks when an
+    inline psycopg2 connection writes rows the SAVEPOINT-bound session
+    cannot see (and vice versa). `runner` uses `clear_database` teardown
+    instead, so inline psycopg2 + SQLAlchemy can coexist.
+
+    Mutates the module-level `metrics_writer` singleton in place (rather
+    than swapping a fresh instance) so the route's
+    `from backend import metrics_writer` import and the proxy's
+    `current_app.extensions["metrics_writer"]` lookup both resolve to the
+    same writer that this fixture has just enabled.
+    """
+    app = runner[0]
+
+    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
+    original_redis = app_metrics_writer._redis
+    original_enabled = app_metrics_writer._enabled
+
+    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
+    app_metrics_writer.init_app(app)
+
+    yield app
+
+    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
+    app_metrics_writer._redis = original_redis
+    app_metrics_writer._enabled = original_enabled

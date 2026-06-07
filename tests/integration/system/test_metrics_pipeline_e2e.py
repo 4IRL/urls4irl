@@ -1,18 +1,16 @@
 from __future__ import annotations
 
-from typing import Any, Generator, Tuple
+from typing import Any
 
 import psycopg2
 import pytest
 from flask import Flask
-from flask.testing import FlaskCliRunner
 from redis import Redis
 
-from backend import db, metrics_writer as app_metrics_writer
+from backend import db
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import DeviceType, EventName
 from backend.models.event_registry import Event_Registry
-from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from scripts.flush_metrics import run_flush
 from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
@@ -20,43 +18,6 @@ from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_v
 pytestmark = pytest.mark.cli
 
 INGEST_URL = "/api/metrics"
-
-
-@pytest.fixture
-def metrics_enabled_runner_app(
-    runner: Tuple[Flask, FlaskCliRunner],
-    provide_metrics_redis: Redis,
-) -> Generator[Flask, None, None]:
-    """Activate the metrics_writer extension on the `runner` fixture's app.
-
-    The `runner` fixture is required (instead of the `app` fixture) because
-    this test calls into `sync_event_registry(...)` and `run_flush(...)` —
-    both of which open their own DB transactions. The `app` fixture wraps
-    every test in a SAVEPOINT and rolls back at teardown, which deadlocks
-    when an inline psycopg2 connection writes rows the SAVEPOINT-bound
-    session cannot see (and vice versa). `runner` uses `clear_database`
-    teardown instead, so inline psycopg2 + SQLAlchemy can coexist.
-
-    Mutates the module-level `metrics_writer` singleton in place (rather
-    than swapping a fresh instance) so the route's
-    `from backend import metrics_writer` import and the proxy's
-    `current_app.extensions["metrics_writer"]` lookup both resolve to the
-    same writer that this fixture has just enabled.
-    """
-    app = runner[0]
-
-    original_metrics_enabled = app.config.get(CONFIG_ENVS.METRICS_ENABLED, False)
-    original_redis = app_metrics_writer._redis
-    original_enabled = app_metrics_writer._enabled
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = True
-    app_metrics_writer.init_app(app)
-
-    yield app
-
-    app.config[CONFIG_ENVS.METRICS_ENABLED] = original_metrics_enabled
-    app_metrics_writer._redis = original_redis
-    app_metrics_writer._enabled = original_enabled
 
 
 def _build_pg_conn(app: Flask) -> Any:

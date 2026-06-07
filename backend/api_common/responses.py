@@ -21,9 +21,18 @@ class APIResponse:
     data: Dict[str, Any] | BaseModel = field(default_factory=dict)
 
     def to_response(self) -> FlaskResponse:
-        """Convert to Flask response"""
+        """Convert to Flask response.
+
+        `mode="json"` is critical for datetime fields: without it, Pydantic
+        emits native `datetime` objects that Flask's `jsonify` serializes via
+        `http_date()` (RFC 822 / HTTP-Date — "Sat, 06 Jun 2026 17:00:00 GMT").
+        That format contradicts the schemas' "UTC ISO-8601" field descriptions
+        and the OpenAPI `format: "date-time"` declaration. JSON mode hands
+        jsonify pre-serialized ISO-8601 strings (`2026-06-06T17:00:00+00:00`),
+        so the wire shape matches what TypeScript consumers expect.
+        """
         data_dict = (
-            self.data.model_dump(by_alias=True)
+            self.data.model_dump(by_alias=True, mode="json")
             if isinstance(self.data, BaseModel)
             else self.data
         )

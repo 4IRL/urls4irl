@@ -273,7 +273,14 @@ def test_password_reset_successful_reset_key(
     new_password_input.send_keys(NEW_PASSWORD)
     confirm_new_password_input.send_keys(NEW_PASSWORD)
 
-    browser.switch_to.active_element.send_keys(Keys.ENTER)
+    # Send ENTER directly to the confirm input rather than routing through
+    # `browser.switch_to.active_element`. Under the n=8 UI parallelism cap,
+    # `document.activeElement` can lag behind the preceding `send_keys` and
+    # resolve to `<body>`, causing the keydown to land outside the form and
+    # never trigger submission. Targeting the input element directly is
+    # deterministic and preserves the test's "user pressed Enter on the last
+    # input" intent.
+    confirm_new_password_input.send_keys(Keys.ENTER)
 
     wait_for_reset_password_close_button(browser)
 

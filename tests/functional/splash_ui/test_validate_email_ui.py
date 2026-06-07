@@ -17,10 +17,10 @@ from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
     login_user_ui,
     wait_for_element_to_be_removed,
+    wait_for_modal_hidden,
     wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_hidden,
 )
 
 pytestmark = pytest.mark.splash_ui
@@ -166,7 +166,7 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     # Close the modal — this should trigger logout via logoutOnExit
     email_validation_btn_close = f"{SPL.EMAIL_VALIDATION_MODAL} .btn-close"
     wait_then_click_element(browser, email_validation_btn_close)
-    wait_until_hidden(browser, SPL.EMAIL_VALIDATION_MODAL)
+    wait_for_modal_hidden(browser, SPL.EMAIL_VALIDATION_MODAL)
 
     # Wait for the async logout AJAX + window.location.replace("/") to reload the page.
     # staleness_of detects when the DOM element is destroyed by the page navigation,

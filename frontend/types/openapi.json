@@ -275,6 +275,392 @@
         }
       }
     },
+    "/api/metrics/query/top": {
+      "get": {
+        "operationId": "queryTop",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return the top events by total count for an admin time window.",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": ["api", "domain", "ui"],
+              "type": "string"
+            },
+            "description": "Optional category filter (api | domain | ui)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maximum": 100,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "description": "Maximum number of rows to return (1-100)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/top`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TopEventsResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics/query/timeseries": {
+      "get": {
+        "operationId": "queryTimeseries",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return per-bucket counts for a single event over an admin time window.",
+        "parameters": [
+          {
+            "name": "event_name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "api_hit",
+                "utub_created",
+                "utub_deleted",
+                "utub_opened",
+                "url_accessed",
+                "tag_applied",
+                "tag_removed",
+                "tag_deleted",
+                "member_added",
+                "member_removed",
+                "url_title_updated",
+                "utub_title_updated",
+                "utub_desc_updated",
+                "ui_utub_select",
+                "ui_utub_create_open",
+                "ui_utub_delete_open",
+                "ui_utub_delete_confirm",
+                "ui_utub_delete_cancel",
+                "ui_utub_name_edit_open",
+                "ui_utub_desc_edit_open",
+                "ui_url_access",
+                "ui_url_card_click",
+                "ui_url_create_open",
+                "ui_url_title_edit_open",
+                "ui_url_string_edit_open",
+                "ui_url_delete_open",
+                "ui_url_delete_confirm",
+                "ui_url_delete_cancel",
+                "ui_url_copy",
+                "ui_url_access_warning",
+                "ui_url_access_warning_dismiss",
+                "ui_search_open",
+                "ui_search_close",
+                "ui_tag_apply",
+                "ui_tag_remove",
+                "ui_tag_create_open",
+                "ui_tag_delete_open",
+                "ui_tag_delete_confirm",
+                "ui_tag_delete_cancel",
+                "ui_tag_filter_toggle",
+                "ui_member_invite_open",
+                "ui_member_remove_open",
+                "ui_member_remove_confirm",
+                "ui_member_remove_cancel",
+                "ui_member_leave_open",
+                "ui_member_leave_confirm",
+                "ui_member_leave_cancel",
+                "ui_form_submit",
+                "ui_form_cancel",
+                "ui_validation_error",
+                "ui_deck_collapse",
+                "ui_deck_expand",
+                "ui_navbar_mobile_menu_open",
+                "ui_navbar_mobile_menu_close",
+                "ui_mobile_nav",
+                "ui_login_submit",
+                "ui_register_submit",
+                "ui_forgot_password_submit",
+                "ui_auth_form_switch",
+                "ui_auth_modal_open",
+                "ui_reset_password_submit",
+                "ui_email_validation_submit",
+                "ui_contact_submit",
+                "ui_error_page_refresh",
+                "ui_rate_limit_hit"
+              ],
+              "type": "string"
+            },
+            "description": "Any EventName value (api, domain, or ui)."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": ["hour", "day"],
+              "type": "string"
+            },
+            "description": "date_trunc resolution: hour (default) or day."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/timeseries`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/TimeseriesResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics/query/summary": {
+      "get": {
+        "operationId": "querySummary",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return per-category totals for the current and immediately-preceding window.",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/summary`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SummaryResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/register": {
       "post": {
         "operationId": "registerUser",
@@ -2007,9 +2393,217 @@
       },
       "MetricsErrorCodes": {
         "type": "integer",
-        "enum": [1],
-        "x-enum-varnames": ["INVALID_FORM_INPUT"],
+        "enum": [1, 2],
+        "x-enum-varnames": ["INVALID_FORM_INPUT", "INVALID_QUERY_PARAM"],
         "description": "Error codes for MetricsErrorCodes"
+      },
+      "TopEventRow": {
+        "description": "One row of the `top` query response \u2014 a single event aggregated over the window.",
+        "properties": {
+          "event_name": {
+            "description": "EventName value (e.g. utub_opened)",
+            "type": "string"
+          },
+          "category": {
+            "description": "EventCategory value (api | domain | ui)",
+            "type": "string"
+          },
+          "description": {
+            "description": "Human-readable event description from EventRegistry",
+            "type": "string"
+          },
+          "total_count": {
+            "description": "Sum of counts across all buckets in the window",
+            "type": "integer"
+          }
+        },
+        "required": ["event_name", "category", "description", "total_count"],
+        "type": "object"
+      },
+      "TopEventsResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/top`.",
+        "properties": {
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "EventCategory filter applied to the query, or null if none"
+          },
+          "events": {
+            "description": "Top-N rows ordered by total_count descending",
+            "items": {
+              "$ref": "#/components/schemas/TopEventRow"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["window_start", "window_end", "events"],
+        "type": "object"
+      },
+      "TimeseriesBucketSchema": {
+        "description": "One bucket of the `timeseries` query response.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket start (UTC, date_trunc'd to resolution)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "count": {
+            "description": "Sum of counts within this bucket",
+            "type": "integer"
+          }
+        },
+        "required": ["bucket", "count"],
+        "type": "object"
+      },
+      "TimeseriesResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/timeseries`.",
+        "properties": {
+          "event_name": {
+            "description": "EventName the series is filtered to",
+            "type": "string"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "resolution": {
+            "description": "date_trunc resolution (hour | day)",
+            "type": "string"
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "buckets": {
+            "description": "Buckets in chronological order",
+            "items": {
+              "$ref": "#/components/schemas/TimeseriesBucketSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "event_name",
+          "resolution",
+          "window_start",
+          "window_end",
+          "buckets"
+        ],
+        "type": "object"
+      },
+      "SummaryCategoryCount": {
+        "description": "Per-category current/previous totals for the `summary` query response.\n\nReturned as a list (not a dict) because `APIResponse` spreads payloads into\nthe top-level JSON body \u2014 a dict-of-category-to-int would collide with the\nenvelope's reserved keys.",
+        "properties": {
+          "category": {
+            "description": "EventCategory value (api | domain | ui)",
+            "type": "string"
+          },
+          "current": {
+            "description": "Sum of counts in the current window",
+            "type": "integer"
+          },
+          "previous": {
+            "description": "Sum of counts in the immediately-preceding window",
+            "type": "integer"
+          }
+        },
+        "required": ["category", "current", "previous"],
+        "type": "object"
+      },
+      "SummaryResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/summary`.",
+        "properties": {
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "previous_window_start": {
+            "description": "Inclusive UTC start of the immediately-preceding window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "previous_window_end": {
+            "description": "Exclusive UTC end of the immediately-preceding window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "by_category": {
+            "description": "Per-category current vs. previous totals",
+            "items": {
+              "$ref": "#/components/schemas/SummaryCategoryCount"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "window_start",
+          "window_end",
+          "previous_window_start",
+          "previous_window_end",
+          "by_category"
+        ],
+        "type": "object"
       },
       "RegisterRequest": {
         "properties": {
@@ -2948,6 +3542,11 @@
         "type": "apiKey",
         "in": "header",
         "name": "X-CSRFToken"
+      },
+      "adminSession": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "Admin authorization is enforced by a Flask-Login session-role check (User_Role.ADMIN), NOT a request header or bearer token. This scheme is declared only to mark routes that additionally require admin role on top of an authenticated session."
       }
     }
   }
