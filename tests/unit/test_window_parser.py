@@ -9,6 +9,8 @@ from backend.extensions.metrics.buckets import (
     _RANGE_ORDER_ERROR,
     _WINDOW_PARSE_ERROR_FMT,
     WINDOW_NAMED,
+    _named_window_start,
+    _shift_calendar_month,
     parse_window,
     previous_window,
     resolve_query_window,
@@ -223,3 +225,99 @@ class TestResolveQueryWindowMissing:
         with pytest.raises(ValueError) as exc_info:
             resolve_query_window(window=None, start=None, end=None, now=FIXED_NOW)
         assert exc_info.value.args[0] == _MISSING_WINDOW_ERROR
+
+
+class TestShiftCalendarMonth:
+    """Direct coverage for `_shift_calendar_month` — calendar-aware month arithmetic."""
+
+    def test_normal_mid_month_shift(self):
+        """Mid-month dates shift back cleanly without any day clamping."""
+        reference = datetime(2026, 4, 15, 10, 0, 0, tzinfo=timezone.utc)
+        result = _shift_calendar_month(reference, 1)
+        assert result == datetime(2026, 3, 15, 10, 0, 0, tzinfo=timezone.utc)
+
+    def test_end_of_month_clamps_in_non_leap_year(self):
+        """Mar 31 - 1 month → Feb 28 (February has no 29th in a non-leap year)."""
+        reference = datetime(2026, 3, 31, 0, 0, 0, tzinfo=timezone.utc)
+        result = _shift_calendar_month(reference, 1)
+        assert result == datetime(2026, 2, 28, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_end_of_month_resolves_leap_year_feb_29(self):
+        """Mar 31 2024 - 1 month → Feb 29 2024 (2024 is a leap year)."""
+        reference = datetime(2024, 3, 31, 0, 0, 0, tzinfo=timezone.utc)
+        result = _shift_calendar_month(reference, 1)
+        assert result == datetime(2024, 2, 29, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_leap_day_clamped_across_non_leap_target_year(self):
+        """Feb 29 2024 - 12 months → Feb 28 2023 (2023 has no Feb 29)."""
+        reference = datetime(2024, 2, 29, 9, 15, 0, tzinfo=timezone.utc)
+        result = _shift_calendar_month(reference, 12)
+        assert result == datetime(2023, 2, 28, 9, 15, 0, tzinfo=timezone.utc)
+
+    def test_cross_year_boundary_backward(self):
+        """Jan 31 - 1 month crosses the year boundary back to Dec 31 of prior year."""
+        reference = datetime(2026, 1, 31, 0, 0, 0, tzinfo=timezone.utc)
+        result = _shift_calendar_month(reference, 1)
+        assert result == datetime(2025, 12, 31, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_cross_year_boundary_multiple_months(self):
+        """Mar 15 2026 - 15 months crosses back to Dec 15 2024."""
+        reference = datetime(2026, 3, 15, 0, 0, 0, tzinfo=timezone.utc)
+        result = _shift_calendar_month(reference, 15)
+        assert result == datetime(2024, 12, 15, 0, 0, 0, tzinfo=timezone.utc)
+
+
+class TestNamedWindowStart:
+    """Direct coverage for `_named_window_start` — recognized names and edge cases."""
+
+    STABLE_NOW = datetime(2026, 3, 15, 12, 0, 0, tzinfo=timezone.utc)
+
+    @pytest.mark.parametrize(
+        "name,expected_start",
+        [
+            (
+                "day",
+                datetime(2026, 3, 14, 12, 0, 0, tzinfo=timezone.utc),
+            ),
+            (
+                "week",
+                datetime(2026, 3, 8, 12, 0, 0, tzinfo=timezone.utc),
+            ),
+            (
+                "month",
+                datetime(2026, 2, 15, 12, 0, 0, tzinfo=timezone.utc),
+            ),
+            (
+                "year",
+                datetime(2025, 3, 15, 12, 0, 0, tzinfo=timezone.utc),
+            ),
+        ],
+    )
+    def test_recognized_names_return_correct_start(
+        self, name: str, expected_start: datetime
+    ):
+        """Each recognized window name returns the expected start relative to STABLE_NOW."""
+        result = _named_window_start(name, self.STABLE_NOW)
+        assert result == expected_start
+
+    def test_month_end_of_month_clamping(self):
+        """'month' at Mar 31 clamps the result to Feb 28 (non-leap year)."""
+        now = datetime(2026, 3, 31, 0, 0, 0, tzinfo=timezone.utc)
+        result = _named_window_start("month", now)
+        assert result == datetime(2026, 2, 28, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_year_leap_day_clamping(self):
+        """'year' at Feb 29 2024 clamps back to Feb 28 2023 (non-leap target year)."""
+        now = datetime(2024, 2, 29, 0, 0, 0, tzinfo=timezone.utc)
+        result = _named_window_start("year", now)
+        assert result == datetime(2023, 2, 28, 0, 0, 0, tzinfo=timezone.utc)
+
+    def test_unrecognized_name_returns_none(self):
+        """Any name not in WINDOW_NAMED returns None."""
+        result = _named_window_start("quarter", self.STABLE_NOW)
+        assert result is None
+
+    def test_empty_string_returns_none(self):
+        """An empty string is not a recognized window name."""
+        result = _named_window_start("", self.STABLE_NOW)
+        assert result is None

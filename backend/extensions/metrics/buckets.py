@@ -24,6 +24,19 @@ def compute_bucket_start_epoch(now_epoch_seconds: int, bucket_seconds: int) -> i
     Shared by `MetricsWriter` (writes Redis counter keys) and the Phase 2
     flush worker (parses bucket from key) so both agree on bucket boundaries
     even if `METRICS_BUCKET_SECONDS` changes.
+
+    Examples:
+        Hour bucket (3600 s) — mid-hour epoch snaps back to the hour boundary:
+        >>> compute_bucket_start_epoch(1749085261, 3600)
+        1749085200
+
+        Day bucket (86400 s) — 01:01:01 into the day snaps back to midnight:
+        >>> compute_bucket_start_epoch(1780621261, 86400)
+        1780617600
+
+        Already-aligned epoch is returned unchanged:
+        >>> compute_bucket_start_epoch(1780617600, 86400)
+        1780617600
     """
     return (now_epoch_seconds // bucket_seconds) * bucket_seconds
 
@@ -33,6 +46,15 @@ def epoch_to_aware_datetime(epoch_seconds: int) -> datetime:
 
     Uses `datetime.fromtimestamp(..., tz=timezone.utc)` since
     `datetime.utcfromtimestamp` is deprecated as of Python 3.12.
+
+    Examples:
+        Epoch boundary — 0 maps to the Unix epoch:
+        >>> epoch_to_aware_datetime(0)
+        datetime.datetime(1970, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
+
+        Typical timestamp — 2026-01-01 00:00:00 UTC:
+        >>> epoch_to_aware_datetime(1767225600)
+        datetime.datetime(2026, 1, 1, 0, 0, tzinfo=datetime.timezone.utc)
     """
     return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc)
 
