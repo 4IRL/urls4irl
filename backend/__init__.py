@@ -30,6 +30,7 @@ from backend.cli.mock_options import register_mocks_db_cli
 from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
+from backend.models.users import User_Role
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 
@@ -162,6 +163,8 @@ def create_app(
     @app.context_processor
     def asset_processor():
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
+
+    app.jinja_env.globals["User_Role"] = User_Role
 
     app.register_blueprint(admin_blueprint)
     app.register_blueprint(contact)

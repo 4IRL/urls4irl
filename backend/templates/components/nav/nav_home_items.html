@@ -39,6 +39,9 @@
         </svg>
         <b>Tags</b>
     </button>
+    {% if current_user.is_authenticated and current_user.role == User_Role.ADMIN %}
+    <a href="/admin/metrics" id="adminMetricsLink" class="btn btn-link" aria-label="{{ CONFIG.strings.NAV_ADMIN_METRICS_ARIA }}">{{ CONFIG.strings.NAV_ADMIN_METRICS_LABEL }}</a>
+    {% endif %}
     {% include 'components/nav/logout_btn.html' %}
     {% else %}
     {% include 'components/nav/back_home_btn.html' %}
