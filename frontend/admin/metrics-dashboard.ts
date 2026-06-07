@@ -19,6 +19,11 @@
  *   7. Per-panel timeseries event selector (`<select>` rendered from the
  *      cached top-events list). Picking a different event fires the
  *      timeseries XHR and re-renders the panel's chart.
+ *   8. "Last flush N seconds ago" badge — a 1 s wall-clock ticker updates
+ *      `#MetricsLastFlush` based on the elapsed time since
+ *      `summary.last_flush_at`. The visible text refreshes every tick;
+ *      aria-live announcements fire only when the elapsed bucket transitions
+ *      (just_now → seconds → minutes → stale).
  *
  * Per-section render functions (top table, summary, timeseries chart) live in
  * sibling modules (`render-top-table.ts`, `render-summary.ts`,
@@ -58,6 +63,7 @@ import { renderTopTable } from "./render-top-table.js";
 type MetricsWindow = "day" | "week" | "month" | "year";
 type MetricsCategory = "api" | "ui" | "domain";
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
+type LastFlushBucket = "just_now" | "seconds" | "minutes" | "stale";
 
 interface InFlightRequests {
   top: JQuery.jqXHR | null;
@@ -76,10 +82,17 @@ interface CategoryPanelIds {
 
 const POLL_INTERVAL_MS = 60_000;
 const VISIBILITY_REFETCH_THRESHOLD_MS = 5_000;
+const BADGE_TICK_INTERVAL_MS = 1_000;
+const BADGE_BUCKET_SECONDS_MS = 5_000;
+const BADGE_BUCKET_MINUTES_MS = 60_000;
+const BADGE_BUCKET_STALE_MS = 3_600_000;
+const BADGE_STALE_CLASS = "MetricsBadgeStale";
 
 const DASHBOARD_ROOT_ID = "MetricsDashboard";
 const REFRESH_BUTTON_ID = "MetricsRefreshNowBtn";
 const ERROR_BANNER_ID = "MetricsErrorBanner";
+const LAST_FLUSH_BADGE_ID = "MetricsLastFlush";
+const LAST_FLUSH_ANNOUNCEMENT_ID = "MetricsLastFlushAnnouncement";
 const WINDOW_BUTTON_CLASS = "MetricsWindowButton";
 const TABLIST_ID = "MetricsTablist";
 const TAB_ROLE_SELECTOR = '[role="tab"]';
@@ -124,6 +137,14 @@ let _currentWindow: MetricsWindow = "day";
 let _currentCategory: MetricsCategory = "api";
 let _inFlight: InFlightRequests = { top: null, ts: null, summary: null };
 const _topCache: Map<MetricsCategory, TopEventsResponseSchema> = new Map();
+
+// Badge state. `_lastFlushAtMs` is a wall-clock epoch parsed from the server's
+// `summary.last_flush_at`, so the elapsed delta MUST be computed with
+// `Date.now()` — `performance.now()` is page-load-relative and would yield a
+// nonsense delta when subtracted from a wall-clock value.
+let _badgeIntervalId: ReturnType<typeof setInterval> | null = null;
+let _lastFlushAtMs: number | null = null;
+let _lastAnnouncedBucket: LastFlushBucket | null = null;
 
 function getElementByIdOrNull<ElementT extends HTMLElement>(
   elementId: string,
@@ -357,6 +378,11 @@ function fetchAll(): void {
           renderSummary({ root: summaryRoot, response, category });
         }
       }
+      _lastFlushAtMs =
+        response.last_flush_at !== null
+          ? Date.parse(response.last_flush_at)
+          : null;
+      renderLastFlushBadge();
     })
     .fail((xhr) => {
       if (is429Handled(xhr)) {
@@ -439,9 +465,97 @@ function stopPolling(): void {
   }
 }
 
+/**
+ * Update `#MetricsLastFlush` with the elapsed time since the server's last
+ * Redis-to-Postgres flush. Called every `BADGE_TICK_INTERVAL_MS` while the tab
+ * is visible.
+ *
+ * `Date.now()` (NOT `performance.now()`) is correct here: `_lastFlushAtMs` is
+ * `Date.parse(response.last_flush_at)`, a wall-clock epoch supplied by the
+ * server. Subtracting a page-load-relative `performance.now()` from a
+ * wall-clock epoch would produce a meaningless delta.
+ *
+ * The visible badge text refreshes every tick. The visually-hidden aria-live
+ * sink (`#MetricsLastFlushAnnouncement`) is written only when the bucket
+ * transitions, so screen-reader users hear at most four announcements per
+ * flush cycle ("just now" → "N seconds" → "N minutes" → "N hours") rather
+ * than every-second chatter.
+ */
+function renderLastFlushBadge(): void {
+  const badge = getElementByIdOrNull<HTMLElement>(LAST_FLUSH_BADGE_ID);
+  if (badge === null) {
+    return;
+  }
+
+  if (_lastFlushAtMs === null) {
+    badge.textContent = "";
+    badge.classList.remove(BADGE_STALE_CLASS);
+    return;
+  }
+
+  const elapsedMs = Date.now() - _lastFlushAtMs;
+  let text: string;
+  let bucket: LastFlushBucket;
+  if (elapsedMs < BADGE_BUCKET_SECONDS_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_FLUSH_JUST_NOW;
+    bucket = "just_now";
+  } else if (elapsedMs < BADGE_BUCKET_MINUTES_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_FLUSH_SECONDS.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 1_000)),
+    );
+    bucket = "seconds";
+  } else if (elapsedMs < BADGE_BUCKET_STALE_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_FLUSH_MINUTES.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 60_000)),
+    );
+    bucket = "minutes";
+  } else {
+    text = APP_CONFIG.strings.METRICS_LAST_FLUSH_STALE_HOURS.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 3_600_000)),
+    );
+    bucket = "stale";
+  }
+
+  badge.textContent = text;
+  if (bucket === "stale") {
+    badge.classList.add(BADGE_STALE_CLASS);
+  } else {
+    badge.classList.remove(BADGE_STALE_CLASS);
+  }
+
+  if (bucket !== _lastAnnouncedBucket) {
+    const announcement = getElementByIdOrNull<HTMLElement>(
+      LAST_FLUSH_ANNOUNCEMENT_ID,
+    );
+    if (announcement !== null) {
+      announcement.textContent = text;
+    }
+    _lastAnnouncedBucket = bucket;
+  }
+}
+
+function startBadgeTicker(): void {
+  if (_badgeIntervalId !== null) {
+    clearInterval(_badgeIntervalId);
+  }
+  _badgeIntervalId = setInterval(renderLastFlushBadge, BADGE_TICK_INTERVAL_MS);
+  renderLastFlushBadge();
+}
+
+function stopBadgeTicker(): void {
+  if (_badgeIntervalId !== null) {
+    clearInterval(_badgeIntervalId);
+    _badgeIntervalId = null;
+  }
+}
+
 function handleVisibilityChange(): void {
   if (document.visibilityState === "hidden") {
     stopPolling();
+    stopBadgeTicker();
     return;
   }
   if (document.visibilityState === "visible") {
@@ -450,6 +564,7 @@ function handleVisibilityChange(): void {
       fetchAll();
     }
     startPolling();
+    startBadgeTicker();
   }
 }
 
@@ -642,6 +757,7 @@ export function initMetricsDashboard(): void {
 
   fetchAll();
   startPolling();
+  startBadgeTicker();
 }
 
 /**
@@ -651,11 +767,27 @@ export function initMetricsDashboard(): void {
  */
 export function _resetMetricsDashboardForTests(): void {
   stopPolling();
+  stopBadgeTicker();
   abortInFlightRequests();
   _lastFetchPerf = 0;
   _currentWindow = "day";
   _currentCategory = "api";
   _inFlight = { top: null, ts: null, summary: null };
   _topCache.clear();
+  _lastFlushAtMs = null;
+  _lastAnnouncedBucket = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+}
+
+/**
+ * Test-only badge helpers. Vitest specs need to set the wall-clock anchor
+ * directly and then invoke the renderer (or read the announcement state)
+ * without going through a full mocked fetch cycle.
+ */
+export function _setLastFlushAtMsForTests(value: number | null): void {
+  _lastFlushAtMs = value;
+}
+
+export function _renderLastFlushBadgeForTests(): void {
+  renderLastFlushBadge();
 }
