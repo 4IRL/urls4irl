@@ -117,6 +117,28 @@ const appConfig = {
     UTUB_SEARCH_PLACEHOLDER: "Search UTub Names",
     UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
     UTUB_CREATE_MSG: "Create a UTub",
+    // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py
+    METRICS_DASHBOARD_TITLE: "Anonymous metrics",
+    METRICS_REFRESH_BUTTON_LABEL: "Refresh now",
+    METRICS_REFRESH_BUTTON_ARIA: "Refresh dashboard now",
+    METRICS_WINDOW_GROUP_ARIA: "Time window",
+    METRICS_WINDOW_DAY: "Day",
+    METRICS_WINDOW_WEEK: "Week",
+    METRICS_WINDOW_MONTH: "Month",
+    METRICS_WINDOW_YEAR: "Year",
+    METRICS_TABLIST_ARIA: "Dashboard sections",
+    METRICS_TAB_API: "API endpoints",
+    METRICS_TAB_UI: "UI events",
+    METRICS_TAB_DOMAIN: "Domain actions",
+    METRICS_LAST_FLUSH_JUST_NOW: "Last flush: just now",
+    METRICS_LAST_FLUSH_SECONDS: "Last flush: {{ n }} seconds ago",
+    METRICS_LAST_FLUSH_MINUTES: "Last flush: {{ n }} minutes ago",
+    METRICS_LAST_FLUSH_STALE_HOURS: "Last flush: {{ n }} hours ago (stale)",
+    METRICS_EMPTY_STATE: "No events recorded in the selected window.",
+    METRICS_FETCH_FAILED_BANNER:
+      "Refresh failed — showing last successful data. Retrying in 60 seconds.",
+    NAV_ADMIN_METRICS_LABEL: "Metrics dashboard",
+    NAV_ADMIN_METRICS_ARIA: "Open the admin metrics dashboard",
   },
 };
 

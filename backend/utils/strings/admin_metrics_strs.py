@@ -1,0 +1,23 @@
+class ADMIN_METRICS_STRINGS:
+    METRICS_DASHBOARD_TITLE: str = "Anonymous metrics"
+    METRICS_REFRESH_BUTTON_LABEL: str = "Refresh now"
+    METRICS_REFRESH_BUTTON_ARIA: str = "Refresh dashboard now"
+    METRICS_WINDOW_GROUP_ARIA: str = "Time window"
+    METRICS_WINDOW_DAY: str = "Day"
+    METRICS_WINDOW_WEEK: str = "Week"
+    METRICS_WINDOW_MONTH: str = "Month"
+    METRICS_WINDOW_YEAR: str = "Year"
+    METRICS_TABLIST_ARIA: str = "Dashboard sections"
+    METRICS_TAB_API: str = "API endpoints"
+    METRICS_TAB_UI: str = "UI events"
+    METRICS_TAB_DOMAIN: str = "Domain actions"
+    METRICS_LAST_FLUSH_JUST_NOW: str = "Last flush: just now"
+    METRICS_LAST_FLUSH_SECONDS: str = "Last flush: {{ n }} seconds ago"
+    METRICS_LAST_FLUSH_MINUTES: str = "Last flush: {{ n }} minutes ago"
+    METRICS_LAST_FLUSH_STALE_HOURS: str = "Last flush: {{ n }} hours ago (stale)"
+    METRICS_EMPTY_STATE: str = "No events recorded in the selected window."
+    METRICS_FETCH_FAILED_BANNER: str = (
+        "Refresh failed — showing last successful data. Retrying in 60 seconds."
+    )
+    NAV_ADMIN_METRICS_LABEL: str = "Metrics dashboard"
+    NAV_ADMIN_METRICS_ARIA: str = "Open the admin metrics dashboard"

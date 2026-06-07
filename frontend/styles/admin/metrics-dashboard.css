@@ -1,0 +1,58 @@
+/*
+ * Admin metrics dashboard placeholder styles.
+ *
+ * The dashboard's full visual implementation lands in Steps 6-9. The rules
+ * below are the structural baseline the spec requires up front:
+ *   - Active window-button state, signalled via aria-pressed.
+ *   - Responsive chart container that prevents the 800px viewBox SVG from
+ *     overflowing on viewports narrower than 800px (no horizontal scrollbar
+ *     on tablets/phones).
+ *   - Top-N table container hook so later steps can attach typography.
+ *   - WCAG 2.4.7 focus-visible outlines on every keyboard-reachable widget.
+ *
+ * Mobile breakpoints follow the existing project convention:
+ *   - 992px  (frontend/styles/base.css:349) for desktop -> tablet boundary.
+ *   - 575.98px (frontend/styles/home/layout.css:358) for tablet -> phone.
+ */
+
+.MetricsWindowButton[aria-pressed="true"] {
+    background-color: var(--accent-color, #0d6efd);
+    color: #ffffff;
+    border-color: var(--accent-color, #0d6efd);
+}
+
+.MetricsWindowButton:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+.MetricsChart {
+    width: 100%;
+    height: auto;
+}
+
+.MetricsTopTable {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+[role='tab']:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+@media (max-width: 992px) {
+    .MetricsTopTable {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .MetricsTopTable {
+        font-size: 0.8rem;
+    }
+
+    .MetricsWindowButton {
+        padding-inline: 0.5rem;
+    }
+}
