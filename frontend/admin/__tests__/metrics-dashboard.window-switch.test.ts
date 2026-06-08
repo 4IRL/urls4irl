@@ -34,6 +34,7 @@ vi.mock("../render-top-table.js", () => ({
   renderTopTable: renderTopTableSpy,
 }));
 
+import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import {
   _resetMetricsDashboardForTests,
   initMetricsDashboard,
@@ -62,16 +63,6 @@ const DASHBOARD_HTML = `
   </main>
 `;
 
-function makeNoopXhr(): JQuery.jqXHR {
-  const chainable = {
-    done: vi.fn().mockReturnThis(),
-    fail: vi.fn().mockReturnThis(),
-    always: vi.fn().mockReturnThis(),
-    abort: vi.fn(),
-  };
-  return chainable as unknown as JQuery.jqXHR;
-}
-
 describe("metrics-dashboard window-selector", () => {
   beforeEach(() => {
     document.body.innerHTML = DASHBOARD_HTML;
@@ -85,8 +76,8 @@ describe("metrics-dashboard window-selector", () => {
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
 
-    fetchSummarySpy.mockImplementation(() => makeNoopXhr());
-    fetchTopEventsSpy.mockImplementation(() => makeNoopXhr());
+    fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
 
     vi.useFakeTimers();
   });

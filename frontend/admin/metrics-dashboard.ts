@@ -66,7 +66,9 @@ type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type LastFlushBucket = "just_now" | "seconds" | "minutes" | "stale";
 
 interface InFlightRequests {
-  top: JQuery.jqXHR | null;
+  topApi: JQuery.jqXHR | null;
+  topUi: JQuery.jqXHR | null;
+  topDomain: JQuery.jqXHR | null;
   ts: JQuery.jqXHR | null;
   summary: JQuery.jqXHR | null;
 }
@@ -133,7 +135,22 @@ let _pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFetchPerf: number = 0;
 let _currentWindow: MetricsWindow = "day";
 let _currentCategory: MetricsCategory = "api";
-let _inFlight: InFlightRequests = { top: null, ts: null, summary: null };
+let _inFlight: InFlightRequests = {
+  topApi: null,
+  topUi: null,
+  topDomain: null,
+  ts: null,
+  summary: null,
+};
+
+const TOP_SLOT_BY_CATEGORY: Record<
+  MetricsCategory,
+  "topApi" | "topUi" | "topDomain"
+> = {
+  api: "topApi",
+  ui: "topUi",
+  domain: "topDomain",
+};
 const _topCache: Map<MetricsCategory, TopEventsResponseSchema> = new Map();
 
 // Badge state. `_lastFlushAtMs` is a wall-clock epoch parsed from the server's
@@ -187,7 +204,13 @@ function setRefreshButtonInFlight({ inFlight }: { inFlight: boolean }): void {
 }
 
 function abortInFlightRequests(): void {
-  for (const key of ["top", "ts", "summary"] as const) {
+  for (const key of [
+    "topApi",
+    "topUi",
+    "topDomain",
+    "ts",
+    "summary",
+  ] as const) {
     const xhr = _inFlight[key];
     if (xhr !== null) {
       xhr.abort();
@@ -405,9 +428,8 @@ function fetchAll(): void {
       window: _currentWindow,
       category,
     });
-    if (category === "api") {
-      _inFlight.top = topRequest;
-    }
+    const slotName = TOP_SLOT_BY_CATEGORY[category];
+    _inFlight[slotName] = topRequest;
     topRequest
       .done((response) => {
         setBannerVisible({ visible: false });
@@ -424,9 +446,7 @@ function fetchAll(): void {
         setBannerVisible({ visible: true });
       })
       .always(() => {
-        if (category === "api") {
-          _inFlight.top = null;
-        }
+        _inFlight[slotName] = null;
         _lastFetchPerf = performance.now();
         onSettleAny();
       });
@@ -440,7 +460,9 @@ function fetchAll(): void {
  */
 function onSettleAny(): void {
   const anyInFlight =
-    _inFlight.top !== null ||
+    _inFlight.topApi !== null ||
+    _inFlight.topUi !== null ||
+    _inFlight.topDomain !== null ||
     _inFlight.ts !== null ||
     _inFlight.summary !== null;
   if (!anyInFlight) {
@@ -611,7 +633,7 @@ function handleWindowButtonClick(event: JQuery.TriggeredEvent): void {
  * keyboard users land inside the section content after switching.
  */
 function handleTabClick({
-  tabId,
+  tabId: _tabId,
   category,
 }: {
   tabId: string;
@@ -649,11 +671,6 @@ function handleTabClick({
     CATEGORY_PANEL_IDS[category].panel,
   );
   activePanel?.focus();
-
-  // `tabId` is unused for state mutation but kept in the signature so the
-  // event handler reads naturally at the call site. Reference it once so
-  // strict TS doesn't flag the param.
-  void tabId;
 }
 
 function handleTabButtonClick(event: JQuery.TriggeredEvent): void {
@@ -770,7 +787,13 @@ export function _resetMetricsDashboardForTests(): void {
   _lastFetchPerf = 0;
   _currentWindow = "day";
   _currentCategory = "api";
-  _inFlight = { top: null, ts: null, summary: null };
+  _inFlight = {
+    topApi: null,
+    topUi: null,
+    topDomain: null,
+    ts: null,
+    summary: null,
+  };
   _topCache.clear();
   _lastFlushAtMs = null;
   _lastAnnouncedBucket = null;

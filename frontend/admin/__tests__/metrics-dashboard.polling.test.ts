@@ -223,6 +223,146 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
     expect(totalFetchAllCalls()).toBe(3);
   });
 
+  it("fetchTopEvents .fail with non-0, non-429 status shows the error banner", () => {
+    // Summary settles cleanly; only the top-events branch fails so the test
+    // targets the top-events fail handler in isolation.
+    fetchSummarySpy.mockImplementation(() => makeSettlingXhr());
+    fetchTopEventsSpy.mockImplementation(() => {
+      const chainable = {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockImplementation((cb: (xhr: JQuery.jqXHR) => void) => {
+          const failureXhr = {
+            readyState: 4,
+            status: 500,
+          } as unknown as JQuery.jqXHR;
+          cb(failureXhr);
+          return chainable;
+        }),
+        always: vi.fn().mockImplementation((cb: () => void) => {
+          cb();
+          return chainable;
+        }),
+        abort: vi.fn(),
+      };
+      return chainable as unknown as JQuery.jqXHR;
+    });
+
+    initMetricsDashboard();
+
+    const banner = document.getElementById("MetricsErrorBanner") as HTMLElement;
+    expect(banner.classList.contains("hidden")).toBe(false);
+  });
+
+  it("fetchTopEvents .fail with 429-handled xhr does not show the banner", () => {
+    fetchSummarySpy.mockImplementation(() => makeSettlingXhr());
+    fetchTopEventsSpy.mockImplementation(() => {
+      const chainable = {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockImplementation((cb: (xhr: JQuery.jqXHR) => void) => {
+          // is429Handled() reads the `_429Handled` flag stamped by the global
+          // ajaxPrefilter. When set, the fail handler must return early so
+          // the banner stays hidden.
+          const rateLimitedXhr = {
+            readyState: 4,
+            status: 429,
+            _429Handled: true,
+          } as unknown as JQuery.jqXHR;
+          cb(rateLimitedXhr);
+          return chainable;
+        }),
+        always: vi.fn().mockImplementation((cb: () => void) => {
+          cb();
+          return chainable;
+        }),
+        abort: vi.fn(),
+      };
+      return chainable as unknown as JQuery.jqXHR;
+    });
+
+    initMetricsDashboard();
+
+    const banner = document.getElementById("MetricsErrorBanner") as HTMLElement;
+    expect(banner.classList.contains("hidden")).toBe(true);
+  });
+
+  it("fetchTopEvents .fail with readyState 0 (abort) does not show the banner", () => {
+    fetchSummarySpy.mockImplementation(() => makeSettlingXhr());
+    fetchTopEventsSpy.mockImplementation(() => {
+      const chainable = {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockImplementation((cb: (xhr: JQuery.jqXHR) => void) => {
+          const abortedXhr = {
+            readyState: 0,
+            status: 0,
+          } as unknown as JQuery.jqXHR;
+          cb(abortedXhr);
+          return chainable;
+        }),
+        always: vi.fn().mockImplementation((cb: () => void) => {
+          cb();
+          return chainable;
+        }),
+        abort: vi.fn(),
+      };
+      return chainable as unknown as JQuery.jqXHR;
+    });
+
+    initMetricsDashboard();
+
+    const banner = document.getElementById("MetricsErrorBanner") as HTMLElement;
+    expect(banner.classList.contains("hidden")).toBe(true);
+  });
+
+  it("Refresh aborts all three per-category top-events XHRs (api/ui/domain)", () => {
+    // DD-1 regression guard. Each per-category top-events call gets a
+    // dedicated abort spy so we can verify all three are cancelled when
+    // Refresh fires — not just the api slot, as was the case before.
+    const apiAbort = vi.fn();
+    const uiAbort = vi.fn();
+    const domainAbort = vi.fn();
+    const topAbortByCategory: Record<string, () => void> = {
+      api: apiAbort,
+      ui: uiAbort,
+      domain: domainAbort,
+    };
+
+    fetchSummarySpy.mockImplementation(() => {
+      const chainable = {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockReturnThis(),
+        always: vi.fn().mockReturnThis(),
+        abort: vi.fn(),
+      };
+      return chainable as unknown as JQuery.jqXHR;
+    });
+    fetchTopEventsSpy.mockImplementation(
+      (args: { category: "api" | "ui" | "domain" }) => {
+        const chainable = {
+          done: vi.fn().mockReturnThis(),
+          fail: vi.fn().mockReturnThis(),
+          always: vi.fn().mockReturnThis(),
+          abort: topAbortByCategory[args.category],
+        };
+        return chainable as unknown as JQuery.jqXHR;
+      },
+    );
+
+    initMetricsDashboard();
+    expect(apiAbort).not.toHaveBeenCalled();
+    expect(uiAbort).not.toHaveBeenCalled();
+    expect(domainAbort).not.toHaveBeenCalled();
+
+    const refreshButton = document.getElementById(
+      "MetricsRefreshNowBtn",
+    ) as HTMLButtonElement;
+    refreshButton.removeAttribute("aria-disabled");
+    refreshButton.click();
+
+    expect(apiAbort).toHaveBeenCalledTimes(1);
+    expect(uiAbort).toHaveBeenCalledTimes(1);
+    expect(domainAbort).toHaveBeenCalledTimes(1);
+  });
+
   it("Refresh button click is ignored while still in-flight (aria-disabled guard)", () => {
     // Non-settling mock so the in-flight guard stays active.
     fetchSummarySpy.mockImplementation(() => {

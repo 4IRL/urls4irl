@@ -31,14 +31,12 @@ const DAY_FORMATTER = new Intl.DateTimeFormat(EN_US_LOCALE, {
 export function buildAxisTicks({
   ticks,
   scale,
-  axisLength,
+  axisLength: _axisLength,
 }: {
   ticks: number[];
   scale: (value: number) => number;
   axisLength: number;
 }): { position: number; label: string }[] {
-  void axisLength;
-
   return ticks.map((tickValue) => ({
     position: scale(tickValue),
     label: String(tickValue),

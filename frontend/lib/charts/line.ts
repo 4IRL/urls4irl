@@ -19,7 +19,7 @@
 export function buildPolylinePoints({
   values,
   width,
-  height,
+  height: _height,
   scaleY,
 }: {
   values: number[];
@@ -27,8 +27,6 @@ export function buildPolylinePoints({
   height: number;
   scaleY: (n: number) => number;
 }): string {
-  void height;
-
   if (values.length === 0) {
     return "";
   }

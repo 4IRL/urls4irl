@@ -8,6 +8,15 @@ export default [
     plugins: { "@typescript-eslint": tsPlugin },
     rules: {
       ...tsPlugin.configs.recommended.rules,
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          destructuredArrayIgnorePattern: "^_",
+        },
+      ],
     },
   },
 ];

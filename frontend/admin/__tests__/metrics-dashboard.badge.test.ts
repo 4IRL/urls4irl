@@ -46,6 +46,7 @@ vi.mock("../render-timeseries-chart.js", () => ({
   renderTimeseriesChart: renderTimeseriesChartSpy,
 }));
 
+import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import {
   _renderLastFlushBadgeForTests,
   _resetMetricsDashboardForTests,
@@ -92,16 +93,6 @@ const DASHBOARD_HTML = `
   </main>
 `;
 
-function makeNoopXhr(): JQuery.jqXHR {
-  const chainable = {
-    done: vi.fn().mockReturnThis(),
-    fail: vi.fn().mockReturnThis(),
-    always: vi.fn().mockReturnThis(),
-    abort: vi.fn(),
-  };
-  return chainable as unknown as JQuery.jqXHR;
-}
-
 function getBadge(): HTMLElement {
   return document.getElementById(BADGE_ID) as HTMLElement;
 }
@@ -121,9 +112,9 @@ describe("metrics-dashboard last-flush badge", () => {
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
-    fetchSummarySpy.mockImplementation(() => makeNoopXhr());
-    fetchTopEventsSpy.mockImplementation(() => makeNoopXhr());
-    fetchTimeseriesSpy.mockImplementation(() => makeNoopXhr());
+    fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
 
     vi.useFakeTimers();
   });

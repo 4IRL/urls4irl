@@ -45,6 +45,7 @@ vi.mock("../render-timeseries-chart.js", () => ({
   renderTimeseriesChart: renderTimeseriesChartSpy,
 }));
 
+import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import { $ } from "../../lib/globals.js";
 import {
   _resetMetricsDashboardForTests,
@@ -85,16 +86,6 @@ const DASHBOARD_HTML = `
   </main>
 `;
 
-function makeNoopXhr(): JQuery.jqXHR {
-  const chainable = {
-    done: vi.fn().mockReturnThis(),
-    fail: vi.fn().mockReturnThis(),
-    always: vi.fn().mockReturnThis(),
-    abort: vi.fn(),
-  };
-  return chainable as unknown as JQuery.jqXHR;
-}
-
 function getTab(tabId: TabId): HTMLButtonElement {
   return document.getElementById(tabId) as HTMLButtonElement;
 }
@@ -118,9 +109,9 @@ describe("metrics-dashboard tablist a11y", () => {
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
-    fetchSummarySpy.mockImplementation(() => makeNoopXhr());
-    fetchTopEventsSpy.mockImplementation(() => makeNoopXhr());
-    fetchTimeseriesSpy.mockImplementation(() => makeNoopXhr());
+    fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
 
     vi.useFakeTimers();
     initMetricsDashboard();
@@ -234,5 +225,68 @@ describe("metrics-dashboard tablist a11y", () => {
       window: "day",
       resolution: "hour",
     });
+  });
+
+  it("rapidly changing the per-panel select aborts the previous in-flight timeseries request", () => {
+    const selectElement = document.getElementById(
+      "MetricsTimeseriesEventApi",
+    ) as HTMLSelectElement;
+    const firstOption = document.createElement("option");
+    firstOption.value = "utub_opened";
+    firstOption.textContent = "utub_opened";
+    selectElement.appendChild(firstOption);
+    const secondOption = document.createElement("option");
+    secondOption.value = "url_added";
+    secondOption.textContent = "url_added";
+    selectElement.appendChild(secondOption);
+
+    const firstXhr = createMockJqXHRChainable();
+    const secondXhr = createMockJqXHRChainable();
+    fetchTimeseriesSpy
+      .mockImplementationOnce(() => firstXhr)
+      .mockImplementationOnce(() => secondXhr);
+
+    selectElement.value = "utub_opened";
+    $("#MetricsTimeseriesEventApi").trigger(
+      "change.metricsDashboardTimeseries",
+    );
+    expect(firstXhr.abort).not.toHaveBeenCalled();
+
+    selectElement.value = "url_added";
+    $("#MetricsTimeseriesEventApi").trigger(
+      "change.metricsDashboardTimeseries",
+    );
+
+    expect(firstXhr.abort).toHaveBeenCalledTimes(1);
+    expect(secondXhr.abort).not.toHaveBeenCalled();
+  });
+
+  it("handleTimeseriesSelectChange .fail with non-0, non-429 status shows the error banner", () => {
+    const selectElement = document.getElementById(
+      "MetricsTimeseriesEventApi",
+    ) as HTMLSelectElement;
+    const option = document.createElement("option");
+    option.value = "utub_opened";
+    option.textContent = "utub_opened";
+    selectElement.appendChild(option);
+    selectElement.value = "utub_opened";
+
+    const failingXhr = createMockJqXHRChainable({
+      fail: (cb: unknown) => {
+        const failureXhr = {
+          readyState: 4,
+          status: 500,
+        } as unknown as JQuery.jqXHR;
+        (cb as (xhr: JQuery.jqXHR) => void)(failureXhr);
+      },
+    });
+    fetchTimeseriesSpy.mockImplementation(() => failingXhr);
+
+    $("#MetricsTimeseriesEventApi").trigger(
+      "change.metricsDashboardTimeseries",
+    );
+
+    const banner = document.getElementById("MetricsErrorBanner") as HTMLElement;
+    expect(banner.classList.contains("hidden")).toBe(false);
   });
 });
