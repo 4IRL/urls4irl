@@ -515,6 +515,26 @@
               "type": "string"
             },
             "description": "date_trunc resolution: hour (default) or day."
+          },
+          {
+            "name": "endpoint",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "description": "Optional Flask endpoint name (e.g. utubs.get_single_utub). When supplied alongside event_name=api_hit, filters the series to only rows matching this endpoint \u2014 used by the admin dashboard's API tab to chart per-endpoint timeseries."
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 10,
+              "type": "string"
+            },
+            "description": "Optional HTTP method (GET, POST, etc.). When supplied alongside event_name=api_hit, narrows the series to one (endpoint, method) pair so two methods on the same endpoint stay separate."
           }
         ],
         "responses": {
@@ -2414,6 +2434,11 @@
           },
           "total_count": {
             "description": "Sum of counts across all buckets in the window",
+            "type": "integer"
+          },
+          "previous_count": {
+            "default": 0,
+            "description": "Sum of counts for the same event across the immediately-preceding window of equal length. Zero when the event did not appear in the previous window. Used by the admin dashboard to render per-event delta-vs-prev arrows.",
             "type": "integer"
           }
         },

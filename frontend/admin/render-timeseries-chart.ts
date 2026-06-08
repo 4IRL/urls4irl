@@ -1,7 +1,9 @@
 /**
- * Render a timeseries response into a bar-chart SVG. Clears all children,
- * computes the y-domain from the bucket counts, places one `<rect>` per
- * bucket, and lays out a y-axis with `<line>`/`<text>` tick labels.
+ * Render a timeseries response into an area-under-line SVG. Clears all
+ * children, computes the y-domain from the bucket counts, lays out a y-axis
+ * with `<line>`/`<text>` tick labels, then draws a filled `<path>` for the
+ * area under the line and a `<polyline>` for the line itself. Adds three
+ * x-axis labels (first / middle / last bucket).
  *
  * Wires `<title>` and `<desc>` content for screen readers; the SVG itself
  * already references those nodes via `aria-labelledby`/`aria-describedby` in
@@ -19,7 +21,7 @@ import type { Schema } from "../types/api-helpers.d.ts";
 
 import { APP_CONFIG } from "../lib/config.js";
 import { buildAxisTicks } from "../lib/charts/axis.js";
-import { buildBarAttrs } from "../lib/charts/bar.js";
+import { buildPolylinePoints } from "../lib/charts/line.js";
 import { linearScale, niceTicks } from "../lib/charts/scale.js";
 
 type TimeseriesResponseSchema = Schema<"TimeseriesResponseSchema">;
@@ -27,17 +29,16 @@ type TimeseriesResponseSchema = Schema<"TimeseriesResponseSchema">;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 // Matches the panel template's `viewBox="0 0 800 240"`. The drawing area is
-// inset for the y-axis tick labels on the left.
+// inset for the y-axis tick labels on the left and the x-axis tick labels at
+// the bottom.
 const VIEWBOX_WIDTH = 800;
 const VIEWBOX_HEIGHT = 240;
 const AXIS_LEFT_PADDING = 40;
-const AXIS_BOTTOM_PADDING = 30;
+const AXIS_BOTTOM_PADDING = 24;
 const PLOT_WIDTH = VIEWBOX_WIDTH - AXIS_LEFT_PADDING;
 const PLOT_HEIGHT = VIEWBOX_HEIGHT - AXIS_BOTTOM_PADDING;
 const Y_AXIS_TICK_COUNT = 5;
 
-// Centered empty-state coordinates within the viewBox. Chosen for visual
-// parity with the panel's text-block placement.
 const EMPTY_STATE_TEXT_X = 400;
 const EMPTY_STATE_TEXT_Y = 120;
 
@@ -77,6 +78,19 @@ function appendEmptyState({ svg }: { svg: SVGSVGElement }): void {
   svg.appendChild(emptyText);
 }
 
+function formatBucketLabel(bucketIso: string): string {
+  const parsed = new Date(bucketIso);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    timeZone: "UTC",
+  }).format(parsed);
+}
+
 export function renderTimeseriesChart({
   svg,
   response,
@@ -100,9 +114,9 @@ export function renderTimeseriesChart({
   const maxCount = Math.max(...bucketCounts);
 
   // y-domain: zero up to the nearest "nice" tick at or above the max. Using
-  // `niceTicks` here keeps the top axis label aligned to a round number. When
-  // the entire series is zero, fall back to a domain of [0, 1] so the bars
-  // render as a flat zero baseline rather than collapsing to a divide-by-zero.
+  // `niceTicks` keeps the top axis label aligned to a round number. When the
+  // entire series is zero, fall back to a domain of [0, 1] so the area still
+  // renders against a flat baseline rather than dividing by zero.
   const yDomainMax = maxCount === 0 ? 1 : maxCount;
   const scaleY = linearScale({
     domain: [0, yDomainMax],
@@ -122,10 +136,12 @@ export function renderTimeseriesChart({
   appendTitleAndDesc({
     svg,
     titleText: response.event_name,
-    descText: `${response.event_name}: ${bucketCounts.reduce((sum, count) => sum + count, 0).toLocaleString()} total across ${response.buckets.length} buckets`,
+    descText: `${response.event_name}: ${bucketCounts
+      .reduce((sum, count) => sum + count, 0)
+      .toLocaleString()} total across ${response.buckets.length} buckets`,
   });
 
-  // y-axis tick lines + labels. Drawn before bars so bars layer on top.
+  // y-axis tick lines + labels. Drawn before the area/line so they layer beneath.
   for (const tick of axisTicks) {
     const axisLine = document.createElementNS(SVG_NAMESPACE, "line");
     axisLine.setAttribute("class", "MetricsAxisLine");
@@ -145,27 +161,81 @@ export function renderTimeseriesChart({
     svg.appendChild(axisLabel);
   }
 
-  // Bars: one `<rect>` per bucket, sized via the shared `buildBarAttrs`
-  // primitive against the plot area's width/height.
-  const totalBuckets = response.buckets.length;
-  for (let index = 0; index < totalBuckets; index += 1) {
-    const bucket = response.buckets[index];
-    const barAttrs = buildBarAttrs({
-      value: bucket.count,
-      index,
-      total: totalBuckets,
-      width: PLOT_WIDTH,
-      height: PLOT_HEIGHT,
-      scaleY,
+  // Filled area beneath the line. Built from the same point sequence as the
+  // polyline but closed back to the baseline on either end. `buildPolylinePoints`
+  // emits "x,y" pairs separated by spaces — we reuse it then assemble the closed
+  // path manually so the line + area share a single source of truth for x/y.
+  const pointsString = buildPolylinePoints({
+    values: bucketCounts,
+    width: PLOT_WIDTH,
+    height: PLOT_HEIGHT,
+    scaleY,
+  });
+  if (pointsString !== "") {
+    const offsetPoints = pointsString.split(" ").map((pair) => {
+      const [rawX, rawY] = pair.split(",");
+      return `${Number(rawX) + AXIS_LEFT_PADDING},${rawY}`;
     });
-    const barRect = document.createElementNS(SVG_NAMESPACE, "rect");
-    barRect.setAttribute("class", "MetricsTimeseriesBar");
-    barRect.setAttribute("x", String(barAttrs.x + AXIS_LEFT_PADDING));
-    barRect.setAttribute("y", String(barAttrs.y));
-    barRect.setAttribute("width", String(barAttrs.width));
-    barRect.setAttribute("height", String(barAttrs.height));
-    barRect.setAttribute("data-bucket", bucket.bucket);
-    barRect.setAttribute("data-count", String(bucket.count));
-    svg.appendChild(barRect);
+    const firstX = offsetPoints[0]!.split(",")[0]!;
+    const lastX = offsetPoints[offsetPoints.length - 1]!.split(",")[0]!;
+    const baselineY = String(PLOT_HEIGHT);
+    const areaPath = document.createElementNS(SVG_NAMESPACE, "path");
+    areaPath.setAttribute("class", "MetricsTimeseriesArea");
+    areaPath.setAttribute(
+      "d",
+      `M ${firstX},${baselineY} L ${offsetPoints.join(" L ")} L ${lastX},${baselineY} Z`,
+    );
+    svg.appendChild(areaPath);
+
+    const linePoly = document.createElementNS(SVG_NAMESPACE, "polyline");
+    linePoly.setAttribute("class", "MetricsTimeseriesLine");
+    linePoly.setAttribute("points", offsetPoints.join(" "));
+    svg.appendChild(linePoly);
+
+    for (
+      let pointIndex = 0;
+      pointIndex < offsetPoints.length;
+      pointIndex += 1
+    ) {
+      const [pointX, pointY] = offsetPoints[pointIndex]!.split(",");
+      const dot = document.createElementNS(SVG_NAMESPACE, "circle");
+      dot.setAttribute("class", "MetricsTimeseriesPoint");
+      dot.setAttribute("cx", pointX!);
+      dot.setAttribute("cy", pointY!);
+      dot.setAttribute("r", "2.5");
+      dot.setAttribute("data-bucket", response.buckets[pointIndex]!.bucket);
+      dot.setAttribute(
+        "data-count",
+        String(response.buckets[pointIndex]!.count),
+      );
+      svg.appendChild(dot);
+    }
+  }
+
+  // x-axis labels: first, middle, last bucket. Mirrors the mock's day-name
+  // labels under a weekly chart; for hourly resolution falls back to the
+  // formatted timestamp.
+  const xLabelIndices: number[] =
+    response.buckets.length === 1
+      ? [0]
+      : [
+          0,
+          Math.floor((response.buckets.length - 1) / 2),
+          response.buckets.length - 1,
+        ];
+  const xLabelY = VIEWBOX_HEIGHT - 6;
+  const stepX =
+    response.buckets.length > 1
+      ? PLOT_WIDTH / (response.buckets.length - 1)
+      : 0;
+  for (const index of xLabelIndices) {
+    const xPosition = AXIS_LEFT_PADDING + index * stepX;
+    const label = document.createElementNS(SVG_NAMESPACE, "text");
+    label.setAttribute("class", "MetricsAxisLabel MetricsAxisLabelX");
+    label.setAttribute("x", String(xPosition));
+    label.setAttribute("y", String(xLabelY));
+    label.setAttribute("text-anchor", "middle");
+    label.textContent = formatBucketLabel(response.buckets[index]!.bucket);
+    svg.appendChild(label);
   }
 }

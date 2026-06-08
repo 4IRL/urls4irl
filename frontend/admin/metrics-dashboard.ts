@@ -74,7 +74,6 @@ interface InFlightRequests {
 }
 
 interface CategoryPanelIds {
-  summary: string;
   tbody: string;
   chart: string;
   select: string;
@@ -94,6 +93,7 @@ const DASHBOARD_ROOT_ID = "MetricsDashboard";
 const REFRESH_BUTTON_ID = "MetricsRefreshNowBtn";
 const ERROR_BANNER_ID = "MetricsErrorBanner";
 const LAST_FLUSH_BADGE_ID = "MetricsLastFlush";
+const LAST_FLUSH_TEXT_ID = "MetricsLastFlushText";
 const LAST_FLUSH_ANNOUNCEMENT_ID = "MetricsLastFlushAnnouncement";
 const WINDOW_BUTTON_CLASS = "MetricsWindowButton";
 const TABLIST_ID = "MetricsTablist";
@@ -101,7 +101,6 @@ const TAB_ROLE_SELECTOR = '[role="tab"]';
 
 const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
   api: {
-    summary: "MetricsPanelApi-summary",
     tbody: "MetricsTopTableApi",
     chart: "MetricsChartApi",
     select: "MetricsTimeseriesEventApi",
@@ -109,7 +108,6 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     panel: "MetricsPanelApi",
   },
   ui: {
-    summary: "MetricsPanelUi-summary",
     tbody: "MetricsTopTableUi",
     chart: "MetricsChartUi",
     select: "MetricsTimeseriesEventUi",
@@ -117,7 +115,6 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     panel: "MetricsPanelUi",
   },
   domain: {
-    summary: "MetricsPanelDomain-summary",
     tbody: "MetricsTopTableDomain",
     chart: "MetricsChartDomain",
     select: "MetricsTimeseriesEventDomain",
@@ -255,6 +252,19 @@ function renderTimeseriesSelect({
     const optionElement = document.createElement("option");
     optionElement.value = event.event_name;
     optionElement.textContent = event.event_name;
+    // For the API tab, `event_name` is the "<METHOD> <url_pattern>" string
+    // built by query_service for display — the real DB event_name is always
+    // "api_hit", and the (endpoint, method) pair lives in flat columns. We
+    // stash all three on the option so the timeseries handler can issue a
+    // properly-filtered query without re-parsing the displayed label.
+    if (category === "api") {
+      const [methodPart] = event.event_name.split(" ", 1);
+      optionElement.dataset.eventName = "api_hit";
+      optionElement.dataset.endpoint = event.description;
+      optionElement.dataset.method = methodPart;
+    } else {
+      optionElement.dataset.eventName = event.event_name;
+    }
     selectElement.appendChild(optionElement);
   }
 
@@ -327,10 +337,16 @@ function renderActivePanelTimeseries({
 
 function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
   const selectElement = event.currentTarget as HTMLSelectElement;
-  const eventName = selectElement.value;
-  if (eventName === "") {
+  if (selectElement.value === "") {
     return;
   }
+  const selectedOption = selectElement.options[selectElement.selectedIndex];
+  // `data-event-name` is the actual DB event name (always "api_hit" for the
+  // API tab, the real event for UI/Domain). When unset (old DOM), fall back
+  // to the option's text value so tests stubbing minimal options still work.
+  const eventName = selectedOption?.dataset.eventName ?? selectElement.value;
+  const apiEndpoint = selectedOption?.dataset.endpoint;
+  const apiMethod = selectedOption?.dataset.method;
   // The select's `id` is `MetricsTimeseriesEvent<Category>` — strip the prefix
   // to recover the category. Falls back to the active category if the prefix
   // does not match (defensive — should not happen with the static IDs above).
@@ -348,6 +364,8 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
     eventName,
     window: _currentWindow,
     resolution: "hour",
+    endpoint: apiEndpoint,
+    method: apiMethod,
   });
   _inFlight.ts = timeseriesRequest;
   timeseriesRequest
@@ -391,13 +409,10 @@ function fetchAll(): void {
   summaryRequest
     .done((response) => {
       setBannerVisible({ visible: false });
-      for (const category of CATEGORIES) {
-        const summaryRoot = getElementByIdOrNull<HTMLElement>(
-          CATEGORY_PANEL_IDS[category].summary,
-        );
-        if (summaryRoot !== null) {
-          renderSummary({ root: summaryRoot, response, category });
-        }
+      const summaryRoot =
+        getElementByIdOrNull<HTMLElement>("MetricsSummaryGrid");
+      if (summaryRoot !== null) {
+        renderSummary({ root: summaryRoot, response });
       }
       _lastFlushAtMs =
         response.last_flush_at !== null
@@ -503,12 +518,13 @@ function stopPolling(): void {
  */
 function renderLastFlushBadge(): void {
   const badge = getElementByIdOrNull<HTMLElement>(LAST_FLUSH_BADGE_ID);
-  if (badge === null) {
+  const textNode = getElementByIdOrNull<HTMLElement>(LAST_FLUSH_TEXT_ID);
+  if (badge === null || textNode === null) {
     return;
   }
 
   if (_lastFlushAtMs === null) {
-    badge.textContent = "";
+    textNode.textContent = "";
     badge.classList.remove(BADGE_STALE_CLASS);
     return;
   }
@@ -539,7 +555,7 @@ function renderLastFlushBadge(): void {
     bucket = "stale";
   }
 
-  badge.textContent = text;
+  textNode.textContent = text;
   if (bucket === "stale") {
     badge.classList.add(BADGE_STALE_CLASS);
   } else {

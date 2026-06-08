@@ -197,6 +197,25 @@ class TimeseriesQuerySchema(BaseModel):
         default="hour",
         description="date_trunc resolution: hour (default) or day.",
     )
+    endpoint: str | None = Field(
+        default=None,
+        description=(
+            "Optional Flask endpoint name (e.g. utubs.get_single_utub). When "
+            "supplied alongside event_name=api_hit, filters the series to only "
+            "rows matching this endpoint — used by the admin dashboard's API "
+            "tab to chart per-endpoint timeseries."
+        ),
+        max_length=255,
+    )
+    method: str | None = Field(
+        default=None,
+        description=(
+            "Optional HTTP method (GET, POST, etc.). When supplied alongside "
+            "event_name=api_hit, narrows the series to one (endpoint, method) "
+            "pair so two methods on the same endpoint stay separate."
+        ),
+        max_length=10,
+    )
 
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:

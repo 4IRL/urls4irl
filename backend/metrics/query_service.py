@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Literal
 
+from flask import current_app
 from sqlalchemy import func
 
 from backend import db
@@ -16,10 +17,134 @@ from backend.schemas.metrics import (
 )
 
 
+def _endpoint_to_url_pattern() -> dict[str, str]:
+    """Build a {flask_endpoint_name: url_rule_pattern} map from the active app.
+
+    Used by `top_events()` when category=api to convert stored endpoint names
+    (e.g. "utubs.create_url") into the user-facing URL patterns the dashboard
+    renders ("POST /utubs/<utub_id>/urls"). Falls back to the endpoint name
+    itself when the endpoint is no longer registered (e.g. an old request
+    against a route that has since been removed).
+    """
+    return {rule.endpoint: rule.rule for rule in current_app.url_map.iter_rules()}
+
+
+def _per_endpoint_counts(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+) -> dict[tuple[str, str], int]:
+    """Return a {(endpoint, method): count} map for api_hit rows in the window.
+
+    api_hit is the only event that carries per-request dimensions in flat
+    columns (endpoint/method/status_code, promoted at flush time). This
+    helper groups by those flat columns so the API tab can drill into per-
+    route counts. Rows with NULL endpoint or method are excluded — those
+    represent ingest paths the dashboard cannot meaningfully attribute.
+    """
+    total_count = func.sum(Anonymous_Metrics.count).label("total_count")
+    rows = (
+        db.session.query(
+            Anonymous_Metrics.endpoint,
+            Anonymous_Metrics.method,
+            total_count,
+        )
+        .filter(
+            Anonymous_Metrics.event_name == EventName.API_HIT.value,
+            Anonymous_Metrics.bucket_start >= window_start,
+            Anonymous_Metrics.bucket_start < window_end,
+            Anonymous_Metrics.endpoint.isnot(None),
+            Anonymous_Metrics.method.isnot(None),
+        )
+        .group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
+        .all()
+    )
+    return {(row.endpoint, row.method): int(row.total_count) for row in rows}
+
+
+def _per_event_counts(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    category: EventCategory | None,
+) -> dict[str, int]:
+    """Return a {event_name: count} map summed across a half-open window."""
+    total_count = func.sum(Anonymous_Metrics.count).label("total_count")
+    query = (
+        db.session.query(Anonymous_Metrics.event_name, total_count)
+        .join(Event_Registry, Event_Registry.name == Anonymous_Metrics.event_name)
+        .filter(
+            Anonymous_Metrics.bucket_start >= window_start,
+            Anonymous_Metrics.bucket_start < window_end,
+        )
+    )
+    if category is not None:
+        query = query.filter(Event_Registry.category == category)
+    rows = query.group_by(Anonymous_Metrics.event_name).all()
+    return {row.event_name: int(row.total_count) for row in rows}
+
+
+def _top_endpoints_for_api_hit(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    previous_window_start: datetime,
+    previous_window_end: datetime,
+    limit: int,
+) -> list[TopEventRow]:
+    """Return the top api_hit rows grouped by (endpoint, method).
+
+    Used when the API tab is the active category — api_hit is a single
+    event that fans out across every HTTP route, so grouping by event_name
+    collapses everything into one row. Grouping by the flat endpoint/method
+    columns instead surfaces per-route hits like "POST /utubs/<utub_id>/urls".
+    """
+    total_count = func.sum(Anonymous_Metrics.count).label("total_count")
+    rows = (
+        db.session.query(
+            Anonymous_Metrics.endpoint,
+            Anonymous_Metrics.method,
+            total_count,
+        )
+        .filter(
+            Anonymous_Metrics.event_name == EventName.API_HIT.value,
+            Anonymous_Metrics.bucket_start >= window_start,
+            Anonymous_Metrics.bucket_start < window_end,
+            Anonymous_Metrics.endpoint.isnot(None),
+            Anonymous_Metrics.method.isnot(None),
+        )
+        .group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
+        .order_by(
+            func.sum(Anonymous_Metrics.count).desc(),
+            Anonymous_Metrics.endpoint.asc(),
+            Anonymous_Metrics.method.asc(),
+        )
+        .limit(limit)
+        .all()
+    )
+    previous_counts = _per_endpoint_counts(
+        window_start=previous_window_start,
+        window_end=previous_window_end,
+    )
+    endpoint_to_url = _endpoint_to_url_pattern()
+    return [
+        TopEventRow(
+            event_name=f"{row.method} {endpoint_to_url.get(row.endpoint, row.endpoint)}",
+            category=EventCategory.API.value,
+            description=row.endpoint,
+            total_count=int(row.total_count),
+            previous_count=previous_counts.get((row.endpoint, row.method), 0),
+        )
+        for row in rows
+    ]
+
+
 def top_events(
     *,
     window_start: datetime,
     window_end: datetime,
+    previous_window_start: datetime,
+    previous_window_end: datetime,
     category: EventCategory | None,
     limit: int,
 ) -> list[TopEventRow]:
@@ -29,7 +154,27 @@ def top_events(
     convention used throughout the metrics pipeline. When `category` is
     provided, only rows in that EventCategory are considered. Rows are
     ordered by total_count descending and capped at `limit`.
+
+    `previous_window_start`/`previous_window_end` define the equal-length
+    interval immediately preceding `(start, end)` (callers compute via
+    `previous_window()`). Each returned row carries `previous_count` for the
+    same event in that interval; missing events get 0 so the dashboard's
+    Δ-vs-prev column has a number even for newly-seen events.
+
+    When `category == EventCategory.API`, rows are aggregated by the flat
+    `(endpoint, method)` columns on api_hit rather than by event_name — api_hit
+    is a single auto-instrumented event that spans every HTTP route, so a
+    per-event-name aggregation collapses every endpoint into a single row.
     """
+    if category is EventCategory.API:
+        return _top_endpoints_for_api_hit(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+            limit=limit,
+        )
+
     total_count = func.sum(Anonymous_Metrics.count).label("total_count")
     query = (
         db.session.query(
@@ -61,12 +206,19 @@ def top_events(
         .all()
     )
 
+    previous_counts = _per_event_counts(
+        window_start=previous_window_start,
+        window_end=previous_window_end,
+        category=category,
+    )
+
     return [
         TopEventRow(
             event_name=row.event_name,
             category=row.category.value,
             description=row.description,
             total_count=int(row.total_count),
+            previous_count=previous_counts.get(row.event_name, 0),
         )
         for row in rows
     ]
@@ -81,6 +233,8 @@ def timeseries(
     window_start: datetime,
     window_end: datetime,
     resolution: Literal["hour", "day"],
+    endpoint: str | None = None,
+    method: str | None = None,
 ) -> list[TimeseriesBucketSchema]:
     """Return per-bucket counts for `event_name` inside the half-open window.
 
@@ -91,22 +245,27 @@ def timeseries(
     in chronological order; the underlying rows are already hour-aligned
     at write time, so passing "hour" returns the raw buckets and "day"
     aggregates them.
+
+    Optional `endpoint`/`method` narrow the series to a single api_hit
+    (endpoint, method) pair — used by the admin dashboard's API tab to
+    chart per-endpoint timeseries (event_name=api_hit otherwise collapses
+    every API route into one aggregate series).
     """
     bucket = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label("bucket")
-    rows = (
-        db.session.query(
-            bucket,
-            func.sum(Anonymous_Metrics.count).label("count"),
-        )
-        .filter(
-            Anonymous_Metrics.event_name == event_name.value,
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-        )
-        .group_by(bucket)
-        .order_by(bucket)
-        .all()
+    query = db.session.query(
+        bucket,
+        func.sum(Anonymous_Metrics.count).label("count"),
+    ).filter(
+        Anonymous_Metrics.event_name == event_name.value,
+        Anonymous_Metrics.bucket_start >= window_start,
+        Anonymous_Metrics.bucket_start < window_end,
     )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Metrics.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Metrics.method == method)
+
+    rows = query.group_by(bucket).order_by(bucket).all()
 
     return [
         TimeseriesBucketSchema(bucket=row.bucket, count=int(row.count)) for row in rows

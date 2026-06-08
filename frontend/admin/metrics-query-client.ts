@@ -55,6 +55,10 @@ export function fetchTopEvents({
 /**
  * Fetch the per-bucket timeseries for a single event over a window.
  *
+ * Optional `endpoint` + `method` narrow the series to one api_hit
+ * (endpoint, method) pair — used by the admin dashboard's API tab to
+ * chart per-endpoint timeseries.
+ *
  * Example: `fetchTimeseries({ eventName: "utub_opened", window: "week", resolution: "day" })`
  * issues `GET /api/metrics/query/timeseries?event_name=utub_opened&window=week&resolution=day`.
  */
@@ -62,10 +66,14 @@ export function fetchTimeseries({
   eventName,
   window,
   resolution,
+  endpoint,
+  method,
 }: {
   eventName: string;
   window: string;
   resolution?: TimeseriesResolution;
+  endpoint?: string;
+  method?: string;
 }): JQuery.jqXHR<SuccessResponse<"queryTimeseries">> {
   const params = new URLSearchParams({
     event_name: eventName,
@@ -73,6 +81,12 @@ export function fetchTimeseries({
   });
   if (resolution !== undefined) {
     params.set("resolution", resolution);
+  }
+  if (endpoint !== undefined) {
+    params.set("endpoint", endpoint);
+  }
+  if (method !== undefined) {
+    params.set("method", method);
   }
   const url = `${TIMESERIES_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<

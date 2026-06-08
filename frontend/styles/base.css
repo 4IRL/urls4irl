@@ -126,6 +126,26 @@ a {
     max-height: 100%;
 }
 
+#adminMetricsLink {
+    white-space: nowrap;
+    color: var(--accessLinkColor);
+    text-decoration: none;
+    padding: 4px 10px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font-style: normal;
+}
+
+#adminMetricsLink.active,
+#adminMetricsLink[aria-current="page"] {
+    border-color: var(--splashGreen);
+    color: var(--splashGreen);
+}
+
+#adminMetricsLink:hover {
+    background-color: var(--navbarBackgroundHover);
+}
+
 
 #iconContainer {
     height: inherit;

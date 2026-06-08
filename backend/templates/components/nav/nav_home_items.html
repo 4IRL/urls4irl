@@ -40,7 +40,11 @@
         <b>Tags</b>
     </button>
     {% if current_user.is_authenticated and current_user.role == User_Role.ADMIN %}
-    <a href="/admin/metrics" id="adminMetricsLink" class="btn btn-link" aria-label="{{ CONFIG.strings.NAV_ADMIN_METRICS_ARIA }}">{{ CONFIG.strings.NAV_ADMIN_METRICS_LABEL }}</a>
+    <li class="nav-item home" id="adminMetrics">
+        <div class="nav-bar-inner-item home">
+            <a href="/admin/metrics" id="adminMetricsLink"{% if is_admin_metrics %} class="active" aria-current="page"{% endif %} aria-label="{{ CONFIG.strings.NAV_ADMIN_METRICS_ARIA }}">{{ CONFIG.strings.NAV_ADMIN_METRICS_LABEL }}</a>
+        </div>
+    </li>
     {% endif %}
     {% include 'components/nav/logout_btn.html' %}
     {% else %}

@@ -71,16 +71,14 @@ const DASHBOARD_HTML = `
     <button class="MetricsWindowButton" data-window="week" aria-pressed="false"></button>
     <button class="MetricsWindowButton" data-window="month" aria-pressed="false"></button>
     <button class="MetricsWindowButton" data-window="year" aria-pressed="false"></button>
+    <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi">
-      <div id="MetricsPanelApi-summary"></div>
       <table id="MetricsTopTableApi"><tbody></tbody></table>
     </section>
     <section id="MetricsPanelUi">
-      <div id="MetricsPanelUi-summary"></div>
       <table id="MetricsTopTableUi"><tbody></tbody></table>
     </section>
     <section id="MetricsPanelDomain">
-      <div id="MetricsPanelDomain-summary"></div>
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
     </section>
     <div id="MetricsErrorBanner" class="hidden"></div>

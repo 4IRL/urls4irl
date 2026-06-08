@@ -30,50 +30,88 @@ describe("renderSummary", () => {
     root.remove();
   });
 
-  it("renders the current count with thousands separators and percent change vs previous", () => {
+  it("renders four summary cards (Total + API + UI + Domain) in fixed order", () => {
+    const response = buildSummaryResponse([
+      { category: "api", current: 100, previous: 50 },
+      { category: "ui", current: 200, previous: 150 },
+      { category: "domain", current: 30, previous: 30 },
+    ]);
+    renderSummary({ root, response });
+
+    const cards = root.querySelectorAll(".summary-card");
+    expect(cards.length).toBe(4);
+    const labels = Array.from(cards).map(
+      (card) => card.querySelector(".label")?.textContent,
+    );
+    expect(labels).toEqual([
+      "Total Events",
+      "API hits",
+      "UI events",
+      "Domain actions",
+    ]);
+  });
+
+  it("computes the Total card as the sum of all by_category.current", () => {
+    const response = buildSummaryResponse([
+      { category: "api", current: 100, previous: 50 },
+      { category: "ui", current: 200, previous: 150 },
+      { category: "domain", current: 30, previous: 30 },
+    ]);
+    renderSummary({ root, response });
+
+    const totalCard = root.querySelector(".summary-card");
+    expect(totalCard?.querySelector(".value")?.textContent).toBe(
+      (330).toLocaleString(),
+    );
+  });
+
+  it("renders an up-arrow delta with the absolute percent and ' vs prev' suffix", () => {
     const response = buildSummaryResponse([
       { category: "ui", current: 1500, previous: 1000 },
     ]);
-    renderSummary({ root, response, category: "ui" });
+    renderSummary({ root, response });
 
-    const countElement = root.querySelector(".MetricsSummaryCount");
-    const changeElement = root.querySelector(".MetricsSummaryChange");
-    expect(countElement?.textContent).toBe((1500).toLocaleString());
-    expect(changeElement?.textContent).toBe("+50.0%");
+    const uiCard = root.querySelectorAll(".summary-card")[2];
+    const delta = uiCard.querySelector(".delta");
+    expect(delta?.textContent).toBe("▲ 50.0% vs prev");
+    expect(delta?.classList.contains("up")).toBe(true);
   });
 
-  it("renders a negative percent change with a leading minus", () => {
+  it("renders a down-arrow delta and the 'down' class for a decrease", () => {
     const response = buildSummaryResponse([
       { category: "api", current: 80, previous: 100 },
     ]);
-    renderSummary({ root, response, category: "api" });
+    renderSummary({ root, response });
 
-    const changeElement = root.querySelector(".MetricsSummaryChange");
-    expect(changeElement?.textContent).toBe("-20.0%");
+    const apiCard = root.querySelectorAll(".summary-card")[1];
+    const delta = apiCard.querySelector(".delta");
+    expect(delta?.textContent).toBe("▼ 20.0% vs prev");
+    expect(delta?.classList.contains("down")).toBe(true);
   });
 
-  it("falls back to a placeholder when previous is zero (no divide-by-zero)", () => {
+  it("falls back to the unavailable placeholder when previous is zero", () => {
     const response = buildSummaryResponse([
       { category: "domain", current: 42, previous: 0 },
     ]);
-    renderSummary({ root, response, category: "domain" });
+    renderSummary({ root, response });
 
-    const countElement = root.querySelector(".MetricsSummaryCount");
-    const changeElement = root.querySelector(".MetricsSummaryChange");
-    expect(countElement?.textContent).toBe("42");
-    expect(changeElement?.textContent).toBe("—");
+    const domainCard = root.querySelectorAll(".summary-card")[3];
+    const value = domainCard.querySelector(".value");
+    const delta = domainCard.querySelector(".delta");
+    expect(value?.textContent).toBe("42");
+    expect(delta?.textContent).toBe("— vs prev");
+    expect(delta?.classList.contains("none")).toBe(true);
   });
 
   it("treats a missing category row as zero current and previous", () => {
     const response = buildSummaryResponse([
       { category: "ui", current: 5, previous: 1 },
     ]);
-    renderSummary({ root, response, category: "domain" });
+    renderSummary({ root, response });
 
-    const countElement = root.querySelector(".MetricsSummaryCount");
-    const changeElement = root.querySelector(".MetricsSummaryChange");
-    expect(countElement?.textContent).toBe("0");
-    expect(changeElement?.textContent).toBe("—");
+    const apiCard = root.querySelectorAll(".summary-card")[1];
+    expect(apiCard.querySelector(".value")?.textContent).toBe("0");
+    expect(apiCard.querySelector(".delta")?.textContent).toBe("— vs prev");
   });
 
   it("clears prior content before rendering (no append on re-render)", () => {
@@ -84,11 +122,12 @@ describe("renderSummary", () => {
       { category: "ui", current: 200, previous: 100 },
     ]);
 
-    renderSummary({ root, response: responseA, category: "ui" });
-    renderSummary({ root, response: responseB, category: "ui" });
+    renderSummary({ root, response: responseA });
+    renderSummary({ root, response: responseB });
 
-    expect(root.querySelectorAll(".MetricsSummaryCount").length).toBe(1);
-    expect(root.querySelector(".MetricsSummaryCount")?.textContent).toBe(
+    expect(root.querySelectorAll(".summary-card").length).toBe(4);
+    const uiCard = root.querySelectorAll(".summary-card")[2];
+    expect(uiCard.querySelector(".value")?.textContent).toBe(
       (200).toLocaleString(),
     );
   });

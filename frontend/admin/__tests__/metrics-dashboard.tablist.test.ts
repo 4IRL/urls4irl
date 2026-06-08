@@ -67,18 +67,16 @@ const DASHBOARD_HTML = `
       <button id="MetricsTabUi"     role="tab" aria-selected="false" aria-controls="MetricsPanelUi"     tabindex="-1" data-category="ui"></button>
       <button id="MetricsTabDomain" role="tab" aria-selected="false" aria-controls="MetricsPanelDomain" tabindex="-1" data-category="domain"></button>
     </div>
+    <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
-      <div id="MetricsPanelApi-summary"></div>
       <select id="MetricsTimeseriesEventApi"></select>
       <table id="MetricsTopTableApi"><tbody></tbody></table>
     </section>
     <section id="MetricsPanelUi" role="tabpanel" tabindex="0" hidden>
-      <div id="MetricsPanelUi-summary"></div>
       <select id="MetricsTimeseriesEventUi"></select>
       <table id="MetricsTopTableUi"><tbody></tbody></table>
     </section>
     <section id="MetricsPanelDomain" role="tabpanel" tabindex="0" hidden>
-      <div id="MetricsPanelDomain-summary"></div>
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
     </section>

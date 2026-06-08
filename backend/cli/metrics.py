@@ -10,7 +10,7 @@ from flask.cli import AppGroup, with_appcontext
 from pydantic import ValidationError
 
 from backend import db
-from backend.extensions.metrics.buckets import resolve_query_window
+from backend.extensions.metrics.buckets import previous_window, resolve_query_window
 from backend.extensions.metrics.dim_types_generator import (
     generate_dim_types_ts,
     generate_dim_values_ts,
@@ -203,9 +203,14 @@ def top_command(
     category_enum: EventCategory | None = (
         EventCategory(parsed.category) if parsed.category is not None else None
     )
+    previous_window_start, previous_window_end = previous_window(
+        window_start, window_end
+    )
     rows = query_service.top_events(
         window_start=window_start,
         window_end=window_end,
+        previous_window_start=previous_window_start,
+        previous_window_end=previous_window_end,
         category=category_enum,
         limit=parsed.limit,
     )

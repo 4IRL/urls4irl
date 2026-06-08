@@ -355,7 +355,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     CHART_UI = "#MetricsChartUi"
     CHART_DOMAIN = "#MetricsChartDomain"
 
-    # Per-section summary panel IDs
-    SUMMARY_API = "#MetricsPanelApi-summary"
-    SUMMARY_UI = "#MetricsPanelUi-summary"
-    SUMMARY_DOMAIN = "#MetricsPanelDomain-summary"
+    # Global summary section (single 4-card grid at top of page)
+    SUMMARY_SECTION = "#MetricsSummary"
+    SUMMARY_GRID = "#MetricsSummaryGrid"
+    SUMMARY_CARDS = "#MetricsSummaryGrid .summary-card"

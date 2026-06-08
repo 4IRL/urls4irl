@@ -55,13 +55,17 @@ import {
 } from "../metrics-dashboard.js";
 
 const BADGE_ID = "MetricsLastFlush";
+const BADGE_TEXT_ID = "MetricsLastFlushText";
 const ANNOUNCEMENT_ID = "MetricsLastFlushAnnouncement";
 const STALE_CLASS = "MetricsBadgeStale";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
     <header>
-      <span id="${BADGE_ID}" aria-live="off"></span>
+      <span id="${BADGE_ID}" class="flush-badge" aria-live="off">
+        <span class="dot" aria-hidden="true"></span>
+        <span id="${BADGE_TEXT_ID}"></span>
+      </span>
       <span id="${ANNOUNCEMENT_ID}" class="visually-hidden" aria-live="polite"></span>
       <button id="MetricsRefreshNowBtn" type="button"></button>
     </header>
@@ -74,18 +78,16 @@ const DASHBOARD_HTML = `
       <button id="MetricsTabUi"     role="tab" aria-selected="false" tabindex="-1" data-category="ui"></button>
       <button id="MetricsTabDomain" role="tab" aria-selected="false" tabindex="-1" data-category="domain"></button>
     </div>
+    <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
-      <div id="MetricsPanelApi-summary"></div>
       <select id="MetricsTimeseriesEventApi"></select>
       <table id="MetricsTopTableApi"><tbody></tbody></table>
     </section>
     <section id="MetricsPanelUi" role="tabpanel" tabindex="0" hidden>
-      <div id="MetricsPanelUi-summary"></div>
       <select id="MetricsTimeseriesEventUi"></select>
       <table id="MetricsTopTableUi"><tbody></tbody></table>
     </section>
     <section id="MetricsPanelDomain" role="tabpanel" tabindex="0" hidden>
-      <div id="MetricsPanelDomain-summary"></div>
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
     </section>
@@ -95,6 +97,10 @@ const DASHBOARD_HTML = `
 
 function getBadge(): HTMLElement {
   return document.getElementById(BADGE_ID) as HTMLElement;
+}
+
+function getBadgeText(): HTMLElement {
+  return document.getElementById(BADGE_TEXT_ID) as HTMLElement;
 }
 
 function getAnnouncement(): HTMLElement {
@@ -129,7 +135,7 @@ describe("metrics-dashboard last-flush badge", () => {
     _setLastFlushAtMsForTests(null);
     _renderLastFlushBadgeForTests();
 
-    expect(getBadge().textContent).toBe("");
+    expect(getBadgeText().textContent).toBe("");
     expect(getBadge().classList.contains(STALE_CLASS)).toBe(false);
   });
 
@@ -137,23 +143,23 @@ describe("metrics-dashboard last-flush badge", () => {
     _setLastFlushAtMsForTests(Date.now() - 2_000);
     _renderLastFlushBadgeForTests();
 
-    expect(getBadge().textContent).toBe("Last flush: just now");
-    expect(getAnnouncement().textContent).toBe("Last flush: just now");
+    expect(getBadgeText().textContent).toBe("Last flush just now");
+    expect(getAnnouncement().textContent).toBe("Last flush just now");
   });
 
-  it("crosses to 'N seconds ago' at 5s", () => {
+  it("crosses to 'Ns ago' at 5s", () => {
     _setLastFlushAtMsForTests(Date.now() - 6_000);
     _renderLastFlushBadgeForTests();
 
-    expect(getBadge().textContent).toBe("Last flush: 6 seconds ago");
+    expect(getBadgeText().textContent).toBe("Last flush 6s ago");
     expect(getBadge().classList.contains(STALE_CLASS)).toBe(false);
   });
 
-  it("crosses to 'N minutes ago' at 60s", () => {
+  it("crosses to 'Nm ago' at 60s", () => {
     _setLastFlushAtMsForTests(Date.now() - 125_000);
     _renderLastFlushBadgeForTests();
 
-    expect(getBadge().textContent).toBe("Last flush: 2 minutes ago");
+    expect(getBadgeText().textContent).toBe("Last flush 2m ago");
     expect(getBadge().classList.contains(STALE_CLASS)).toBe(false);
   });
 
@@ -161,7 +167,7 @@ describe("metrics-dashboard last-flush badge", () => {
     _setLastFlushAtMsForTests(Date.now() - 7_200_000);
     _renderLastFlushBadgeForTests();
 
-    expect(getBadge().textContent).toBe("Last flush: 2 hours ago (stale)");
+    expect(getBadgeText().textContent).toBe("Last flush 2h ago (stale)");
     expect(getBadge().classList.contains(STALE_CLASS)).toBe(true);
   });
 
@@ -182,7 +188,7 @@ describe("metrics-dashboard last-flush badge", () => {
 
     // First render: bucket transitions null → "seconds", announcement fires.
     _renderLastFlushBadgeForTests();
-    expect(getAnnouncement().textContent).toBe("Last flush: 10 seconds ago");
+    expect(getAnnouncement().textContent).toBe("Last flush 10s ago");
 
     // Clear the sink so re-writes are detectable.
     getAnnouncement().textContent = "";
@@ -195,7 +201,7 @@ describe("metrics-dashboard last-flush badge", () => {
 
     // The visible badge updated (11 → 15 seconds) but the announcement sink
     // was NOT written again — still empty from the manual clear above.
-    expect(getBadge().textContent).toBe("Last flush: 15 seconds ago");
+    expect(getBadgeText().textContent).toBe("Last flush 15s ago");
     expect(getAnnouncement().textContent).toBe("");
   });
 
@@ -204,12 +210,12 @@ describe("metrics-dashboard last-flush badge", () => {
 
     initMetricsDashboard();
     // The init call invokes renderLastFlushBadge immediately.
-    expect(getBadge().textContent).toBe("Last flush: just now");
+    expect(getBadgeText().textContent).toBe("Last flush just now");
 
     // Crossing the 5 s threshold flips the bucket; the next tick after that
-    // should reflect "N seconds ago".
+    // should reflect "Ns ago".
     vi.advanceTimersByTime(5_000);
-    expect(getBadge().textContent).toContain("seconds");
+    expect(getBadgeText().textContent).toContain("s ago");
   });
 
   it("stops the ticker on visibilitychange hidden and resumes on visible", () => {
@@ -223,11 +229,11 @@ describe("metrics-dashboard last-flush badge", () => {
     });
     document.dispatchEvent(new Event("visibilitychange"));
 
-    // Clear the badge to detect future writes.
-    getBadge().textContent = "";
+    // Clear the badge text to detect future writes.
+    getBadgeText().textContent = "";
     vi.advanceTimersByTime(5_000);
     // No tick should have fired while hidden.
-    expect(getBadge().textContent).toBe("");
+    expect(getBadgeText().textContent).toBe("");
 
     // Show the tab — ticker resumes and renders immediately.
     Object.defineProperty(document, "visibilityState", {
@@ -235,6 +241,6 @@ describe("metrics-dashboard last-flush badge", () => {
       configurable: true,
     });
     document.dispatchEvent(new Event("visibilitychange"));
-    expect(getBadge().textContent).not.toBe("");
+    expect(getBadgeText().textContent).not.toBe("");
   });
 });

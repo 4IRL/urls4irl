@@ -33,6 +33,15 @@ class TopEventRow(BaseSchema):
     total_count: int = Field(
         description="Sum of counts across all buckets in the window"
     )
+    previous_count: int = Field(
+        default=0,
+        description=(
+            "Sum of counts for the same event across the immediately-preceding "
+            "window of equal length. Zero when the event did not appear in the "
+            "previous window. Used by the admin dashboard to render per-event "
+            "delta-vs-prev arrows."
+        ),
+    )
 
 
 class TopEventsResponseSchema(BaseSchema):

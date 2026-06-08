@@ -7,6 +7,7 @@ from typing import Any, Generator
 import pytest
 from flask import Flask
 
+from backend.extensions.metrics.buckets import previous_window
 from backend.metrics.events import (
     EVENT_CATEGORY,
     EVENT_DESCRIPTIONS,
@@ -134,10 +135,13 @@ def test_top_events_aggregates_by_event_name(
         count=100,
     )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -145,9 +149,11 @@ def test_top_events_aggregates_by_event_name(
     assert len(rows) == 2
     assert rows[0].event_name == EventName.API_HIT.value
     assert rows[0].total_count == 100
+    assert rows[0].previous_count == 0
     assert rows[0].description == EVENT_DESCRIPTIONS[EventName.API_HIT]
     assert rows[1].event_name == EventName.UTUB_OPENED.value
     assert rows[1].total_count == 14
+    assert rows[1].previous_count == 0
     assert rows[1].description == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
 
 
@@ -175,10 +181,13 @@ def test_top_events_filters_by_category(
         count=100,
     )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=EventCategory.DOMAIN,
             limit=10,
         )
@@ -217,10 +226,13 @@ def test_top_events_respects_limit(
             count=offset + 1,
         )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=3,
         )
@@ -260,10 +272,13 @@ def test_top_events_breaks_ties_alphabetically_by_event_name(
             count=5,
         )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -271,6 +286,203 @@ def test_top_events_breaks_ties_alphabetically_by_event_name(
     returned_names = [row.event_name for row in rows]
     assert returned_names == sorted(returned_names)
     assert {row.total_count for row in rows} == {5}
+
+
+def test_top_events_api_category_groups_by_endpoint_method(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN three api_hit rows: two for (utubs.get_utub_details, GET) and one
+        for (splash.login_form, POST), all in the current window
+    WHEN top_events is called with category=EventCategory.API
+    THEN two rows are returned (one per distinct endpoint/method pair),
+        ordered by total_count descending, with each row's `event_name`
+        formatted as "<METHOD> <url_pattern>" via the current app's url_map.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    prev_start, prev_end = previous_window(window_start, window_end)
+    # Offset to bucket 18:00 (mid-window, distinct from the +1h/+2h/+3h
+    # buckets other tests in this file reuse) so the per-test truncate
+    # races we've seen on api_hit unique-constraint don't bite.
+    inside = window_start + timedelta(hours=6)
+
+    # Production writes endpoint/method/status_code into BOTH the flat columns
+    # and the dimensions dict (see writer.py for api_hit). Mirror that so the
+    # `(bucketStart, eventName, dimensions)` unique constraint allows two
+    # distinct endpoints in the same bucket.
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=7,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=1),
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=3,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="splash.splash_page",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "splash.splash_page",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=2,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            limit=10,
+        )
+
+    assert len(rows) == 2
+    top_row = rows[0]
+    second_row = rows[1]
+    assert top_row.category == EventCategory.API.value
+    assert top_row.total_count == 10
+    assert top_row.description == "utubs.get_single_utub"
+    assert top_row.event_name.startswith("GET ")
+    assert top_row.event_name != "GET utubs.get_single_utub"
+    assert second_row.total_count == 2
+    assert second_row.description == "splash.splash_page"
+
+
+def test_top_events_api_category_excludes_rows_with_null_endpoint(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an api_hit row with endpoint=NULL (ingest path the dashboard cannot
+        attribute) and a normal api_hit row with endpoint set
+    WHEN top_events is called with category=EventCategory.API
+    THEN only the row with a non-null endpoint is returned.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    prev_start, prev_end = previous_window(window_start, window_end)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint=None,
+        method=None,
+        count=99,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=1),
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        dimensions={"endpoint": "utubs.get_single_utub", "method": "GET"},
+        count=5,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].description == "utubs.get_single_utub"
+    assert rows[0].total_count == 5
+
+
+def test_top_events_reports_previous_window_count_per_event(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED with count 8 in the current window AND count 5 in the
+        previous window, AND API_HIT with count 100 only in the current window
+    WHEN top_events is called with the previous-window range supplied
+    THEN UTUB_OPENED.previous_count == 5, API_HIT.previous_count == 0 (no
+        previous data), and both rows still order by current total_count desc.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    prev_start, prev_end = previous_window(window_start, window_end)
+    inside_current = window_start + timedelta(hours=1)
+    inside_previous = prev_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_current,
+        count=8,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_previous,
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside_current,
+        count=100,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=None,
+            limit=10,
+        )
+
+    assert len(rows) == 2
+    api_row = next(row for row in rows if row.event_name == EventName.API_HIT.value)
+    utub_row = next(
+        row for row in rows if row.event_name == EventName.UTUB_OPENED.value
+    )
+    assert api_row.total_count == 100
+    assert api_row.previous_count == 0
+    assert utub_row.total_count == 8
+    assert utub_row.previous_count == 5
 
 
 def test_top_events_empty_window_returns_empty_list(
@@ -294,10 +506,13 @@ def test_top_events_empty_window_returns_empty_list(
         count=5,
     )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -389,6 +604,67 @@ def test_timeseries_empty_window_returns_empty_list(
         )
 
     assert rows == []
+
+
+def test_timeseries_filters_by_endpoint_and_method(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN api_hit rows for two distinct (endpoint, method) pairs in the same
+        bucket plus a third api_hit row for the same endpoint but a different
+        method (POST vs GET)
+    WHEN timeseries is called with event_name=API_HIT + endpoint + method
+    THEN only the matching (endpoint, method) row's count is summed; the
+        other endpoint and the other method are excluded.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    # Bucket 18:00 (mid-window, distinct from other tests' +1h..+4h reuse)
+    # to avoid the api_hit unique-constraint race we hit elsewhere.
+    inside = window_start + timedelta(hours=6)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        dimensions={"endpoint": "utubs.get_single_utub", "method": "GET"},
+        count=4,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="splash.splash_page",
+        method="GET",
+        dimensions={"endpoint": "splash.splash_page", "method": "GET"},
+        count=10,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="POST",
+        dimensions={"endpoint": "utubs.get_single_utub", "method": "POST"},
+        count=7,
+    )
+
+    with app.app_context():
+        rows = timeseries(
+            event_name=EventName.API_HIT,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+            endpoint="utubs.get_single_utub",
+            method="GET",
+        )
+
+    assert len(rows) == 1
+    assert rows[0].count == 4
 
 
 def test_summary_current_vs_previous_window(
@@ -568,10 +844,13 @@ def test_query_service_join_includes_description_for_every_event(
             count=offset + 1,
         )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )

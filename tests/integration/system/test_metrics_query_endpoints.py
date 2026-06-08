@@ -178,6 +178,7 @@ def test_query_top_admin_happy_path_returns_seeded_rows(
     assert seeded_event["event_name"] == EventName.UTUB_OPENED.value
     assert seeded_event["total_count"] == 5
     assert seeded_event["description"] == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
+    assert seeded_event["previous_count"] == 0
 
 
 # ---------------------------------------------------------------------------

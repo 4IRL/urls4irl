@@ -1,12 +1,21 @@
-<div id="{{ panel_id }}-summary" class="MetricsSummaryPanel"></div>
-<select id="{{ select_id }}" class="MetricsTimeseriesEventSelect"></select>
-<svg id="{{ chart_id }}" class="MetricsChart" viewBox="0 0 800 240" preserveAspectRatio="xMinYMid meet"
-     role="img" aria-labelledby="{{ chart_id }}-title" aria-describedby="{{ chart_id }}-desc"
-     style="width: 100%; height: auto;">
-    <title id="{{ chart_id }}-title"></title>
-    <desc id="{{ chart_id }}-desc"></desc>
-</svg>
-<table id="{{ table_id }}" class="MetricsTopTable">
-    <thead></thead>
-    <tbody></tbody>
-</table>
+<div class="content-row">
+    <div class="panel">
+        <h2>{{ CONFIG.strings.METRICS_TOP_PANEL_HEADING }}</h2>
+        <table id="{{ table_id }}" class="top-table" aria-label="{{ CONFIG.strings.METRICS_TOP_PANEL_HEADING }}">
+            <thead></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="panel">
+        <h2>{{ CONFIG.strings.METRICS_TS_PANEL_HEADING }}</h2>
+        <div class="ts-controls">
+            <label for="{{ select_id }}">{{ CONFIG.strings.METRICS_TIMESERIES_SELECT_LABEL }}</label>
+            <select id="{{ select_id }}" class="MetricsTimeseriesEventSelect" aria-label="{{ CONFIG.strings.METRICS_TIMESERIES_SELECT_ARIA }}"></select>
+        </div>
+        <svg id="{{ chart_id }}" class="MetricsChart" viewBox="0 0 800 240" preserveAspectRatio="xMinYMid meet"
+             role="img" aria-labelledby="{{ chart_id }}-title" aria-describedby="{{ chart_id }}-desc">
+            <title id="{{ chart_id }}-title"></title>
+            <desc id="{{ chart_id }}-desc"></desc>
+        </svg>
+    </div>
+</div>

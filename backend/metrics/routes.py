@@ -147,9 +147,14 @@ def query_top() -> FlaskResponse:
     category_enum: EventCategory | None = (
         EventCategory(parsed.category) if parsed.category is not None else None
     )
+    previous_window_start, previous_window_end = previous_window(
+        window_start, window_end
+    )
     rows = query_service.top_events(
         window_start=window_start,
         window_end=window_end,
+        previous_window_start=previous_window_start,
+        previous_window_end=previous_window_end,
         category=category_enum,
         limit=parsed.limit,
     )
@@ -203,6 +208,8 @@ def query_timeseries() -> FlaskResponse:
         window_start=window_start,
         window_end=window_end,
         resolution=parsed.resolution,
+        endpoint=parsed.endpoint,
+        method=parsed.method,
     )
     response_schema = TimeseriesResponseSchema(
         event_name=parsed.event_name,

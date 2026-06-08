@@ -625,6 +625,11 @@ export interface components {
       description: string;
       /** @description Sum of counts across all buckets in the window */
       total_count: number;
+      /**
+       * @description Sum of counts for the same event across the immediately-preceding window of equal length. Zero when the event did not appear in the previous window. Used by the admin dashboard to render per-event delta-vs-prev arrows.
+       * @default 0
+       */
+      previous_count: number;
     };
     /** @description Envelope returned by `GET /api/metrics/query/top`. */
     TopEventsResponseSchema: {
@@ -1448,6 +1453,10 @@ export interface operations {
         end?: string;
         /** @description date_trunc resolution: hour (default) or day. */
         resolution?: "hour" | "day";
+        /** @description Optional Flask endpoint name (e.g. utubs.get_single_utub). When supplied alongside event_name=api_hit, filters the series to only rows matching this endpoint — used by the admin dashboard's API tab to chart per-endpoint timeseries. */
+        endpoint?: string;
+        /** @description Optional HTTP method (GET, POST, etc.). When supplied alongside event_name=api_hit, narrows the series to one (endpoint, method) pair so two methods on the same endpoint stay separate. */
+        method?: string;
       };
       header?: never;
       path?: never;

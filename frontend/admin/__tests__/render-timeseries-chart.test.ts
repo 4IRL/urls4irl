@@ -39,7 +39,7 @@ describe("renderTimeseriesChart", () => {
     svg.remove();
   });
 
-  it("renders one <rect class='MetricsTimeseriesBar'> per bucket", () => {
+  it("renders an area path, a line polyline, and one circle per bucket", () => {
     const buckets: TimeseriesBucketSchema[] = [
       { bucket: "2026-06-06T00:00:00Z", count: 10 },
       { bucket: "2026-06-06T01:00:00Z", count: 25 },
@@ -47,16 +47,28 @@ describe("renderTimeseriesChart", () => {
     ];
     renderTimeseriesChart({ svg, response: buildResponse(buckets) });
 
-    const bars = svg.querySelectorAll(".MetricsTimeseriesBar");
-    expect(bars.length).toBe(buckets.length);
-    for (let index = 0; index < bars.length; index += 1) {
-      const bar = bars[index];
-      expect(bar.getAttribute("data-bucket")).toBe(buckets[index].bucket);
-      expect(bar.getAttribute("data-count")).toBe(String(buckets[index].count));
+    const areaPath = svg.querySelector(".MetricsTimeseriesArea");
+    const linePoly = svg.querySelector(".MetricsTimeseriesLine");
+    const dots = svg.querySelectorAll(".MetricsTimeseriesPoint");
+    expect(areaPath).not.toBeNull();
+    expect(areaPath?.getAttribute("d")?.startsWith("M ")).toBe(true);
+    expect(areaPath?.getAttribute("d")?.endsWith("Z")).toBe(true);
+    expect(linePoly).not.toBeNull();
+    expect(linePoly?.getAttribute("points")?.split(" ").length).toBe(
+      buckets.length,
+    );
+    expect(dots.length).toBe(buckets.length);
+    for (let index = 0; index < dots.length; index += 1) {
+      expect(dots[index].getAttribute("data-bucket")).toBe(
+        buckets[index].bucket,
+      );
+      expect(dots[index].getAttribute("data-count")).toBe(
+        String(buckets[index].count),
+      );
     }
   });
 
-  it("emits a non-zero number of axis lines and labels for a normal series", () => {
+  it("emits a non-zero number of y-axis lines and labels for a normal series", () => {
     const buckets: TimeseriesBucketSchema[] = [
       { bucket: "2026-06-06T00:00:00Z", count: 10 },
       { bucket: "2026-06-06T01:00:00Z", count: 50 },
@@ -64,9 +76,27 @@ describe("renderTimeseriesChart", () => {
     renderTimeseriesChart({ svg, response: buildResponse(buckets) });
 
     const axisLines = svg.querySelectorAll(".MetricsAxisLine");
-    const axisLabels = svg.querySelectorAll(".MetricsAxisLabel");
+    const yLabels = svg.querySelectorAll(
+      ".MetricsAxisLabel:not(.MetricsAxisLabelX)",
+    );
     expect(axisLines.length).toBeGreaterThan(0);
-    expect(axisLabels.length).toBe(axisLines.length);
+    expect(yLabels.length).toBe(axisLines.length);
+  });
+
+  it("renders three x-axis tick labels (first / middle / last) for a multi-bucket series", () => {
+    const buckets: TimeseriesBucketSchema[] = [
+      { bucket: "2026-06-06T00:00:00Z", count: 10 },
+      { bucket: "2026-06-06T01:00:00Z", count: 25 },
+      { bucket: "2026-06-06T02:00:00Z", count: 5 },
+      { bucket: "2026-06-06T03:00:00Z", count: 15 },
+      { bucket: "2026-06-06T04:00:00Z", count: 12 },
+    ];
+    renderTimeseriesChart({ svg, response: buildResponse(buckets) });
+
+    const xLabels = svg.querySelectorAll(".MetricsAxisLabelX");
+    expect(xLabels.length).toBe(3);
+    expect(xLabels[0].textContent).not.toBe("");
+    expect(xLabels[2].textContent).not.toBe("");
   });
 
   it("wires <title> and <desc> for screen readers", () => {
@@ -87,22 +117,25 @@ describe("renderTimeseriesChart", () => {
     expect(descElement?.textContent).toContain("2 buckets");
   });
 
-  it("clears prior children before rendering (no leftover bars on re-render)", () => {
+  it("clears prior children before rendering (no leftover area/line on re-render)", () => {
     const firstBuckets: TimeseriesBucketSchema[] = [
       { bucket: "2026-06-06T00:00:00Z", count: 10 },
       { bucket: "2026-06-06T01:00:00Z", count: 25 },
     ];
     const secondBuckets: TimeseriesBucketSchema[] = [
       { bucket: "2026-06-07T00:00:00Z", count: 99 },
+      { bucket: "2026-06-07T01:00:00Z", count: 50 },
     ];
     renderTimeseriesChart({ svg, response: buildResponse(firstBuckets) });
     renderTimeseriesChart({ svg, response: buildResponse(secondBuckets) });
 
-    const bars = svg.querySelectorAll(".MetricsTimeseriesBar");
-    expect(bars.length).toBe(secondBuckets.length);
+    expect(svg.querySelectorAll(".MetricsTimeseriesArea").length).toBe(1);
+    expect(svg.querySelectorAll(".MetricsTimeseriesPoint").length).toBe(
+      secondBuckets.length,
+    );
   });
 
-  it("handles an all-zero series without divide-by-zero (flat baseline)", () => {
+  it("renders an area + line for an all-zero series without divide-by-zero", () => {
     const buckets: TimeseriesBucketSchema[] = [
       { bucket: "2026-06-06T00:00:00Z", count: 0 },
       { bucket: "2026-06-06T01:00:00Z", count: 0 },
@@ -110,18 +143,17 @@ describe("renderTimeseriesChart", () => {
     ];
     renderTimeseriesChart({ svg, response: buildResponse(buckets) });
 
-    const bars = svg.querySelectorAll(".MetricsTimeseriesBar");
-    expect(bars.length).toBe(buckets.length);
-    for (const bar of bars) {
-      expect(Number(bar.getAttribute("height"))).toBe(0);
-    }
+    expect(svg.querySelector(".MetricsTimeseriesArea")).not.toBeNull();
+    expect(svg.querySelectorAll(".MetricsTimeseriesPoint").length).toBe(
+      buckets.length,
+    );
   });
 
   it("renders empty-state text when buckets array is empty", () => {
     renderTimeseriesChart({ svg, response: buildResponse([]) });
 
-    const bars = svg.querySelectorAll(".MetricsTimeseriesBar");
-    expect(bars.length).toBe(0);
+    expect(svg.querySelectorAll(".MetricsTimeseriesArea").length).toBe(0);
+    expect(svg.querySelectorAll(".MetricsTimeseriesPoint").length).toBe(0);
 
     const emptyState = svg.querySelector(".MetricsEmptyState");
     expect(emptyState?.textContent).toBe(

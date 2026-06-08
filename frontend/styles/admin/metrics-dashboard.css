@@ -1,56 +1,447 @@
 /*
- * Admin metrics dashboard styles — structural baseline.
- *
- *   - Active window-button state, signalled via aria-pressed.
- *   - Responsive chart container that prevents the 800px viewBox SVG from
- *     overflowing on viewports narrower than 800px (no horizontal scrollbar
- *     on tablets/phones).
- *   - Top-N table container hook for typography.
- *   - WCAG 2.4.7 focus-visible outlines on every keyboard-reachable widget.
+ * Admin metrics dashboard styles. Aligned with plans/anonymous-metrics/mockup/
+ * — U4I splash-green accent, panel cards on the page bg, rounded tablist +
+ * window containers, underline-on-selected tabs, 4-card summary grid, and a
+ * 2-col content row (top table left, timeseries chart right).
  *
  * Mobile breakpoints follow the existing project convention:
- *   - 992px  (frontend/styles/base.css:349) for desktop -> tablet boundary.
+ *   - 1100px for desktop -> tablet collapse of the content-row 2-col grid.
+ *   - 992px  (frontend/styles/base.css:349) for desktop -> tablet.
  *   - 575.98px (frontend/styles/home/layout.css:358) for tablet -> phone.
  */
 
+#MetricsDashboard {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    background-color: var(--defaultPageBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ---- Page header ------------------------------------------------------- */
+
+.dash-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.dash-header h1 {
+    margin: 0;
+    font-weight: 300;
+    font-size: 1.9rem;
+    color: var(--deckHeaderGreen);
+}
+
+.dash-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ---- Flush badge ------------------------------------------------------- */
+
+.flush-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 999px;
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.flush-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--accessLinkColor);
+    box-shadow: 0 0 8px var(--accessLinkColor);
+    animation: metrics-pulse 1.6s ease-in-out infinite;
+}
+
+.flush-badge.MetricsBadgeStale .dot {
+    background-color: var(--editURLColor);
+    box-shadow: 0 0 8px var(--editURLColor);
+}
+
+@keyframes metrics-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+}
+
+/* ---- Refresh button ---------------------------------------------------- */
+
+.refresh-btn {
+    background-color: var(--cardBackgroundColor);
+    color: var(--accessLinkColor);
+    border: 1px solid var(--borderColor);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.15s, border-color 0.15s;
+}
+
+.refresh-btn:hover { border-color: var(--accessLinkColor); }
+
+.refresh-btn[aria-disabled="true"] {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.refresh-btn .spinner {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: var(--accessLinkColor);
+    animation: metrics-spin 0.8s linear infinite;
+    display: none;
+}
+
+.refresh-btn[aria-disabled="true"] .spinner { display: inline-block; }
+
+@keyframes metrics-spin { to { transform: rotate(360deg); } }
+
+/* ---- Tablist + window-selector row ------------------------------------ */
+
+.tablist-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.tablist {
+    display: flex;
+    gap: 0;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+}
+
+#MetricsTablist [role='tab'] {
+    background-color: transparent;
+    border: 0;
+    color: var(--cardURLTextColor);
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+#MetricsTablist [role='tab']:hover { color: var(--UTubDescriptionColor); }
+
+#MetricsTablist [role='tab'][aria-selected='true'] {
+    background-color: var(--cardBackgroundColor);
+    color: var(--splashGreen);
+    box-shadow: inset 0 -2px 0 var(--splashGreen);
+}
+
+#MetricsTablist [role='tab']:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.window-selector {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.MetricsWindowButton {
+    background-color: transparent;
+    color: var(--cardURLTextColor);
+    border: 0;
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.88rem;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.MetricsWindowButton:hover { color: var(--UTubDescriptionColor); }
+
 .MetricsWindowButton[aria-pressed="true"] {
-    background-color: var(--accent-color, #0d6efd);
-    color: #ffffff;
-    border-color: var(--accent-color, #0d6efd);
+    background-color: var(--splashGreen);
+    color: #0f1313;
+    font-weight: 600;
 }
 
 .MetricsWindowButton:focus-visible {
-    outline: 2px solid currentColor;
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
+
+/* ---- Panels ------------------------------------------------------------ */
+
+.panel {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 10px;
+    padding: 14px 16px;
+}
+
+.panel h2 {
+    margin: 0 0 10px 0;
+    color: var(--deckHeaderGreen);
+    font-size: 1.05rem;
+    font-weight: 500;
+}
+
+/* ---- Summary grid ------------------------------------------------------ */
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+
+@media (max-width: 992px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 575.98px) {
+    .summary-grid { grid-template-columns: 1fr; }
+}
+
+.summary-card {
+    background-color: var(--cardBackgroundColor);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+}
+
+.summary-card .label {
+    color: var(--cardURLTextColor);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.summary-card .value {
+    color: var(--UTubDescriptionColor);
+    font-size: 1.6rem;
+    font-weight: 300;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.summary-card .delta {
+    font-size: 0.8rem;
+    margin-top: 4px;
+    font-variant-numeric: tabular-nums;
+}
+
+.summary-card .delta.up { color: var(--accessLinkColor); }
+.summary-card .delta.down { color: var(--removeIconColor); }
+.summary-card .delta.flat,
+.summary-card .delta.none { color: var(--cardURLTextColor); }
+
+/* ---- Content row (top table left, timeseries right) ------------------ */
+
+.content-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 1100px) {
+    .content-row { grid-template-columns: 1fr; }
+}
+
+/* ---- Top table -------------------------------------------------------- */
+
+.top-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.top-table th,
+.top-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+.top-table th {
+    color: var(--cardURLTextColor);
+    font-weight: 500;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.top-table th.count,
+.top-table th.delta { text-align: right; }
+
+.top-table tbody tr:nth-child(odd) {
+    background-color: var(--evenUrlCardsBackgroundColor);
+}
+
+.top-table tbody tr:nth-child(even) {
+    background-color: var(--oddUrlCardsBackgroundColor);
+}
+
+.top-table tr:hover td { background-color: var(--cardBackgroundColor); }
+
+.top-table .rank {
+    color: var(--splashGreen);
+    font-weight: 600;
+    width: 32px;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+}
+
+.top-table .endpoint .name {
+    color: var(--UTubDescriptionColor);
+    font-variant-numeric: tabular-nums;
+}
+
+.top-table .endpoint .desc {
+    color: var(--cardURLTextColor);
+    font-size: 0.78rem;
+    margin-top: 2px;
+    font-style: italic;
+}
+
+.top-table .count {
+    text-align: right;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+    color: var(--UTubDescriptionColor);
+}
+
+.top-table .delta {
+    text-align: right;
+    vertical-align: middle;
+    font-variant-numeric: tabular-nums;
+}
+
+.top-table .delta.up { color: var(--accessLinkColor); }
+.top-table .delta.down { color: var(--removeIconColor); }
+.top-table .delta.flat,
+.top-table .delta.none { color: var(--cardURLTextColor); }
+
+.MetricsTopTableEmptyRow td {
+    text-align: center;
+    color: var(--cardURLTextColor);
+    font-style: italic;
+    padding: 24px;
+}
+
+/* ---- Timeseries event picker ----------------------------------------- */
+
+.ts-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.ts-controls label {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.ts-controls select {
+    background-color: var(--cardBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.88rem;
+}
+
+.ts-controls select:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* ---- Chart SVG ------------------------------------------------------- */
 
 .MetricsChart {
     width: 100%;
     height: auto;
+    max-width: 100%;
 }
 
-.MetricsTopTable {
-    width: 100%;
-    border-collapse: collapse;
+.MetricsAxisLine {
+    stroke: var(--borderColor);
+    stroke-width: 1;
+    fill: none;
 }
 
-[role='tab']:focus-visible {
-    outline: 2px solid currentColor;
-    outline-offset: 2px;
+.MetricsAxisLabel {
+    fill: var(--cardURLTextColor);
+    font-size: 11px;
 }
+
+.MetricsAxisLabelX { font-size: 10px; }
+
+.MetricsTimeseriesArea {
+    fill: var(--splashGreen);
+    fill-opacity: 0.18;
+    stroke: none;
+}
+
+.MetricsTimeseriesLine {
+    stroke: var(--splashGreen);
+    stroke-width: 2;
+    fill: none;
+}
+
+.MetricsTimeseriesPoint {
+    fill: var(--splashGreen);
+    stroke: var(--panelBackgroundColor);
+    stroke-width: 1;
+}
+
+.MetricsEmptyState {
+    fill: var(--cardURLTextColor);
+    font-size: 14px;
+    font-style: italic;
+}
+
+/* ---- Error banner ---------------------------------------------------- */
+
+#MetricsErrorBanner {
+    background-color: rgba(220, 53, 69, 0.1);
+    border: 1px solid var(--removeIconColor);
+    color: var(--UTubDescriptionColor);
+    border-radius: 8px;
+    padding: 10px 14px;
+}
+
+/* ---- Mobile tweaks --------------------------------------------------- */
 
 @media (max-width: 992px) {
-    .MetricsTopTable {
-        font-size: 0.9rem;
-    }
+    .top-table { font-size: 0.85rem; }
 }
 
 @media (max-width: 575.98px) {
-    .MetricsTopTable {
-        font-size: 0.8rem;
-    }
-
-    .MetricsWindowButton {
-        padding-inline: 0.5rem;
-    }
+    .top-table { font-size: 0.8rem; }
+    .MetricsWindowButton { padding-inline: 0.5rem; }
+    .dash-header h1 { font-size: 1.5rem; }
 }
