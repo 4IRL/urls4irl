@@ -144,4 +144,56 @@ describe("renderTopTable", () => {
     expect(emptyCell?.textContent).toBe(APP_CONFIG.strings.METRICS_EMPTY_STATE);
     expect((emptyCell as HTMLTableCellElement | null)?.colSpan).toBe(4);
   });
+
+  it("makes event rows interactive: data-event-name, tabindex=0, aria-label", () => {
+    renderTopTable({
+      tbody,
+      events: [
+        buildEvent({ event_name: "utub_opened" }),
+        buildEvent({ event_name: "ui_url_copy" }),
+      ],
+    });
+    const firstRow = tbody.children[0] as HTMLTableRowElement;
+    expect(firstRow.dataset.eventName).toBe("utub_opened");
+    expect(firstRow.tabIndex).toBe(0);
+    expect(firstRow.getAttribute("aria-label")).toBe(
+      "Show timeseries for utub_opened",
+    );
+  });
+
+  it("omits interactive attributes from the empty-state row", () => {
+    renderTopTable({ tbody, events: [] });
+    const emptyRow = tbody.children[0] as HTMLTableRowElement;
+    expect(emptyRow.dataset.eventName).toBeUndefined();
+    expect(emptyRow.getAttribute("aria-label")).toBeNull();
+    expect(emptyRow.getAttribute("tabindex")).toBeNull();
+  });
+
+  it("marks the row matching selectedEventName with aria-current=true", () => {
+    renderTopTable({
+      tbody,
+      events: [
+        buildEvent({ event_name: "utub_opened" }),
+        buildEvent({ event_name: "ui_url_copy" }),
+      ],
+      selectedEventName: "ui_url_copy",
+    });
+    expect(
+      (tbody.children[0] as HTMLTableRowElement).getAttribute("aria-current"),
+    ).toBeNull();
+    expect(
+      (tbody.children[1] as HTMLTableRowElement).getAttribute("aria-current"),
+    ).toBe("true");
+  });
+
+  it("leaves aria-current unset when selectedEventName matches nothing", () => {
+    renderTopTable({
+      tbody,
+      events: [buildEvent({ event_name: "utub_opened" })],
+      selectedEventName: "no_such_event",
+    });
+    expect(
+      (tbody.children[0] as HTMLTableRowElement).getAttribute("aria-current"),
+    ).toBeNull();
+  });
 });

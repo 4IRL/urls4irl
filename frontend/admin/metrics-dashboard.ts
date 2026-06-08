@@ -69,7 +69,9 @@ interface InFlightRequests {
   topApi: JQuery.jqXHR | null;
   topUi: JQuery.jqXHR | null;
   topDomain: JQuery.jqXHR | null;
-  ts: JQuery.jqXHR | null;
+  tsApi: JQuery.jqXHR | null;
+  tsUi: JQuery.jqXHR | null;
+  tsDomain: JQuery.jqXHR | null;
   summary: JQuery.jqXHR | null;
 }
 
@@ -136,7 +138,9 @@ let _inFlight: InFlightRequests = {
   topApi: null,
   topUi: null,
   topDomain: null,
-  ts: null,
+  tsApi: null,
+  tsUi: null,
+  tsDomain: null,
   summary: null,
 };
 
@@ -148,7 +152,27 @@ const TOP_SLOT_BY_CATEGORY: Record<
   ui: "topUi",
   domain: "topDomain",
 };
+const TS_SLOT_BY_CATEGORY: Record<
+  MetricsCategory,
+  "tsApi" | "tsUi" | "tsDomain"
+> = {
+  api: "tsApi",
+  ui: "tsUi",
+  domain: "tsDomain",
+};
 const _topCache: Map<MetricsCategory, TopEventsResponseSchema> = new Map();
+// Tracks the user's most-recent event selection per category. Source of truth
+// for the top-table row highlight (aria-current), used both when a polling
+// refresh re-renders the table and when the user switches tabs.
+const _selectedEventByCategory: Map<MetricsCategory, string> = new Map();
+// Records the window each category's chart was last fetched against. When the
+// user changes window (Day → Week, etc.), `_currentWindow` advances but each
+// panel's chart still shows old-window data until the timeseries re-fetches —
+// so `ensureDefaultSelection` re-triggers the change handler whenever this
+// map's value diverges from `_currentWindow`, even when the user's event
+// selection is still valid.
+const _chartFetchedWindowByCategory: Map<MetricsCategory, MetricsWindow> =
+  new Map();
 
 // Badge state. `_lastFlushAtMs` is a wall-clock epoch parsed from the server's
 // `summary.last_flush_at`, so the elapsed delta MUST be computed with
@@ -205,7 +229,9 @@ function abortInFlightRequests(): void {
     "topApi",
     "topUi",
     "topDomain",
-    "ts",
+    "tsApi",
+    "tsUi",
+    "tsDomain",
     "summary",
   ] as const) {
     const xhr = _inFlight[key];
@@ -303,6 +329,7 @@ function renderCategoryPanelFromCache({
     renderTopTable({
       tbody: tbody as HTMLTableSectionElement,
       events: cachedResponse.events,
+      selectedEventName: _selectedEventByCategory.get(category) ?? null,
     });
   }
 
@@ -335,6 +362,149 @@ function renderActivePanelTimeseries({
   });
 }
 
+/**
+ * Auto-select the highest-ranked event for a category when no user selection
+ * exists yet, or when the previous selection no longer appears in the latest
+ * top events. Triggers `change` so the existing timeseries pipeline fetches
+ * and renders the chart — this is what makes a chart visible on first page
+ * load without requiring the user to pick from the dropdown or click a row.
+ *
+ * Skipped when:
+ *   - The events list is empty (also clears stale selection state).
+ *   - The user's current selection still appears in the latest response.
+ */
+function ensureDefaultSelection({
+  category,
+  response,
+}: {
+  category: MetricsCategory;
+  response: TopEventsResponseSchema;
+}): void {
+  if (response.events.length === 0) {
+    _selectedEventByCategory.delete(category);
+    _chartFetchedWindowByCategory.delete(category);
+    return;
+  }
+  const currentSelection = _selectedEventByCategory.get(category);
+  const selectionStillPresent =
+    currentSelection !== undefined &&
+    response.events.some((event) => event.event_name === currentSelection);
+  const chartWindowMatchesCurrent =
+    _chartFetchedWindowByCategory.get(category) === _currentWindow;
+  // Skip only when the user's current selection is still in the response AND
+  // the chart's data already matches the active window. Either condition
+  // failing — selection invalidated by polling, or window changed under us —
+  // means we need to fire a fresh fetch.
+  if (selectionStillPresent && chartWindowMatchesCurrent) {
+    return;
+  }
+  const eventNameToSelect = selectionStillPresent
+    ? // selectionStillPresent already guarantees currentSelection is defined
+      // and matches an event_name in `response.events`.
+      (currentSelection as string)
+    : response.events[0].event_name;
+  const selectElement = getElementByIdOrNull<HTMLSelectElement>(
+    CATEGORY_PANEL_IDS[category].select,
+  );
+  if (selectElement === null) {
+    return;
+  }
+  selectElement.value = eventNameToSelect;
+  $(selectElement).trigger("change");
+}
+
+/**
+ * Re-render the top table for a category from cache with the requested row
+ * highlighted. Used after select changes / row clicks to update aria-current
+ * without re-fetching events.
+ */
+function applyRowSelectionHighlight({
+  category,
+  selectedEventName,
+}: {
+  category: MetricsCategory;
+  selectedEventName: string;
+}): void {
+  const cachedResponse = _topCache.get(category);
+  if (cachedResponse === undefined) {
+    return;
+  }
+  const tableElement = getElementByIdOrNull<HTMLTableElement>(
+    CATEGORY_PANEL_IDS[category].tbody,
+  );
+  const tbody = tableElement?.querySelector("tbody") ?? null;
+  if (tbody === null) {
+    return;
+  }
+  renderTopTable({
+    tbody: tbody as HTMLTableSectionElement,
+    events: cachedResponse.events,
+    selectedEventName,
+  });
+}
+
+/**
+ * Handle a click anywhere inside the top-table tbody. Resolve the clicked row
+ * to its `data-event-name`, then drive the panel's `<select>` (set value +
+ * trigger change) so the existing timeseries fetch + render pipeline runs.
+ * Clicks on the empty-state row are ignored (it has no `MetricsTopTableRow`
+ * class and no `data-event-name`).
+ */
+function handleTopRowClick(event: JQuery.TriggeredEvent): void {
+  const tbody = event.currentTarget as HTMLTableSectionElement;
+  const tableElement = tbody.parentElement as HTMLTableElement | null;
+  if (tableElement === null) {
+    return;
+  }
+  const row = (event.target as HTMLElement).closest<HTMLTableRowElement>(
+    "tr.MetricsTopTableRow",
+  );
+  if (row === null) {
+    return;
+  }
+  const eventName = row.dataset.eventName;
+  if (eventName === undefined) {
+    return;
+  }
+  const category = CATEGORIES.find(
+    (candidate) => CATEGORY_PANEL_IDS[candidate].tbody === tableElement.id,
+  );
+  if (category === undefined) {
+    return;
+  }
+  const selectElement = getElementByIdOrNull<HTMLSelectElement>(
+    CATEGORY_PANEL_IDS[category].select,
+  );
+  if (selectElement === null) {
+    return;
+  }
+  // The row's display value comes from the cached events list, which also
+  // populated the select options — so the matching option should always
+  // exist. Guard anyway in case caches drift mid-poll.
+  const matchingOption = Array.from(selectElement.options).find(
+    (option) => option.value === eventName,
+  );
+  if (matchingOption === undefined) {
+    return;
+  }
+  selectElement.value = eventName;
+  $(selectElement).trigger("change");
+}
+
+/**
+ * Keyboard activation for top-table rows. Enter and Space both fire the same
+ * action as a mouse click, matching the ARIA Authoring Practices Guide for
+ * activating a focusable, non-button widget.
+ */
+function handleTopRowKeydown(event: JQuery.TriggeredEvent): void {
+  const key = event.key;
+  if (key !== "Enter" && key !== " ") {
+    return;
+  }
+  event.preventDefault();
+  handleTopRowClick(event);
+}
+
 function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
   const selectElement = event.currentTarget as HTMLSelectElement;
   if (selectElement.value === "") {
@@ -355,23 +525,37 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
   );
   const category = categoryFromId ?? _currentCategory;
 
-  if (_inFlight.ts !== null) {
-    _inFlight.ts.abort();
-    _inFlight.ts = null;
+  // Persist the selection so polling refreshes and tab switches keep the
+  // matching row highlighted.
+  _selectedEventByCategory.set(category, selectElement.value);
+  applyRowSelectionHighlight({
+    category,
+    selectedEventName: selectElement.value,
+  });
+
+  const tsSlot = TS_SLOT_BY_CATEGORY[category];
+  if (_inFlight[tsSlot] !== null) {
+    _inFlight[tsSlot].abort();
+    _inFlight[tsSlot] = null;
   }
 
+  // Capture the window at fetch-initiation time so a window switch arriving
+  // before .done resolves doesn't mis-attribute this response to the new
+  // window in `_chartFetchedWindowByCategory`.
+  const fetchedWindow = _currentWindow;
   const timeseriesRequest = fetchTimeseries({
     eventName,
-    window: _currentWindow,
+    window: fetchedWindow,
     resolution: "hour",
     endpoint: apiEndpoint,
     method: apiMethod,
   });
-  _inFlight.ts = timeseriesRequest;
+  _inFlight[tsSlot] = timeseriesRequest;
   timeseriesRequest
     .done((response) => {
       setBannerVisible({ visible: false });
       renderActivePanelTimeseries({ category, response });
+      _chartFetchedWindowByCategory.set(category, fetchedWindow);
     })
     .fail((xhr) => {
       if (is429Handled(xhr)) {
@@ -383,7 +567,7 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
       setBannerVisible({ visible: true });
     })
     .always(() => {
-      _inFlight.ts = null;
+      _inFlight[tsSlot] = null;
       _lastFetchPerf = performance.now();
       onSettleAny();
     });
@@ -450,6 +634,7 @@ function fetchAll(): void {
         setBannerVisible({ visible: false });
         _topCache.set(category, response);
         renderCategoryPanelFromCache({ category });
+        ensureDefaultSelection({ category, response });
       })
       .fail((xhr) => {
         if (is429Handled(xhr)) {
@@ -478,7 +663,9 @@ function onSettleAny(): void {
     _inFlight.topApi !== null ||
     _inFlight.topUi !== null ||
     _inFlight.topDomain !== null ||
-    _inFlight.ts !== null ||
+    _inFlight.tsApi !== null ||
+    _inFlight.tsUi !== null ||
+    _inFlight.tsDomain !== null ||
     _inFlight.summary !== null;
   if (!anyInFlight) {
     setDashboardBusy({ busy: false });
@@ -782,6 +969,23 @@ export function initMetricsDashboard(): void {
       "change.metricsDashboardTimeseries",
       handleTimeseriesSelectChange,
     );
+
+    // Bind row click + keydown on each panel's tbody so clicking (or pressing
+    // Enter/Space on) a row drives the same fetch path as picking from the
+    // select. tbody is server-rendered (empty) at init time; renderTopTable
+    // appends rows later — events bubble from those new rows to the bound
+    // tbody, so a single binding at init covers all subsequent renders.
+    const tableElement = getElementByIdOrNull<HTMLTableElement>(
+      CATEGORY_PANEL_IDS[category].tbody,
+    );
+    const tbody = tableElement?.querySelector("tbody") ?? null;
+    if (tbody !== null) {
+      $(tbody).offAndOnExact("click.metricsDashboardTopRow", handleTopRowClick);
+      $(tbody).offAndOnExact(
+        "keydown.metricsDashboardTopRow",
+        handleTopRowKeydown,
+      );
+    }
   }
 
   document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -807,10 +1011,14 @@ export function _resetMetricsDashboardForTests(): void {
     topApi: null,
     topUi: null,
     topDomain: null,
-    ts: null,
+    tsApi: null,
+    tsUi: null,
+    tsDomain: null,
     summary: null,
   };
   _topCache.clear();
+  _selectedEventByCategory.clear();
+  _chartFetchedWindowByCategory.clear();
   _lastFlushAtMs = null;
   _lastAnnouncedBucket = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);

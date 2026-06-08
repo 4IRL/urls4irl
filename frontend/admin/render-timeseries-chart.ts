@@ -29,12 +29,15 @@ type TimeseriesResponseSchema = Schema<"TimeseriesResponseSchema">;
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 // Matches the panel template's `viewBox="0 0 800 240"`. The drawing area is
-// inset for the y-axis tick labels on the left and the x-axis tick labels at
-// the bottom.
+// inset for the y-axis tick labels on the left, the x-axis tick labels at
+// the bottom, and a top inset so the topmost y-axis tick label has room
+// to render fully inside the viewBox instead of being clipped at y=0.
 const VIEWBOX_WIDTH = 800;
 const VIEWBOX_HEIGHT = 240;
-const AXIS_LEFT_PADDING = 40;
+const AXIS_LEFT_PADDING = 56;
+const AXIS_TOP_PADDING = 12;
 const AXIS_BOTTOM_PADDING = 24;
+const Y_AXIS_TITLE_X = 16;
 const PLOT_WIDTH = VIEWBOX_WIDTH - AXIS_LEFT_PADDING;
 const PLOT_HEIGHT = VIEWBOX_HEIGHT - AXIS_BOTTOM_PADDING;
 const Y_AXIS_TICK_COUNT = 5;
@@ -113,19 +116,34 @@ export function renderTimeseriesChart({
   const bucketCounts = response.buckets.map((bucket) => bucket.count);
   const maxCount = Math.max(...bucketCounts);
 
-  // y-domain: zero up to the nearest "nice" tick at or above the max. Using
-  // `niceTicks` keeps the top axis label aligned to a round number. When the
-  // entire series is zero, fall back to a domain of [0, 1] so the area still
-  // renders against a flat baseline rather than dividing by zero.
-  const yDomainMax = maxCount === 0 ? 1 : maxCount;
+  // y-axis ticks: compute round-number ticks covering [0, maxCount], then
+  // ensure the top tick is STRICTLY GREATER than the data max so the peak
+  // sits below the top axis line with visible headroom. When `niceTicks`
+  // happens to land on the data max (e.g. max=10 -> ticks=[0,2.5,5,7.5,10]),
+  // append one more step so the top axis value gives the peak room to breathe.
+  // The y-domain max then becomes the topmost tick — this keeps every tick
+  // (including the new ceiling) inside the visible plot area.
+  // For an all-zero series, fall back to a [0, 1] domain so the area renders
+  // against a flat baseline rather than dividing by zero.
+  const baseYTicks =
+    maxCount === 0
+      ? niceTicks({ min: 0, max: 1, count: Y_AXIS_TICK_COUNT })
+      : niceTicks({ min: 0, max: maxCount, count: Y_AXIS_TICK_COUNT });
+  const baseTopTick = baseYTicks[baseYTicks.length - 1]!;
+  const tickStep =
+    baseYTicks.length >= 2 ? baseYTicks[1]! - baseYTicks[0]! : baseTopTick;
+  const yTicks =
+    baseTopTick === maxCount && maxCount > 0
+      ? [...baseYTicks, baseTopTick + tickStep]
+      : baseYTicks;
+  const yDomainMax = yTicks[yTicks.length - 1]!;
+  // Range upper bound is AXIS_TOP_PADDING (not 0) so the topmost tick label
+  // sits below the viewBox top edge with enough room to render fully — the
+  // `dominant-baseline="middle"` on tick labels otherwise pushes the top
+  // label half-above y=0 where it gets clipped by the SVG's outer bounds.
   const scaleY = linearScale({
     domain: [0, yDomainMax],
-    range: [PLOT_HEIGHT, 0],
-  });
-  const yTicks = niceTicks({
-    min: 0,
-    max: yDomainMax,
-    count: Y_AXIS_TICK_COUNT,
+    range: [PLOT_HEIGHT, AXIS_TOP_PADDING],
   });
   const axisTicks = buildAxisTicks({
     ticks: yTicks,
@@ -140,6 +158,24 @@ export function renderTimeseriesChart({
       .reduce((sum, count) => sum + count, 0)
       .toLocaleString()} total across ${response.buckets.length} buckets`,
   });
+
+  // Rotated y-axis title on the left edge of the plot area. Anchored at the
+  // vertical center of the plot and rotated -90° around that point so the
+  // text reads bottom-to-top, matching the convention for vertical axis
+  // titles in most chart libraries.
+  const yAxisTitleY = (PLOT_HEIGHT + AXIS_TOP_PADDING) / 2;
+  const yAxisTitle = document.createElementNS(SVG_NAMESPACE, "text");
+  yAxisTitle.setAttribute("class", "MetricsAxisTitle");
+  yAxisTitle.setAttribute("x", String(Y_AXIS_TITLE_X));
+  yAxisTitle.setAttribute("y", String(yAxisTitleY));
+  yAxisTitle.setAttribute("text-anchor", "middle");
+  yAxisTitle.setAttribute("dominant-baseline", "middle");
+  yAxisTitle.setAttribute(
+    "transform",
+    `rotate(-90, ${Y_AXIS_TITLE_X}, ${yAxisTitleY})`,
+  );
+  yAxisTitle.textContent = APP_CONFIG.strings.METRICS_CHART_Y_AXIS_LABEL;
+  svg.appendChild(yAxisTitle);
 
   // y-axis tick lines + labels. Drawn before the area/line so they layer beneath.
   for (const tick of axisTicks) {

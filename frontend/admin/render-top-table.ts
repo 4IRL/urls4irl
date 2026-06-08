@@ -79,12 +79,26 @@ function buildEmptyStateRow(): HTMLTableRowElement {
 function buildEventRow({
   event,
   rank,
+  isSelected,
 }: {
   event: TopEventRow;
   rank: number;
+  isSelected: boolean;
 }): HTMLTableRowElement {
   const row = document.createElement("tr");
   row.className = "MetricsTopTableRow";
+  row.dataset.eventName = event.event_name;
+  row.tabIndex = 0;
+  row.setAttribute(
+    "aria-label",
+    APP_CONFIG.strings.METRICS_TOP_TABLE_ROW_ARIA.replace(
+      "{{ name }}",
+      event.event_name,
+    ),
+  );
+  if (isSelected) {
+    row.setAttribute("aria-current", "true");
+  }
 
   const rankCell = document.createElement("td");
   rankCell.className = "rank";
@@ -123,9 +137,11 @@ function buildEventRow({
 export function renderTopTable({
   tbody,
   events,
+  selectedEventName,
 }: {
   tbody: HTMLTableSectionElement;
   events: TopEventRow[];
+  selectedEventName?: string | null;
 }): void {
   const table = tbody.parentElement as HTMLTableElement | null;
   if (table !== null) {
@@ -142,6 +158,12 @@ export function renderTopTable({
   }
 
   events.forEach((event, index) => {
-    tbody.appendChild(buildEventRow({ event, rank: index + 1 }));
+    tbody.appendChild(
+      buildEventRow({
+        event,
+        rank: index + 1,
+        isSelected: event.event_name === selectedEventName,
+      }),
+    );
   });
 }

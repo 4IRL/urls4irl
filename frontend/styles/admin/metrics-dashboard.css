@@ -306,6 +306,21 @@
 
 .top-table tr:hover td { background-color: var(--cardBackgroundColor); }
 
+.MetricsTopTableRow { cursor: pointer; }
+
+.MetricsTopTableRow:focus-visible {
+    outline: 2px solid var(--splashGreen);
+    outline-offset: -2px;
+}
+
+.MetricsTopTableRow[aria-current="true"] td {
+    background-color: var(--cardBackgroundColor);
+}
+
+.MetricsTopTableRow[aria-current="true"] td:first-child {
+    box-shadow: inset 3px 0 0 var(--splashGreen);
+}
+
 .top-table .rank {
     color: var(--splashGreen);
     font-weight: 600;
@@ -395,10 +410,18 @@
 
 .MetricsAxisLabel {
     fill: var(--cardURLTextColor);
-    font-size: 11px;
+    font-size: 16px;
 }
 
-.MetricsAxisLabelX { font-size: 10px; }
+.MetricsAxisLabelX { font-size: 14px; }
+
+.MetricsAxisTitle {
+    fill: var(--cardURLTextColor);
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
 
 .MetricsTimeseriesArea {
     fill: var(--splashGreen);
