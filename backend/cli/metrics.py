@@ -303,10 +303,26 @@ def seed_uniform_test_data_command() -> None:
             ).one_or_none()
             if existing_row is not None:
                 continue
+            # Mirror the flush worker's flat-column promotion: api_hit rows
+            # carry endpoint/method/status_code in dedicated columns so the
+            # top-events query (which filters on `endpoint IS NOT NULL`) can
+            # reach them. Without this, seeded rows would only live in the
+            # `dimensions` JSONB and the API tab would render the empty state.
+            if event_name is EventName.API_HIT:
+                endpoint_value = dimensions.get("endpoint")
+                method_value = dimensions.get("method")
+                status_code_value = dimensions.get("status_code")
+            else:
+                endpoint_value = None
+                method_value = None
+                status_code_value = None
             db.session.add(
                 Anonymous_Metrics(
                     event_name=event_name.value,
                     bucket_start=bucket_start,
+                    endpoint=endpoint_value,
+                    method=method_value,
+                    status_code=status_code_value,
                     dimensions=dimensions,
                     count=1 + hour_offset,
                 )

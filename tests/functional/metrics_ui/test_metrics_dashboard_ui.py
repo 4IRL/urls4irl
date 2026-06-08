@@ -23,7 +23,7 @@ from tests.functional.selenium_utils import (
 pytestmark = pytest.mark.metrics_ui
 
 DEFAULT_ADMIN_USER_ID: int = 1
-SEEDED_TABLE_ROW_SELECTOR: str = f"{MDL.TOP_TABLE_API} tbody tr"
+SEEDED_TABLE_ROW_SELECTOR: str = f"{MDL.TOP_TABLE_API} tbody tr.MetricsTopTableRow"
 WINDOW_BUTTON_TIMEOUT_SECONDS: int = 5
 
 
