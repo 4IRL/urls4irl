@@ -14,6 +14,8 @@ const CONTAINER_SELECTOR = ".content-row";
 const RESIZER_SELECTOR = ".content-row__resizer";
 const CSS_VAR = "--metrics-left-pane";
 const DRAGGING_CLASS = "is-dragging";
+// Container-level state so future drag-only container styling can be added
+// independently of the handle's hover state.
 const RESIZING_CLASS = "is-resizing";
 const BOUND_ATTR = "data-pane-resizer-bound";
 const MIN_PCT = 25;

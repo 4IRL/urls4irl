@@ -10,11 +10,10 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 
 import { APP_CONFIG } from "../lib/config.js";
+import { formatDelta } from "../lib/charts/delta.js";
 
 type SummaryResponseSchema = Schema<"SummaryResponseSchema">;
 type MetricsCategory = "api" | "ui" | "domain";
-
-type DeltaDirection = "up" | "down" | "flat" | "none";
 
 type SummaryCard = {
   label: string;
@@ -22,36 +21,21 @@ type SummaryCard = {
   previous: number;
 };
 
-const CATEGORY_LABEL_KEYS: Record<MetricsCategory, string> = {
-  api: "METRICS_SUMMARY_API_HITS",
-  ui: "METRICS_SUMMARY_UI_EVENTS",
-  domain: "METRICS_SUMMARY_DOMAIN_ACTIONS",
-};
-
 const CATEGORY_ORDER: readonly MetricsCategory[] = ["api", "ui", "domain"];
 
-function formatDelta({
-  current,
-  previous,
-}: {
-  current: number;
-  previous: number;
-}): { text: string; direction: DeltaDirection } {
-  if (previous === 0) {
-    return {
-      text: APP_CONFIG.strings.METRICS_SUMMARY_DELTA_UNAVAILABLE,
-      direction: "none",
-    };
+function categoryLabel(category: MetricsCategory): string {
+  switch (category) {
+    case "api":
+      return APP_CONFIG.strings.METRICS_SUMMARY_API_HITS;
+    case "ui":
+      return APP_CONFIG.strings.METRICS_SUMMARY_UI_EVENTS;
+    case "domain":
+      return APP_CONFIG.strings.METRICS_SUMMARY_DOMAIN_ACTIONS;
+    default: {
+      const exhaustiveCheck: never = category;
+      return exhaustiveCheck;
+    }
   }
-  const deltaFraction = (current - previous) / previous;
-  const absolutePercent = `${Math.abs(deltaFraction * 100).toFixed(1)}%`;
-  if (deltaFraction > 0) {
-    return { text: `▲ ${absolutePercent}`, direction: "up" };
-  }
-  if (deltaFraction < 0) {
-    return { text: `▼ ${absolutePercent}`, direction: "down" };
-  }
-  return { text: `— ${absolutePercent}`, direction: "flat" };
 }
 
 function buildCard({ label, current, previous }: SummaryCard): HTMLDivElement {
@@ -120,7 +104,7 @@ export function renderSummary({
     const counts = byCategory.get(category) ?? { current: 0, previous: 0 };
     root.appendChild(
       buildCard({
-        label: APP_CONFIG.strings[CATEGORY_LABEL_KEYS[category]],
+        label: categoryLabel(category),
         current: counts.current,
         previous: counts.previous,
       }),

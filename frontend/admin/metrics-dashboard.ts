@@ -216,6 +216,8 @@ const TOP_SLOT_BY_CATEGORY: Record<
   ui: "topUi",
   domain: "topDomain",
 };
+// Per-category slots so a background prefetch for an inactive tab is not
+// aborted when the active tab's request settles.
 const TS_SLOT_BY_CATEGORY: Record<
   MetricsCategory,
   "tsApi" | "tsUi" | "tsDomain"

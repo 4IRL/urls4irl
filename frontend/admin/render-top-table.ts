@@ -8,41 +8,16 @@
 import type { Schema } from "../types/api-helpers.d.ts";
 
 import { APP_CONFIG } from "../lib/config.js";
+import { formatDelta } from "../lib/charts/delta.js";
 
 type TopEventRow = Schema<"TopEventRow">;
 
 const TOTAL_COLUMNS = 4;
 
-type DeltaDirection = "up" | "down" | "flat" | "none";
-
 function clearChildren({ element }: { element: HTMLElement }): void {
   while (element.firstChild !== null) {
     element.removeChild(element.firstChild);
   }
-}
-
-function formatDelta({
-  current,
-  previous,
-}: {
-  current: number;
-  previous: number;
-}): { text: string; direction: DeltaDirection } {
-  if (previous === 0) {
-    return {
-      text: APP_CONFIG.strings.METRICS_SUMMARY_DELTA_UNAVAILABLE,
-      direction: "none",
-    };
-  }
-  const deltaFraction = (current - previous) / previous;
-  const absolutePercent = `${Math.abs(deltaFraction * 100).toFixed(1)}%`;
-  if (deltaFraction > 0) {
-    return { text: `▲ ${absolutePercent}`, direction: "up" };
-  }
-  if (deltaFraction < 0) {
-    return { text: `▼ ${absolutePercent}`, direction: "down" };
-  }
-  return { text: `— ${absolutePercent}`, direction: "flat" };
 }
 
 function buildHeader({
