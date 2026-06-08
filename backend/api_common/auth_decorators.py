@@ -262,12 +262,15 @@ def admin_login_required(func: Callable) -> Callable:
     """
 
     @wraps(func)
-    @login_required
     def decorated_view(*args, **kwargs):
         if current_user.role != User_Role.ADMIN:
             abort(403)
         return func(*args, **kwargs)
 
+    # Wrap explicitly so login_required's own @wraps(func) does not
+    # overwrite our outer wrapper's metadata. Matches admin_required's
+    # construction style and keeps __wrapped__ pointing at our handler.
+    decorated_view = login_required(decorated_view)
     decorated_view._auth_decorator = admin_login_required.__name__
     return decorated_view
 
