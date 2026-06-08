@@ -251,13 +251,17 @@ export function renderTimeseriesChart({
   // x-axis labels: first, middle, last bucket. Mirrors the mock's day-name
   // labels under a weekly chart; for hourly resolution falls back to the
   // formatted timestamp.
+  // For a 2-bucket series, [0, floor((2-1)/2), 1] collapses to [0, 0, 1].
+  // Dedupe so two `<text>` labels never render at the same x position.
   const xLabelIndices: number[] =
     response.buckets.length === 1
       ? [0]
       : [
-          0,
-          Math.floor((response.buckets.length - 1) / 2),
-          response.buckets.length - 1,
+          ...new Set([
+            0,
+            Math.floor((response.buckets.length - 1) / 2),
+            response.buckets.length - 1,
+          ]),
         ];
   const xLabelY = VIEWBOX_HEIGHT - 6;
   const stepX =

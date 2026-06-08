@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, GetJsonSchemaHandler
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from backend.schemas.base import BaseSchema
 
@@ -55,6 +58,28 @@ class TopEventRow(BaseSchema):
             "delta-vs-prev arrows."
         ),
     )
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        core_schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Mark `api_endpoint` and `previous_count` as required in the JSON schema.
+
+        Both fields carry Python-level defaults so the model can be constructed
+        with `api_endpoint` omitted (UI/domain rows) or `previous_count` omitted
+        (no previous-window data). The backend nevertheless always emits both
+        keys, so downstream OpenAPI consumers should treat them as guaranteed-
+        present.
+        """
+        json_schema: dict[str, Any] = handler(core_schema)
+        required = list(json_schema.get("required", []))
+        for guaranteed_field in ("api_endpoint", "previous_count"):
+            if guaranteed_field not in required:
+                required.append(guaranteed_field)
+        json_schema["required"] = required
+        return json_schema
 
 
 class TopEventsResponseSchema(BaseSchema):

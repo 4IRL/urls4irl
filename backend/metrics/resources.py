@@ -213,6 +213,12 @@ def resource_filter_clause(
             for prefix, mapped in API_ROUTE_PREFIX_TO_RESOURCE
             if mapped is resource
         ]
+        # `or_()` with no arguments produces a silent-false clause, which
+        # would mask a misconfiguration (e.g. a new resource added to
+        # RESOURCE_BY_CATEGORY[API] without a corresponding entry in
+        # API_ROUTE_PREFIX_TO_RESOURCE) as zero rows returned. Surface it.
+        if not matching_prefixes:
+            raise ValueError(f"No API prefix mapping for {resource!r}")
         return or_(
             *(
                 Anonymous_Metrics.endpoint.like(f"{prefix}%")

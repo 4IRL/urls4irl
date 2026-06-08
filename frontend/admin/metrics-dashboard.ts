@@ -444,14 +444,18 @@ function handleSubstringFilterInput(event: JQuery.TriggeredEvent): void {
   // effective limit changes, so a refetch is required to widen / restore
   // the server's row pool. A pure-typing change inside the same active-state
   // is debounced into a client-side re-render only.
-  const previouslyActive =
-    previousQuery !== "" || _resourceFilterByCategory.has(dataCategory);
-  const nowActive =
-    nextQuery !== "" || _resourceFilterByCategory.has(dataCategory);
-  const limitWillChange = previouslyActive !== nowActive;
-
+  //
+  // The previously/now-active comparison is evaluated *inside* the timer so
+  // it reads the resource-filter state at fire time. If the user toggles a
+  // resource chip between keystroke and the timer firing, the refetch-vs-
+  // rerender decision must reflect the chip state as of the timer fire.
   const timer = setTimeout(() => {
     _substringDebounceTimerByCategory.delete(dataCategory);
+    const previouslyActive =
+      previousQuery !== "" || _resourceFilterByCategory.has(dataCategory);
+    const nowActive =
+      nextQuery !== "" || _resourceFilterByCategory.has(dataCategory);
+    const limitWillChange = previouslyActive !== nowActive;
     if (limitWillChange) {
       refetchTopForCategory({ category: dataCategory });
       return;

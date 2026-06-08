@@ -57,10 +57,6 @@ function applyPct({ pct }: { pct: number }): void {
     });
 }
 
-function readCurrentPct(): number {
-  return readStoredPct() ?? DEFAULT_PCT;
-}
-
 function pctFromPointer({
   pointerX,
   container,
@@ -69,7 +65,7 @@ function pctFromPointer({
   container: HTMLElement;
 }): number {
   const rect = container.getBoundingClientRect();
-  if (rect.width === 0) return readCurrentPct();
+  if (rect.width === 0) return readStoredPct() ?? DEFAULT_PCT;
   const relativeX = pointerX - rect.left;
   return clampPct({ pct: (relativeX / rect.width) * 100 });
 }
@@ -122,7 +118,7 @@ function bindResizer({ resizer }: { resizer: HTMLElement }): void {
 
   resizer.addEventListener("keydown", (event: KeyboardEvent) => {
     let next: number | null = null;
-    const current = readCurrentPct();
+    const current = readStoredPct() ?? DEFAULT_PCT;
     switch (event.key) {
       case "ArrowLeft":
         next = current - KEY_STEP_PCT;

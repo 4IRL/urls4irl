@@ -2478,7 +2478,14 @@
             "type": "integer"
           }
         },
-        "required": ["event_name", "category", "description", "total_count"],
+        "required": [
+          "event_name",
+          "category",
+          "description",
+          "total_count",
+          "api_endpoint",
+          "previous_count"
+        ],
         "type": "object"
       },
       "TopEventsResponseSchema": {
