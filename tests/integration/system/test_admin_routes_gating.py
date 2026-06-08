@@ -5,10 +5,11 @@ import re
 from typing import Tuple
 
 import pytest
-from flask import Flask
+from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from backend.models.users import Users
+from backend.utils.all_routes import ADMIN_ROUTES
 
 pytestmark = pytest.mark.cli
 
@@ -34,11 +35,14 @@ def test_admin_user_sees_admin_metrics_route_in_app_config(
     """Admin users get `adminMetricsPage` in their APP_CONFIG.routes payload."""
     client, _, _, _ = login_admin_user_with_register
 
-    response = client.get("/admin/metrics")
+    with client.application.test_request_context():
+        expected_admin_metrics_url = url_for(ADMIN_ROUTES.METRICS_PAGE)
+
+    response = client.get(expected_admin_metrics_url)
 
     assert response.status_code == 200
     routes = _routes_from_response(response.data)
-    assert routes.get("adminMetricsPage") == "/admin/metrics"
+    assert routes.get("adminMetricsPage") == expected_admin_metrics_url
 
 
 def test_non_admin_user_does_not_see_admin_metrics_route_in_app_config(
