@@ -896,6 +896,13 @@ function fetchAll(): void {
       onSettleAny();
     });
 
+  // Fire all three category requests simultaneously. $.ajax is async and
+  // returns immediately, so each iteration dispatches a request without
+  // waiting for the previous one to settle. Each request is stored in its own
+  // `_inFlight` slot (keyed by slot name) so they can be aborted independently.
+  // Pre-warming all panels here means switching tabs never triggers a fresh
+  // round-trip — data is already cached in `_topCache` by the time the user
+  // clicks.
   for (const category of CATEGORIES) {
     const resource = _resourceFilterByCategory.get(category) ?? null;
     const topRequest = fetchTopEvents({

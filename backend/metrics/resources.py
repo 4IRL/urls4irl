@@ -24,6 +24,16 @@ from sqlalchemy.sql import ColumnElement
 
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.utils.all_routes import (
+    ACCOUNT_AND_SETTING_ROUTES,
+    MEMBER_ROUTES,
+    SPLASH_ROUTES,
+    URL_ROUTES,
+    URL_TAG_ROUTES,
+    USER_ROUTES,
+    UTUB_ROUTES,
+    UTUB_TAG_ROUTES,
+)
 
 
 class Resource(StrEnum):
@@ -77,8 +87,10 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_URL_ACCESS_WARNING: Resource.URL,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: Resource.URL,
     # UI — Search
-    EventName.UI_SEARCH_OPEN: Resource.SEARCH,
-    EventName.UI_SEARCH_CLOSE: Resource.SEARCH,
+    EventName.UI_UTUB_SEARCH_OPEN: Resource.SEARCH,
+    EventName.UI_UTUB_SEARCH_CLOSE: Resource.SEARCH,
+    EventName.UI_URL_SEARCH_OPEN: Resource.SEARCH,
+    EventName.UI_URL_SEARCH_CLOSE: Resource.SEARCH,
     # UI — Tags
     EventName.UI_TAG_APPLY: Resource.TAG,
     EventName.UI_TAG_REMOVE: Resource.TAG,
@@ -129,16 +141,20 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
 # — NOT URL paths. `utub_tags`/`utub_url_tags` both share the `TAG` bucket
 # because both are tag-related; `users`+`splash` share `AUTH` because the
 # users blueprint is account/profile (auth-adjacent).
+#
+# Blueprint prefix constants are sourced from `backend/utils/all_routes.py`
+# where they exist. The `admin` blueprint has no entry in `all_routes.py`
+# (it is not used with `url_for`) so its prefix remains a bare string literal.
 API_ROUTE_PREFIX_TO_RESOURCE: tuple[tuple[str, Resource], ...] = (
-    ("utubs.", Resource.UTUB),
-    ("urls.", Resource.URL),
-    ("utub_tags.", Resource.TAG),
-    ("utub_url_tags.", Resource.TAG),
-    ("members.", Resource.MEMBER),
-    ("splash.", Resource.AUTH),
-    ("users.", Resource.AUTH),
+    (UTUB_ROUTES._UTUBS, Resource.UTUB),
+    (URL_ROUTES._URLS, Resource.URL),
+    (UTUB_TAG_ROUTES._UTUB_TAGS, Resource.TAG),
+    (URL_TAG_ROUTES._URL_TAGS, Resource.TAG),
+    (MEMBER_ROUTES._MEMBERS, Resource.MEMBER),
+    (SPLASH_ROUTES._SPLASH, Resource.AUTH),
+    (USER_ROUTES._USERS, Resource.AUTH),
     ("admin.", Resource.ADMIN),
-    ("contact.", Resource.CONTACT),
+    (ACCOUNT_AND_SETTING_ROUTES._CONTACT, Resource.CONTACT),
 )
 
 

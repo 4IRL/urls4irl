@@ -5,8 +5,8 @@ import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { filterUTubsByName } from "../../logic/utub-search.js";
 import {
-  SEARCH_CLOSE_TARGET,
-  SEARCH_OPEN_TARGET,
+  UTUB_SEARCH_CLOSE_TARGET,
+  UTUB_SEARCH_OPEN_TARGET,
 } from "../../types/metrics-dim-values.js";
 
 type UTubSelectorEntry = { id: number; name: string };
@@ -67,8 +67,8 @@ export function setUTubSelectorSearchEventListener(): void {
       if (!_utubSearchOpen) {
         _utubSearchOpen = true;
         emit({
-          event: UI_EVENTS.UI_SEARCH_OPEN,
-          target: SEARCH_OPEN_TARGET.UTUBS,
+          event: UI_EVENTS.UI_UTUB_SEARCH_OPEN,
+          target: UTUB_SEARCH_OPEN_TARGET.UTUBS,
         });
       }
       searchInput.offAndOn(
@@ -129,8 +129,8 @@ export function setUTubSelectorSearchEventListener(): void {
 export function resetUTubSearch(): void {
   if (_utubSearchOpen) {
     emit({
-      event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: SEARCH_CLOSE_TARGET.UTUBS,
+      event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,
+      target: UTUB_SEARCH_CLOSE_TARGET.UTUBS,
     });
     _utubSearchOpen = false;
   }

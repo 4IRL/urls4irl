@@ -54,14 +54,24 @@ export type DimUrlCopy = {
   result: "success" | "failure";
 };
 
-export type DimSearchOpen = {
+export type DimUtubSearchOpen = {
   device_type: DeviceType;
-  target: "utubs" | "urls";
+  target: "utubs";
 };
 
-export type DimSearchClose = {
+export type DimUtubSearchClose = {
   device_type: DeviceType;
-  target: "utubs" | "urls";
+  target: "utubs";
+};
+
+export type DimUrlSearchOpen = {
+  device_type: DeviceType;
+  target: "urls";
+};
+
+export type DimUrlSearchClose = {
+  device_type: DeviceType;
+  target: "urls";
 };
 
 export type DimTagCreateOpen = {
@@ -150,8 +160,10 @@ export type UIEventDimensions = {
   ui_url_copy: DimUrlCopy;
   ui_url_access_warning: DimDeviceOnly;
   ui_url_access_warning_dismiss: DimDeviceOnly;
-  ui_search_open: DimSearchOpen;
-  ui_search_close: DimSearchClose;
+  ui_utub_search_open: DimUtubSearchOpen;
+  ui_utub_search_close: DimUtubSearchClose;
+  ui_url_search_open: DimUrlSearchOpen;
+  ui_url_search_close: DimUrlSearchClose;
   ui_tag_apply: DimDeviceOnly;
   ui_tag_remove: DimDeviceOnly;
   ui_tag_create_open: DimTagCreateOpen;

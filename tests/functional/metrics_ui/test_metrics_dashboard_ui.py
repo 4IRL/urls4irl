@@ -28,7 +28,7 @@ WINDOW_BUTTON_TIMEOUT_SECONDS: int = 5
 
 
 def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
-    """Invoke `flask metrics seed-uniform-test-data` through the test
+    """Invoke `flask addmock seed-uniform-test-data` through the test
     runner so the seeded rows live inside the test worker's DB.
 
     Using `subprocess.run(['flask', ...])` would escape the worker DB
@@ -37,10 +37,30 @@ def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
     already wires both.
     """
     _, cli_runner = runner
-    result = cli_runner.invoke(args=["metrics", "seed-uniform-test-data"])
+    result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
     assert (
         result.exit_code == 0
     ), f"Metrics seed CLI failed: exit={result.exit_code} output={result.output}"
+
+
+@pytest.fixture(autouse=True)
+def seeded_metrics(
+    runner: Tuple[Flask, FlaskCliRunner],
+    browser: WebDriver,
+) -> None:
+    """Seed the test DB with uniform metrics data before each test.
+
+    Depends on ``browser`` to guarantee ordering: ``browser`` calls
+    ``clear_db`` inside its own setup, which wipes every table including
+    ``AnonymousMetrics``.  Listing ``browser`` as a dependency ensures
+    this fixture always seeds AFTER that wipe, so the dashboard has data
+    to render when the test body executes.
+
+    Uses function scope (the default) to match the ``runner`` fixture,
+    which clears the DB in its own teardown after every test. A broader
+    scope would attempt to read rows that were already wiped.
+    """
+    _seed_metrics_via_cli(runner)
 
 
 def test_admin_dashboard_renders_with_seeded_metrics(
@@ -49,7 +69,6 @@ def test_admin_dashboard_renders_with_seeded_metrics(
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
-    runner: Tuple[Flask, FlaskCliRunner],
 ):
     """
     GIVEN a logged-in admin user and seeded AnonymousMetrics rows across
@@ -58,8 +77,6 @@ def test_admin_dashboard_renders_with_seeded_metrics(
     THEN the dashboard title renders with the localized string and the
         API top-events table has at least one populated row.
     """
-    _seed_metrics_via_cli(runner)
-
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
         browser=browser,
@@ -85,7 +102,6 @@ def test_window_switch_to_week_re_renders_chart(
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
-    runner: Tuple[Flask, FlaskCliRunner],
 ):
     """
     GIVEN a logged-in admin user on the metrics dashboard with seeded
@@ -96,8 +112,6 @@ def test_window_switch_to_week_re_renders_chart(
         the API chart container re-renders (its inner title node is
         present in the DOM after the re-fetch).
     """
-    _seed_metrics_via_cli(runner)
-
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
         browser=browser,
@@ -135,7 +149,6 @@ def test_substring_filter_narrows_top_table_to_no_matches(
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
-    runner: Tuple[Flask, FlaskCliRunner],
 ):
     """
     GIVEN a logged-in admin user on the metrics dashboard with seeded
@@ -147,8 +160,6 @@ def test_substring_filter_narrows_top_table_to_no_matches(
         confirming the per-tab substring filter narrows the rendered set
         without a server round trip.
     """
-    _seed_metrics_via_cli(runner)
-
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
         browser=browser,

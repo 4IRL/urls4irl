@@ -227,6 +227,9 @@ def admin_required(func: Callable) -> Callable:
     The wrapper stashes `_auth_decorator = admin_required.__name__` so the
     OpenAPI spec generator (`backend/cli/openapi.py`) can introspect the
     auth requirement at codegen time.
+
+    Intended for JSON/AJAX API routes. For server-rendered HTML routes that
+    should redirect unauthenticated visitors, use `admin_login_required`.
     """
 
     @wraps(func)
@@ -247,5 +250,29 @@ def admin_required(func: Callable) -> Callable:
     return decorated_view
 
 
+def admin_login_required(func: Callable) -> Callable:
+    """Gate a server-rendered HTML view on an authenticated admin session.
+
+    Unauthenticated requests are redirected (302) to the login page via
+    Flask-Login's standard ``login_required`` flow.  Authenticated
+    non-admin requests receive a 403 response.
+
+    Use this decorator on HTML page routes (e.g. ``/admin/metrics``).
+    For JSON/AJAX API routes, use ``admin_required`` instead.
+    """
+
+    @wraps(func)
+    @login_required
+    def decorated_view(*args, **kwargs):
+        if current_user.role != User_Role.ADMIN:
+            abort(403)
+        return func(*args, **kwargs)
+
+    decorated_view._auth_decorator = admin_login_required.__name__
+    return decorated_view
+
+
 # Auth decorators that require admin privileges (additive on top of session auth).
-ADMIN_AUTH_DECORATORS: frozenset[str] = frozenset({admin_required.__name__})
+ADMIN_AUTH_DECORATORS: frozenset[str] = frozenset(
+    {admin_required.__name__, admin_login_required.__name__}
+)

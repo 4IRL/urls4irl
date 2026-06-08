@@ -27,16 +27,15 @@ def test_dashboard_page_renders_for_admin(
     assert b'<main id="MetricsDashboard"' in response.data
 
 
-def test_dashboard_page_returns_404_for_non_admin(
+def test_dashboard_page_returns_403_for_non_admin(
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
-    """Authenticated non-admin user receives a JSON 404 envelope (not HTML)."""
+    """Authenticated non-admin user receives a 403 Forbidden response."""
     client, _, _, _ = login_first_user_with_register
 
     response = client.get(_ADMIN_METRICS_URL)
 
-    assert response.status_code == 404
-    assert response.is_json
+    assert response.status_code == 403
 
 
 def test_dashboard_page_redirects_anonymous_to_splash(client: FlaskClient) -> None:

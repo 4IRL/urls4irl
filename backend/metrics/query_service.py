@@ -442,6 +442,9 @@ def summary(
         func.max(Anonymous_Metrics.bucket_start)
     ).scalar()
 
+    # Safe under multiprocess gunicorn: each worker has its own MetricsWriter instance,
+    # but get_last_flush_success_epoch() reads the flush sentinel from Redis (shared
+    # across all workers), so every worker sees the same last-flush timestamp.
     writer: MetricsWriter | None = current_app.extensions.get("metrics_writer")
     last_flush_at: datetime | None = None
     if writer is not None:

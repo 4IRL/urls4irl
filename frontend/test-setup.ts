@@ -118,6 +118,10 @@ const appConfig = {
     UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
     UTUB_CREATE_MSG: "Create a UTub",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py
+    // WHY duplicated here: vitest runs in Node with no Flask app context, so generate_strings_js() is
+    // never invoked and APP_CONFIG is never populated from the backend. These mock values must mirror
+    // the Python source by hand to keep tests deterministic. Keep in sync on any string change; a
+    // future codegen step (e.g. vite plugin that pre-dumps the JSON at build time) could eliminate this.
     METRICS_DASHBOARD_TITLE: "Anonymous Metrics — Admin Dashboard",
     METRICS_REFRESH_BUTTON_LABEL: "Refresh",
     METRICS_REFRESH_BUTTON_ARIA: "Refresh metrics now",

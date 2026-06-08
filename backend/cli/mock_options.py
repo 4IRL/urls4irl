@@ -1,4 +1,5 @@
 import secrets
+from datetime import timedelta
 
 import click
 from flask import Flask, current_app, session
@@ -14,7 +15,13 @@ from backend.cli.mock_data.urls import generate_mock_urls, generate_custom_mock_
 from backend.cli.mock_data.users import generate_mock_users
 from backend.cli.mock_data.utubmembers import generate_mock_utubmembers
 from backend.cli.mock_data.utubs import generate_mock_utubs
+from backend.extensions.metrics.registry_sync import sync_event_registry
+from backend.metrics.events import DeviceType, EventName
+from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.users import Users
+from backend.utils.datetime_utils import utc_now
+
+SEED_TEST_DATA_HOUR_OFFSETS: tuple[int, ...] = (0, 1, 2)
 
 HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""
 
@@ -265,6 +272,85 @@ def drop_db(db_type: str, keep_alembic: bool):
         meta.drop_all()
     con.close()
     print(f"\n--- Dropped each table in {db_type} database ---\n\n")
+
+
+@mocks_cli.command(
+    "seed-uniform-test-data",
+    help="Seed a small fixed set of AnonymousMetrics rows for Selenium tests.",
+)
+@with_appcontext
+def seed_uniform_test_data_command() -> None:
+    """Insert a deterministic set of AnonymousMetrics rows for UI tests.
+
+    Bypasses Redis and writes directly to Postgres so the admin metrics
+    dashboard renders non-empty tables/charts during the Selenium smoke
+    test. Covers all three event categories (API, UI, DOMAIN) with known
+    hour-bucket-aligned `bucket_start` values.
+
+    Consistent with the `flask addmock` seeding pattern: idempotent on
+    `(bucket_start, event_name, dimensions)` via the table's
+    `unique_metric_bucket` constraint — repeated runs are safe.
+
+    Examples:
+        Local: ``flask addmock seed-uniform-test-data`` writes nine rows
+        across three hour buckets ending at the current hour, one row per
+        bucket for each of: api_hit (API), ui_login_submit (UI),
+        utub_created (DOMAIN).
+    """
+    sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
+
+    seed_events: tuple[tuple[EventName, dict], ...] = (
+        (
+            EventName.API_HIT,
+            {"endpoint": "/api/utubs", "method": "GET", "status_code": 200},
+        ),
+        (EventName.UI_LOGIN_SUBMIT, {"device_type": DeviceType.DESKTOP.value}),
+        (EventName.UTUB_CREATED, {}),
+    )
+
+    now = utc_now()
+    current_hour_aligned = now.replace(minute=0, second=0, microsecond=0)
+    rows_written = 0
+    for hour_offset in SEED_TEST_DATA_HOUR_OFFSETS:
+        # Hour-aligned bucket start matches the epoch-aligned bucket key
+        # written by `MetricsWriter`, so the query service can group rows.
+        bucket_start = current_hour_aligned - timedelta(hours=hour_offset)
+
+        for event_name, dimensions in seed_events:
+            existing_row = Anonymous_Metrics.query.filter_by(
+                bucket_start=bucket_start,
+                event_name=event_name.value,
+                dimensions=dimensions,
+            ).one_or_none()
+            if existing_row is not None:
+                continue
+            # Mirror the flush worker's flat-column promotion: api_hit rows
+            # carry endpoint/method/status_code in dedicated columns so the
+            # top-events query (which filters on `endpoint IS NOT NULL`) can
+            # reach them. Without this, seeded rows would only live in the
+            # `dimensions` JSONB and the API tab would render the empty state.
+            if event_name is EventName.API_HIT:
+                endpoint_value = dimensions.get("endpoint")
+                method_value = dimensions.get("method")
+                status_code_value = dimensions.get("status_code")
+            else:
+                endpoint_value = None
+                method_value = None
+                status_code_value = None
+            db.session.add(
+                Anonymous_Metrics(
+                    event_name=event_name.value,
+                    bucket_start=bucket_start,
+                    endpoint=endpoint_value,
+                    method=method_value,
+                    status_code=status_code_value,
+                    dimensions=dimensions,
+                    count=1 + hour_offset,
+                )
+            )
+            rows_written += 1
+    db.session.commit()
+    click.echo(f"metrics: seeded {rows_written} AnonymousMetrics rows for UI tests.")
 
 
 def register_mocks_db_cli(app: Flask):

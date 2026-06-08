@@ -57,8 +57,22 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         },
     ),
     (EventName.UI_URL_COPY, {"result": "success", "device_type": DeviceType.DESKTOP}),
-    (EventName.UI_SEARCH_OPEN, {"target": "urls", "device_type": DeviceType.MOBILE}),
-    (EventName.UI_SEARCH_CLOSE, {"target": "utubs", "device_type": DeviceType.DESKTOP}),
+    (
+        EventName.UI_UTUB_SEARCH_OPEN,
+        {"target": "utubs", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_UTUB_SEARCH_CLOSE,
+        {"target": "utubs", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_URL_SEARCH_OPEN,
+        {"target": "urls", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_URL_SEARCH_CLOSE,
+        {"target": "urls", "device_type": DeviceType.DESKTOP},
+    ),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": DeviceType.DESKTOP}),
     (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
