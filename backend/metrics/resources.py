@@ -26,6 +26,7 @@ from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.utils.all_routes import (
     ACCOUNT_AND_SETTING_ROUTES,
+    ADMIN_ROUTES,
     MEMBER_ROUTES,
     SPLASH_ROUTES,
     URL_ROUTES,
@@ -142,9 +143,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
 # because both are tag-related; `users`+`splash` share `AUTH` because the
 # users blueprint is account/profile (auth-adjacent).
 #
-# Blueprint prefix constants are sourced from `backend/utils/all_routes.py`
-# where they exist. The `admin` blueprint has no entry in `all_routes.py`
-# (it is not used with `url_for`) so its prefix remains a bare string literal.
+# All blueprint prefix constants are sourced from `backend/utils/all_routes.py`
+# (single source of truth — no bare string literals).
 API_ROUTE_PREFIX_TO_RESOURCE: tuple[tuple[str, Resource], ...] = (
     (UTUB_ROUTES._UTUBS, Resource.UTUB),
     (URL_ROUTES._URLS, Resource.URL),
@@ -153,7 +153,7 @@ API_ROUTE_PREFIX_TO_RESOURCE: tuple[tuple[str, Resource], ...] = (
     (MEMBER_ROUTES._MEMBERS, Resource.MEMBER),
     (SPLASH_ROUTES._SPLASH, Resource.AUTH),
     (USER_ROUTES._USERS, Resource.AUTH),
-    ("admin.", Resource.ADMIN),
+    (ADMIN_ROUTES._ADMIN, Resource.ADMIN),
     (ACCOUNT_AND_SETTING_ROUTES._CONTACT, Resource.CONTACT),
 )
 

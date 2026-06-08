@@ -75,6 +75,11 @@ class UTUB_ROUTES:
     UPDATE_UTUB_DESC = _UTUBS + "update_utub_desc"
 
 
+class ADMIN_ROUTES:
+    _ADMIN = "admin."
+    METRICS_PAGE = _ADMIN + "admin_metrics"
+
+
 class ROUTES:
     MEMBERS = MEMBER_ROUTES
     SPLASH = SPLASH_ROUTES
@@ -84,6 +89,7 @@ class ROUTES:
     USERS = USER_ROUTES
     UTUBS = UTUB_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
+    ADMIN = ADMIN_ROUTES
 
 
 def generate_routes_js() -> dict[str, str]:
@@ -135,4 +141,18 @@ def generate_routes_js() -> dict[str, str]:
         "logout": url_for(USER_ROUTES.LOGOUT),
         # Contact
         "contactUs": url_for(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT),
+    }
+
+
+def generate_admin_routes_js() -> dict[str, str]:
+    """
+    Admin-only routes exposed to the frontend.
+
+    Caller (`backend/utils/constants.py:STRINGS.build_config`) merges this
+    into `APP_CONFIG.routes` only when the current user is an authenticated
+    admin, so non-admin and anonymous clients never receive the admin URL
+    in their payload.
+    """
+    return {
+        "adminMetricsPage": url_for(ADMIN_ROUTES.METRICS_PAGE),
     }

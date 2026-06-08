@@ -1,8 +1,10 @@
+from flask_login import current_user
+
 from backend.metrics.dimension_models import get_all_dimension_keys
 from backend.metrics.events import DeviceType
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
-from backend.utils.all_routes import generate_routes_js
+from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.email_validation_strs import (
     VALIDATE_MY_EMAIL,
@@ -401,10 +403,13 @@ def provide_config_for_constants() -> dict:
     - CONSTANTS: Python objects for Jinja template rendering
     - CONFIG: JSON-serializable dict for JavaScript
     """
+    routes = generate_routes_js()
+    if current_user.is_authenticated and current_user.is_admin():
+        routes.update(generate_admin_routes_js())
     return dict(
         CONSTANTS=CONSTANTS(),
         CONFIG=dict(
-            routes=generate_routes_js(),
+            routes=routes,
             constants=generate_constants_js(),
             strings=generate_strings_js(),
         ),

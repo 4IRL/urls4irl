@@ -470,7 +470,8 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Template**   | `pages/admin_metrics.html` (vars: `is_admin_metrics=True`)                                                              |
 | **JS Module**  | `frontend/admin-metrics.ts` (entry point: registers plugins, sets up CSRF, initialises the metrics dashboard controller) |
 | **CSRF**       | Meta tag (`<meta name="csrf-token">`)                                                                                   |
-| **Tests**      | `tests/integration/system/test_metrics_dashboard_page.py` (marker: `cli`)                                               |
+| **Tests**      | `tests/integration/system/test_metrics_dashboard_page.py`, `tests/integration/system/test_admin_routes_gating.py` (marker: `cli`) |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.METRICS_PAGE` (gated in `generate_routes_js()` — only emitted to admin users)                                                |
 
 ---
 
