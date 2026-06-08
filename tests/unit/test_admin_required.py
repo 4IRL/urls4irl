@@ -3,7 +3,8 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, jsonify
+from flask import Flask, jsonify, redirect
+from flask_login import LoginManager
 
 from backend.api_common.auth_decorators import (
     ADMIN_AUTH_DECORATORS,
@@ -37,11 +38,26 @@ def _build_app_with_admin_required() -> Flask:
 
 
 def _build_app_with_admin_login_required() -> Flask:
-    """Build a minimal Flask app with an admin-gated HTML route."""
+    """Build a minimal Flask app with an admin-gated HTML route.
+
+    Registers a `LoginManager` with a custom `unauthorized_handler` that returns
+    a 302 directly. Flask-Login's default handler calls
+    `url_for(login_view)`, which would fail in this minimal app since the
+    splash blueprint isn't registered.
+    """
     app = Flask(__name__)
     app.config["TESTING"] = True
     app.config["LOGIN_DISABLED"] = False
     app.secret_key = "test-secret"
+
+    login_manager = LoginManager()
+    login_manager.login_view = "splash.splash_page"
+    login_manager.init_app(app)
+
+    @login_manager.unauthorized_handler
+    def _unauthorized():
+        return redirect("/splash"), 302
+
     decorated = admin_login_required(_stub_view)
     app.add_url_rule("/admin-html-stub", view_func=decorated, methods=["GET"])
     return app
