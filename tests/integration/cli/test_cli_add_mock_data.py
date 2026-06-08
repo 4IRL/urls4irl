@@ -1,4 +1,7 @@
 import pytest
+
+from backend.cli.mock_options import SEED_TEST_DATA_HOUR_OFFSETS
+from backend.models.anonymous_metrics import Anonymous_Metrics
 from tests.integration.cli.utils import (
     verify_custom_url_added_to_all_utubs,
     verify_custom_url_in_database,
@@ -15,6 +18,10 @@ from tests.integration.cli.utils import (
 pytestmark = pytest.mark.cli
 
 DUPLICATE_COUNT = 2
+SEEDED_EVENT_COUNT_PER_BUCKET = 3
+EXPECTED_SEEDED_ROW_COUNT = (
+    len(SEED_TEST_DATA_HOUR_OFFSETS) * SEEDED_EVENT_COUNT_PER_BUCKET
+)
 
 
 def test_add_mock_users(runner):
@@ -361,3 +368,53 @@ def test_add_all_mock_data_with_no_utub_duplicates(runner):
             verify_urls_added_to_all_utubs()
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
+
+
+def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
+    """
+    GIVEN a developer wanting to seed deterministic AnonymousMetrics rows for UI tests
+    WHEN the developer provides the following CLI command:
+        `flask addmock seed-uniform-test-data`
+    THEN verify the command exits successfully, writes the expected number of rows
+        (one row per (hour-offset, event) combination), and is idempotent across
+        repeat invocations (no duplicate rows on a second invocation, because the
+        seeder skips rows that already exist for the same bucket/event/dimensions).
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        assert Anonymous_Metrics.query.count() == 0, (
+            "AnonymousMetrics table must be empty before the seed CLI runs so "
+            "that the row-count assertion measures only the rows this command "
+            "wrote."
+        )
+
+    first_result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
+    assert first_result.exit_code == 0, (
+        f"First seed CLI invocation failed: exit={first_result.exit_code} "
+        f"output={first_result.output}"
+    )
+
+    with app.app_context():
+        rows_after_first_run = Anonymous_Metrics.query.count()
+        assert rows_after_first_run == EXPECTED_SEEDED_ROW_COUNT, (
+            f"Expected {EXPECTED_SEEDED_ROW_COUNT} seeded rows after first run, "
+            f"got {rows_after_first_run}"
+        )
+
+    second_result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
+    assert second_result.exit_code == 0, (
+        f"Second seed CLI invocation failed: exit={second_result.exit_code} "
+        f"output={second_result.output}"
+    )
+
+    with app.app_context():
+        rows_after_second_run = Anonymous_Metrics.query.count()
+        assert rows_after_second_run == EXPECTED_SEEDED_ROW_COUNT, (
+            "Seed CLI must be idempotent: second invocation must not add or "
+            f"remove rows. Expected {EXPECTED_SEEDED_ROW_COUNT}, got "
+            f"{rows_after_second_run}."
+        )
