@@ -59,6 +59,11 @@ class ACCOUNT_AND_SETTING_ROUTES:
     CONTACT_US_SUBMIT = _CONTACT + "submit_contact_us"
 
 
+class ADMIN_ROUTES:
+    _ADMIN = "admin."
+    METRICS_PAGE = _ADMIN + "admin_metrics"
+
+
 class SYSTEM_ROUTES:
     _SYSTEM = "system."
     HEALTH = _SYSTEM + "health"
@@ -75,11 +80,6 @@ class UTUB_ROUTES:
     UPDATE_UTUB_DESC = _UTUBS + "update_utub_desc"
 
 
-class ADMIN_ROUTES:
-    _ADMIN = "admin."
-    METRICS_PAGE = _ADMIN + "admin_metrics"
-
-
 class ROUTES:
     MEMBERS = MEMBER_ROUTES
     SPLASH = SPLASH_ROUTES
@@ -87,9 +87,9 @@ class ROUTES:
     UTUB_TAGS = UTUB_TAG_ROUTES
     URLS = URL_ROUTES
     USERS = USER_ROUTES
-    UTUBS = UTUB_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
+    UTUBS = UTUB_ROUTES
 
 
 def generate_routes_js() -> dict[str, str]:
