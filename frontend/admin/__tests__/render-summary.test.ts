@@ -14,6 +14,7 @@ function buildSummaryResponse(
     previous_window_start: "2026-06-05T00:00:00Z",
     previous_window_end: "2026-06-06T00:00:00Z",
     last_flush_at: "2026-06-07T12:00:00Z",
+    last_event_at: "2026-06-07T12:00:00Z",
     by_category,
   };
 }

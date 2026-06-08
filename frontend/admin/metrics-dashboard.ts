@@ -63,7 +63,13 @@ import { renderTopTable } from "./render-top-table.js";
 type MetricsWindow = "day" | "week" | "month" | "year";
 type MetricsCategory = "api" | "ui" | "domain";
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
-type LastFlushBucket = "just_now" | "seconds" | "minutes" | "stale";
+type LastFlushBucket =
+  | "just_now"
+  | "seconds"
+  | "minutes"
+  | "stale_minutes"
+  | "stale_hours";
+type LastEventBucket = "just_now" | "seconds" | "minutes" | "hours";
 
 interface InFlightRequests {
   topApi: JQuery.jqXHR | null;
@@ -86,9 +92,19 @@ interface CategoryPanelIds {
 const POLL_INTERVAL_MS = 60_000;
 const VISIBILITY_REFETCH_THRESHOLD_MS = 5_000;
 const BADGE_TICK_INTERVAL_MS = 1_000;
+// Shared bucket thresholds: "just_now" until 5 s elapsed, "seconds" until 60 s,
+// then "minutes" until the badge-specific upper bound. After that, each badge
+// diverges — see FLUSH_STALE_AT_MS (worker liveness) and EVENT_HOURS_AT_MS
+// (data freshness).
 const BADGE_BUCKET_SECONDS_MS = 5_000;
 const BADGE_BUCKET_MINUTES_MS = 60_000;
-const BADGE_BUCKET_STALE_MS = 3_600_000;
+// Last flush goes "stale" at 2 min: the worker runs every 60 s, so anything
+// older than two cron ticks indicates a genuine problem with the pipeline.
+const FLUSH_STALE_AT_MS = 120_000;
+const FLUSH_STALE_HOURS_AT_MS = 3_600_000;
+// Last event uses hours as a unit beyond 1 h — but NEVER paints itself stale,
+// because hours-old data is normal during low-traffic stretches.
+const EVENT_HOURS_AT_MS = 3_600_000;
 const BADGE_STALE_CLASS = "MetricsBadgeStale";
 
 const DASHBOARD_ROOT_ID = "MetricsDashboard";
@@ -97,6 +113,9 @@ const ERROR_BANNER_ID = "MetricsErrorBanner";
 const LAST_FLUSH_BADGE_ID = "MetricsLastFlush";
 const LAST_FLUSH_TEXT_ID = "MetricsLastFlushText";
 const LAST_FLUSH_ANNOUNCEMENT_ID = "MetricsLastFlushAnnouncement";
+const LAST_EVENT_BADGE_ID = "MetricsLastEvent";
+const LAST_EVENT_TEXT_ID = "MetricsLastEventText";
+const LAST_EVENT_ANNOUNCEMENT_ID = "MetricsLastEventAnnouncement";
 const WINDOW_BUTTON_CLASS = "MetricsWindowButton";
 const TABLIST_ID = "MetricsTablist";
 const TAB_ROLE_SELECTOR = '[role="tab"]';
@@ -174,13 +193,16 @@ const _selectedEventByCategory: Map<MetricsCategory, string> = new Map();
 const _chartFetchedWindowByCategory: Map<MetricsCategory, MetricsWindow> =
   new Map();
 
-// Badge state. `_lastFlushAtMs` is a wall-clock epoch parsed from the server's
-// `summary.last_flush_at`, so the elapsed delta MUST be computed with
-// `Date.now()` — `performance.now()` is page-load-relative and would yield a
-// nonsense delta when subtracted from a wall-clock value.
+// Badge state. Both `_lastFlushAtMs` and `_lastEventAtMs` are wall-clock epochs
+// parsed from the server's `summary.last_flush_at` / `summary.last_event_at`,
+// so the elapsed delta MUST be computed with `Date.now()` — `performance.now()`
+// is page-load-relative and would yield a nonsense delta when subtracted from
+// a wall-clock value.
 let _badgeIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFlushAtMs: number | null = null;
-let _lastAnnouncedBucket: LastFlushBucket | null = null;
+let _lastAnnouncedFlushBucket: LastFlushBucket | null = null;
+let _lastEventAtMs: number | null = null;
+let _lastAnnouncedEventBucket: LastEventBucket | null = null;
 
 function getElementByIdOrNull<ElementT extends HTMLElement>(
   elementId: string,
@@ -286,7 +308,9 @@ function renderTimeseriesSelect({
     if (category === "api") {
       const [methodPart] = event.event_name.split(" ", 1);
       optionElement.dataset.eventName = "api_hit";
-      optionElement.dataset.endpoint = event.description;
+      if (event.api_endpoint !== null && event.api_endpoint !== undefined) {
+        optionElement.dataset.endpoint = event.api_endpoint;
+      }
       optionElement.dataset.method = methodPart;
     } else {
       optionElement.dataset.eventName = event.event_name;
@@ -602,7 +626,12 @@ function fetchAll(): void {
         response.last_flush_at !== null
           ? Date.parse(response.last_flush_at)
           : null;
+      _lastEventAtMs =
+        response.last_event_at !== null
+          ? Date.parse(response.last_event_at)
+          : null;
       renderLastFlushBadge();
+      renderLastEventBadge();
     })
     .fail((xhr) => {
       if (is429Handled(xhr)) {
@@ -688,20 +717,22 @@ function stopPolling(): void {
 }
 
 /**
- * Update `#MetricsLastFlush` with the elapsed time since the server's last
- * Redis-to-Postgres flush. Called every `BADGE_TICK_INTERVAL_MS` while the tab
- * is visible.
+ * Update `#MetricsLastFlush` with elapsed time since the worker's last liveness
+ * stamp (`metrics:flush:last_success_epoch`), which advances every minute the
+ * worker runs successfully — regardless of traffic. Called every
+ * `BADGE_TICK_INTERVAL_MS` while the tab is visible.
  *
- * `Date.now()` (NOT `performance.now()`) is correct here: `_lastFlushAtMs` is
- * `Date.parse(response.last_flush_at)`, a wall-clock epoch supplied by the
- * server. Subtracting a page-load-relative `performance.now()` from a
- * wall-clock epoch would produce a meaningless delta.
+ * The 2-min "stale" threshold means the worker has missed at least two cron
+ * ticks, which warrants admin attention. `Date.now()` (NOT `performance.now()`)
+ * is correct because `_lastFlushAtMs` is `Date.parse(response.last_flush_at)`,
+ * a wall-clock epoch supplied by the server; subtracting a page-load-relative
+ * `performance.now()` from a wall-clock epoch would produce a meaningless
+ * delta.
  *
  * The visible badge text refreshes every tick. The visually-hidden aria-live
  * sink (`#MetricsLastFlushAnnouncement`) is written only when the bucket
- * transitions, so screen-reader users hear at most four announcements per
- * flush cycle ("just now" → "N seconds" → "N minutes" → "N hours") rather
- * than every-second chatter.
+ * transitions, so screen-reader users hear at most a handful of announcements
+ * per flush cycle rather than every-second chatter.
  */
 function renderLastFlushBadge(): void {
   const badge = getElementByIdOrNull<HTMLElement>(LAST_FLUSH_BADGE_ID);
@@ -728,44 +759,114 @@ function renderLastFlushBadge(): void {
       String(Math.floor(elapsedMs / 1_000)),
     );
     bucket = "seconds";
-  } else if (elapsedMs < BADGE_BUCKET_STALE_MS) {
+  } else if (elapsedMs < FLUSH_STALE_AT_MS) {
     text = APP_CONFIG.strings.METRICS_LAST_FLUSH_MINUTES.replace(
       "{{ n }}",
       String(Math.floor(elapsedMs / 60_000)),
     );
     bucket = "minutes";
+  } else if (elapsedMs < FLUSH_STALE_HOURS_AT_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_FLUSH_STALE_MINUTES.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 60_000)),
+    );
+    bucket = "stale_minutes";
   } else {
     text = APP_CONFIG.strings.METRICS_LAST_FLUSH_STALE_HOURS.replace(
       "{{ n }}",
       String(Math.floor(elapsedMs / 3_600_000)),
     );
-    bucket = "stale";
+    bucket = "stale_hours";
   }
 
   textNode.textContent = text;
-  if (bucket === "stale") {
+  const isStale = bucket === "stale_minutes" || bucket === "stale_hours";
+  if (isStale) {
     badge.classList.add(BADGE_STALE_CLASS);
   } else {
     badge.classList.remove(BADGE_STALE_CLASS);
   }
 
-  if (bucket !== _lastAnnouncedBucket) {
+  if (bucket !== _lastAnnouncedFlushBucket) {
     const announcement = getElementByIdOrNull<HTMLElement>(
       LAST_FLUSH_ANNOUNCEMENT_ID,
     );
     if (announcement !== null) {
       announcement.textContent = text;
     }
-    _lastAnnouncedBucket = bucket;
+    _lastAnnouncedFlushBucket = bucket;
   }
+}
+
+/**
+ * Update `#MetricsLastEvent` with elapsed time since the most recent
+ * AnonymousMetrics bucket (server's `last_event_at`). Advances only when
+ * traffic lands, so a multi-hour gap is normal during low usage — the badge
+ * intentionally never paints itself "stale" since hours-old data does not
+ * indicate a broken pipeline (see `renderLastFlushBadge` for that signal).
+ */
+function renderLastEventBadge(): void {
+  const badge = getElementByIdOrNull<HTMLElement>(LAST_EVENT_BADGE_ID);
+  const textNode = getElementByIdOrNull<HTMLElement>(LAST_EVENT_TEXT_ID);
+  if (badge === null || textNode === null) {
+    return;
+  }
+
+  if (_lastEventAtMs === null) {
+    textNode.textContent = "";
+    return;
+  }
+
+  const elapsedMs = Date.now() - _lastEventAtMs;
+  let text: string;
+  let bucket: LastEventBucket;
+  if (elapsedMs < BADGE_BUCKET_SECONDS_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_EVENT_JUST_NOW;
+    bucket = "just_now";
+  } else if (elapsedMs < BADGE_BUCKET_MINUTES_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_EVENT_SECONDS.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 1_000)),
+    );
+    bucket = "seconds";
+  } else if (elapsedMs < EVENT_HOURS_AT_MS) {
+    text = APP_CONFIG.strings.METRICS_LAST_EVENT_MINUTES.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 60_000)),
+    );
+    bucket = "minutes";
+  } else {
+    text = APP_CONFIG.strings.METRICS_LAST_EVENT_HOURS.replace(
+      "{{ n }}",
+      String(Math.floor(elapsedMs / 3_600_000)),
+    );
+    bucket = "hours";
+  }
+
+  textNode.textContent = text;
+
+  if (bucket !== _lastAnnouncedEventBucket) {
+    const announcement = getElementByIdOrNull<HTMLElement>(
+      LAST_EVENT_ANNOUNCEMENT_ID,
+    );
+    if (announcement !== null) {
+      announcement.textContent = text;
+    }
+    _lastAnnouncedEventBucket = bucket;
+  }
+}
+
+function tickBothBadges(): void {
+  renderLastFlushBadge();
+  renderLastEventBadge();
 }
 
 function startBadgeTicker(): void {
   if (_badgeIntervalId !== null) {
     clearInterval(_badgeIntervalId);
   }
-  _badgeIntervalId = setInterval(renderLastFlushBadge, BADGE_TICK_INTERVAL_MS);
-  renderLastFlushBadge();
+  _badgeIntervalId = setInterval(tickBothBadges, BADGE_TICK_INTERVAL_MS);
+  tickBothBadges();
 }
 
 function stopBadgeTicker(): void {
@@ -1020,7 +1121,9 @@ export function _resetMetricsDashboardForTests(): void {
   _selectedEventByCategory.clear();
   _chartFetchedWindowByCategory.clear();
   _lastFlushAtMs = null;
-  _lastAnnouncedBucket = null;
+  _lastAnnouncedFlushBucket = null;
+  _lastEventAtMs = null;
+  _lastAnnouncedEventBucket = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);
 }
 
@@ -1035,4 +1138,12 @@ export function _setLastFlushAtMsForTests(value: number | null): void {
 
 export function _renderLastFlushBadgeForTests(): void {
   renderLastFlushBadge();
+}
+
+export function _setLastEventAtMsForTests(value: number | null): void {
+  _lastEventAtMs = value;
+}
+
+export function _renderLastEventBadgeForTests(): void {
+  renderLastEventBadge();
 }

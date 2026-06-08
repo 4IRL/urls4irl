@@ -96,6 +96,31 @@ class MetricsWriter:
         except Exception:
             current_app.logger.exception("metrics: record_event failed")
 
+    def get_last_flush_success_epoch(self) -> int | None:
+        """Return the flush worker's liveness sentinel as a Unix epoch.
+
+        The flush worker stamps `METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY` with the
+        current epoch on every successful run (including empty flushes), so a
+        recent value means the worker is alive even when no buckets have been
+        upserted. Returns None when metrics are disabled, the Redis client is
+        unavailable, the key is missing, or Redis is unreachable — all paths
+        that should render the dashboard's "Last flush" badge as "unknown"
+        rather than misreporting.
+        """
+        if not self._enabled or self._redis is None:
+            return None
+        try:
+            raw_value = self._redis.get(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
+        except Exception:
+            current_app.logger.exception("metrics: read last_flush_success failed")
+            return None
+        if raw_value is None:
+            return None
+        try:
+            return int(raw_value)
+        except (TypeError, ValueError):
+            return None
+
     def reserve_batch(self, batch_id: str) -> bool:
         """Atomically reserve a batch nonce; True if newly reserved, False otherwise.
 

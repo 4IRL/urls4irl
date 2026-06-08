@@ -135,7 +135,12 @@ const appConfig = {
     METRICS_LAST_FLUSH_JUST_NOW: "Last flush just now",
     METRICS_LAST_FLUSH_SECONDS: "Last flush {{ n }}s ago",
     METRICS_LAST_FLUSH_MINUTES: "Last flush {{ n }}m ago",
+    METRICS_LAST_FLUSH_STALE_MINUTES: "Last flush {{ n }}m ago (stale)",
     METRICS_LAST_FLUSH_STALE_HOURS: "Last flush {{ n }}h ago (stale)",
+    METRICS_LAST_EVENT_JUST_NOW: "Last event just now",
+    METRICS_LAST_EVENT_SECONDS: "Last event {{ n }}s ago",
+    METRICS_LAST_EVENT_MINUTES: "Last event {{ n }}m ago",
+    METRICS_LAST_EVENT_HOURS: "Last event {{ n }}h ago",
     METRICS_EMPTY_STATE: "No events recorded in the selected window.",
     METRICS_FETCH_FAILED_BANNER:
       "Refresh failed — showing last successful data. Retrying in 60 seconds.",

@@ -10,6 +10,7 @@ function buildEvent(overrides: Partial<TopEventRow> = {}): TopEventRow {
     event_name: "utub_opened",
     category: "domain",
     description: "User opened a UTub",
+    api_endpoint: null,
     total_count: 42,
     previous_count: 0,
     ...overrides,

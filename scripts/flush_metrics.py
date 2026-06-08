@@ -97,8 +97,10 @@ FLUSH_LOCK_TTL_SECONDS: int = 55
 # or older than `METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS`. Set ONLY after a
 # successful flush completes (including empty-flush success); never set on the
 # lock-held early-exit path or on Postgres commit failure. No TTL so a long
-# stretch of failures naturally ages the value out past the threshold.
-FLUSH_LAST_SUCCESS_KEY: str = "metrics:flush:last_success_epoch"
+# stretch of failures naturally ages the value out past the threshold. Same
+# key is read by the admin dashboard's summary endpoint to surface "Last flush"
+# accurately even during low-traffic stretches.
+FLUSH_LAST_SUCCESS_KEY: str = METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY
 
 UPSERT_SQL: str = """
     INSERT INTO "AnonymousMetrics"

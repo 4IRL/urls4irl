@@ -16,7 +16,12 @@ class ADMIN_METRICS_STRINGS:
     METRICS_LAST_FLUSH_JUST_NOW: str = "Last flush just now"
     METRICS_LAST_FLUSH_SECONDS: str = "Last flush {{ n }}s ago"
     METRICS_LAST_FLUSH_MINUTES: str = "Last flush {{ n }}m ago"
+    METRICS_LAST_FLUSH_STALE_MINUTES: str = "Last flush {{ n }}m ago (stale)"
     METRICS_LAST_FLUSH_STALE_HOURS: str = "Last flush {{ n }}h ago (stale)"
+    METRICS_LAST_EVENT_JUST_NOW: str = "Last event just now"
+    METRICS_LAST_EVENT_SECONDS: str = "Last event {{ n }}s ago"
+    METRICS_LAST_EVENT_MINUTES: str = "Last event {{ n }}m ago"
+    METRICS_LAST_EVENT_HOURS: str = "Last event {{ n }}h ago"
     METRICS_EMPTY_STATE: str = "No events recorded in the selected window."
     METRICS_FETCH_FAILED_BANNER: str = (
         "Refresh failed — showing last successful data. Retrying in 60 seconds."

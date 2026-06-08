@@ -9,7 +9,12 @@
                 <span class="dot" aria-hidden="true"></span>
                 <span id="MetricsLastFlushText"></span>
             </span>
+            <span id="MetricsLastEvent" class="flush-badge" aria-live="off">
+                <span class="dot" aria-hidden="true"></span>
+                <span id="MetricsLastEventText"></span>
+            </span>
             <span id="MetricsLastFlushAnnouncement" class="visually-hidden" aria-live="polite"></span>
+            <span id="MetricsLastEventAnnouncement" class="visually-hidden" aria-live="polite"></span>
             <button id="MetricsRefreshNowBtn" type="button" class="refresh-btn" aria-label="{{ CONFIG.strings.METRICS_REFRESH_BUTTON_ARIA }}">
                 <span class="spinner" aria-hidden="true"></span>
                 {{ CONFIG.strings.METRICS_REFRESH_BUTTON_LABEL }}

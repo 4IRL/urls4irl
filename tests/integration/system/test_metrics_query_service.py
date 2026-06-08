@@ -15,6 +15,7 @@ from backend.metrics.events import (
     EventName,
 )
 from backend.metrics.query_service import summary, timeseries, top_events
+from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
     truncate_metrics_tables,
@@ -371,11 +372,13 @@ def test_top_events_api_category_groups_by_endpoint_method(
     second_row = rows[1]
     assert top_row.category == EventCategory.API.value
     assert top_row.total_count == 10
-    assert top_row.description == "utubs.get_single_utub"
+    assert top_row.api_endpoint == "utubs.get_single_utub"
+    assert top_row.description == "Retrieve data for a single UTub"
     assert top_row.event_name.startswith("GET ")
     assert top_row.event_name != "GET utubs.get_single_utub"
     assert second_row.total_count == 2
-    assert second_row.description == "splash.splash_page"
+    assert second_row.api_endpoint == "splash.splash_page"
+    assert second_row.description == ""
 
 
 def test_top_events_api_category_excludes_rows_with_null_endpoint(
@@ -423,7 +426,8 @@ def test_top_events_api_category_excludes_rows_with_null_endpoint(
         )
 
     assert len(rows) == 1
-    assert rows[0].description == "utubs.get_single_utub"
+    assert rows[0].api_endpoint == "utubs.get_single_utub"
+    assert rows[0].description == "Retrieve data for a single UTub"
     assert rows[0].total_count == 5
 
 
@@ -525,10 +529,13 @@ def test_timeseries_groups_by_resolution(
     metrics_pg_conn: Any,
 ) -> None:
     """
-    GIVEN two UTUB_OPENED rows in two distinct hour buckets within one day
+    GIVEN two UTUB_OPENED rows in two distinct hour buckets within a 1-day
+        window aligned on the hour
     WHEN timeseries is called with resolution="hour"
-    THEN two rows are returned in chronological order with the correct sums
-    AND when resolution="day", the buckets collapse to one row.
+    THEN 24 chronologically-ordered buckets are returned (one per hour) with
+        the two seeded buckets carrying counts 3 and 4 and the remaining 22
+        zero-filled.
+    AND when resolution="day", the buckets collapse to one row summing 7.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -563,23 +570,33 @@ def test_timeseries_groups_by_resolution(
             resolution="day",
         )
 
-    assert len(hourly) == 2
-    assert hourly[0].bucket < hourly[1].bucket
-    assert hourly[0].count == 3
-    assert hourly[1].count == 4
+    assert len(hourly) == 24
+    bucket_starts = [row.bucket for row in hourly]
+    assert bucket_starts == sorted(bucket_starts)
+    nonzero = {row.bucket: row.count for row in hourly if row.count != 0}
+    assert nonzero == {first_bucket: 3, second_bucket: 4}
 
-    assert len(daily) == 1
-    assert daily[0].count == 7
+    # The day window spans across a calendar-day boundary at 00:00 UTC, so the
+    # zero-fill emits two day buckets: the one containing the seeded rows
+    # (count=7) and the trailing day with no data (count=0).
+    assert len(daily) == 2
+    daily_by_bucket = {row.bucket: row.count for row in daily}
+    seeded_day = window_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    trailing_day = seeded_day + timedelta(days=1)
+    assert daily_by_bucket[seeded_day] == 7
+    assert daily_by_bucket[trailing_day] == 0
 
 
-def test_timeseries_empty_window_returns_empty_list(
+def test_timeseries_zero_fills_when_no_rows_in_window(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
 ) -> None:
     """
-    GIVEN no rows exist for the event in the window
-    WHEN timeseries is called
-    THEN the result is [] (assert-before-state: confirm no rows first).
+    GIVEN no rows exist for the event in a 1-day window
+    WHEN timeseries is called with resolution="hour"
+    THEN one zero-count bucket per hour is returned (24 total), so the
+        admin chart renders a flat-zero baseline instead of a single
+        lonely datapoint.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -603,7 +620,47 @@ def test_timeseries_empty_window_returns_empty_list(
             resolution="hour",
         )
 
-    assert rows == []
+    assert len(rows) == 24
+    assert all(row.count == 0 for row in rows)
+    bucket_starts = [row.bucket for row in rows]
+    assert bucket_starts == sorted(bucket_starts)
+
+
+def test_timeseries_zero_fills_with_unaligned_window_start(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a window whose `window_start` lands mid-hour (the common case for
+        relative `window="day"` queries — `now` is rarely hour-aligned)
+    WHEN timeseries is called with resolution="hour"
+    THEN the first emitted bucket is `truncate('hour', window_start)` — even
+        though its start is strictly before `window_start` — so the result
+        covers every aligned interval that overlaps the queried range. Skipping
+        the leading partial bucket would emit a zero where data could land in
+        coarser-resolution queries (`date_trunc('day', ...)`).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE  # 12:00:00 (aligned)
+    # Pin window_start to 11:37 the previous day so the leading aligned bucket
+    # (11:00) starts strictly before window_start.
+    window_start = (window_end - timedelta(days=1)).replace(minute=37)
+
+    with app.app_context():
+        rows = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+        )
+
+    # 24 buckets: the leading partial bucket (truncated hour containing
+    # window_start) through to the last full hour bucket before window_end.
+    assert len(rows) == 24
+    expected_first = window_start.replace(minute=0)
+    assert rows[0].bucket == expected_first
+    assert rows[-1].bucket < window_end
+    assert rows[-1].bucket + timedelta(hours=1) == window_end
 
 
 def test_timeseries_filters_by_endpoint_and_method(
@@ -663,8 +720,11 @@ def test_timeseries_filters_by_endpoint_and_method(
             method="GET",
         )
 
-    assert len(rows) == 1
-    assert rows[0].count == 4
+    assert len(rows) == 24
+    nonzero = [row for row in rows if row.count != 0]
+    assert len(nonzero) == 1
+    assert nonzero[0].count == 4
+    assert nonzero[0].bucket == inside
 
 
 def test_summary_current_vs_previous_window(
@@ -703,14 +763,14 @@ def test_summary_current_vs_previous_window(
         )
 
     with app.app_context():
-        result, _ = summary(
+        summary_result = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    api_row = next(row for row in result if row.category == "api")
+    api_row = next(row for row in summary_result.by_category if row.category == "api")
     assert api_row.current == 60
     assert api_row.previous == 30
     assert isinstance(api_row.category, str)
@@ -742,26 +802,26 @@ def test_summary_empty_window_returns_empty_list(
     assert existing_count == 0
 
     with app.app_context():
-        category_list, _ = summary(
+        summary_result = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    assert category_list == []
+    assert summary_result.by_category == []
 
 
-def test_summary_includes_last_flush_at_when_metrics_exist(
+def test_summary_includes_last_event_at_when_metrics_exist(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN a single seeded AnonymousMetrics row with a known bucket_start
     WHEN summary(...) is called
-    THEN the second tuple element equals that bucket_start exactly, so the
-        dashboard's freshness badge can render `now - last_flush_at` without
-        an additional round trip.
+    THEN `last_event_at` equals that bucket_start exactly, so the dashboard's
+        activity badge can render `now - last_event_at` without an additional
+        round trip.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -777,25 +837,25 @@ def test_summary_includes_last_flush_at_when_metrics_exist(
     )
 
     with app.app_context():
-        _, last_flush_at = summary(
+        summary_result = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    assert last_flush_at == seeded_bucket_start
+    assert summary_result.last_event_at == seeded_bucket_start
 
 
-def test_summary_last_flush_at_is_null_when_no_metrics(
+def test_summary_last_event_at_is_null_when_no_metrics(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
 ) -> None:
     """
     GIVEN an empty AnonymousMetrics table (assert-before-state)
     WHEN summary(...) is called
-    THEN the second tuple element is None — the badge falls back to its
-        empty-state text rather than rendering a stale timestamp.
+    THEN `last_event_at` is None — the badge falls back to its empty-state
+        text rather than rendering a stale timestamp.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -809,15 +869,81 @@ def test_summary_last_flush_at_is_null_when_no_metrics(
     assert existing_count == 0
 
     with app.app_context():
-        category_list, last_flush_at = summary(
+        summary_result = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    assert category_list == []
-    assert last_flush_at is None
+    assert summary_result.by_category == []
+    assert summary_result.last_event_at is None
+
+
+def test_summary_last_flush_at_reads_sentinel_from_redis(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a `metrics:flush:last_success_epoch` sentinel set in Redis at a known
+        Unix epoch
+    WHEN summary(...) is called
+    THEN `last_flush_at` is the UTC-aware datetime parsed from that epoch,
+        independent of whether AnonymousMetrics has any rows.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    expected_epoch = 1_733_606_400  # 2024-12-07 20:00:00 UTC
+    expected_datetime = datetime.fromtimestamp(expected_epoch, tz=timezone.utc)
+
+    writer = app.extensions["metrics_writer"]
+    writer._redis.set(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY, str(expected_epoch))
+    try:
+        with app.app_context():
+            summary_result = summary(
+                window_start=window_start,
+                window_end=window_end,
+                previous_window_start=previous_window_start,
+                previous_window_end=previous_window_end,
+            )
+    finally:
+        writer._redis.delete(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
+
+    assert summary_result.last_flush_at == expected_datetime
+
+
+def test_summary_last_flush_at_is_null_when_sentinel_absent(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN the `metrics:flush:last_success_epoch` sentinel is unset in Redis
+    WHEN summary(...) is called
+    THEN `last_flush_at` is None — the badge can fall back to an empty state
+        rather than misreporting a stale timestamp.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    writer = app.extensions["metrics_writer"]
+    writer._redis.delete(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
+
+    with app.app_context():
+        summary_result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
+
+    assert summary_result.last_flush_at is None
 
 
 def test_query_service_join_includes_description_for_every_event(

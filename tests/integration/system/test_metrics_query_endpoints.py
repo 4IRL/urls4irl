@@ -370,6 +370,9 @@ def test_query_summary_admin_happy_path_returns_by_category_list(
     assert "last_flush_at" in body
     last_flush_at_value = body["last_flush_at"]
     assert last_flush_at_value is None or _ISO_8601_UTC_REGEX.match(last_flush_at_value)
+    assert "last_event_at" in body
+    last_event_at_value = body["last_event_at"]
+    assert last_event_at_value is None or _ISO_8601_UTC_REGEX.match(last_event_at_value)
 
 
 # ---------------------------------------------------------------------------

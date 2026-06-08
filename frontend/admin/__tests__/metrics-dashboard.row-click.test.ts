@@ -84,6 +84,7 @@ interface MockTopEvent {
   event_name: string;
   category: "api" | "ui" | "domain";
   description: string;
+  api_endpoint?: string | null;
   total_count: number;
   previous_count: number;
 }
@@ -298,7 +299,8 @@ describe("metrics-dashboard top-table row clicks", () => {
                 {
                   event_name: "GET /utubs/<int:utub_id>",
                   category: "api" as const,
-                  description: "/utubs/<int:utub_id>",
+                  description: "Retrieve data for a single UTub",
+                  api_endpoint: "utubs.get_single_utub",
                   total_count: 250,
                   previous_count: 200,
                 },
@@ -329,7 +331,7 @@ describe("metrics-dashboard top-table row clicks", () => {
     expect(fetchTimeseriesSpy).toHaveBeenCalledTimes(1);
     expect(fetchTimeseriesSpy.mock.calls[0][0]).toMatchObject({
       eventName: "api_hit",
-      endpoint: "/utubs/<int:utub_id>",
+      endpoint: "utubs.get_single_utub",
       method: "GET",
       window: "day",
       resolution: "hour",

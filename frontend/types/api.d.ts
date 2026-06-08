@@ -621,8 +621,13 @@ export interface components {
       event_name: string;
       /** @description EventCategory value (api | domain | ui) */
       category: string;
-      /** @description Human-readable event description from EventRegistry */
+      /** @description Human-readable event description. For UI/domain rows this comes from EventRegistry; for API rows it comes from the route's `@api_route(description=...)` kwarg. */
       description: string;
+      /**
+       * @description Raw Flask endpoint name (e.g. `utubs.get_single_utub`) — populated only for API-category rows so the dashboard can filter the timeseries chart by the exact column value stored in `AnonymousMetrics.endpoint`. Null for UI/domain rows.
+       * @default null
+       */
+      api_endpoint: string | null;
       /** @description Sum of counts across all buckets in the window */
       total_count: number;
       /**
@@ -733,10 +738,15 @@ export interface components {
        */
       previous_window_end: string;
       /**
-       * @description Wall-clock timestamp of the most recent AnonymousMetrics bucket (MAX(bucket_start)); null when the table is empty. Surfaces freshness so the admin dashboard can render a 'last flush N seconds ago' badge without an extra round trip.
+       * @description Flush worker's liveness sentinel — UTC timestamp parsed from the `metrics:flush:last_success_epoch` Redis key, which the worker stamps on every successful run (including empty flushes). Reflects worker cadence, NOT data freshness — advances every minute regardless of traffic. Null when metrics are disabled, the sentinel is absent, or Redis is unreachable.
        * @default null
        */
       last_flush_at: string | null;
+      /**
+       * @description Wall-clock timestamp of the most recent AnonymousMetrics bucket (`MAX(bucketStart)`); null when the table is empty. Reflects when the last event was bucketed — advances only when traffic lands. Surfaced separately from `last_flush_at` so an admin can distinguish 'worker is dead' from 'nobody is using the app'.
+       * @default null
+       */
+      last_event_at: string | null;
       /** @description Per-category current vs. previous totals */
       by_category: components["schemas"]["SummaryCategoryCount"][];
     };
