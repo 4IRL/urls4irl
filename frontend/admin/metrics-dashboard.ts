@@ -46,6 +46,11 @@
  */
 
 import type { Schema } from "../types/api-helpers.d.ts";
+import {
+  RESOURCES,
+  RESOURCES_BY_CATEGORY,
+  type ResourceName,
+} from "../types/metrics-resources.js";
 
 import { APP_CONFIG } from "../lib/config.js";
 import { $ } from "../lib/globals.js";
@@ -56,6 +61,10 @@ import {
   fetchTimeseries,
   fetchTopEvents,
 } from "./metrics-query-client.js";
+import {
+  _resetPaneResizersForTests,
+  initPaneResizers,
+} from "./pane-resizer.js";
 import { renderSummary } from "./render-summary.js";
 import { renderTimeseriesChart } from "./render-timeseries-chart.js";
 import { renderTopTable } from "./render-top-table.js";
@@ -87,11 +96,41 @@ interface CategoryPanelIds {
   select: string;
   tab: string;
   panel: string;
+  resourceFilter: string;
+  substringFilter: string;
 }
+
+// Display label per `Resource` enum value. Keys must stay aligned with the
+// generated `RESOURCES` const — the boot-time `populateResourceFilter` walk
+// reads this map for every option label, so a missing key would render an
+// empty `<option>`.
+const RESOURCE_LABELS: Record<ResourceName, string> = {
+  [RESOURCES.UTUB]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_UTUB,
+  [RESOURCES.URL]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_URL,
+  [RESOURCES.TAG]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_TAG,
+  [RESOURCES.MEMBER]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_MEMBER,
+  [RESOURCES.AUTH]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_AUTH,
+  [RESOURCES.SEARCH]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_SEARCH,
+  [RESOURCES.FORM]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_FORM,
+  [RESOURCES.DECK]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_DECK,
+  [RESOURCES.NAV]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_NAV,
+  [RESOURCES.ERROR]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_ERROR,
+  [RESOURCES.CONTACT]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_CONTACT,
+  [RESOURCES.ADMIN]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_ADMIN,
+  [RESOURCES.OTHER]: APP_CONFIG.strings.METRICS_TOP_RESOURCE_OTHER,
+};
 
 const POLL_INTERVAL_MS = 60_000;
 const VISIBILITY_REFETCH_THRESHOLD_MS = 5_000;
 const BADGE_TICK_INTERVAL_MS = 1_000;
+// When any per-tab filter (resource or substring) is active, bump the top
+// request's `limit` so the client-side substring filter has a wider pool of
+// rows to narrow. 100 matches the server-side cap on `TopEventsQuerySchema.limit`.
+const FILTERED_TOP_LIMIT = 100;
+// Substring input is debounced via `performance.now()` so repeated keystrokes
+// collapse to one re-render. Monotonic vs `Date.now()` so a system-clock step
+// cannot cause a debounced re-render to fire late or never.
+const SUBSTRING_DEBOUNCE_MS = 150;
 // Shared bucket thresholds: "just_now" until 5 s elapsed, "seconds" until 60 s,
 // then "minutes" until the badge-specific upper bound. After that, each badge
 // diverges — see FLUSH_STALE_AT_MS (worker liveness) and EVENT_HOURS_AT_MS
@@ -127,6 +166,8 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     select: "MetricsTimeseriesEventApi",
     tab: "MetricsTabApi",
     panel: "MetricsPanelApi",
+    resourceFilter: "MetricsTopResourceFilter-api",
+    substringFilter: "MetricsTopSubstringFilter-api",
   },
   ui: {
     tbody: "MetricsTopTableUi",
@@ -134,6 +175,8 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     select: "MetricsTimeseriesEventUi",
     tab: "MetricsTabUi",
     panel: "MetricsPanelUi",
+    resourceFilter: "MetricsTopResourceFilter-ui",
+    substringFilter: "MetricsTopSubstringFilter-ui",
   },
   domain: {
     tbody: "MetricsTopTableDomain",
@@ -141,6 +184,8 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     select: "MetricsTimeseriesEventDomain",
     tab: "MetricsTabDomain",
     panel: "MetricsPanelDomain",
+    resourceFilter: "MetricsTopResourceFilter-domain",
+    substringFilter: "MetricsTopSubstringFilter-domain",
   },
 };
 
@@ -184,6 +229,15 @@ const _topCache: Map<MetricsCategory, TopEventsResponseSchema> = new Map();
 // for the top-table row highlight (aria-current), used both when a polling
 // refresh re-renders the table and when the user switches tabs.
 const _selectedEventByCategory: Map<MetricsCategory, string> = new Map();
+// Per-tab filter state. Both maps survive tab switches inside one session;
+// `_resetMetricsDashboardForTests` clears them.
+const _resourceFilterByCategory: Map<MetricsCategory, ResourceName> = new Map();
+const _substringFilterByCategory: Map<MetricsCategory, string> = new Map();
+// Debounce handles per category; cleared whenever a fresh keystroke arrives.
+const _substringDebounceTimerByCategory: Map<
+  MetricsCategory,
+  ReturnType<typeof setTimeout>
+> = new Map();
 // Records the window each category's chart was last fetched against. When the
 // user changes window (Day → Week, etc.), `_currentWindow` advances but each
 // panel's chart still shows old-window data until the timeseries re-fetches —
@@ -246,6 +300,167 @@ function setRefreshButtonInFlight({ inFlight }: { inFlight: boolean }): void {
   }
 }
 
+// Per-tab label for the second column header of the Top Events table. The
+// column shows different content per tab (HTTP endpoints on API; event names
+// on UI/Domain), so the header text follows suit instead of saying "Endpoint"
+// everywhere.
+function topTableNameHeader({
+  category,
+}: {
+  category: MetricsCategory;
+}): string {
+  if (category === "api") {
+    return APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_ENDPOINT;
+  }
+  if (category === "domain") {
+    return APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_ACTION;
+  }
+  return APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_EVENT;
+}
+
+function effectiveTopLimit({
+  category,
+}: {
+  category: MetricsCategory;
+}): number {
+  const hasResource = _resourceFilterByCategory.has(category);
+  const hasSubstring = (_substringFilterByCategory.get(category) ?? "") !== "";
+  return hasResource || hasSubstring ? FILTERED_TOP_LIMIT : 10;
+}
+
+/**
+ * Populate a panel's resource `<select>` with the "All" option plus one option
+ * per resource in `RESOURCES_BY_CATEGORY[category]`. Restores any previously-
+ * applied selection so the dropdown stays consistent across re-renders.
+ */
+function populateResourceFilter({
+  category,
+}: {
+  category: MetricsCategory;
+}): void {
+  const selectElement = getElementByIdOrNull<HTMLSelectElement>(
+    CATEGORY_PANEL_IDS[category].resourceFilter,
+  );
+  if (selectElement === null) {
+    return;
+  }
+  while (selectElement.firstChild !== null) {
+    selectElement.removeChild(selectElement.firstChild);
+  }
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = APP_CONFIG.strings.METRICS_TOP_RESOURCE_ALL;
+  selectElement.appendChild(allOption);
+  for (const resource of RESOURCES_BY_CATEGORY[category]) {
+    const option = document.createElement("option");
+    option.value = resource;
+    option.textContent = RESOURCE_LABELS[resource];
+    selectElement.appendChild(option);
+  }
+  const currentResource = _resourceFilterByCategory.get(category);
+  selectElement.value = currentResource ?? "";
+}
+
+function refetchTopForCategory({
+  category,
+}: {
+  category: MetricsCategory;
+}): void {
+  const slot = TOP_SLOT_BY_CATEGORY[category];
+  const previousRequest = _inFlight[slot];
+  if (previousRequest !== null) {
+    previousRequest.abort();
+    _inFlight[slot] = null;
+  }
+  setDashboardBusy({ busy: true });
+  setRefreshButtonInFlight({ inFlight: true });
+  const resource = _resourceFilterByCategory.get(category) ?? null;
+  const request = fetchTopEvents({
+    window: _currentWindow,
+    category,
+    resource,
+    limit: effectiveTopLimit({ category }),
+  });
+  _inFlight[slot] = request;
+  request
+    .done((response) => {
+      setBannerVisible({ visible: false });
+      _topCache.set(category, response);
+      renderCategoryPanelFromCache({ category });
+      ensureDefaultSelection({ category, response });
+    })
+    .fail((xhr) => {
+      if (is429Handled(xhr)) {
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      setBannerVisible({ visible: true });
+    })
+    .always(() => {
+      _inFlight[slot] = null;
+      _lastFetchPerf = performance.now();
+      onSettleAny();
+    });
+}
+
+function handleResourceFilterChange(event: JQuery.TriggeredEvent): void {
+  const selectElement = event.currentTarget as HTMLSelectElement;
+  const dataCategory = selectElement.dataset.category as
+    | MetricsCategory
+    | undefined;
+  if (dataCategory === undefined) {
+    return;
+  }
+  if (selectElement.value === "") {
+    _resourceFilterByCategory.delete(dataCategory);
+  } else {
+    _resourceFilterByCategory.set(
+      dataCategory,
+      selectElement.value as ResourceName,
+    );
+  }
+  refetchTopForCategory({ category: dataCategory });
+}
+
+function handleSubstringFilterInput(event: JQuery.TriggeredEvent): void {
+  const inputElement = event.currentTarget as HTMLInputElement;
+  const dataCategory = inputElement.dataset.category as
+    | MetricsCategory
+    | undefined;
+  if (dataCategory === undefined) {
+    return;
+  }
+  const previousQuery = _substringFilterByCategory.get(dataCategory) ?? "";
+  const nextQuery = inputElement.value;
+  _substringFilterByCategory.set(dataCategory, nextQuery);
+
+  const previousTimer = _substringDebounceTimerByCategory.get(dataCategory);
+  if (previousTimer !== undefined) {
+    clearTimeout(previousTimer);
+  }
+  // If toggling between "any filter active" and "no filter active", the
+  // effective limit changes, so a refetch is required to widen / restore
+  // the server's row pool. A pure-typing change inside the same active-state
+  // is debounced into a client-side re-render only.
+  const previouslyActive =
+    previousQuery !== "" || _resourceFilterByCategory.has(dataCategory);
+  const nowActive =
+    nextQuery !== "" || _resourceFilterByCategory.has(dataCategory);
+  const limitWillChange = previouslyActive !== nowActive;
+
+  const timer = setTimeout(() => {
+    _substringDebounceTimerByCategory.delete(dataCategory);
+    if (limitWillChange) {
+      refetchTopForCategory({ category: dataCategory });
+      return;
+    }
+    renderCategoryPanelFromCache({ category: dataCategory });
+  }, SUBSTRING_DEBOUNCE_MS);
+  _substringDebounceTimerByCategory.set(dataCategory, timer);
+}
+
 function abortInFlightRequests(): void {
   for (const key of [
     "topApi",
@@ -276,9 +491,11 @@ function abortInFlightRequests(): void {
 function renderTimeseriesSelect({
   category,
   response,
+  filterQuery,
 }: {
   category: MetricsCategory;
   response: TopEventsResponseSchema;
+  filterQuery?: string;
 }): void {
   const selectElement = getElementByIdOrNull<HTMLSelectElement>(
     CATEGORY_PANEL_IDS[category].select,
@@ -296,7 +513,18 @@ function renderTimeseriesSelect({
     APP_CONFIG.strings.METRICS_TIMESERIES_SELECT_ARIA,
   );
 
-  for (const event of response.events) {
+  const normalizedNeedle =
+    filterQuery !== undefined ? filterQuery.trim().toLowerCase() : "";
+  const visibleEvents =
+    normalizedNeedle === ""
+      ? response.events
+      : response.events.filter(
+          (event) =>
+            event.event_name.toLowerCase().includes(normalizedNeedle) ||
+            event.description.toLowerCase().includes(normalizedNeedle),
+        );
+
+  for (const event of visibleEvents) {
     const optionElement = document.createElement("option");
     optionElement.value = event.event_name;
     optionElement.textContent = event.event_name;
@@ -319,9 +547,10 @@ function renderTimeseriesSelect({
   }
 
   // Restore the previously-selected event when possible so polling refreshes
-  // do not silently change the active timeseries series.
+  // (and substring narrowing where the selection still matches) do not silently
+  // change the active timeseries series.
   if (previousValue !== "") {
-    const matchingEvent = response.events.find(
+    const matchingEvent = visibleEvents.find(
       (event) => event.event_name === previousValue,
     );
     if (matchingEvent !== undefined) {
@@ -345,6 +574,8 @@ function renderCategoryPanelFromCache({
     return;
   }
 
+  const substringFilter = _substringFilterByCategory.get(category) ?? "";
+
   const tableElement = getElementByIdOrNull<HTMLTableElement>(
     CATEGORY_PANEL_IDS[category].tbody,
   );
@@ -354,10 +585,16 @@ function renderCategoryPanelFromCache({
       tbody: tbody as HTMLTableSectionElement,
       events: cachedResponse.events,
       selectedEventName: _selectedEventByCategory.get(category) ?? null,
+      filterQuery: substringFilter,
+      nameHeader: topTableNameHeader({ category }),
     });
   }
 
-  renderTimeseriesSelect({ category, response: cachedResponse });
+  renderTimeseriesSelect({
+    category,
+    response: cachedResponse,
+    filterQuery: substringFilter,
+  });
   $(`#${CATEGORY_PANEL_IDS[category].select}`).offAndOnExact(
     "change.metricsDashboardTimeseries",
     handleTimeseriesSelectChange,
@@ -464,6 +701,8 @@ function applyRowSelectionHighlight({
     tbody: tbody as HTMLTableSectionElement,
     events: cachedResponse.events,
     selectedEventName,
+    filterQuery: _substringFilterByCategory.get(category) ?? "",
+    nameHeader: topTableNameHeader({ category }),
   });
 }
 
@@ -652,9 +891,12 @@ function fetchAll(): void {
     });
 
   for (const category of CATEGORIES) {
+    const resource = _resourceFilterByCategory.get(category) ?? null;
     const topRequest = fetchTopEvents({
       window: _currentWindow,
       category,
+      resource,
+      limit: effectiveTopLimit({ category }),
     });
     const slotName = TOP_SLOT_BY_CATEGORY[category];
     _inFlight[slotName] = topRequest;
@@ -1087,9 +1329,21 @@ export function initMetricsDashboard(): void {
         handleTopRowKeydown,
       );
     }
+
+    populateResourceFilter({ category });
+    $(`#${CATEGORY_PANEL_IDS[category].resourceFilter}`).offAndOnExact(
+      "change.metricsDashboardResourceFilter",
+      handleResourceFilterChange,
+    );
+    $(`#${CATEGORY_PANEL_IDS[category].substringFilter}`).offAndOnExact(
+      "input.metricsDashboardSubstringFilter",
+      handleSubstringFilterInput,
+    );
   }
 
   document.addEventListener("visibilitychange", handleVisibilityChange);
+
+  initPaneResizers();
 
   fetchAll();
   startPolling();
@@ -1120,11 +1374,18 @@ export function _resetMetricsDashboardForTests(): void {
   _topCache.clear();
   _selectedEventByCategory.clear();
   _chartFetchedWindowByCategory.clear();
+  _resourceFilterByCategory.clear();
+  _substringFilterByCategory.clear();
+  for (const pendingTimer of _substringDebounceTimerByCategory.values()) {
+    clearTimeout(pendingTimer);
+  }
+  _substringDebounceTimerByCategory.clear();
   _lastFlushAtMs = null;
   _lastAnnouncedFlushBucket = null;
   _lastEventAtMs = null;
   _lastAnnouncedEventBucket = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);
+  _resetPaneResizersForTests();
 }
 
 /**

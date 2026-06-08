@@ -12,6 +12,7 @@
  */
 
 import type { SuccessResponse } from "../types/api-helpers.d.ts";
+import type { ResourceName } from "../types/metrics-resources.js";
 
 import { ajaxCall } from "../lib/ajax.js";
 
@@ -35,18 +36,23 @@ export function fetchTopEvents({
   window,
   category,
   limit,
+  resource,
 }: {
   window: string;
   category: MetricsCategory;
   limit?: number;
+  resource?: ResourceName | null;
 }): JQuery.jqXHR<SuccessResponse<"queryTop">> {
   const effectiveLimit = limit ?? DEFAULT_TOP_LIMIT;
-  const queryString = new URLSearchParams({
+  const params = new URLSearchParams({
     window,
     category,
     limit: String(effectiveLimit),
-  }).toString();
-  const url = `${TOP_ENDPOINT}?${queryString}`;
+  });
+  if (resource !== undefined && resource !== null) {
+    params.set("resource", resource);
+  }
+  const url = `${TOP_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryTop">
   >;

@@ -359,3 +359,11 @@ class MetricsDashboardLocators(GenericPageLocator):
     SUMMARY_SECTION = "#MetricsSummary"
     SUMMARY_GRID = "#MetricsSummaryGrid"
     SUMMARY_CARDS = "#MetricsSummaryGrid .summary-card"
+
+    # Per-section top-events filter controls (resource dropdown + substring input)
+    TOP_RESOURCE_FILTER_API = "#MetricsTopResourceFilter-api"
+    TOP_RESOURCE_FILTER_UI = "#MetricsTopResourceFilter-ui"
+    TOP_RESOURCE_FILTER_DOMAIN = "#MetricsTopResourceFilter-domain"
+    TOP_SUBSTRING_FILTER_API = "#MetricsTopSubstringFilter-api"
+    TOP_SUBSTRING_FILTER_UI = "#MetricsTopSubstringFilter-ui"
+    TOP_SUBSTRING_FILTER_DOMAIN = "#MetricsTopSubstringFilter-domain"

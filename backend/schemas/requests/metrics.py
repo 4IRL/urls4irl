@@ -6,6 +6,7 @@ from typing import Literal, Self
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 _BOTH_WINDOW_AND_RANGE_ERROR: str = (
     "Provide either `window` or `start`+`end`, not both."
@@ -13,6 +14,14 @@ _BOTH_WINDOW_AND_RANGE_ERROR: str = (
 _PARTIAL_RANGE_ERROR: str = "Both `start` and `end` are required for an absolute range."
 _MISSING_WINDOW_OR_RANGE_ERROR: str = "Provide `window` or both `start` and `end`."
 _RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
+_RESOURCE_WITHOUT_CATEGORY_ERROR: str = (
+    "`resource` requires `category` (api | domain | ui) so the filter "
+    "knows which column to target."
+)
+_RESOURCE_INVALID_FOR_CATEGORY_ERROR_FMT: str = (
+    "Resource `{resource}` is not valid for category `{category}`. "
+    "Valid resources for `{category}`: {valid}."
+)
 
 
 def _validate_window_xor_range(
@@ -36,6 +45,32 @@ def _validate_window_xor_range(
         raise ValueError(_MISSING_WINDOW_OR_RANGE_ERROR)
     if has_range and start >= end:
         raise ValueError(_RANGE_ORDER_ERROR)
+
+
+def _validate_resource_for_category(category: str | None, resource: str | None) -> None:
+    """Enforce: `resource` is paired with a `category` AND is a member of
+    `RESOURCE_BY_CATEGORY[category]`.
+
+    Resource-to-category coupling exists because the SQL filter targets
+    different columns per category (`event_name` for UI/Domain,
+    `endpoint` for API). Sending `resource` without `category` is therefore
+    ambiguous and rejected at the schema layer.
+    """
+    if resource is None:
+        return
+    if category is None:
+        raise ValueError(_RESOURCE_WITHOUT_CATEGORY_ERROR)
+    category_enum = EventCategory(category)
+    resource_enum = Resource(resource)
+    valid_resources = RESOURCE_BY_CATEGORY[category_enum]
+    if resource_enum not in valid_resources:
+        raise ValueError(
+            _RESOURCE_INVALID_FOR_CATEGORY_ERROR_FMT.format(
+                resource=resource,
+                category=category,
+                valid=", ".join(member.value for member in valid_resources),
+            )
+        )
 
 
 # Module-level tuple of every UI-category EventName value. Reused by:
@@ -122,6 +157,12 @@ _ALL_EVENT_CATEGORIES: tuple[str, ...] = tuple(member.value for member in EventC
 CategoryLiteral = Literal[*_ALL_EVENT_CATEGORIES]  # type: ignore[valid-type]
 
 
+# Resource taxonomy for the `top` query endpoint's optional filter. Derived
+# from `Resource` to stay in lockstep with the source of truth.
+_ALL_RESOURCES: tuple[str, ...] = tuple(member.value for member in Resource)
+ResourceLiteral = Literal[*_ALL_RESOURCES]  # type: ignore[valid-type]
+
+
 # `date_trunc` resolutions supported by the timeseries endpoint. Hour is the
 # minimum useful resolution because writer.record floors bucket_start to the
 # nearest METRICS_BUCKET_SECONDS=3600 boundary.
@@ -167,6 +208,15 @@ class TopEventsQuerySchema(BaseModel):
         default=None,
         description="Optional category filter (api | domain | ui).",
     )
+    resource: ResourceLiteral | None = Field(
+        default=None,
+        description=(
+            "Optional resource filter (utub | url | tag | member | auth | "
+            "search | form | deck | nav | error | contact | admin | other). "
+            "Requires `category`; the resource must appear in "
+            "`RESOURCE_BY_CATEGORY[category]`."
+        ),
+    )
     limit: int = Field(
         default=10,
         ge=1,
@@ -177,6 +227,11 @@ class TopEventsQuerySchema(BaseModel):
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:
         _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+    @model_validator(mode="after")
+    def _check_resource_for_category(self) -> Self:
+        _validate_resource_for_category(self.category, self.resource)
         return self
 
 

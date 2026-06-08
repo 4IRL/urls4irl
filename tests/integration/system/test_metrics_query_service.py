@@ -15,6 +15,7 @@ from backend.metrics.events import (
     EventName,
 )
 from backend.metrics.query_service import summary, timeseries, top_events
+from backend.metrics.resources import Resource
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
@@ -985,3 +986,315 @@ def test_query_service_join_includes_description_for_every_event(
     for row in rows:
         assert row.description != ""
         assert row.description is not None
+
+
+def test_top_events_resource_filter_ui_utub_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN one UI UTub event, one UI URL event, and one UI Tag event in the window
+    WHEN top_events is called with category=UI and resource=UTUB
+    THEN only the UTub event is returned; URL and Tag rows are filtered out.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_URL_ACCESS,
+        bucket_start=inside,
+        count=10,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_TAG_APPLY,
+        bucket_start=inside,
+        count=15,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            resource=Resource.UTUB,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].event_name == EventName.UI_UTUB_SELECT.value
+
+
+def test_top_events_resource_filter_domain_tag_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a Domain UTub event, a Domain URL event, and two Domain Tag events
+    WHEN top_events is called with category=DOMAIN and resource=TAG
+    THEN only the two Tag rows are returned, sorted by count desc.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_CREATED,
+        bucket_start=inside,
+        count=100,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.URL_ACCESSED,
+        bucket_start=inside,
+        count=200,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.TAG_APPLIED,
+        bucket_start=inside,
+        count=7,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.TAG_REMOVED,
+        bucket_start=inside,
+        count=3,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.DOMAIN,
+            resource=Resource.TAG,
+            limit=10,
+        )
+
+    returned_names = [row.event_name for row in rows]
+    assert returned_names == [
+        EventName.TAG_APPLIED.value,
+        EventName.TAG_REMOVED.value,
+    ]
+
+
+def test_top_events_resource_filter_api_route_prefix(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN API hits across utubs.*, urls.*, and utub_tags.* Flask endpoints
+    WHEN top_events is called with category=API and resource=UTUB
+    THEN only rows with endpoint LIKE 'utubs.%' are returned.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=8)
+
+    # Production writes Flask endpoint names (e.g. `utubs.get_single_utub`)
+    # via `request.endpoint` in `extensions/metrics/middleware.py`, not URL
+    # paths. The resource filter matches against that prefix.
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=12,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=201,
+        dimensions={
+            "endpoint": "urls.create_url",
+            "method": "POST",
+            "status_code": 201,
+        },
+        count=99,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utub_tags.delete_utub_tag",
+        method="DELETE",
+        status_code=204,
+        dimensions={
+            "endpoint": "utub_tags.delete_utub_tag",
+            "method": "DELETE",
+            "status_code": 204,
+        },
+        count=44,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            resource=Resource.UTUB,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    # The event_name is built from `endpoint_metadata[endpoint].url_pattern`
+    # — `utubs.get_single_utub` resolves to `/utubs/<int:utub_id>` from the
+    # registered Flask url_map.
+    assert rows[0].api_endpoint == "utubs.get_single_utub"
+    assert rows[0].event_name.startswith("GET ")
+    assert "/utubs/" in rows[0].event_name
+
+
+def test_top_events_resource_other_excludes_known_prefixes(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN one API hit to a known prefix (`utubs.*`) AND one to an unknown
+        blueprint (`system.health`)
+    WHEN top_events is called with category=API and resource=OTHER
+    THEN only the unknown-blueprint row appears; the known-prefix row is filtered.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=50,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="system.health",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "system.health",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=3,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            resource=Resource.OTHER,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].api_endpoint == "system.health"
+
+
+def test_top_events_resource_filter_runs_before_limit_truncation(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN twelve high-count UTub events and twelve low-count Tag events
+    WHEN top_events is called with category=UI, resource=TAG, limit=10
+    THEN ten Tag rows are returned — NOT the global top-10 (which would be
+    dominated by the higher-count UTub events).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    utub_events = [
+        EventName.UI_UTUB_SELECT,
+        EventName.UI_UTUB_CREATE_OPEN,
+        EventName.UI_UTUB_DELETE_OPEN,
+        EventName.UI_UTUB_DELETE_CONFIRM,
+        EventName.UI_UTUB_DELETE_CANCEL,
+        EventName.UI_UTUB_NAME_EDIT_OPEN,
+        EventName.UI_UTUB_DESC_EDIT_OPEN,
+    ]
+    tag_events = [
+        EventName.UI_TAG_APPLY,
+        EventName.UI_TAG_REMOVE,
+        EventName.UI_TAG_CREATE_OPEN,
+        EventName.UI_TAG_DELETE_OPEN,
+        EventName.UI_TAG_DELETE_CONFIRM,
+        EventName.UI_TAG_DELETE_CANCEL,
+        EventName.UI_TAG_FILTER_TOGGLE,
+    ]
+    for utub_event in utub_events:
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=utub_event,
+            bucket_start=inside,
+            count=1000,
+        )
+    for tag_event in tag_events:
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=tag_event,
+            bucket_start=inside,
+            count=5,
+        )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            resource=Resource.TAG,
+            limit=10,
+        )
+
+    assert all(row.event_name.startswith("ui_tag_") for row in rows)
+    assert len(rows) == len(tag_events)

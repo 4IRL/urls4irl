@@ -197,4 +197,96 @@ describe("renderTopTable", () => {
       (tbody.children[0] as HTMLTableRowElement).getAttribute("aria-current"),
     ).toBeNull();
   });
+
+  it("narrows rendered rows by a case-insensitive event_name substring", () => {
+    renderTopTable({
+      tbody,
+      events: [
+        buildEvent({ event_name: "ui_utub_delete_confirm", description: "" }),
+        buildEvent({ event_name: "ui_url_copy", description: "" }),
+        buildEvent({ event_name: "ui_tag_delete_confirm", description: "" }),
+      ],
+      filterQuery: "DELETE",
+    });
+
+    expect(tbody.children.length).toBe(2);
+    const names = Array.from(tbody.children).map(
+      (row) => row.querySelector(".name")?.textContent,
+    );
+    expect(names).toEqual(["ui_utub_delete_confirm", "ui_tag_delete_confirm"]);
+  });
+
+  it("narrows rendered rows by a description substring (case-insensitive)", () => {
+    renderTopTable({
+      tbody,
+      events: [
+        buildEvent({
+          event_name: "utub_opened",
+          description: "User opened a UTub",
+        }),
+        buildEvent({
+          event_name: "ui_url_copy",
+          description: "User copied a URL",
+        }),
+      ],
+      filterQuery: "copied",
+    });
+
+    expect(tbody.children.length).toBe(1);
+    expect(tbody.children[0].querySelector(".name")?.textContent).toBe(
+      "ui_url_copy",
+    );
+  });
+
+  it("renders the no-matches empty state (distinct from no-events) when filterQuery filters everything out", () => {
+    renderTopTable({
+      tbody,
+      events: [buildEvent({ event_name: "utub_opened", description: "" })],
+      filterQuery: "nothing-matches",
+    });
+
+    expect(tbody.children.length).toBe(1);
+    const emptyRow = tbody.children[0] as HTMLTableRowElement;
+    expect(emptyRow.classList.contains("MetricsTopTableEmptyRow")).toBe(true);
+    const emptyCell = emptyRow.querySelector(".MetricsEmptyState");
+    expect(emptyCell?.textContent).toBe(
+      APP_CONFIG.strings.METRICS_TOP_EMPTY_NO_MATCHES,
+    );
+    expect(emptyCell?.textContent).not.toBe(
+      APP_CONFIG.strings.METRICS_EMPTY_STATE,
+    );
+  });
+
+  it("still renders the no-events empty state when events array is empty even with an active filterQuery", () => {
+    renderTopTable({ tbody, events: [], filterQuery: "delete" });
+
+    expect(tbody.children.length).toBe(1);
+    const emptyCell = tbody.children[0].querySelector(".MetricsEmptyState");
+    expect(emptyCell?.textContent).toBe(APP_CONFIG.strings.METRICS_EMPTY_STATE);
+  });
+
+  it("renders the supplied nameHeader (e.g. 'Event' or 'Action') in place of the default 'Endpoint'", () => {
+    renderTopTable({
+      tbody,
+      events: [buildEvent()],
+      nameHeader: "Event",
+    });
+
+    const headerCells = table.tHead?.querySelectorAll("th") ?? [];
+    expect(headerCells.length).toBe(4);
+    expect(headerCells[1].textContent).toBe("Event");
+  });
+
+  it("treats a whitespace-only filterQuery as no filter", () => {
+    renderTopTable({
+      tbody,
+      events: [
+        buildEvent({ event_name: "utub_opened", description: "" }),
+        buildEvent({ event_name: "ui_url_copy", description: "" }),
+      ],
+      filterQuery: "   ",
+    });
+
+    expect(tbody.children.length).toBe(2);
+  });
 });

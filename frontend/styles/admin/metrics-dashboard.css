@@ -200,6 +200,10 @@
     border: 1px solid var(--borderColor);
     border-radius: 10px;
     padding: 14px 16px;
+    /* Allow the panel to shrink below its intrinsic content width so the
+       sibling resizer can drive the grid track narrower and the table's
+       endpoint column can collapse with `text-overflow: ellipsis`. */
+    min-width: 0;
 }
 
 .panel h2 {
@@ -262,12 +266,37 @@
 
 .content-row {
     display: grid;
-    grid-template-columns: 1.4fr 1fr;
+    grid-template-columns: var(--metrics-left-pane, 1.4fr) 8px 1fr;
     gap: 14px;
 }
 
 @media (max-width: 1100px) {
     .content-row { grid-template-columns: 1fr; }
+    .content-row__resizer { display: none; }
+}
+
+.content-row__resizer {
+    align-self: stretch;
+    background-color: var(--borderColor);
+    border-radius: 4px;
+    cursor: col-resize;
+    touch-action: none;
+    transition: background-color 0.15s ease-in-out;
+}
+
+.content-row__resizer:hover,
+.content-row__resizer.is-dragging {
+    background-color: var(--splashGreen);
+}
+
+.content-row__resizer:focus-visible {
+    outline: 2px solid var(--splashGreen);
+    outline-offset: 2px;
+}
+
+.content-row.is-resizing {
+    user-select: none;
+    cursor: col-resize;
 }
 
 /* ---- Top table -------------------------------------------------------- */
@@ -276,6 +305,10 @@
     width: 100%;
     border-collapse: collapse;
     font-size: 0.9rem;
+    /* Fixed layout lets the count/delta columns stay at their declared
+       widths while the endpoint column absorbs all remaining space (and
+       truncates via ellipsis on its name/desc children). */
+    table-layout: fixed;
 }
 
 .top-table th,
@@ -329,6 +362,18 @@
     font-variant-numeric: tabular-nums;
 }
 
+.top-table .endpoint {
+    /* `endpoint` is the only flexible column; its children truncate. */
+    overflow: hidden;
+}
+
+.top-table .endpoint .name,
+.top-table .endpoint .desc {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .top-table .endpoint .name {
     color: var(--UTubDescriptionColor);
     font-variant-numeric: tabular-nums;
@@ -342,6 +387,7 @@
 }
 
 .top-table .count {
+    width: 70px;
     text-align: right;
     vertical-align: middle;
     font-variant-numeric: tabular-nums;
@@ -349,6 +395,7 @@
 }
 
 .top-table .delta {
+    width: 90px;
     text-align: right;
     vertical-align: middle;
     font-variant-numeric: tabular-nums;
@@ -366,6 +413,42 @@
     padding: 24px;
 }
 
+/* ---- Top-events filter row (resource + substring search) ------------- */
+
+.top-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin-bottom: 10px;
+}
+
+.top-filters label {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.top-filters select,
+.top-filters input[type="search"] {
+    background-color: var(--cardBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 0.88rem;
+    min-width: 0;
+}
+
+.top-filters input[type="search"] {
+    flex: 1 1 140px;
+}
+
+.top-filters select:focus-visible,
+.top-filters input[type="search"]:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
 /* ---- Timeseries event picker ----------------------------------------- */
 
 .ts-controls {
@@ -373,11 +456,16 @@
     align-items: center;
     gap: 10px;
     margin-bottom: 10px;
+    /* Prevent flex children from forcing the row wider than the panel
+       — without min-width:0 a wide <select> content blows past the
+       panel's right edge instead of triggering ellipsis truncation. */
+    min-width: 0;
 }
 
 .ts-controls label {
     color: var(--cardURLTextColor);
     font-size: 0.85rem;
+    flex: 0 0 auto;
 }
 
 .ts-controls select {
@@ -387,6 +475,13 @@
     border-radius: 6px;
     padding: 4px 8px;
     font-size: 0.88rem;
+    /* Fill remaining row width but allow shrinking under the natural
+       option-text width so long labels like "GET /utubs/<int:utub_id>"
+       stay inside the pane. `min-width: 0` overrides the default
+       `min-width: auto` on flex items. */
+    flex: 1 1 0;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .ts-controls select:focus-visible {

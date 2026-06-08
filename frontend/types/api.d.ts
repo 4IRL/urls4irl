@@ -658,6 +658,11 @@ export interface components {
        * @default null
        */
       category: string | null;
+      /**
+       * @description Resource filter applied to the query (utub | url | tag | member | auth | search | form | deck | nav | error | contact | admin | other), or null if none. Requires `category` to also be set.
+       * @default null
+       */
+      resource: string | null;
       /** @description Top-N rows ordered by total_count descending */
       events: components["schemas"]["TopEventRow"][];
     };
@@ -1337,6 +1342,21 @@ export interface operations {
         end?: string;
         /** @description Optional category filter (api | domain | ui). */
         category?: "api" | "domain" | "ui";
+        /** @description Optional resource filter (utub | url | tag | member | auth | search | form | deck | nav | error | contact | admin | other). Requires `category`; the resource must appear in `RESOURCE_BY_CATEGORY[category]`. */
+        resource?:
+          | "utub"
+          | "url"
+          | "tag"
+          | "member"
+          | "auth"
+          | "search"
+          | "form"
+          | "deck"
+          | "nav"
+          | "error"
+          | "contact"
+          | "admin"
+          | "other";
         /** @description Maximum number of rows to return (1-100). */
         limit?: number;
       };

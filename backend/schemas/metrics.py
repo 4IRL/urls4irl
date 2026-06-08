@@ -73,6 +73,14 @@ class TopEventsResponseSchema(BaseSchema):
         default=None,
         description="EventCategory filter applied to the query, or null if none",
     )
+    resource: str | None = Field(
+        default=None,
+        description=(
+            "Resource filter applied to the query (utub | url | tag | member | "
+            "auth | search | form | deck | nav | error | contact | admin | "
+            "other), or null if none. Requires `category` to also be set."
+        ),
+    )
     events: list[TopEventRow] = Field(
         description="Top-N rows ordered by total_count descending",
     )

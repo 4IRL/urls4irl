@@ -45,32 +45,50 @@ function formatDelta({
   return { text: `— ${absolutePercent}`, direction: "flat" };
 }
 
-function buildHeader(): HTMLTableRowElement {
+function buildHeader({
+  nameHeader,
+}: {
+  nameHeader: string;
+}): HTMLTableRowElement {
   const row = document.createElement("tr");
-  for (const { key, className } of [
-    { key: "METRICS_TOP_TABLE_HEADER_RANK", className: "rank" },
-    { key: "METRICS_TOP_TABLE_HEADER_ENDPOINT", className: "" },
-    { key: "METRICS_TOP_TABLE_HEADER_HITS", className: "count" },
-    { key: "METRICS_TOP_TABLE_HEADER_DELTA", className: "delta" },
-  ] as const) {
+  const headerCells: ReadonlyArray<{ text: string; className: string }> = [
+    {
+      text: APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_RANK,
+      className: "rank",
+    },
+    { text: nameHeader, className: "" },
+    {
+      text: APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_HITS,
+      className: "count",
+    },
+    {
+      text: APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_DELTA,
+      className: "delta",
+    },
+  ];
+  for (const { text, className } of headerCells) {
     const headerCell = document.createElement("th");
     if (className !== "") {
       headerCell.className = className;
     }
-    headerCell.textContent = APP_CONFIG.strings[key];
+    headerCell.textContent = text;
     row.appendChild(headerCell);
   }
   return row;
 }
 
-function buildEmptyStateRow(): HTMLTableRowElement {
+function buildEmptyStateRow({
+  message,
+}: {
+  message: string;
+}): HTMLTableRowElement {
   const row = document.createElement("tr");
   row.className = "MetricsTopTableEmptyRow";
 
   const cell = document.createElement("td");
   cell.colSpan = TOTAL_COLUMNS;
   cell.className = "MetricsEmptyState empty";
-  cell.textContent = APP_CONFIG.strings.METRICS_EMPTY_STATE;
+  cell.textContent = message;
 
   row.appendChild(cell);
   return row;
@@ -109,9 +127,13 @@ function buildEventRow({
   const nameDiv = document.createElement("div");
   nameDiv.className = "name";
   nameDiv.textContent = event.event_name;
+  nameDiv.title = event.event_name;
   const descriptionDiv = document.createElement("div");
   descriptionDiv.className = "desc";
   descriptionDiv.textContent = event.description;
+  if (event.description !== "") {
+    descriptionDiv.title = event.description;
+  }
   endpointCell.appendChild(nameDiv);
   endpointCell.appendChild(descriptionDiv);
 
@@ -134,30 +156,71 @@ function buildEventRow({
   return row;
 }
 
+function matchesQuery({
+  event,
+  needle,
+}: {
+  event: TopEventRow;
+  needle: string;
+}): boolean {
+  return (
+    event.event_name.toLowerCase().includes(needle) ||
+    event.description.toLowerCase().includes(needle)
+  );
+}
+
 export function renderTopTable({
   tbody,
   events,
   selectedEventName,
+  filterQuery,
+  nameHeader,
 }: {
   tbody: HTMLTableSectionElement;
   events: TopEventRow[];
   selectedEventName?: string | null;
+  filterQuery?: string;
+  nameHeader?: string;
 }): void {
+  // Default to the API-tab label so existing callers (and the empty-state
+  // bootstrap render) stay backward-compatible without a category context.
+  const resolvedHeader =
+    nameHeader ?? APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_ENDPOINT;
   const table = tbody.parentElement as HTMLTableElement | null;
   if (table !== null) {
     const thead = table.tHead ?? table.createTHead();
     clearChildren({ element: thead });
-    thead.appendChild(buildHeader());
+    thead.appendChild(buildHeader({ nameHeader: resolvedHeader }));
   }
 
   clearChildren({ element: tbody });
 
   if (events.length === 0) {
-    tbody.appendChild(buildEmptyStateRow());
+    tbody.appendChild(
+      buildEmptyStateRow({ message: APP_CONFIG.strings.METRICS_EMPTY_STATE }),
+    );
     return;
   }
 
-  events.forEach((event, index) => {
+  const normalizedNeedle =
+    filterQuery !== undefined ? filterQuery.trim().toLowerCase() : "";
+  const visibleEvents =
+    normalizedNeedle === ""
+      ? events
+      : events.filter((event) =>
+          matchesQuery({ event, needle: normalizedNeedle }),
+        );
+
+  if (visibleEvents.length === 0) {
+    tbody.appendChild(
+      buildEmptyStateRow({
+        message: APP_CONFIG.strings.METRICS_TOP_EMPTY_NO_MATCHES,
+      }),
+    );
+    return;
+  }
+
+  visibleEvents.forEach((event, index) => {
     tbody.appendChild(
       buildEventRow({
         event,

@@ -14,6 +14,7 @@ from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import EventCategory, EventName
+from backend.metrics.resources import Resource
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
@@ -147,6 +148,9 @@ def query_top() -> FlaskResponse:
     category_enum: EventCategory | None = (
         EventCategory(parsed.category) if parsed.category is not None else None
     )
+    resource_enum: Resource | None = (
+        Resource(parsed.resource) if parsed.resource is not None else None
+    )
     previous_window_start, previous_window_end = previous_window(
         window_start, window_end
     )
@@ -156,6 +160,7 @@ def query_top() -> FlaskResponse:
         previous_window_start=previous_window_start,
         previous_window_end=previous_window_end,
         category=category_enum,
+        resource=resource_enum,
         limit=parsed.limit,
     )
     response_schema = TopEventsResponseSchema(
@@ -163,6 +168,7 @@ def query_top() -> FlaskResponse:
         window_start=window_start,
         window_end=window_end,
         category=parsed.category,
+        resource=parsed.resource,
         events=rows,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()

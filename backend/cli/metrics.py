@@ -14,6 +14,7 @@ from backend.extensions.metrics.buckets import previous_window, resolve_query_wi
 from backend.extensions.metrics.dim_types_generator import (
     generate_dim_types_ts,
     generate_dim_values_ts,
+    generate_resources_ts,
     generate_ui_events_ts,
 )
 from backend.extensions.metrics.registry_sync import sync_event_registry
@@ -127,6 +128,30 @@ def generate_events_command(output_path: str):
     target = Path(output_path)
     target.write_text(source, encoding="utf-8")
     click.echo(f"metrics: wrote ui events → {target}")
+
+
+@metrics_cli.command(
+    "generate-resources",
+    help="Emit TypeScript RESOURCES const + ResourceName type + RESOURCES_BY_CATEGORY from the Resource enum.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Target path for the generated .ts file.",
+)
+def generate_resources_command(output_path: str):
+    """Render `frontend/types/metrics-resources.ts` from `backend/metrics/resources.py`.
+
+    Walks the `Resource` enum + `RESOURCE_BY_CATEGORY` mapping; emits the
+    canonical resource list plus per-category subsets used by the admin
+    dashboard's top-events filter dropdown. Pure walk; no app context needed.
+    """
+    source = generate_resources_ts()
+    target = Path(output_path)
+    target.write_text(source, encoding="utf-8")
+    click.echo(f"metrics: wrote resources → {target}")
 
 
 @metrics_cli.command("top", help="Show top events by count for a time window.")

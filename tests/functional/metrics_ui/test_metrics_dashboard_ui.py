@@ -5,6 +5,7 @@ from typing import Tuple
 import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
+from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.config import ConfigTestUI
@@ -126,3 +127,45 @@ def test_window_switch_to_week_re_renders_chart(
     chart_title_selector = f"{MDL.CHART_API} title"
     chart_title = wait_for_element_presence(browser, chart_title_selector, timeout=10)
     assert chart_title is not None
+
+
+def test_substring_filter_narrows_top_table_to_no_matches(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+    runner: Tuple[Flask, FlaskCliRunner],
+):
+    """
+    GIVEN a logged-in admin user on the metrics dashboard with seeded
+        API metrics rendered in the top-events table
+    WHEN the admin types a substring into `#MetricsTopSubstringFilter-api`
+        that does not match any rendered row
+    THEN every `tr.MetricsTopTableRow` is removed and a single
+        `tr.MetricsTopTableEmptyRow` is rendered in the API table,
+        confirming the per-tab substring filter narrows the rendered set
+        without a server round trip.
+    """
+    _seed_metrics_via_cli(runner)
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_for_element_presence(browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10)
+
+    substring_input = wait_then_get_element(
+        browser, MDL.TOP_SUBSTRING_FILTER_API, time=5
+    )
+    assert substring_input is not None
+    substring_input.send_keys("zzz-nonexistent-event")
+
+    empty_row_selector = f"{MDL.TOP_TABLE_API} tr.MetricsTopTableEmptyRow"
+    empty_row = wait_for_element_presence(browser, empty_row_selector, timeout=5)
+    assert empty_row is not None
+    assert len(browser.find_elements(By.CSS_SELECTOR, SEEDED_TABLE_ROW_SELECTOR)) == 0

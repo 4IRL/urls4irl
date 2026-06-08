@@ -9,6 +9,7 @@ from sqlalchemy import func
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
 from backend.metrics.events import EventCategory, EventName
+from backend.metrics.resources import Resource, resource_filter_clause
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
@@ -116,6 +117,7 @@ def _top_endpoints_for_api_hit(
     window_end: datetime,
     previous_window_start: datetime,
     previous_window_end: datetime,
+    resource: Resource | None,
     limit: int,
 ) -> list[TopEventRow]:
     """Return the top api_hit rows grouped by (endpoint, method).
@@ -124,22 +126,28 @@ def _top_endpoints_for_api_hit(
     event that fans out across every HTTP route, so grouping by event_name
     collapses everything into one row. Grouping by the flat endpoint/method
     columns instead surfaces per-route hits like "POST /utubs/<utub_id>/urls".
+
+    When `resource` is provided, narrows the result to rows whose `endpoint`
+    matches the resource's URL-prefix bucket (see `Resource` taxonomy).
     """
     total_count = func.sum(Anonymous_Metrics.count).label("total_count")
+    query = db.session.query(
+        Anonymous_Metrics.endpoint,
+        Anonymous_Metrics.method,
+        total_count,
+    ).filter(
+        Anonymous_Metrics.event_name == EventName.API_HIT.value,
+        Anonymous_Metrics.bucket_start >= window_start,
+        Anonymous_Metrics.bucket_start < window_end,
+        Anonymous_Metrics.endpoint.isnot(None),
+        Anonymous_Metrics.method.isnot(None),
+    )
+    if resource is not None:
+        query = query.filter(
+            resource_filter_clause(category=EventCategory.API, resource=resource)
+        )
     rows = (
-        db.session.query(
-            Anonymous_Metrics.endpoint,
-            Anonymous_Metrics.method,
-            total_count,
-        )
-        .filter(
-            Anonymous_Metrics.event_name == EventName.API_HIT.value,
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-            Anonymous_Metrics.endpoint.isnot(None),
-            Anonymous_Metrics.method.isnot(None),
-        )
-        .group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
+        query.group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
         .order_by(
             func.sum(Anonymous_Metrics.count).desc(),
             Anonymous_Metrics.endpoint.asc(),
@@ -181,6 +189,7 @@ def top_events(
     previous_window_end: datetime,
     category: EventCategory | None,
     limit: int,
+    resource: Resource | None = None,
 ) -> list[TopEventRow]:
     """Return the top events by total count inside the half-open window.
 
@@ -199,6 +208,11 @@ def top_events(
     `(endpoint, method)` columns on api_hit rather than by event_name — api_hit
     is a single auto-instrumented event that spans every HTTP route, so a
     per-event-name aggregation collapses every endpoint into a single row.
+
+    `resource` further narrows the result within the chosen `category`. For
+    UI/Domain it filters on `event_name`; for API it filters on the route
+    prefix in the `endpoint` column. Callers MUST cross-validate the
+    `(category, resource)` pair before invoking (see `RESOURCE_BY_CATEGORY`).
     """
     if category is EventCategory.API:
         return _top_endpoints_for_api_hit(
@@ -206,6 +220,7 @@ def top_events(
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
+            resource=resource,
             limit=limit,
         )
 
@@ -225,6 +240,10 @@ def top_events(
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
+    if resource is not None and category is not None:
+        query = query.filter(
+            resource_filter_clause(category=category, resource=resource)
+        )
 
     rows = (
         query.group_by(
