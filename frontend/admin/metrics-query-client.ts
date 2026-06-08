@@ -1,5 +1,5 @@
 /**
- * Typed AJAX wrappers for the Phase 10 metrics-query endpoints.
+ * Typed AJAX wrappers for the metrics-query endpoints.
  *
  * Each wrapper builds a typed URL query string against the
  * `/api/metrics/query/*` routes and returns a `JQuery.jqXHR<SuccessResponse<...>>`
@@ -7,8 +7,8 @@
  *
  * `ajaxCall()` (see `frontend/lib/ajax.ts`) wraps `$.ajax`, which automatically
  * sends the `X-Requested-With: XMLHttpRequest` header for same-origin GETs. The
- * Phase 10 `ajax_required=True` route gate is satisfied by that header, so no
- * manual header injection is needed here.
+ * metrics-query `ajax_required=True` route gate is satisfied by that header, so
+ * no manual header injection is needed here.
  */
 
 import type { SuccessResponse } from "../types/api-helpers.d.ts";

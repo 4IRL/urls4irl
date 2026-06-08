@@ -1,8 +1,8 @@
 from typing import Tuple
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES

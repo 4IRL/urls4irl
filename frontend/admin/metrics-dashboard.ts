@@ -1,7 +1,7 @@
 /**
  * Admin metrics dashboard controller.
  *
- * Owns the lifecycle of the dashboard page introduced in Step 2's template:
+ * Owns the lifecycle of the admin metrics dashboard page (`pages/admin_metrics.html`):
  *
  *   1. Initial fetch on `initMetricsDashboard()`.
  *   2. A 60 s polling interval that re-fetches all active panels.
@@ -126,10 +126,8 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
 
 // All three categories are kept warm by polling so tab switching is instant.
 // Each `.done(...)` writes to `_topCache` and re-renders the panel.
-const ALL_CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
-
-// Tablist navigation order matches DOM order: API → UI → Domain.
-const TAB_ORDER: readonly MetricsCategory[] = ["api", "ui", "domain"];
+// Tablist navigation order also matches DOM order: API → UI → Domain.
+const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
 
 let _pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFetchPerf: number = 0;
@@ -313,7 +311,7 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
   // The select's `id` is `MetricsTimeseriesEvent<Category>` — strip the prefix
   // to recover the category. Falls back to the active category if the prefix
   // does not match (defensive — should not happen with the static IDs above).
-  const categoryFromId = TAB_ORDER.find(
+  const categoryFromId = CATEGORIES.find(
     (candidate) => selectElement.id === CATEGORY_PANEL_IDS[candidate].select,
   );
   const category = categoryFromId ?? _currentCategory;
@@ -370,7 +368,7 @@ function fetchAll(): void {
   summaryRequest
     .done((response) => {
       setBannerVisible({ visible: false });
-      for (const category of ALL_CATEGORIES) {
+      for (const category of CATEGORIES) {
         const summaryRoot = getElementByIdOrNull<HTMLElement>(
           CATEGORY_PANEL_IDS[category].summary,
         );
@@ -402,7 +400,7 @@ function fetchAll(): void {
       onSettleAny();
     });
 
-  for (const category of ALL_CATEGORIES) {
+  for (const category of CATEGORIES) {
     const topRequest = fetchTopEvents({
       window: _currentWindow,
       category,
@@ -621,7 +619,7 @@ function handleTabClick({
 }): void {
   _currentCategory = category;
 
-  for (const candidateCategory of TAB_ORDER) {
+  for (const candidateCategory of CATEGORIES) {
     const isActive = candidateCategory === category;
     const tabElement = getElementByIdOrNull<HTMLButtonElement>(
       CATEGORY_PANEL_IDS[candidateCategory].tab,
@@ -693,25 +691,25 @@ function handleTabKeydown(event: JQuery.TriggeredEvent): void {
   if (currentCategory === undefined) {
     return;
   }
-  const currentIndex = TAB_ORDER.indexOf(currentCategory);
+  const currentIndex = CATEGORIES.indexOf(currentCategory);
   if (currentIndex === -1) {
     return;
   }
 
   let nextIndex: number;
   if (key === "ArrowLeft") {
-    nextIndex = (currentIndex - 1 + TAB_ORDER.length) % TAB_ORDER.length;
+    nextIndex = (currentIndex - 1 + CATEGORIES.length) % CATEGORIES.length;
   } else if (key === "ArrowRight") {
-    nextIndex = (currentIndex + 1) % TAB_ORDER.length;
+    nextIndex = (currentIndex + 1) % CATEGORIES.length;
   } else if (key === "Home") {
     nextIndex = 0;
   } else {
-    nextIndex = TAB_ORDER.length - 1;
+    nextIndex = CATEGORIES.length - 1;
   }
 
   event.preventDefault();
 
-  const nextCategory = TAB_ORDER[nextIndex];
+  const nextCategory = CATEGORIES[nextIndex];
   const nextTabElement = getElementByIdOrNull<HTMLButtonElement>(
     CATEGORY_PANEL_IDS[nextCategory].tab,
   );
@@ -746,7 +744,7 @@ export function initMetricsDashboard(): void {
   // Bind the per-panel `<select>` change handlers up-front so the timeseries
   // fetch fires even if the panel's options were rendered server-side (or by
   // a test fixture) before any top-events fetch completes.
-  for (const category of ALL_CATEGORIES) {
+  for (const category of CATEGORIES) {
     $(`#${CATEGORY_PANEL_IDS[category].select}`).offAndOnExact(
       "change.metricsDashboardTimeseries",
       handleTimeseriesSelectChange,

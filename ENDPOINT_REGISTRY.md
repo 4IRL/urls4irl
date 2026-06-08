@@ -461,16 +461,16 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ### GET /admin/metrics
 
-| Layer          | Location                                                                                            |
-| -------------- | --------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/admin/routes.py:admin_metrics`                                                             |
-| **Decorators** | `@login_required`, `@admin_required`                                                                |
-| **Service**    | `render_template()` direct (no service layer — page is a server-rendered HTML shell)                |
-| **Schema**     | None (request) / None (response — page is HTML, not JSON)                                           |
-| **Template**   | `pages/admin_metrics.html` (vars: `is_admin_metrics=True`)                                          |
-| **JS Module**  | `frontend/admin-metrics.ts` (entry stub — full wiring lands in Step 4)                              |
-| **CSRF**       | Meta tag (`<meta name="csrf-token">`)                                                               |
-| **Tests**      | `tests/integration/system/test_metrics_dashboard_page.py` (marker: `cli`)                           |
+| Layer          | Location                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/admin/routes.py:admin_metrics`                                                                                 |
+| **Decorators** | `@login_required`, `@admin_required`                                                                                    |
+| **Service**    | `render_template()` direct (no service layer — page is a server-rendered HTML shell)                                    |
+| **Schema**     | None (request) / None (response — page is HTML, not JSON)                                                               |
+| **Template**   | `pages/admin_metrics.html` (vars: `is_admin_metrics=True`)                                                              |
+| **JS Module**  | `frontend/admin-metrics.ts` (entry point: registers plugins, sets up CSRF, initialises the metrics dashboard controller) |
+| **CSRF**       | Meta tag (`<meta name="csrf-token">`)                                                                                   |
+| **Tests**      | `tests/integration/system/test_metrics_dashboard_page.py` (marker: `cli`)                                               |
 
 ---
 

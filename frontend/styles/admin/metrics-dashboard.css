@@ -1,13 +1,11 @@
 /*
- * Admin metrics dashboard placeholder styles.
+ * Admin metrics dashboard styles — structural baseline.
  *
- * The dashboard's full visual implementation lands in Steps 6-9. The rules
- * below are the structural baseline the spec requires up front:
  *   - Active window-button state, signalled via aria-pressed.
  *   - Responsive chart container that prevents the 800px viewBox SVG from
  *     overflowing on viewports narrower than 800px (no horizontal scrollbar
  *     on tablets/phones).
- *   - Top-N table container hook so later steps can attach typography.
+ *   - Top-N table container hook for typography.
  *   - WCAG 2.4.7 focus-visible outlines on every keyboard-reachable widget.
  *
  * Mobile breakpoints follow the existing project convention:
