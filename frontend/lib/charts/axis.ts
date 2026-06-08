@@ -12,7 +12,7 @@ const UTC_TIME_ZONE = "UTC";
 const HOUR_FORMATTER = new Intl.DateTimeFormat(EN_US_LOCALE, {
   hour: "2-digit",
   minute: "2-digit",
-  hour12: false,
+  hourCycle: "h23",
   timeZone: UTC_TIME_ZONE,
 });
 
