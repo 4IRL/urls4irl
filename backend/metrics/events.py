@@ -58,8 +58,10 @@ class EventName(StrEnum):
     UI_URL_ACCESS_WARNING = "ui_url_access_warning"
     UI_URL_ACCESS_WARNING_DISMISS = "ui_url_access_warning_dismiss"
     # — Search
-    UI_SEARCH_OPEN = "ui_search_open"
-    UI_SEARCH_CLOSE = "ui_search_close"
+    UI_UTUB_SEARCH_OPEN = "ui_utub_search_open"
+    UI_UTUB_SEARCH_CLOSE = "ui_utub_search_close"
+    UI_URL_SEARCH_OPEN = "ui_url_search_open"
+    UI_URL_SEARCH_CLOSE = "ui_url_search_close"
     # — Tags
     UI_TAG_APPLY = "ui_tag_apply"
     UI_TAG_REMOVE = "ui_tag_remove"
@@ -135,8 +137,10 @@ EVENT_CATEGORY: dict[EventName, EventCategory] = {
     EventName.UI_URL_COPY: EventCategory.UI,
     EventName.UI_URL_ACCESS_WARNING: EventCategory.UI,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: EventCategory.UI,
-    EventName.UI_SEARCH_OPEN: EventCategory.UI,
-    EventName.UI_SEARCH_CLOSE: EventCategory.UI,
+    EventName.UI_UTUB_SEARCH_OPEN: EventCategory.UI,
+    EventName.UI_UTUB_SEARCH_CLOSE: EventCategory.UI,
+    EventName.UI_URL_SEARCH_OPEN: EventCategory.UI,
+    EventName.UI_URL_SEARCH_CLOSE: EventCategory.UI,
     EventName.UI_TAG_APPLY: EventCategory.UI,
     EventName.UI_TAG_REMOVE: EventCategory.UI,
     EventName.UI_TAG_CREATE_OPEN: EventCategory.UI,
@@ -207,8 +211,10 @@ EVENT_DESCRIPTIONS: dict[EventName, str] = {
     EventName.UI_URL_COPY: "URL copied to clipboard",
     EventName.UI_URL_ACCESS_WARNING: "Non-HTTP URL warning modal shown",
     EventName.UI_URL_ACCESS_WARNING_DISMISS: "Non-HTTP URL warning dismissed (no access)",
-    EventName.UI_SEARCH_OPEN: "Search box opened",
-    EventName.UI_SEARCH_CLOSE: "Search box closed",
+    EventName.UI_UTUB_SEARCH_OPEN: "UTub search box opened",
+    EventName.UI_UTUB_SEARCH_CLOSE: "UTub search box closed",
+    EventName.UI_URL_SEARCH_OPEN: "URL search box opened",
+    EventName.UI_URL_SEARCH_CLOSE: "URL search box closed",
     EventName.UI_TAG_APPLY: "Tag applied from picker",
     EventName.UI_TAG_REMOVE: "Tag removed from URL",
     EventName.UI_TAG_CREATE_OPEN: '"Create tag" input opened',

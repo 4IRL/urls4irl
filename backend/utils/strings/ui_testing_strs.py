@@ -5,6 +5,7 @@ from backend.cli.mock_constants import (
     EMAIL_SUFFIX,
     MOCK_URL_STRINGS,
 )
+from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.tag_strs import TAG_FILTER_NO_RESULTS
 from backend.utils.strings.url_strs import (
     ADD_URL_BUTTON,
@@ -71,3 +72,11 @@ class UI_TEST_STRINGS:
     ADD_URL_BUTTON = ADD_URL_BUTTON
 
     COOKIE_NAME, COOKIE_VALUE = COOKIE_BANNER_SEEN.split("=")
+
+    # Admin metrics dashboard — re-export backend constants so test
+    # assertions stay locked to the user-facing strings.
+    METRICS_DASHBOARD_TITLE = ADMIN_METRICS_STRINGS.METRICS_DASHBOARD_TITLE
+    METRICS_TAB_API = ADMIN_METRICS_STRINGS.METRICS_TAB_API
+    METRICS_TAB_UI = ADMIN_METRICS_STRINGS.METRICS_TAB_UI
+    METRICS_TAB_DOMAIN = ADMIN_METRICS_STRINGS.METRICS_TAB_DOMAIN
+    METRICS_REFRESH_BUTTON_LABEL = ADMIN_METRICS_STRINGS.METRICS_REFRESH_BUTTON_LABEL

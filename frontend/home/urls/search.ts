@@ -7,8 +7,8 @@ import { UI_EVENTS } from "../../types/metrics-events.js";
 import { filterURLsBySearchTerm } from "../../logic/url-search.js";
 import { getState } from "../../store/app-store.js";
 import {
-  SEARCH_CLOSE_TARGET,
-  SEARCH_OPEN_TARGET,
+  URL_SEARCH_CLOSE_TARGET,
+  URL_SEARCH_OPEN_TARGET,
 } from "../../types/metrics-dim-values.js";
 
 type URLDOMEntry = { id: number; title: string; urlString: string };
@@ -92,8 +92,8 @@ export function setURLSearchEventListener(): void {
 
   searchIcon.offAndOnExact("click.urlSearchInputShow", function () {
     recordUIEvent({
-      event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: SEARCH_OPEN_TARGET.URLS,
+      event: UI_EVENTS.UI_URL_SEARCH_OPEN,
+      target: URL_SEARCH_OPEN_TARGET.URLS,
     });
     wrapper.addClass("visible-flex").removeClass("hidden");
     $("#URLDeckSubheaderCreateDescription").addClass("hidden");
@@ -160,8 +160,8 @@ export function setURLSearchEventListener(): void {
 export function closeURLSearchAndEraseInput(): void {
   if ($("#SearchURLWrap").hasClass("visible-flex")) {
     recordUIEvent({
-      event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: SEARCH_CLOSE_TARGET.URLS,
+      event: UI_EVENTS.UI_URL_SEARCH_CLOSE,
+      target: URL_SEARCH_CLOSE_TARGET.URLS,
     });
   }
   if (searchDebounceTimer !== null) {

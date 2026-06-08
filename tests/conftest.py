@@ -120,6 +120,7 @@ TEST_SPLIT = (
     "update_urls_ui",
     "tags_ui",
     "mobile_ui",
+    "metrics_ui",
 )
 
 

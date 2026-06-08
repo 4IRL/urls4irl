@@ -3,7 +3,7 @@
 Cross-layer navigation map for every route in the application. Each entry traces:
 **Route → Handler → Service → Template → JS Module → Tests**
 
-Last updated: 2026-04-04
+Last updated: 2026-06-07
 
 ---
 
@@ -328,7 +328,7 @@ Base path: `/api/metrics`
 | **Decorators** | `@admin_required        `, `@api_route(query_schema=TopEventsQuerySchema, response_schema=TopEventsResponseSchema, tags=[OPEN_API.METRICS], ajax_required=True, description="...", status_codes={200: TopEventsResponseSchema, 400: ErrorResponse, 401: ErrorResponse, 404: ErrorResponse})`                                                                                                                                                                                                                                                            |
 | **Service**    | `backend/metrics/query_service.py:top_events`                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | **Request**    | `backend/schemas/requests/metrics.py:TopEventsQuerySchema`                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| **Query Params** | `window=day\|week\|month\|year\|Nh\|Nd` (relative; `month`/`year` calendar-aware) OR `start=<iso>&end=<iso>` (absolute; mutually exclusive with `window`); optional `category=api\|domain\|ui`, `limit=1..100`                                                                                                                                                                                                                                                                                                          |
+| **Query Params** | `window=day\|week\|month\|year\|Nh\|Nd` (relative; `month`/`year` calendar-aware) OR `start=<iso>&end=<iso>` (absolute; mutually exclusive with `window`); optional `category=api\|domain\|ui`, `resource=<Resource>` (requires `category`; must appear in `RESOURCE_BY_CATEGORY[category]` — see `backend/metrics/resources.py`), `limit=1..100`                                                                                                                                                                                                                                                                                                          |
 | **Response**   | `backend/schemas/metrics.py:TopEventsResponseSchema`                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | **CSRF**       | None — GETs not CSRF-checked by Flask-WTF default                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | **Auth**       | `@admin_required        ` — `User_Role.ADMIN`; 401 anonymous, 404 non-admin                                                                                                                                                                                                                                                                                                                                                                                                                                           |
@@ -454,6 +454,24 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Service**    | `render_template()` direct                                           |
 | **Template**   | `pages/terms_and_conditions.html` (vars: `is_privacy_or_terms=True`) |
 | **Tests**      | None identified                                                      |
+
+---
+
+## Admin Blueprint
+
+### GET /admin/metrics
+
+| Layer          | Location                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/admin/routes.py:admin_metrics`                                                                                 |
+| **Decorators** | `@admin_login_required`                                                                                                 |
+| **Service**    | `render_template()` direct (no service layer — page is a server-rendered HTML shell)                                    |
+| **Schema**     | None (request) / None (response — page is HTML, not JSON)                                                               |
+| **Template**   | `pages/admin_metrics.html` (vars: `is_admin_metrics=True`)                                                              |
+| **JS Module**  | `frontend/admin-metrics.ts` (entry point: registers plugins, sets up CSRF, initialises the metrics dashboard controller) |
+| **CSRF**       | Meta tag (`<meta name="csrf-token">`)                                                                                   |
+| **Tests**      | `tests/integration/system/test_metrics_dashboard_page.py`, `tests/integration/system/test_admin_routes_gating.py` (marker: `cli`) |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.METRICS_PAGE` (gated in `generate_routes_js()` — only emitted to admin users)                                                |
 
 ---
 

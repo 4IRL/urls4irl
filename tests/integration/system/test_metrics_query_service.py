@@ -7,6 +7,7 @@ from typing import Any, Generator
 import pytest
 from flask import Flask
 
+from backend.extensions.metrics.buckets import previous_window
 from backend.metrics.events import (
     EVENT_CATEGORY,
     EVENT_DESCRIPTIONS,
@@ -14,6 +15,8 @@ from backend.metrics.events import (
     EventName,
 )
 from backend.metrics.query_service import summary, timeseries, top_events
+from backend.metrics.resources import Resource
+from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
     truncate_metrics_tables,
@@ -134,10 +137,13 @@ def test_top_events_aggregates_by_event_name(
         count=100,
     )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -145,9 +151,11 @@ def test_top_events_aggregates_by_event_name(
     assert len(rows) == 2
     assert rows[0].event_name == EventName.API_HIT.value
     assert rows[0].total_count == 100
+    assert rows[0].previous_count == 0
     assert rows[0].description == EVENT_DESCRIPTIONS[EventName.API_HIT]
     assert rows[1].event_name == EventName.UTUB_OPENED.value
     assert rows[1].total_count == 14
+    assert rows[1].previous_count == 0
     assert rows[1].description == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
 
 
@@ -175,10 +183,13 @@ def test_top_events_filters_by_category(
         count=100,
     )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=EventCategory.DOMAIN,
             limit=10,
         )
@@ -217,10 +228,13 @@ def test_top_events_respects_limit(
             count=offset + 1,
         )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=3,
         )
@@ -260,10 +274,13 @@ def test_top_events_breaks_ties_alphabetically_by_event_name(
             count=5,
         )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -271,6 +288,206 @@ def test_top_events_breaks_ties_alphabetically_by_event_name(
     returned_names = [row.event_name for row in rows]
     assert returned_names == sorted(returned_names)
     assert {row.total_count for row in rows} == {5}
+
+
+def test_top_events_api_category_groups_by_endpoint_method(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN three api_hit rows: two for (utubs.get_utub_details, GET) and one
+        for (splash.login_form, POST), all in the current window
+    WHEN top_events is called with category=EventCategory.API
+    THEN two rows are returned (one per distinct endpoint/method pair),
+        ordered by total_count descending, with each row's `event_name`
+        formatted as "<METHOD> <url_pattern>" via the current app's url_map.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    prev_start, prev_end = previous_window(window_start, window_end)
+    # Offset to bucket 18:00 (mid-window, distinct from the +1h/+2h/+3h
+    # buckets other tests in this file reuse) so the per-test truncate
+    # races we've seen on api_hit unique-constraint don't bite.
+    inside = window_start + timedelta(hours=6)
+
+    # Production writes endpoint/method/status_code into BOTH the flat columns
+    # and the dimensions dict (see writer.py for api_hit). Mirror that so the
+    # `(bucketStart, eventName, dimensions)` unique constraint allows two
+    # distinct endpoints in the same bucket.
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=7,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=1),
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=3,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="splash.splash_page",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "splash.splash_page",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=2,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            limit=10,
+        )
+
+    assert len(rows) == 2
+    top_row = rows[0]
+    second_row = rows[1]
+    assert top_row.category == EventCategory.API.value
+    assert top_row.total_count == 10
+    assert top_row.api_endpoint == "utubs.get_single_utub"
+    assert top_row.description == "Retrieve data for a single UTub"
+    assert top_row.event_name.startswith("GET ")
+    assert top_row.event_name != "GET utubs.get_single_utub"
+    assert second_row.total_count == 2
+    assert second_row.api_endpoint == "splash.splash_page"
+    assert second_row.description == ""
+
+
+def test_top_events_api_category_excludes_rows_with_null_endpoint(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an api_hit row with endpoint=NULL (ingest path the dashboard cannot
+        attribute) and a normal api_hit row with endpoint set
+    WHEN top_events is called with category=EventCategory.API
+    THEN only the row with a non-null endpoint is returned.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    prev_start, prev_end = previous_window(window_start, window_end)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint=None,
+        method=None,
+        count=99,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=1),
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        dimensions={"endpoint": "utubs.get_single_utub", "method": "GET"},
+        count=5,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].api_endpoint == "utubs.get_single_utub"
+    assert rows[0].description == "Retrieve data for a single UTub"
+    assert rows[0].total_count == 5
+
+
+def test_top_events_reports_previous_window_count_per_event(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UTUB_OPENED with count 8 in the current window AND count 5 in the
+        previous window, AND API_HIT with count 100 only in the current window
+    WHEN top_events is called with the previous-window range supplied
+    THEN UTUB_OPENED.previous_count == 5, API_HIT.previous_count == 0 (no
+        previous data), and both rows still order by current total_count desc.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    prev_start, prev_end = previous_window(window_start, window_end)
+    inside_current = window_start + timedelta(hours=1)
+    inside_previous = prev_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_current,
+        count=8,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_previous,
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside_current,
+        count=100,
+    )
+
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=None,
+            limit=10,
+        )
+
+    assert len(rows) == 2
+    api_row = next(row for row in rows if row.event_name == EventName.API_HIT.value)
+    utub_row = next(
+        row for row in rows if row.event_name == EventName.UTUB_OPENED.value
+    )
+    assert api_row.total_count == 100
+    assert api_row.previous_count == 0
+    assert utub_row.total_count == 8
+    assert utub_row.previous_count == 5
 
 
 def test_top_events_empty_window_returns_empty_list(
@@ -294,10 +511,13 @@ def test_top_events_empty_window_returns_empty_list(
         count=5,
     )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -310,10 +530,13 @@ def test_timeseries_groups_by_resolution(
     metrics_pg_conn: Any,
 ) -> None:
     """
-    GIVEN two UTUB_OPENED rows in two distinct hour buckets within one day
+    GIVEN two UTUB_OPENED rows in two distinct hour buckets within a 1-day
+        window aligned on the hour
     WHEN timeseries is called with resolution="hour"
-    THEN two rows are returned in chronological order with the correct sums
-    AND when resolution="day", the buckets collapse to one row.
+    THEN 24 chronologically-ordered buckets are returned (one per hour) with
+        the two seeded buckets carrying counts 3 and 4 and the remaining 22
+        zero-filled.
+    AND when resolution="day", the buckets collapse to one row summing 7.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -348,23 +571,33 @@ def test_timeseries_groups_by_resolution(
             resolution="day",
         )
 
-    assert len(hourly) == 2
-    assert hourly[0].bucket < hourly[1].bucket
-    assert hourly[0].count == 3
-    assert hourly[1].count == 4
+    assert len(hourly) == 24
+    bucket_starts = [row.bucket for row in hourly]
+    assert bucket_starts == sorted(bucket_starts)
+    nonzero = {row.bucket: row.count for row in hourly if row.count != 0}
+    assert nonzero == {first_bucket: 3, second_bucket: 4}
 
-    assert len(daily) == 1
-    assert daily[0].count == 7
+    # The day window spans across a calendar-day boundary at 00:00 UTC, so the
+    # zero-fill emits two day buckets: the one containing the seeded rows
+    # (count=7) and the trailing day with no data (count=0).
+    assert len(daily) == 2
+    daily_by_bucket = {row.bucket: row.count for row in daily}
+    seeded_day = window_start.replace(hour=0, minute=0, second=0, microsecond=0)
+    trailing_day = seeded_day + timedelta(days=1)
+    assert daily_by_bucket[seeded_day] == 7
+    assert daily_by_bucket[trailing_day] == 0
 
 
-def test_timeseries_empty_window_returns_empty_list(
+def test_timeseries_zero_fills_when_no_rows_in_window(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
 ) -> None:
     """
-    GIVEN no rows exist for the event in the window
-    WHEN timeseries is called
-    THEN the result is [] (assert-before-state: confirm no rows first).
+    GIVEN no rows exist for the event in a 1-day window
+    WHEN timeseries is called with resolution="hour"
+    THEN one zero-count bucket per hour is returned (24 total), so the
+        admin chart renders a flat-zero baseline instead of a single
+        lonely datapoint.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -388,7 +621,111 @@ def test_timeseries_empty_window_returns_empty_list(
             resolution="hour",
         )
 
-    assert rows == []
+    assert len(rows) == 24
+    assert all(row.count == 0 for row in rows)
+    bucket_starts = [row.bucket for row in rows]
+    assert bucket_starts == sorted(bucket_starts)
+
+
+def test_timeseries_zero_fills_with_unaligned_window_start(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a window whose `window_start` lands mid-hour (the common case for
+        relative `window="day"` queries — `now` is rarely hour-aligned)
+    WHEN timeseries is called with resolution="hour"
+    THEN the first emitted bucket is `truncate('hour', window_start)` — even
+        though its start is strictly before `window_start` — so the result
+        covers every aligned interval that overlaps the queried range. Skipping
+        the leading partial bucket would emit a zero where data could land in
+        coarser-resolution queries (`date_trunc('day', ...)`).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE  # 12:00:00 (aligned)
+    # Pin window_start to 11:37 the previous day so the leading aligned bucket
+    # (11:00) starts strictly before window_start.
+    window_start = (window_end - timedelta(days=1)).replace(minute=37)
+
+    with app.app_context():
+        rows = timeseries(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+        )
+
+    # 24 buckets: the leading partial bucket (truncated hour containing
+    # window_start) through to the last full hour bucket before window_end.
+    assert len(rows) == 24
+    expected_first = window_start.replace(minute=0)
+    assert rows[0].bucket == expected_first
+    assert rows[-1].bucket < window_end
+    assert rows[-1].bucket + timedelta(hours=1) == window_end
+
+
+def test_timeseries_filters_by_endpoint_and_method(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN api_hit rows for two distinct (endpoint, method) pairs in the same
+        bucket plus a third api_hit row for the same endpoint but a different
+        method (POST vs GET)
+    WHEN timeseries is called with event_name=API_HIT + endpoint + method
+    THEN only the matching (endpoint, method) row's count is summed; the
+        other endpoint and the other method are excluded.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    # Bucket 18:00 (mid-window, distinct from other tests' +1h..+4h reuse)
+    # to avoid the api_hit unique-constraint race we hit elsewhere.
+    inside = window_start + timedelta(hours=6)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        dimensions={"endpoint": "utubs.get_single_utub", "method": "GET"},
+        count=4,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="splash.splash_page",
+        method="GET",
+        dimensions={"endpoint": "splash.splash_page", "method": "GET"},
+        count=10,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="POST",
+        dimensions={"endpoint": "utubs.get_single_utub", "method": "POST"},
+        count=7,
+    )
+
+    with app.app_context():
+        rows = timeseries(
+            event_name=EventName.API_HIT,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+            endpoint="utubs.get_single_utub",
+            method="GET",
+        )
+
+    assert len(rows) == 24
+    nonzero = [row for row in rows if row.count != 0]
+    assert len(nonzero) == 1
+    assert nonzero[0].count == 4
+    assert nonzero[0].bucket == inside
 
 
 def test_summary_current_vs_previous_window(
@@ -427,14 +764,14 @@ def test_summary_current_vs_previous_window(
         )
 
     with app.app_context():
-        result = summary(
+        summary_result = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    api_row = next(row for row in result if row.category == "api")
+    api_row = next(row for row in summary_result.by_category if row.category == "api")
     assert api_row.current == 60
     assert api_row.previous == 30
     assert isinstance(api_row.category, str)
@@ -466,14 +803,148 @@ def test_summary_empty_window_returns_empty_list(
     assert existing_count == 0
 
     with app.app_context():
-        result = summary(
+        summary_result = summary(
             window_start=window_start,
             window_end=window_end,
             previous_window_start=previous_window_start,
             previous_window_end=previous_window_end,
         )
 
-    assert result == []
+    assert summary_result.by_category == []
+
+
+def test_summary_includes_last_event_at_when_metrics_exist(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a single seeded AnonymousMetrics row with a known bucket_start
+    WHEN summary(...) is called
+    THEN `last_event_at` equals that bucket_start exactly, so the dashboard's
+        activity badge can render `now - last_event_at` without an additional
+        round trip.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+    seeded_bucket_start = datetime(2026, 6, 1, 12, 0, 0, tzinfo=timezone.utc)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=seeded_bucket_start,
+    )
+
+    with app.app_context():
+        summary_result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
+
+    assert summary_result.last_event_at == seeded_bucket_start
+
+
+def test_summary_last_event_at_is_null_when_no_metrics(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an empty AnonymousMetrics table (assert-before-state)
+    WHEN summary(...) is called
+    THEN `last_event_at` is None — the badge falls back to its empty-state
+        text rather than rendering a stale timestamp.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    with metrics_pg_conn.cursor() as cur:
+        cur.execute('SELECT COUNT(*) FROM "AnonymousMetrics"')
+        existing_count = cur.fetchone()[0]
+    assert existing_count == 0
+
+    with app.app_context():
+        summary_result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
+
+    assert summary_result.by_category == []
+    assert summary_result.last_event_at is None
+
+
+def test_summary_last_flush_at_reads_sentinel_from_redis(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a `metrics:flush:last_success_epoch` sentinel set in Redis at a known
+        Unix epoch
+    WHEN summary(...) is called
+    THEN `last_flush_at` is the UTC-aware datetime parsed from that epoch,
+        independent of whether AnonymousMetrics has any rows.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    expected_epoch = 1_733_606_400  # 2024-12-07 20:00:00 UTC
+    expected_datetime = datetime.fromtimestamp(expected_epoch, tz=timezone.utc)
+
+    writer = app.extensions["metrics_writer"]
+    writer._redis.set(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY, str(expected_epoch))
+    try:
+        with app.app_context():
+            summary_result = summary(
+                window_start=window_start,
+                window_end=window_end,
+                previous_window_start=previous_window_start,
+                previous_window_end=previous_window_end,
+            )
+    finally:
+        writer._redis.delete(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
+
+    assert summary_result.last_flush_at == expected_datetime
+
+
+def test_summary_last_flush_at_is_null_when_sentinel_absent(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN the `metrics:flush:last_success_epoch` sentinel is unset in Redis
+    WHEN summary(...) is called
+    THEN `last_flush_at` is None — the badge can fall back to an empty state
+        rather than misreporting a stale timestamp.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    previous_window_end = window_start
+    previous_window_start = previous_window_end - timedelta(days=1)
+
+    writer = app.extensions["metrics_writer"]
+    writer._redis.delete(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
+
+    with app.app_context():
+        summary_result = summary(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=previous_window_start,
+            previous_window_end=previous_window_end,
+        )
+
+    assert summary_result.last_flush_at is None
 
 
 def test_query_service_join_includes_description_for_every_event(
@@ -500,10 +971,13 @@ def test_query_service_join_includes_description_for_every_event(
             count=offset + 1,
         )
 
+    prev_start, prev_end = previous_window(window_start, window_end)
     with app.app_context():
         rows = top_events(
             window_start=window_start,
             window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
             category=None,
             limit=10,
         )
@@ -512,3 +986,315 @@ def test_query_service_join_includes_description_for_every_event(
     for row in rows:
         assert row.description != ""
         assert row.description is not None
+
+
+def test_top_events_resource_filter_ui_utub_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN one UI UTub event, one UI URL event, and one UI Tag event in the window
+    WHEN top_events is called with category=UI and resource=UTUB
+    THEN only the UTub event is returned; URL and Tag rows are filtered out.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_URL_ACCESS,
+        bucket_start=inside,
+        count=10,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_TAG_APPLY,
+        bucket_start=inside,
+        count=15,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            resource=Resource.UTUB,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].event_name == EventName.UI_UTUB_SELECT.value
+
+
+def test_top_events_resource_filter_domain_tag_only(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a Domain UTub event, a Domain URL event, and two Domain Tag events
+    WHEN top_events is called with category=DOMAIN and resource=TAG
+    THEN only the two Tag rows are returned, sorted by count desc.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_CREATED,
+        bucket_start=inside,
+        count=100,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.URL_ACCESSED,
+        bucket_start=inside,
+        count=200,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.TAG_APPLIED,
+        bucket_start=inside,
+        count=7,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.TAG_REMOVED,
+        bucket_start=inside,
+        count=3,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.DOMAIN,
+            resource=Resource.TAG,
+            limit=10,
+        )
+
+    returned_names = [row.event_name for row in rows]
+    assert returned_names == [
+        EventName.TAG_APPLIED.value,
+        EventName.TAG_REMOVED.value,
+    ]
+
+
+def test_top_events_resource_filter_api_route_prefix(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN API hits across utubs.*, urls.*, and utub_tags.* Flask endpoints
+    WHEN top_events is called with category=API and resource=UTUB
+    THEN only rows with endpoint LIKE 'utubs.%' are returned.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=8)
+
+    # Production writes Flask endpoint names (e.g. `utubs.get_single_utub`)
+    # via `request.endpoint` in `extensions/metrics/middleware.py`, not URL
+    # paths. The resource filter matches against that prefix.
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=12,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=201,
+        dimensions={
+            "endpoint": "urls.create_url",
+            "method": "POST",
+            "status_code": 201,
+        },
+        count=99,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utub_tags.delete_utub_tag",
+        method="DELETE",
+        status_code=204,
+        dimensions={
+            "endpoint": "utub_tags.delete_utub_tag",
+            "method": "DELETE",
+            "status_code": 204,
+        },
+        count=44,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            resource=Resource.UTUB,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    # The event_name is built from `endpoint_metadata[endpoint].url_pattern`
+    # — `utubs.get_single_utub` resolves to `/utubs/<int:utub_id>` from the
+    # registered Flask url_map.
+    assert rows[0].api_endpoint == "utubs.get_single_utub"
+    assert rows[0].event_name.startswith("GET ")
+    assert "/utubs/" in rows[0].event_name
+
+
+def test_top_events_resource_other_excludes_known_prefixes(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN one API hit to a known prefix (`utubs.*`) AND one to an unknown
+        blueprint (`system.health`)
+    WHEN top_events is called with category=API and resource=OTHER
+    THEN only the unknown-blueprint row appears; the known-prefix row is filtered.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=50,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="system.health",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "system.health",
+            "method": "GET",
+            "status_code": 200,
+        },
+        count=3,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            resource=Resource.OTHER,
+            limit=10,
+        )
+
+    assert len(rows) == 1
+    assert rows[0].api_endpoint == "system.health"
+
+
+def test_top_events_resource_filter_runs_before_limit_truncation(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN twelve high-count UTub events and twelve low-count Tag events
+    WHEN top_events is called with category=UI, resource=TAG, limit=10
+    THEN ten Tag rows are returned — NOT the global top-10 (which would be
+    dominated by the higher-count UTub events).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    utub_events = [
+        EventName.UI_UTUB_SELECT,
+        EventName.UI_UTUB_CREATE_OPEN,
+        EventName.UI_UTUB_DELETE_OPEN,
+        EventName.UI_UTUB_DELETE_CONFIRM,
+        EventName.UI_UTUB_DELETE_CANCEL,
+        EventName.UI_UTUB_NAME_EDIT_OPEN,
+        EventName.UI_UTUB_DESC_EDIT_OPEN,
+    ]
+    tag_events = [
+        EventName.UI_TAG_APPLY,
+        EventName.UI_TAG_REMOVE,
+        EventName.UI_TAG_CREATE_OPEN,
+        EventName.UI_TAG_DELETE_OPEN,
+        EventName.UI_TAG_DELETE_CONFIRM,
+        EventName.UI_TAG_DELETE_CANCEL,
+        EventName.UI_TAG_FILTER_TOGGLE,
+    ]
+    for utub_event in utub_events:
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=utub_event,
+            bucket_start=inside,
+            count=1000,
+        )
+    for tag_event in tag_events:
+        _insert_metric_row(
+            metrics_pg_conn,
+            event_name=tag_event,
+            bucket_start=inside,
+            count=5,
+        )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            resource=Resource.TAG,
+            limit=10,
+        )
+
+    assert all(row.event_name.startswith("ui_tag_") for row in rows)
+    assert len(rows) == len(tag_events)

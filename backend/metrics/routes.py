@@ -14,6 +14,7 @@ from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import EventCategory, EventName
+from backend.metrics.resources import Resource
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
@@ -147,10 +148,19 @@ def query_top() -> FlaskResponse:
     category_enum: EventCategory | None = (
         EventCategory(parsed.category) if parsed.category is not None else None
     )
+    resource_enum: Resource | None = (
+        Resource(parsed.resource) if parsed.resource is not None else None
+    )
+    previous_window_start, previous_window_end = previous_window(
+        window_start, window_end
+    )
     rows = query_service.top_events(
         window_start=window_start,
         window_end=window_end,
+        previous_window_start=previous_window_start,
+        previous_window_end=previous_window_end,
         category=category_enum,
+        resource=resource_enum,
         limit=parsed.limit,
     )
     response_schema = TopEventsResponseSchema(
@@ -158,6 +168,7 @@ def query_top() -> FlaskResponse:
         window_start=window_start,
         window_end=window_end,
         category=parsed.category,
+        resource=parsed.resource,
         events=rows,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()
@@ -203,6 +214,8 @@ def query_timeseries() -> FlaskResponse:
         window_start=window_start,
         window_end=window_end,
         resolution=parsed.resolution,
+        endpoint=parsed.endpoint,
+        method=parsed.method,
     )
     response_schema = TimeseriesResponseSchema(
         event_name=parsed.event_name,
@@ -253,7 +266,7 @@ def query_summary() -> FlaskResponse:
     previous_window_start, previous_window_end = previous_window(
         window_start, window_end
     )
-    by_category = query_service.summary(
+    summary_result = query_service.summary(
         window_start=window_start,
         window_end=window_end,
         previous_window_start=previous_window_start,
@@ -265,6 +278,8 @@ def query_summary() -> FlaskResponse:
         window_end=window_end,
         previous_window_start=previous_window_start,
         previous_window_end=previous_window_end,
-        by_category=by_category,
+        last_flush_at=summary_result.last_flush_at,
+        last_event_at=summary_result.last_event_at,
+        by_category=summary_result.by_category,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()

@@ -139,16 +139,24 @@ class _DimUrlCopy(UIBaseDimensions):
     result: Literal["success", "failure"]
 
 
-# `_DimSearchOpen` and `_DimSearchClose` share the same field shape today,
-# but are deliberately defined as separate classes (one per `EventName`) so
-# each event has a 1:1 grep-able dim model. The pair may diverge as the
-# search UI grows; keep them split.
-class _DimSearchOpen(UIBaseDimensions):
-    target: Literal["utubs", "urls"]
+# Each search variant has its own dim class (one per `EventName`) so each
+# event has a 1:1 grep-able dim model. UTub-search and URL-search classes
+# share the same field shape today but may diverge as the search UI grows;
+# keep them split.
+class _DimUtubSearchOpen(UIBaseDimensions):
+    target: Literal["utubs"]
 
 
-class _DimSearchClose(UIBaseDimensions):
-    target: Literal["utubs", "urls"]
+class _DimUtubSearchClose(UIBaseDimensions):
+    target: Literal["utubs"]
+
+
+class _DimUrlSearchOpen(UIBaseDimensions):
+    target: Literal["urls"]
+
+
+class _DimUrlSearchClose(UIBaseDimensions):
+    target: Literal["urls"]
 
 
 class _DimTagCreateOpen(UIBaseDimensions):
@@ -278,8 +286,10 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_URL_ACCESS_WARNING: _DimDeviceOnly,
     EventName.UI_URL_ACCESS_WARNING_DISMISS: _DimDeviceOnly,
     # UI — Search
-    EventName.UI_SEARCH_OPEN: _DimSearchOpen,
-    EventName.UI_SEARCH_CLOSE: _DimSearchClose,
+    EventName.UI_UTUB_SEARCH_OPEN: _DimUtubSearchOpen,
+    EventName.UI_UTUB_SEARCH_CLOSE: _DimUtubSearchClose,
+    EventName.UI_URL_SEARCH_OPEN: _DimUrlSearchOpen,
+    EventName.UI_URL_SEARCH_CLOSE: _DimUrlSearchClose,
     # UI — Tags
     EventName.UI_TAG_APPLY: _DimDeviceOnly,
     EventName.UI_TAG_REMOVE: _DimDeviceOnly,

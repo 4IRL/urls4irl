@@ -80,6 +80,7 @@ jobs:
           - [15, 'UI Update URL Functional Tests', 2]
           - [16, 'UI Tags Functional Tests', 2]
           - [17, 'UI Mobile Functional Tests', 2]
+          - [18, 'UI Metrics Dashboard Functional Tests', 2]
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 

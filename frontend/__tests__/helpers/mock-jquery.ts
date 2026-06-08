@@ -20,6 +20,7 @@ export function createMockJqXHRChainable(overrides?: {
     done: vi.fn().mockReturnThis(),
     fail: vi.fn().mockReturnThis(),
     always: vi.fn().mockReturnThis(),
+    abort: vi.fn(),
   };
 
   for (const method of ["done", "fail", "always"] as const) {

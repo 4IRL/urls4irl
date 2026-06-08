@@ -108,13 +108,6 @@ export const MOBILE_NAV_TARGET = {
   TAGS: "tags",
 } as const;
 
-export const SEARCH_CLOSE_TARGET = {
-  UTUBS: "utubs",
-  URLS: "urls",
-} as const;
-
-export const SEARCH_OPEN_TARGET = SEARCH_CLOSE_TARGET;
-
 export const URL_ACCESS_TRIGGER = {
   CORNER_BUTTON: "corner_button",
   URL_TEXT: "url_text",
@@ -126,6 +119,12 @@ export const URL_COPY_RESULT = {
   FAILURE: "failure",
 } as const;
 
+export const URL_SEARCH_CLOSE_TARGET = {
+  URLS: "urls",
+} as const;
+
+export const URL_SEARCH_OPEN_TARGET = URL_SEARCH_CLOSE_TARGET;
+
 export const UTUB_DESC_EDIT_OPEN_TRIGGER = {
   PENCIL_ICON: "pencil_icon",
   KEYBOARD: "keyboard",
@@ -136,3 +135,9 @@ export const UTUB_NAME_EDIT_OPEN_TRIGGER = {
   PENCIL_ICON: "pencil_icon",
   KEYBOARD: "keyboard",
 } as const;
+
+export const UTUB_SEARCH_CLOSE_TARGET = {
+  UTUBS: "utubs",
+} as const;
+
+export const UTUB_SEARCH_OPEN_TARGET = UTUB_SEARCH_CLOSE_TARGET;

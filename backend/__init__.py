@@ -30,6 +30,7 @@ from backend.cli.mock_options import register_mocks_db_cli
 from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
+from backend.models.users import User_Role
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 
@@ -147,6 +148,7 @@ def create_app(
     # imports are kept inside `create_app()` to avoid module-scope circular
     # imports — every blueprint module ultimately imports from `backend.*`,
     # which transitively imports this module. Mirrors the existing pattern.
+    from backend.admin.routes import admin as admin_blueprint
     from backend.contact.routes import contact
     from backend.members.routes import members
     from backend.metrics.routes import metrics
@@ -162,6 +164,9 @@ def create_app(
     def asset_processor():
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
 
+    app.jinja_env.globals["User_Role"] = User_Role
+
+    app.register_blueprint(admin_blueprint)
     app.register_blueprint(contact)
     app.register_blueprint(members)
     app.register_blueprint(metrics)

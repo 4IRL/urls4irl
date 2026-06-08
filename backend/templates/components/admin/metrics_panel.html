@@ -1,0 +1,43 @@
+<div class="content-row">
+    <div class="panel">
+        <h2>{{ CONFIG.strings.METRICS_TOP_PANEL_HEADING }}</h2>
+        <div class="top-filters">
+            <label for="MetricsTopResourceFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_RESOURCE_LABEL }}</label>
+            <select id="MetricsTopResourceFilter-{{ category }}"
+                    class="MetricsTopResourceFilter"
+                    data-category="{{ category }}"
+                    aria-label="{{ CONFIG.strings.METRICS_TOP_RESOURCE_ARIA }}"></select>
+            <label for="MetricsTopSubstringFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_SEARCH_LABEL }}</label>
+            <input type="search"
+                   id="MetricsTopSubstringFilter-{{ category }}"
+                   class="MetricsTopSubstringFilter"
+                   data-category="{{ category }}"
+                   placeholder="{{ CONFIG.strings.METRICS_TOP_SEARCH_PLACEHOLDER }}"
+                   aria-label="{{ CONFIG.strings.METRICS_TOP_SEARCH_ARIA }}">
+        </div>
+        <table id="{{ table_id }}" class="top-table" aria-label="{{ CONFIG.strings.METRICS_TOP_PANEL_HEADING }}">
+            <thead></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <div class="content-row__resizer"
+         role="separator"
+         aria-orientation="vertical"
+         aria-controls="{{ table_id }} {{ chart_id }}"
+         aria-label="{{ CONFIG.strings.METRICS_PANE_RESIZER_ARIA }}"
+         aria-valuemin="25"
+         aria-valuemax="75"
+         tabindex="0"></div>
+    <div class="panel">
+        <h2>{{ CONFIG.strings.METRICS_TS_PANEL_HEADING }}</h2>
+        <div class="ts-controls">
+            <label for="{{ select_id }}">{{ CONFIG.strings.METRICS_TIMESERIES_SELECT_LABEL }}</label>
+            <select id="{{ select_id }}" class="MetricsTimeseriesEventSelect" aria-label="{{ CONFIG.strings.METRICS_TIMESERIES_SELECT_ARIA }}"></select>
+        </div>
+        <svg id="{{ chart_id }}" class="MetricsChart" viewBox="0 0 800 240" preserveAspectRatio="xMinYMid meet"
+             role="img" aria-labelledby="{{ chart_id }}-title" aria-describedby="{{ chart_id }}-desc">
+            <title id="{{ chart_id }}-title"></title>
+            <desc id="{{ chart_id }}-desc"></desc>
+        </svg>
+    </div>
+</div>

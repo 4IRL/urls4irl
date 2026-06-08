@@ -9,10 +9,12 @@ from backend.extensions.metrics.dim_types_generator import (
     _ts_for_annotation,
     generate_dim_types_ts,
     generate_dim_values_ts,
+    generate_resources_ts,
     generate_ui_events_ts,
 )
 from backend.metrics.dimension_models import HomeForm
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 pytestmark = pytest.mark.unit
 
@@ -170,6 +172,37 @@ def test_ts_for_annotation_inline_literal_returns_quoted_union() -> None:
     THEN the function returns the quoted TS string union `'"a" | "b"'`.
     """
     assert _ts_for_annotation(Literal["a", "b"], {}) == '"a" | "b"'
+
+
+def test_generate_resources_ts_emits_resources_const_type_and_by_category() -> None:
+    """
+    GIVEN the `Resource` StrEnum and `RESOURCE_BY_CATEGORY` mapping
+    WHEN generate_resources_ts() renders the TS source
+    THEN the output declares the `RESOURCES` const, the `ResourceName` type
+        alias, and the `RESOURCES_BY_CATEGORY` mapping; every Resource member
+        appears in `RESOURCES`; and the API category's resources are surfaced
+        in the by-category map.
+    """
+    ts_source = generate_resources_ts()
+
+    assert "export const RESOURCES = {" in ts_source
+    assert (
+        "export type ResourceName = (typeof RESOURCES)[keyof typeof RESOURCES];"
+        in ts_source
+    )
+    assert "export const RESOURCES_BY_CATEGORY = {" in ts_source
+
+    for resource in Resource:
+        assert f'{resource.name}: "{resource.value}",' in ts_source
+
+    assert 'UTUB: "utub",' in ts_source
+
+    api_resources = RESOURCE_BY_CATEGORY[EventCategory.API]
+    assert (
+        api_resources
+    ), "Expected at least one API resource for the test to be meaningful."
+    api_values_joined = ", ".join(f'"{resource.value}"' for resource in api_resources)
+    assert f"  {EventCategory.API.value}: [{api_values_joined}] as const," in ts_source
 
 
 def test_ts_for_annotation_named_alias_returns_alias_name() -> None:

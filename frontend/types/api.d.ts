@@ -543,8 +543,10 @@ export interface components {
         | "ui_url_copy"
         | "ui_url_access_warning"
         | "ui_url_access_warning_dismiss"
-        | "ui_search_open"
-        | "ui_search_close"
+        | "ui_utub_search_open"
+        | "ui_utub_search_close"
+        | "ui_url_search_open"
+        | "ui_url_search_close"
         | "ui_tag_apply"
         | "ui_tag_remove"
         | "ui_tag_create_open"
@@ -621,10 +623,20 @@ export interface components {
       event_name: string;
       /** @description EventCategory value (api | domain | ui) */
       category: string;
-      /** @description Human-readable event description from EventRegistry */
+      /** @description Human-readable event description. For UI/domain rows this comes from EventRegistry; for API rows it comes from the route's `@api_route(description=...)` kwarg. */
       description: string;
+      /**
+       * @description Raw Flask endpoint name (e.g. `utubs.get_single_utub`) — populated only for API-category rows so the dashboard can filter the timeseries chart by the exact column value stored in `AnonymousMetrics.endpoint`. Null for UI/domain rows.
+       * @default null
+       */
+      api_endpoint: string | null;
       /** @description Sum of counts across all buckets in the window */
       total_count: number;
+      /**
+       * @description Sum of counts for the same event across the immediately-preceding window of equal length. Zero when the event did not appear in the previous window. Used by the admin dashboard to render per-event delta-vs-prev arrows.
+       * @default 0
+       */
+      previous_count: number;
     };
     /** @description Envelope returned by `GET /api/metrics/query/top`. */
     TopEventsResponseSchema: {
@@ -648,6 +660,11 @@ export interface components {
        * @default null
        */
       category: string | null;
+      /**
+       * @description Resource filter applied to the query (utub | url | tag | member | auth | search | form | deck | nav | error | contact | admin | other), or null if none. Requires `category` to also be set.
+       * @default null
+       */
+      resource: string | null;
       /** @description Top-N rows ordered by total_count descending */
       events: components["schemas"]["TopEventRow"][];
     };
@@ -727,6 +744,16 @@ export interface components {
        * @description Exclusive UTC end of the immediately-preceding window
        */
       previous_window_end: string;
+      /**
+       * @description Flush worker's liveness sentinel — UTC timestamp parsed from the `metrics:flush:last_success_epoch` Redis key, which the worker stamps on every successful run (including empty flushes). Reflects worker cadence, NOT data freshness — advances every minute regardless of traffic. Null when metrics are disabled, the sentinel is absent, or Redis is unreachable.
+       * @default null
+       */
+      last_flush_at: string | null;
+      /**
+       * @description Wall-clock timestamp of the most recent AnonymousMetrics bucket (`MAX(bucketStart)`); null when the table is empty. Reflects when the last event was bucketed — advances only when traffic lands. Surfaced separately from `last_flush_at` so an admin can distinguish 'worker is dead' from 'nobody is using the app'.
+       * @default null
+       */
+      last_event_at: string | null;
       /** @description Per-category current vs. previous totals */
       by_category: components["schemas"]["SummaryCategoryCount"][];
     };
@@ -1317,6 +1344,21 @@ export interface operations {
         end?: string;
         /** @description Optional category filter (api | domain | ui). */
         category?: "api" | "domain" | "ui";
+        /** @description Optional resource filter (utub | url | tag | member | auth | search | form | deck | nav | error | contact | admin | other). Requires `category`; the resource must appear in `RESOURCE_BY_CATEGORY[category]`. */
+        resource?:
+          | "utub"
+          | "url"
+          | "tag"
+          | "member"
+          | "auth"
+          | "search"
+          | "form"
+          | "deck"
+          | "nav"
+          | "error"
+          | "contact"
+          | "admin"
+          | "other";
         /** @description Maximum number of rows to return (1-100). */
         limit?: number;
       };
@@ -1401,8 +1443,10 @@ export interface operations {
           | "ui_url_copy"
           | "ui_url_access_warning"
           | "ui_url_access_warning_dismiss"
-          | "ui_search_open"
-          | "ui_search_close"
+          | "ui_utub_search_open"
+          | "ui_utub_search_close"
+          | "ui_url_search_open"
+          | "ui_url_search_close"
           | "ui_tag_apply"
           | "ui_tag_remove"
           | "ui_tag_create_open"
@@ -1443,6 +1487,10 @@ export interface operations {
         end?: string;
         /** @description date_trunc resolution: hour (default) or day. */
         resolution?: "hour" | "day";
+        /** @description Optional Flask endpoint name (e.g. utubs.get_single_utub). When supplied alongside event_name=api_hit, filters the series to only rows matching this endpoint — used by the admin dashboard's API tab to chart per-endpoint timeseries. */
+        endpoint?: string;
+        /** @description Optional HTTP method (GET, POST, etc.). When supplied alongside event_name=api_hit, narrows the series to one (endpoint, method) pair so two methods on the same endpoint stay separate. */
+        method?: string;
       };
       header?: never;
       path?: never;

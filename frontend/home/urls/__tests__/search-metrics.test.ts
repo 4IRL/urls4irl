@@ -5,8 +5,8 @@ import {
   setURLSearchEventListener,
 } from "../search.js";
 import {
-  SEARCH_CLOSE_TARGET,
-  SEARCH_OPEN_TARGET,
+  URL_SEARCH_CLOSE_TARGET,
+  URL_SEARCH_OPEN_TARGET,
 } from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -40,7 +40,7 @@ const SEARCH_HTML = `
   <div id="listURLs"></div>
 `;
 
-describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
+describe("URL search metrics — UI_URL_SEARCH_OPEN / UI_URL_SEARCH_CLOSE", () => {
   beforeEach(() => {
     document.body.innerHTML = SEARCH_HTML;
     vi.clearAllMocks();
@@ -50,20 +50,20 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     document.body.innerHTML = "";
   });
 
-  it("emits ui_search_open with target 'urls' when the search icon is clicked", async () => {
+  it("emits ui_url_search_open with target 'urls' when the search icon is clicked", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();
     $("#URLSearchFilterIcon").trigger("click.urlSearchInputShow");
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: SEARCH_OPEN_TARGET.URLS,
+      event: UI_EVENTS.UI_URL_SEARCH_OPEN,
+      target: URL_SEARCH_OPEN_TARGET.URLS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("emits ui_search_close with target 'urls' when closing while panel is open (visible-flex)", async () => {
+  it("emits ui_url_search_close with target 'urls' when closing while panel is open (visible-flex)", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();
@@ -73,13 +73,13 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     closeURLSearchAndEraseInput();
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: SEARCH_CLOSE_TARGET.URLS,
+      event: UI_EVENTS.UI_URL_SEARCH_CLOSE,
+      target: URL_SEARCH_CLOSE_TARGET.URLS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("does not emit ui_search_close when called while the panel is hidden", async () => {
+  it("does not emit ui_url_search_close when called while the panel is hidden", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();
@@ -89,7 +89,7 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
-  it("does not emit ui_search_close from disableURLSearch when panel is not visible (UTub deselect)", async () => {
+  it("does not emit ui_url_search_close from disableURLSearch when panel is not visible (UTub deselect)", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();
@@ -99,7 +99,7 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     expect(emit).not.toHaveBeenCalled();
   });
 
-  it("emits ui_search_close exactly once when ESC closes the input while panel is open", async () => {
+  it("emits ui_url_search_close exactly once when ESC closes the input while panel is open", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();
@@ -111,8 +111,8 @@ describe("URL search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     $("#URLContentSearch").trigger(escEvent);
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: SEARCH_CLOSE_TARGET.URLS,
+      event: UI_EVENTS.UI_URL_SEARCH_CLOSE,
+      target: URL_SEARCH_CLOSE_TARGET.URLS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });

@@ -79,6 +79,9 @@ class Users(db.Model, UserMixin):
     def is_password_correct(self, plaintext_password: str) -> bool:
         return check_password_hash(self.password, plaintext_password)
 
+    def is_admin(self) -> bool:
+        return self.role == User_Role.ADMIN
+
     def change_password(self, new_plaintext_password: str):
         self.password = generate_password_hash(new_plaintext_password)
 

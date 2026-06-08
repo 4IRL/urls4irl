@@ -4,8 +4,8 @@ import {
   setUTubSelectorSearchEventListener,
 } from "../search.js";
 import {
-  SEARCH_CLOSE_TARGET,
-  SEARCH_OPEN_TARGET,
+  UTUB_SEARCH_CLOSE_TARGET,
+  UTUB_SEARCH_OPEN_TARGET,
 } from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -41,7 +41,7 @@ function resetSearchModuleState(): void {
   $("#UTubNameSearch").trigger("blur.searchInputEsc");
 }
 
-describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
+describe("UTub search metrics — UI_UTUB_SEARCH_OPEN / UI_UTUB_SEARCH_CLOSE", () => {
   beforeEach(() => {
     document.body.innerHTML = SEARCH_HTML;
     resetSearchModuleState();
@@ -53,14 +53,14 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     document.body.innerHTML = "";
   });
 
-  it("emits ui_search_open with target 'utubs' when input gains focus", async () => {
+  it("emits ui_utub_search_open with target 'utubs' when input gains focus", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     $("#UTubNameSearch").trigger("focus.searchInputEsc");
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: SEARCH_OPEN_TARGET.UTUBS,
+      event: UI_EVENTS.UI_UTUB_SEARCH_OPEN,
+      target: UTUB_SEARCH_OPEN_TARGET.UTUBS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
@@ -74,7 +74,7 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("re-emits ui_search_open after a blur resets the flag", async () => {
+  it("re-emits ui_utub_search_open after a blur resets the flag", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     $("#UTubNameSearch").trigger("focus.searchInputEsc");
@@ -83,16 +83,16 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
 
     expect(emit).toHaveBeenCalledTimes(2);
     expect(emit).toHaveBeenNthCalledWith(1, {
-      event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: SEARCH_OPEN_TARGET.UTUBS,
+      event: UI_EVENTS.UI_UTUB_SEARCH_OPEN,
+      target: UTUB_SEARCH_OPEN_TARGET.UTUBS,
     });
     expect(emit).toHaveBeenNthCalledWith(2, {
-      event: UI_EVENTS.UI_SEARCH_OPEN,
-      target: SEARCH_OPEN_TARGET.UTUBS,
+      event: UI_EVENTS.UI_UTUB_SEARCH_OPEN,
+      target: UTUB_SEARCH_OPEN_TARGET.UTUBS,
     });
   });
 
-  it("emits ui_search_close with target 'utubs' when resetUTubSearch runs while open", async () => {
+  it("emits ui_utub_search_close with target 'utubs' when resetUTubSearch runs while open", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     $("#UTubNameSearch").trigger("focus.searchInputEsc");
@@ -101,13 +101,13 @@ describe("UTub search metrics — UI_SEARCH_OPEN / UI_SEARCH_CLOSE", () => {
     resetUTubSearch();
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_SEARCH_CLOSE,
-      target: SEARCH_CLOSE_TARGET.UTUBS,
+      event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,
+      target: UTUB_SEARCH_CLOSE_TARGET.UTUBS,
     });
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("does not emit ui_search_close from resetUTubSearch when never focused (init path)", async () => {
+  it("does not emit ui_utub_search_close from resetUTubSearch when never focused (init path)", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     resetUTubSearch();

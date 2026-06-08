@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Any
 
-from pydantic import Field
+from pydantic import AwareDatetime, Field, GetJsonSchemaHandler
+from pydantic.json_schema import JsonSchemaValue
+from pydantic_core import CoreSchema
 
 from backend.schemas.base import BaseSchema
 
@@ -28,11 +31,55 @@ class TopEventRow(BaseSchema):
     event_name: str = Field(description="EventName value (e.g. utub_opened)")
     category: str = Field(description="EventCategory value (api | domain | ui)")
     description: str = Field(
-        description="Human-readable event description from EventRegistry"
+        description=(
+            "Human-readable event description. For UI/domain rows this comes "
+            "from EventRegistry; for API rows it comes from the route's "
+            "`@api_route(description=...)` kwarg."
+        ),
+    )
+    api_endpoint: str | None = Field(
+        default=None,
+        description=(
+            "Raw Flask endpoint name (e.g. `utubs.get_single_utub`) — populated "
+            "only for API-category rows so the dashboard can filter the "
+            "timeseries chart by the exact column value stored in "
+            "`AnonymousMetrics.endpoint`. Null for UI/domain rows."
+        ),
     )
     total_count: int = Field(
         description="Sum of counts across all buckets in the window"
     )
+    previous_count: int = Field(
+        default=0,
+        description=(
+            "Sum of counts for the same event across the immediately-preceding "
+            "window of equal length. Zero when the event did not appear in the "
+            "previous window. Used by the admin dashboard to render per-event "
+            "delta-vs-prev arrows."
+        ),
+    )
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        core_schema: CoreSchema,
+        handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Mark `api_endpoint` and `previous_count` as required in the JSON schema.
+
+        Both fields carry Python-level defaults so the model can be constructed
+        with `api_endpoint` omitted (UI/domain rows) or `previous_count` omitted
+        (no previous-window data). The backend nevertheless always emits both
+        keys, so downstream OpenAPI consumers should treat them as guaranteed-
+        present.
+        """
+        json_schema: dict[str, Any] = handler(core_schema)
+        required = list(json_schema.get("required", []))
+        for guaranteed_field in ("api_endpoint", "previous_count"):
+            if guaranteed_field not in required:
+                required.append(guaranteed_field)
+        json_schema["required"] = required
+        return json_schema
 
 
 class TopEventsResponseSchema(BaseSchema):
@@ -50,6 +97,14 @@ class TopEventsResponseSchema(BaseSchema):
     category: str | None = Field(
         default=None,
         description="EventCategory filter applied to the query, or null if none",
+    )
+    resource: str | None = Field(
+        default=None,
+        description=(
+            "Resource filter applied to the query (utub | url | tag | member | "
+            "auth | search | form | deck | nav | error | contact | admin | "
+            "other), or null if none. Requires `category` to also be set."
+        ),
     )
     events: list[TopEventRow] = Field(
         description="Top-N rows ordered by total_count descending",
@@ -116,6 +171,27 @@ class SummaryResponseSchema(BaseSchema):
     )
     previous_window_end: datetime = Field(
         description="Exclusive UTC end of the immediately-preceding window",
+    )
+    last_flush_at: AwareDatetime | None = Field(
+        default=None,
+        description=(
+            "Flush worker's liveness sentinel — UTC timestamp parsed from the "
+            "`metrics:flush:last_success_epoch` Redis key, which the worker "
+            "stamps on every successful run (including empty flushes). "
+            "Reflects worker cadence, NOT data freshness — advances every "
+            "minute regardless of traffic. Null when metrics are disabled, "
+            "the sentinel is absent, or Redis is unreachable."
+        ),
+    )
+    last_event_at: AwareDatetime | None = Field(
+        default=None,
+        description=(
+            "Wall-clock timestamp of the most recent AnonymousMetrics bucket "
+            "(`MAX(bucketStart)`); null when the table is empty. Reflects "
+            "when the last event was bucketed — advances only when traffic "
+            "lands. Surfaced separately from `last_flush_at` so an admin can "
+            "distinguish 'worker is dead' from 'nobody is using the app'."
+        ),
     )
     by_category: list[SummaryCategoryCount] = Field(
         description="Per-category current vs. previous totals",

@@ -178,6 +178,7 @@ def test_query_top_admin_happy_path_returns_seeded_rows(
     assert seeded_event["event_name"] == EventName.UTUB_OPENED.value
     assert seeded_event["total_count"] == 5
     assert seeded_event["description"] == EVENT_DESCRIPTIONS[EventName.UTUB_OPENED]
+    assert seeded_event["previous_count"] == 0
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +367,12 @@ def test_query_summary_admin_happy_path_returns_by_category_list(
     assert domain_row is not None
     assert domain_row["current"] == 10
     assert domain_row["previous"] == 4
+    assert "last_flush_at" in body
+    last_flush_at_value = body["last_flush_at"]
+    assert last_flush_at_value is None or _ISO_8601_UTC_REGEX.match(last_flush_at_value)
+    assert "last_event_at" in body
+    last_event_at_value = body["last_event_at"]
+    assert last_event_at_value is None or _ISO_8601_UTC_REGEX.match(last_event_at_value)
 
 
 # ---------------------------------------------------------------------------
@@ -636,3 +643,84 @@ def test_query_endpoint_datetime_fields_serialize_as_iso_8601(
     body = response.get_json()
     assert _ISO_8601_UTC_REGEX.match(body["window_start"]), body["window_start"]
     assert _ISO_8601_UTC_REGEX.match(body["window_end"]), body["window_end"]
+
+
+# ---------------------------------------------------------------------------
+# `top` — `resource` filter cross-validation against `category`
+# ---------------------------------------------------------------------------
+
+
+def test_query_top_resource_without_category_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/top?window=day&resource=utub (no category)
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — resource
+        without category is ambiguous because the SQL target column depends
+        on the category (event_name for UI/Domain, endpoint for API).
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&resource=utub", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_query_top_resource_invalid_for_category_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/top?window=day&category=domain&resource=auth
+        (`auth` does not appear in `RESOURCE_BY_CATEGORY[DOMAIN]`)
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        model_validator rejects pairs not listed in `RESOURCE_BY_CATEGORY`.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&category=domain&resource=auth",
+        headers=_AJAX_HEADERS,
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_query_top_resource_with_valid_category_returns_200(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and one seeded UTUB_CREATED row inside the window
+    WHEN GETing /api/metrics/query/top?window=day&category=domain&resource=utub
+    THEN the response is 200, the seeded UTub row is returned, and the
+        response echoes both `category` and `resource` query params.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UTUB_CREATED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=3,
+        )
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&category=domain&resource=utub",
+        headers=_AJAX_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["category"] == EventCategory.DOMAIN.value
+    assert body["resource"] == "utub"
+    assert len(body["events"]) == 1
+    assert body["events"][0]["event_name"] == EventName.UTUB_CREATED.value

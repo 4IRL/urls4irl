@@ -57,8 +57,22 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         },
     ),
     (EventName.UI_URL_COPY, {"result": "success", "device_type": DeviceType.DESKTOP}),
-    (EventName.UI_SEARCH_OPEN, {"target": "urls", "device_type": DeviceType.MOBILE}),
-    (EventName.UI_SEARCH_CLOSE, {"target": "utubs", "device_type": DeviceType.DESKTOP}),
+    (
+        EventName.UI_UTUB_SEARCH_OPEN,
+        {"target": "utubs", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_UTUB_SEARCH_CLOSE,
+        {"target": "utubs", "device_type": DeviceType.DESKTOP},
+    ),
+    (
+        EventName.UI_URL_SEARCH_OPEN,
+        {"target": "urls", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_URL_SEARCH_CLOSE,
+        {"target": "urls", "device_type": DeviceType.DESKTOP},
+    ),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": DeviceType.DESKTOP}),
     (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
@@ -340,6 +354,41 @@ def test_per_event_models_reject_missing_required_keys():
     """Omitting a required field raises ValidationError."""
     with pytest.raises(ValidationError):
         DIMENSION_MODELS[EventName.UI_UTUB_NAME_EDIT_OPEN].model_validate({})
+
+
+def test_utub_search_models_reject_url_target():
+    """`_DimUtubSearchOpen`/`Close` restrict `target` to `Literal["utubs"]`.
+
+    The narrowed-literal split from the legacy `_DimSearchOpen`/`Close`
+    (which accepted both targets) means a payload tagged with the UTub
+    search event but carrying `target="urls"` must be rejected at
+    validation time, not silently accepted.
+    """
+    for event_name in (
+        EventName.UI_UTUB_SEARCH_OPEN,
+        EventName.UI_UTUB_SEARCH_CLOSE,
+    ):
+        with pytest.raises(ValidationError):
+            DIMENSION_MODELS[event_name].model_validate(
+                {"target": "urls", "device_type": DeviceType.MOBILE}
+            )
+
+
+def test_url_search_models_reject_utub_target():
+    """`_DimUrlSearchOpen`/`Close` restrict `target` to `Literal["urls"]`.
+
+    Symmetric to `test_utub_search_models_reject_url_target`: a payload
+    tagged with the URL search event but carrying `target="utubs"` must
+    be rejected at validation time.
+    """
+    for event_name in (
+        EventName.UI_URL_SEARCH_OPEN,
+        EventName.UI_URL_SEARCH_CLOSE,
+    ):
+        with pytest.raises(ValidationError):
+            DIMENSION_MODELS[event_name].model_validate(
+                {"target": "utubs", "device_type": DeviceType.DESKTOP}
+            )
 
 
 def test_api_hit_model_validates_endpoint_method_status_code():
