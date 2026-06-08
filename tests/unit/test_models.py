@@ -3,7 +3,7 @@ import pytest
 from backend.extensions.url_validation.url_validator import UrlValidator
 from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
-from backend.models.users import Users
+from backend.models.users import User_Role, Users
 from backend.models.utubs import Utubs
 
 pytestmark = pytest.mark.unit
@@ -42,6 +42,30 @@ def test_user_model(app):
         assert new_user_object.is_password_correct(new_user["password"]) is True
         assert len(new_user_object.utubs_is_member_of) == 0
         assert new_user_object.email_confirm is None
+
+
+def test_user_is_admin_helper(app):
+    """
+    GIVEN a Users instance
+    WHEN role is explicitly set to User_Role.ADMIN versus left at the default
+    THEN is_admin() returns True only for the admin role
+    """
+    with app.app_context():
+        admin_user = Users(
+            username=new_user["username"],
+            email=new_user["email"],
+            plaintext_password=new_user["password"],
+        )
+        admin_user.role = User_Role.ADMIN
+        assert admin_user.is_admin()
+
+        regular_user = Users(
+            username=new_user["username"],
+            email=new_user["email"],
+            plaintext_password=new_user["password"],
+        )
+        regular_user.role = User_Role.USER
+        assert not regular_user.is_admin()
 
 
 def test_utub_model(app):
