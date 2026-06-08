@@ -79,7 +79,7 @@ describe("URL search metrics — UI_URL_SEARCH_OPEN / UI_URL_SEARCH_CLOSE", () =
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("does not emit ui_search_close when called while the panel is hidden", async () => {
+  it("does not emit ui_url_search_close when called while the panel is hidden", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();
@@ -89,7 +89,7 @@ describe("URL search metrics — UI_URL_SEARCH_OPEN / UI_URL_SEARCH_CLOSE", () =
     expect(emit).not.toHaveBeenCalled();
   });
 
-  it("does not emit ui_search_close from disableURLSearch when panel is not visible (UTub deselect)", async () => {
+  it("does not emit ui_url_search_close from disableURLSearch when panel is not visible (UTub deselect)", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     setURLSearchEventListener();

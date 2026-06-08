@@ -74,7 +74,7 @@ describe("UTub search metrics — UI_UTUB_SEARCH_OPEN / UI_UTUB_SEARCH_CLOSE", (
     expect(emit).toHaveBeenCalledTimes(1);
   });
 
-  it("re-emits ui_search_open after a blur resets the flag", async () => {
+  it("re-emits ui_utub_search_open after a blur resets the flag", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
 
     $("#UTubNameSearch").trigger("focus.searchInputEsc");
