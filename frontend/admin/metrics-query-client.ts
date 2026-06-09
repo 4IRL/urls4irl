@@ -37,11 +37,13 @@ export function fetchTopEvents({
   category,
   limit,
   resource,
+  deviceType,
 }: {
   window: string;
   category: MetricsCategory;
   limit?: number;
   resource?: ResourceName | null;
+  deviceType?: 1 | 2 | null;
 }): JQuery.jqXHR<SuccessResponse<"queryTop">> {
   const effectiveLimit = limit ?? DEFAULT_TOP_LIMIT;
   const params = new URLSearchParams({
@@ -51,6 +53,9 @@ export function fetchTopEvents({
   });
   if (resource !== undefined && resource !== null) {
     params.set("resource", resource);
+  }
+  if (deviceType !== undefined && deviceType !== null) {
+    params.set("device_type", String(deviceType));
   }
   const url = `${TOP_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
@@ -74,12 +79,14 @@ export function fetchTimeseries({
   resolution,
   endpoint,
   method,
+  deviceType,
 }: {
   eventName: string;
   window: string;
   resolution?: TimeseriesResolution;
   endpoint?: string;
   method?: string;
+  deviceType?: 1 | 2 | null;
 }): JQuery.jqXHR<SuccessResponse<"queryTimeseries">> {
   const params = new URLSearchParams({
     event_name: eventName,
@@ -93,6 +100,9 @@ export function fetchTimeseries({
   }
   if (method !== undefined) {
     params.set("method", method);
+  }
+  if (deviceType !== undefined && deviceType !== null) {
+    params.set("device_type", String(deviceType));
   }
   const url = `${TIMESERIES_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
