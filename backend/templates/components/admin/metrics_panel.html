@@ -7,6 +7,11 @@
                     class="MetricsTopResourceFilter"
                     data-category="{{ category }}"
                     aria-label="{{ CONFIG.strings.METRICS_TOP_RESOURCE_ARIA }}"></select>
+            <label for="MetricsTopDeviceFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_DEVICE_LABEL }}</label>
+            <select id="MetricsTopDeviceFilter-{{ category }}"
+                    class="MetricsTopDeviceFilter"
+                    data-category="{{ category }}"
+                    aria-label="{{ CONFIG.strings.METRICS_TOP_DEVICE_ARIA }}"></select>
             <label for="MetricsTopSubstringFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_SEARCH_LABEL }}</label>
             <input type="search"
                    id="MetricsTopSubstringFilter-{{ category }}"
