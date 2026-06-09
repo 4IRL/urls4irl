@@ -63,18 +63,21 @@ const DASHBOARD_HTML = `
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
       <select id="MetricsTopResourceFilter-api" data-category="api"></select>
+      <select id="MetricsTopDeviceFilter-api" class="MetricsTopDeviceFilter" data-category="api"></select>
       <input type="search" id="MetricsTopSubstringFilter-api" data-category="api">
       <select id="MetricsTimeseriesEventApi"></select>
       <table id="MetricsTopTableApi" class="top-table"><thead></thead><tbody></tbody></table>
     </section>
     <section id="MetricsPanelUi" role="tabpanel" tabindex="0" hidden>
       <select id="MetricsTopResourceFilter-ui" data-category="ui"></select>
+      <select id="MetricsTopDeviceFilter-ui" class="MetricsTopDeviceFilter" data-category="ui"></select>
       <input type="search" id="MetricsTopSubstringFilter-ui" data-category="ui">
       <select id="MetricsTimeseriesEventUi"></select>
       <table id="MetricsTopTableUi" class="top-table"><thead></thead><tbody></tbody></table>
     </section>
     <section id="MetricsPanelDomain" role="tabpanel" tabindex="0" hidden>
       <select id="MetricsTopResourceFilter-domain" data-category="domain"></select>
+      <select id="MetricsTopDeviceFilter-domain" class="MetricsTopDeviceFilter" data-category="domain"></select>
       <input type="search" id="MetricsTopSubstringFilter-domain" data-category="domain">
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain" class="top-table"><thead></thead><tbody></tbody></table>
@@ -360,5 +363,154 @@ describe("metrics-dashboard top-events filters", () => {
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({ limit: 10 });
+  });
+
+  it("device filter change on UI tab triggers refetch with device_type=1", () => {
+    primeFetchTopEvents([buildEvent()]);
+    initMetricsDashboard();
+
+    fetchTopEventsSpy.mockClear();
+
+    const uiDeviceSelect = document.getElementById(
+      "MetricsTopDeviceFilter-ui",
+    ) as HTMLSelectElement;
+    uiDeviceSelect.value = "1";
+    uiDeviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    // 50ms device-filter debounce — advance past it.
+    vi.advanceTimersByTime(60);
+
+    const uiCalls = fetchTopEventsSpy.mock.calls.filter(
+      ([arg]: [{ category: string }]) => arg.category === "ui",
+    );
+    expect(uiCalls.length).toBe(1);
+    expect(uiCalls[0][0]).toMatchObject({
+      category: "ui",
+      deviceType: 1,
+      limit: 100,
+    });
+  });
+
+  it("device filter change on API tab triggers refetch with device_type=2", () => {
+    primeFetchTopEvents([buildEvent({ category: "api" })]);
+    initMetricsDashboard();
+
+    fetchTopEventsSpy.mockClear();
+
+    const apiDeviceSelect = document.getElementById(
+      "MetricsTopDeviceFilter-api",
+    ) as HTMLSelectElement;
+    apiDeviceSelect.value = "2";
+    apiDeviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+
+    vi.advanceTimersByTime(60);
+
+    const apiCalls = fetchTopEventsSpy.mock.calls.filter(
+      ([arg]: [{ category: string }]) => arg.category === "api",
+    );
+    expect(apiCalls.length).toBe(1);
+    expect(apiCalls[0][0]).toMatchObject({
+      category: "api",
+      deviceType: 2,
+      limit: 100,
+    });
+  });
+
+  it("device filter set to empty clears device_type from subsequent refetches", () => {
+    primeFetchTopEvents([buildEvent()]);
+    initMetricsDashboard();
+
+    const uiDeviceSelect = document.getElementById(
+      "MetricsTopDeviceFilter-ui",
+    ) as HTMLSelectElement;
+    uiDeviceSelect.value = "1";
+    uiDeviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    fetchTopEventsSpy.mockClear();
+
+    uiDeviceSelect.value = "";
+    uiDeviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    const uiCalls = fetchTopEventsSpy.mock.calls.filter(
+      ([arg]: [{ category: string }]) => arg.category === "ui",
+    );
+    expect(uiCalls.length).toBe(1);
+    expect(uiCalls[0][0]).toMatchObject({
+      category: "ui",
+      deviceType: null,
+      limit: 10,
+    });
+  });
+
+  it("device filter survives tab switch (persisted Map state)", () => {
+    primeFetchTopEvents([buildEvent()]);
+    initMetricsDashboard();
+
+    const uiDeviceSelect = document.getElementById(
+      "MetricsTopDeviceFilter-ui",
+    ) as HTMLSelectElement;
+    uiDeviceSelect.value = "1";
+    uiDeviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    // Switch to domain tab, then back to ui — the UI device filter map state
+    // should survive across tab switches.
+    const apiTab = document.getElementById(
+      "MetricsTabApi",
+    ) as HTMLButtonElement;
+    apiTab.click();
+    const uiTab = document.getElementById("MetricsTabUi") as HTMLButtonElement;
+    uiTab.click();
+
+    // Trigger a fresh fetchAll via a window-button click (the refresh button is
+    // gated on aria-disabled, which the mock chainable's `.always` does not
+    // clear). Switching window calls fetchAll, which uses the persisted map.
+    fetchTopEventsSpy.mockClear();
+    const weekButton = document.querySelector(
+      ".MetricsWindowButton[data-window='week']",
+    ) as HTMLButtonElement;
+    weekButton.click();
+
+    const uiCalls = fetchTopEventsSpy.mock.calls.filter(
+      ([arg]: [{ category: string }]) => arg.category === "ui",
+    );
+    expect(uiCalls.length).toBe(1);
+    expect(uiCalls[0][0]).toMatchObject({
+      category: "ui",
+      deviceType: 1,
+    });
+  });
+
+  it("device filter change re-triggers timeseries for the active selection", () => {
+    primeFetchTopEvents([buildEvent({ event_name: "utub_opened" })]);
+    fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    initMetricsDashboard();
+
+    // Pre-select an event in the timeseries select so the device-filter
+    // handler's tsSelect.value !== "" guard passes.
+    const tsSelect = document.getElementById(
+      "MetricsTimeseriesEventUi",
+    ) as HTMLSelectElement;
+    tsSelect.value = "utub_opened";
+
+    fetchTimeseriesSpy.mockClear();
+
+    const uiDeviceSelect = document.getElementById(
+      "MetricsTopDeviceFilter-ui",
+    ) as HTMLSelectElement;
+    uiDeviceSelect.value = "1";
+    uiDeviceSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    vi.advanceTimersByTime(60);
+
+    const tsCalls = fetchTimeseriesSpy.mock.calls.filter(
+      ([arg]: [{ eventName: string }]) => arg.eventName === "utub_opened",
+    );
+    expect(tsCalls.length).toBeGreaterThanOrEqual(1);
+    expect(tsCalls[tsCalls.length - 1][0]).toMatchObject({
+      eventName: "utub_opened",
+      deviceType: 1,
+    });
   });
 });
