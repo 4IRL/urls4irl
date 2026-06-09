@@ -724,3 +724,145 @@ def test_query_top_resource_with_valid_category_returns_200(
     assert body["resource"] == "utub"
     assert len(body["events"]) == 1
     assert body["events"][0]["event_name"] == EventName.UTUB_CREATED.value
+
+
+# ---------------------------------------------------------------------------
+# `top` / `timeseries` — device_type query-param threading
+# ---------------------------------------------------------------------------
+
+
+def test_query_top_device_type_one_returns_mobile_only_200(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and three seeded UI rows: two with device_type=1
+        (mobile) and one with device_type=2 (desktop), all inside the window
+    WHEN GETing /api/metrics/query/top?window=day&category=ui&device_type=1
+    THEN the response is 200 and only the two mobile rows are returned —
+        proves `device_type` is threaded from the query schema into
+        `query_service.top_events(...)` and applied as a JSONB filter.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UI_UTUB_SELECT,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=5,
+            dimensions={"device_type": 1, "search_active": "false"},
+        )
+        _seed_event_with_count(
+            event_name=EventName.UI_TAG_CREATE_OPEN,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=2,
+            dimensions={"device_type": 1},
+        )
+        _seed_event_with_count(
+            event_name=EventName.UI_UTUB_CREATE_OPEN,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=4,
+            dimensions={"device_type": 2},
+        )
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&category=ui&device_type=1",
+        headers=_AJAX_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert len(body["events"]) == 2
+    returned_event_names = {row["event_name"] for row in body["events"]}
+    assert returned_event_names == {
+        EventName.UI_UTUB_SELECT.value,
+        EventName.UI_TAG_CREATE_OPEN.value,
+    }
+
+
+def test_query_top_device_type_invalid_value_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/top?window=day&device_type=3
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        schema's `Literal[1, 2]` rejects any value outside {1, 2}.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&device_type=3", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_query_top_extra_unknown_query_param_still_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/top with a typo'd device-filter param
+        (`device_typo=1`)
+    THEN the response is 400 — proves `extra="forbid"` still rejects unknown
+        keys even after the schema gained the new `device_type` field.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _TOP_URL + "?window=day&device_typo=1", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_query_timeseries_device_type_one_returns_filtered_buckets_200(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and two seeded UTUB_OPENED rows inside the window:
+        one with device_type=1 (mobile, count=3) and one with device_type=2
+        (desktop, count=7)
+    WHEN GETing /api/metrics/query/timeseries?window=day&event_name=...
+        &device_type=1
+    THEN the response is 200 and the bucket counts sum to 3 (only the mobile
+        row) — proves `device_type` is threaded into
+        `query_service.timeseries(...)`.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=3,
+            dimensions={"device_type": 1},
+        )
+        _seed_event_with_count(
+            event_name=EventName.UTUB_OPENED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=7,
+            dimensions={"device_type": 2},
+        )
+
+    url = (
+        _TIMESERIES_URL
+        + "?window=day&event_name="
+        + EventName.UTUB_OPENED.value
+        + "&resolution=hour&device_type=1"
+    )
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["event_name"] == EventName.UTUB_OPENED.value
+    assert isinstance(body["buckets"], list)
+    assert sum(bucket["count"] for bucket in body["buckets"]) == 3
