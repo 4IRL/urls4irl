@@ -113,7 +113,13 @@
     display: none;
 }
 
+.refresh-btn .refresh-icon {
+    display: none;
+    color: var(--accessLinkColor);
+}
+
 .refresh-btn[aria-disabled="true"] .spinner { display: inline-block; }
+.refresh-btn[aria-disabled="true"] .refresh-icon { display: none; }
 
 @keyframes metrics-spin { to { transform: rotate(360deg); } }
 
@@ -574,4 +580,12 @@
     .top-table { font-size: 0.8rem; }
     .MetricsWindowButton { padding-inline: 0.5rem; }
     .dash-header h1 { font-size: 1.5rem; }
+
+    /* Keep both status pills + refresh icon on one row at mobile widths */
+    .dash-header-right { gap: 6px; flex-wrap: nowrap; }
+    .flush-badge { padding: 4px 9px; font-size: 0.78rem; gap: 6px; }
+    .flush-badge .dot { width: 6px; height: 6px; }
+    .refresh-btn { padding: 4px 8px; flex-shrink: 0; }
+    .refresh-btn .refresh-btn-label { display: none; }
+    .refresh-btn:not([aria-disabled="true"]) .refresh-icon { display: inline-block; }
 }
