@@ -351,6 +351,16 @@
             "description": "Optional resource filter (utub | url | tag | member | auth | search | form | deck | nav | error | contact | admin | other). Requires `category`; the resource must appear in `RESOURCE_BY_CATEGORY[category]`."
           },
           {
+            "name": "device_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [1, 2],
+              "type": "integer"
+            },
+            "description": "Optional device-type filter (1=mobile, 2=desktop)."
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -561,6 +571,16 @@
               "type": "string"
             },
             "description": "Optional HTTP method (GET, POST, etc.). When supplied alongside event_name=api_hit, narrows the series to one (endpoint, method) pair so two methods on the same endpoint stay separate."
+          },
+          {
+            "name": "device_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [1, 2],
+              "type": "integer"
+            },
+            "description": "Optional device-type filter (1=mobile, 2=desktop)."
           }
         ],
         "responses": {
