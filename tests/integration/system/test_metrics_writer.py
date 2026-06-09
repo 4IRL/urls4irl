@@ -13,7 +13,12 @@ from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import MetricsWriter, record_event
 from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
-from tests.integration.system.metrics_helpers import find_counter_keys, parse_dims
+from tests.integration.system.metrics_helpers import (
+    IPHONE_UA,
+    WINDOWS_CHROME_UA,
+    find_counter_keys,
+    parse_dims,
+)
 
 pytestmark = pytest.mark.cli
 
@@ -255,16 +260,6 @@ def test_writer_increments_redis_counter_for_ui_event(
     assert canonical_dims.encode() in keys[0]
 
 
-_IPHONE_UA = (
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-)
-_WINDOWS_CHROME_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
-
-
 def test_record_domain_event_auto_injects_device_type_from_request_context(
     metrics_enabled_app: Flask,
     provide_metrics_redis: Redis,
@@ -276,7 +271,7 @@ def test_record_domain_event_auto_injects_device_type_from_request_context(
         and the stored dims contain only `{"device_type": MOBILE}`.
     """
     with metrics_enabled_app.test_request_context(
-        "/", headers={"User-Agent": _IPHONE_UA}
+        "/", headers={"User-Agent": IPHONE_UA}
     ):
         record_event(EventName.UTUB_OPENED)
 
@@ -297,7 +292,7 @@ def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
         and the stored dims contain only `{"device_type": DESKTOP}`.
     """
     with metrics_enabled_app.test_request_context(
-        "/", headers={"User-Agent": _WINDOWS_CHROME_UA}
+        "/", headers={"User-Agent": WINDOWS_CHROME_UA}
     ):
         record_event(EventName.UTUB_OPENED)
 
@@ -338,7 +333,7 @@ def test_record_ui_event_preserves_caller_supplied_device_type(
         NOT override).
     """
     with metrics_enabled_app.test_request_context(
-        "/", headers={"User-Agent": _WINDOWS_CHROME_UA}
+        "/", headers={"User-Agent": WINDOWS_CHROME_UA}
     ):
         record_event(
             EventName.UI_UTUB_SELECT,

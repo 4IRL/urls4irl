@@ -5,6 +5,7 @@ from typing import Literal, NamedTuple
 
 from flask import current_app
 from sqlalchemy import func
+from sqlalchemy.orm import Query
 
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
@@ -56,6 +57,21 @@ def _endpoint_metadata_map() -> dict[str, _EndpointMetadata]:
     return metadata
 
 
+def _device_type_filter(query: Query, device_type: int | None) -> Query:
+    """Apply the `device_type` JSONB filter to `query` when set, else return as-is.
+
+    Centralizes the JSONB-cast filter used by every query helper that supports
+    `device_type=` so the four call sites cannot drift on operator, JSON key
+    spelling, or cast type. Returns `query` unchanged when `device_type is None`
+    so callers can always write `query = _device_type_filter(query, device_type)`.
+    """
+    if device_type is None:
+        return query
+    return query.filter(
+        Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
+    )
+
+
 def _per_endpoint_counts(
     *,
     window_start: datetime,
@@ -82,10 +98,7 @@ def _per_endpoint_counts(
         Anonymous_Metrics.endpoint.isnot(None),
         Anonymous_Metrics.method.isnot(None),
     )
-    if device_type is not None:
-        query = query.filter(
-            Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
-        )
+    query = _device_type_filter(query, device_type)
     rows = query.group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method).all()
     return {(row.endpoint, row.method): int(row.total_count) for row in rows}
 
@@ -109,10 +122,7 @@ def _per_event_counts(
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
-    if device_type is not None:
-        query = query.filter(
-            Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
-        )
+    query = _device_type_filter(query, device_type)
     rows = query.group_by(Anonymous_Metrics.event_name).all()
     return {row.event_name: int(row.total_count) for row in rows}
 
@@ -153,10 +163,7 @@ def _top_endpoints_for_api_hit(
         query = query.filter(
             resource_filter_clause(category=EventCategory.API, resource=resource)
         )
-    if device_type is not None:
-        query = query.filter(
-            Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
-        )
+    query = _device_type_filter(query, device_type)
     rows = (
         query.group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
         .order_by(
@@ -258,10 +265,7 @@ def top_events(
         query = query.filter(
             resource_filter_clause(category=category, resource=resource)
         )
-    if device_type is not None:
-        query = query.filter(
-            Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
-        )
+    query = _device_type_filter(query, device_type)
 
     rows = (
         query.group_by(
@@ -370,10 +374,7 @@ def timeseries(
         query = query.filter(Anonymous_Metrics.endpoint == endpoint)
     if method is not None:
         query = query.filter(Anonymous_Metrics.method == method)
-    if device_type is not None:
-        query = query.filter(
-            Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
-        )
+    query = _device_type_filter(query, device_type)
 
     rows = query.group_by(bucket).order_by(bucket).all()
     counts_by_bucket: dict[datetime, int] = {row.bucket: int(row.count) for row in rows}

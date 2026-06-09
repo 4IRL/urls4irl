@@ -11,7 +11,11 @@ from backend import metrics_writer as app_metrics_writer
 from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from tests.integration.system.metrics_helpers import parse_dims
+from tests.integration.system.metrics_helpers import (
+    IPHONE_UA,
+    WINDOWS_CHROME_UA,
+    parse_dims,
+)
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
@@ -20,16 +24,6 @@ pytestmark = pytest.mark.cli
 def _api_hit_keys(metrics_redis: Redis) -> list[bytes]:
     pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{EventName.API_HIT.value}:*"
     return list(metrics_redis.scan_iter(match=pattern))
-
-
-_IPHONE_UA = (
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
-    "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
-)
-_WINDOWS_CHROME_UA = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-    "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-)
 
 
 def test_middleware_records_api_hit_for_normal_route(
@@ -67,7 +61,7 @@ def test_middleware_records_api_hit_device_type_mobile_from_iphone_ua(
     WHEN the middleware records the api_hit
     THEN the recorded dims tag `device_type` as MOBILE (1).
     """
-    response = client.get("/", headers={"User-Agent": _IPHONE_UA})
+    response = client.get("/", headers={"User-Agent": IPHONE_UA})
     assert response.status_code == 200
 
     keys = _api_hit_keys(provide_metrics_redis)
@@ -86,7 +80,7 @@ def test_middleware_records_api_hit_device_type_desktop_from_chrome_ua(
     WHEN the middleware records the api_hit
     THEN the recorded dims tag `device_type` as DESKTOP (2).
     """
-    response = client.get("/", headers={"User-Agent": _WINDOWS_CHROME_UA})
+    response = client.get("/", headers={"User-Agent": WINDOWS_CHROME_UA})
     assert response.status_code == 200
 
     keys = _api_hit_keys(provide_metrics_redis)

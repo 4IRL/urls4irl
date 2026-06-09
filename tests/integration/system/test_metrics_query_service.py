@@ -1301,14 +1301,26 @@ def test_top_events_resource_filter_runs_before_limit_truncation(
     assert len(rows) == len(tag_events)
 
 
-def test_top_events_device_type_mobile_returns_only_mobile_rows(
+@pytest.mark.parametrize(
+    "filter_device_type, other_device_type",
+    [
+        (DeviceType.MOBILE, DeviceType.DESKTOP),
+        (DeviceType.DESKTOP, DeviceType.MOBILE),
+    ],
+    ids=["mobile", "desktop"],
+)
+def test_top_events_device_type_filter_returns_only_matching_rows(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
+    filter_device_type: DeviceType,
+    other_device_type: DeviceType,
 ) -> None:
     """
-    GIVEN two UI events tagged device_type=MOBILE and one tagged DESKTOP
-    WHEN top_events is called with category=UI and device_type=MOBILE
-    THEN only the two mobile rows are returned; the desktop row is excluded.
+    GIVEN two UI events tagged with `filter_device_type` and one tagged with
+        the opposite device_type
+    WHEN top_events is called with category=UI and device_type=filter_device_type
+    THEN only the two matching rows are returned; the opposite-device row is
+        excluded.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -1319,21 +1331,21 @@ def test_top_events_device_type_mobile_returns_only_mobile_rows(
         metrics_pg_conn,
         event_name=EventName.UI_UTUB_SELECT,
         bucket_start=inside,
-        dimensions={"device_type": int(DeviceType.MOBILE)},
+        dimensions={"device_type": int(filter_device_type)},
         count=5,
     )
     _insert_metric_row(
         metrics_pg_conn,
         event_name=EventName.UI_URL_ACCESS,
         bucket_start=inside,
-        dimensions={"device_type": int(DeviceType.MOBILE)},
+        dimensions={"device_type": int(filter_device_type)},
         count=10,
     )
     _insert_metric_row(
         metrics_pg_conn,
         event_name=EventName.UI_TAG_APPLY,
         bucket_start=inside,
-        dimensions={"device_type": int(DeviceType.DESKTOP)},
+        dimensions={"device_type": int(other_device_type)},
         count=15,
     )
 
@@ -1346,62 +1358,7 @@ def test_top_events_device_type_mobile_returns_only_mobile_rows(
             previous_window_end=prev_end,
             category=EventCategory.UI,
             limit=10,
-            device_type=int(DeviceType.MOBILE),
-        )
-
-    returned_names = {row.event_name for row in rows}
-    assert returned_names == {
-        EventName.UI_UTUB_SELECT.value,
-        EventName.UI_URL_ACCESS.value,
-    }
-
-
-def test_top_events_device_type_desktop_returns_only_desktop_rows(
-    metrics_enabled_runner_app: Flask,
-    metrics_pg_conn: Any,
-) -> None:
-    """
-    GIVEN two UI events tagged device_type=DESKTOP and one tagged MOBILE
-    WHEN top_events is called with category=UI and device_type=DESKTOP
-    THEN only the two desktop rows are returned; the mobile row is excluded.
-    """
-    app = metrics_enabled_runner_app
-    window_end = _WINDOW_REFERENCE
-    window_start = window_end - timedelta(days=1)
-    inside = window_start + timedelta(hours=1)
-
-    _insert_metric_row(
-        metrics_pg_conn,
-        event_name=EventName.UI_UTUB_SELECT,
-        bucket_start=inside,
-        dimensions={"device_type": int(DeviceType.DESKTOP)},
-        count=5,
-    )
-    _insert_metric_row(
-        metrics_pg_conn,
-        event_name=EventName.UI_URL_ACCESS,
-        bucket_start=inside,
-        dimensions={"device_type": int(DeviceType.DESKTOP)},
-        count=10,
-    )
-    _insert_metric_row(
-        metrics_pg_conn,
-        event_name=EventName.UI_TAG_APPLY,
-        bucket_start=inside,
-        dimensions={"device_type": int(DeviceType.MOBILE)},
-        count=15,
-    )
-
-    prev_start, prev_end = previous_window(window_start, window_end)
-    with app.app_context():
-        rows = top_events(
-            window_start=window_start,
-            window_end=window_end,
-            previous_window_start=prev_start,
-            previous_window_end=prev_end,
-            category=EventCategory.UI,
-            limit=10,
-            device_type=int(DeviceType.DESKTOP),
+            device_type=int(filter_device_type),
         )
 
     returned_names = {row.event_name for row in rows}

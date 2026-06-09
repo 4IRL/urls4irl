@@ -185,7 +185,7 @@ def _coerce_device_type_digit_string(value: object) -> object:
     Non-matching inputs pass through unchanged for the literal validator to
     reject with its own error message.
     """
-    if isinstance(value, str) and value.isdigit():
+    if isinstance(value, str) and value.isdecimal():
         return int(value)
     return value
 
