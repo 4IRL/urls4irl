@@ -254,13 +254,8 @@ def test_every_eventname_member_has_an_entry():
 
 
 def test_none_entries_reject_non_empty_dimensions():
-    """For non-UI events with `DIMENSION_MODELS[event] is None` (domain events), non-empty dims fail."""
-    none_events = [
-        event
-        for event, model in DIMENSION_MODELS.items()
-        if model is None and EVENT_CATEGORY[event] != EventCategory.UI
-    ]
-    assert none_events, "expected at least one non-UI event with no dim model"
+    """For events with `DIMENSION_MODELS[event] is None`, non-empty dims fail via the `_NoDims` sentinel."""
+    none_events = [event for event, model in DIMENSION_MODELS.items() if model is None]
     for event in none_events:
         # Empty dict and None pass silently
         validate_dimensions(event, {})
