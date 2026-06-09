@@ -1,9 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal, Self
+from typing import Annotated, Literal, Self
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AwareDatetime,
+    BaseModel,
+    BeforeValidator,
+    ConfigDict,
+    Field,
+    model_validator,
+)
 
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
@@ -169,6 +176,28 @@ ResourceLiteral = Literal[*_ALL_RESOURCES]  # type: ignore[valid-type]
 ResolutionLiteral = Literal["hour", "day"]
 
 
+def _coerce_device_type_digit_string(value: object) -> object:
+    """Coerce a digit-string device_type to its int form so Literal[1, 2] matches.
+
+    Pydantic v2's `Literal[int]` is strict and rejects `"1"` even in lax mode.
+    Query params arrive via `request.args.to_dict()` as strings, so this
+    `BeforeValidator` runs first to convert `"1"` -> `1` and `"2"` -> `2`.
+    Non-matching inputs pass through unchanged for the literal validator to
+    reject with its own error message.
+    """
+    if isinstance(value, str) and value.isdigit():
+        return int(value)
+    return value
+
+
+# `device_type` query-param boundary type. `Literal[1, 2]` matches the
+# `DeviceType` IntEnum (MOBILE=1, DESKTOP=2) but is exposed as a plain int
+# literal so the wire contract is self-documenting in OpenAPI.
+DeviceTypeFilter = Annotated[
+    Literal[1, 2], BeforeValidator(_coerce_device_type_digit_string)
+]
+
+
 _WINDOW_FIELD_DESCRIPTION: str = (
     "Relative time window: day | week | month | year | Nh | Nd. "
     "Validated by parse_window() at the route layer. Mutually exclusive "
@@ -216,6 +245,10 @@ class TopEventsQuerySchema(BaseModel):
             "Requires `category`; the resource must appear in "
             "`RESOURCE_BY_CATEGORY[category]`."
         ),
+    )
+    device_type: DeviceTypeFilter | None = Field(
+        default=None,
+        description="Optional device-type filter (1=mobile, 2=desktop).",
     )
     limit: int = Field(
         default=10,
@@ -270,6 +303,10 @@ class TimeseriesQuerySchema(BaseModel):
             "pair so two methods on the same endpoint stay separate."
         ),
         max_length=10,
+    )
+    device_type: DeviceTypeFilter | None = Field(
+        default=None,
+        description="Optional device-type filter (1=mobile, 2=desktop).",
     )
 
     @model_validator(mode="after")

@@ -119,6 +119,36 @@ def test_top_events_query_rejects_extra_keys():
         TopEventsQuerySchema.model_validate({"window": "day", "foo": "bar"})
 
 
+def test_top_events_device_type_int_one_parses_ok():
+    """`device_type=1` (mobile) parses to `1`."""
+    parsed = TopEventsQuerySchema.model_validate({"window": "day", "device_type": 1})
+    assert parsed.device_type == 1
+
+
+def test_top_events_device_type_int_two_parses_ok():
+    """`device_type=2` (desktop) parses to `2`."""
+    parsed = TopEventsQuerySchema.model_validate({"window": "day", "device_type": 2})
+    assert parsed.device_type == 2
+
+
+def test_top_events_device_type_str_one_coerces_to_int():
+    """`device_type="1"` (from query string) coerces to int `1`."""
+    parsed = TopEventsQuerySchema.model_validate({"window": "day", "device_type": "1"})
+    assert parsed.device_type == 1
+
+
+def test_top_events_device_type_three_rejected():
+    """`device_type=3` is outside the allowed `Literal[1, 2]` set."""
+    with pytest.raises(ValidationError):
+        TopEventsQuerySchema.model_validate({"window": "day", "device_type": 3})
+
+
+def test_top_events_device_type_omitted_defaults_to_none():
+    """Omitting `device_type` defaults to `None` (no filter)."""
+    parsed = TopEventsQuerySchema.model_validate({"window": "day"})
+    assert parsed.device_type is None
+
+
 # -------------------------- TimeseriesQuerySchema --------------------------
 
 
@@ -194,6 +224,62 @@ def test_timeseries_query_rejects_extra_keys():
                 "extra": "x",
             }
         )
+
+
+def test_timeseries_device_type_int_one_parses_ok():
+    """`device_type=1` (mobile) parses to `1`."""
+    parsed = TimeseriesQuerySchema.model_validate(
+        {
+            "event_name": EventName.UTUB_OPENED.value,
+            "window": "day",
+            "device_type": 1,
+        }
+    )
+    assert parsed.device_type == 1
+
+
+def test_timeseries_device_type_int_two_parses_ok():
+    """`device_type=2` (desktop) parses to `2`."""
+    parsed = TimeseriesQuerySchema.model_validate(
+        {
+            "event_name": EventName.UTUB_OPENED.value,
+            "window": "day",
+            "device_type": 2,
+        }
+    )
+    assert parsed.device_type == 2
+
+
+def test_timeseries_device_type_str_one_coerces_to_int():
+    """`device_type="1"` (from query string) coerces to int `1`."""
+    parsed = TimeseriesQuerySchema.model_validate(
+        {
+            "event_name": EventName.UTUB_OPENED.value,
+            "window": "day",
+            "device_type": "1",
+        }
+    )
+    assert parsed.device_type == 1
+
+
+def test_timeseries_device_type_three_rejected():
+    """`device_type=3` is outside the allowed `Literal[1, 2]` set."""
+    with pytest.raises(ValidationError):
+        TimeseriesQuerySchema.model_validate(
+            {
+                "event_name": EventName.UTUB_OPENED.value,
+                "window": "day",
+                "device_type": 3,
+            }
+        )
+
+
+def test_timeseries_device_type_omitted_defaults_to_none():
+    """Omitting `device_type` defaults to `None` (no filter)."""
+    parsed = TimeseriesQuerySchema.model_validate(
+        {"event_name": EventName.UTUB_OPENED.value, "window": "day"}
+    )
+    assert parsed.device_type is None
 
 
 # --------------------------- SummaryQuerySchema ----------------------------
