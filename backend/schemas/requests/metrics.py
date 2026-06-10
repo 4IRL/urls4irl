@@ -12,7 +12,7 @@ from pydantic import (
     model_validator,
 )
 
-from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+from backend.metrics.events import EVENT_CATEGORY, DeviceType, EventCategory, EventName
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 _BOTH_WINDOW_AND_RANGE_ERROR: str = (
@@ -177,12 +177,12 @@ ResolutionLiteral = Literal["hour", "day"]
 
 
 def _coerce_device_type_digit_string(value: object) -> object:
-    """Coerce a digit-string device_type to its int form so Literal[1, 2] matches.
+    """Coerce a digit-string device_type to its int form so DeviceType matches.
 
-    Pydantic v2's `Literal[int]` is strict and rejects `"1"` even in lax mode.
-    Query params arrive via `request.args.to_dict()` as strings, so this
-    `BeforeValidator` runs first to convert `"1"` -> `1` and `"2"` -> `2`.
-    Non-matching inputs pass through unchanged for the literal validator to
+    Pydantic v2's IntEnum validator is strict and rejects `"1"` even in lax
+    mode. Query params arrive via `request.args.to_dict()` as strings, so
+    this `BeforeValidator` runs first to convert `"1"` -> `1` and `"2"` -> `2`.
+    Non-matching inputs pass through unchanged for the enum validator to
     reject with its own error message.
     """
     if isinstance(value, str) and value.isdecimal():
@@ -190,11 +190,12 @@ def _coerce_device_type_digit_string(value: object) -> object:
     return value
 
 
-# `device_type` query-param boundary type. `Literal[1, 2]` matches the
-# `DeviceType` IntEnum (MOBILE=1, DESKTOP=2) but is exposed as a plain int
-# literal so the wire contract is self-documenting in OpenAPI.
+# `device_type` query-param boundary type. Binds directly to `DeviceType`
+# (IntEnum: MOBILE=1, DESKTOP=2). Pydantic serialises the IntEnum as its
+# integer value, so the wire contract and OpenAPI schema surface integer
+# values (1, 2) while internal code uses the typed enum member.
 DeviceTypeFilter = Annotated[
-    Literal[1, 2], BeforeValidator(_coerce_device_type_digit_string)
+    DeviceType, BeforeValidator(_coerce_device_type_digit_string)
 ]
 
 

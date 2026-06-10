@@ -103,6 +103,8 @@ const appConfig = {
       MOBILE: 1,
       DESKTOP: 2,
     },
+    // Source of truth: backend/metrics/events.py (DEVICE_TYPE_DIM_KEY).
+    DEVICE_TYPE_DIM_KEY: "device_type",
   },
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",

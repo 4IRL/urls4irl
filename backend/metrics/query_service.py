@@ -9,7 +9,12 @@ from sqlalchemy.orm import Query
 
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
-from backend.metrics.events import EventCategory, EventName
+from backend.metrics.events import (
+    DEVICE_TYPE_DIM_KEY,
+    DeviceType,
+    EventCategory,
+    EventName,
+)
 from backend.metrics.resources import Resource, resource_filter_clause
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
@@ -57,7 +62,7 @@ def _endpoint_metadata_map() -> dict[str, _EndpointMetadata]:
     return metadata
 
 
-def _device_type_filter(query: Query, device_type: int | None) -> Query:
+def _device_type_filter(query: Query, device_type: DeviceType | None) -> Query:
     """Apply the `device_type` JSONB filter to `query` when set, else return as-is.
 
     Centralizes the JSONB-cast filter used by every query helper that supports
@@ -68,7 +73,7 @@ def _device_type_filter(query: Query, device_type: int | None) -> Query:
     if device_type is None:
         return query
     return query.filter(
-        Anonymous_Metrics.dimensions["device_type"].as_integer() == device_type
+        Anonymous_Metrics.dimensions[DEVICE_TYPE_DIM_KEY].as_integer() == device_type
     )
 
 
@@ -76,7 +81,7 @@ def _per_endpoint_counts(
     *,
     window_start: datetime,
     window_end: datetime,
-    device_type: int | None = None,
+    device_type: DeviceType | None = None,
 ) -> dict[tuple[str, str], int]:
     """Return a {(endpoint, method): count} map for api_hit rows in the window.
 
@@ -108,7 +113,7 @@ def _per_event_counts(
     window_start: datetime,
     window_end: datetime,
     category: EventCategory | None,
-    device_type: int | None = None,
+    device_type: DeviceType | None = None,
 ) -> dict[str, int]:
     """Return a {event_name: count} map summed across a half-open window."""
     total_count = func.sum(Anonymous_Metrics.count).label("total_count")
@@ -135,7 +140,7 @@ def _top_endpoints_for_api_hit(
     previous_window_end: datetime,
     resource: Resource | None,
     limit: int,
-    device_type: int | None = None,
+    device_type: DeviceType | None = None,
 ) -> list[TopEventRow]:
     """Return the top api_hit rows grouped by (endpoint, method).
 
@@ -209,7 +214,7 @@ def top_events(
     category: EventCategory | None,
     limit: int,
     resource: Resource | None = None,
-    device_type: int | None = None,
+    device_type: DeviceType | None = None,
 ) -> list[TopEventRow]:
     """Return the top events by total count inside the half-open window.
 
@@ -337,7 +342,7 @@ def timeseries(
     resolution: Literal["hour", "day"],
     endpoint: str | None = None,
     method: str | None = None,
-    device_type: int | None = None,
+    device_type: DeviceType | None = None,
 ) -> list[TimeseriesBucketSchema]:
     """Return per-bucket counts for `event_name` inside the half-open window.
 

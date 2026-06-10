@@ -76,6 +76,7 @@ export interface AppConstants {
   readonly VALIDATE_EMAIL_ERROR_CODES: Record<string, number>;
   readonly DIMENSION_KEYS: readonly string[];
   readonly DEVICE_TYPE: DeviceTypeValues;
+  readonly DEVICE_TYPE_DIM_KEY: string;
 }
 
 export interface AppConfig {

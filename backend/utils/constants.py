@@ -1,7 +1,7 @@
 from flask_login import current_user
 
 from backend.metrics.dimension_models import get_all_dimension_keys
-from backend.metrics.events import DeviceType
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
@@ -256,6 +256,10 @@ def generate_constants_js() -> (
         "DIMENSION_KEYS": list(get_all_dimension_keys()),
         # Metrics device-type wire values (source of truth: backend.metrics.events.DeviceType)
         "DEVICE_TYPE": {member.name: member.value for member in DeviceType},
+        # Backend-defined JSONB key for the device_type dimension — frontend
+        # references via APP_CONFIG.constants.DEVICE_TYPE_DIM_KEY when building
+        # /api/metrics/query/* URLSearchParams.
+        "DEVICE_TYPE_DIM_KEY": DEVICE_TYPE_DIM_KEY,
     }
 
 
