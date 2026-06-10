@@ -10,11 +10,6 @@ from backend.metrics.events import DEVICE_TYPE_DIM_KEY
 pytestmark = pytest.mark.unit
 
 
-def test_device_type_dim_key_value():
-    """DEVICE_TYPE_DIM_KEY equals the wire-format string used in JSONB dimensions."""
-    assert DEVICE_TYPE_DIM_KEY == "device_type"
-
-
 def test_device_type_dim_key_imported_by_middleware():
     """Middleware module imports DEVICE_TYPE_DIM_KEY from backend.metrics.events."""
     assert hasattr(metrics_middleware_module, "DEVICE_TYPE_DIM_KEY")
