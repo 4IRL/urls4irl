@@ -1,32 +1,32 @@
 <div class="content-row">
     <div class="panel">
-        <h2>{{ CONFIG.strings.METRICS_TOP_PANEL_HEADING }}</h2>
+        <h2>Top events</h2>
         <div class="top-filters">
             <span class="top-filter-group">
-                <label for="MetricsTopResourceFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_RESOURCE_LABEL }}</label>
+                <label for="MetricsTopResourceFilter-{{ category }}">Resource:</label>
                 <select id="MetricsTopResourceFilter-{{ category }}"
                         class="MetricsTopResourceFilter"
                         data-category="{{ category }}"
-                        aria-label="{{ CONFIG.strings.METRICS_TOP_RESOURCE_ARIA }}"></select>
+                        aria-label="Filter top events by resource"></select>
             </span>
             <span class="top-filter-group">
-                <label for="MetricsTopDeviceFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_DEVICE_LABEL }}</label>
+                <label for="MetricsTopDeviceFilter-{{ category }}">{{ CONSTANTS.STRINGS.METRICS_TOP_DEVICE_LABEL }}</label>
                 <select id="MetricsTopDeviceFilter-{{ category }}"
                         class="MetricsTopDeviceFilter"
                         data-category="{{ category }}"
-                        aria-label="{{ CONFIG.strings.METRICS_TOP_DEVICE_ARIA }}"></select>
+                        aria-label="Filter top events by device type"></select>
             </span>
             <span class="top-filter-group top-filter-group--search">
-                <label for="MetricsTopSubstringFilter-{{ category }}">{{ CONFIG.strings.METRICS_TOP_SEARCH_LABEL }}</label>
+                <label for="MetricsTopSubstringFilter-{{ category }}">Search:</label>
                 <input type="search"
                        id="MetricsTopSubstringFilter-{{ category }}"
                        class="MetricsTopSubstringFilter"
                        data-category="{{ category }}"
-                       placeholder="{{ CONFIG.strings.METRICS_TOP_SEARCH_PLACEHOLDER }}"
-                       aria-label="{{ CONFIG.strings.METRICS_TOP_SEARCH_ARIA }}">
+                       placeholder="Filter by name…"
+                       aria-label="Filter top events by name substring">
             </span>
         </div>
-        <table id="{{ table_id }}" class="top-table" aria-label="{{ CONFIG.strings.METRICS_TOP_PANEL_HEADING }}">
+        <table id="{{ table_id }}" class="top-table" aria-label="Top events">
             <thead></thead>
             <tbody></tbody>
         </table>
@@ -35,14 +35,14 @@
          role="separator"
          aria-orientation="vertical"
          aria-controls="{{ table_id }} {{ chart_id }}"
-         aria-label="{{ CONFIG.strings.METRICS_PANE_RESIZER_ARIA }}"
+         aria-label="Resize top events and timeseries panes"
          aria-valuemin="25"
          aria-valuemax="75"
          tabindex="0"></div>
     <div class="panel">
-        <h2>{{ CONFIG.strings.METRICS_TS_PANEL_HEADING }}</h2>
+        <h2>Timeseries</h2>
         <div class="ts-controls">
-            <label for="{{ select_id }}">{{ CONFIG.strings.METRICS_TIMESERIES_SELECT_LABEL }}</label>
+            <label for="{{ select_id }}">Series:</label>
             <select id="{{ select_id }}" class="MetricsTimeseriesEventSelect" aria-label="{{ CONFIG.strings.METRICS_TIMESERIES_SELECT_ARIA }}"></select>
         </div>
         <svg id="{{ chart_id }}" class="MetricsChart" viewBox="0 0 800 240" preserveAspectRatio="xMinYMid meet"

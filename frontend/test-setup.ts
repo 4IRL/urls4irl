@@ -117,25 +117,11 @@ const appConfig = {
     UTUB_SEARCH_PLACEHOLDER: "Search UTub Names",
     UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
     UTUB_CREATE_MSG: "Create a UTub",
-    // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py
-    // WHY duplicated here: vitest runs in Node with no Flask app context, so generate_strings_js() is
-    // never invoked and APP_CONFIG is never populated from the backend. These mock values must mirror
-    // the Python source by hand to keep tests deterministic. Keep in sync on any string change; a
-    // future codegen step (e.g. vite plugin that pre-dumps the JSON at build time) could eliminate this.
-    METRICS_DASHBOARD_TITLE: "Anonymous Metrics — Admin Dashboard",
-    METRICS_REFRESH_BUTTON_LABEL: "Refresh",
-    METRICS_REFRESH_BUTTON_ARIA: "Refresh metrics now",
-    METRICS_WINDOW_GROUP_ARIA: "Time window",
-    METRICS_WINDOW_DAY: "Day",
-    METRICS_WINDOW_WEEK: "Week",
-    METRICS_WINDOW_MONTH: "Month",
-    METRICS_WINDOW_YEAR: "Year",
-    METRICS_TABLIST_ARIA: "Metrics category",
-    METRICS_TAB_API: "Top Endpoints",
-    METRICS_TAB_UI: "Top UI Events",
-    METRICS_TAB_DOMAIN: "Top Domain Actions",
+    // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
+    // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
+    // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,
+    // so APP_CONFIG must be hand-mocked.
     METRICS_TIMESERIES_SELECT_ARIA: "Select event for timeseries chart",
-    METRICS_TIMESERIES_SELECT_LABEL: "Series:",
     METRICS_LAST_FLUSH_JUST_NOW: "Last flush just now",
     METRICS_LAST_FLUSH_SECONDS: "Last flush {{ n }}s ago",
     METRICS_LAST_FLUSH_MINUTES: "Last flush {{ n }}m ago",
@@ -148,7 +134,6 @@ const appConfig = {
     METRICS_EMPTY_STATE: "No events recorded in the selected window.",
     METRICS_FETCH_FAILED_BANNER:
       "Refresh failed — showing last successful data. Retrying in 60 seconds.",
-    METRICS_SUMMARY_HEADING: "Summary",
     METRICS_SUMMARY_TOTAL_EVENTS: "Total Events",
     METRICS_SUMMARY_API_HITS: "API hits",
     METRICS_SUMMARY_UI_EVENTS: "UI events",
@@ -162,12 +147,7 @@ const appConfig = {
     METRICS_TOP_TABLE_HEADER_HITS: "Hits",
     METRICS_TOP_TABLE_HEADER_DELTA: "Δ vs prev",
     METRICS_TOP_TABLE_ROW_ARIA: "Show timeseries for {{ name }}",
-    METRICS_TOP_PANEL_HEADING: "Top events",
-    METRICS_TS_PANEL_HEADING: "Timeseries",
-    METRICS_PANE_RESIZER_ARIA: "Resize top events and timeseries panes",
     METRICS_CHART_Y_AXIS_LABEL: "Count",
-    METRICS_TOP_RESOURCE_LABEL: "Resource:",
-    METRICS_TOP_RESOURCE_ARIA: "Filter top events by resource",
     METRICS_TOP_RESOURCE_ALL: "All resources",
     METRICS_TOP_RESOURCE_UTUB: "UTubs",
     METRICS_TOP_RESOURCE_URL: "URLs",
@@ -182,17 +162,10 @@ const appConfig = {
     METRICS_TOP_RESOURCE_CONTACT: "Contact",
     METRICS_TOP_RESOURCE_ADMIN: "Admin",
     METRICS_TOP_RESOURCE_OTHER: "Other",
-    METRICS_TOP_DEVICE_LABEL: "Device:",
-    METRICS_TOP_DEVICE_ARIA: "Filter top events by device type",
     METRICS_TOP_DEVICE_ALL: "All devices",
     METRICS_TOP_DEVICE_MOBILE: "Mobile",
     METRICS_TOP_DEVICE_DESKTOP: "Desktop",
-    METRICS_TOP_SEARCH_LABEL: "Search:",
-    METRICS_TOP_SEARCH_PLACEHOLDER: "Filter by name…",
-    METRICS_TOP_SEARCH_ARIA: "Filter top events by name substring",
     METRICS_TOP_EMPTY_NO_MATCHES: "No events match the current filter.",
-    NAV_ADMIN_METRICS_LABEL: "Admin · Metrics",
-    NAV_ADMIN_METRICS_ARIA: "Open the admin metrics dashboard",
   },
 };
 

@@ -3,7 +3,7 @@
 {% block mainbody %}
 <main id="MetricsDashboard" aria-busy="false">
     <header id="MetricsDashboardHeader" class="dash-header">
-        <h1 id="MetricsDashboardTitle">{{ CONFIG.strings.METRICS_DASHBOARD_TITLE }}</h1>
+        <h1 id="MetricsDashboardTitle">{{ CONSTANTS.STRINGS.METRICS_DASHBOARD_TITLE }}</h1>
         <div class="dash-header-right">
             <span id="MetricsLastFlush" class="flush-badge" aria-live="off">
                 <span class="dot" aria-hidden="true"></span>
@@ -15,7 +15,7 @@
             </span>
             <span id="MetricsLastFlushAnnouncement" class="visually-hidden" aria-live="polite"></span>
             <span id="MetricsLastEventAnnouncement" class="visually-hidden" aria-live="polite"></span>
-            <button id="MetricsRefreshNowBtn" type="button" class="refresh-btn" aria-label="{{ CONFIG.strings.METRICS_REFRESH_BUTTON_ARIA }}">
+            <button id="MetricsRefreshNowBtn" type="button" class="refresh-btn" aria-label="Refresh metrics now">
                 <span class="spinner" aria-hidden="true"></span>
                 <svg class="refresh-icon" aria-hidden="true" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
@@ -23,28 +23,28 @@
                     <polyline points="21 3 21 8 16 8"/>
                     <polyline points="3 21 3 16 8 16"/>
                 </svg>
-                <span class="refresh-btn-label">{{ CONFIG.strings.METRICS_REFRESH_BUTTON_LABEL }}</span>
+                <span class="refresh-btn-label">{{ CONSTANTS.STRINGS.METRICS_REFRESH_BUTTON_LABEL }}</span>
             </button>
         </div>
     </header>
 
     <div id="MetricsTablistRow" class="tablist-row">
-        <div id="MetricsTablist" class="tablist" role="tablist" aria-label="{{ CONFIG.strings.METRICS_TABLIST_ARIA }}">
-            <button id="MetricsTabApi"    role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"    tabindex="0"  data-category="api">{{    CONFIG.strings.METRICS_TAB_API }}</button>
-            <button id="MetricsTabUi"     role="tab" aria-selected="false" aria-controls="MetricsPanelUi"     tabindex="-1" data-category="ui">{{     CONFIG.strings.METRICS_TAB_UI }}</button>
-            <button id="MetricsTabDomain" role="tab" aria-selected="false" aria-controls="MetricsPanelDomain" tabindex="-1" data-category="domain">{{ CONFIG.strings.METRICS_TAB_DOMAIN }}</button>
+        <div id="MetricsTablist" class="tablist" role="tablist" aria-label="Metrics category">
+            <button id="MetricsTabApi"    role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"    tabindex="0"  data-category="api">{{    CONSTANTS.STRINGS.METRICS_TAB_API }}</button>
+            <button id="MetricsTabUi"     role="tab" aria-selected="false" aria-controls="MetricsPanelUi"     tabindex="-1" data-category="ui">{{     CONSTANTS.STRINGS.METRICS_TAB_UI }}</button>
+            <button id="MetricsTabDomain" role="tab" aria-selected="false" aria-controls="MetricsPanelDomain" tabindex="-1" data-category="domain">{{ CONSTANTS.STRINGS.METRICS_TAB_DOMAIN }}</button>
         </div>
 
-        <div id="MetricsWindowSelector" class="window-selector" role="group" aria-label="{{ CONFIG.strings.METRICS_WINDOW_GROUP_ARIA }}">
-            <button type="button" id="MetricsWindowDay"   class="MetricsWindowButton" data-window="day"   aria-pressed="true">{{ CONFIG.strings.METRICS_WINDOW_DAY }}</button>
-            <button type="button" id="MetricsWindowWeek"  class="MetricsWindowButton" data-window="week"  aria-pressed="false">{{ CONFIG.strings.METRICS_WINDOW_WEEK }}</button>
-            <button type="button" id="MetricsWindowMonth" class="MetricsWindowButton" data-window="month" aria-pressed="false">{{ CONFIG.strings.METRICS_WINDOW_MONTH }}</button>
-            <button type="button" id="MetricsWindowYear"  class="MetricsWindowButton" data-window="year"  aria-pressed="false">{{ CONFIG.strings.METRICS_WINDOW_YEAR }}</button>
+        <div id="MetricsWindowSelector" class="window-selector" role="group" aria-label="Time window">
+            <button type="button" id="MetricsWindowDay"   class="MetricsWindowButton" data-window="day"   aria-pressed="true">Day</button>
+            <button type="button" id="MetricsWindowWeek"  class="MetricsWindowButton" data-window="week"  aria-pressed="false">Week</button>
+            <button type="button" id="MetricsWindowMonth" class="MetricsWindowButton" data-window="month" aria-pressed="false">Month</button>
+            <button type="button" id="MetricsWindowYear"  class="MetricsWindowButton" data-window="year"  aria-pressed="false">Year</button>
         </div>
     </div>
 
-    <section id="MetricsSummary" class="panel" aria-label="{{ CONFIG.strings.METRICS_SUMMARY_ARIA }}">
-        <h2>{{ CONFIG.strings.METRICS_SUMMARY_HEADING }}</h2>
+    <section id="MetricsSummary" class="panel" aria-label="Summary for current window">
+        <h2>Summary</h2>
         <div id="MetricsSummaryGrid" class="summary-grid"></div>
     </section>
 
