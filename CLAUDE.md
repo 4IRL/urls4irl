@@ -330,6 +330,21 @@ flask db migrate -m "msg"     # generate new migration
 flask db downgrade            # rollback last migration
 ```
 
+**Every migration must be tested in BOTH directions, against the full mock dataset, before it is committed.** A migration that "passes" only because the table happens to be empty has not actually been tested.
+
+**Required steps:**
+
+1. **Seed all relevant mock data first.** For tables this migration touches, ensure every relevant table is populated:
+   - `flask addmock all` — users, UTubs, members, URLs, tags
+   - `flask addmock seed-uniform-test-data` — `AnonymousMetrics` rows (NOT included in `addmock all`)
+   - Any other domain-specific seed commands the migration's tables depend on.
+2. **Run `flask db upgrade`** and assert the expected post-state (row counts, dimension keys, column values, FK integrity).
+3. **Run `flask db downgrade`** (no arg = back one revision; or pass the target revision id explicitly) and assert the expected reverted state — or that it raised the intended "irreversible" error. **A no-op downgrade still gets run** to confirm it executes without raising.
+4. **Run `flask db upgrade` again** and confirm the upgrade is idempotent / re-applies cleanly.
+5. For data migrations whose downgrade is intentionally a no-op, document the irreversibility in a comment in `downgrade()`.
+
+This rule applies even when the migration is purely additive, purely data, or "obviously safe." The cost of running two extra commands is far less than the cost of a deploy-time migration failure.
+
 ## Review Workflow
 
 1. When reading review files, always scroll to the END of the file first to find the latest revision/pass. Never assume the highest line number found in an initial read is the last revision — the file may be longer than what was initially loaded.
