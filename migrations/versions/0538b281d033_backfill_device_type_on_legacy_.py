@@ -36,6 +36,8 @@ _DESKTOP_ONLY_EVENTS: tuple[str, ...] = (
 
 
 def upgrade():
+    # f-string interpolation is safe here: _MOBILE and _DESKTOP are module-level
+    # int literal constants defined above, not user-supplied input.
     op.execute(f"""
         UPDATE "AnonymousMetrics"
         SET dimensions = dimensions || '{{"device_type": {_MOBILE}}}'::jsonb

@@ -46,7 +46,6 @@ class ADMIN_METRICS_STRINGS:
     METRICS_TOP_RESOURCE_CONTACT: str = "Contact"
     METRICS_TOP_RESOURCE_ADMIN: str = "Admin"
     METRICS_TOP_RESOURCE_OTHER: str = "Other"
-    METRICS_TOP_DEVICE_LABEL: str = "Device:"
     METRICS_TOP_DEVICE_ALL: str = "All devices"
     METRICS_TOP_DEVICE_MOBILE: str = "Mobile"
     METRICS_TOP_DEVICE_DESKTOP: str = "Desktop"

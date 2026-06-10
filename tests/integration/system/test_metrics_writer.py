@@ -11,7 +11,7 @@ from redis import Redis
 
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import MetricsWriter, record_event
-from backend.metrics.events import DeviceType, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from tests.integration.system.metrics_helpers import (
     IPHONE_UA,
@@ -278,7 +278,7 @@ def test_record_domain_event_auto_injects_device_type_from_request_context(
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {"device_type": int(DeviceType.MOBILE)}
+    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE)}
 
 
 def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
@@ -299,7 +299,7 @@ def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {"device_type": int(DeviceType.DESKTOP)}
+    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
 
 
 def test_record_domain_event_outside_request_context_falls_back_to_desktop(
@@ -318,7 +318,7 @@ def test_record_domain_event_outside_request_context_falls_back_to_desktop(
     keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {"device_type": int(DeviceType.DESKTOP)}
+    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
 
 
 def test_record_ui_event_preserves_caller_supplied_device_type(
@@ -338,7 +338,7 @@ def test_record_ui_event_preserves_caller_supplied_device_type(
         record_event(
             EventName.UI_UTUB_SELECT,
             dimensions={
-                "device_type": int(DeviceType.MOBILE),
+                DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE),
                 "search_active": "false",
             },
         )
@@ -346,4 +346,7 @@ def test_record_ui_event_preserves_caller_supplied_device_type(
     keys = find_counter_keys(provide_metrics_redis, EventName.UI_UTUB_SELECT)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims == {"device_type": int(DeviceType.MOBILE), "search_active": "false"}
+    assert dims == {
+        DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE),
+        "search_active": "false",
+    }

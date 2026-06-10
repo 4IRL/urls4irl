@@ -355,8 +355,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [1, 2],
-              "type": "integer"
+              "$ref": "#/components/schemas/DeviceType"
             },
             "description": "Optional device-type filter (1=mobile, 2=desktop)."
           },
@@ -577,8 +576,7 @@
             "in": "query",
             "required": false,
             "schema": {
-              "enum": [1, 2],
-              "type": "integer"
+              "$ref": "#/components/schemas/DeviceType"
             },
             "description": "Optional device-type filter (1=mobile, 2=desktop)."
           }
@@ -2464,6 +2462,10 @@
         "enum": [1, 2],
         "x-enum-varnames": ["INVALID_FORM_INPUT", "INVALID_QUERY_PARAM"],
         "description": "Error codes for MetricsErrorCodes"
+      },
+      "DeviceType": {
+        "enum": [1, 2],
+        "type": "integer"
       },
       "TopEventRow": {
         "description": "One row of the `top` query response \u2014 a single event aggregated over the window.",

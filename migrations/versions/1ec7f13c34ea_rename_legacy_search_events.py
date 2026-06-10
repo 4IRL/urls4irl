@@ -6,6 +6,7 @@ Create Date: 2026-06-08 09:26:10.000000
 
 """
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "1ec7f13c34ea"
@@ -35,6 +36,25 @@ _LEGACY_EVENTS: tuple[tuple[str, str], ...] = (
 
 
 def upgrade():
+    # Preflight: assert every legacy ui_search_open / ui_search_close row carries
+    # a known target dim. The rename logic only handles target in {'utubs', 'urls'};
+    # any other value would be skipped silently and remain as an orphan referencing
+    # deleted EventRegistry rows after step 3, violating the FK.
+    _unknown_target_count = op.get_bind().execute(sa.text("""
+                SELECT COUNT(*) FROM "AnonymousMetrics"
+                WHERE "eventName" IN ('ui_search_open', 'ui_search_close')
+                  AND (dimensions->>'target' IS NULL OR dimensions->>'target' NOT IN ('utubs', 'urls'))
+                """)).scalar()
+    if _unknown_target_count:
+        raise RuntimeError(
+            f"Migration 1ec7f13c34ea cannot proceed: {_unknown_target_count} legacy "
+            "ui_search_open/ui_search_close row(s) have a missing or unknown "
+            "dimensions->>'target' value. The rename logic only handles target in "
+            "{'utubs', 'urls'}; any other value would leave FK orphans after the "
+            "EventRegistry rows are deleted. Inspect the offending rows and either "
+            "backfill the target dim or delete them before retrying."
+        )
+
     # Step 1 — seed the four new EventRegistry rows. The new event-name enum
     # members live in post-v1.16.1 code, and `flask metrics sync-registry`
     # runs AFTER `flask db upgrade` in docker/startup-flask.sh, so without this

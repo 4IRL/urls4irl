@@ -8,7 +8,7 @@ from flask.testing import FlaskClient
 from redis import Redis
 
 from backend import metrics_writer as app_metrics_writer
-from backend.metrics.events import DeviceType, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
@@ -48,7 +48,7 @@ def test_middleware_records_api_hit_for_normal_route(
     assert dims["endpoint"] == "splash.splash_page"
     assert dims["method"] == "GET"
     assert dims["status_code"] == 200
-    assert dims["device_type"] == int(DeviceType.DESKTOP)
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.DESKTOP)
 
 
 def test_middleware_records_api_hit_device_type_mobile_from_iphone_ua(
@@ -67,7 +67,7 @@ def test_middleware_records_api_hit_device_type_mobile_from_iphone_ua(
     keys = _api_hit_keys(provide_metrics_redis)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims["device_type"] == int(DeviceType.MOBILE)
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.MOBILE)
 
 
 def test_middleware_records_api_hit_device_type_desktop_from_chrome_ua(
@@ -86,7 +86,7 @@ def test_middleware_records_api_hit_device_type_desktop_from_chrome_ua(
     keys = _api_hit_keys(provide_metrics_redis)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims["device_type"] == int(DeviceType.DESKTOP)
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.DESKTOP)
 
 
 def test_middleware_records_api_hit_device_type_desktop_when_no_ua_header(
@@ -106,7 +106,7 @@ def test_middleware_records_api_hit_device_type_desktop_when_no_ua_header(
     keys = _api_hit_keys(provide_metrics_redis)
     assert len(keys) == 1
     dims = parse_dims(keys[0])
-    assert dims["device_type"] == int(DeviceType.DESKTOP)
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.DESKTOP)
 
 
 def test_middleware_skips_static(

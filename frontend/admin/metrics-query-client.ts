@@ -15,8 +15,8 @@ import type { SuccessResponse } from "../types/api-helpers.d.ts";
 import type { DeviceType } from "../types/metrics-dim-values.js";
 import type { ResourceName } from "../types/metrics-resources.js";
 
-import { APP_CONFIG } from "../lib/config.js";
 import { ajaxCall } from "../lib/ajax.js";
+import { APP_CONFIG } from "../lib/config.js";
 
 type MetricsCategory = "api" | "ui" | "domain";
 type TimeseriesResolution = "hour" | "day";
