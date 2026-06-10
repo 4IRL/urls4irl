@@ -8,10 +8,14 @@ from flask.testing import FlaskClient
 from redis import Redis
 
 from backend import metrics_writer as app_metrics_writer
-from backend.metrics.events import DeviceType, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from tests.integration.system.metrics_helpers import parse_dims
+from tests.integration.system.metrics_helpers import (
+    IPHONE_UA,
+    WINDOWS_CHROME_UA,
+    parse_dims,
+)
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.cli
@@ -44,6 +48,65 @@ def test_middleware_records_api_hit_for_normal_route(
     assert dims["endpoint"] == "splash.splash_page"
     assert dims["method"] == "GET"
     assert dims["status_code"] == 200
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.DESKTOP)
+
+
+def test_middleware_records_api_hit_device_type_mobile_from_iphone_ua(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a request whose User-Agent is an iPhone Safari UA string
+    WHEN the middleware records the api_hit
+    THEN the recorded dims tag `device_type` as MOBILE (1).
+    """
+    response = client.get("/", headers={"User-Agent": IPHONE_UA})
+    assert response.status_code == 200
+
+    keys = _api_hit_keys(provide_metrics_redis)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.MOBILE)
+
+
+def test_middleware_records_api_hit_device_type_desktop_from_chrome_ua(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a request whose User-Agent is a Windows Chrome UA string
+    WHEN the middleware records the api_hit
+    THEN the recorded dims tag `device_type` as DESKTOP (2).
+    """
+    response = client.get("/", headers={"User-Agent": WINDOWS_CHROME_UA})
+    assert response.status_code == 200
+
+    keys = _api_hit_keys(provide_metrics_redis)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.DESKTOP)
+
+
+def test_middleware_records_api_hit_device_type_desktop_when_no_ua_header(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a request with no User-Agent header
+    WHEN the middleware records the api_hit
+    THEN the recorded dims tag `device_type` as DESKTOP (2) — the
+        conservative default for an unknown/empty UA.
+    """
+    response = client.get("/")
+    assert response.status_code == 200
+
+    keys = _api_hit_keys(provide_metrics_redis)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims[DEVICE_TYPE_DIM_KEY] == int(DeviceType.DESKTOP)
 
 
 def test_middleware_skips_static(

@@ -170,6 +170,7 @@ def _build_query_parameter_schema(field_schema: dict[str, Any]) -> dict[str, Any
 
 def _extract_query_parameters(
     query_schema_cls: Type[BaseModel],
+    components_schemas: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Build OpenAPI `parameters` entries from a Pydantic query model.
 
@@ -178,10 +179,25 @@ def _extract_query_parameters(
     schema's `required` list). The per-field schema is reduced via
     `_build_query_parameter_schema` so OpenAPI consumers see plain
     `type`/`enum` shapes rather than Pydantic's `anyOf null` wrapper.
+
+    Using `ref_template="#/components/schemas/{model}"` ensures that any enum
+    or nested type referenced by a query field emits a `$ref` pointing into
+    `components/schemas` (not `$defs`). The extracted `$defs` are registered in
+    `components_schemas` so `openapi-typescript` can resolve them.
     """
-    json_schema = query_schema_cls.model_json_schema()
+    json_schema = query_schema_cls.model_json_schema(
+        ref_template="#/components/schemas/{model}"
+    )
     required_field_names = set(json_schema.get("required", []))
     properties = json_schema.get("properties", {})
+
+    # Register any nested schemas (e.g. IntEnum types used as query params)
+    # so that the $ref pointers emitted below can be resolved by consumers.
+    nested_defs = json_schema.get("$defs", {})
+    for def_name, def_schema in nested_defs.items():
+        if def_name not in components_schemas:
+            _strip_auto_titles(def_schema)
+            components_schemas[def_name] = def_schema
 
     parameters: list[dict[str, Any]] = []
     for field_name, field_schema in properties.items():
@@ -433,7 +449,9 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
         # Extract query parameters from the optional query schema
         query_params: list[dict[str, Any]] = (
-            _extract_query_parameters(query_schema) if query_schema is not None else []
+            _extract_query_parameters(query_schema, components_schemas)
+            if query_schema is not None
+            else []
         )
 
         # Determine effective HTTP methods (exclude HEAD/OPTIONS)

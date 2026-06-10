@@ -3,8 +3,9 @@ from __future__ import annotations
 from flask import Flask, request
 from werkzeug.wrappers import Response
 
+from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.extensions.metrics.writer import record_event
-from backend.metrics.events import EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventName
 from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -45,10 +46,12 @@ def init_metrics_middleware(app: Flask) -> None:
             return response
         if _should_skip(request.endpoint, request.blueprint):
             return response
+        device_type = classify_user_agent(request.headers.get("User-Agent"))
         record_event(
             EventName.API_HIT,
             endpoint=request.endpoint,
             method=request.method,
             status_code=response.status_code,
+            dimensions={DEVICE_TYPE_DIM_KEY: int(device_type)},
         )
         return response

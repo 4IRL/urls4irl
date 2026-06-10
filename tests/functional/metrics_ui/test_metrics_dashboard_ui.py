@@ -7,8 +7,11 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import Select
 
 from backend.config import ConfigTestUI
+from backend.metrics.events import DeviceType
+from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
 from tests.functional.metrics_ui.selenium_utils import (
@@ -180,3 +183,59 @@ def test_substring_filter_narrows_top_table_to_no_matches(
     empty_row = wait_for_element_presence(browser, empty_row_selector, timeout=5)
     assert empty_row is not None
     assert len(browser.find_elements(By.CSS_SELECTOR, SEEDED_TABLE_ROW_SELECTOR)) == 0
+
+
+def test_device_filter_mobile_narrows_top_table_to_mobile_events(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN a logged-in admin user on the metrics dashboard with seeded
+        AnonymousMetrics rows that all carry `device_type=DESKTOP`
+        (the default for the seeded UI event `ui_login_submit`)
+    WHEN the admin switches to the UI tab and selects "Mobile" in
+        `#MetricsTopDeviceFilter-ui`
+    THEN the JSONB device-type filter narrows the UI top-events table
+        to zero matching rows and the empty-state row is rendered,
+        proving the UA classifier -> middleware -> JSONB filter ->
+        frontend chain is wired end-to-end.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # Wait for the dashboard's initial render so subsequent interactions
+    # do not race the initial fetch attaching its handlers.
+    wait_for_element_presence(browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10)
+
+    # Switch to the UI tab; its panel is hidden until the tab is clicked.
+    wait_then_click_element(
+        browser, MDL.TAB_UI_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    ui_table_row_selector = f"{MDL.TOP_TABLE_UI} tbody tr.MetricsTopTableRow"
+    wait_for_element_presence(browser, ui_table_row_selector, timeout=10)
+
+    device_filter = wait_then_get_element(browser, MDL.TOP_DEVICE_FILTER_UI, time=5)
+    assert device_filter is not None
+    Select(device_filter).select_by_value(str(int(DeviceType.MOBILE)))
+
+    # The device filter is server-side (JSONB filter against
+    # `dimensions.device_type`); when no mobile rows exist, the server
+    # returns zero events and the renderer falls into the
+    # `events.length === 0` branch using METRICS_EMPTY_STATE. The
+    # METRICS_TOP_EMPTY_NO_MATCHES branch only fires for the client-side
+    # substring filter (post-server-fetch). The empty row's presence
+    # still proves the JSONB filter is wired end-to-end.
+    empty_row_selector = f"{MDL.TOP_TABLE_UI} tr.MetricsTopTableEmptyRow"
+    empty_row = wait_for_element_presence(browser, empty_row_selector, timeout=10)
+    assert empty_row is not None
+    assert empty_row.text == ADMIN_METRICS_STRINGS.METRICS_EMPTY_STATE
+    assert len(browser.find_elements(By.CSS_SELECTOR, ui_table_row_selector)) == 0

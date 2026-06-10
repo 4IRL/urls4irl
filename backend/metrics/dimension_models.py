@@ -241,6 +241,7 @@ class _DimApiHit(BaseModel):
     ]
     # `strict=True` blocks the default lax-mode coercion of `"200"` → `200`.
     status_code: Annotated[int, Field(strict=True)]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
 # ---------------------------------------------------------------------------
@@ -252,19 +253,19 @@ class _DimApiHit(BaseModel):
 DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # API
     EventName.API_HIT: _DimApiHit,
-    # Domain events carry no per-event dimensions; the MetricsWriter populates them server-side.
-    EventName.UTUB_CREATED: None,
-    EventName.UTUB_DELETED: None,
-    EventName.UTUB_OPENED: None,
-    EventName.URL_ACCESSED: None,
-    EventName.TAG_APPLIED: None,
-    EventName.TAG_REMOVED: None,
-    EventName.TAG_DELETED: None,
-    EventName.MEMBER_ADDED: None,
-    EventName.MEMBER_REMOVED: None,
-    EventName.URL_TITLE_UPDATED: None,
-    EventName.UTUB_TITLE_UPDATED: None,
-    EventName.UTUB_DESC_UPDATED: None,
+    # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
+    EventName.UTUB_CREATED: _DimDeviceOnly,
+    EventName.UTUB_DELETED: _DimDeviceOnly,
+    EventName.UTUB_OPENED: _DimDeviceOnly,
+    EventName.URL_ACCESSED: _DimDeviceOnly,
+    EventName.TAG_APPLIED: _DimDeviceOnly,
+    EventName.TAG_REMOVED: _DimDeviceOnly,
+    EventName.TAG_DELETED: _DimDeviceOnly,
+    EventName.MEMBER_ADDED: _DimDeviceOnly,
+    EventName.MEMBER_REMOVED: _DimDeviceOnly,
+    EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
+    EventName.UTUB_TITLE_UPDATED: _DimDeviceOnly,
+    EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,
     # UI — UTubs
     EventName.UI_UTUB_SELECT: _DimUtubSelect,
     EventName.UI_UTUB_CREATE_OPEN: _DimDeviceOnly,

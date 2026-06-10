@@ -12,12 +12,16 @@
  */
 
 import type { SuccessResponse } from "../types/api-helpers.d.ts";
+import type { DeviceType } from "../types/metrics-dim-values.js";
 import type { ResourceName } from "../types/metrics-resources.js";
 
 import { ajaxCall } from "../lib/ajax.js";
+import { APP_CONFIG } from "../lib/config.js";
 
 type MetricsCategory = "api" | "ui" | "domain";
 type TimeseriesResolution = "hour" | "day";
+
+const DEVICE_TYPE_PARAM = APP_CONFIG.constants.DEVICE_TYPE_DIM_KEY;
 
 const QUERY_TIMEOUT_MS = 5000;
 const DEFAULT_TOP_LIMIT = 10;
@@ -37,11 +41,13 @@ export function fetchTopEvents({
   category,
   limit,
   resource,
+  deviceType,
 }: {
   window: string;
   category: MetricsCategory;
   limit?: number;
   resource?: ResourceName | null;
+  deviceType?: DeviceType | null;
 }): JQuery.jqXHR<SuccessResponse<"queryTop">> {
   const effectiveLimit = limit ?? DEFAULT_TOP_LIMIT;
   const params = new URLSearchParams({
@@ -51,6 +57,9 @@ export function fetchTopEvents({
   });
   if (resource !== undefined && resource !== null) {
     params.set("resource", resource);
+  }
+  if (deviceType !== undefined && deviceType !== null) {
+    params.set(DEVICE_TYPE_PARAM, String(deviceType));
   }
   const url = `${TOP_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
@@ -74,12 +83,14 @@ export function fetchTimeseries({
   resolution,
   endpoint,
   method,
+  deviceType,
 }: {
   eventName: string;
   window: string;
   resolution?: TimeseriesResolution;
   endpoint?: string;
   method?: string;
+  deviceType?: DeviceType | null;
 }): JQuery.jqXHR<SuccessResponse<"queryTimeseries">> {
   const params = new URLSearchParams({
     event_name: eventName,
@@ -93,6 +104,9 @@ export function fetchTimeseries({
   }
   if (method !== undefined) {
     params.set("method", method);
+  }
+  if (deviceType !== undefined && deviceType !== null) {
+    params.set(DEVICE_TYPE_PARAM, String(deviceType));
   }
   const url = `${TIMESERIES_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<

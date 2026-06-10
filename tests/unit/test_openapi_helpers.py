@@ -424,7 +424,7 @@ class TestExtractQueryParameters:
         THEN one parameter per field is emitted, each marked `in: query`,
             in the order the fields are declared on the model.
         """
-        params = _extract_query_parameters(_QueryParamProbeSchema)
+        params = _extract_query_parameters(_QueryParamProbeSchema, {})
 
         assert [param["name"] for param in params] == [
             "window",
@@ -440,7 +440,7 @@ class TestExtractQueryParameters:
         WHEN _extract_query_parameters is called
         THEN only the field without a default is marked `required: True`.
         """
-        params = _extract_query_parameters(_QueryParamProbeSchema)
+        params = _extract_query_parameters(_QueryParamProbeSchema, {})
         required_map = {param["name"]: param["required"] for param in params}
 
         assert required_map == {
@@ -457,7 +457,7 @@ class TestExtractQueryParameters:
         THEN the corresponding parameter's schema contains an `enum` list with
             both literal values.
         """
-        params = _extract_query_parameters(_QueryParamProbeSchema)
+        params = _extract_query_parameters(_QueryParamProbeSchema, {})
         resolution_param = next(
             param for param in params if param["name"] == "resolution"
         )
@@ -472,7 +472,7 @@ class TestExtractQueryParameters:
         THEN the parameter's schema is the non-null branch (no `anyOf` with
             `{type: "null"}` leaking into the generated TypeScript types).
         """
-        params = _extract_query_parameters(_QueryParamProbeSchema)
+        params = _extract_query_parameters(_QueryParamProbeSchema, {})
         category_param = next(param for param in params if param["name"] == "category")
 
         assert "anyOf" not in category_param["schema"]

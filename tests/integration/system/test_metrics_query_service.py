@@ -11,6 +11,7 @@ from backend.extensions.metrics.buckets import previous_window
 from backend.metrics.events import (
     EVENT_CATEGORY,
     EVENT_DESCRIPTIONS,
+    DeviceType,
     EventCategory,
     EventName,
 )
@@ -1298,3 +1299,361 @@ def test_top_events_resource_filter_runs_before_limit_truncation(
 
     assert all(row.event_name.startswith("ui_tag_") for row in rows)
     assert len(rows) == len(tag_events)
+
+
+@pytest.mark.parametrize(
+    "filter_device_type, other_device_type",
+    [
+        (DeviceType.MOBILE, DeviceType.DESKTOP),
+        (DeviceType.DESKTOP, DeviceType.MOBILE),
+    ],
+    ids=["mobile", "desktop"],
+)
+def test_top_events_device_type_filter_returns_only_matching_rows(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    filter_device_type: DeviceType,
+    other_device_type: DeviceType,
+) -> None:
+    """
+    GIVEN two UI events tagged with `filter_device_type` and one tagged with
+        the opposite device_type
+    WHEN top_events is called with category=UI and device_type=filter_device_type
+    THEN only the two matching rows are returned; the opposite-device row is
+        excluded.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        dimensions={"device_type": int(filter_device_type)},
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_URL_ACCESS,
+        bucket_start=inside,
+        dimensions={"device_type": int(filter_device_type)},
+        count=10,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_TAG_APPLY,
+        bucket_start=inside,
+        dimensions={"device_type": int(other_device_type)},
+        count=15,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            limit=10,
+            device_type=int(filter_device_type),
+        )
+
+    returned_names = {row.event_name for row in rows}
+    assert returned_names == {
+        EventName.UI_UTUB_SELECT.value,
+        EventName.UI_URL_ACCESS.value,
+    }
+
+
+def test_top_events_device_type_none_returns_all_rows(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN UI rows with mixed device_type values (mobile + desktop)
+    WHEN top_events is called with device_type=None
+    THEN all rows are returned regardless of device_type.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_URL_ACCESS,
+        bucket_start=inside,
+        dimensions={"device_type": int(DeviceType.DESKTOP)},
+        count=10,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            limit=10,
+            device_type=None,
+        )
+
+    returned_names = {row.event_name for row in rows}
+    assert returned_names == {
+        EventName.UI_UTUB_SELECT.value,
+        EventName.UI_URL_ACCESS.value,
+    }
+
+
+def test_top_events_device_type_with_api_category(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN three api_hit rows: two with device_type=MOBILE and one with DESKTOP
+    WHEN top_events is called with category=API and device_type=MOBILE
+    THEN only the two mobile rows are returned.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        dimensions={
+            "endpoint": "utubs.get_single_utub",
+            "method": "GET",
+            "status_code": 200,
+            "device_type": int(DeviceType.MOBILE),
+        },
+        count=4,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=201,
+        dimensions={
+            "endpoint": "urls.create_url",
+            "method": "POST",
+            "status_code": 201,
+            "device_type": int(DeviceType.MOBILE),
+        },
+        count=8,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="utub_tags.delete_utub_tag",
+        method="DELETE",
+        status_code=204,
+        dimensions={
+            "endpoint": "utub_tags.delete_utub_tag",
+            "method": "DELETE",
+            "status_code": 204,
+            "device_type": int(DeviceType.DESKTOP),
+        },
+        count=99,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.API,
+            limit=10,
+            device_type=int(DeviceType.MOBILE),
+        )
+
+    returned_endpoints = {row.api_endpoint for row in rows}
+    assert returned_endpoints == {"utubs.get_single_utub", "urls.create_url"}
+
+
+def test_top_events_device_type_with_domain_category(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN two UTUB_OPENED rows with device_type=MOBILE and one with DESKTOP
+    WHEN top_events is called with category=DOMAIN and device_type=MOBILE
+    THEN only the two mobile rows are aggregated; the desktop row is excluded.
+
+    Note: identical (event_name, bucket, dimensions) rows are summed by
+    SQLAlchemy GROUP BY into a single returned row; the assertion checks the
+    summed total_count (2 mobile rows of count=5 each = 10).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside_first = window_start + timedelta(hours=1)
+    inside_second = window_start + timedelta(hours=2)
+    inside_third = window_start + timedelta(hours=3)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_first,
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_second,
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside_third,
+        dimensions={"device_type": int(DeviceType.DESKTOP)},
+        count=99,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.DOMAIN,
+            limit=10,
+            device_type=int(DeviceType.MOBILE),
+        )
+
+    assert len(rows) == 1
+    assert rows[0].event_name == EventName.UTUB_OPENED.value
+    assert rows[0].total_count == 10
+
+
+def test_top_events_device_type_excludes_rows_without_dimension_key(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN one UI row tagged device_type=MOBILE and one row without the key
+    WHEN top_events is called with device_type=MOBILE
+    THEN only the explicitly-tagged row is returned; the untagged row
+        (NULL JSONB key) is correctly excluded.
+
+    This documents the pre-PR backfill exclusion behavior: rows written
+    before Step 2 of the device-type-filter plan landed carry {} dimensions
+    and silently disappear from filtered results — matching the resource
+    filter's backfill semantics.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_URL_ACCESS,
+        bucket_start=inside,
+        dimensions={},
+        count=10,
+    )
+
+    prev_start, prev_end = previous_window(window_start, window_end)
+    with app.app_context():
+        rows = top_events(
+            window_start=window_start,
+            window_end=window_end,
+            previous_window_start=prev_start,
+            previous_window_end=prev_end,
+            category=EventCategory.UI,
+            limit=10,
+            device_type=int(DeviceType.MOBILE),
+        )
+
+    assert len(rows) == 1
+    assert rows[0].event_name == EventName.UI_UTUB_SELECT.value
+
+
+@pytest.mark.parametrize(
+    "filter_device_type, expected_count",
+    [
+        (DeviceType.MOBILE, 4),
+        (DeviceType.DESKTOP, 10),
+    ],
+    ids=["mobile", "desktop"],
+)
+def test_timeseries_filters_by_device_type(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+    filter_device_type: DeviceType,
+    expected_count: int,
+) -> None:
+    """
+    GIVEN two UI_UTUB_SELECT rows in the same bucket — one MOBILE (count=4),
+        one DESKTOP (count=10)
+    WHEN timeseries is called with device_type=filter_device_type
+    THEN only the matching row's count is summed; the opposite-device row is
+        excluded.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=6)
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+        count=4,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_UTUB_SELECT,
+        bucket_start=inside,
+        dimensions={"device_type": int(DeviceType.DESKTOP)},
+        count=10,
+    )
+
+    with app.app_context():
+        rows = timeseries(
+            event_name=EventName.UI_UTUB_SELECT,
+            window_start=window_start,
+            window_end=window_end,
+            resolution="hour",
+            device_type=int(filter_device_type),
+        )
+
+    assert len(rows) == 24
+    nonzero = [row for row in rows if row.count != 0]
+    assert len(nonzero) == 1
+    assert nonzero[0].count == expected_count
+    assert nonzero[0].bucket == inside

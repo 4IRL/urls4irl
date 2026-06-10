@@ -351,6 +351,15 @@
             "description": "Optional resource filter (utub | url | tag | member | auth | search | form | deck | nav | error | contact | admin | other). Requires `category`; the resource must appear in `RESOURCE_BY_CATEGORY[category]`."
           },
           {
+            "name": "device_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DeviceType"
+            },
+            "description": "Optional device-type filter (1=mobile, 2=desktop)."
+          },
+          {
             "name": "limit",
             "in": "query",
             "required": false,
@@ -561,6 +570,15 @@
               "type": "string"
             },
             "description": "Optional HTTP method (GET, POST, etc.). When supplied alongside event_name=api_hit, narrows the series to one (endpoint, method) pair so two methods on the same endpoint stay separate."
+          },
+          {
+            "name": "device_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DeviceType"
+            },
+            "description": "Optional device-type filter (1=mobile, 2=desktop)."
           }
         ],
         "responses": {
@@ -2444,6 +2462,10 @@
         "enum": [1, 2],
         "x-enum-varnames": ["INVALID_FORM_INPUT", "INVALID_QUERY_PARAM"],
         "description": "Error codes for MetricsErrorCodes"
+      },
+      "DeviceType": {
+        "enum": [1, 2],
+        "type": "integer"
       },
       "TopEventRow": {
         "description": "One row of the `top` query response \u2014 a single event aggregated over the window.",

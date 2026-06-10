@@ -161,6 +161,7 @@ def query_top() -> FlaskResponse:
         previous_window_end=previous_window_end,
         category=category_enum,
         resource=resource_enum,
+        device_type=parsed.device_type,
         limit=parsed.limit,
     )
     response_schema = TopEventsResponseSchema(
@@ -216,6 +217,7 @@ def query_timeseries() -> FlaskResponse:
         resolution=parsed.resolution,
         endpoint=parsed.endpoint,
         method=parsed.method,
+        device_type=parsed.device_type,
     )
     response_schema = TimeseriesResponseSchema(
         event_name=parsed.event_name,

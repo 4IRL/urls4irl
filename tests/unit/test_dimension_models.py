@@ -254,13 +254,8 @@ def test_every_eventname_member_has_an_entry():
 
 
 def test_none_entries_reject_non_empty_dimensions():
-    """For non-UI events with `DIMENSION_MODELS[event] is None` (domain events), non-empty dims fail."""
-    none_events = [
-        event
-        for event, model in DIMENSION_MODELS.items()
-        if model is None and EVENT_CATEGORY[event] != EventCategory.UI
-    ]
-    assert none_events, "expected at least one non-UI event with no dim model"
+    """For events with `DIMENSION_MODELS[event] is None`, non-empty dims fail via the `_NoDims` sentinel."""
+    none_events = [event for event, model in DIMENSION_MODELS.items() if model is None]
     for event in none_events:
         # Empty dict and None pass silently
         validate_dimensions(event, {})
@@ -415,6 +410,25 @@ def test_api_hit_model_validates_endpoint_method_status_code():
         api_hit_model.model_validate(
             {"endpoint": "/utubs", "method": "POST", "status_code": "200"}
         )
+
+
+def test_api_hit_device_type_defaults_to_desktop_when_omitted():
+    """`_DimApiHit.device_type` defaults to `DeviceType.DESKTOP` when omitted.
+
+    Guards the writer's auto-injection path: any API_HIT payload reaching
+    validation without an explicit `device_type` (e.g. an internal caller
+    that omits the field) must validate and surface a desktop default rather
+    than raising `ValidationError`.
+    """
+    payload = {"endpoint": "foo.bar", "method": "GET", "status_code": 200}
+    # `validate_dimensions` returns None on success; assert it does not raise.
+    validate_dimensions(EventName.API_HIT, payload)
+
+    # Also exercise the model directly to confirm the default value is applied.
+    api_hit_model = DIMENSION_MODELS[EventName.API_HIT]
+    assert api_hit_model is not None
+    parsed = api_hit_model.model_validate(payload)
+    assert parsed.device_type == DeviceType.DESKTOP
 
 
 def test_get_all_dimension_keys_returns_union_of_ui_model_fields():

@@ -617,6 +617,8 @@ export interface components {
      * @enum {integer}
      */
     MetricsErrorCodes: 1 | 2;
+    /** @enum {integer} */
+    DeviceType: 1 | 2;
     /** @description One row of the `top` query response — a single event aggregated over the window. */
     TopEventRow: {
       /** @description EventName value (e.g. utub_opened) */
@@ -1359,6 +1361,8 @@ export interface operations {
           | "contact"
           | "admin"
           | "other";
+        /** @description Optional device-type filter (1=mobile, 2=desktop). */
+        device_type?: components["schemas"]["DeviceType"];
         /** @description Maximum number of rows to return (1-100). */
         limit?: number;
       };
@@ -1491,6 +1495,8 @@ export interface operations {
         endpoint?: string;
         /** @description Optional HTTP method (GET, POST, etc.). When supplied alongside event_name=api_hit, narrows the series to one (endpoint, method) pair so two methods on the same endpoint stay separate. */
         method?: string;
+        /** @description Optional device-type filter (1=mobile, 2=desktop). */
+        device_type?: components["schemas"]["DeviceType"];
       };
       header?: never;
       path?: never;

@@ -10,6 +10,17 @@ from redis import Redis
 from backend.metrics.events import EventName
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
+IPHONE_UA = (
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
+    "AppleWebKit/605.1.15 (KHTML, like Gecko) "
+    "Version/17.0 Mobile/15E148 Safari/604.1"
+)
+WINDOWS_CHROME_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+
 
 def find_counter_keys(metrics_redis: Redis, event: EventName) -> list[bytes]:
     pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{event.value}:*"

@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import time
 
-from flask import Flask, current_app
+from flask import Flask, current_app, has_request_context, request
 from redis import Redis
 
 from backend.extensions.metrics.buckets import compute_bucket_start_epoch
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
+from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.metrics.dimension_models import validate_dimensions
-from backend.metrics.events import EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
@@ -74,8 +75,17 @@ class MetricsWriter:
                     effective_dims.update(dimensions)
             else:
                 effective_dims = dict(dimensions) if dimensions else {}
+                if DEVICE_TYPE_DIM_KEY not in effective_dims:
+                    ua_string = (
+                        request.headers.get("User-Agent")
+                        if has_request_context()
+                        else None
+                    )
+                    effective_dims[DEVICE_TYPE_DIM_KEY] = int(
+                        classify_user_agent(ua_string)
+                    )
 
-            validate_dimensions(event, effective_dims if effective_dims else None)
+            validate_dimensions(event, effective_dims)
 
             bucket_start = compute_bucket_start_epoch(
                 int(time.time()), self._bucket_seconds

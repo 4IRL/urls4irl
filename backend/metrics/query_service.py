@@ -5,10 +5,16 @@ from typing import Literal, NamedTuple
 
 from flask import current_app
 from sqlalchemy import func
+from sqlalchemy.orm import Query
 
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
-from backend.metrics.events import EventCategory, EventName
+from backend.metrics.events import (
+    DEVICE_TYPE_DIM_KEY,
+    DeviceType,
+    EventCategory,
+    EventName,
+)
 from backend.metrics.resources import Resource, resource_filter_clause
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
@@ -56,10 +62,26 @@ def _endpoint_metadata_map() -> dict[str, _EndpointMetadata]:
     return metadata
 
 
+def _device_type_filter(query: Query, device_type: DeviceType | None) -> Query:
+    """Apply the `device_type` JSONB filter to `query` when set, else return as-is.
+
+    Centralizes the JSONB-cast filter used by every query helper that supports
+    `device_type=` so the four call sites cannot drift on operator, JSON key
+    spelling, or cast type. Returns `query` unchanged when `device_type is None`
+    so callers can always write `query = _device_type_filter(query, device_type)`.
+    """
+    if device_type is None:
+        return query
+    return query.filter(
+        Anonymous_Metrics.dimensions[DEVICE_TYPE_DIM_KEY].as_integer() == device_type
+    )
+
+
 def _per_endpoint_counts(
     *,
     window_start: datetime,
     window_end: datetime,
+    device_type: DeviceType | None = None,
 ) -> dict[tuple[str, str], int]:
     """Return a {(endpoint, method): count} map for api_hit rows in the window.
 
@@ -70,22 +92,19 @@ def _per_endpoint_counts(
     represent ingest paths the dashboard cannot meaningfully attribute.
     """
     total_count = func.sum(Anonymous_Metrics.count).label("total_count")
-    rows = (
-        db.session.query(
-            Anonymous_Metrics.endpoint,
-            Anonymous_Metrics.method,
-            total_count,
-        )
-        .filter(
-            Anonymous_Metrics.event_name == EventName.API_HIT.value,
-            Anonymous_Metrics.bucket_start >= window_start,
-            Anonymous_Metrics.bucket_start < window_end,
-            Anonymous_Metrics.endpoint.isnot(None),
-            Anonymous_Metrics.method.isnot(None),
-        )
-        .group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
-        .all()
+    query = db.session.query(
+        Anonymous_Metrics.endpoint,
+        Anonymous_Metrics.method,
+        total_count,
+    ).filter(
+        Anonymous_Metrics.event_name == EventName.API_HIT.value,
+        Anonymous_Metrics.bucket_start >= window_start,
+        Anonymous_Metrics.bucket_start < window_end,
+        Anonymous_Metrics.endpoint.isnot(None),
+        Anonymous_Metrics.method.isnot(None),
     )
+    query = _device_type_filter(query, device_type)
+    rows = query.group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method).all()
     return {(row.endpoint, row.method): int(row.total_count) for row in rows}
 
 
@@ -94,6 +113,7 @@ def _per_event_counts(
     window_start: datetime,
     window_end: datetime,
     category: EventCategory | None,
+    device_type: DeviceType | None = None,
 ) -> dict[str, int]:
     """Return a {event_name: count} map summed across a half-open window."""
     total_count = func.sum(Anonymous_Metrics.count).label("total_count")
@@ -107,6 +127,7 @@ def _per_event_counts(
     )
     if category is not None:
         query = query.filter(Event_Registry.category == category)
+    query = _device_type_filter(query, device_type)
     rows = query.group_by(Anonymous_Metrics.event_name).all()
     return {row.event_name: int(row.total_count) for row in rows}
 
@@ -119,6 +140,7 @@ def _top_endpoints_for_api_hit(
     previous_window_end: datetime,
     resource: Resource | None,
     limit: int,
+    device_type: DeviceType | None = None,
 ) -> list[TopEventRow]:
     """Return the top api_hit rows grouped by (endpoint, method).
 
@@ -146,6 +168,7 @@ def _top_endpoints_for_api_hit(
         query = query.filter(
             resource_filter_clause(category=EventCategory.API, resource=resource)
         )
+    query = _device_type_filter(query, device_type)
     rows = (
         query.group_by(Anonymous_Metrics.endpoint, Anonymous_Metrics.method)
         .order_by(
@@ -159,6 +182,7 @@ def _top_endpoints_for_api_hit(
     previous_counts = _per_endpoint_counts(
         window_start=previous_window_start,
         window_end=previous_window_end,
+        device_type=device_type,
     )
     endpoint_metadata = _endpoint_metadata_map()
     return [
@@ -190,6 +214,7 @@ def top_events(
     category: EventCategory | None,
     limit: int,
     resource: Resource | None = None,
+    device_type: DeviceType | None = None,
 ) -> list[TopEventRow]:
     """Return the top events by total count inside the half-open window.
 
@@ -222,6 +247,7 @@ def top_events(
             previous_window_end=previous_window_end,
             resource=resource,
             limit=limit,
+            device_type=device_type,
         )
 
     total_count = func.sum(Anonymous_Metrics.count).label("total_count")
@@ -244,6 +270,7 @@ def top_events(
         query = query.filter(
             resource_filter_clause(category=category, resource=resource)
         )
+    query = _device_type_filter(query, device_type)
 
     rows = (
         query.group_by(
@@ -263,6 +290,7 @@ def top_events(
         window_start=previous_window_start,
         window_end=previous_window_end,
         category=category,
+        device_type=device_type,
     )
 
     return [
@@ -314,6 +342,7 @@ def timeseries(
     resolution: Literal["hour", "day"],
     endpoint: str | None = None,
     method: str | None = None,
+    device_type: DeviceType | None = None,
 ) -> list[TimeseriesBucketSchema]:
     """Return per-bucket counts for `event_name` inside the half-open window.
 
@@ -350,6 +379,7 @@ def timeseries(
         query = query.filter(Anonymous_Metrics.endpoint == endpoint)
     if method is not None:
         query = query.filter(Anonymous_Metrics.method == method)
+    query = _device_type_filter(query, device_type)
 
     rows = query.group_by(bucket).order_by(bucket).all()
     counts_by_bucket: dict[datetime, int] = {row.bucket: int(row.count) for row in rows}

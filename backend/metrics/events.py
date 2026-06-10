@@ -18,6 +18,12 @@ class DeviceType(IntEnum):
     DESKTOP = 2
 
 
+# Wire/JSONB key for the auto-injected device_type dimension. Defined once
+# so middleware, writer, and query layers reference the same literal; also
+# surfaced to the frontend via APP_CONFIG.constants.DEVICE_TYPE_DIM_KEY.
+DEVICE_TYPE_DIM_KEY: str = "device_type"
+
+
 class EventName(StrEnum):
     # API — auto-instrumented via middleware
     API_HIT = "api_hit"

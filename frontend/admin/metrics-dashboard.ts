@@ -97,6 +97,7 @@ interface CategoryPanelIds {
   tab: string;
   panel: string;
   resourceFilter: string;
+  deviceFilter: string;
   substringFilter: string;
 }
 
@@ -167,6 +168,7 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     tab: "MetricsTabApi",
     panel: "MetricsPanelApi",
     resourceFilter: "MetricsTopResourceFilter-api",
+    deviceFilter: "MetricsTopDeviceFilter-api",
     substringFilter: "MetricsTopSubstringFilter-api",
   },
   ui: {
@@ -176,6 +178,7 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     tab: "MetricsTabUi",
     panel: "MetricsPanelUi",
     resourceFilter: "MetricsTopResourceFilter-ui",
+    deviceFilter: "MetricsTopDeviceFilter-ui",
     substringFilter: "MetricsTopSubstringFilter-ui",
   },
   domain: {
@@ -185,6 +188,7 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
     tab: "MetricsTabDomain",
     panel: "MetricsPanelDomain",
     resourceFilter: "MetricsTopResourceFilter-domain",
+    deviceFilter: "MetricsTopDeviceFilter-domain",
     substringFilter: "MetricsTopSubstringFilter-domain",
   },
 };
@@ -234,9 +238,14 @@ const _selectedEventByCategory: Map<MetricsCategory, string> = new Map();
 // Per-tab filter state. Both maps survive tab switches inside one session;
 // `_resetMetricsDashboardForTests` clears them.
 const _resourceFilterByCategory: Map<MetricsCategory, ResourceName> = new Map();
+const _deviceFilterByCategory: Map<MetricsCategory, 1 | 2> = new Map();
 const _substringFilterByCategory: Map<MetricsCategory, string> = new Map();
 // Debounce handles per category; cleared whenever a fresh keystroke arrives.
 const _substringDebounceTimerByCategory: Map<
+  MetricsCategory,
+  ReturnType<typeof setTimeout>
+> = new Map();
+const _deviceFilterDebounceTimerByCategory: Map<
   MetricsCategory,
   ReturnType<typeof setTimeout>
 > = new Map();
@@ -327,7 +336,8 @@ function effectiveTopLimit({
 }): number {
   const hasResource = _resourceFilterByCategory.has(category);
   const hasSubstring = (_substringFilterByCategory.get(category) ?? "") !== "";
-  return hasResource || hasSubstring ? FILTERED_TOP_LIMIT : 10;
+  const hasDevice = _deviceFilterByCategory.has(category);
+  return hasResource || hasSubstring || hasDevice ? FILTERED_TOP_LIMIT : 10;
 }
 
 /**
@@ -363,6 +373,42 @@ function populateResourceFilter({
   selectElement.value = currentResource ?? "";
 }
 
+/**
+ * Populate a panel's device `<select>` with the "All devices" option plus
+ * Mobile and Desktop options. Restores any previously-applied selection so the
+ * dropdown stays consistent across re-renders.
+ */
+function populateDeviceFilter({
+  category,
+}: {
+  category: MetricsCategory;
+}): void {
+  const selectElement = getElementByIdOrNull<HTMLSelectElement>(
+    CATEGORY_PANEL_IDS[category].deviceFilter,
+  );
+  if (selectElement === null) {
+    return;
+  }
+  while (selectElement.firstChild !== null) {
+    selectElement.removeChild(selectElement.firstChild);
+  }
+  const allOption = document.createElement("option");
+  allOption.value = "";
+  allOption.textContent = APP_CONFIG.strings.METRICS_TOP_DEVICE_ALL;
+  selectElement.appendChild(allOption);
+  const mobileOption = document.createElement("option");
+  mobileOption.value = String(APP_CONFIG.constants.DEVICE_TYPE.MOBILE);
+  mobileOption.textContent = APP_CONFIG.strings.METRICS_TOP_DEVICE_MOBILE;
+  selectElement.appendChild(mobileOption);
+  const desktopOption = document.createElement("option");
+  desktopOption.value = String(APP_CONFIG.constants.DEVICE_TYPE.DESKTOP);
+  desktopOption.textContent = APP_CONFIG.strings.METRICS_TOP_DEVICE_DESKTOP;
+  selectElement.appendChild(desktopOption);
+  const currentDevice = _deviceFilterByCategory.get(category);
+  selectElement.value =
+    currentDevice !== undefined ? String(currentDevice) : "";
+}
+
 function refetchTopForCategory({
   category,
 }: {
@@ -377,10 +423,12 @@ function refetchTopForCategory({
   setDashboardBusy({ busy: true });
   setRefreshButtonInFlight({ inFlight: true });
   const resource = _resourceFilterByCategory.get(category) ?? null;
+  const deviceType = _deviceFilterByCategory.get(category) ?? null;
   const request = fetchTopEvents({
     window: _currentWindow,
     category,
     resource,
+    deviceType,
     limit: effectiveTopLimit({ category }),
   });
   _inFlight[slot] = request;
@@ -426,6 +474,45 @@ function handleResourceFilterChange(event: JQuery.TriggeredEvent): void {
   refetchTopForCategory({ category: dataCategory });
 }
 
+// Device-filter debounce window: collapse rapid `<select>` changes (e.g. when
+// the user spins through the dropdown with arrow keys) into a single refetch.
+// 50ms is short enough to feel instant on a single change yet long enough to
+// suppress repeat fires from native dropdown keyboard navigation.
+const DEVICE_FILTER_DEBOUNCE_MS = 50;
+
+function handleDeviceFilterChange(event: JQuery.TriggeredEvent): void {
+  const selectElement = event.currentTarget as HTMLSelectElement;
+  const dataCategory = selectElement.dataset.category as
+    | MetricsCategory
+    | undefined;
+  if (dataCategory === undefined) {
+    return;
+  }
+  const rawValue = selectElement.value;
+
+  const existingTimer = _deviceFilterDebounceTimerByCategory.get(dataCategory);
+  if (existingTimer !== undefined) {
+    clearTimeout(existingTimer);
+  }
+  const timer = setTimeout(() => {
+    _deviceFilterDebounceTimerByCategory.delete(dataCategory);
+    if (rawValue === "") {
+      _deviceFilterByCategory.delete(dataCategory);
+    } else {
+      const parsedValue = Number(rawValue) as 1 | 2;
+      _deviceFilterByCategory.set(dataCategory, parsedValue);
+    }
+    refetchTopForCategory({ category: dataCategory });
+    const tsSelect = getElementByIdOrNull<HTMLSelectElement>(
+      CATEGORY_PANEL_IDS[dataCategory].select,
+    );
+    if (tsSelect !== null && tsSelect.value !== "") {
+      $(tsSelect).trigger("change");
+    }
+  }, DEVICE_FILTER_DEBOUNCE_MS);
+  _deviceFilterDebounceTimerByCategory.set(dataCategory, timer);
+}
+
 function handleSubstringFilterInput(event: JQuery.TriggeredEvent): void {
   const inputElement = event.currentTarget as HTMLInputElement;
   const dataCategory = inputElement.dataset.category as
@@ -454,9 +541,13 @@ function handleSubstringFilterInput(event: JQuery.TriggeredEvent): void {
   const timer = setTimeout(() => {
     _substringDebounceTimerByCategory.delete(dataCategory);
     const previouslyActive =
-      previousQuery !== "" || _resourceFilterByCategory.has(dataCategory);
+      previousQuery !== "" ||
+      _resourceFilterByCategory.has(dataCategory) ||
+      _deviceFilterByCategory.has(dataCategory);
     const nowActive =
-      nextQuery !== "" || _resourceFilterByCategory.has(dataCategory);
+      nextQuery !== "" ||
+      _resourceFilterByCategory.has(dataCategory) ||
+      _deviceFilterByCategory.has(dataCategory);
     const limitWillChange = previouslyActive !== nowActive;
     if (limitWillChange) {
       refetchTopForCategory({ category: dataCategory });
@@ -812,12 +903,14 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
   // before .done resolves doesn't mis-attribute this response to the new
   // window in `_chartFetchedWindowByCategory`.
   const fetchedWindow = _currentWindow;
+  const deviceType = _deviceFilterByCategory.get(category) ?? null;
   const timeseriesRequest = fetchTimeseries({
     eventName,
     window: fetchedWindow,
     resolution: "hour",
     endpoint: apiEndpoint,
     method: apiMethod,
+    deviceType,
   });
   _inFlight[tsSlot] = timeseriesRequest;
   timeseriesRequest
@@ -905,10 +998,12 @@ function fetchAll(): void {
   // clicks.
   for (const category of CATEGORIES) {
     const resource = _resourceFilterByCategory.get(category) ?? null;
+    const deviceType = _deviceFilterByCategory.get(category) ?? null;
     const topRequest = fetchTopEvents({
       window: _currentWindow,
       category,
       resource,
+      deviceType,
       limit: effectiveTopLimit({ category }),
     });
     const slotName = TOP_SLOT_BY_CATEGORY[category];
@@ -1348,6 +1443,11 @@ export function initMetricsDashboard(): void {
       "change.metricsDashboardResourceFilter",
       handleResourceFilterChange,
     );
+    populateDeviceFilter({ category });
+    $(`#${CATEGORY_PANEL_IDS[category].deviceFilter}`).offAndOnExact(
+      "change.metricsDashboardDeviceFilter",
+      handleDeviceFilterChange,
+    );
     $(`#${CATEGORY_PANEL_IDS[category].substringFilter}`).offAndOnExact(
       "input.metricsDashboardSubstringFilter",
       handleSubstringFilterInput,
@@ -1393,6 +1493,9 @@ export function _resetMetricsDashboardForTests(): void {
     clearTimeout(pendingTimer);
   }
   _substringDebounceTimerByCategory.clear();
+  _deviceFilterDebounceTimerByCategory.forEach((timer) => clearTimeout(timer));
+  _deviceFilterDebounceTimerByCategory.clear();
+  _deviceFilterByCategory.clear();
   _lastFlushAtMs = null;
   _lastAnnouncedFlushBucket = null;
   _lastEventAtMs = null;

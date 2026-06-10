@@ -222,6 +222,9 @@ describe("metrics-dashboard tablist a11y", () => {
       eventName: "utub_opened",
       window: "day",
       resolution: "hour",
+      endpoint: undefined,
+      method: undefined,
+      deviceType: null,
     });
   });
 

@@ -104,10 +104,10 @@ def test_domain_events_emit_no_pii_dimensions(
     WHEN each instrumented route is hit exactly once via the authenticated
         client (after seeding the minimum required state inline so no
         services run during setup)
-    THEN every `metrics:counter:*` key written to Redis (excluding the
-        incidental API_HIT counters) has an empty canonical-dims segment —
+    THEN every `metrics:counter:*` key written to Redis carries at most
+        device_type in its dims segment (a coarse, non-PII signal) —
         no `user_id`, `email`, `username`, `utub_id`, `tag_id`, etc. leaks
-        into the dimensions payload.
+        into the dimensions payload — device_type is intentional and non-PII.
 
     Structural PII non-leak guard. Auto-extends to any future DOMAIN
     event by iterating `EventCategory.DOMAIN` members (excluding
@@ -256,7 +256,11 @@ def test_domain_events_emit_no_pii_dimensions(
         parts = decoded.split(":", 4)
         event_value = parts[3]
         dims = json.loads(parts[4])
-        assert dims == {}, f"DOMAIN counter leaked PII dims: key={decoded}, dims={dims}"
+        if EVENT_CATEGORY.get(EventName(event_value)) is not EventCategory.DOMAIN:
+            continue
+        assert set(dims.keys()) <= {
+            "device_type"
+        }, f"DOMAIN counter leaked PII dims: key={decoded}, dims={dims}"
         observed_event_values.add(event_value)
 
     expected_event_values = {event.value for event in expected_domain_events}

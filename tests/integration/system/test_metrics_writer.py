@@ -11,9 +11,14 @@ from redis import Redis
 
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.writer import MetricsWriter, record_event
-from backend.metrics.events import DeviceType, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
-from tests.integration.system.metrics_helpers import find_counter_keys
+from tests.integration.system.metrics_helpers import (
+    IPHONE_UA,
+    WINDOWS_CHROME_UA,
+    find_counter_keys,
+    parse_dims,
+)
 
 pytestmark = pytest.mark.cli
 
@@ -253,3 +258,95 @@ def test_writer_increments_redis_counter_for_ui_event(
         {"search_active": "true", "device_type": DeviceType.MOBILE}
     )
     assert canonical_dims.encode() in keys[0]
+
+
+def test_record_domain_event_auto_injects_device_type_from_request_context(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a domain event recorded inside a request context with a mobile UA
+    WHEN record_event is called with no dimensions
+    THEN the writer auto-injects `device_type` from the UA classification
+        and the stored dims contain only `{"device_type": MOBILE}`.
+    """
+    with metrics_enabled_app.test_request_context(
+        "/", headers={"User-Agent": IPHONE_UA}
+    ):
+        record_event(EventName.UTUB_OPENED)
+
+    keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE)}
+
+
+def test_record_domain_event_auto_injects_device_type_desktop_from_chrome_ua(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a domain event recorded inside a request context with a desktop UA
+    WHEN record_event is called with no dimensions
+    THEN the writer auto-injects `device_type` from the UA classification
+        and the stored dims contain only `{"device_type": DESKTOP}`.
+    """
+    with metrics_enabled_app.test_request_context(
+        "/", headers={"User-Agent": WINDOWS_CHROME_UA}
+    ):
+        record_event(EventName.UTUB_OPENED)
+
+    keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
+
+
+def test_record_domain_event_outside_request_context_falls_back_to_desktop(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a domain event recorded under app_context() but no request_context
+    WHEN record_event is called with no dimensions
+    THEN the writer's UA-fetch falls back to DESKTOP since
+        `has_request_context()` returns False.
+    """
+    with metrics_enabled_app.app_context():
+        record_event(EventName.UTUB_OPENED)
+
+    keys = find_counter_keys(provide_metrics_redis, EventName.UTUB_OPENED)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims == {DEVICE_TYPE_DIM_KEY: int(DeviceType.DESKTOP)}
+
+
+def test_record_ui_event_preserves_caller_supplied_device_type(
+    metrics_enabled_app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a UI event whose caller already supplied `device_type=MOBILE`
+    WHEN record_event is called inside a request context whose UA classifies
+        as DESKTOP
+    THEN the caller-supplied `device_type` wins (the UA-based fallback does
+        NOT override).
+    """
+    with metrics_enabled_app.test_request_context(
+        "/", headers={"User-Agent": WINDOWS_CHROME_UA}
+    ):
+        record_event(
+            EventName.UI_UTUB_SELECT,
+            dimensions={
+                DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE),
+                "search_active": "false",
+            },
+        )
+
+    keys = find_counter_keys(provide_metrics_redis, EventName.UI_UTUB_SELECT)
+    assert len(keys) == 1
+    dims = parse_dims(keys[0])
+    assert dims == {
+        DEVICE_TYPE_DIM_KEY: int(DeviceType.MOBILE),
+        "search_active": "false",
+    }

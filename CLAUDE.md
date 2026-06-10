@@ -63,7 +63,17 @@ Code should be concise, but readable. We are looking for maintainability and fut
 ### Frontend - TypeScript/HTML/CSS
 
 1. Never use window globals for module communication
-2. **User-facing strings must go through `APP_CONFIG.strings`** — never hardcode display strings in TypeScript. Define them in `backend/utils/strings/<domain>_strs.py`, register in the `STRINGS` class and `generate_strings_js()` in `backend/utils/constants.py`, add to `frontend/test-setup.ts` mock config, and access as `APP_CONFIG.strings.KEY_NAME`. UI test constants in `ui_testing_strs.py` should import from the backend source, not duplicate the literal.
+2. **User-facing strings — bridge only what TS or tests actually read.** The bridge (`backend/utils/strings/<domain>_strs.py` → `STRINGS` class → `generate_strings_js()` → `frontend/test-setup.ts` mock → `APP_CONFIG.strings.KEY_NAME`) is a 5-file round-trip. Pay it only when there's a real consumer; otherwise the literal belongs in Jinja.
+
+   The right test is **who reads the string**:
+
+   | Where the string is read from | What to do |
+   |---|---|
+   | Production TypeScript reads `APP_CONFIG.strings.X` (dynamic DOM, dropdown options, time-ago text, error banners, etc.) | **Full bridge.** Backend constant + `STRINGS` + `generate_strings_js()` + `test-setup.ts` mock. |
+   | Only Jinja renders it AND a Python UI test asserts the rendered DOM text | **Backend constant only.** Define it in `<domain>_strs.py` and reference it from `ui_testing_strs.py` so the Python test imports it. Do **not** add it to `generate_strings_js()` or `test-setup.ts`. |
+   | Only Jinja renders it AND nothing asserts against the literal (static section heading, ARIA label, window radio label, placeholder) | **No bridge.** Write the literal directly in the Jinja template. |
+
+   Hard rules that still apply: never hardcode display strings in TypeScript (always go through `APP_CONFIG.strings`); `ui_testing_strs.py` constants must import from the backend source, never duplicate the literal.
 3. **Destructured object parameters** — any function taking 2+ parameters (or even a single boolean/enum-ish parameter where the call site would otherwise be a bare literal) must accept a single destructured object so call sites are self-documenting. Prefer `emitMetric({ name, utubId, urlId })` over `emitMetric(name, utubId, urlId)`; `openModal({ dismissible: false })` over `openModal(false)`. Applies to new functions and to edits that touch an existing signature — when modifying a positional-args function, convert it as part of the change.
 4. **Established TS patterns** — use these existing patterns rather than inventing new ones:
    - **Type-guard dispatch** for field-level validation errors: `const FIELDS = [...] as const` + `isFieldName()` guard (see `splash/init.ts`, `tags/create.ts`)
@@ -319,6 +329,18 @@ flask db upgrade              # apply migrations
 flask db migrate -m "msg"     # generate new migration
 flask db downgrade            # rollback last migration
 ```
+
+**Every migration must be tested in BOTH directions, against the full mock dataset, before it is committed.** A migration that "passes" only because the table happens to be empty has not actually been tested.
+
+**Required steps:**
+
+1. **Seed all relevant mock data first.** `flask addmock all` populates users, UTubs, members, URLs, tags, AND `AnonymousMetrics` (9 deterministic rows via the bundled `seed-uniform-test-data` helper). If a future table is added that isn't covered, extend `_add_all()` in `backend/cli/mock_options.py` rather than leaving developers to remember a follow-up command.
+2. **Run `flask db upgrade`** and assert the expected post-state (row counts, dimension keys, column values, FK integrity).
+3. **Run `flask db downgrade`** (no arg = back one revision; or pass the target revision id explicitly) and assert the expected reverted state — or that it raised the intended "irreversible" error. **A no-op downgrade still gets run** to confirm it executes without raising.
+4. **Run `flask db upgrade` again** and confirm the upgrade is idempotent / re-applies cleanly.
+5. For data migrations whose downgrade is intentionally a no-op, document the irreversibility in a comment in `downgrade()`.
+
+This rule applies even when the migration is purely additive, purely data, or "obviously safe." The cost of running two extra commands is far less than the cost of a deploy-time migration failure.
 
 ## Review Workflow
 

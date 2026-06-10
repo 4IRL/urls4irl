@@ -47,6 +47,49 @@ describe("metrics-query-client", () => {
         "/api/metrics/query/top?window=month&category=domain&limit=25",
       );
     });
+
+    it("passes ?device_type=1 when deviceType is 1", () => {
+      fetchTopEvents({
+        window: "day",
+        category: "ui",
+        limit: 10,
+        deviceType: 1,
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/top?window=day&category=ui&limit=10&device_type=1",
+      );
+    });
+
+    it("passes ?device_type=2 when deviceType is 2", () => {
+      fetchTopEvents({
+        window: "day",
+        category: "api",
+        limit: 10,
+        deviceType: 2,
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/top?window=day&category=api&limit=10&device_type=2",
+      );
+    });
+
+    it("omits device_type when undefined", () => {
+      fetchTopEvents({ window: "day", category: "ui", limit: 10 });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).not.toContain("device_type");
+    });
+
+    it("omits device_type when null", () => {
+      fetchTopEvents({
+        window: "day",
+        category: "ui",
+        limit: 10,
+        deviceType: null,
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).not.toContain("device_type");
+    });
   });
 
   describe("fetchTimeseries", () => {
@@ -71,6 +114,47 @@ describe("metrics-query-client", () => {
       expect(url).toBe(
         "/api/metrics/query/timeseries?event_name=ui_url_copy&window=day",
       );
+    });
+
+    it("passes ?device_type=1 when deviceType is 1", () => {
+      fetchTimeseries({
+        eventName: "utub_opened",
+        window: "week",
+        resolution: "day",
+        deviceType: 1,
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/timeseries?event_name=utub_opened&window=week&resolution=day&device_type=1",
+      );
+    });
+
+    it("passes ?device_type=2 when deviceType is 2", () => {
+      fetchTimeseries({
+        eventName: "api_hit",
+        window: "day",
+        deviceType: 2,
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/timeseries?event_name=api_hit&window=day&device_type=2",
+      );
+    });
+
+    it("omits device_type when undefined", () => {
+      fetchTimeseries({ eventName: "ui_url_copy", window: "day" });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).not.toContain("device_type");
+    });
+
+    it("omits device_type when null", () => {
+      fetchTimeseries({
+        eventName: "ui_url_copy",
+        window: "day",
+        deviceType: null,
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).not.toContain("device_type");
     });
   });
 
