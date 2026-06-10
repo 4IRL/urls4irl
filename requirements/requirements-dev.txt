@@ -1,13 +1,13 @@
-cffi==1.17.1
+cffi==2.0.0
 cfgv==3.4.0
-cryptography==44.0.1
+cryptography==46.0.6
 distlib==0.3.7
 filelock==3.20.3
 identify==2.5.29
 nodeenv==1.8.0
 platformdirs==3.9.1
 pre-commit==3.7.0
-pyopenssl==25.0.0
+pyopenssl==26.0.0
 PyYAML==6.0.1
 virtualenv==20.36.1
 -r requirements-test.txt
