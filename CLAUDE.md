@@ -140,11 +140,11 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 
 **All versions in any language must be pinned to exact versions — no ranges, no carets, no tildes, no `>=`.**
 
-| Manifest | Required form | Forbidden forms |
-|---|---|---|
-| `requirements*.txt` (pip) | `package==X.Y.Z` | `>=`, `~=`, `<=`, `*`, unpinned |
-| `frontend/package.json` direct deps & devDeps | `"pkg": "X.Y.Z"` | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest` |
-| `frontend/package.json` `overrides` | `"pkg": "X.Y.Z"` (exact patch that satisfies all peer-deps and any open security alert) | `^`, `~`, ranges |
+| Manifest                                       | Required form                                                                          | Forbidden forms                           |
+|------------------------------------------------|----------------------------------------------------------------------------------------|-------------------------------------------|
+| `requirements*.txt` (pip)                      | `package==X.Y.Z`                                                                       | `>=`, `~=`, `<=`, `*`, unpinned           |
+| `frontend/package.json` direct deps & devDeps  | `"pkg": "X.Y.Z"`                                                                       | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest`  |
+| `frontend/package.json` `overrides`            | `"pkg": "X.Y.Z"` (exact patch that satisfies all peer-deps and any open security alert) | `^`, `~`, ranges                          |
 
 If an exact-pin override conflicts with a transitive consumer's peer-dep range (e.g., npm reports `invalid: "X.Y.Z" from node_modules/...`), bump the override to the **exact patch version npm naturally resolves to** rather than reverting to a caret. Document the choice in the commit body.
 
