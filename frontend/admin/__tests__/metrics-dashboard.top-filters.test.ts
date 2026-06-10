@@ -38,6 +38,7 @@ vi.mock("../render-timeseries-chart.js", () => ({
 }));
 
 import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
+import { APP_CONFIG } from "../../lib/config.js";
 import { RESOURCES_BY_CATEGORY } from "../../types/metrics-resources.js";
 import {
   _resetMetricsDashboardForTests,
@@ -179,6 +180,39 @@ describe("metrics-dashboard top-events filters", () => {
     expect(domainSelect.options.length).toBe(
       RESOURCES_BY_CATEGORY.domain.length + 1,
     );
+  });
+
+  it("populates each panel's device <select> with the 3 expected (value, text) options at boot", () => {
+    primeFetchTopEvents([]);
+    initMetricsDashboard();
+
+    const expectedOptions: ReadonlyArray<readonly [string, string]> = [
+      ["", APP_CONFIG.strings.METRICS_TOP_DEVICE_ALL],
+      [
+        String(APP_CONFIG.constants.DEVICE_TYPE.MOBILE),
+        APP_CONFIG.strings.METRICS_TOP_DEVICE_MOBILE,
+      ],
+      [
+        String(APP_CONFIG.constants.DEVICE_TYPE.DESKTOP),
+        APP_CONFIG.strings.METRICS_TOP_DEVICE_DESKTOP,
+      ],
+    ];
+
+    for (const selectId of [
+      "MetricsTopDeviceFilter-api",
+      "MetricsTopDeviceFilter-ui",
+      "MetricsTopDeviceFilter-domain",
+    ]) {
+      const deviceSelect = document.getElementById(
+        selectId,
+      ) as HTMLSelectElement;
+      expect(deviceSelect.options.length).toBe(3);
+      const actualOptions = Array.from(deviceSelect.options).map((option) => [
+        option.value,
+        option.textContent,
+      ]);
+      expect(actualOptions).toEqual(expectedOptions);
+    }
   });
 
   it("resource change triggers a refetch with ?resource=<v>&limit=100", () => {

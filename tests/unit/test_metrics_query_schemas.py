@@ -137,6 +137,12 @@ def test_top_events_device_type_str_one_coerces_to_int():
     assert parsed.device_type == 1
 
 
+def test_top_events_device_type_str_two_coerces_to_int():
+    """`device_type="2"` (from query string) coerces to int `2`."""
+    parsed = TopEventsQuerySchema.model_validate({"window": "day", "device_type": "2"})
+    assert parsed.device_type == 2
+
+
 def test_top_events_device_type_three_rejected():
     """`device_type=3` is outside the allowed `Literal[1, 2]` set."""
     with pytest.raises(ValidationError):
@@ -260,6 +266,18 @@ def test_timeseries_device_type_str_one_coerces_to_int():
         }
     )
     assert parsed.device_type == 1
+
+
+def test_timeseries_device_type_str_two_coerces_to_int():
+    """`device_type="2"` (from query string) coerces to int `2`."""
+    parsed = TimeseriesQuerySchema.model_validate(
+        {
+            "event_name": EventName.UTUB_OPENED.value,
+            "window": "day",
+            "device_type": "2",
+        }
+    )
+    assert parsed.device_type == 2
 
 
 def test_timeseries_device_type_three_rejected():

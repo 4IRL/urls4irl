@@ -1602,14 +1602,26 @@ def test_top_events_device_type_excludes_rows_without_dimension_key(
     assert rows[0].event_name == EventName.UI_UTUB_SELECT.value
 
 
+@pytest.mark.parametrize(
+    "filter_device_type, expected_count",
+    [
+        (DeviceType.MOBILE, 4),
+        (DeviceType.DESKTOP, 10),
+    ],
+    ids=["mobile", "desktop"],
+)
 def test_timeseries_filters_by_device_type(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
+    filter_device_type: DeviceType,
+    expected_count: int,
 ) -> None:
     """
-    GIVEN two UI_UTUB_SELECT rows in the same bucket — one MOBILE, one DESKTOP
-    WHEN timeseries is called with device_type=MOBILE
-    THEN only the mobile row's count is summed; the desktop row is excluded.
+    GIVEN two UI_UTUB_SELECT rows in the same bucket — one MOBILE (count=4),
+        one DESKTOP (count=10)
+    WHEN timeseries is called with device_type=filter_device_type
+    THEN only the matching row's count is summed; the opposite-device row is
+        excluded.
     """
     app = metrics_enabled_runner_app
     window_end = _WINDOW_REFERENCE
@@ -1637,11 +1649,11 @@ def test_timeseries_filters_by_device_type(
             window_start=window_start,
             window_end=window_end,
             resolution="hour",
-            device_type=int(DeviceType.MOBILE),
+            device_type=int(filter_device_type),
         )
 
     assert len(rows) == 24
     nonzero = [row for row in rows if row.count != 0]
     assert len(nonzero) == 1
-    assert nonzero[0].count == 4
+    assert nonzero[0].count == expected_count
     assert nonzero[0].bucket == inside
