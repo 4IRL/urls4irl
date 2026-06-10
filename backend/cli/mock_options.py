@@ -129,8 +129,10 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     generate_mock_utubmembers(db)
     generate_mock_urls(db)
     generate_mock_tags(db)
+    rows_written = _seed_uniform_test_data()
+    print(f"\n--- Seeded {rows_written} AnonymousMetrics rows for UI tests ---")
     print(
-        "\n--- Finished adding all mock users, UTubs, members, urls, and tags ---\n\n"
+        "\n--- Finished adding all mock users, UTubs, members, urls, tags, and metrics ---\n\n"
     )
 
 
@@ -274,28 +276,22 @@ def drop_db(db_type: str, keep_alembic: bool):
     print(f"\n--- Dropped each table in {db_type} database ---\n\n")
 
 
-@mocks_cli.command(
-    "seed-uniform-test-data",
-    help="Seed a small fixed set of AnonymousMetrics rows for Selenium tests.",
-)
-@with_appcontext
-def seed_uniform_test_data_command() -> None:
+def _seed_uniform_test_data() -> int:
     """Insert a deterministic set of AnonymousMetrics rows for UI tests.
 
     Bypasses Redis and writes directly to Postgres so the admin metrics
     dashboard renders non-empty tables/charts during the Selenium smoke
     test. Covers all three event categories (API, UI, DOMAIN) with known
-    hour-bucket-aligned `bucket_start` values.
-
-    Consistent with the `flask addmock` seeding pattern: idempotent on
+    hour-bucket-aligned `bucket_start` values. Idempotent on
     `(bucket_start, event_name, dimensions)` via the table's
-    `unique_metric_bucket` constraint — repeated runs are safe.
+    `unique_metric_bucket` constraint — repeated runs are safe. Requires
+    an active Flask app context.
 
     Examples:
-        Local: ``flask addmock seed-uniform-test-data`` writes nine rows
-        across three hour buckets ending at the current hour, one row per
-        bucket for each of: api_hit (API), ui_login_submit (UI),
-        utub_created (DOMAIN).
+        Writes nine rows across three hour buckets ending at the current
+        hour, one row per bucket for each of: api_hit (API),
+        ui_login_submit (UI), utub_created (DOMAIN). Returns the count of
+        rows actually inserted (zero on a re-run with all rows present).
     """
     sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
 
@@ -350,6 +346,16 @@ def seed_uniform_test_data_command() -> None:
             )
             rows_written += 1
     db.session.commit()
+    return rows_written
+
+
+@mocks_cli.command(
+    "seed-uniform-test-data",
+    help="Seed a small fixed set of AnonymousMetrics rows for Selenium tests.",
+)
+@with_appcontext
+def seed_uniform_test_data_command() -> None:
+    rows_written = _seed_uniform_test_data()
     click.echo(f"metrics: seeded {rows_written} AnonymousMetrics rows for UI tests.")
 
 

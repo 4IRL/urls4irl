@@ -418,3 +418,50 @@ def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
             f"remove rows. Expected {EXPECTED_SEEDED_ROW_COUNT}, got "
             f"{rows_after_second_run}."
         )
+
+
+def test_add_all_mock_data_also_seeds_anonymous_metrics(runner):
+    """
+    GIVEN a developer running the catch-all mock seed command
+    WHEN the developer provides the following CLI command:
+        `flask addmock all`
+    THEN verify that the AnonymousMetrics table is also seeded (so
+        a clean dev DB renders the admin metrics dashboard with data
+        without a follow-up `seed-uniform-test-data` invocation), and
+        that repeated invocations remain idempotent on the metrics
+        table.
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        assert Anonymous_Metrics.query.count() == 0
+
+    first_result = cli_runner.invoke(args=["addmock", "all"])
+    assert first_result.exit_code == 0, (
+        f"First `addmock all` invocation failed: exit={first_result.exit_code} "
+        f"output={first_result.output}"
+    )
+
+    with app.app_context():
+        rows_after_first_run = Anonymous_Metrics.query.count()
+        assert rows_after_first_run == EXPECTED_SEEDED_ROW_COUNT, (
+            f"Expected {EXPECTED_SEEDED_ROW_COUNT} AnonymousMetrics rows "
+            f"after `addmock all`, got {rows_after_first_run}"
+        )
+
+    second_result = cli_runner.invoke(args=["addmock", "all"])
+    assert second_result.exit_code == 0, (
+        f"Second `addmock all` invocation failed: exit={second_result.exit_code} "
+        f"output={second_result.output}"
+    )
+
+    with app.app_context():
+        rows_after_second_run = Anonymous_Metrics.query.count()
+        assert rows_after_second_run == EXPECTED_SEEDED_ROW_COUNT, (
+            "`addmock all` metrics seeding must be idempotent: second "
+            f"invocation must not add rows. Expected {EXPECTED_SEEDED_ROW_COUNT}, "
+            f"got {rows_after_second_run}."
+        )
