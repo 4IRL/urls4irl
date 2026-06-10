@@ -334,10 +334,7 @@ flask db downgrade            # rollback last migration
 
 **Required steps:**
 
-1. **Seed all relevant mock data first.** For tables this migration touches, ensure every relevant table is populated:
-   - `flask addmock all` — users, UTubs, members, URLs, tags
-   - `flask addmock seed-uniform-test-data` — `AnonymousMetrics` rows (NOT included in `addmock all`)
-   - Any other domain-specific seed commands the migration's tables depend on.
+1. **Seed all relevant mock data first.** `flask addmock all` populates users, UTubs, members, URLs, tags, AND `AnonymousMetrics` (9 deterministic rows via the bundled `seed-uniform-test-data` helper). If a future table is added that isn't covered, extend `_add_all()` in `backend/cli/mock_options.py` rather than leaving developers to remember a follow-up command.
 2. **Run `flask db upgrade`** and assert the expected post-state (row counts, dimension keys, column values, FK integrity).
 3. **Run `flask db downgrade`** (no arg = back one revision; or pass the target revision id explicitly) and assert the expected reverted state — or that it raised the intended "irreversible" error. **A no-op downgrade still gets run** to confirm it executes without raising.
 4. **Run `flask db upgrade` again** and confirm the upgrade is idempotent / re-applies cleanly.
