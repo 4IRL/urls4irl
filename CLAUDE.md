@@ -136,6 +136,20 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 
 This project is primarily Python with some JavaScript/HTML/CSS. When editing Python code, verify constant names, decorator types (`@model_validator` vs `@field_validator`), and imports against the actual codebase before making changes.
 
+### Dependency Pinning
+
+**All versions in any language must be pinned to exact versions — no ranges, no carets, no tildes, no `>=`.**
+
+| Manifest | Required form | Forbidden forms |
+|---|---|---|
+| `requirements*.txt` (pip) | `package==X.Y.Z` | `>=`, `~=`, `<=`, `*`, unpinned |
+| `frontend/package.json` direct deps & devDeps | `"pkg": "X.Y.Z"` | `^X.Y.Z`, `~X.Y.Z`, `>=`, `*`, `latest` |
+| `frontend/package.json` `overrides` | `"pkg": "X.Y.Z"` (exact patch that satisfies all peer-deps and any open security alert) | `^`, `~`, ranges |
+
+If an exact-pin override conflicts with a transitive consumer's peer-dep range (e.g., npm reports `invalid: "X.Y.Z" from node_modules/...`), bump the override to the **exact patch version npm naturally resolves to** rather than reverting to a caret. Document the choice in the commit body.
+
+When adding or bumping a dependency, never introduce a range — if you only need a security fix, pin to the exact patched version listed by `gh api .../dependabot/alerts`. After editing, run `make build && make up d=1` and verify the full test suite passes before committing.
+
 ### Import Style
 
 Always use top-level (global) imports. Never use local imports (inside functions, methods, or conditional blocks) unless the user explicitly requests it as a design decision — no exceptions.
