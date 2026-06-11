@@ -17,6 +17,13 @@ from backend.extensions.metrics.dim_types_generator import (
 )
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
+from backend.metrics.audit import (
+    diff_dimension_literals_vs_registry_markdown,
+    diff_registry_markdown_vs_event_name,
+    find_missing_dimension_model_entries,
+    find_orphan_event_names,
+    find_string_literal_record_event_callers,
+)
 from backend.metrics.events import EventCategory
 from backend.schemas.requests.metrics import TopEventsQuerySchema
 from backend.utils.datetime_utils import utc_now
@@ -24,6 +31,18 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 
 EMPTY_TOP_EVENTS_OUTPUT = "No metrics rows in the requested window."
 TOP_EVENTS_HEADER = "event_name\tcategory\tdescription\ttotal_count"
+
+AUDIT_REGISTRY_MARKDOWN_PATH: Path = Path(
+    "plans/anonymous-metrics/anonymous-metrics-master.md"
+)
+AUDIT_NONE_PLACEHOLDER: str = "(none)"
+AUDIT_SECTION_ORPHANS: str = "# Orphan EventName members"
+AUDIT_SECTION_STRING_LITERAL: str = "# String-literal record_event callers"
+AUDIT_SECTION_MISSING_DIM: str = "# Missing DIMENSION_MODELS entries"
+AUDIT_SECTION_DIM_DRIFT: str = (
+    "# Dimension literal drift (registry markdown vs DIMENSION_MODELS Literals)"
+)
+AUDIT_SECTION_REGISTRY_DRIFT: str = "# Registry markdown drift"
 
 HELP_SUMMARY_METRICS = """Anonymous metrics CLI commands for U4I."""
 
@@ -246,6 +265,90 @@ def top_command(
                 [row.event_name, row.category, row.description, str(row.total_count)]
             )
         )
+
+
+@metrics_cli.command(
+    "audit",
+    help="Audit EventName / DIMENSION_MODELS / record_event coverage.",
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Exit non-zero if any finding category is non-empty.",
+)
+def audit_command(strict: bool) -> None:
+    """Run all five coverage-audit helpers and print findings as TSV.
+
+    Intentionally does NOT require an app context: every helper is a pure
+    AST + enum/dict walk and reads the master plan markdown directly. The
+    `event-coverage-staleness.yml` CI workflow (Step 9) invokes this command
+    with `--strict` to gate PRs without spinning up Postgres or Redis.
+
+    Output is grouped into five sections, each headed by `# <Section>`.
+    Empty sections print `(none)` so the format is stable and grep-able.
+    """
+    orphans = find_orphan_event_names()
+    string_literal_callers = find_string_literal_record_event_callers()
+    missing_dimension_entries = find_missing_dimension_model_entries()
+    dimension_literal_findings = diff_dimension_literals_vs_registry_markdown(
+        AUDIT_REGISTRY_MARKDOWN_PATH
+    )
+    registry_drift_findings = diff_registry_markdown_vs_event_name(
+        AUDIT_REGISTRY_MARKDOWN_PATH
+    )
+
+    click.echo(AUDIT_SECTION_ORPHANS)
+    if orphans:
+        for orphan_event_name in orphans:
+            click.echo(orphan_event_name.name)
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_STRING_LITERAL)
+    if string_literal_callers:
+        for caller in string_literal_callers:
+            click.echo(f"{caller.file}:{caller.line}\trecord_event({caller.literal!r})")
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_MISSING_DIM)
+    if missing_dimension_entries:
+        for missing_event_name in missing_dimension_entries:
+            click.echo(missing_event_name.name)
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_DIM_DRIFT)
+    if dimension_literal_findings:
+        for dimension_finding in dimension_literal_findings:
+            click.echo(
+                f"{dimension_finding.event.name}\tfield={dimension_finding.field}\t"
+                f"code={dimension_finding.code_values}\t"
+                f"markdown={dimension_finding.registry_values}"
+            )
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_REGISTRY_DRIFT)
+    if registry_drift_findings:
+        for registry_finding in registry_drift_findings:
+            click.echo(
+                f"{registry_finding.kind}\t{registry_finding.event}\t"
+                f"{registry_finding.detail}"
+            )
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    any_findings_present = bool(
+        orphans
+        or string_literal_callers
+        or missing_dimension_entries
+        or dimension_literal_findings
+        or registry_drift_findings
+    )
+    if strict and any_findings_present:
+        raise SystemExit(1)
 
 
 def register_metrics_cli(app: Flask):
