@@ -40,6 +40,7 @@ export function initLoginForm($modal: JQuery): void {
 function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
   emit({ event: UI_EVENTS.UI_LOGIN_SUBMIT });
+  $modal.find("#submit").attr("disabled", "disabled").attr("aria-busy", "true");
 
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
@@ -117,6 +118,7 @@ function handleLoginFailure(
       }
       case 2: {
         handleImproperFormErrors($modal, errorJson);
+        $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }
     }
@@ -126,5 +128,6 @@ function handleLoginFailure(
       "Unable to process request...",
       "danger",
     );
+    $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
   }
 }

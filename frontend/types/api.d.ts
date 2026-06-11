@@ -1296,7 +1296,10 @@ export interface operations {
   };
   ingest: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Optional transport hint set by the metrics-client's `flushBeacon()` unload path; `flush()` omits the param. Reserved for future pipeline-health telemetry to distinguish fetch-vs-beacon transport volume in the `API_METRICS_INGEST_BATCH` event. */
+        transport?: "beacon";
+      };
       header?: never;
       path?: never;
       cookie?: never;

@@ -343,7 +343,7 @@ describe("metrics-client", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       expect(sendBeaconMock).toHaveBeenCalledOnce();
       const [url, blob] = sendBeaconMock.mock.calls[0];
-      expect(url).toBe("/api/metrics");
+      expect(url).toBe("/api/metrics?transport=beacon");
       expect(blob).toBeInstanceOf(Blob);
       expect((blob as Blob).type).toBe("application/json");
       return (blob as Blob).text().then((text) => {
@@ -377,7 +377,9 @@ describe("metrics-client", () => {
       });
       document.dispatchEvent(new Event("visibilitychange"));
       expect(fetch).toHaveBeenCalledOnce();
+      const fetchUrl = (fetch as unknown as Mock).mock.calls[0][0];
       const init = (fetch as unknown as Mock).mock.calls[0][1];
+      expect(fetchUrl).toBe("/api/metrics?transport=beacon");
       expect(init.keepalive).toBe(true);
     });
 

@@ -37,7 +37,7 @@ export function initRegisterForm($modal: JQuery): void {
 function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
   emit({ event: UI_EVENTS.UI_REGISTER_SUBMIT });
-  $modal.find("#submit").attr("disabled", "disabled");
+  $modal.find("#submit").attr("disabled", "disabled").attr("aria-busy", "true");
 
   const username: string = String($modal.find("#username").val() ?? "");
   const email: string = String($modal.find("#email").val() ?? "");
@@ -109,7 +109,7 @@ function handleRegisterFailure(
     switch (xhr.status) {
       case 400: {
         handleImproperFormErrors($modal, errorJson);
-        $modal.find("#submit").removeAttr("disabled");
+        $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }
       case 401: {
@@ -125,5 +125,6 @@ function handleRegisterFailure(
       "Unable to process request...",
       "danger",
     );
+    $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
   }
 }
