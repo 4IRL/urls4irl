@@ -155,9 +155,9 @@ class TransportQuerySchema(BaseModel):
         default=None,
         description=(
             "Optional transport hint set by the metrics-client's `flushBeacon()` "
-            "unload path; `flush()` omits the param. Reserved for Phase 13's "
-            "`API_METRICS_INGEST_BATCH` chattiness telemetry to distinguish "
-            "fetch-vs-beacon transports in pipeline-health metrics."
+            "unload path; `flush()` omits the param. Reserved for future "
+            "pipeline-health telemetry to distinguish fetch-vs-beacon transport "
+            "volume in the `API_METRICS_INGEST_BATCH` event."
         ),
     )
 

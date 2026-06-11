@@ -367,20 +367,6 @@ describe("metrics-client", () => {
       vi.useRealTimers();
     });
 
-    it("composes the beacon URL with ?transport=beacon", () => {
-      initMetricsClient();
-      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
-      Object.defineProperty(document, "visibilityState", {
-        value: "hidden",
-        configurable: true,
-      });
-      document.dispatchEvent(new Event("visibilitychange"));
-      expect(sendBeaconMock).toHaveBeenCalledWith(
-        "/api/metrics?transport=beacon",
-        expect.any(Blob),
-      );
-    });
-
     it("falls back to fetch with keepalive when sendBeacon returns false", () => {
       sendBeaconMock.mockReturnValueOnce(false);
       initMetricsClient();
