@@ -14,7 +14,11 @@ from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+)
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.cli
@@ -635,3 +639,197 @@ def test_ingest_authenticated_user_accepted(
     )
 
     assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# API_METRICS_INGEST_BATCH — pipeline-health counter (Phase 13)
+# ---------------------------------------------------------------------------
+
+
+def _three_event_batch_payload() -> dict:
+    """Build a 3-event UI_URL_COPY batch payload for batch-counter tests."""
+    return {
+        "events": [
+            {
+                "event_name": EventName.UI_URL_COPY.value,
+                "dimensions": {
+                    "result": "success",
+                    "device_type": DeviceType.DESKTOP,
+                },
+            }
+            for _ in range(3)
+        ]
+    }
+
+
+def test_ingest_emits_api_metrics_ingest_batch_counter_fetch_transport(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a 3-event batch posted without `?transport=beacon`
+    WHEN the request succeeds (200)
+    THEN exactly one API_METRICS_INGEST_BATCH counter key exists
+    AND its dimensions are batch_size_bucket="2-5", transport="fetch", device_type=int.
+    """
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 0
+    )
+
+    response = client.post(INGEST_URL, json=_three_event_batch_payload())
+
+    assert response.status_code == 200
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 1
+    )
+    keys = find_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+    dims = parse_dims(keys[0])
+    assert dims["batch_size_bucket"] == "2-5"
+    assert dims["transport"] == "fetch"
+    assert dims["device_type"] in (int(DeviceType.MOBILE), int(DeviceType.DESKTOP))
+
+
+def test_ingest_emits_api_metrics_ingest_batch_counter_beacon_transport(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a 3-event batch posted with `?transport=beacon`
+    WHEN the request succeeds (200)
+    THEN exactly one counter key exists with transport="beacon".
+    """
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 0
+    )
+
+    response = client.post(
+        INGEST_URL + "?transport=beacon", json=_three_event_batch_payload()
+    )
+
+    assert response.status_code == 200
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 1
+    )
+    keys = find_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+    dims = parse_dims(keys[0])
+    assert dims["batch_size_bucket"] == "2-5"
+    assert dims["transport"] == "beacon"
+
+
+def test_ingest_emits_batch_counter_even_on_validation_failure(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a payload with an unknown dimension key (per-event validation fails 400)
+    WHEN POSTing
+    THEN the per-event ingest fails (400)
+    BUT the API_METRICS_INGEST_BATCH counter still increments — the counter
+    measures every ingest attempt regardless of validation outcome, surfacing
+    bad-client volume as a spike.
+    """
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 0
+    )
+
+    response = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_FORM_SUBMIT.value,
+                    "dimensions": {
+                        "trigger": "enter_key",
+                        "form": "url_create",
+                        "plan": "free",
+                    },
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 1
+    )
+
+
+@pytest.mark.parametrize(
+    "event_count, expected_bucket",
+    [
+        (1, "1"),
+        (4, "2-5"),
+        (25, "6-25"),
+        (100, "26-100"),
+    ],
+)
+def test_ingest_batch_counter_uses_correct_batch_size_bucket(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+    event_count: int,
+    expected_bucket: str,
+):
+    """
+    GIVEN batches of varying sizes (1, 4, 25, 100)
+    WHEN POSTing
+    THEN the counter's batch_size_bucket dim matches the closed-set label.
+    """
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 0
+    )
+
+    payload = {
+        "events": [
+            {
+                "event_name": EventName.UI_URL_COPY.value,
+                "dimensions": {
+                    "result": "success",
+                    "device_type": DeviceType.DESKTOP,
+                },
+            }
+            for _ in range(event_count)
+        ]
+    }
+
+    response = client.post(INGEST_URL, json=payload)
+
+    assert response.status_code == 200
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+        == 1
+    )
+    keys = find_counter_keys(provide_metrics_redis, EventName.API_METRICS_INGEST_BATCH)
+    dims = parse_dims(keys[0])
+    assert dims["batch_size_bucket"] == expected_bucket
+
+
+def test_ingest_batch_counter_is_not_double_counted_via_api_hit(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a successful ingest
+    WHEN inspecting the metrics blueprint's API_HIT counter
+    THEN there is no API_HIT counter for `metrics.ingest` — the recursion
+    guard in `_should_skip(blueprint='metrics')` keeps the new batch counter
+    from being double-counted via the middleware. Belt-and-braces guard if
+    that skip rule is ever weakened.
+    """
+    assert count_counter_keys(provide_metrics_redis, EventName.API_HIT) == 0
+
+    response = client.post(INGEST_URL, json=_three_event_batch_payload())
+
+    assert response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.API_HIT) == 0

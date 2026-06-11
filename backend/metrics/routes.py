@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from flask import Blueprint, request
 from pydantic import BaseModel, ValidationError
 
@@ -9,11 +11,12 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions.metrics.buckets import previous_window, resolve_query_window
+from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.extensions.metrics.writer import record_event
 from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
-from backend.metrics.events import EventCategory, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
 from backend.metrics.resources import Resource
 from backend.schemas.errors import (
     ErrorResponse,
@@ -40,6 +43,26 @@ metrics = Blueprint("metrics", __name__)
 # Rate limit values are conservative — Phase 4 batches with debounce, so
 # 120/min/IP is generous; tighten once frontend telemetry lands if needed.
 _METRICS_RATE_LIMIT = "120 per minute, 3000 per hour"
+
+
+def _bucket_batch_size(event_count: int) -> Literal["1", "2-5", "6-25", "26-100"]:
+    """Maps a batch event_count to its closed-set bucket label.
+
+    Examples:
+        >>> _bucket_batch_size(1)
+        '1'
+        >>> _bucket_batch_size(5)
+        '2-5'
+        >>> _bucket_batch_size(100)
+        '26-100'
+    """
+    if event_count <= 1:
+        return "1"
+    if event_count <= 5:
+        return "2-5"
+    if event_count <= 25:
+        return "6-25"
+    return "26-100"
 
 
 def _parse_query_args(schema_cls: type[BaseModel]) -> BaseModel | FlaskResponse:
@@ -82,6 +105,15 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
     parsed_query = _parse_query_args(TransportQuerySchema)
     if not isinstance(parsed_query, BaseModel):
         return parsed_query
+
+    record_event(
+        EventName.API_METRICS_INGEST_BATCH,
+        dimensions={
+            "batch_size_bucket": _bucket_batch_size(len(metrics_ingest_request.events)),
+            "transport": "beacon" if parsed_query.transport == "beacon" else "fetch",
+            DEVICE_TYPE_DIM_KEY: classify_user_agent(request.headers.get("User-Agent")),
+        },
+    )
 
     if metrics_ingest_request.batch_id is not None:
         newly_reserved = metrics_writer.reserve_batch(metrics_ingest_request.batch_id)

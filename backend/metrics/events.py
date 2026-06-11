@@ -27,6 +27,7 @@ DEVICE_TYPE_DIM_KEY: str = "device_type"
 class EventName(StrEnum):
     # API — auto-instrumented via middleware
     API_HIT = "api_hit"
+    API_METRICS_INGEST_BATCH = "api_metrics_ingest_batch"
 
     # Domain — explicit record_event() calls in service layer
     UTUB_CREATED = "utub_created"
@@ -111,6 +112,7 @@ class EventName(StrEnum):
 EVENT_CATEGORY: dict[EventName, EventCategory] = {
     # API
     EventName.API_HIT: EventCategory.API,
+    EventName.API_METRICS_INGEST_BATCH: EventCategory.API,
     # Domain
     EventName.UTUB_CREATED: EventCategory.DOMAIN,
     EventName.UTUB_DELETED: EventCategory.DOMAIN,
@@ -185,6 +187,7 @@ EVENT_CATEGORY: dict[EventName, EventCategory] = {
 EVENT_DESCRIPTIONS: dict[EventName, str] = {
     # API
     EventName.API_HIT: "Every HTTP request (excl. static, health, /metrics)",
+    EventName.API_METRICS_INGEST_BATCH: "Counter on every accepted POST /api/metrics batch, tagged with batch_size_bucket × transport × device_type for pipeline-health telemetry.",
     # Domain
     EventName.UTUB_CREATED: "New UTub created",
     EventName.UTUB_DELETED: "UTub deleted by owner",

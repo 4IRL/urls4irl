@@ -184,13 +184,17 @@ def test_every_ui_event_flows_end_to_end_through_ingest_and_flush(
         f"got {ingest_response.get_json()['accepted']}"
     )
 
-    # Step 5 — flush Redis into AnonymousMetrics.
+    # Step 5 — flush Redis into AnonymousMetrics. The flush count is
+    # `len(events_payload) + 1` because every ingest attempt also emits the
+    # auto-fired API_METRICS_INGEST_BATCH pipeline-health counter.
     inline_conn = _build_pg_conn(app)
     try:
         upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=inline_conn)
-        assert upserted == len(
-            events_payload
-        ), f"Flush upserted {upserted} rows; expected {len(events_payload)}"
+        expected_upserts = len(events_payload) + 1
+        assert upserted == expected_upserts, (
+            f"Flush upserted {upserted} rows; expected {expected_upserts} "
+            f"({len(events_payload)} payload events + 1 API_METRICS_INGEST_BATCH counter)"
+        )
 
         with inline_conn.cursor() as cursor:
             cursor.execute(

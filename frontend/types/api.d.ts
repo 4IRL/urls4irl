@@ -1420,6 +1420,7 @@ export interface operations {
         /** @description Any EventName value (api, domain, or ui). */
         event_name:
           | "api_hit"
+          | "api_metrics_ingest_batch"
           | "utub_created"
           | "utub_deleted"
           | "utub_opened"

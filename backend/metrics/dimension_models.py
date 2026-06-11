@@ -244,6 +244,13 @@ class _DimApiHit(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimApiMetricsIngestBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    batch_size_bucket: Literal["1", "2-5", "6-25", "26-100"]
+    transport: Literal["fetch", "beacon"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 # ---------------------------------------------------------------------------
 # DIMENSION_MODELS — every member of EventName keyed. `None` for events
 # without dimensions. Order mirrors `EventName` for review-friendliness.
@@ -253,6 +260,7 @@ class _DimApiHit(BaseModel):
 DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # API
     EventName.API_HIT: _DimApiHit,
+    EventName.API_METRICS_INGEST_BATCH: _DimApiMetricsIngestBatch,
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
     EventName.UTUB_CREATED: _DimDeviceOnly,
     EventName.UTUB_DELETED: _DimDeviceOnly,

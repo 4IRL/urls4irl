@@ -453,6 +453,7 @@
             "schema": {
               "enum": [
                 "api_hit",
+                "api_metrics_ingest_batch",
                 "utub_created",
                 "utub_deleted",
                 "utub_opened",

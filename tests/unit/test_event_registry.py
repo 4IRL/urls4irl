@@ -41,14 +41,23 @@ def test_every_event_has_description():
         assert EVENT_DESCRIPTIONS[member]
 
 
-def test_api_category_contains_only_api_hit():
-    """The API category contains exactly one event: API_HIT."""
+def test_api_category_contains_only_server_emitted_api_events():
+    """The API category contains the two server-emitted middleware/route counters.
+
+    `API_HIT` is auto-emitted by middleware on every request; `API_METRICS_INGEST_BATCH`
+    is explicitly emitted by the `POST /api/metrics` ingest route per batch attempt.
+    No other event belongs in the API category — UI and domain events have their own
+    categories and emission paths.
+    """
     api_members = {
         member
         for member, category in EVENT_CATEGORY.items()
         if category is EventCategory.API
     }
-    assert api_members == {EventName.API_HIT}
+    assert api_members == {
+        EventName.API_HIT,
+        EventName.API_METRICS_INGEST_BATCH,
+    }
 
 
 def test_ui_events_have_ui_prefix():
