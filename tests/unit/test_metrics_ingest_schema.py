@@ -9,7 +9,10 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
-from backend.schemas.requests.metrics import MetricsIngestRequest
+from backend.schemas.requests.metrics import (
+    MetricsIngestRequest,
+    TransportQuerySchema,
+)
 
 pytestmark = pytest.mark.unit
 
@@ -225,3 +228,27 @@ def test_batch_id_max_length_boundary_rejects_129_chars():
         MetricsIngestRequest.model_validate(
             {"events": [base_event], "batch_id": "a" * 129}
         )
+
+
+def test_transport_query_schema_absent_param_yields_none():
+    """Empty payload yields `transport is None` (the param is optional)."""
+    schema_instance = TransportQuerySchema.model_validate({})
+    assert schema_instance.transport is None
+
+
+def test_transport_query_schema_accepts_beacon():
+    """`transport='beacon'` is accepted and round-trips on the model."""
+    schema_instance = TransportQuerySchema.model_validate({"transport": "beacon"})
+    assert schema_instance.transport == "beacon"
+
+
+def test_transport_query_schema_rejects_non_beacon_literal():
+    """Any non-`'beacon'` value raises ValidationError (Literal mismatch)."""
+    with pytest.raises(ValidationError):
+        TransportQuerySchema.model_validate({"transport": "quic"})
+
+
+def test_transport_query_schema_rejects_extra_key():
+    """`extra='forbid'` blocks unknown query keys (e.g. typo'd `transports`)."""
+    with pytest.raises(ValidationError):
+        TransportQuerySchema.model_validate({"transports": "beacon"})

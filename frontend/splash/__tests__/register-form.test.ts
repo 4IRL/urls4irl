@@ -201,6 +201,31 @@ describe("register-form double-submit guard", () => {
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
   });
 
+  it("leaves #submit disabled (and aria-busy) on 401 errorCode=1", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    // disabled-leftover is intentional: handleUserHasAccountNotEmailValidated
+    // removes .modal-footer so re-enable in case 401 would be a silent no-op
+    // (jQuery set is empty); aria-busy is similarly left set.
+    mockDeferred.reject(
+      {
+        status: 401,
+        responseJSON: { errorCode: 1, message: "Email not validated" },
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Unauthorized",
+    );
+
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+    expect($modal.find("#submit").attr("aria-busy")).toBe("true");
+  });
+
   it("re-enables #submit when failure JSON has no errorCode", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
