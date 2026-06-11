@@ -29,6 +29,8 @@ export type EmitArgs<EventT extends UIEventName> = {
 } & CallerDimensions<EventT>;
 
 const METRICS_INGEST_URL = "/api/metrics" as const;
+const METRICS_INGEST_BEACON_URL =
+  `${METRICS_INGEST_URL}?transport=beacon` as const;
 const DEDUPE_COOLDOWN_MS = 1000;
 const FLUSH_INTERVAL_MS = 60000;
 const BATCH_THRESHOLD = 50;
@@ -217,10 +219,10 @@ function flushBeacon(): void {
     const blob = new Blob([serialized], { type: "application/json" });
     const beaconEnqueued =
       typeof navigator.sendBeacon === "function"
-        ? navigator.sendBeacon(METRICS_INGEST_URL, blob)
+        ? navigator.sendBeacon(METRICS_INGEST_BEACON_URL, blob)
         : false;
     if (!beaconEnqueued) {
-      void fetch(METRICS_INGEST_URL, {
+      void fetch(METRICS_INGEST_BEACON_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: serialized,

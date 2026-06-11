@@ -343,7 +343,7 @@ describe("metrics-client", () => {
       document.dispatchEvent(new Event("visibilitychange"));
       expect(sendBeaconMock).toHaveBeenCalledOnce();
       const [url, blob] = sendBeaconMock.mock.calls[0];
-      expect(url).toBe("/api/metrics");
+      expect(url).toBe("/api/metrics?transport=beacon");
       expect(blob).toBeInstanceOf(Blob);
       expect((blob as Blob).type).toBe("application/json");
       return (blob as Blob).text().then((text) => {
@@ -367,6 +367,20 @@ describe("metrics-client", () => {
       vi.useRealTimers();
     });
 
+    it("composes the beacon URL with ?transport=beacon", () => {
+      initMetricsClient();
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      expect(sendBeaconMock).toHaveBeenCalledWith(
+        "/api/metrics?transport=beacon",
+        expect.any(Blob),
+      );
+    });
+
     it("falls back to fetch with keepalive when sendBeacon returns false", () => {
       sendBeaconMock.mockReturnValueOnce(false);
       initMetricsClient();
@@ -377,7 +391,9 @@ describe("metrics-client", () => {
       });
       document.dispatchEvent(new Event("visibilitychange"));
       expect(fetch).toHaveBeenCalledOnce();
+      const fetchUrl = (fetch as unknown as Mock).mock.calls[0][0];
       const init = (fetch as unknown as Mock).mock.calls[0][1];
+      expect(fetchUrl).toBe("/api/metrics?transport=beacon");
       expect(init.keepalive).toBe(true);
     });
 

@@ -72,6 +72,99 @@ def test_ingest_happy_path_no_csrf(
     assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
+def test_ingest_accepts_transport_beacon_query_param(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN an anonymous client posting to the ingest endpoint with ?transport=beacon
+    WHEN POSTing a single-event payload
+    THEN the response is 200 and the corresponding Redis counter is incremented.
+
+    Regression guard: once `extra="forbid"` is enforced on TransportQuerySchema,
+    a typo'd `?transports=...` would 400. This test confirms `?transport=beacon`
+    is accepted as a valid Literal value.
+    """
+    response = client.post(
+        INGEST_URL + "?transport=beacon",
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_URL_COPY.value,
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json["accepted"] == 1
+
+
+def test_ingest_rejects_unknown_transport_value(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+):
+    """
+    GIVEN an anonymous client posting with ?transport=quic (not the Literal "beacon")
+    WHEN POSTing a valid single-event payload
+    THEN the response is 400 with INVALID_QUERY_PARAM (Literal mismatch).
+    """
+    response = client.post(
+        INGEST_URL + "?transport=quic",
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_URL_COPY.value,
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_QUERY_PARAM
+
+
+def test_ingest_rejects_unknown_query_param(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+):
+    """
+    GIVEN an anonymous client posting with a typo'd ?transports=beacon (extra key)
+    WHEN POSTing a valid single-event payload
+    THEN the response is 400 with INVALID_QUERY_PARAM (extra="forbid").
+    """
+    response = client.post(
+        INGEST_URL + "?transports=beacon",
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_URL_COPY.value,
+                    "dimensions": {
+                        "result": "success",
+                        "device_type": DeviceType.MOBILE,
+                    },
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.ERROR_CODE] == MetricsErrorCodes.INVALID_QUERY_PARAM
+
+
 def test_ingest_ignores_invalid_csrf_header(
     metrics_enabled_app: Flask,
     client: FlaskClient,

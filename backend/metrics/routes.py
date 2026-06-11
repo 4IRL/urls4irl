@@ -30,6 +30,7 @@ from backend.schemas.requests.metrics import (
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,
+    TransportQuerySchema,
 )
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.openapi_strs import OPEN_API
@@ -68,6 +69,7 @@ def _parse_query_args(schema_cls: type[BaseModel]) -> BaseModel | FlaskResponse:
 @api_route(
     request_schema=MetricsIngestRequest,
     response_schema=MetricsIngestResponseSchema,
+    query_schema=TransportQuerySchema,
     error_message=MetricsFailureMessages.UNABLE_TO_RECORD_METRICS,
     error_code=MetricsErrorCodes.INVALID_FORM_INPUT,
     ajax_required=False,
@@ -77,6 +79,10 @@ def _parse_query_args(schema_cls: type[BaseModel]) -> BaseModel | FlaskResponse:
 )
 @limiter.limit(_METRICS_RATE_LIMIT, methods=["POST"])
 def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
+    parsed_query = _parse_query_args(TransportQuerySchema)
+    if not isinstance(parsed_query, BaseModel):
+        return parsed_query
+
     if metrics_ingest_request.batch_id is not None:
         newly_reserved = metrics_writer.reserve_batch(metrics_ingest_request.batch_id)
         if not newly_reserved:

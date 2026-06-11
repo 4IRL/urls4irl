@@ -148,6 +148,20 @@ class MetricsIngestRequest(BaseModel):
     )
 
 
+class TransportQuerySchema(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    transport: Literal["beacon"] | None = Field(
+        default=None,
+        description=(
+            "Optional transport hint set by the metrics-client's `flushBeacon()` "
+            "unload path; `flush()` omits the param. Reserved for Phase 13's "
+            "`API_METRICS_INGEST_BATCH` chattiness telemetry to distinguish "
+            "fetch-vs-beacon transports in pipeline-health metrics."
+        ),
+    )
+
+
 # Module-level tuple of every EventName value (api + domain + ui). Used by the
 # timeseries query schema, which accepts any event the registry tracks — not
 # just the UI subset that the ingest endpoint admits.
