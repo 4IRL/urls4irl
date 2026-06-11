@@ -125,6 +125,7 @@ export function emailValidationModalOpener($fromModal: JQuery): void {
 export function resetModalFormState($modal: JQuery): void {
   $modal.find(".invalid-feedback").remove();
   $modal.find(".form-control").removeClass("is-invalid");
+  $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
   hideSplashModalAlertBanner($modal);
 }
 

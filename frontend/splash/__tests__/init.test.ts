@@ -501,6 +501,19 @@ describe("resetModalFormState", () => {
     expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
     expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
   });
+
+  it("removes stale disabled and aria-busy attrs from #submit", () => {
+    // Self-contained local $modal fixture (the shared beforeEach DOM does not
+    // include a #submit button) — do NOT modify the shared beforeEach.
+    const $modal = $(
+      '<div><button id="submit" disabled="disabled" aria-busy="true"></button></div>',
+    );
+
+    resetModalFormState($modal);
+
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+  });
 });
 
 describe("initEmailValidationForm", () => {

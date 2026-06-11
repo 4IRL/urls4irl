@@ -145,3 +145,106 @@ describe("login-form metrics — UI_LOGIN_SUBMIT", () => {
     });
   });
 });
+
+describe("login-form double-submit guard", () => {
+  beforeEach(() => {
+    document.body.innerHTML = LOGIN_MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("disables #submit while the login request is in flight", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+
+    $modal.find("#submit").trigger("click");
+
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+    expect($modal.find("#submit").attr("aria-busy")).toBe("true");
+  });
+
+  it("leaves #submit disabled (and aria-busy) on errorCode=1 (email-not-validated)", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    // disabled-leftover is intentional: handleUserHasAccountNotEmailValidated
+    // removes .modal-footer so re-enable in case 1 would be a silent no-op
+    // (jQuery set is empty); aria-busy is similarly left set.
+    mockDeferred.reject(
+      {
+        status: 401,
+        responseJSON: { errorCode: 1, message: "Email not validated" },
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Unauthorized",
+    );
+
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+    expect($modal.find("#submit").attr("aria-busy")).toBe("true");
+  });
+
+  it("re-enables #submit on a 400 errorCode=2 failure", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+
+    mockDeferred.reject(
+      {
+        status: 400,
+        responseJSON: {
+          errorCode: 2,
+          message: "Invalid",
+          errors: { password: ["Invalid"] },
+        },
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Bad Request",
+    );
+
+    // handleImproperFormErrors is mocked (no-op DOM) in this test file;
+    // only the removeAttr calls are under test here.
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+  });
+
+  it("re-enables #submit when failure JSON has no errorCode", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+
+    mockDeferred.reject(
+      {
+        status: 500,
+        responseJSON: { message: "Server error" },
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Server Error",
+    );
+
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+  });
+});
