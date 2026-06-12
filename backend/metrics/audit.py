@@ -2,14 +2,14 @@
 
 Pure AST + enum/dict introspection. No Flask app context, no DB, no Redis.
 Used by both `tests/unit/test_event_coverage.py` (unit invariants) and the
-`flask metrics audit` CLI (Step 2 of the coverage-audit plan, Step 9 CI gate).
+`flask metrics audit` CLI (the event-coverage-staleness CI gate).
 
 Five public helpers:
 - `find_orphan_event_names()` — EventName members with zero external references.
 - `find_string_literal_record_event_callers()` — record_event("foo", ...) callers.
 - `find_missing_dimension_model_entries()` — EventName members absent from DIMENSION_MODELS.
-- `diff_dimension_literals_vs_registry_markdown(path)` — Pydantic Literal vs documented set.
-- `diff_registry_markdown_vs_event_name(path)` — bidirectional registry/enum drift.
+- `diff_dimension_literals_vs_registry()` — Pydantic Literal vs EVENT_REGISTRY dim values.
+- `diff_registry_vs_event_name()` — bidirectional EVENT_REGISTRY/EventName drift.
 
 Each helper returns `[]` when its invariant holds. Non-empty lists are findings.
 """
@@ -17,12 +17,12 @@ Each helper returns `[]` when its invariant holds. Non-empty lists are findings.
 from __future__ import annotations
 
 import ast
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, get_args, get_origin
 
 from backend.metrics.dimension_models import DIMENSION_MODELS
+from backend.metrics.event_registry import EVENT_REGISTRY
 from backend.metrics.events import (
     EVENT_CATEGORY,
     EVENT_DESCRIPTIONS,
@@ -68,51 +68,12 @@ _ORPHAN_CHECK_CATEGORIES: frozenset[EventCategory] = frozenset(
 
 
 # Allowlist of EventName members deferred by explicit design decision (not
-# a real coverage gap). Each entry is paired with the master plan line that
-# records the deferral so the next maintainer can verify the decision still
-# holds. `URL_ACCESSED` is deferred per master plan line 363 in favour of
-# the UI-side `UI_URL_ACCESS` event.
+# a real coverage gap). `URL_ACCESSED` is intentionally deferred in favour of
+# the UI-side `UI_URL_ACCESS` event, which captures the same user behaviour
+# with richer dimensions and without any backend service-layer overhead.
 _INTENTIONALLY_UNTRACKED_EVENTS: frozenset[EventName] = frozenset(
     {EventName.URL_ACCESSED}
 )
-
-
-# Markdown Event Registry section heading (master plan).
-_REGISTRY_SECTION_HEADING: str = "## Event Registry"
-
-
-# Sub-section headings inside `## Event Registry` — each maps to one
-# EventCategory. The category mapping is what `diff_registry_markdown_vs_event_name`
-# uses to cross-check `EVENT_CATEGORY[member]`.
-_REGISTRY_SUBSECTION_HEADING_PREFIX: str = "### "
-_REGISTRY_CATEGORY_BY_SUBSECTION: dict[str, EventCategory] = {
-    "API": EventCategory.API,
-    "Domain": EventCategory.DOMAIN,
-    "UI": EventCategory.UI,
-}
-
-
-# Pattern for a registry table row: `| EventName | Description | Dimensions | Phase |`
-# Sub-group separator rows like `| **UTubs** | | | |` are excluded by requiring
-# the first cell to look like an UPPER_SNAKE_CASE identifier.
-_REGISTRY_ROW_PATTERN: re.Pattern[str] = re.compile(
-    r"^\|\s*(?P<event>[A-Z][A-Z0-9_]+)\s*\|"
-    r"\s*(?P<description>[^|]*?)\s*\|"
-    r"\s*(?P<dimensions>[^|]*?)\s*\|"
-    r"\s*(?P<phase>[^|]*?)\s*\|"
-    r"\s*$"
-)
-
-
-# Pattern for a dim cell entry: backtick-quoted field name followed by a
-# colon-separated list of backtick-quoted values, e.g.:
-#   `trigger`: `pencil_icon` / `keyboard`
-# A trailing free-form description (e.g. `active_tag_count`: N) is captured
-# as the value list "N" so the helper can skip non-Literal fields.
-_REGISTRY_DIM_FIELD_PATTERN: re.Pattern[str] = re.compile(
-    r"`(?P<field>[a-zA-Z_][a-zA-Z0-9_]*)`\s*:\s*(?P<values>[^,]+)"
-)
-_REGISTRY_DIM_VALUE_PATTERN: re.Pattern[str] = re.compile(r"`([^`]+)`")
 
 
 # ---------------------------------------------------------------------------
@@ -131,7 +92,7 @@ class StringLiteralFinding:
 
 @dataclass(frozen=True)
 class DimensionLiteralFinding:
-    """A drift between the markdown registry's documented dim values and the code-side Literal[...]."""
+    """A drift between the EVENT_REGISTRY documented dim values and the code-side Literal[...]."""
 
     event: EventName
     field: str
@@ -141,29 +102,16 @@ class DimensionLiteralFinding:
 
 @dataclass(frozen=True)
 class RegistryDriftFinding:
-    """A drift between the markdown registry and the EventName enum."""
+    """A drift between EVENT_REGISTRY and the EventName enum / derived dicts."""
 
     kind: Literal[
-        "missing_in_markdown",
+        "missing_in_registry",
         "missing_in_code",
         "description_mismatch",
         "category_mismatch",
     ]
     event: str
     detail: str
-
-
-@dataclass(frozen=True)
-class _ParsedMarkdownRow:
-    """One row of the markdown Event Registry table.
-
-    Internal — emitted by `_parse_registry_markdown` and consumed by the two
-    `diff_*` helpers. Not part of the public API.
-    """
-
-    description: str
-    dimensions: dict[str, tuple[str, ...]]
-    category: EventCategory
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +166,7 @@ def find_orphan_event_names(
     - a category in `_ORPHAN_CHECK_CATEGORIES` (API + DOMAIN — UI events
       are wired via codegen, not via Python attribute access) AND
     - membership NOT in `_INTENTIONALLY_UNTRACKED_EVENTS` (deferred by
-      explicit design decision; see master plan line 363 for URL_ACCESSED).
+      explicit design decision — see the comment on that constant).
     """
     referenced_externally: set[str] = set()
     for python_file in _iter_python_files(backend_root):
@@ -300,25 +248,21 @@ def find_missing_dimension_model_entries() -> list[EventName]:
     ]
 
 
-def diff_dimension_literals_vs_registry_markdown(
-    registry_md: Path,
-) -> list[DimensionLiteralFinding]:
-    """Diff documented dim values (markdown) vs code-side Pydantic `Literal[...]` args.
+def diff_dimension_literals_vs_registry() -> list[DimensionLiteralFinding]:
+    """Diff EVENT_REGISTRY-documented dim values vs code-side Pydantic `Literal[...]` args.
 
     For every (event_name, dim_field) pair where the code-side annotation is a
-    `Literal[...]`, compare the literal arg set against the markdown registry's
-    documented value set. Fields whose code-side annotation is non-Literal
+    `Literal[...]`, compare the literal arg set against the `dimensions` mapping
+    in `EVENT_REGISTRY[event]`. Fields whose code-side annotation is non-Literal
     (int, str, bool, IntEnum) are skipped — both sides agree there is no
     closed-set constraint.
     """
-    markdown_rows: dict[str, _ParsedMarkdownRow] = _parse_registry_markdown(registry_md)
-
     findings: list[DimensionLiteralFinding] = []
     for event_name, dim_model in DIMENSION_MODELS.items():
         if dim_model is None:
             continue
-        markdown_row = markdown_rows.get(event_name.name)
-        if markdown_row is None:
+        registry_entry = EVENT_REGISTRY.get(event_name)
+        if registry_entry is None:
             continue
 
         for field_name, field_info in dim_model.model_fields.items():
@@ -326,15 +270,14 @@ def diff_dimension_literals_vs_registry_markdown(
             if get_origin(annotation) is not Literal:
                 continue
             code_values = tuple(str(value) for value in get_args(annotation))
-            registry_values = markdown_row.dimensions.get(field_name)
+            registry_values = registry_entry.dimensions.get(field_name)
             if registry_values is None:
-                # Markdown does not document this field at all — distinct from
-                # the "documented but unenumerated" case below. This typically
-                # arises when the markdown row uses a free-form descriptor
-                # (e.g., "(top-level columns)" for API_HIT) instead of an
-                # enumerated `field: value1 / value2` clause. Code is the
-                # authoritative source for the Literal; skip silently rather
-                # than flag a drift the registry cannot meaningfully express.
+                # EVENT_REGISTRY does not document this field. Two legitimate
+                # reasons: the field is a closed-set Literal that the registry
+                # author chose to leave out (e.g. API_HIT's top-level
+                # endpoint/method/status_code columns), or the registry uses a
+                # free-form descriptor for a non-Literal field. Code is the
+                # authoritative source for the Literal; skip silently.
                 continue
             if set(code_values) != set(registry_values):
                 findings.append(
@@ -348,184 +291,80 @@ def diff_dimension_literals_vs_registry_markdown(
     return findings
 
 
-def diff_registry_markdown_vs_event_name(
-    registry_md: Path,
-) -> list[RegistryDriftFinding]:
-    """Bidirectional drift between markdown Event Registry and EventName + EVENT_* dicts.
+def diff_registry_vs_event_name() -> list[RegistryDriftFinding]:
+    """Bidirectional drift between `EVENT_REGISTRY` and the `EventName` enum.
 
     Findings:
-    - `missing_in_markdown` — `EventName` member has no registry row.
-    - `missing_in_code` — registry row's first cell does not match an enum member.
-    - `description_mismatch` — registry Description column != `EVENT_DESCRIPTIONS[member]`.
-    - `category_mismatch` — registry sub-section heading group != `EVENT_CATEGORY[member]`.
-    """
-    markdown_rows: dict[str, _ParsedMarkdownRow] = _parse_registry_markdown(registry_md)
-    findings: list[RegistryDriftFinding] = []
+    - `missing_in_registry` — `EventName` member has no `EVENT_REGISTRY` entry.
+    - `missing_in_code` — `EVENT_REGISTRY` key has no matching `EventName` member.
+    - `description_mismatch` — entry description != `EVENT_DESCRIPTIONS[member]`.
+    - `category_mismatch` — entry category != `EVENT_CATEGORY[member]`.
 
+    In the current architecture `EVENT_DESCRIPTIONS` / `EVENT_CATEGORY` are
+    derived projections of `EVENT_REGISTRY`, so description/category mismatches
+    are reachable only if a future refactor breaks that derivation. The bidir
+    keys-vs-enum check remains the primary drift signal.
+    """
+    findings: list[RegistryDriftFinding] = []
     code_event_names: set[str] = {event_name.name for event_name in EventName}
 
     for event_name in EventName:
-        markdown_row = markdown_rows.get(event_name.name)
-        if markdown_row is None:
+        registry_entry = EVENT_REGISTRY.get(event_name)
+        if registry_entry is None:
             findings.append(
                 RegistryDriftFinding(
-                    kind="missing_in_markdown",
+                    kind="missing_in_registry",
                     event=event_name.name,
-                    detail="no registry row in master plan",
+                    detail="no EVENT_REGISTRY entry",
                 )
             )
             continue
 
         expected_description = EVENT_DESCRIPTIONS[event_name]
-        if markdown_row.description != expected_description:
+        if registry_entry.description != expected_description:
             findings.append(
                 RegistryDriftFinding(
                     kind="description_mismatch",
                     event=event_name.name,
                     detail=(
-                        f"markdown={markdown_row.description!r} vs "
+                        f"registry={registry_entry.description!r} vs "
                         f"code={expected_description!r}"
                     ),
                 )
             )
 
         expected_category = EVENT_CATEGORY[event_name]
-        if markdown_row.category != expected_category:
+        if registry_entry.category != expected_category:
             findings.append(
                 RegistryDriftFinding(
                     kind="category_mismatch",
                     event=event_name.name,
                     detail=(
-                        f"markdown={markdown_row.category.value!r} vs "
+                        f"registry={registry_entry.category.value!r} vs "
                         f"code={expected_category.value!r}"
                     ),
                 )
             )
 
-    for markdown_event_name in markdown_rows:
-        if markdown_event_name not in code_event_names:
+    for registry_event in EVENT_REGISTRY:
+        if registry_event.name not in code_event_names:
             findings.append(
                 RegistryDriftFinding(
                     kind="missing_in_code",
-                    event=markdown_event_name,
-                    detail="registry row has no matching EventName member",
+                    event=registry_event.name,
+                    detail="EVENT_REGISTRY entry has no matching EventName member",
                 )
             )
 
     return findings
 
 
-# ---------------------------------------------------------------------------
-# Markdown registry parser
-# ---------------------------------------------------------------------------
-
-
-def _parse_registry_markdown(registry_md: Path) -> dict[str, _ParsedMarkdownRow]:
-    """Walk the master plan's `## Event Registry` section into a dict.
-
-    State machine:
-    - Outside `## Event Registry` → skip everything.
-    - Inside `## Event Registry`, sub-section heading determines current category.
-    - Table rows matching `_REGISTRY_ROW_PATTERN` populate the dict.
-    """
-    parsed_rows: dict[str, _ParsedMarkdownRow] = {}
-    text = registry_md.read_text(encoding="utf-8")
-
-    inside_registry_section: bool = False
-    current_category: EventCategory | None = None
-
-    for line in text.splitlines():
-        stripped_line = line.strip()
-
-        # Detect section / sub-section transitions.
-        if stripped_line.startswith("## "):
-            inside_registry_section = stripped_line == _REGISTRY_SECTION_HEADING
-            current_category = None
-            continue
-        if not inside_registry_section:
-            continue
-        if stripped_line.startswith(_REGISTRY_SUBSECTION_HEADING_PREFIX):
-            current_category = _classify_subsection_heading(stripped_line)
-            continue
-        if current_category is None:
-            continue
-
-        row_match = _REGISTRY_ROW_PATTERN.match(line)
-        if row_match is None:
-            continue
-
-        event_name_cell = row_match.group("event")
-        description_cell = row_match.group("description")
-        dimensions_cell = row_match.group("dimensions")
-
-        dimensions = _parse_dim_cell(dimensions_cell)
-        parsed_rows[event_name_cell] = _ParsedMarkdownRow(
-            description=description_cell,
-            dimensions=dimensions,
-            category=current_category,
-        )
-
-    return parsed_rows
-
-
-def _classify_subsection_heading(heading_line: str) -> EventCategory | None:
-    """Map `### API (...)`, `### Domain (...)`, `### UI (...)` to an EventCategory.
-
-    Returns `None` for any other sub-heading (e.g., `### Coverage Summary`).
-    """
-    body_after_prefix = heading_line[len(_REGISTRY_SUBSECTION_HEADING_PREFIX) :].strip()
-    first_word = body_after_prefix.split(" ", maxsplit=1)[0]
-    return _REGISTRY_CATEGORY_BY_SUBSECTION.get(first_word)
-
-
-def _parse_dim_cell(dimensions_cell: str) -> dict[str, tuple[str, ...]]:
-    r"""Parse the `Dimensions` table cell into `{field_name: (value, value, ...)}`.
-
-    Handles:
-    - `—` (em-dash) or empty cell → returns {}.
-    - `\`field\`: \`value1\` / \`value2\`` style closed-set Literals.
-    - `\`field\`: N` style non-Literal placeholder → mapped to `("N",)` so callers can detect it.
-    """
-    # Em-dash + empty marker = no dimensions documented.
-    if not dimensions_cell or dimensions_cell == "—":
-        return {}
-
-    parsed_fields: dict[str, tuple[str, ...]] = {}
-    # Splitting by comma is too aggressive — values can themselves contain
-    # spaces. We use the regex to find every `field: tail` pair greedily.
-    for field_match in _REGISTRY_DIM_FIELD_PATTERN.finditer(dimensions_cell):
-        field_name = field_match.group("field")
-        values_section_start = field_match.end()
-        # The values for this field run until the next `<comma><backtick>field<backtick>:`
-        # boundary or the end of the cell.
-        next_field_match = _REGISTRY_DIM_FIELD_PATTERN.search(
-            dimensions_cell, values_section_start
-        )
-        if next_field_match is None:
-            values_section = dimensions_cell[field_match.start("values") :]
-        else:
-            values_section = dimensions_cell[
-                field_match.start("values") : next_field_match.start()
-            ]
-        # Strip a trailing comma if present (separates two field clauses).
-        values_section = values_section.rstrip(",").strip()
-        backtick_values = _REGISTRY_DIM_VALUE_PATTERN.findall(values_section)
-        if backtick_values:
-            parsed_fields[field_name] = tuple(backtick_values)
-        else:
-            # Non-Literal placeholder like `N` (active_tag_count). Mark as "open"
-            # by recording the raw text so callers can detect and skip.
-            parsed_fields[field_name] = (values_section,)
-
-    return parsed_fields
-
-
 __all__ = [
     "DimensionLiteralFinding",
     "RegistryDriftFinding",
     "StringLiteralFinding",
-    "diff_dimension_literals_vs_registry_markdown",
-    "diff_registry_markdown_vs_event_name",
+    "diff_dimension_literals_vs_registry",
+    "diff_registry_vs_event_name",
     "find_missing_dimension_model_entries",
     "find_orphan_event_names",
     "find_string_literal_record_event_callers",

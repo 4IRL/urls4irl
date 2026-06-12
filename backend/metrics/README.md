@@ -15,11 +15,9 @@ Each event flows through three layers:
 
 ```
 Definition       Wiring                          Emission
-EventName    →   EVENT_CATEGORY                  service code (DOMAIN/API)
-             →   EVENT_DESCRIPTIONS              or TS recordEvent() (UI)
-             →   DIMENSION_MODELS  (Pydantic)
+EventName    →   EVENT_REGISTRY                  service code (DOMAIN/API)
+             →   DIMENSION_MODELS  (Pydantic)    or TS recordEvent() (UI)
              →   EVENT_NAME_TO_RESOURCE
-             →   Event Registry markdown row
 ```
 
 The audit gate (`flask metrics audit --strict`) checks that every layer is
@@ -41,8 +39,12 @@ populated and aligned. Missing any one → CI red.
 
 In `backend/metrics/events.py`:
 - Append to `EventName` (alphabetical within category section).
-- Append to `EVENT_CATEGORY` with the right `EventCategory`.
-- Append to `EVENT_DESCRIPTIONS` with one concise sentence.
+
+In `backend/metrics/event_registry.py`:
+- Add an entry to `EVENT_REGISTRY` with `description`, `category`, and
+  `dimensions` (empty dict if none). `EVENT_CATEGORY` and
+  `EVENT_DESCRIPTIONS` are derived projections of `EVENT_REGISTRY` —
+  do **not** edit them directly.
 
 ### 2. Wire the dimension model
 
@@ -110,12 +112,20 @@ blueprint is on the middleware's recursion-guard list.
 
 ### 5. Document it in the Event Registry
 
-Add a row to `plans/anonymous-metrics/anonymous-metrics-master.md` under the
-right subsection. Match the column format exactly. Use backticks around closed-set
-Literal values:
+The single source of truth for description + category + closed-set dimension
+values lives in `backend/metrics/event_registry.py`. Step 1 above already
+added the entry; just double-check the `dimensions` tuples exactly match the
+Pydantic `Literal[...]` args you defined in step 2, otherwise the audit will
+flag the drift. Example entry:
 
-```
-| LOGIN_FAILURE | Login attempt that did not succeed | `reason`: `"unknown_user"` / `"bad_password"` / `"email_unverified"` | Phase 13 |
+```python
+EventName.LOGIN_FAILURE: EventRegistryEntry(
+    description="Login attempt that did not succeed",
+    category=EventCategory.DOMAIN,
+    dimensions={
+        "reason": ("unknown_user", "bad_password", "email_unverified"),
+    },
+),
 ```
 
 ### 6. Regenerate TypeScript types
@@ -165,19 +175,19 @@ A rename creates a split in your time series.
 If you must:
 1. Update `EventName.OLD_NAME` → `EventName.NEW_NAME` everywhere (audit will
    find call sites).
-2. Update `EVENT_CATEGORY`, `EVENT_DESCRIPTIONS`, `EVENT_NAME_TO_RESOURCE`,
-   `DIMENSION_MODELS` key.
-3. Update the master plan registry row.
-4. Write a one-off Alembic migration to `UPDATE "AnonymousMetrics" SET
+2. Update the `EVENT_REGISTRY`, `EVENT_NAME_TO_RESOURCE`, and
+   `DIMENSION_MODELS` keys.
+3. Write a one-off Alembic migration to `UPDATE "AnonymousMetrics" SET
    event_name = 'new_name' WHERE event_name = 'old_name'`.
-5. `make generate-types` + commit.
+4. `make generate-types` + commit.
 
 ### Adding a new dim value to a closed-set Literal
 
 E.g., `transport: Literal["fetch", "beacon"]` → adding `"sendbeacon"`:
 
 1. Edit the Literal in `backend/metrics/dimension_models.py`.
-2. Update the master plan registry row to list the new value.
+2. Append the new value to the matching tuple in
+   `backend/metrics/event_registry.py`'s `EVENT_REGISTRY[event].dimensions`.
 3. `make generate-types`.
 4. Update any frontend code that branches on the dim.
 5. `make audit` confirms drift is gone.
@@ -190,9 +200,9 @@ membership in `RESOURCE_BY_CATEGORY` will fail — update it.
 
 ### Changing the description
 
-Code is authoritative. Edit `EVENT_DESCRIPTIONS` first; the audit's drift check
-will tell you the master plan markdown needs the same text. Update the markdown
-row character-for-character.
+Edit `EVENT_REGISTRY[event].description` in
+`backend/metrics/event_registry.py`. Because `EVENT_DESCRIPTIONS` is a derived
+projection, all dashboards and TSV outputs pick the new text up automatically.
 
 ---
 
@@ -206,26 +216,25 @@ the schema**.
 
 1. Delete the `record_event(EventName.FOO_BAR)` call(s) in the service layer
    or TS code.
-2. Update `EVENT_DESCRIPTIONS[EventName.FOO_BAR]` to start with `DEPRECATED YYYY-MM-DD:` —
-   leaves a marker for future readers.
-3. Update the master plan registry row with the same `DEPRECATED` prefix.
-4. Do **not** delete the `EventName` member yet. The audit's orphan check will
+2. Update `EVENT_REGISTRY[EventName.FOO_BAR].description` to start with
+   `DEPRECATED YYYY-MM-DD:` — leaves a marker for future readers (and the
+   derived `EVENT_DESCRIPTIONS` projection picks the prefix up automatically).
+3. Do **not** delete the `EventName` member yet. The audit's orphan check will
    ignore explicitly-deprecated members if you add `EventName.FOO_BAR` to
    `_INTENTIONALLY_UNTRACKED_EVENTS` in `backend/metrics/audit.py` (with a
    comment linking to the deprecation date).
-5. `make audit` should still be clean. Commit.
+4. `make audit` should still be clean. Commit.
 
 ### Phase 2 — Drop after retention window expires
 
 After enough time has passed that no dashboards or queries care about historical
 rows (typically 90 days, check with whoever runs the analytics):
 
-1. Remove the member from `EventName`, `EVENT_CATEGORY`, `EVENT_DESCRIPTIONS`,
-   `DIMENSION_MODELS`, `EVENT_NAME_TO_RESOURCE`, `_INTENTIONALLY_UNTRACKED_EVENTS`.
-2. Remove the master plan registry row.
-3. Optionally, write an Alembic migration to delete the historical rows from
+1. Remove the member from `EventName`, `EVENT_REGISTRY`, `DIMENSION_MODELS`,
+   `EVENT_NAME_TO_RESOURCE`, and `_INTENTIONALLY_UNTRACKED_EVENTS`.
+2. Optionally, write an Alembic migration to delete the historical rows from
    `AnonymousMetrics` (only if storage matters).
-4. `make generate-types` + `make audit` + commit.
+3. `make generate-types` + `make audit` + commit.
 
 ---
 

@@ -19,8 +19,8 @@ from backend.extensions.metrics.middleware import _should_skip
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
 from backend.metrics.audit import (
-    diff_dimension_literals_vs_registry_markdown,
-    diff_registry_markdown_vs_event_name,
+    diff_dimension_literals_vs_registry,
+    diff_registry_vs_event_name,
     find_missing_dimension_model_entries,
     find_orphan_event_names,
     find_string_literal_record_event_callers,
@@ -34,17 +34,14 @@ from backend.utils.strings.config_strs import CONFIG_ENVS
 EMPTY_TOP_EVENTS_OUTPUT = "No metrics rows in the requested window."
 TOP_EVENTS_HEADER = "event_name\tcategory\tdescription\ttotal_count"
 
-AUDIT_REGISTRY_MARKDOWN_PATH: Path = Path(
-    "plans/anonymous-metrics/anonymous-metrics-master.md"
-)
 AUDIT_NONE_PLACEHOLDER: str = "(none)"
 AUDIT_SECTION_ORPHANS: str = "# Orphan EventName members"
 AUDIT_SECTION_STRING_LITERAL: str = "# String-literal record_event callers"
 AUDIT_SECTION_MISSING_DIM: str = "# Missing DIMENSION_MODELS entries"
 AUDIT_SECTION_DIM_DRIFT: str = (
-    "# Dimension literal drift (registry markdown vs DIMENSION_MODELS Literals)"
+    "# Dimension literal drift (EVENT_REGISTRY vs DIMENSION_MODELS Literals)"
 )
-AUDIT_SECTION_REGISTRY_DRIFT: str = "# Registry markdown drift"
+AUDIT_SECTION_REGISTRY_DRIFT: str = "# EVENT_REGISTRY drift vs EventName enum"
 
 # Coverage-summary TSV header. Three columns by design:
 #   Domain   — display label for the row (e.g. "API (auto)" or a Resource name).
@@ -298,9 +295,9 @@ def audit_command(strict: bool) -> None:
     """Run all five coverage-audit helpers and print findings as TSV.
 
     Intentionally does NOT require an app context: every helper is a pure
-    AST + enum/dict walk and reads the master plan markdown directly. The
-    `event-coverage-staleness.yml` CI workflow (Step 9) invokes this command
-    with `--strict` to gate PRs without spinning up Postgres or Redis.
+    AST + enum/dict walk against code-located state (no markdown, no DB,
+    no Redis). The `event-coverage-staleness.yml` CI workflow invokes this
+    command with `--strict` to gate PRs.
 
     Output is grouped into five sections, each headed by `# <Section>`.
     Empty sections print `(none)` so the format is stable and grep-able.
@@ -308,12 +305,8 @@ def audit_command(strict: bool) -> None:
     orphans = find_orphan_event_names()
     string_literal_callers = find_string_literal_record_event_callers()
     missing_dimension_entries = find_missing_dimension_model_entries()
-    dimension_literal_findings = diff_dimension_literals_vs_registry_markdown(
-        AUDIT_REGISTRY_MARKDOWN_PATH
-    )
-    registry_drift_findings = diff_registry_markdown_vs_event_name(
-        AUDIT_REGISTRY_MARKDOWN_PATH
-    )
+    dimension_literal_findings = diff_dimension_literals_vs_registry()
+    registry_drift_findings = diff_registry_vs_event_name()
 
     click.echo(AUDIT_SECTION_ORPHANS)
     if orphans:
@@ -342,7 +335,7 @@ def audit_command(strict: bool) -> None:
             click.echo(
                 f"{dimension_finding.event.name}\tfield={dimension_finding.field}\t"
                 f"code={dimension_finding.code_values}\t"
-                f"markdown={dimension_finding.registry_values}"
+                f"registry={dimension_finding.registry_values}"
             )
     else:
         click.echo(AUDIT_NONE_PLACEHOLDER)

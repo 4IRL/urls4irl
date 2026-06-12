@@ -43,6 +43,6 @@ jobs:
       - name: Run event coverage audit
         run: |
           if ! flask metrics audit --strict; then
-            echo "::error::Event coverage audit failed. Run 'make audit' locally and reconcile the gaps. See plans/anonymous-metrics/research/event-coverage-audit.md for the catalog."
+            echo "::error::Event coverage audit failed. Run 'make audit' locally and reconcile drift between backend/metrics/event_registry.py and the EventName enum / DIMENSION_MODELS."
             exit 1
           fi

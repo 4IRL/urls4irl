@@ -53,9 +53,6 @@ services:
       - ./migrations/versions:/code/u4i/migrations/versions
       - ./scripts:/code/u4i/scripts
       - ./frontend/types:/code/u4i/frontend/types
-      # Mounted so the metrics audit (backend/metrics/audit.py) can read the
-      # master plan's Event Registry markdown for the registry-vs-code drift checks.
-      - ./plans:/code/u4i/plans
       - app_logs:/app/volume
 
   vite:

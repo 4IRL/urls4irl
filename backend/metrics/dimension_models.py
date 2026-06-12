@@ -104,7 +104,7 @@ class UIBaseDimensions(BaseModel):
 # ---------------------------------------------------------------------------
 # UI dimension models — one per event whose Registry row documents a non-empty
 # `Dimensions` cell. Sourced verbatim from
-# plans/anonymous-metrics/anonymous-metrics-master.md § Event Registry.
+# backend/metrics/event_registry.py § EVENT_REGISTRY.
 # ---------------------------------------------------------------------------
 
 
