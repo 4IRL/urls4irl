@@ -172,6 +172,7 @@ const appConfig = {
     METRICS_PIPELINE_HEALTH_EMPTY_STATE:
       "No ingest batches recorded in the selected window.",
     METRICS_PIPELINE_HEALTH_AXIS_LABEL: "Batches",
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL_X: "Events per batch",
     METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP: "fetch · desktop",
     METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE: "fetch · mobile",
     METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP: "beacon · desktop",

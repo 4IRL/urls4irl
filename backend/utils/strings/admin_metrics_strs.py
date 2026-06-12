@@ -56,6 +56,7 @@ class ADMIN_METRICS_STRINGS:
         "No ingest batches recorded in the selected window."
     )
     METRICS_PIPELINE_HEALTH_AXIS_LABEL: str = "Batches"
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL_X: str = "Events per batch"
     METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP: str = "fetch · desktop"
     METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE: str = "fetch · mobile"
     METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP: str = "beacon · desktop"

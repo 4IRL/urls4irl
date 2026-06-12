@@ -36,10 +36,11 @@ const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 // at the bottom, plus top padding so the topmost y-axis tick label sits
 // fully inside the viewBox.
 const VIEWBOX_WIDTH = 800;
-const VIEWBOX_HEIGHT = 240;
+const VIEWBOX_HEIGHT = 264;
 const AXIS_LEFT_PADDING = 56;
 const AXIS_TOP_PADDING = 12;
-const AXIS_BOTTOM_PADDING = 24;
+const AXIS_BOTTOM_PADDING = 48;
+const X_AXIS_TITLE_OFFSET = 18;
 const Y_AXIS_TITLE_X = 16;
 const PLOT_WIDTH = VIEWBOX_WIDTH - AXIS_LEFT_PADDING;
 const PLOT_HEIGHT = VIEWBOX_HEIGHT - AXIS_BOTTOM_PADDING;
@@ -308,7 +309,10 @@ export function renderPipelineHealthChart({
   // segments to keep the DOM lean and avoid invisible rects intercepting
   // pointer events.
   const totalColumns = BATCH_SIZE_BUCKET_ORDER.length;
-  const xLabelY = VIEWBOX_HEIGHT - 6;
+  // X-axis tick labels sit just below the plot area; the X-axis title sits
+  // one row beneath that. Both fit inside the AXIS_BOTTOM_PADDING band.
+  const xLabelY = PLOT_HEIGHT + 16;
+  const xAxisTitleY = xLabelY + X_AXIS_TITLE_OFFSET;
   for (
     let columnIndex = 0;
     columnIndex < BATCH_SIZE_BUCKET_ORDER.length;
@@ -353,4 +357,17 @@ export function renderPipelineHealthChart({
     xLabel.textContent = batchSizeBucket;
     svg.appendChild(xLabel);
   }
+
+  // X-axis title centered beneath the bucket tick labels — clarifies that
+  // the buckets count events per ingest batch, not (e.g.) bytes or seconds.
+  const xAxisTitleX = AXIS_LEFT_PADDING + PLOT_WIDTH / 2;
+  const xAxisTitle = document.createElementNS(SVG_NAMESPACE, "text");
+  xAxisTitle.setAttribute("class", "MetricsAxisTitle");
+  xAxisTitle.setAttribute("x", String(xAxisTitleX));
+  xAxisTitle.setAttribute("y", String(xAxisTitleY));
+  xAxisTitle.setAttribute("text-anchor", "middle");
+  xAxisTitle.setAttribute("dominant-baseline", "hanging");
+  xAxisTitle.textContent =
+    APP_CONFIG.strings.METRICS_PIPELINE_HEALTH_AXIS_LABEL_X;
+  svg.appendChild(xAxisTitle);
 }

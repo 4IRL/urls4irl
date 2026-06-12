@@ -39,7 +39,7 @@ describe("renderPipelineHealthChart", () => {
       SVG_NAMESPACE,
       "svg",
     ) as unknown as SVGSVGElement;
-    svg.setAttribute("viewBox", "0 0 800 240");
+    svg.setAttribute("viewBox", "0 0 800 264");
     document.body.appendChild(svg);
   });
 
