@@ -1051,7 +1051,7 @@ def test_grouped_timeseries_returns_one_row_per_dim_tuple(
     }
 
 
-def test_grouped_timeseries_zero_fills_buckets_with_no_data(
+def test_grouped_timeseries_does_not_zero_fill_missing_dim_combos(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
