@@ -38,16 +38,20 @@ from backend.metrics.events import (
 # Files excluded from orphan-detection — these are the metrics-module
 # definitions themselves, so EventName.<MEMBER> references inside them must
 # NOT count as "external usage". The audit module itself is included so its
-# own EventName import does not register references.
+# own EventName import does not register references. Paths are anchored to
+# the on-disk location of `backend/` (computed from `__file__`) so the
+# exclusion match works whether the caller passes a relative or absolute
+# `backend_root` to `find_orphan_event_names`.
+_BACKEND_DIR: Path = Path(__file__).resolve().parent.parent
 _METRICS_INTERNAL_FILES: frozenset[Path] = frozenset(
     {
-        Path("backend/metrics/audit.py"),
-        Path("backend/metrics/events.py"),
-        Path("backend/metrics/dimension_models.py"),
-        Path("backend/metrics/resources.py"),
-        Path("backend/extensions/metrics/registry_sync.py"),
-        Path("backend/extensions/metrics/dim_types_generator.py"),
-        Path("backend/cli/metrics.py"),
+        _BACKEND_DIR / "metrics" / "audit.py",
+        _BACKEND_DIR / "metrics" / "events.py",
+        _BACKEND_DIR / "metrics" / "dimension_models.py",
+        _BACKEND_DIR / "metrics" / "resources.py",
+        _BACKEND_DIR / "extensions" / "metrics" / "registry_sync.py",
+        _BACKEND_DIR / "extensions" / "metrics" / "dim_types_generator.py",
+        _BACKEND_DIR / "cli" / "metrics.py",
     }
 )
 
@@ -218,14 +222,11 @@ def find_orphan_event_names(
     """
     referenced_externally: set[str] = set()
     for python_file in _iter_python_files(backend_root):
-        # Compare relative paths against the internal-files frozenset, which is
-        # itself relative. This works whether `backend_root` is "backend" or
-        # an absolute path passed by a probe test.
-        try:
-            relative_path = python_file.relative_to(backend_root.parent)
-        except ValueError:
-            relative_path = python_file
-        if relative_path in _METRICS_INTERNAL_FILES:
+        # `_METRICS_INTERNAL_FILES` holds absolute paths anchored at the on-disk
+        # `backend/` directory, so we resolve the candidate file to absolute
+        # before comparing. Probe trees under `tmp_path/backend/...` will never
+        # match any entry, which is the intended behaviour.
+        if python_file.resolve() in _METRICS_INTERNAL_FILES:
             continue
         tree = _parse_python_file(python_file)
         if tree is None:
