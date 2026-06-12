@@ -379,7 +379,7 @@ def _count_auto_counted_api_routes(app: Flask) -> int:
     distinct counted routes even though they share an endpoint.
 
     Examples:
-        >>> # 7 utubs routes + 5 urls routes + ... = 34 (current main, Phase 13)
+        >>> # current route count (update as routes are added/removed)
         >>> _count_auto_counted_api_routes(app)
         34
     """
@@ -410,7 +410,7 @@ def _count_events_per_resource(category: EventCategory) -> list[tuple[Resource, 
     matching members are omitted so the TSV stays compact.
 
     Examples:
-        >>> # Phase 13 baseline for the DOMAIN category:
+        >>> # current per-resource counts for the DOMAIN category:
         >>> _count_events_per_resource(EventCategory.DOMAIN)
         [(Resource.UTUB, 5), (Resource.URL, 5), (Resource.TAG, 4), ...]
     """
