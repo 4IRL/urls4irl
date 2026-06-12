@@ -6,6 +6,8 @@ from backend.app_logger import (
     safe_add_many_logs,
     warning_log,
 )
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
@@ -86,6 +88,8 @@ def _create_new_utub_tag(tag: str, utub: Utubs) -> FlaskResponse:
     db.session.add(new_utub_tag)
     utub.set_last_updated()
     db.session.commit()
+
+    record_event(EventName.UTUB_TAG_CREATED)
 
     # Successfully added tag to UTub
     safe_add_many_logs(

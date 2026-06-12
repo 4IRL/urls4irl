@@ -16,11 +16,13 @@ from backend.extensions.extension_utils import (
     safe_get_notif_sender,
     safe_get_url_validator,
 )
+from backend.extensions.metrics.writer import record_event
 from backend.extensions.url_validation.url_validator import (
     AdaUrlParsingError,
     InvalidURLError,
     URLWithCredentialsError,
 )
+from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -397,6 +399,8 @@ def _associate_url_with_utub(
     db.session.add(url_utub_user_add)
     current_utub.set_last_updated()
     db.session.commit()
+
+    record_event(EventName.URL_ADDED_TO_UTUB)
 
     # Successfully added a URL, and associated it to a UTub
     safe_add_many_logs(

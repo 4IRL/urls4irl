@@ -11,6 +11,8 @@ from backend.extensions.extension_utils import (
     safe_get_email_sender,
     safe_get_notif_sender,
 )
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.splash.constants import EmailValidationErrorCodes
@@ -228,6 +230,8 @@ def _welcome_validated_email_new_user(
     user.validate_email()
     db.session.delete(email_validation)
     db.session.commit()
+
+    record_event(EventName.EMAIL_VERIFIED)
 
     login_user(user)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True

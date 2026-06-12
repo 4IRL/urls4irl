@@ -30,18 +30,28 @@ class EventName(StrEnum):
     API_METRICS_INGEST_BATCH = "api_metrics_ingest_batch"
 
     # Domain — explicit record_event() calls in service layer
-    UTUB_CREATED = "utub_created"
-    UTUB_DELETED = "utub_deleted"
-    UTUB_OPENED = "utub_opened"
-    URL_ACCESSED = "url_accessed"
-    TAG_APPLIED = "tag_applied"
-    TAG_REMOVED = "tag_removed"
-    TAG_DELETED = "tag_deleted"
+    EMAIL_VERIFIED = "email_verified"
+    LOGIN_FAILURE = "login_failure"
+    LOGIN_SUCCESS = "login_success"
     MEMBER_ADDED = "member_added"
     MEMBER_REMOVED = "member_removed"
+    PASSWORD_RESET_COMPLETED = "password_reset_completed"
+    PASSWORD_RESET_REQUESTED = "password_reset_requested"
+    REGISTER_SUCCESS = "register_success"
+    TAG_APPLIED = "tag_applied"
+    TAG_DELETED = "tag_deleted"
+    TAG_REMOVED = "tag_removed"
+    URL_ACCESSED = "url_accessed"
+    URL_ADDED_TO_UTUB = "url_added_to_utub"
+    URL_REMOVED_FROM_UTUB = "url_removed_from_utub"
+    URL_STRING_UPDATED = "url_string_updated"
     URL_TITLE_UPDATED = "url_title_updated"
-    UTUB_TITLE_UPDATED = "utub_title_updated"
+    UTUB_CREATED = "utub_created"
+    UTUB_DELETED = "utub_deleted"
     UTUB_DESC_UPDATED = "utub_desc_updated"
+    UTUB_OPENED = "utub_opened"
+    UTUB_TAG_CREATED = "utub_tag_created"
+    UTUB_TITLE_UPDATED = "utub_title_updated"
 
     # UI — browser-side emit() shipped to POST /api/metrics
     # — UTubs
@@ -114,18 +124,28 @@ EVENT_CATEGORY: dict[EventName, EventCategory] = {
     EventName.API_HIT: EventCategory.API,
     EventName.API_METRICS_INGEST_BATCH: EventCategory.API,
     # Domain
-    EventName.UTUB_CREATED: EventCategory.DOMAIN,
-    EventName.UTUB_DELETED: EventCategory.DOMAIN,
-    EventName.UTUB_OPENED: EventCategory.DOMAIN,
-    EventName.URL_ACCESSED: EventCategory.DOMAIN,
-    EventName.TAG_APPLIED: EventCategory.DOMAIN,
-    EventName.TAG_REMOVED: EventCategory.DOMAIN,
-    EventName.TAG_DELETED: EventCategory.DOMAIN,
+    EventName.EMAIL_VERIFIED: EventCategory.DOMAIN,
+    EventName.LOGIN_FAILURE: EventCategory.DOMAIN,
+    EventName.LOGIN_SUCCESS: EventCategory.DOMAIN,
     EventName.MEMBER_ADDED: EventCategory.DOMAIN,
     EventName.MEMBER_REMOVED: EventCategory.DOMAIN,
+    EventName.PASSWORD_RESET_COMPLETED: EventCategory.DOMAIN,
+    EventName.PASSWORD_RESET_REQUESTED: EventCategory.DOMAIN,
+    EventName.REGISTER_SUCCESS: EventCategory.DOMAIN,
+    EventName.TAG_APPLIED: EventCategory.DOMAIN,
+    EventName.TAG_DELETED: EventCategory.DOMAIN,
+    EventName.TAG_REMOVED: EventCategory.DOMAIN,
+    EventName.URL_ACCESSED: EventCategory.DOMAIN,
+    EventName.URL_ADDED_TO_UTUB: EventCategory.DOMAIN,
+    EventName.URL_REMOVED_FROM_UTUB: EventCategory.DOMAIN,
+    EventName.URL_STRING_UPDATED: EventCategory.DOMAIN,
     EventName.URL_TITLE_UPDATED: EventCategory.DOMAIN,
-    EventName.UTUB_TITLE_UPDATED: EventCategory.DOMAIN,
+    EventName.UTUB_CREATED: EventCategory.DOMAIN,
+    EventName.UTUB_DELETED: EventCategory.DOMAIN,
     EventName.UTUB_DESC_UPDATED: EventCategory.DOMAIN,
+    EventName.UTUB_OPENED: EventCategory.DOMAIN,
+    EventName.UTUB_TAG_CREATED: EventCategory.DOMAIN,
+    EventName.UTUB_TITLE_UPDATED: EventCategory.DOMAIN,
     # UI
     EventName.UI_UTUB_SELECT: EventCategory.UI,
     EventName.UI_UTUB_CREATE_OPEN: EventCategory.UI,
@@ -189,18 +209,28 @@ EVENT_DESCRIPTIONS: dict[EventName, str] = {
     EventName.API_HIT: "Every HTTP request (excl. static, health, /metrics)",
     EventName.API_METRICS_INGEST_BATCH: "Counter on every accepted POST /api/metrics batch, tagged with batch_size_bucket × transport × device_type for pipeline-health telemetry.",
     # Domain
-    EventName.UTUB_CREATED: "New UTub created",
-    EventName.UTUB_DELETED: "UTub deleted by owner",
-    EventName.UTUB_OPENED: "UTub explicitly opened/selected",
-    EventName.URL_ACCESSED: "URL click-through (distinct from list)",
-    EventName.TAG_APPLIED: "Tag added to a URL",
-    EventName.TAG_REMOVED: "Tag removed from a URL",
-    EventName.TAG_DELETED: "Tag deleted from a UTub (UTub-level destructive)",
+    EventName.EMAIL_VERIFIED: "User email validated via the post-registration confirmation link",
+    EventName.LOGIN_FAILURE: "Login attempt rejected, tagged with closed-set failure reason",
+    EventName.LOGIN_SUCCESS: "Login succeeded on the fully-validated path (email_validated guard passed)",
     EventName.MEMBER_ADDED: "Member invited to a UTub",
     EventName.MEMBER_REMOVED: "Member removed from a UTub",
+    EventName.PASSWORD_RESET_COMPLETED: "Password successfully reset via the reset-token flow",
+    EventName.PASSWORD_RESET_REQUESTED: "Forgot-password email delivery attempted within the rate-limit window",
+    EventName.REGISTER_SUCCESS: "New user account successfully registered",
+    EventName.TAG_APPLIED: "Tag added to a URL",
+    EventName.TAG_DELETED: "Tag deleted from a UTub (UTub-level destructive)",
+    EventName.TAG_REMOVED: "Tag removed from a URL",
+    EventName.URL_ACCESSED: "URL click-through (distinct from list)",
+    EventName.URL_ADDED_TO_UTUB: "URL associated with a UTub (new or existing URL row)",
+    EventName.URL_REMOVED_FROM_UTUB: "URL disassociated from a UTub",
+    EventName.URL_STRING_UPDATED: "URL string changed on a UTub URL (distinct from title update)",
     EventName.URL_TITLE_UPDATED: "URL title edited",
-    EventName.UTUB_TITLE_UPDATED: "UTub name changed",
+    EventName.UTUB_CREATED: "New UTub created",
+    EventName.UTUB_DELETED: "UTub deleted by owner",
     EventName.UTUB_DESC_UPDATED: "UTub description changed",
+    EventName.UTUB_OPENED: "UTub explicitly opened/selected",
+    EventName.UTUB_TAG_CREATED: "New tag vocabulary added to a UTub (distinct from TAG_APPLIED)",
+    EventName.UTUB_TITLE_UPDATED: "UTub name changed",
     # UI
     EventName.UI_UTUB_SELECT: "UTub selected in sidebar",
     EventName.UI_UTUB_CREATE_OPEN: '"Create UTub" form opened',

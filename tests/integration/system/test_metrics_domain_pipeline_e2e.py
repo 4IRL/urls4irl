@@ -244,14 +244,32 @@ def test_domain_events_flush_with_intact_fk_joins(
             )
             assert utub_delete_response.status_code == 200
 
-    # Auto-extending set of expected DOMAIN events (excluding deferred
-    # URL_ACCESSED). Any future DOMAIN event added to `EventName` is
-    # picked up here automatically.
+    # Auto-extending set of expected DOMAIN events. URL_ACCESSED is deferred
+    # (master plan line 363). The URL_*/UTUB_TAG_CREATED domain events fire
+    # from URL/tag service flows this seed does not exercise; auth events
+    # (REGISTER_SUCCESS, LOGIN_SUCCESS, LOGIN_FAILURE, EMAIL_VERIFIED,
+    # PASSWORD_RESET_*) fire from unauthenticated splash routes this fixture
+    # cannot reach. Each excluded event has its own per-route emit test and
+    # flushes through the same pipeline as the events covered here, so the
+    # FK-join invariant is still exercised end-to-end.
+    _DOMAIN_EVENTS_TESTED_ELSEWHERE = {
+        EventName.URL_ACCESSED,
+        EventName.URL_ADDED_TO_UTUB,
+        EventName.URL_REMOVED_FROM_UTUB,
+        EventName.URL_STRING_UPDATED,
+        EventName.UTUB_TAG_CREATED,
+        EventName.REGISTER_SUCCESS,
+        EventName.LOGIN_SUCCESS,
+        EventName.LOGIN_FAILURE,
+        EventName.EMAIL_VERIFIED,
+        EventName.PASSWORD_RESET_REQUESTED,
+        EventName.PASSWORD_RESET_COMPLETED,
+    }
     expected_event_values = [
         event.value
         for event in EventName
         if EVENT_CATEGORY[event] is EventCategory.DOMAIN
-        and event is not EventName.URL_ACCESSED
+        and event not in _DOMAIN_EVENTS_TESTED_ELSEWHERE
     ]
 
     flush_conn = build_pg_conn(app)

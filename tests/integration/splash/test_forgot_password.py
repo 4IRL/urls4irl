@@ -3,6 +3,7 @@ from flask import url_for
 import pytest
 
 from backend.api_common.request_errors import INVALID_EMAIL_STR
+from backend.metrics.events import EventName
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.users import ForgotPasswordResponseSchema
 from backend.splash.utils import verify_token
@@ -16,6 +17,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 
@@ -179,6 +181,40 @@ def test_forgot_password_with_validated_email(
         ).all()
         assert len(forgot_password_objs) == num_forgot_passwords + 1
         assert forgot_password_objs[-1].attempts == 1
+
+
+def test_forgot_password_with_validated_email_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    register_first_user,
+    load_login_page,
+):
+    """
+    GIVEN a registered email-validated user with metrics enabled
+    WHEN they POST to "/forgot-password" with their email (not rate-limited)
+    THEN the request returns HTTP 200 AND exactly one PASSWORD_RESET_REQUESTED
+        counter key is written to the metrics Redis DB.
+    """
+    new_user, _ = register_first_user
+    client, csrf_token = load_login_page
+
+    # Before-state: no PASSWORD_RESET_REQUESTED counter exists yet
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.PASSWORD_RESET_REQUESTED)
+        == 0
+    )
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.PASSWORD_RESET_REQUESTED)
+        == 1
+    )
 
 
 def test_forgot_password_with_validated_email_uppercase(

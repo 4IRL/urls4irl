@@ -7,6 +7,7 @@ from flask_login import current_user
 import pytest
 
 from backend.extensions.url_validation.url_validator import InvalidURLError
+from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
@@ -24,6 +25,7 @@ from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.models_for_test import valid_url_strings
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
@@ -128,6 +130,46 @@ def test_add_valid_url_as_utub_member(
         assert url_in_utub[0].url_title == url_title_to_add
 
         assert Utub_Urls.query.count() == initial_utub_urls + 1
+
+
+def test_add_url_to_utub_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub with metrics enabled and a URL already in the URL table
+    WHEN they POST to "/utubs/<utub_id>/urls" with a valid url string
+    THEN the request returns HTTP 200 AND exactly one URL_ADDED_TO_UTUB
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        url_title_to_add = f"This is {url_string_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Before-state: no URL_ADDED_TO_UTUB counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 1
 
 
 def test_add_valid_url_as_utub_creator(

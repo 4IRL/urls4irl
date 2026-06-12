@@ -3,6 +3,7 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.metrics.events import EventName
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
@@ -12,6 +13,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.splash
@@ -328,6 +330,41 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
+
+
+def test_valid_password_reset_records_password_reset_completed_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    user_attempts_reset_password,
+):
+    """
+    GIVEN a registered user with a valid reset token and metrics enabled
+    WHEN they POST to "/reset-password/<token>" with a valid new password
+    THEN the request returns HTTP 200 AND exactly one PASSWORD_RESET_COMPLETED
+        counter key is written to the metrics Redis DB.
+    """
+    _app, client, _new_user, reset_token, csrf_token = user_attempts_reset_password
+
+    # Before-state: no PASSWORD_RESET_COMPLETED counter exists yet
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.PASSWORD_RESET_COMPLETED)
+        == 0
+    )
+
+    reset_response = client.post(
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
+        json={
+            RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
+            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert reset_response.status_code == 200
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.PASSWORD_RESET_COMPLETED)
+        == 1
+    )
 
 
 def test_reset_password_response_conforms_to_schema(user_attempts_reset_password):

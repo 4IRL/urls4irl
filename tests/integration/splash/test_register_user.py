@@ -4,6 +4,7 @@ from flask_login import current_user
 import pytest
 from werkzeug.security import check_password_hash
 
+from backend.metrics.events import EventName
 from backend.schemas.users import RegisterResponseSchema
 from backend.splash.constants import RegisterErrorCodes
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -13,9 +14,10 @@ from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
+from tests.integration.splash.conftest import register_json
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 from backend.utils.strings.user_strs import USER_FAILURE
-from tests.integration.splash.conftest import register_json
 
 pytestmark = pytest.mark.splash
 
@@ -74,6 +76,31 @@ def test_register_new_user(app, load_register_page):
     assert new_db_user.password == current_user.password
     assert new_db_user.email == current_user.email.lower()
     assert new_db_user.id == int(current_user.get_id())
+
+
+def test_register_new_user_records_metric(
+    metrics_enabled_app, provide_metrics_redis, load_register_page
+):
+    """
+    GIVEN a new user with metrics enabled
+    WHEN they POST to "/register" with a valid registration payload
+    THEN the request returns HTTP 201 AND exactly one REGISTER_SUCCESS
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token_string = load_register_page
+    new_user = deepcopy(valid_user_1)
+
+    # Before-state: no REGISTER_SUCCESS counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 201
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 1
 
 
 def test_register_duplicate_user(app, load_register_page, register_first_user):
