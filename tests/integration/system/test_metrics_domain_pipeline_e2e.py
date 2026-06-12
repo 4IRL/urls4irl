@@ -19,6 +19,7 @@ from scripts.flush_metrics import run_flush
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
 from tests.integration.system.metrics_helpers import (
+    DOMAIN_EVENTS_TESTED_ELSEWHERE,
     build_pg_conn,
     truncate_metrics_tables,
 )
@@ -244,14 +245,14 @@ def test_domain_events_flush_with_intact_fk_joins(
             )
             assert utub_delete_response.status_code == 200
 
-    # Auto-extending set of expected DOMAIN events (excluding deferred
-    # URL_ACCESSED). Any future DOMAIN event added to `EventName` is
-    # picked up here automatically.
+    # Auto-extending set of expected DOMAIN events; see
+    # `DOMAIN_EVENTS_TESTED_ELSEWHERE` in `metrics_helpers` for the rationale
+    # behind the exclusion set.
     expected_event_values = [
         event.value
         for event in EventName
         if EVENT_CATEGORY[event] is EventCategory.DOMAIN
-        and event is not EventName.URL_ACCESSED
+        and event not in DOMAIN_EVENTS_TESTED_ELSEWHERE
     ]
 
     flush_conn = build_pg_conn(app)

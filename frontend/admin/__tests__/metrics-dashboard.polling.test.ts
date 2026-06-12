@@ -15,11 +15,13 @@
 const {
   fetchSummarySpy,
   fetchTopEventsSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
 }));
@@ -49,6 +51,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: vi.fn(),
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -99,11 +102,13 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
 
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => makeSettlingXhr());
     fetchTopEventsSpy.mockImplementation(() => makeSettlingXhr());
+    fetchGroupedTimeseriesSpy.mockImplementation(() => makeSettlingXhr());
 
     // CRITICAL: install fake timers BEFORE initMetricsDashboard so the
     // initial fetchAll() is counted against the timer-controlled lifecycle.

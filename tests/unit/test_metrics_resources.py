@@ -56,12 +56,14 @@ def test_resource_by_category_ui_includes_all_ui_specific_resources():
 
 def test_resource_by_category_domain_is_crud_only():
     """Domain events are business-state transitions; they cover UTub, URL,
-    Tag, Member and nothing else."""
+    Tag, Member, and Auth (account lifecycle signals — register, login
+    success/failure, email verification, password-reset request/complete)."""
     assert set(RESOURCE_BY_CATEGORY[EventCategory.DOMAIN]) == {
         Resource.UTUB,
         Resource.URL,
         Resource.TAG,
         Resource.MEMBER,
+        Resource.AUTH,
     }
 
 

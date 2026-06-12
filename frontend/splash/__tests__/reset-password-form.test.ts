@@ -88,4 +88,21 @@ describe("reset-password-form 429 HTML response", () => {
       "<html>Forbidden</html>",
     );
   });
+
+  it("sets data-form-ready='true' on the form only after shown.bs.modal fires", () => {
+    const $modal = $("#ResetPasswordModal");
+    expect($modal.find("form").attr("data-form-ready")).toBeUndefined();
+
+    initResetPasswordForm($modal);
+
+    // The ready signal must NOT fire synchronously — that's the bug it
+    // exists to prevent (Bootstrap auto-focuses the modal element on
+    // shown.bs.modal and would steal focus from inputs a UI test has
+    // already typed into).
+    expect($modal.find("form").attr("data-form-ready")).toBeUndefined();
+
+    $modal.trigger("shown.bs.modal");
+
+    expect($modal.find("form").attr("data-form-ready")).toBe("true");
+  });
 });

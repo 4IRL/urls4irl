@@ -2,6 +2,8 @@ from flask_login import login_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
@@ -66,6 +68,8 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
 
     db.session.add(new_user)
     db.session.commit()
+
+    record_event(EventName.REGISTER_SUCCESS)
 
     login_user(new_user)
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import AwareDatetime, Field, GetJsonSchemaHandler
 from pydantic.json_schema import JsonSchemaValue
@@ -136,6 +136,60 @@ class TimeseriesResponseSchema(BaseSchema):
     window_end: datetime = Field(description="Exclusive UTC end of the window")
     buckets: list[TimeseriesBucketSchema] = Field(
         description="Buckets in chronological order",
+    )
+
+
+class GroupedTimeseriesBucket(BaseSchema):
+    """One row of the `grouped-timeseries` response — a single bucket × dim-tuple."""
+
+    bucket: AwareDatetime = Field(
+        description="Bucket start (UTC, date_trunc'd to resolution)"
+    )
+    dimensions: dict[str, str | int] = Field(
+        description=(
+            "The dimension-tuple values for this row, keyed by the requested "
+            "`group_by` fields. Closed-set values come from the per-event "
+            "Literal dim model; typed loosely (`str | int`) for transport."
+        ),
+    )
+    count: int = Field(description="Sum of counts within this (bucket, dim-tuple)")
+
+
+class GroupedTimeseriesResponseSchema(BaseSchema):
+    """Envelope returned by `GET /api/metrics/query/grouped-timeseries`.
+
+    Unlike the single-series `timeseries` endpoint, the grouped variant does
+    NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product
+    expansion is expensive; the frontend renderer treats absent combos as
+    "no segment for that bucket".
+    """
+
+    event_name: str = Field(description="EventName the series is filtered to")
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
+    resolution: Literal["hour", "day"] = Field(
+        description="date_trunc resolution (hour | day)",
+    )
+    window_start: AwareDatetime = Field(
+        description="Inclusive UTC start of the window",
+    )
+    window_end: AwareDatetime = Field(
+        description="Exclusive UTC end of the window",
+    )
+    group_by: list[str] = Field(
+        description="Dimension field names the series is grouped by",
+    )
+    buckets: list[GroupedTimeseriesBucket] = Field(
+        description=(
+            "Per-(bucket × dim tuple) rows, ordered chronologically and then "
+            "alphabetically by dim values for deterministic output. NOT zero-"
+            "filled — missing combinations are absent rather than zero-valued."
+        ),
     )
 
 

@@ -589,3 +589,99 @@
     .refresh-btn .refresh-btn-label { display: none; }
     .refresh-btn:not([aria-disabled="true"]) .refresh-icon { display: inline-block; }
 }
+
+/* ---- Pipeline Health ------------------------------------------------- */
+
+/* The chart's viewBox is 800x240 (~3.33:1), so at full panel width on a
+ * large display the auto-height balloons to 400-600px+ and the axis font
+ * scales up with it. Constrain the entire section (title, chart, legend)
+ * to 75% width and center; this keeps the title aligned with the chart's
+ * left edge instead of orphaning at the panel boundary. */
+#MetricsPipelineHealth {
+    max-width: 75%;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Scoped axis font reductions for the Pipeline Health chart. The SVG
+ * scales its 16px / 14px labels by container_width / viewBox_width — on
+ * a 1425px-wide chart (75% of 1900) that's 1.78x, pushing labels to
+ * ~28px. Halving the in-SVG sizes brings the rendered text to a more
+ * legible 14-18px range without touching the other dashboard charts. */
+.MetricsPipelineHealthChart .MetricsAxisLabel { font-size: 9px; }
+.MetricsPipelineHealthChart .MetricsAxisLabelX { font-size: 8px; }
+.MetricsPipelineHealthChart .MetricsAxisTitle { font-size: 8px; }
+
+.MetricsPipelineHealthLegend {
+    display: flex;
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+    /* Center horizontally so the legend sits beneath the centered chart
+     * instead of orphaning at the panel's left edge. */
+    justify-content: center;
+}
+
+.MetricsPipelineHealthLegend li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+}
+
+.MetricsPipelineHealthLegend .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+/* Swatch colour assignments — sourced from tokens.css :root variables so
+ * the colour palette stays centralized. Each variable carries a WCAG-1.4.11
+ * contrast-ratio comment alongside its definition in tokens.css. */
+.MetricsPipelineHealthLegend .swatch--fetch-desktop {
+    background-color: var(--pipelineHealthFetchDesktop);
+}
+
+.MetricsPipelineHealthLegend .swatch--fetch-mobile {
+    background-color: var(--pipelineHealthFetchMobile);
+}
+
+.MetricsPipelineHealthLegend .swatch--beacon-desktop {
+    background-color: var(--pipelineHealthBeaconDesktop);
+}
+
+.MetricsPipelineHealthLegend .swatch--beacon-mobile {
+    background-color: var(--pipelineHealthBeaconMobile);
+}
+
+/* Stacked-bar rect fills — matched to the legend swatch palette. */
+.MetricsPipelineHealthBar--fetch-desktop {
+    fill: var(--pipelineHealthFetchDesktop);
+}
+
+.MetricsPipelineHealthBar--fetch-mobile {
+    fill: var(--pipelineHealthFetchMobile);
+}
+
+.MetricsPipelineHealthBar--beacon-desktop {
+    fill: var(--pipelineHealthBeaconDesktop);
+}
+
+.MetricsPipelineHealthBar--beacon-mobile {
+    fill: var(--pipelineHealthBeaconMobile);
+}
+
+@media (max-width: 1100px) {
+    /* At narrower viewports the four-item legend row crowds long swatch
+     * labels; wrap below the chart so each label retains its full width.
+     * Also let the section reclaim the full panel width — on tablets and
+     * smaller the 75% cap leaves too much wasted space. */
+    .MetricsPipelineHealthLegend {
+        flex-wrap: wrap;
+    }
+    #MetricsPipelineHealth {
+        max-width: 100%;
+    }
+}

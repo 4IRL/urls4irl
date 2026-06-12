@@ -4,6 +4,8 @@ from werkzeug import Response as WerkzeugResponse
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, warning_log
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
@@ -147,6 +149,8 @@ def _validate_resetting_password(
     forgot_password_obj = reset_password_user.forgot_password
     db.session.delete(forgot_password_obj)
     db.session.commit()
+
+    record_event(EventName.PASSWORD_RESET_COMPLETED)
 
     return APIResponse(
         message=RESET_PASSWORD.PASSWORD_RESET,

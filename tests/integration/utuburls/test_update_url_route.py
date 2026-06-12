@@ -10,6 +10,7 @@ import pytest
 from backend.extensions.url_validation.url_validator import (
     InvalidURLError,
 )
+from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
@@ -26,6 +27,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
@@ -166,6 +168,49 @@ def test_update_valid_url_with_fresh_valid_url(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == new_url_id,
         ).count() == len(associated_tags)
+
+
+def test_update_url_string_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with a URL and metrics enabled
+    WHEN they PATCH "/utubs/<utub_id>/urls/<utub_url_id>" with a different
+        valid URL string (change-detected branch)
+    THEN the request returns HTTP 200 AND exactly one URL_STRING_UPDATED
+        counter key is written to the metrics Redis DB.
+    """
+    fresh_url_input, _expected_normalized = FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS[0]
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_id = utub_creator_of.id
+        utub_url_id = url_in_this_utub.id
+
+    # Before-state: no URL_STRING_UPDATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_STRING_UPDATED) == 0
+
+    update_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        json={URL_FORM.URL_STRING: fresh_url_input},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_STRING_UPDATED) == 1
 
 
 @pytest.mark.parametrize(

@@ -18,6 +18,7 @@ from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import ADD_USER_FORM, TAG_FORM, URL_FORM, UTUB_FORM
 from backend.utils.strings.metrics_strs import METRICS_REDIS
+from tests.integration.system.metrics_helpers import DOMAIN_EVENTS_TESTED_ELSEWHERE
 
 pytestmark = pytest.mark.cli
 
@@ -236,14 +237,15 @@ def test_domain_events_emit_no_pii_dimensions(
     if api_hit_keys:
         provide_metrics_redis.delete(*api_hit_keys)
 
-    # Auto-extending set of expected DOMAIN events (excluding the deferred
-    # URL_ACCESSED). Any future DOMAIN event added to `EventName` will be
-    # picked up here automatically.
+    # Auto-extending set of expected DOMAIN events. URL_ACCESSED is deferred
+    # See `DOMAIN_EVENTS_TESTED_ELSEWHERE` in `metrics_helpers` for the
+    # rationale behind the exclusion set; each excluded event has its own
+    # dedicated emit test that exercises the same PII-shape guard.
     expected_domain_events = {
         event
         for event in EventName
         if EVENT_CATEGORY[event] is EventCategory.DOMAIN
-        and event is not EventName.URL_ACCESSED
+        and event not in DOMAIN_EVENTS_TESTED_ELSEWHERE
     }
 
     counter_keys = list(

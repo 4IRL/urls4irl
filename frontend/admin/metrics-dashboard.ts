@@ -57,6 +57,7 @@ import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
 
 import {
+  fetchGroupedTimeseries,
   fetchSummary,
   fetchTimeseries,
   fetchTopEvents,
@@ -65,12 +66,14 @@ import {
   _resetPaneResizersForTests,
   initPaneResizers,
 } from "./pane-resizer.js";
+import { renderPipelineHealthChart } from "./render-pipeline-health-chart.js";
 import { renderSummary } from "./render-summary.js";
 import { renderTimeseriesChart } from "./render-timeseries-chart.js";
 import { renderTopTable } from "./render-top-table.js";
 
-type MetricsWindow = "day" | "week" | "month" | "year";
+export type MetricsWindow = "day" | "week" | "month" | "year";
 type MetricsCategory = "api" | "ui" | "domain";
+type MetricsTabId = MetricsCategory | "pipeline_health";
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type LastFlushBucket =
   | "just_now"
@@ -88,6 +91,7 @@ interface InFlightRequests {
   tsUi: JQuery.jqXHR | null;
   tsDomain: JQuery.jqXHR | null;
   summary: JQuery.jqXHR | null;
+  pipelineHealth: JQuery.jqXHR | null;
 }
 
 interface CategoryPanelIds {
@@ -198,6 +202,29 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
 // Tablist navigation order also matches DOM order: API → UI → Domain.
 const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
 
+// All tabs in DOM order. Pipeline Health is a tab but not a category — it has
+// its own panel + fetch path (grouped-timeseries), separate from the per-
+// category top-events / timeseries flow. Keeping it out of `CATEGORIES`
+// avoids having to add null-branches for the category-specific caches
+// (`_topCache`, filters, charts) every time a category iteration is needed.
+const TAB_IDS: readonly MetricsTabId[] = [...CATEGORIES, "pipeline_health"];
+
+const PIPELINE_HEALTH_TAB_ID: string = "MetricsTabPipelineHealth";
+const PIPELINE_HEALTH_PANEL_ID: string = "MetricsPanelPipelineHealth";
+
+function getTabAndPanelIds(tabId: MetricsTabId): {
+  tab: string;
+  panel: string;
+} {
+  if (tabId === "pipeline_health") {
+    return { tab: PIPELINE_HEALTH_TAB_ID, panel: PIPELINE_HEALTH_PANEL_ID };
+  }
+  return {
+    tab: CATEGORY_PANEL_IDS[tabId].tab,
+    panel: CATEGORY_PANEL_IDS[tabId].panel,
+  };
+}
+
 let _pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFetchPerf: number = 0;
 let _currentWindow: MetricsWindow = "day";
@@ -210,6 +237,7 @@ let _inFlight: InFlightRequests = {
   tsUi: null,
   tsDomain: null,
   summary: null,
+  pipelineHealth: null,
 };
 
 const TOP_SLOT_BY_CATEGORY: Record<
@@ -567,6 +595,7 @@ function abortInFlightRequests(): void {
     "tsUi",
     "tsDomain",
     "summary",
+    "pipelineHealth",
   ] as const) {
     const xhr = _inFlight[key];
     if (xhr !== null) {
@@ -936,14 +965,19 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
 }
 
 /**
- * Fire summary + per-category top-events for the current window. Each
- * `.done` callback writes to the per-category cache and re-renders the
- * active panel; `.fail` shows the error banner (unless the 429 prefilter
- * already replaced the page); every settled response refreshes
- * `_lastFetchPerf` for the visibility-refetch heuristic.
+ * Fire summary + grouped pipeline-health + per-category top-events for the
+ * current window. Each `.done` callback writes to the per-category cache
+ * and re-renders the active panel; `.fail` shows the error banner (unless
+ * the 429 prefilter already replaced the page); every settled response
+ * refreshes `_lastFetchPerf` for the visibility-refetch heuristic.
  *
- * Timeseries is fetched lazily — only when the user picks an event from a
- * panel's `<select>`. There is no stable default event to query on poll.
+ * The Pipeline Health card always uses `_currentWindow` and DELIBERATELY
+ * ignores the per-tab device filter — the card's whole point is to surface
+ * mobile-vs-desktop chattiness as a cross-tab signal.
+ *
+ * Timeseries (per-category) is fetched lazily — only when the user picks
+ * an event from a panel's `<select>`. There is no stable default event to
+ * query on poll.
  */
 function fetchAll(): void {
   abortInFlightRequests();
@@ -985,6 +1019,48 @@ function fetchAll(): void {
     })
     .always(() => {
       _inFlight.summary = null;
+      _lastFetchPerf = performance.now();
+      onSettleAny();
+    });
+
+  // Pipeline Health card request — grouped timeseries over
+  // (batch_size_bucket, transport, device_type). The card always uses
+  // `_currentWindow` and DELIBERATELY ignores the per-tab device filter so
+  // mobile-vs-desktop chattiness shows up as a cross-tab signal. Server-side
+  // GROUP BY collapses time buckets within the window, and the renderer
+  // sums them per column to produce the four stacked bars.
+  const pipelineHealthRequest = fetchGroupedTimeseries({
+    eventName: "api_metrics_ingest_batch",
+    groupBy: ["batch_size_bucket", "transport", "device_type"],
+    window: _currentWindow,
+  });
+  _inFlight.pipelineHealth = pipelineHealthRequest;
+  const requestedWindow = _currentWindow;
+  pipelineHealthRequest
+    .done((response) => {
+      setBannerVisible({ visible: false });
+      const pipelineHealthSvg = getElementByIdOrNull<HTMLElement>(
+        "MetricsPipelineHealthChart",
+      ) as unknown as SVGSVGElement | null;
+      if (pipelineHealthSvg !== null) {
+        renderPipelineHealthChart({
+          svg: pipelineHealthSvg,
+          response,
+          window: requestedWindow,
+        });
+      }
+    })
+    .fail((xhr) => {
+      if (is429Handled(xhr)) {
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      setBannerVisible({ visible: true });
+    })
+    .always(() => {
+      _inFlight.pipelineHealth = null;
       _lastFetchPerf = performance.now();
       onSettleAny();
     });
@@ -1045,7 +1121,8 @@ function onSettleAny(): void {
     _inFlight.tsApi !== null ||
     _inFlight.tsUi !== null ||
     _inFlight.tsDomain !== null ||
-    _inFlight.summary !== null;
+    _inFlight.summary !== null ||
+    _inFlight.pipelineHealth !== null;
   if (!anyInFlight) {
     setDashboardBusy({ busy: false });
     setRefreshButtonInFlight({ inFlight: false });
@@ -1092,7 +1169,11 @@ function renderLastFlushBadge(): void {
   }
 
   if (_lastFlushAtMs === null) {
-    textNode.textContent = "";
+    // The flush sentinel is absent on fresh stacks (no flush has run yet)
+    // and after any operation that clears Redis (container restart, manual
+    // `make metrics-clear-*`). An empty badge in that state reads as a bug;
+    // surface the unknown state explicitly instead.
+    textNode.textContent = APP_CONFIG.strings.METRICS_LAST_FLUSH_UNKNOWN;
     badge.classList.remove(BADGE_STALE_CLASS);
     return;
   }
@@ -1163,7 +1244,9 @@ function renderLastEventBadge(): void {
   }
 
   if (_lastEventAtMs === null) {
-    textNode.textContent = "";
+    // Mirror the flush badge fallback: surface the unknown state instead of
+    // blanking the badge to a green dot with no text.
+    textNode.textContent = APP_CONFIG.strings.METRICS_LAST_EVENT_UNKNOWN;
     return;
   }
 
@@ -1287,27 +1370,26 @@ function handleWindowButtonClick(event: JQuery.TriggeredEvent): void {
  * keyboard users land inside the section content after switching.
  */
 function handleTabClick({
-  tabId: _tabId,
-  category,
+  tabId: _domTabId,
+  tab,
 }: {
   tabId: string;
-  category: MetricsCategory;
+  tab: MetricsTabId;
 }): void {
-  _currentCategory = category;
+  if (tab !== "pipeline_health") {
+    _currentCategory = tab;
+  }
 
-  for (const candidateCategory of CATEGORIES) {
-    const isActive = candidateCategory === category;
-    const tabElement = getElementByIdOrNull<HTMLButtonElement>(
-      CATEGORY_PANEL_IDS[candidateCategory].tab,
-    );
+  for (const candidateTab of TAB_IDS) {
+    const isActive = candidateTab === tab;
+    const ids = getTabAndPanelIds(candidateTab);
+    const tabElement = getElementByIdOrNull<HTMLButtonElement>(ids.tab);
     if (tabElement !== null) {
       tabElement.setAttribute("aria-selected", isActive ? "true" : "false");
       tabElement.setAttribute("tabindex", isActive ? "0" : "-1");
     }
 
-    const panelElement = getElementByIdOrNull<HTMLElement>(
-      CATEGORY_PANEL_IDS[candidateCategory].panel,
-    );
+    const panelElement = getElementByIdOrNull<HTMLElement>(ids.panel);
     if (panelElement !== null) {
       if (isActive) {
         panelElement.removeAttribute("hidden");
@@ -1317,23 +1399,27 @@ function handleTabClick({
     }
   }
 
-  // Re-render the active panel from cache so the latest top-events list and
-  // select options are visible immediately after the switch.
-  renderCategoryPanelFromCache({ category });
+  // For category tabs, re-render the active panel from cache so the latest
+  // top-events list and select options are visible immediately after the
+  // switch. Pipeline Health renders from the grouped-timeseries XHR fired
+  // by `fetchAll`, so no cache re-render is needed here.
+  if (tab !== "pipeline_health") {
+    renderCategoryPanelFromCache({ category: tab });
+  }
 
   const activePanel = getElementByIdOrNull<HTMLElement>(
-    CATEGORY_PANEL_IDS[category].panel,
+    getTabAndPanelIds(tab).panel,
   );
   activePanel?.focus();
 }
 
 function handleTabButtonClick(event: JQuery.TriggeredEvent): void {
   const tabElement = event.currentTarget as HTMLButtonElement;
-  const category = tabElement.dataset.category as MetricsCategory | undefined;
-  if (category === undefined) {
+  const tab = tabElement.dataset.tab as MetricsTabId | undefined;
+  if (tab === undefined) {
     return;
   }
-  handleTabClick({ tabId: tabElement.id, category });
+  handleTabClick({ tabId: tabElement.id, tab });
 }
 
 /**
@@ -1356,37 +1442,36 @@ function handleTabKeydown(event: JQuery.TriggeredEvent): void {
   }
 
   const tabElement = event.currentTarget as HTMLButtonElement;
-  const currentCategory = tabElement.dataset.category as
-    | MetricsCategory
-    | undefined;
-  if (currentCategory === undefined) {
+  const currentTab = tabElement.dataset.tab as MetricsTabId | undefined;
+  if (currentTab === undefined) {
     return;
   }
-  const currentIndex = CATEGORIES.indexOf(currentCategory);
+  const currentIndex = TAB_IDS.indexOf(currentTab);
   if (currentIndex === -1) {
     return;
   }
 
   let nextIndex: number;
   if (key === "ArrowLeft") {
-    nextIndex = (currentIndex - 1 + CATEGORIES.length) % CATEGORIES.length;
+    nextIndex = (currentIndex - 1 + TAB_IDS.length) % TAB_IDS.length;
   } else if (key === "ArrowRight") {
-    nextIndex = (currentIndex + 1) % CATEGORIES.length;
+    nextIndex = (currentIndex + 1) % TAB_IDS.length;
   } else if (key === "Home") {
     nextIndex = 0;
   } else {
-    nextIndex = CATEGORIES.length - 1;
+    nextIndex = TAB_IDS.length - 1;
   }
 
   event.preventDefault();
 
-  const nextCategory = CATEGORIES[nextIndex];
+  const nextTab = TAB_IDS[nextIndex];
+  const nextTabIds = getTabAndPanelIds(nextTab);
   const nextTabElement = getElementByIdOrNull<HTMLButtonElement>(
-    CATEGORY_PANEL_IDS[nextCategory].tab,
+    nextTabIds.tab,
   );
   handleTabClick({
-    tabId: CATEGORY_PANEL_IDS[nextCategory].tab,
-    category: nextCategory,
+    tabId: nextTabIds.tab,
+    tab: nextTab,
   });
   // After `handleTabClick` focuses the panel, return focus to the activated
   // tab so the user can keep navigating with arrow keys without re-tabbing
@@ -1483,6 +1568,7 @@ export function _resetMetricsDashboardForTests(): void {
     tsUi: null,
     tsDomain: null,
     summary: null,
+    pipelineHealth: null,
   };
   _topCache.clear();
   _selectedEventByCategory.clear();

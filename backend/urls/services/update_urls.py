@@ -2,6 +2,8 @@ from flask_login import current_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs, warning_log
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -159,6 +161,8 @@ def _associate_updated_url_with_utub(
 
     current_utub.set_last_updated()
     db.session.commit()
+
+    record_event(EventName.URL_STRING_UPDATED)
 
     safe_add_many_logs(
         ["Added URL to UTub", f"UTub.id={current_utub.id}", f"URL.id={url.id}"]

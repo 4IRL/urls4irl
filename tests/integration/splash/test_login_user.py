@@ -4,6 +4,7 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
@@ -13,8 +14,15 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+)
 from tests.models_for_test import invalid_user_1, valid_user_1
 from tests.utils_for_test import get_csrf_token, is_string_in_logs
+
+_LOGIN_FAILURE_REASON_DIM_KEY = "reason"
 
 pytestmark = pytest.mark.splash
 
@@ -58,6 +66,135 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
         ).first()
 
     assert registered_db_user.id == int(current_user.get_id())
+
+
+def test_login_success_records_metric(
+    metrics_enabled_app, provide_metrics_redis, register_first_user, load_login_page
+):
+    """
+    GIVEN a registered, email-validated user with metrics enabled
+    WHEN they POST to "/login" with correct credentials
+    THEN the request succeeds AND exactly one LOGIN_SUCCESS counter key is
+        written to the metrics Redis DB (after the email_validated guard passes).
+    """
+    client, csrf_token_str = load_login_page
+    new_user = deepcopy(valid_user_1)
+
+    # Before-state: no LOGIN_SUCCESS counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_SUCCESS) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: new_user[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_SUCCESS) == 1
+
+
+def test_login_failure_unknown_user_records_metric_with_reason(
+    metrics_enabled_app, provide_metrics_redis, load_login_page
+):
+    """
+    GIVEN an unregistered user with metrics enabled
+    WHEN they POST to "/login" with a username that does not exist
+    THEN the request returns HTTP 400 AND exactly one LOGIN_FAILURE counter
+        key is written with reason="unknown_user".
+    """
+    client, csrf_token_str = load_login_page
+    invalid_user = deepcopy(invalid_user_1)
+
+    # Before-state: no LOGIN_FAILURE counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: invalid_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: invalid_user[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 400
+
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
+    assert len(counter_keys) == 1
+    assert parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "unknown_user"
+
+
+def test_login_failure_bad_password_records_metric_with_reason(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    register_first_user,
+    load_login_page,
+):
+    """
+    GIVEN a registered, email-validated user with metrics enabled
+    WHEN they POST to "/login" with an incorrect password
+    THEN the request returns HTTP 400 AND exactly one LOGIN_FAILURE counter
+        key is written with reason="bad_password".
+    """
+    client, csrf_token_str = load_login_page
+    new_user = deepcopy(valid_user_1)
+
+    # Before-state: no LOGIN_FAILURE counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "wrong-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 400
+
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
+    assert len(counter_keys) == 1
+    assert parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "bad_password"
+
+
+def test_login_failure_email_unverified_records_metric_with_reason(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    register_first_user_without_email_validation,
+    load_login_page,
+):
+    """
+    GIVEN a registered user whose email is not validated with metrics enabled
+    WHEN they POST to "/login" with correct credentials
+    THEN the request returns HTTP 401 AND exactly one LOGIN_FAILURE counter
+        key is written with reason="email_unverified".
+    """
+    registered_user_data, _ = register_first_user_without_email_validation
+    client, csrf_token_str = load_login_page
+
+    # Before-state: no LOGIN_FAILURE counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: registered_user_data[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: registered_user_data[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 401
+
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
+    assert len(counter_keys) == 1
+    assert (
+        parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "email_unverified"
+    )
 
 
 def test_login_unregistered_user(load_login_page):

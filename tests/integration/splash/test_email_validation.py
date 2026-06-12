@@ -4,6 +4,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.users import EmailValidationResponseSchema
 from backend.splash.constants import EmailValidationErrorCodes
@@ -25,6 +26,7 @@ from backend.utils.strings.email_validation_strs import (
 )
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.integration.splash.conftest import register_json
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.splash
@@ -238,6 +240,55 @@ def test_token_validates_user(mock_request_post, app, load_register_page):
             Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         assert user.email_validated and user.email_confirm is None
+
+
+@mock.patch("backend.extensions.notifications.notifications.requests.post")
+def test_token_validates_user_records_email_verified_metric(
+    mock_request_post,
+    metrics_enabled_app,
+    provide_metrics_redis,
+    app,
+    load_register_page,
+):
+    """
+    GIVEN a user with metrics enabled who has just registered
+    WHEN they click the validation link in their email
+    THEN the email is validated AND exactly one EMAIL_VERIFIED counter key
+        is written to the metrics Redis DB.
+    """
+    notification_sent = threading.Event()
+
+    def mock_post_with_event(*args, **kwargs):
+        mock_response = type("MockResponse", (), {"status_code": 200})()
+        notification_sent.set()
+        return mock_response
+
+    mock_request_post.side_effect = mock_post_with_event
+
+    client, csrf_token = load_register_page
+
+    client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(valid_user_1),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    with app.app_context():
+        user: Users = Users.query.filter(
+            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
+        ).first()
+        user_token = user.email_confirm.validation_token
+
+    # Before-state: no EMAIL_VERIFIED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.EMAIL_VERIFIED) == 0
+
+    response = client.get(
+        url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=user_token), follow_redirects=True
+    )
+
+    assert notification_sent.wait(timeout=5.0)
+    assert response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.EMAIL_VERIFIED) == 1
 
 
 def test_token_can_expire(app, register_first_user_without_email_validation):

@@ -123,6 +123,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metrics/query/grouped-timeseries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return per-(bucket × dim tuple) counts for a single event over an admin time window, grouped by 1-3 JSONB dimension keys. */
+    get: operations["queryGroupedTimeseries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -758,6 +775,56 @@ export interface components {
       last_event_at: string | null;
       /** @description Per-category current vs. previous totals */
       by_category: components["schemas"]["SummaryCategoryCount"][];
+    };
+    /** @description One row of the `grouped-timeseries` response — a single bucket × dim-tuple. */
+    GroupedTimeseriesBucket: {
+      /**
+       * Format: date-time
+       * @description Bucket start (UTC, date_trunc'd to resolution)
+       */
+      bucket: string;
+      /** @description The dimension-tuple values for this row, keyed by the requested `group_by` fields. Closed-set values come from the per-event Literal dim model; typed loosely (`str | int`) for transport. */
+      dimensions: {
+        [key: string]: string | number;
+      };
+      /** @description Sum of counts within this (bucket, dim-tuple) */
+      count: number;
+    };
+    /**
+     * @description Envelope returned by `GET /api/metrics/query/grouped-timeseries`.
+     *
+     *     Unlike the single-series `timeseries` endpoint, the grouped variant does
+     *     NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product
+     *     expansion is expensive; the frontend renderer treats absent combos as
+     *     "no segment for that bucket".
+     */
+    GroupedTimeseriesResponseSchema: {
+      /** @description EventName the series is filtered to */
+      event_name: string;
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /**
+       * @description date_trunc resolution (hour | day)
+       * @enum {string}
+       */
+      resolution: "hour" | "day";
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /** @description Dimension field names the series is grouped by */
+      group_by: string[];
+      /** @description Per-(bucket × dim tuple) rows, ordered chronologically and then alphabetically by dim values for deterministic output. NOT zero-filled — missing combinations are absent rather than zero-valued. */
+      buckets: components["schemas"]["GroupedTimeseriesBucket"][];
     };
     RegisterRequest: {
       /**
@@ -1420,18 +1487,29 @@ export interface operations {
         /** @description Any EventName value (api, domain, or ui). */
         event_name:
           | "api_hit"
-          | "utub_created"
-          | "utub_deleted"
-          | "utub_opened"
-          | "url_accessed"
-          | "tag_applied"
-          | "tag_removed"
-          | "tag_deleted"
+          | "api_metrics_ingest_batch"
+          | "email_verified"
+          | "login_failure"
+          | "login_success"
           | "member_added"
           | "member_removed"
+          | "password_reset_completed"
+          | "password_reset_requested"
+          | "register_success"
+          | "tag_applied"
+          | "tag_deleted"
+          | "tag_removed"
+          | "url_accessed"
+          | "url_added_to_utub"
+          | "url_removed_from_utub"
+          | "url_string_updated"
           | "url_title_updated"
-          | "utub_title_updated"
+          | "utub_created"
+          | "utub_deleted"
           | "utub_desc_updated"
+          | "utub_opened"
+          | "utub_tag_created"
+          | "utub_title_updated"
           | "ui_utub_select"
           | "ui_utub_create_open"
           | "ui_utub_delete_open"
@@ -1570,6 +1648,152 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["SummaryResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryGroupedTimeseries: {
+    parameters: {
+      query: {
+        /** @description Any EventName value (api, domain, or ui). */
+        event_name:
+          | "api_hit"
+          | "api_metrics_ingest_batch"
+          | "email_verified"
+          | "login_failure"
+          | "login_success"
+          | "member_added"
+          | "member_removed"
+          | "password_reset_completed"
+          | "password_reset_requested"
+          | "register_success"
+          | "tag_applied"
+          | "tag_deleted"
+          | "tag_removed"
+          | "url_accessed"
+          | "url_added_to_utub"
+          | "url_removed_from_utub"
+          | "url_string_updated"
+          | "url_title_updated"
+          | "utub_created"
+          | "utub_deleted"
+          | "utub_desc_updated"
+          | "utub_opened"
+          | "utub_tag_created"
+          | "utub_title_updated"
+          | "ui_utub_select"
+          | "ui_utub_create_open"
+          | "ui_utub_delete_open"
+          | "ui_utub_delete_confirm"
+          | "ui_utub_delete_cancel"
+          | "ui_utub_name_edit_open"
+          | "ui_utub_desc_edit_open"
+          | "ui_url_access"
+          | "ui_url_card_click"
+          | "ui_url_create_open"
+          | "ui_url_title_edit_open"
+          | "ui_url_string_edit_open"
+          | "ui_url_delete_open"
+          | "ui_url_delete_confirm"
+          | "ui_url_delete_cancel"
+          | "ui_url_copy"
+          | "ui_url_access_warning"
+          | "ui_url_access_warning_dismiss"
+          | "ui_utub_search_open"
+          | "ui_utub_search_close"
+          | "ui_url_search_open"
+          | "ui_url_search_close"
+          | "ui_tag_apply"
+          | "ui_tag_remove"
+          | "ui_tag_create_open"
+          | "ui_tag_delete_open"
+          | "ui_tag_delete_confirm"
+          | "ui_tag_delete_cancel"
+          | "ui_tag_filter_toggle"
+          | "ui_member_invite_open"
+          | "ui_member_remove_open"
+          | "ui_member_remove_confirm"
+          | "ui_member_remove_cancel"
+          | "ui_member_leave_open"
+          | "ui_member_leave_confirm"
+          | "ui_member_leave_cancel"
+          | "ui_form_submit"
+          | "ui_form_cancel"
+          | "ui_validation_error"
+          | "ui_deck_collapse"
+          | "ui_deck_expand"
+          | "ui_navbar_mobile_menu_open"
+          | "ui_navbar_mobile_menu_close"
+          | "ui_mobile_nav"
+          | "ui_login_submit"
+          | "ui_register_submit"
+          | "ui_forgot_password_submit"
+          | "ui_auth_form_switch"
+          | "ui_auth_modal_open"
+          | "ui_reset_password_submit"
+          | "ui_email_validation_submit"
+          | "ui_contact_submit"
+          | "ui_error_page_refresh"
+          | "ui_rate_limit_hit";
+        /** @description List of dimension field names to group the timeseries by. Each entry must be a field of `DIMENSION_MODELS[event_name]` (validated at the route layer); shape is bounded at the schema layer to 1-3 non-empty entries ≤64 chars each. */
+        group_by: string[];
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+        /** @description date_trunc resolution: hour (default) or day. */
+        resolution?: "hour" | "day";
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Envelope returned by `GET /api/metrics/query/grouped-timeseries`.
+       *
+       *         Unlike the single-series `timeseries` endpoint, the grouped variant does
+       *         NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product
+       *         expansion is expensive; the frontend renderer treats absent combos as
+       *         "no segment for that bucket".
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["GroupedTimeseriesResponseSchema"];
         };
       };
       /** @description Bad request */

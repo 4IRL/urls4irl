@@ -276,6 +276,9 @@ class SplashPageLocators(GenericPageLocator):
     # Reset password (uses #SplashModal — only modal on page, no scoping needed)
     RESET_PASSWORD_BUTTON_SUBMIT = f"{SPLASH_MODAL} #submit"
     RESET_PASSWORD_INVALID_FEEDBACK = f"{SPLASH_MODAL} .invalid-feedback"
+    # Set by initResetPasswordForm after the submit handler is bound; tests
+    # wait on this so they never race the JS bundle finishing initialization.
+    RESET_PASSWORD_FORM_READY = f"{SPLASH_MODAL} form[data-form-ready='true']"
 
     # Register
     BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
@@ -344,6 +347,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     TAB_API_BUTTON = "#MetricsTabApi"
     TAB_UI_BUTTON = "#MetricsTabUi"
     TAB_DOMAIN_BUTTON = "#MetricsTabDomain"
+    TAB_PIPELINE_HEALTH_BUTTON = "#MetricsTabPipelineHealth"
 
     # Per-section table IDs
     TOP_TABLE_API = "#MetricsTopTableApi"
@@ -370,3 +374,33 @@ class MetricsDashboardLocators(GenericPageLocator):
     TOP_SUBSTRING_FILTER_API = "#MetricsTopSubstringFilter-api"
     TOP_SUBSTRING_FILTER_UI = "#MetricsTopSubstringFilter-ui"
     TOP_SUBSTRING_FILTER_DOMAIN = "#MetricsTopSubstringFilter-domain"
+
+    # Pipeline Health card (always-visible standalone section above the tablist).
+    PIPELINE_HEALTH_CARD = "#MetricsPipelineHealth"
+    PIPELINE_HEALTH_CHART = "#MetricsPipelineHealthChart"
+    PIPELINE_HEALTH_LEGEND = "#MetricsPipelineHealthLegend"
+    PIPELINE_HEALTH_LEGEND_SWATCH_FETCH_DESKTOP = (
+        "#MetricsPipelineHealthLegend .swatch--fetch-desktop"
+    )
+    PIPELINE_HEALTH_LEGEND_SWATCH_FETCH_MOBILE = (
+        "#MetricsPipelineHealthLegend .swatch--fetch-mobile"
+    )
+    PIPELINE_HEALTH_LEGEND_SWATCH_BEACON_DESKTOP = (
+        "#MetricsPipelineHealthLegend .swatch--beacon-desktop"
+    )
+    PIPELINE_HEALTH_LEGEND_SWATCH_BEACON_MOBILE = (
+        "#MetricsPipelineHealthLegend .swatch--beacon-mobile"
+    )
+    PIPELINE_HEALTH_BAR_FETCH_DESKTOP = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--fetch-desktop"
+    )
+    PIPELINE_HEALTH_BAR_FETCH_MOBILE = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--fetch-mobile"
+    )
+    PIPELINE_HEALTH_BAR_BEACON_DESKTOP = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--beacon-desktop"
+    )
+    PIPELINE_HEALTH_BAR_BEACON_MOBILE = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--beacon-mobile"
+    )
+    PIPELINE_HEALTH_EMPTY_STATE = "#MetricsPipelineHealthChart .MetricsEmptyState"

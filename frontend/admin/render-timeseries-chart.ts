@@ -24,6 +24,8 @@ import { buildAxisTicks } from "../lib/charts/axis.js";
 import { buildPolylinePoints } from "../lib/charts/line.js";
 import { linearScale, niceTicks } from "../lib/charts/scale.js";
 
+import { appendEmptyState } from "./render-shared.js";
+
 type TimeseriesResponseSchema = Schema<"TimeseriesResponseSchema">;
 
 const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
@@ -41,9 +43,6 @@ const Y_AXIS_TITLE_X = 16;
 const PLOT_WIDTH = VIEWBOX_WIDTH - AXIS_LEFT_PADDING;
 const PLOT_HEIGHT = VIEWBOX_HEIGHT - AXIS_BOTTOM_PADDING;
 const Y_AXIS_TICK_COUNT = 5;
-
-const EMPTY_STATE_TEXT_X = 400;
-const EMPTY_STATE_TEXT_Y = 120;
 
 function clearSvgChildren({ svg }: { svg: SVGSVGElement }): void {
   while (svg.firstChild !== null) {
@@ -68,17 +67,6 @@ function appendTitleAndDesc({
 
   svg.appendChild(titleElement);
   svg.appendChild(descElement);
-}
-
-function appendEmptyState({ svg }: { svg: SVGSVGElement }): void {
-  const emptyText = document.createElementNS(SVG_NAMESPACE, "text");
-  emptyText.setAttribute("x", String(EMPTY_STATE_TEXT_X));
-  emptyText.setAttribute("y", String(EMPTY_STATE_TEXT_Y));
-  emptyText.setAttribute("text-anchor", "middle");
-  emptyText.setAttribute("dominant-baseline", "middle");
-  emptyText.setAttribute("class", "MetricsEmptyState");
-  emptyText.textContent = APP_CONFIG.strings.METRICS_EMPTY_STATE;
-  svg.appendChild(emptyText);
 }
 
 function formatBucketLabel(bucketIso: string): string {
@@ -109,7 +97,10 @@ export function renderTimeseriesChart({
       titleText: response.event_name,
       descText: APP_CONFIG.strings.METRICS_EMPTY_STATE,
     });
-    appendEmptyState({ svg });
+    appendEmptyState({
+      svg,
+      message: APP_CONFIG.strings.METRICS_EMPTY_STATE,
+    });
     return;
   }
 

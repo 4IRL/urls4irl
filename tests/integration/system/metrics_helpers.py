@@ -22,6 +22,33 @@ WINDOWS_CHROME_UA = (
 )
 
 
+DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
+    {
+        EventName.URL_ACCESSED,
+        EventName.URL_ADDED_TO_UTUB,
+        EventName.URL_REMOVED_FROM_UTUB,
+        EventName.URL_STRING_UPDATED,
+        EventName.UTUB_TAG_CREATED,
+        EventName.REGISTER_SUCCESS,
+        EventName.LOGIN_SUCCESS,
+        EventName.LOGIN_FAILURE,
+        EventName.EMAIL_VERIFIED,
+        EventName.PASSWORD_RESET_REQUESTED,
+        EventName.PASSWORD_RESET_COMPLETED,
+    }
+)
+"""DOMAIN events whose pipeline coverage lives in dedicated per-route emit tests.
+
+URL_ACCESSED and the URL_*/UTUB_TAG_CREATED events fire from URL/tag service
+flows that the shared system-level seed does not exercise; the auth lifecycle
+events (REGISTER_SUCCESS, LOGIN_SUCCESS, LOGIN_FAILURE, EMAIL_VERIFIED,
+PASSWORD_RESET_*) fire from unauthenticated splash routes that the
+authenticated test fixture cannot reach. Each excluded event has its own
+per-route emit test under tests/integration/<feature>/ and flushes through
+the same pipeline, so the end-to-end invariant is still covered.
+"""
+
+
 def find_counter_keys(metrics_redis: Redis, event: EventName) -> list[bytes]:
     pattern = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*:{event.value}:*"
     return list(metrics_redis.scan_iter(match=pattern))

@@ -15,6 +15,7 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
@@ -22,6 +23,7 @@ const {
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -52,8 +55,16 @@ import {
   initMetricsDashboard,
 } from "../metrics-dashboard.js";
 
-type TabId = "MetricsTabApi" | "MetricsTabUi" | "MetricsTabDomain";
-type PanelId = "MetricsPanelApi" | "MetricsPanelUi" | "MetricsPanelDomain";
+type TabId =
+  | "MetricsTabApi"
+  | "MetricsTabUi"
+  | "MetricsTabDomain"
+  | "MetricsTabPipelineHealth";
+type PanelId =
+  | "MetricsPanelApi"
+  | "MetricsPanelUi"
+  | "MetricsPanelDomain"
+  | "MetricsPanelPipelineHealth";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
@@ -63,9 +74,10 @@ const DASHBOARD_HTML = `
     <button class="MetricsWindowButton" data-window="month" aria-pressed="false"></button>
     <button class="MetricsWindowButton" data-window="year" aria-pressed="false"></button>
     <div id="MetricsTablist" role="tablist">
-      <button id="MetricsTabApi"    role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"    tabindex="0"  data-category="api"></button>
-      <button id="MetricsTabUi"     role="tab" aria-selected="false" aria-controls="MetricsPanelUi"     tabindex="-1" data-category="ui"></button>
-      <button id="MetricsTabDomain" role="tab" aria-selected="false" aria-controls="MetricsPanelDomain" tabindex="-1" data-category="domain"></button>
+      <button id="MetricsTabApi"            role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"            tabindex="0"  data-tab="api"></button>
+      <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui"></button>
+      <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain"></button>
+      <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
@@ -80,6 +92,7 @@ const DASHBOARD_HTML = `
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
     </section>
+    <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
   </main>
 `;
@@ -103,6 +116,7 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -110,6 +124,9 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
     initMetricsDashboard();
@@ -152,22 +169,24 @@ describe("metrics-dashboard tablist a11y", () => {
     getTab("MetricsTabApi").focus();
     $("#MetricsTabApi").trigger($.Event("keydown", { key: "ArrowLeft" }));
 
-    expect(getTab("MetricsTabDomain").getAttribute("aria-selected")).toBe(
-      "true",
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(getTab("MetricsTabPipelineHealth").getAttribute("tabindex")).toBe(
+      "0",
     );
-    expect(getTab("MetricsTabDomain").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabDomain"));
+    expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
   it("Home key activates the first tab", () => {
-    // Start with the Domain tab active so Home has work to do.
-    getTab("MetricsTabDomain").click();
-    expect(getTab("MetricsTabDomain").getAttribute("aria-selected")).toBe(
-      "true",
-    );
+    // Start with the last tab active so Home has work to do.
+    getTab("MetricsTabPipelineHealth").click();
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
 
-    getTab("MetricsTabDomain").focus();
-    $("#MetricsTabDomain").trigger($.Event("keydown", { key: "Home" }));
+    getTab("MetricsTabPipelineHealth").focus();
+    $("#MetricsTabPipelineHealth").trigger($.Event("keydown", { key: "Home" }));
 
     expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
     expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
@@ -178,29 +197,40 @@ describe("metrics-dashboard tablist a11y", () => {
     getTab("MetricsTabApi").focus();
     $("#MetricsTabApi").trigger($.Event("keydown", { key: "End" }));
 
-    expect(getTab("MetricsTabDomain").getAttribute("aria-selected")).toBe(
-      "true",
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(getTab("MetricsTabPipelineHealth").getAttribute("tabindex")).toBe(
+      "0",
     );
-    expect(getTab("MetricsTabDomain").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabDomain"));
+    expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
   it("hidden attribute toggles on tabpanels in sync with selection", () => {
     expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(false);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelDomain").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
+      true,
+    );
 
     getTab("MetricsTabUi").click();
 
     expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(false);
     expect(getPanel("MetricsPanelDomain").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
+      true,
+    );
 
-    getTab("MetricsTabDomain").click();
+    getTab("MetricsTabPipelineHealth").click();
 
     expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(true);
-    expect(getPanel("MetricsPanelDomain").hasAttribute("hidden")).toBe(false);
+    expect(getPanel("MetricsPanelDomain").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
+      false,
+    );
   });
 
   it("changing the per-panel select fires fetchTimeseries with the chosen event", () => {

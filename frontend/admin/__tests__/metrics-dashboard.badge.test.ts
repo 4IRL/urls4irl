@@ -22,6 +22,7 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
@@ -29,6 +30,7 @@ const {
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
@@ -38,6 +40,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -122,6 +125,7 @@ describe("metrics-dashboard last-flush badge", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -129,6 +133,9 @@ describe("metrics-dashboard last-flush badge", () => {
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });
@@ -139,11 +146,13 @@ describe("metrics-dashboard last-flush badge", () => {
     document.body.innerHTML = "";
   });
 
-  it("renders empty text when last_flush_at is null", () => {
+  it("renders 'Last flush unknown' when last_flush_at is null", () => {
     _setLastFlushAtMsForTests(null);
     _renderLastFlushBadgeForTests();
 
-    expect(getElement(FLUSH_BADGE_TEXT_ID).textContent).toBe("");
+    expect(getElement(FLUSH_BADGE_TEXT_ID).textContent).toBe(
+      "Last flush unknown",
+    );
     expect(getElement(FLUSH_BADGE_ID).classList.contains(STALE_CLASS)).toBe(
       false,
     );
@@ -287,6 +296,7 @@ describe("metrics-dashboard last-event badge", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -294,6 +304,9 @@ describe("metrics-dashboard last-event badge", () => {
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });
@@ -304,11 +317,13 @@ describe("metrics-dashboard last-event badge", () => {
     document.body.innerHTML = "";
   });
 
-  it("renders empty text when last_event_at is null", () => {
+  it("renders 'Last event unknown' when last_event_at is null", () => {
     _setLastEventAtMsForTests(null);
     _renderLastEventBadgeForTests();
 
-    expect(getElement(EVENT_BADGE_TEXT_ID).textContent).toBe("");
+    expect(getElement(EVENT_BADGE_TEXT_ID).textContent).toBe(
+      "Last event unknown",
+    );
   });
 
   it("renders 'Last event just now' when elapsed < 5s", () => {

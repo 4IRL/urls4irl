@@ -110,6 +110,50 @@ def test_delete_url_as_utub_creator_no_tags(
         assert Utub_Urls.query.count() == initial_utub_urls - 1
 
 
+def test_delete_url_records_url_removed_from_utub_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with a URL (no tags) and metrics enabled
+    WHEN the creator DELETEs "/utubs/<utub_id>/urls/<utub_url_id>"
+    THEN the request returns HTTP 200 AND exactly one URL_REMOVED_FROM_UTUB
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_user_is_creator_of.id
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).first()
+        utub_url_id = utub_url.id
+
+    # Before-state: no URL_REMOVED_FROM_UTUB counter exists yet
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.URL_REMOVED_FROM_UTUB) == 0
+    )
+
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_url_response.status_code == 200
+    assert (
+        count_counter_keys(provide_metrics_redis, EventName.URL_REMOVED_FROM_UTUB) == 1
+    )
+
+
 def test_delete_url_does_not_inflate_tag_removed_counter(
     metrics_enabled_app,
     provide_metrics_redis,

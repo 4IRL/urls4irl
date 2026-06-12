@@ -4,6 +4,8 @@ from sqlalchemy import case, func
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -40,6 +42,8 @@ def delete_url_in_utub(
     current_utub.set_last_updated()
 
     db.session.commit()
+
+    record_event(EventName.URL_REMOVED_FROM_UTUB)
 
     safe_add_many_logs(
         [

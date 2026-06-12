@@ -4,6 +4,8 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.extension_utils import safe_get_email_sender
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.splash.constants import ForgotPasswordErrorCodes
@@ -60,6 +62,7 @@ def send_forgot_password_email_to_user(
             )
 
         safe_add_log(f"Sending password reset email for User={user_with_email.id}")
+        record_event(EventName.PASSWORD_RESET_REQUESTED)
 
     return APIResponse(
         message=FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,

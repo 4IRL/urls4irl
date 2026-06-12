@@ -18,12 +18,14 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTimeseriesChartSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
 }));
@@ -32,6 +34,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -59,9 +62,10 @@ const DASHBOARD_HTML = `
     <button class="MetricsWindowButton" data-window="month" aria-pressed="false"></button>
     <button class="MetricsWindowButton" data-window="year" aria-pressed="false"></button>
     <div id="MetricsTablist" role="tablist">
-      <button id="MetricsTabApi"    role="tab" aria-selected="true"  data-category="api"></button>
-      <button id="MetricsTabUi"     role="tab" aria-selected="false" data-category="ui"></button>
-      <button id="MetricsTabDomain" role="tab" aria-selected="false" data-category="domain"></button>
+      <button id="MetricsTabApi"            role="tab" aria-selected="true"  data-tab="api"></button>
+      <button id="MetricsTabUi"             role="tab" aria-selected="false" data-tab="ui"></button>
+      <button id="MetricsTabDomain"         role="tab" aria-selected="false" data-tab="domain"></button>
+      <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
@@ -76,6 +80,7 @@ const DASHBOARD_HTML = `
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain" class="top-table"><thead></thead><tbody></tbody></table>
     </section>
+    <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
   </main>
 `;
@@ -132,11 +137,15 @@ describe("metrics-dashboard top-table row clicks", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });
@@ -350,11 +359,15 @@ describe("metrics-dashboard auto-default timeseries selection", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });

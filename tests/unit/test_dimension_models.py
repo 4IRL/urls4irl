@@ -28,6 +28,14 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         {"endpoint": "/utubs", "method": "POST", "status_code": 200},
     ),
     (
+        EventName.API_METRICS_INGEST_BATCH,
+        {
+            "batch_size_bucket": "2-5",
+            "transport": "fetch",
+            "device_type": DeviceType.DESKTOP,
+        },
+    ),
+    (
         EventName.UI_UTUB_SELECT,
         {"search_active": "true", "device_type": DeviceType.MOBILE},
     ),

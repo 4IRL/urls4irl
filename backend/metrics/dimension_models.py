@@ -104,7 +104,7 @@ class UIBaseDimensions(BaseModel):
 # ---------------------------------------------------------------------------
 # UI dimension models — one per event whose Registry row documents a non-empty
 # `Dimensions` cell. Sourced verbatim from
-# plans/anonymous-metrics/anonymous-metrics-master.md § Event Registry.
+# backend/metrics/event_registry.py § EVENT_REGISTRY.
 # ---------------------------------------------------------------------------
 
 
@@ -244,6 +244,26 @@ class _DimApiHit(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimApiMetricsIngestBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    batch_size_bucket: Literal["1", "2-5", "6-25", "26-100"]
+    transport: Literal["fetch", "beacon"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
+# ---------------------------------------------------------------------------
+# Domain dimension models — only LOGIN_FAILURE carries a non-empty dim shape
+# (closed-set `reason` literal). All other new domain events ride on the
+# shared `_DimDeviceOnly` class with device_type auto-injected by the writer.
+# ---------------------------------------------------------------------------
+
+
+class _DimLoginFailure(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Literal["unknown_user", "bad_password", "email_unverified"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 # ---------------------------------------------------------------------------
 # DIMENSION_MODELS — every member of EventName keyed. `None` for events
 # without dimensions. Order mirrors `EventName` for review-friendliness.
@@ -253,19 +273,31 @@ class _DimApiHit(BaseModel):
 DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # API
     EventName.API_HIT: _DimApiHit,
+    EventName.API_METRICS_INGEST_BATCH: _DimApiMetricsIngestBatch,
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
-    EventName.UTUB_CREATED: _DimDeviceOnly,
-    EventName.UTUB_DELETED: _DimDeviceOnly,
-    EventName.UTUB_OPENED: _DimDeviceOnly,
-    EventName.URL_ACCESSED: _DimDeviceOnly,
-    EventName.TAG_APPLIED: _DimDeviceOnly,
-    EventName.TAG_REMOVED: _DimDeviceOnly,
-    EventName.TAG_DELETED: _DimDeviceOnly,
+    # `LOGIN_FAILURE` is the only domain event with a closed-set extra dim (`reason`).
+    EventName.EMAIL_VERIFIED: _DimDeviceOnly,
+    EventName.LOGIN_FAILURE: _DimLoginFailure,
+    EventName.LOGIN_SUCCESS: _DimDeviceOnly,
     EventName.MEMBER_ADDED: _DimDeviceOnly,
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
+    EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,
+    EventName.PASSWORD_RESET_REQUESTED: _DimDeviceOnly,
+    EventName.REGISTER_SUCCESS: _DimDeviceOnly,
+    EventName.TAG_APPLIED: _DimDeviceOnly,
+    EventName.TAG_DELETED: _DimDeviceOnly,
+    EventName.TAG_REMOVED: _DimDeviceOnly,
+    EventName.URL_ACCESSED: _DimDeviceOnly,
+    EventName.URL_ADDED_TO_UTUB: _DimDeviceOnly,
+    EventName.URL_REMOVED_FROM_UTUB: _DimDeviceOnly,
+    EventName.URL_STRING_UPDATED: _DimDeviceOnly,
     EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
-    EventName.UTUB_TITLE_UPDATED: _DimDeviceOnly,
+    EventName.UTUB_CREATED: _DimDeviceOnly,
+    EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,
+    EventName.UTUB_OPENED: _DimDeviceOnly,
+    EventName.UTUB_TAG_CREATED: _DimDeviceOnly,
+    EventName.UTUB_TITLE_UPDATED: _DimDeviceOnly,
     # UI — UTubs
     EventName.UI_UTUB_SELECT: _DimUtubSelect,
     EventName.UI_UTUB_CREATE_OPEN: _DimDeviceOnly,

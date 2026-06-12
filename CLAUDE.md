@@ -187,6 +187,18 @@ All `make test-*` invocations — integration, UI, single-marker, parallel, full
 
 After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
 
+## Generated Types Freshness
+
+After any backend change that alters the OpenAPI surface, run `make generate-types` and stage the regenerated `frontend/types/*` files in the **same commit** as the backend change. CI's `Generated Types Freshness / Generated Types Staleness Check` job runs `make generate-types` then `git diff --exit-code frontend/types/`; if the committed types lag the spec, the job fails with `##[error]Generated types are stale.` and blocks the PR even when every other test passes.
+
+**Triggers (any one is enough):**
+- New or modified Pydantic request/response schema referenced by a route
+- New or modified `api_route(query_schema=..., header_schema=..., path_schema=...)`
+- New or removed route, or a decorator change that affects OpenAPI metadata
+- Changes to metrics dimensions, events, or resources (regenerates `metrics-dimensions.d.ts`, `metrics-dim-values.ts`, `metrics-events.ts`, `metrics-resources.ts`)
+
+Before committing a backend change in any of those categories, run `make generate-types` and check `git status` for changes under `frontend/types/`. Stage them in the same commit as the backend change.
+
 ## Development Commands
 
 ### Makefile Shortcuts

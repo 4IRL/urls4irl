@@ -124,11 +124,13 @@ const appConfig = {
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,
     // so APP_CONFIG must be hand-mocked.
     METRICS_TIMESERIES_SELECT_ARIA: "Select event for timeseries chart",
+    METRICS_LAST_FLUSH_UNKNOWN: "Last flush unknown",
     METRICS_LAST_FLUSH_JUST_NOW: "Last flush just now",
     METRICS_LAST_FLUSH_SECONDS: "Last flush {{ n }}s ago",
     METRICS_LAST_FLUSH_MINUTES: "Last flush {{ n }}m ago",
     METRICS_LAST_FLUSH_STALE_MINUTES: "Last flush {{ n }}m ago (stale)",
     METRICS_LAST_FLUSH_STALE_HOURS: "Last flush {{ n }}h ago (stale)",
+    METRICS_LAST_EVENT_UNKNOWN: "Last event unknown",
     METRICS_LAST_EVENT_JUST_NOW: "Last event just now",
     METRICS_LAST_EVENT_SECONDS: "Last event {{ n }}s ago",
     METRICS_LAST_EVENT_MINUTES: "Last event {{ n }}m ago",
@@ -168,6 +170,17 @@ const appConfig = {
     METRICS_TOP_DEVICE_MOBILE: "Mobile",
     METRICS_TOP_DEVICE_DESKTOP: "Desktop",
     METRICS_TOP_EMPTY_NO_MATCHES: "No events match the current filter.",
+    METRICS_PIPELINE_HEALTH_TITLE: "Pipeline Health",
+    METRICS_PIPELINE_HEALTH_EMPTY_STATE:
+      "No ingest batches recorded in the selected window.",
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL: "Batches",
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL_X: "Events per batch",
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP: "fetch · desktop",
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE: "fetch · mobile",
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP: "beacon · desktop",
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE: "beacon · mobile",
+    METRICS_PIPELINE_HEALTH_CHART_DESC:
+      "Stacked bar chart of accepted ingest batches grouped by batch size and split by transport and device type.",
   },
 };
 

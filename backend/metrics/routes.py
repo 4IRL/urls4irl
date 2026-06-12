@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from flask import Blueprint, request
 from pydantic import BaseModel, ValidationError
 
@@ -9,23 +11,26 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions.metrics.buckets import previous_window, resolve_query_window
+from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.extensions.metrics.writer import record_event
 from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
-from backend.metrics.events import EventCategory, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
 from backend.metrics.resources import Resource
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
 )
 from backend.schemas.metrics import (
+    GroupedTimeseriesResponseSchema,
     MetricsIngestResponseSchema,
     SummaryResponseSchema,
     TimeseriesResponseSchema,
     TopEventsResponseSchema,
 )
 from backend.schemas.requests.metrics import (
+    GroupedTimeseriesQuerySchema,
     MetricsIngestRequest,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
@@ -42,7 +47,30 @@ metrics = Blueprint("metrics", __name__)
 _METRICS_RATE_LIMIT = "120 per minute, 3000 per hour"
 
 
-def _parse_query_args(schema_cls: type[BaseModel]) -> BaseModel | FlaskResponse:
+def _bucket_batch_size(event_count: int) -> Literal["1", "2-5", "6-25", "26-100"]:
+    """Maps a batch event_count to its closed-set bucket label.
+
+    Examples:
+        >>> _bucket_batch_size(1)
+        '1'
+        >>> _bucket_batch_size(5)
+        '2-5'
+        >>> _bucket_batch_size(100)
+        '26-100'
+    """
+    if event_count <= 1:
+        return "1"
+    if event_count <= 5:
+        return "2-5"
+    if event_count <= 25:
+        return "6-25"
+    return "26-100"
+
+
+def _parse_query_args(
+    schema_cls: type[BaseModel],
+    multi_value_keys: frozenset[str] | None = None,
+) -> BaseModel | FlaskResponse:
     """Validate `request.args` against a Pydantic query schema.
 
     Returns the validated model on success or a 400 field-error response on
@@ -52,9 +80,20 @@ def _parse_query_args(schema_cls: type[BaseModel]) -> BaseModel | FlaskResponse:
     Why a module-private helper: every query route runs the same
     args-to-dict + model_validate + error-envelope dance; centralizing it
     keeps the route bodies focused on parse_window + service call + envelope.
+
+    `multi_value_keys` names query-string keys that should be promoted from a
+    single flat string to a list (via `request.args.getlist(key)`) before
+    Pydantic validation. Callers that pass `None` get the default empty
+    frozenset and the original flat behaviour. The `None` default mirrors
+    the project's non-mutable-default-arg convention even though `frozenset`
+    is immutable.
     """
+    multi_value_keys = multi_value_keys or frozenset()
+    args_dict = request.args.to_dict(flat=True)
+    for multi_value_key in multi_value_keys:
+        args_dict[multi_value_key] = request.args.getlist(multi_value_key)
     try:
-        return schema_cls.model_validate(request.args.to_dict(flat=True))
+        return schema_cls.model_validate(args_dict)
     except ValidationError as validation_error:
         return build_field_error_response(
             message=MetricsFailureMessages.INVALID_QUERY,
@@ -82,6 +121,15 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
     parsed_query = _parse_query_args(TransportQuerySchema)
     if not isinstance(parsed_query, BaseModel):
         return parsed_query
+
+    record_event(
+        EventName.API_METRICS_INGEST_BATCH,
+        dimensions={
+            "batch_size_bucket": _bucket_batch_size(len(metrics_ingest_request.events)),
+            "transport": parsed_query.transport or "fetch",
+            DEVICE_TYPE_DIM_KEY: classify_user_agent(request.headers.get("User-Agent")),
+        },
+    )
 
     if metrics_ingest_request.batch_id is not None:
         newly_reserved = metrics_writer.reserve_batch(metrics_ingest_request.batch_id)
@@ -290,4 +338,68 @@ def query_summary() -> FlaskResponse:
         last_event_at=summary_result.last_event_at,
         by_category=summary_result.by_category,
     )
+    return APIResponse(data=response_schema, status_code=200).to_response()
+
+
+@metrics.route("/api/metrics/query/grouped-timeseries", methods=["GET"])
+@admin_required
+@api_route(
+    query_schema=GroupedTimeseriesQuerySchema,
+    response_schema=GroupedTimeseriesResponseSchema,
+    ajax_required=True,
+    tags=[OPEN_API.METRICS],
+    description=(
+        "Return per-(bucket × dim tuple) counts for a single event over an "
+        "admin time window, grouped by 1-3 JSONB dimension keys."
+    ),
+    status_codes={
+        200: GroupedTimeseriesResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def query_grouped_timeseries() -> FlaskResponse:
+    parsed = _parse_query_args(
+        GroupedTimeseriesQuerySchema,
+        multi_value_keys=frozenset({"group_by"}),
+    )
+    if not isinstance(parsed, BaseModel):
+        return parsed
+
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_WINDOW,
+            errors={"window": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    try:
+        response_schema = query_service.grouped_timeseries(
+            event_name=EventName(parsed.event_name),
+            group_by=parsed.group_by,
+            window_start=window_start,
+            window_end=window_end,
+            resolution=parsed.resolution,
+        )
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_QUERY,
+            errors={"group_by": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    # Service builds the schema with `window=None`; thread the original query
+    # `window` value back into the envelope so the response reflects the
+    # client's request shape.
+    response_schema = response_schema.model_copy(update={"window": parsed.window})
     return APIResponse(data=response_schema, status_code=200).to_response()

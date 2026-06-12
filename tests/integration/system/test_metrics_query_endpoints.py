@@ -677,15 +677,16 @@ def test_query_top_resource_invalid_for_category_returns_400(
 ) -> None:
     """
     GIVEN an admin client
-    WHEN GETing /api/metrics/query/top?window=day&category=domain&resource=auth
-        (`auth` does not appear in `RESOURCE_BY_CATEGORY[DOMAIN]`)
+    WHEN GETing /api/metrics/query/top?window=day&category=domain&resource=search
+        (`search` does not appear in `RESOURCE_BY_CATEGORY[DOMAIN]` — domain
+        covers utub, url, tag, member, auth only)
     THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
         model_validator rejects pairs not listed in `RESOURCE_BY_CATEGORY`.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
 
     response = logged_in_client.get(
-        _TOP_URL + "?window=day&category=domain&resource=auth",
+        _TOP_URL + "?window=day&category=domain&resource=search",
         headers=_AJAX_HEADERS,
     )
 
@@ -866,3 +867,271 @@ def test_query_timeseries_device_type_one_returns_filtered_buckets_200(
     assert body["event_name"] == EventName.UTUB_OPENED.value
     assert isinstance(body["buckets"], list)
     assert sum(bucket["count"] for bucket in body["buckets"]) == 3
+
+
+# ---------------------------------------------------------------------------
+# `grouped-timeseries` — admin gating + window-XOR + bad group_by key + happy
+# ---------------------------------------------------------------------------
+
+
+_GROUPED_TIMESERIES_URL = "/api/metrics/query/grouped-timeseries"
+_INGEST_BATCH_EVENT: str = EventName.API_METRICS_INGEST_BATCH.value
+
+
+def _grouped_url_for(
+    event_name: str,
+    *,
+    group_by: list[str],
+    window: str = "day",
+) -> str:
+    """Build a grouped-timeseries URL with repeated `group_by` keys.
+
+    Matches the wire format `_parse_query_args(..., multi_value_keys=...)`
+    expects (one `group_by=<dim>` occurrence per dimension).
+    """
+    encoded_group_by = "&".join(f"group_by={key}" for key in group_by)
+    return (
+        f"{_GROUPED_TIMESERIES_URL}?window={window}"
+        f"&event_name={event_name}&{encoded_group_by}"
+    )
+
+
+def test_grouped_timeseries_anonymous_returns_401(
+    app: Flask, client: FlaskClient
+) -> None:
+    """
+    GIVEN an anonymous client (no session)
+    WHEN GETing /api/metrics/query/grouped-timeseries
+    THEN the response is 401 with a JSON failure envelope (NOT a 302 redirect
+        to splash) — mirrors the other admin-only query endpoints.
+    """
+    grouped_url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport"])
+
+    response = client.get(grouped_url)
+
+    assert response.status_code == 401
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_grouped_timeseries_non_admin_returns_404(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in user with the default User_Role.USER
+    WHEN GETing /api/metrics/query/grouped-timeseries
+    THEN the response is 404 with a JSON failure envelope (the surface is not
+        advertised to non-admins) — matches the other @admin_required query
+        endpoints; intentionally NOT 403.
+    """
+    logged_in_client, _, _, _ = login_first_user_with_register
+    grouped_url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport"])
+
+    response = logged_in_client.get(grouped_url)
+
+    assert response.status_code == 404
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_grouped_timeseries_window_xor_enforced(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/grouped-timeseries with both `window` and
+        `start` supplied
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        shared `_validate_window_xor_range` validator rejects the combo.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = (
+        f"{_GROUPED_TIMESERIES_URL}?window=day&start=2026-01-01T00:00:00Z"
+        f"&event_name={_INGEST_BATCH_EVENT}&group_by=transport"
+    )
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_grouped_timeseries_rejects_unknown_group_by_key(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/grouped-timeseries with
+        `group_by=nonexistent_dim` against an event that has no such dim
+    THEN the response is 400 — `grouped_timeseries()` raises ValueError when
+        a group_by entry isn't in `DIMENSION_MODELS[event].model_fields`, and
+        the route handler catches it as a field-level 400.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["nonexistent_dim"])
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "group_by" in body[STD_JSON.ERRORS]
+
+
+def test_grouped_timeseries_rejects_group_by_entry_over_64_chars(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/grouped-timeseries with a `group_by` entry
+        longer than 64 characters
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        `_check_group_by_entry_shape` model validator rejects any entry whose
+        length exceeds the 64-char ceiling before the route handler runs.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    over_limit_entry = "x" * 65
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=[over_limit_entry])
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_grouped_timeseries_rejects_empty_group_by_entry(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/grouped-timeseries with an empty-string
+        `group_by` entry
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        `_check_group_by_entry_shape` model validator rejects an empty entry
+        before the route handler runs.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=[""])
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_grouped_timeseries_returns_one_row_per_dim_tuple(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and three seeded API_METRICS_INGEST_BATCH rows
+        spanning (transport=fetch, device_type=2), (transport=beacon,
+        device_type=2), (transport=beacon, device_type=1) inside the window
+    WHEN GETing /api/metrics/query/grouped-timeseries
+        ?event_name=api_metrics_ingest_batch&group_by=transport&group_by=device_type
+    THEN the response is 200 with one bucket entry per unique
+        `(bucket, transport, device_type)` tuple, each carrying its correct
+        count.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    bucket_inside = _bucket_inside_window()
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.API_METRICS_INGEST_BATCH,
+            category=EventCategory.API,
+            bucket_start=bucket_inside,
+            count=4,
+            dimensions={
+                "batch_size_bucket": "1",
+                "transport": "fetch",
+                "device_type": 2,
+            },
+        )
+        _seed_event_with_count(
+            event_name=EventName.API_METRICS_INGEST_BATCH,
+            category=EventCategory.API,
+            bucket_start=bucket_inside,
+            count=7,
+            dimensions={
+                "batch_size_bucket": "2-5",
+                "transport": "beacon",
+                "device_type": 2,
+            },
+        )
+        _seed_event_with_count(
+            event_name=EventName.API_METRICS_INGEST_BATCH,
+            category=EventCategory.API,
+            bucket_start=bucket_inside,
+            count=2,
+            dimensions={
+                "batch_size_bucket": "1",
+                "transport": "beacon",
+                "device_type": 1,
+            },
+        )
+
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport", "device_type"])
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["event_name"] == _INGEST_BATCH_EVENT
+    assert body["group_by"] == ["transport", "device_type"]
+    assert body["resolution"] == "hour"
+    assert body["window"] == "day"
+    rows_by_dim_tuple = {
+        (row["dimensions"]["transport"], row["dimensions"]["device_type"]): row["count"]
+        for row in body["buckets"]
+    }
+    assert rows_by_dim_tuple == {
+        ("fetch", 2): 4,
+        ("beacon", 2): 7,
+        ("beacon", 1): 2,
+    }
+
+
+def test_grouped_timeseries_does_not_zero_fill_missing_dim_combos(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a single seeded API_METRICS_INGEST_BATCH row
+        spanning one (transport, device_type) combination
+    WHEN GETing /api/metrics/query/grouped-timeseries
+        ?event_name=api_metrics_ingest_batch&group_by=transport&group_by=device_type
+    THEN the response contains ONLY the one seeded `(bucket, dim-tuple)` row —
+        unlike `query_timeseries`, the grouped variant deliberately does NOT
+        zero-fill the cross-product of buckets × dim values (frontend handles
+        missing combos as "no segment for that bucket").
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.API_METRICS_INGEST_BATCH,
+            category=EventCategory.API,
+            bucket_start=_bucket_inside_window(),
+            count=1,
+            dimensions={
+                "batch_size_bucket": "1",
+                "transport": "fetch",
+                "device_type": 2,
+            },
+        )
+
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=["transport", "device_type"])
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    # Exactly one row — no zero-fill for the absent (transport, device_type)
+    # combinations that would appear if the grouped variant followed the
+    # `timeseries` zero-fill policy.
+    assert len(body["buckets"]) == 1
+    only_row = body["buckets"][0]
+    assert only_row["dimensions"] == {"transport": "fetch", "device_type": 2}
+    assert only_row["count"] == 1

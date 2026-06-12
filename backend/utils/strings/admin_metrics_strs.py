@@ -4,12 +4,15 @@ class ADMIN_METRICS_STRINGS:
     METRICS_TAB_API: str = "Top Endpoints"
     METRICS_TAB_UI: str = "Top UI Events"
     METRICS_TAB_DOMAIN: str = "Top Domain Actions"
+    METRICS_TAB_PIPELINE_HEALTH: str = "Pipeline Health"
     METRICS_TIMESERIES_SELECT_ARIA: str = "Select event for timeseries chart"
+    METRICS_LAST_FLUSH_UNKNOWN: str = "Last flush unknown"
     METRICS_LAST_FLUSH_JUST_NOW: str = "Last flush just now"
     METRICS_LAST_FLUSH_SECONDS: str = "Last flush {{ n }}s ago"
     METRICS_LAST_FLUSH_MINUTES: str = "Last flush {{ n }}m ago"
     METRICS_LAST_FLUSH_STALE_MINUTES: str = "Last flush {{ n }}m ago (stale)"
     METRICS_LAST_FLUSH_STALE_HOURS: str = "Last flush {{ n }}h ago (stale)"
+    METRICS_LAST_EVENT_UNKNOWN: str = "Last event unknown"
     METRICS_LAST_EVENT_JUST_NOW: str = "Last event just now"
     METRICS_LAST_EVENT_SECONDS: str = "Last event {{ n }}s ago"
     METRICS_LAST_EVENT_MINUTES: str = "Last event {{ n }}m ago"
@@ -50,3 +53,17 @@ class ADMIN_METRICS_STRINGS:
     METRICS_TOP_DEVICE_MOBILE: str = "Mobile"
     METRICS_TOP_DEVICE_DESKTOP: str = "Desktop"
     METRICS_TOP_EMPTY_NO_MATCHES: str = "No events match the current filter."
+    METRICS_PIPELINE_HEALTH_TITLE: str = "Pipeline Health"
+    METRICS_PIPELINE_HEALTH_EMPTY_STATE: str = (
+        "No ingest batches recorded in the selected window."
+    )
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL: str = "Batches"
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL_X: str = "Events per batch"
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP: str = "fetch · desktop"
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE: str = "fetch · mobile"
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP: str = "beacon · desktop"
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE: str = "beacon · mobile"
+    METRICS_PIPELINE_HEALTH_CHART_DESC: str = (
+        "Stacked bar chart of accepted ingest batches grouped by batch size "
+        "and split by transport and device type."
+    )

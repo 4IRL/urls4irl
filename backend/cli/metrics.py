@@ -15,15 +15,48 @@ from backend.extensions.metrics.dim_types_generator import (
     generate_resources_ts,
     generate_ui_events_ts,
 )
+from backend.extensions.metrics.middleware import _should_skip
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
-from backend.metrics.events import EventCategory
+from backend.metrics.audit import (
+    diff_dimension_literals_vs_registry,
+    diff_registry_vs_event_name,
+    find_missing_dimension_model_entries,
+    find_orphan_event_names,
+    find_string_literal_record_event_callers,
+)
+from backend.metrics.events import EVENT_CATEGORY, EventCategory
+from backend.metrics.resources import EVENT_NAME_TO_RESOURCE, Resource
 from backend.schemas.requests.metrics import TopEventsQuerySchema
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 EMPTY_TOP_EVENTS_OUTPUT = "No metrics rows in the requested window."
 TOP_EVENTS_HEADER = "event_name\tcategory\tdescription\ttotal_count"
+
+AUDIT_NONE_PLACEHOLDER: str = "(none)"
+AUDIT_SECTION_ORPHANS: str = "# Orphan EventName members"
+AUDIT_SECTION_STRING_LITERAL: str = "# String-literal record_event callers"
+AUDIT_SECTION_MISSING_DIM: str = "# Missing DIMENSION_MODELS entries"
+AUDIT_SECTION_DIM_DRIFT: str = (
+    "# Dimension literal drift (EVENT_REGISTRY vs DIMENSION_MODELS Literals)"
+)
+AUDIT_SECTION_REGISTRY_DRIFT: str = "# EVENT_REGISTRY drift vs EventName enum"
+
+# Coverage-summary TSV header. Three columns by design:
+#   Domain   — display label for the row (e.g. "API (auto)" or a Resource name).
+#   Category — one of "api" / "domain" / "ui" matching `EventCategory`.
+#   Count    — distinct route handlers (API) or `EventName` members (Domain/UI).
+COVERAGE_SUMMARY_HEADER: str = "Domain\tCategory\tCount"
+COVERAGE_SUMMARY_API_LABEL: str = "API (auto)"
+
+# Methods counted as "API hit"-emitting routes; mirrors the HTTP verbs the
+# `API_HIT` middleware records via `@app.after_request`. Werkzeug auto-adds
+# HEAD when GET is registered and OPTIONS for CORS — neither produces a
+# distinct route handler, so both are excluded from the count.
+_COVERAGE_SUMMARY_COUNTED_METHODS: frozenset[str] = frozenset(
+    {"GET", "POST", "PATCH", "PUT", "DELETE"}
+)
 
 HELP_SUMMARY_METRICS = """Anonymous metrics CLI commands for U4I."""
 
@@ -246,6 +279,184 @@ def top_command(
                 [row.event_name, row.category, row.description, str(row.total_count)]
             )
         )
+
+
+@metrics_cli.command(
+    "audit",
+    help="Audit EventName / DIMENSION_MODELS / record_event coverage.",
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    default=False,
+    help="Exit non-zero if any finding category is non-empty.",
+)
+def audit_command(strict: bool) -> None:
+    """Run all five coverage-audit helpers and print findings as TSV.
+
+    Intentionally does NOT require an app context: every helper is a pure
+    AST + enum/dict walk against code-located state (no markdown, no DB,
+    no Redis). The `event-coverage-staleness.yml` CI workflow invokes this
+    command with `--strict` to gate PRs.
+
+    Output is grouped into five sections, each headed by `# <Section>`.
+    Empty sections print `(none)` so the format is stable and grep-able.
+    """
+    orphans = find_orphan_event_names()
+    string_literal_callers = find_string_literal_record_event_callers()
+    missing_dimension_entries = find_missing_dimension_model_entries()
+    dimension_literal_findings = diff_dimension_literals_vs_registry()
+    registry_drift_findings = diff_registry_vs_event_name()
+
+    click.echo(AUDIT_SECTION_ORPHANS)
+    if orphans:
+        for orphan_event_name in orphans:
+            click.echo(orphan_event_name.name)
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_STRING_LITERAL)
+    if string_literal_callers:
+        for caller in string_literal_callers:
+            click.echo(f"{caller.file}:{caller.line}\trecord_event({caller.literal!r})")
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_MISSING_DIM)
+    if missing_dimension_entries:
+        for missing_event_name in missing_dimension_entries:
+            click.echo(missing_event_name.name)
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_DIM_DRIFT)
+    if dimension_literal_findings:
+        for dimension_finding in dimension_literal_findings:
+            click.echo(
+                f"{dimension_finding.event.name}\tfield={dimension_finding.field}\t"
+                f"code={dimension_finding.code_values}\t"
+                f"registry={dimension_finding.registry_values}"
+            )
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    click.echo(AUDIT_SECTION_REGISTRY_DRIFT)
+    if registry_drift_findings:
+        for registry_finding in registry_drift_findings:
+            click.echo(
+                f"{registry_finding.kind}\t{registry_finding.event}\t"
+                f"{registry_finding.detail}"
+            )
+    else:
+        click.echo(AUDIT_NONE_PLACEHOLDER)
+
+    any_findings_present = bool(
+        orphans
+        or string_literal_callers
+        or missing_dimension_entries
+        or dimension_literal_findings
+        or registry_drift_findings
+    )
+    if strict and any_findings_present:
+        raise SystemExit(1)
+
+
+def _count_auto_counted_api_routes(app: Flask) -> int:
+    """Return the number of distinct (endpoint, method) pairs that the API_HIT
+    middleware would record — i.e., routes not filtered by `_should_skip`.
+
+    Walks Flask's URL map and applies the same skip predicate the middleware
+    uses at request time (`backend/extensions/metrics/middleware.py`). One
+    counted hit is logged per (endpoint, method) pair because the middleware's
+    counter key includes `method`, so `GET /utubs` and `POST /utubs` are two
+    distinct counted routes even though they share an endpoint.
+
+    Examples:
+        >>> # current route count (update as routes are added/removed)
+        >>> _count_auto_counted_api_routes(app)
+        34
+    """
+    counted_pairs: set[tuple[str, str]] = set()
+    for rule in app.url_map.iter_rules():
+        if rule.methods is None:
+            continue
+        if app.view_functions.get(rule.endpoint) is None:
+            continue
+        blueprint_name: str | None = (
+            rule.endpoint.rsplit(".", 1)[0] if "." in rule.endpoint else None
+        )
+        if _should_skip(rule.endpoint, blueprint_name):
+            continue
+        for method_name in rule.methods:
+            if method_name in _COVERAGE_SUMMARY_COUNTED_METHODS:
+                counted_pairs.add((rule.endpoint, method_name))
+    return len(counted_pairs)
+
+
+def _count_events_per_resource(category: EventCategory) -> list[tuple[Resource, int]]:
+    """Return an ordered list of (Resource, count) tuples for `EventName`
+    members in `category`, grouped by `EVENT_NAME_TO_RESOURCE`.
+
+    Order is the iteration order of `Resource`, which is the canonical
+    declaration order in `backend/metrics/resources.py`. Resources with zero
+    matching members are omitted so the TSV stays compact.
+
+    Examples:
+        >>> # current per-resource counts for the DOMAIN category:
+        >>> _count_events_per_resource(EventCategory.DOMAIN)
+        [(Resource.UTUB, 5), (Resource.URL, 5), (Resource.TAG, 4), ...]
+    """
+    counts_by_resource: dict[Resource, int] = {resource: 0 for resource in Resource}
+    for event_name, resource in EVENT_NAME_TO_RESOURCE.items():
+        if EVENT_CATEGORY[event_name] is category:
+            counts_by_resource[resource] += 1
+    return [
+        (resource, count) for resource, count in counts_by_resource.items() if count > 0
+    ]
+
+
+@metrics_cli.command(
+    "coverage-summary",
+    help="Emit a TSV count of API/Domain/UI events grouped by resource.",
+)
+@with_appcontext
+def coverage_summary_command() -> None:
+    """Emit machine-readable counts so the master plan's Coverage Summary
+    table can be regenerated from CLI output instead of hand-counted.
+
+    Output format: tab-separated values, three columns:
+        Domain   — display label (e.g. "API (auto)" or a Resource name)
+        Category — `api` / `domain` / `ui`
+        Count    — distinct route handlers (API) or `EventName` members
+
+    Sources:
+        - API (auto): `app.url_map` minus `_should_skip` filtered routes,
+          counted as distinct (endpoint, method) pairs.
+        - Domain per Resource: `EventName` members in `EventCategory.DOMAIN`
+          grouped by `EVENT_NAME_TO_RESOURCE`.
+        - UI per Resource: `EventName` members in `EventCategory.UI` grouped
+          by `EVENT_NAME_TO_RESOURCE` (the "surface").
+
+    The CI staleness workflow does NOT run this command; it is intended for
+    human reviewers regenerating the master plan's `## Coverage Summary`
+    table after `EventName` changes.
+    """
+    flask_app: Flask = current_app._get_current_object()  # type: ignore[attr-defined]
+
+    click.echo(COVERAGE_SUMMARY_HEADER)
+    click.echo(
+        "\t".join(
+            [
+                COVERAGE_SUMMARY_API_LABEL,
+                EventCategory.API.value,
+                str(_count_auto_counted_api_routes(flask_app)),
+            ]
+        )
+    )
+    for resource, count in _count_events_per_resource(EventCategory.DOMAIN):
+        click.echo("\t".join([resource.value, EventCategory.DOMAIN.value, str(count)]))
+    for resource, count in _count_events_per_resource(EventCategory.UI):
+        click.echo("\t".join([resource.value, EventCategory.UI.value, str(count)]))
 
 
 def register_metrics_cli(app: Flask):

@@ -137,16 +137,21 @@ def test_metrics_pipeline_end_to_end(
     assert len(counter_keys) == 1
     assert provide_metrics_redis.get(counter_keys[0]) == b"1"
 
-    # Step 4 — flush Redis into AnonymousMetrics via inline psycopg2 conn
+    # Step 4 — flush Redis into AnonymousMetrics via inline psycopg2 conn.
+    # Two rows are upserted: the explicit ui_url_copy event AND the
+    # auto-emitted API_METRICS_INGEST_BATCH pipeline-health counter that fires
+    # once per ingest attempt regardless of payload content.
     inline_conn = _build_pg_conn(app)
     try:
         upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=inline_conn)
-        assert upserted == 1
+        assert upserted == 2
 
         with inline_conn.cursor() as cur:
             cur.execute(
                 'SELECT "eventName", "dimensions", "count"'
-                ' FROM "AnonymousMetrics" ORDER BY id'
+                ' FROM "AnonymousMetrics"'
+                ' WHERE "eventName" = %s',
+                (EventName.UI_URL_COPY.value,),
             )
             rows = cur.fetchall()
         assert len(rows) == 1
@@ -212,15 +217,21 @@ def test_metrics_pipeline_multi_event_payload(
         assert len(event_counter_keys) == 1
         assert provide_metrics_redis.get(event_counter_keys[0]) == b"1"
 
+    # The flush upserts one row per distinct payload event plus one row for the
+    # auto-emitted API_METRICS_INGEST_BATCH pipeline-health counter that fires
+    # once per ingest attempt.
     inline_conn = _build_pg_conn(app)
     try:
         upserted = run_flush(redis_client=provide_metrics_redis, pg_conn=inline_conn)
-        assert upserted == len(MULTI_EVENT_NAMES)
+        assert upserted == len(MULTI_EVENT_NAMES) + 1
 
         with inline_conn.cursor() as cur:
             cur.execute(
                 'SELECT "eventName", "dimensions", "count"'
-                ' FROM "AnonymousMetrics" ORDER BY "eventName"'
+                ' FROM "AnonymousMetrics"'
+                ' WHERE "eventName" != %s'
+                ' ORDER BY "eventName"',
+                (EventName.API_METRICS_INGEST_BATCH.value,),
             )
             rows = cur.fetchall()
 

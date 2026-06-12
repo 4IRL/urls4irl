@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.schemas.tags import UtubTagOnAddDeleteSchema
@@ -17,6 +18,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.tags
@@ -102,6 +104,40 @@ def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_regi
             add_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
             == num_of_urls_tag_applied_to_in_utub
         )
+
+
+def test_add_tag_to_utub_records_metric(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with metrics enabled and no existing tags
+    WHEN the creator POSTs to "/utubs/<utub_id>/tags" with a valid tag string
+    THEN the request returns HTTP 200 AND exactly one UTUB_TAG_CREATED
+        counter key is written to the metrics Redis DB.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    NEW_TAG = "Tracked!"
+
+    with app.app_context():
+        utub_to_add_tag_to: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id = utub_to_add_tag_to.id
+
+    # Before-state: no UTUB_TAG_CREATED counter exists yet
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_TAG_CREATED) == 0
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_id),
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 200
+    assert count_counter_keys(provide_metrics_redis, EventName.UTUB_TAG_CREATED) == 1
 
 
 def test_add_same_tag_to_multiple_utubs(
