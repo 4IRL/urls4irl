@@ -594,14 +594,23 @@
 
 /* The chart's viewBox is 800x240 (~3.33:1), so at full panel width on a
  * large display the auto-height balloons to 400-600px+ and the axis font
- * scales up with it. Cap at 75% width on wide viewports and center; the
- * proportional font reduction is the "slightly smaller font for big
- * screen" effect, no SVG attribute changes needed. */
-.MetricsPipelineHealthChart {
+ * scales up with it. Constrain the entire section (title, chart, legend)
+ * to 75% width and center; this keeps the title aligned with the chart's
+ * left edge instead of orphaning at the panel boundary. */
+#MetricsPipelineHealth {
     max-width: 75%;
-    display: block;
-    margin: 0 auto;
+    margin-left: auto;
+    margin-right: auto;
 }
+
+/* Scoped axis font reductions for the Pipeline Health chart. The SVG
+ * scales its 16px / 14px labels by container_width / viewBox_width — on
+ * a 1425px-wide chart (75% of 1900) that's 1.78x, pushing labels to
+ * ~28px. Halving the in-SVG sizes brings the rendered text to a more
+ * legible 14-18px range without touching the other dashboard charts. */
+.MetricsPipelineHealthChart .MetricsAxisLabel { font-size: 9px; }
+.MetricsPipelineHealthChart .MetricsAxisLabelX { font-size: 8px; }
+.MetricsPipelineHealthChart .MetricsAxisTitle { font-size: 8px; }
 
 .MetricsPipelineHealthLegend {
     display: flex;
@@ -609,6 +618,9 @@
     list-style: none;
     padding: 0;
     margin: 0.5rem 0 0;
+    /* Center horizontally so the legend sits beneath the centered chart
+     * instead of orphaning at the panel's left edge. */
+    justify-content: center;
 }
 
 .MetricsPipelineHealthLegend li {
@@ -664,12 +676,12 @@
 @media (max-width: 1100px) {
     /* At narrower viewports the four-item legend row crowds long swatch
      * labels; wrap below the chart so each label retains its full width.
-     * Also let the chart reclaim the full panel width — on tablets and
+     * Also let the section reclaim the full panel width — on tablets and
      * smaller the 75% cap leaves too much wasted space. */
     .MetricsPipelineHealthLegend {
         flex-wrap: wrap;
     }
-    .MetricsPipelineHealthChart {
+    #MetricsPipelineHealth {
         max-width: 100%;
     }
 }

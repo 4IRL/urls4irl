@@ -106,19 +106,19 @@
      *
      * Each swatch must meet WCAG 1.4.11 (≥3:1 contrast against
      * --panelBackgroundColor rgba(31, 36, 36, 1.0)) so the swatch and the
-     * stacked-bar fill remain visible against the dark panel surface.
-     * `fetch` reuses `--splashGreen` family; `beacon` reuses
-     * `--deckSelectionGreen` family. The desktop variants pick the existing
-     * solid token; the mobile variants drop saturation/brightness one notch
-     * to differentiate transports per device. Approximate contrast ratios
-     * against --panelBackgroundColor noted alongside each value.
+     * stacked-bar fill remain visible against the dark panel surface. The
+     * four categories carry orthogonal meaning (transport × device), so
+     * the palette uses four genuinely distinct hues rather than four
+     * shades of green — at a glance the user can tell which slice is
+     * which. Tokens are reused from the URL-card button palette so the
+     * dashboard does not introduce new brand colours.
      */
-    /* fetch · desktop = --splashGreen (rgba(36,167,69) ≈ 6.2:1) */
-    --pipelineHealthFetchDesktop: var(--splashGreen);
-    /* fetch · mobile = --darkSplashLabelGreen (rgba(30,133,73) ≈ 4.4:1) */
-    --pipelineHealthFetchMobile: var(--darkSplashLabelGreen);
-    /* beacon · desktop = --deckSelectionGreen (rgba(96,218,170) ≈ 9.4:1) */
-    --pipelineHealthBeaconDesktop: var(--deckSelectionGreen);
-    /* beacon · mobile = --deckSelectionGreenHover (rgba(67,152,118) ≈ 5.3:1) */
-    --pipelineHealthBeaconMobile: var(--deckSelectionGreenHover);
+    /* fetch · desktop — bright green (rgba(57,255,20) ≈ 14:1) */
+    --pipelineHealthFetchDesktop: var(--accessLinkColor);
+    /* fetch · mobile — sky blue (rgba(91,192,235) ≈ 7.6:1) */
+    --pipelineHealthFetchMobile: var(--addTagColor);
+    /* beacon · desktop — amber yellow (rgba(253,231,76) ≈ 12:1) */
+    --pipelineHealthBeaconDesktop: var(--editURLColor);
+    /* beacon · mobile — violet (rgba(179,102,255) ≈ 5.5:1) */
+    --pipelineHealthBeaconMobile: var(--copyURLColor);
 }
