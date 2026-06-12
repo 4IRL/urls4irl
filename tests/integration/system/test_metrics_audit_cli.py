@@ -18,16 +18,10 @@ pytestmark = pytest.mark.cli
 
 def test_audit_strict_exits_zero_on_clean_main(app: Flask) -> None:
     """
-    GIVEN the current main branch (Step 1 helpers committed)
+    GIVEN a codebase with no event-registry drift
     WHEN `flask metrics audit --strict` is invoked
     THEN ensure the command exits 0 (no orphans, no string-literal callers,
         no missing DIMENSION_MODELS entries, no dimension/registry drift)
-
-    NOTE: This is the production invariant the CI staleness workflow (Step 9)
-    enforces. Until Step 4 reconciles the UI_SEARCH split + description drift
-    in the master plan markdown (9 known registry-drift findings logged in
-    `plans/anonymous-metrics/tmp/step-1-findings.md`), this test is expected
-    to FAIL with exit_code=1. Step 4 flips it to green.
     """
     runner: FlaskCliRunner = app.test_cli_runner()
     result = runner.invoke(args=["metrics", "audit", "--strict"])
