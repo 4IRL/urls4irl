@@ -225,6 +225,18 @@ def test_password_reset_successful_reset_btn(
     new_password_input.send_keys(NEW_PASSWORD)
     confirm_new_password_input.send_keys(NEW_PASSWORD)
 
+    # Under the n=8 UI parallelism cap, send_keys can return before Selenium
+    # confirms every char has landed in the input element. Wait until both
+    # inputs hold the full expected value before submitting so the AJAX fires
+    # against a fully populated form, eliminating one race source for the
+    # downstream button-flip wait.
+    WebDriverWait(browser, 5).until(
+        lambda driver: (
+            new_password_input.get_attribute("value") == NEW_PASSWORD
+            and confirm_new_password_input.get_attribute("value") == NEW_PASSWORD
+        )
+    )
+
     wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT)
 
     wait_for_reset_password_close_button(browser)
