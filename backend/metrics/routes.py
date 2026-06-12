@@ -126,7 +126,7 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
         EventName.API_METRICS_INGEST_BATCH,
         dimensions={
             "batch_size_bucket": _bucket_batch_size(len(metrics_ingest_request.events)),
-            "transport": "beacon" if parsed_query.transport == "beacon" else "fetch",
+            "transport": parsed_query.transport or "fetch",
             DEVICE_TYPE_DIM_KEY: classify_user_agent(request.headers.get("User-Agent")),
         },
     )
