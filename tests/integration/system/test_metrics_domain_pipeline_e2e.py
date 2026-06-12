@@ -19,6 +19,7 @@ from scripts.flush_metrics import run_flush
 from tests.conftest import AjaxFlaskLoginClient
 from tests.integration.system.conftest import reset_postgres_enum_to_lowercase_values
 from tests.integration.system.metrics_helpers import (
+    DOMAIN_EVENTS_TESTED_ELSEWHERE,
     build_pg_conn,
     truncate_metrics_tables,
 )
@@ -244,32 +245,14 @@ def test_domain_events_flush_with_intact_fk_joins(
             )
             assert utub_delete_response.status_code == 200
 
-    # Auto-extending set of expected DOMAIN events. URL_ACCESSED is deferred
-    # (master plan line 363). The URL_*/UTUB_TAG_CREATED domain events fire
-    # from URL/tag service flows this seed does not exercise; auth events
-    # (REGISTER_SUCCESS, LOGIN_SUCCESS, LOGIN_FAILURE, EMAIL_VERIFIED,
-    # PASSWORD_RESET_*) fire from unauthenticated splash routes this fixture
-    # cannot reach. Each excluded event has its own per-route emit test and
-    # flushes through the same pipeline as the events covered here, so the
-    # FK-join invariant is still exercised end-to-end.
-    _DOMAIN_EVENTS_TESTED_ELSEWHERE = {
-        EventName.URL_ACCESSED,
-        EventName.URL_ADDED_TO_UTUB,
-        EventName.URL_REMOVED_FROM_UTUB,
-        EventName.URL_STRING_UPDATED,
-        EventName.UTUB_TAG_CREATED,
-        EventName.REGISTER_SUCCESS,
-        EventName.LOGIN_SUCCESS,
-        EventName.LOGIN_FAILURE,
-        EventName.EMAIL_VERIFIED,
-        EventName.PASSWORD_RESET_REQUESTED,
-        EventName.PASSWORD_RESET_COMPLETED,
-    }
+    # Auto-extending set of expected DOMAIN events; see
+    # `DOMAIN_EVENTS_TESTED_ELSEWHERE` in `metrics_helpers` for the rationale
+    # behind the exclusion set.
     expected_event_values = [
         event.value
         for event in EventName
         if EVENT_CATEGORY[event] is EventCategory.DOMAIN
-        and event not in _DOMAIN_EVENTS_TESTED_ELSEWHERE
+        and event not in DOMAIN_EVENTS_TESTED_ELSEWHERE
     ]
 
     flush_conn = build_pg_conn(app)
