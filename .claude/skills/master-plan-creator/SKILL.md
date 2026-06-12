@@ -114,14 +114,85 @@ Before reporting success, verify:
 
 If any check fails, fix the plan file. Do not proceed to Step 7 until both pass.
 
-## Step 7: Cleanup & Summary
+## Step 7: Create Umbrella Issue
+
+Create a GitHub issue that represents the entire multi-PR initiative. Sub-plan issues will link back to it via `Part of #<umbrella>`. The umbrella closes automatically when the final sub-PR's `Closes #<umbrella>` lands on merge (driven by `/git-push`).
+
+### 7a. Generate body and labels
+
+Body structure:
+
+```markdown
+## Problem
+<one paragraph: what's broken / missing at the initiative level>
+
+## Why
+<one paragraph: why this multi-PR effort matters now>
+
+## Outcome
+<one paragraph: what "done" looks like across all phases>
+
+## Phases
+- Phase 1: <Phase title> — branch `<branch-name>`
+- Phase 2: <Phase title> — branch `<branch-name>`
+- ...
+- Verification
+
+---
+Master plan: `plans/<parent-topic>/<name>-master.md`
+```
+
+Pull phase titles and branch names directly from the master plan you just wrote. Exclude the final "Verify All Tests Pass" step — render it as `Verification` at the end.
+
+Infer labels using the same table in `.claude/skills/plan-creator/SKILL.md` § Step 4b, applied across ALL phases. Umbrella issues typically get more labels than a single sub-plan.
+
+### 7b. Create the issue
+
+```bash
+GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh issue create \
+  --title "Umbrella: <master-plan-title>" \
+  --body "<generated-body>" \
+  --label "<label1>" --label "<label2>" \
+  --repo 4IRL/urls4irl
+```
+
+Capture `<issue-number>` and `<issue-url>`.
+
+### 7c. Project board + bot assignee
+
+Mirror `.claude/skills/plan-creator/SKILL.md` § Step 4c — `addProjectV2ItemById` mutation to project `PVT_kwDOCEIbTM4Ai9RV`, plus bot-assignee mutation from `/git-push` Step 9.
+
+### 7d. Write frontmatter
+
+Insert YAML frontmatter at the top of `plans/<parent-topic>/<name>-master.md`:
+
+```yaml
+---
+github_issue: <N>
+github_issue_url: <url>
+---
+```
+
+This is what `/plan-creator` § Step 4d reads when creating sub-plan issues to discover the umbrella and append `Part of #<N>`.
+
+### Skip rules
+
+- **No** existing-issue search — umbrellas are always new.
+- **No** master-parent detection — masters have no parent.
+
+### Failure handling
+
+Same pattern as plan-creator: surface the error and manual command, do not block the master plan file from existing.
+
+## Step 8: Cleanup & Summary
 
 1. Delete all `plans/<parent-topic>/tmp/research-*-master.md` files.
 2. Report to the user:
    - Master plan path
    - Number of phases created
+   - Umbrella issue: `#<N>` and URL (or warning if Step 7 failed)
    - Suggested next command: `/plan-creator "Step 1 of <master-plan-name>"`
 
 Note: Sub-plan folders are created on-demand by `/plan-creator` when each phase's sub-plan is written.
 
-Append a changelog entry per user-level CLAUDE.md rules (`master-plan-creator: Created plans/<parent-topic>/<name>-master.md with N phases`).
+Append a changelog entry per user-level CLAUDE.md rules (`master-plan-creator: Created plans/<parent-topic>/<name>-master.md with N phases, umbrella issue #<N>`).

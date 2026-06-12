@@ -6,7 +6,7 @@ EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all addmock audit
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all addmock audit plan-list
 
 .DEFAULT_GOAL := help
 
@@ -94,6 +94,9 @@ audit: ## Run the metrics event coverage audit (exits non-zero if gaps found)
 
 addmock: ## Seed the dev database with all mock data (flask addmock all)
 	$(EXEC_WEB) "$(FLASK) addmock all"
+
+plan-list: ## List every plan (masters + sub-plans) under plans/ with finished/open status
+	@.claude/scripts/plan-list.sh
 
 prune: ## Prune dangling images, orphaned volumes, and build cache
 	docker image prune -f
