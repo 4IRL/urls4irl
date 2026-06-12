@@ -276,6 +276,9 @@ class SplashPageLocators(GenericPageLocator):
     # Reset password (uses #SplashModal — only modal on page, no scoping needed)
     RESET_PASSWORD_BUTTON_SUBMIT = f"{SPLASH_MODAL} #submit"
     RESET_PASSWORD_INVALID_FEEDBACK = f"{SPLASH_MODAL} .invalid-feedback"
+    # Set by initResetPasswordForm after the submit handler is bound; tests
+    # wait on this so they never race the JS bundle finishing initialization.
+    RESET_PASSWORD_FORM_READY = f"{SPLASH_MODAL} form[data-form-ready='true']"
 
     # Register
     BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"

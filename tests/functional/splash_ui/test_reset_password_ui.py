@@ -26,6 +26,7 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
+    wait_for_element_presence,
     wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
@@ -214,6 +215,16 @@ def test_password_reset_successful_reset_btn(
 
     browser.get(reset_password_url)
 
+    # Under the n=8 UI parallelism cap, the splash.ts ES module can take
+    # 200-800ms+ between DOMContentLoaded and `initResetPasswordForm`
+    # finishing handler binding. Without this wait, the test can race that
+    # gap: it fills inputs and clicks submit before the JS handler is bound,
+    # triggering the default HTML form POST (form-urlencoded, no
+    # preventDefault, full page navigation) instead of the AJAX path. The
+    # browser then navigates away from the modal page and the downstream
+    # `value === "Close"` wait times out.
+    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+
     new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
     assert new_password_input is not None
 
@@ -224,18 +235,6 @@ def test_password_reset_successful_reset_btn(
 
     new_password_input.send_keys(NEW_PASSWORD)
     confirm_new_password_input.send_keys(NEW_PASSWORD)
-
-    # Under the n=8 UI parallelism cap, send_keys can return before Selenium
-    # confirms every char has landed in the input element. Wait until both
-    # inputs hold the full expected value before submitting so the AJAX fires
-    # against a fully populated form, eliminating one race source for the
-    # downstream button-flip wait.
-    WebDriverWait(browser, 5).until(
-        lambda driver: (
-            new_password_input.get_attribute("value") == NEW_PASSWORD
-            and confirm_new_password_input.get_attribute("value") == NEW_PASSWORD
-        )
-    )
 
     wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT)
 
@@ -275,6 +274,12 @@ def test_password_reset_successful_reset_key(
 
     browser.get(reset_password_url)
 
+    # See `_btn` variant: wait for the form to advertise readiness so the
+    # submit handler is bound before we dispatch ENTER. Without this guard,
+    # the keydown can fire before `initResetPasswordForm` binds its submit
+    # listener, falling through to the browser's default form POST.
+    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+
     new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
     assert new_password_input is not None
 
@@ -292,12 +297,9 @@ def test_password_reset_successful_reset_key(
     # resolve to `<body>`, causing the keydown to land outside the form and
     # never trigger submission. Targeting the input element directly is
     # deterministic and preserves the test's "user pressed Enter on the last
-    # input" intent.
-    #
-    # Additionally, wait for the input to actually hold keyboard focus before
-    # dispatching ENTER. Without this guard, on slower parallel runs the
-    # ENTER keydown can land before the browser has confirmed focus on the
-    # input, causing the form-submit handler to miss the event.
+    # input" intent. ENTER on an input also requires keyboard focus on that
+    # input to dispatch a submit, so the focus wait below is a precondition,
+    # not a timing pad.
     wait_until_in_focus(browser, SPL.INPUT_CONFIRM_NEW_PASSWORD)
     confirm_new_password_input.send_keys(Keys.ENTER)
 
@@ -442,6 +444,13 @@ def test_password_reset_unequal_password_fields(
 
     browser.get(reset_password_url)
 
+    # See `_btn` variant: wait for the form to advertise readiness so the
+    # AJAX submit path is wired before we click. Without this, the click can
+    # land before `initResetPasswordForm` binds its submit handler, falling
+    # through to the browser's default form POST and producing a different
+    # error than the one this test asserts on.
+    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+
     new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
     assert new_password_input is not None
 
@@ -484,6 +493,8 @@ def test_password_reset_missing_fields(
 
     browser.get(reset_password_url)
 
+    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+
     wait_until_visible_css_selector(
         browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, timeout=3
     )
@@ -522,6 +533,8 @@ def test_password_reset_invalid_csrf_token(
     reset_password_url = browser.current_url + reset_password_suffix
 
     browser.get(reset_password_url)
+
+    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
 
     new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
     assert new_password_input is not None

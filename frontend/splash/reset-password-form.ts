@@ -28,6 +28,20 @@ export function initResetPasswordForm($modal: JQuery): void {
     $modal.off("hide.bs.modal");
     window.location.replace("/");
   });
+
+  // Mark the form as ready only after the Bootstrap modal show transition
+  // has completed. The submit handler is bound synchronously above, but
+  // Bootstrap's `show()` is async — it fires `shown.bs.modal` after the
+  // CSS transition (~150-300ms) and auto-focuses the modal element at that
+  // point, which can steal focus from inputs a test has already typed into.
+  // Gating readiness on `shown.bs.modal` means tests that wait on the ready
+  // signal never race the auto-focus or the form's default-submit fallback
+  // (which would fire if the handler weren't bound yet). Bootstrap fires
+  // this event even when the modal ships pre-rendered with `class="show"`,
+  // so no fallback is needed.
+  $modal.one("shown.bs.modal", () => {
+    $modal.find("form").attr("data-form-ready", "true");
+  });
 }
 
 function handleResetPassword(
