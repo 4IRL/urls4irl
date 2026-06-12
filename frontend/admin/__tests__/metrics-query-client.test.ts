@@ -10,6 +10,7 @@ vi.mock("../../lib/ajax.js", () => ({
 }));
 
 import {
+  fetchGroupedTimeseries,
   fetchSummary,
   fetchTimeseries,
   fetchTopEvents,
@@ -166,6 +167,62 @@ describe("metrics-query-client", () => {
       expect(url).toBe("/api/metrics/query/summary?window=year");
       expect(data).toBeNull();
       expect(timeout).toBe(5000);
+    });
+  });
+
+  describe("fetchGroupedTimeseries", () => {
+    it("repeats the group_by query parameter for each entry", () => {
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["batch_size_bucket", "transport", "device_type"],
+        window: "day",
+      });
+      expect(ajaxCallSpy).toHaveBeenCalledOnce();
+      const [method, url, data, timeout] = ajaxCallSpy.mock.calls[0];
+      expect(method).toBe("GET");
+      expect(url).toBe(
+        "/api/metrics/query/grouped-timeseries?event_name=api_metrics_ingest_batch&window=day&group_by=batch_size_bucket&group_by=transport&group_by=device_type",
+      );
+      expect(data).toBeNull();
+      expect(timeout).toBe(5000);
+    });
+
+    it("forwards the resolution query parameter when supplied", () => {
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["transport"],
+        window: "week",
+        resolution: "day",
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/grouped-timeseries?event_name=api_metrics_ingest_batch&window=week&group_by=transport&resolution=day",
+      );
+    });
+
+    it("does NOT include device_type as a query param (middleware injects it)", () => {
+      // device_type is a request-header dimension injected by the metrics
+      // middleware; the grouped-timeseries query schema rejects unknown
+      // parameters, so callers must NEVER include it as a flat query param.
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["batch_size_bucket", "transport", "device_type"],
+        window: "day",
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).not.toMatch(/[?&]device_type=/);
+    });
+
+    it("works with a single-entry groupBy (e.g., transport-only chart)", () => {
+      fetchGroupedTimeseries({
+        eventName: "api_metrics_ingest_batch",
+        groupBy: ["transport"],
+        window: "day",
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/grouped-timeseries?event_name=api_metrics_ingest_batch&window=day&group_by=transport",
+      );
     });
   });
 });

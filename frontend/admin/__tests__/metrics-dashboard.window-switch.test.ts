@@ -11,11 +11,13 @@
 const {
   fetchSummarySpy,
   fetchTopEventsSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
 }));
@@ -24,6 +26,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: vi.fn(),
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -71,11 +74,15 @@ describe("metrics-dashboard window-selector", () => {
 
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });

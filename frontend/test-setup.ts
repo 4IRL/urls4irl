@@ -168,6 +168,16 @@ const appConfig = {
     METRICS_TOP_DEVICE_MOBILE: "Mobile",
     METRICS_TOP_DEVICE_DESKTOP: "Desktop",
     METRICS_TOP_EMPTY_NO_MATCHES: "No events match the current filter.",
+    METRICS_PIPELINE_HEALTH_TITLE: "Pipeline Health",
+    METRICS_PIPELINE_HEALTH_EMPTY_STATE:
+      "No ingest batches recorded in the selected window.",
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL: "Batches",
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP: "fetch · desktop",
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE: "fetch · mobile",
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP: "beacon · desktop",
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE: "beacon · mobile",
+    METRICS_PIPELINE_HEALTH_CHART_DESC:
+      "Stacked bar chart of accepted ingest batches grouped by batch size and split by transport and device type.",
   },
 };
 

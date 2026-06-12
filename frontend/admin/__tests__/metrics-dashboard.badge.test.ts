@@ -22,6 +22,7 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
@@ -29,6 +30,7 @@ const {
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
@@ -38,6 +40,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -122,6 +125,7 @@ describe("metrics-dashboard last-flush badge", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -129,6 +133,9 @@ describe("metrics-dashboard last-flush badge", () => {
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });
@@ -287,6 +294,7 @@ describe("metrics-dashboard last-event badge", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -294,6 +302,9 @@ describe("metrics-dashboard last-event badge", () => {
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });

@@ -50,3 +50,16 @@ class ADMIN_METRICS_STRINGS:
     METRICS_TOP_DEVICE_MOBILE: str = "Mobile"
     METRICS_TOP_DEVICE_DESKTOP: str = "Desktop"
     METRICS_TOP_EMPTY_NO_MATCHES: str = "No events match the current filter."
+    METRICS_PIPELINE_HEALTH_TITLE: str = "Pipeline Health"
+    METRICS_PIPELINE_HEALTH_EMPTY_STATE: str = (
+        "No ingest batches recorded in the selected window."
+    )
+    METRICS_PIPELINE_HEALTH_AXIS_LABEL: str = "Batches"
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_DESKTOP: str = "fetch · desktop"
+    METRICS_PIPELINE_HEALTH_LEGEND_FETCH_MOBILE: str = "fetch · mobile"
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_DESKTOP: str = "beacon · desktop"
+    METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE: str = "beacon · mobile"
+    METRICS_PIPELINE_HEALTH_CHART_DESC: str = (
+        "Stacked bar chart of accepted ingest batches grouped by batch size "
+        "and split by transport and device type."
+    )

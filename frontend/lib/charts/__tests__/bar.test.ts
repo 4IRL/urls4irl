@@ -1,4 +1,4 @@
-import { buildBarAttrs } from "../bar.js";
+import { buildBarAttrs, buildStackedBarSegments } from "../bar.js";
 import { linearScale } from "../scale.js";
 
 const CHART_WIDTH = 400;
@@ -96,5 +96,112 @@ describe("buildBarAttrs", () => {
     expect(attrs.width).toBe(0);
     expect(attrs.height).toBe(0);
     expect(attrs.y).toBe(CHART_HEIGHT);
+  });
+});
+
+describe("buildStackedBarSegments", () => {
+  it("returns [] for an empty segment list", () => {
+    const scaleY = buildScaleY();
+    const rects = buildStackedBarSegments({
+      segments: [],
+      index: 0,
+      total: 4,
+      width: CHART_WIDTH,
+      height: CHART_HEIGHT,
+      scaleY,
+    });
+    expect(rects).toEqual([]);
+  });
+
+  it("matches buildBarAttrs for a single-segment column at the same value", () => {
+    const scaleY = buildScaleY();
+    const singleAttrs = buildBarAttrs({
+      value: 50,
+      index: 1,
+      total: 4,
+      width: CHART_WIDTH,
+      height: CHART_HEIGHT,
+      scaleY,
+    });
+    const stacked = buildStackedBarSegments({
+      segments: [{ value: 50, className: "swatch--solo" }],
+      index: 1,
+      total: 4,
+      width: CHART_WIDTH,
+      height: CHART_HEIGHT,
+      scaleY,
+    });
+    expect(stacked.length).toBe(1);
+    const [stackedRect] = stacked;
+    expect(stackedRect.x).toBe(singleAttrs.x);
+    expect(stackedRect.width).toBe(singleAttrs.width);
+    expect(stackedRect.y).toBe(singleAttrs.y);
+    expect(stackedRect.height).toBe(singleAttrs.height);
+    expect(stackedRect.className).toBe("swatch--solo");
+  });
+
+  it("stacks two segments bottom-to-top so the upper segment's y is above the lower's y", () => {
+    const scaleY = buildScaleY();
+    const stacked = buildStackedBarSegments({
+      segments: [
+        { value: 20, className: "swatch--bottom" },
+        { value: 30, className: "swatch--top" },
+      ],
+      index: 0,
+      total: 2,
+      width: CHART_WIDTH,
+      height: CHART_HEIGHT,
+      scaleY,
+    });
+    expect(stacked.length).toBe(2);
+    const [bottomRect, topRect] = stacked;
+    // SVG y-axis grows downward, so a "higher" rect in viewer space has a
+    // SMALLER y. The top segment must satisfy y2 < y1 when stacked above.
+    expect(topRect.y).toBeLessThan(bottomRect.y);
+    // The top of the bottom rect equals the bottom of the top rect when they
+    // share a column — the seam is exactly `bottomRect.y` and the next rect's
+    // (y + height) should land on the same coordinate.
+    expect(topRect.y + topRect.height).toBeCloseTo(bottomRect.y);
+  });
+
+  it("preserves the per-segment className verbatim", () => {
+    const scaleY = buildScaleY();
+    const stacked = buildStackedBarSegments({
+      segments: [
+        { value: 10, className: "swatch--fetch-desktop" },
+        { value: 10, className: "swatch--fetch-mobile" },
+        { value: 10, className: "swatch--beacon-desktop" },
+        { value: 10, className: "swatch--beacon-mobile" },
+      ],
+      index: 0,
+      total: 1,
+      width: CHART_WIDTH,
+      height: CHART_HEIGHT,
+      scaleY,
+    });
+    expect(stacked.map((rect) => rect.className)).toEqual([
+      "swatch--fetch-desktop",
+      "swatch--fetch-mobile",
+      "swatch--beacon-desktop",
+      "swatch--beacon-mobile",
+    ]);
+  });
+
+  it("never lets the total stack height exceed the container height", () => {
+    const scaleY = buildScaleY();
+    const stacked = buildStackedBarSegments({
+      segments: [
+        { value: 30, className: "swatch--a" },
+        { value: 30, className: "swatch--b" },
+        { value: 30, className: "swatch--c" },
+      ],
+      index: 0,
+      total: 1,
+      width: CHART_WIDTH,
+      height: CHART_HEIGHT,
+      scaleY,
+    });
+    const totalHeight = stacked.reduce((sum, rect) => sum + rect.height, 0);
+    expect(totalHeight).toBeLessThanOrEqual(CHART_HEIGHT);
   });
 });

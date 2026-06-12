@@ -28,6 +28,7 @@ const DEFAULT_TOP_LIMIT = 10;
 
 const TOP_ENDPOINT = "/api/metrics/query/top";
 const TIMESERIES_ENDPOINT = "/api/metrics/query/timeseries";
+const GROUPED_TIMESERIES_ENDPOINT = "/api/metrics/query/grouped-timeseries";
 const SUMMARY_ENDPOINT = "/api/metrics/query/summary";
 
 /**
@@ -111,6 +112,55 @@ export function fetchTimeseries({
   const url = `${TIMESERIES_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryTimeseries">
+  >;
+}
+
+/**
+ * Fetch a grouped timeseries — one row per `(bucket × dim-tuple)`. Used by
+ * the Pipeline Health card to produce a stacked-bar series grouped by
+ * `batch_size_bucket × transport × device_type`. The request schema accepts
+ * `group_by` as a repeated query parameter (Pydantic list-of-strings via
+ * Flask's `request.args.getlist`); `URLSearchParams.append` emits one
+ * `group_by=<field>` pair per entry.
+ *
+ * Example:
+ *   fetchGroupedTimeseries({
+ *     eventName: "api_metrics_ingest_batch",
+ *     groupBy: ["batch_size_bucket", "transport", "device_type"],
+ *     window: "day",
+ *   })
+ * issues `GET /api/metrics/query/grouped-timeseries`
+ * with `?event_name=api_metrics_ingest_batch&group_by=batch_size_bucket&group_by=transport&group_by=device_type&window=day`.
+ *
+ * `device_type` is NOT supplied as a query parameter — the dim is injected
+ * by the metrics middleware from the request's User-Agent header. Including
+ * the dim as a `group_by` field selects on it server-side without needing
+ * the client to know its value.
+ */
+export function fetchGroupedTimeseries({
+  eventName,
+  groupBy,
+  window,
+  resolution,
+}: {
+  eventName: string;
+  groupBy: readonly string[];
+  window: string;
+  resolution?: TimeseriesResolution;
+}): JQuery.jqXHR<SuccessResponse<"queryGroupedTimeseries">> {
+  const params = new URLSearchParams({
+    event_name: eventName,
+    window,
+  });
+  for (const groupByField of groupBy) {
+    params.append("group_by", groupByField);
+  }
+  if (resolution !== undefined) {
+    params.set("resolution", resolution);
+  }
+  const url = `${GROUPED_TIMESERIES_ENDPOINT}?${params.toString()}`;
+  return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"queryGroupedTimeseries">
   >;
 }
 

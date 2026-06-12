@@ -13,12 +13,14 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTimeseriesChartSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
 }));
@@ -27,6 +29,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -145,11 +148,15 @@ describe("metrics-dashboard top-events filters", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });
@@ -228,7 +235,7 @@ describe("metrics-dashboard top-events filters", () => {
     uiSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({
@@ -254,7 +261,7 @@ describe("metrics-dashboard top-events filters", () => {
     uiSelect.dispatchEvent(new Event("change", { bubbles: true }));
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({
@@ -289,7 +296,7 @@ describe("metrics-dashboard top-events filters", () => {
     // which changes the effective limit (10 -> 100), so ONE refetch is issued.
     vi.advanceTimersByTime(2);
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({ limit: 100 });
@@ -319,7 +326,7 @@ describe("metrics-dashboard top-events filters", () => {
     vi.advanceTimersByTime(160);
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     // Limit stayed at 100 across all three keystrokes — no transition, no refetch.
     expect(uiCalls.length).toBe(0);
@@ -393,7 +400,7 @@ describe("metrics-dashboard top-events filters", () => {
     vi.advanceTimersByTime(200);
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({ limit: 10 });
@@ -415,7 +422,7 @@ describe("metrics-dashboard top-events filters", () => {
     vi.advanceTimersByTime(60);
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({
@@ -440,7 +447,7 @@ describe("metrics-dashboard top-events filters", () => {
     vi.advanceTimersByTime(60);
 
     const apiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "api",
+      (callArgs) => (callArgs[0] as { category: string }).category === "api",
     );
     expect(apiCalls.length).toBe(1);
     expect(apiCalls[0][0]).toMatchObject({
@@ -468,7 +475,7 @@ describe("metrics-dashboard top-events filters", () => {
     vi.advanceTimersByTime(60);
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({
@@ -508,7 +515,7 @@ describe("metrics-dashboard top-events filters", () => {
     weekButton.click();
 
     const uiCalls = fetchTopEventsSpy.mock.calls.filter(
-      ([arg]: [{ category: string }]) => arg.category === "ui",
+      (callArgs) => (callArgs[0] as { category: string }).category === "ui",
     );
     expect(uiCalls.length).toBe(1);
     expect(uiCalls[0][0]).toMatchObject({
@@ -539,7 +546,8 @@ describe("metrics-dashboard top-events filters", () => {
     vi.advanceTimersByTime(60);
 
     const tsCalls = fetchTimeseriesSpy.mock.calls.filter(
-      ([arg]: [{ eventName: string }]) => arg.eventName === "utub_opened",
+      (callArgs) =>
+        (callArgs[0] as { eventName: string }).eventName === "utub_opened",
     );
     expect(tsCalls.length).toBeGreaterThanOrEqual(1);
     expect(tsCalls[tsCalls.length - 1][0]).toMatchObject({

@@ -15,6 +15,7 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
@@ -22,6 +23,7 @@ const {
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
@@ -31,6 +33,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -103,6 +106,7 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -110,6 +114,9 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
     initMetricsDashboard();

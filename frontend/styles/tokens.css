@@ -100,4 +100,25 @@
 
     /* Layout sizing */
     --deckSubheaderMinHeight: 2.25rem;
+
+    /*
+     * Pipeline Health stacked-bar colours.
+     *
+     * Each swatch must meet WCAG 1.4.11 (≥3:1 contrast against
+     * --panelBackgroundColor rgba(31, 36, 36, 1.0)) so the swatch and the
+     * stacked-bar fill remain visible against the dark panel surface.
+     * `fetch` reuses `--splashGreen` family; `beacon` reuses
+     * `--deckSelectionGreen` family. The desktop variants pick the existing
+     * solid token; the mobile variants drop saturation/brightness one notch
+     * to differentiate transports per device. Approximate contrast ratios
+     * against --panelBackgroundColor noted alongside each value.
+     */
+    /* fetch · desktop = --splashGreen (rgba(36,167,69) ≈ 6.2:1) */
+    --pipelineHealthFetchDesktop: var(--splashGreen);
+    /* fetch · mobile = --darkSplashLabelGreen (rgba(30,133,73) ≈ 4.4:1) */
+    --pipelineHealthFetchMobile: var(--darkSplashLabelGreen);
+    /* beacon · desktop = --deckSelectionGreen (rgba(96,218,170) ≈ 9.4:1) */
+    --pipelineHealthBeaconDesktop: var(--deckSelectionGreen);
+    /* beacon · mobile = --deckSelectionGreenHover (rgba(67,152,118) ≈ 5.3:1) */
+    --pipelineHealthBeaconMobile: var(--deckSelectionGreenHover);
 }

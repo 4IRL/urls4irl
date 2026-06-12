@@ -1,16 +1,15 @@
 from __future__ import annotations
 
-from typing import Tuple
-
 import pytest
 from flask import Flask
-from flask.testing import FlaskCliRunner
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import Select
 
 from backend.config import ConfigTestUI
+from backend.db import db
 from backend.metrics.events import DeviceType
+from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
@@ -28,42 +27,19 @@ pytestmark = pytest.mark.metrics_ui
 DEFAULT_ADMIN_USER_ID: int = 1
 SEEDED_TABLE_ROW_SELECTOR: str = f"{MDL.TOP_TABLE_API} tbody tr.MetricsTopTableRow"
 WINDOW_BUTTON_TIMEOUT_SECONDS: int = 5
-
-
-def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
-    """Invoke `flask addmock seed-uniform-test-data` through the test
-    runner so the seeded rows live inside the test worker's DB.
-
-    Using `subprocess.run(['flask', ...])` would escape the worker DB
-    isolation, and `app.test_cli_runner().invoke(...)` would build a
-    runner outside the fixture transaction scope. The `runner` fixture
-    already wires both.
-    """
-    _, cli_runner = runner
-    result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
-    assert (
-        result.exit_code == 0
-    ), f"Metrics seed CLI failed: exit={result.exit_code} output={result.output}"
-
-
-@pytest.fixture(autouse=True)
-def seeded_metrics(
-    runner: Tuple[Flask, FlaskCliRunner],
-    browser: WebDriver,
-) -> None:
-    """Seed the test DB with uniform metrics data before each test.
-
-    Depends on ``browser`` to guarantee ordering: ``browser`` calls
-    ``clear_db`` inside its own setup, which wipes every table including
-    ``AnonymousMetrics``.  Listing ``browser`` as a dependency ensures
-    this fixture always seeds AFTER that wipe, so the dashboard has data
-    to render when the test body executes.
-
-    Uses function scope (the default) to match the ``runner`` fixture,
-    which clears the DB in its own teardown after every test. A broader
-    scope would attempt to read rows that were already wiped.
-    """
-    _seed_metrics_via_cli(runner)
+PIPELINE_HEALTH_RENDER_TIMEOUT: int = 15
+ALL_PIPELINE_HEALTH_BAR_SELECTORS: tuple[str, ...] = (
+    MDL.PIPELINE_HEALTH_BAR_FETCH_DESKTOP,
+    MDL.PIPELINE_HEALTH_BAR_FETCH_MOBILE,
+    MDL.PIPELINE_HEALTH_BAR_BEACON_DESKTOP,
+    MDL.PIPELINE_HEALTH_BAR_BEACON_MOBILE,
+)
+ALL_PIPELINE_HEALTH_LEGEND_SELECTORS: tuple[str, ...] = (
+    MDL.PIPELINE_HEALTH_LEGEND_SWATCH_FETCH_DESKTOP,
+    MDL.PIPELINE_HEALTH_LEGEND_SWATCH_FETCH_MOBILE,
+    MDL.PIPELINE_HEALTH_LEGEND_SWATCH_BEACON_DESKTOP,
+    MDL.PIPELINE_HEALTH_LEGEND_SWATCH_BEACON_MOBILE,
+)
 
 
 def test_admin_dashboard_renders_with_seeded_metrics(
@@ -239,3 +215,95 @@ def test_device_filter_mobile_narrows_top_table_to_mobile_events(
     assert empty_row is not None
     assert empty_row.text == ADMIN_METRICS_STRINGS.METRICS_EMPTY_STATE
     assert len(browser.find_elements(By.CSS_SELECTOR, ui_table_row_selector)) == 0
+
+
+def test_pipeline_health_card_renders_with_seeded_data(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN seed-uniform-test-data has inserted one AnonymousMetrics row per
+        `(transport × device_type)` for `API_METRICS_INGEST_BATCH` at
+        batch_size_bucket="2-5"
+    WHEN an admin opens `/admin/metrics`
+    THEN the Pipeline Health card renders with one `<rect>` per swatch
+        class (four rects total) and all four legend swatches are
+        present in the DOM.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # The card is server-pre-rendered (the partial ships in the HTML), so
+    # its container always exists; the rects only appear after fetchAll()
+    # completes the grouped-timeseries XHR and the renderer mutates the SVG.
+    wait_for_element_presence(
+        browser, MDL.PIPELINE_HEALTH_CARD, timeout=PIPELINE_HEALTH_RENDER_TIMEOUT
+    )
+
+    for bar_selector in ALL_PIPELINE_HEALTH_BAR_SELECTORS:
+        bar_element = wait_for_element_presence(
+            browser, bar_selector, timeout=PIPELINE_HEALTH_RENDER_TIMEOUT
+        )
+        assert (
+            bar_element is not None
+        ), f"Expected one rect for {bar_selector} but none rendered."
+
+    for legend_selector in ALL_PIPELINE_HEALTH_LEGEND_SELECTORS:
+        legend_swatch = browser.find_elements(By.CSS_SELECTOR, legend_selector)
+        assert len(legend_swatch) == 1, (
+            f"Expected exactly one legend swatch matching {legend_selector}, "
+            f"got {len(legend_swatch)}."
+        )
+
+
+def test_pipeline_health_card_renders_empty_state_with_no_data(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the AnonymousMetrics table has been emptied AFTER the autouse
+        seed fixture (so no API_METRICS_INGEST_BATCH rows exist)
+    WHEN an admin opens `/admin/metrics`
+    THEN the Pipeline Health card renders the empty-state text and zero
+        stacked-bar rects.
+    """
+    with provide_app.app_context():
+        Anonymous_Metrics.query.delete()
+        db.session.commit()
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    empty_state_element = wait_for_element_presence(
+        browser,
+        MDL.PIPELINE_HEALTH_EMPTY_STATE,
+        timeout=PIPELINE_HEALTH_RENDER_TIMEOUT,
+    )
+    assert empty_state_element is not None
+    assert (
+        empty_state_element.text
+        == ADMIN_METRICS_STRINGS.METRICS_PIPELINE_HEALTH_EMPTY_STATE
+    )
+
+    for bar_selector in ALL_PIPELINE_HEALTH_BAR_SELECTORS:
+        rendered_bars = browser.find_elements(By.CSS_SELECTOR, bar_selector)
+        assert len(rendered_bars) == 0, (
+            f"Expected no rects for {bar_selector} in the empty-state, "
+            f"got {len(rendered_bars)}."
+        )

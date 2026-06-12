@@ -18,7 +18,10 @@ from tests.integration.cli.utils import (
 pytestmark = pytest.mark.cli
 
 DUPLICATE_COUNT = 2
-SEEDED_EVENT_COUNT_PER_BUCKET = 3
+# Three category-anchor events (API_HIT, UI_LOGIN_SUBMIT, UTUB_CREATED) plus
+# four `(transport × device_type)` rows for API_METRICS_INGEST_BATCH so the
+# Pipeline Health stacked-bar card sees one segment per swatch.
+SEEDED_EVENT_COUNT_PER_BUCKET = 7
 EXPECTED_SEEDED_ROW_COUNT = (
     len(SEED_TEST_DATA_HOUR_OFFSETS) * SEEDED_EVENT_COUNT_PER_BUCKET
 )

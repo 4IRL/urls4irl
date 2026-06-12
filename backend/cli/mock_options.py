@@ -302,6 +302,41 @@ def _seed_uniform_test_data() -> int:
         ),
         (EventName.UI_LOGIN_SUBMIT, {"device_type": DeviceType.DESKTOP.value}),
         (EventName.UTUB_CREATED, {}),
+        # Pipeline-health stacked-bar coverage: four
+        # (transport × device_type) combinations at one fixed batch-size
+        # bucket so the Selenium dashboard test sees one rect per swatch.
+        (
+            EventName.API_METRICS_INGEST_BATCH,
+            {
+                "batch_size_bucket": "2-5",
+                "transport": "fetch",
+                "device_type": DeviceType.DESKTOP.value,
+            },
+        ),
+        (
+            EventName.API_METRICS_INGEST_BATCH,
+            {
+                "batch_size_bucket": "2-5",
+                "transport": "fetch",
+                "device_type": DeviceType.MOBILE.value,
+            },
+        ),
+        (
+            EventName.API_METRICS_INGEST_BATCH,
+            {
+                "batch_size_bucket": "2-5",
+                "transport": "beacon",
+                "device_type": DeviceType.DESKTOP.value,
+            },
+        ),
+        (
+            EventName.API_METRICS_INGEST_BATCH,
+            {
+                "batch_size_bucket": "2-5",
+                "transport": "beacon",
+                "device_type": DeviceType.MOBILE.value,
+            },
+        ),
     )
 
     now = utc_now()

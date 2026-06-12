@@ -370,3 +370,33 @@ class MetricsDashboardLocators(GenericPageLocator):
     TOP_SUBSTRING_FILTER_API = "#MetricsTopSubstringFilter-api"
     TOP_SUBSTRING_FILTER_UI = "#MetricsTopSubstringFilter-ui"
     TOP_SUBSTRING_FILTER_DOMAIN = "#MetricsTopSubstringFilter-domain"
+
+    # Pipeline Health card (always-visible standalone section above the tablist).
+    PIPELINE_HEALTH_CARD = "#MetricsPipelineHealth"
+    PIPELINE_HEALTH_CHART = "#MetricsPipelineHealthChart"
+    PIPELINE_HEALTH_LEGEND = "#MetricsPipelineHealthLegend"
+    PIPELINE_HEALTH_LEGEND_SWATCH_FETCH_DESKTOP = (
+        "#MetricsPipelineHealthLegend .swatch--fetch-desktop"
+    )
+    PIPELINE_HEALTH_LEGEND_SWATCH_FETCH_MOBILE = (
+        "#MetricsPipelineHealthLegend .swatch--fetch-mobile"
+    )
+    PIPELINE_HEALTH_LEGEND_SWATCH_BEACON_DESKTOP = (
+        "#MetricsPipelineHealthLegend .swatch--beacon-desktop"
+    )
+    PIPELINE_HEALTH_LEGEND_SWATCH_BEACON_MOBILE = (
+        "#MetricsPipelineHealthLegend .swatch--beacon-mobile"
+    )
+    PIPELINE_HEALTH_BAR_FETCH_DESKTOP = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--fetch-desktop"
+    )
+    PIPELINE_HEALTH_BAR_FETCH_MOBILE = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--fetch-mobile"
+    )
+    PIPELINE_HEALTH_BAR_BEACON_DESKTOP = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--beacon-desktop"
+    )
+    PIPELINE_HEALTH_BAR_BEACON_MOBILE = (
+        "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--beacon-mobile"
+    )
+    PIPELINE_HEALTH_EMPTY_STATE = "#MetricsPipelineHealthChart .MetricsEmptyState"

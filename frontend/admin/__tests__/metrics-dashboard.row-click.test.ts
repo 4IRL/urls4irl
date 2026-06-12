@@ -18,12 +18,14 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
+  fetchGroupedTimeseriesSpy,
   renderSummarySpy,
   renderTimeseriesChartSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
+  fetchGroupedTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
 }));
@@ -32,6 +34,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchSummary: fetchSummarySpy,
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
+  fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -132,11 +135,15 @@ describe("metrics-dashboard top-table row clicks", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });
@@ -350,11 +357,15 @@ describe("metrics-dashboard auto-default timeseries selection", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
+    fetchGroupedTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
   });

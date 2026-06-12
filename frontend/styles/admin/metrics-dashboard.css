@@ -589,3 +589,71 @@
     .refresh-btn .refresh-btn-label { display: none; }
     .refresh-btn:not([aria-disabled="true"]) .refresh-icon { display: inline-block; }
 }
+
+/* ---- Pipeline Health ------------------------------------------------- */
+
+.MetricsPipelineHealthLegend {
+    display: flex;
+    gap: 1rem;
+    list-style: none;
+    padding: 0;
+    margin: 0.5rem 0 0;
+}
+
+.MetricsPipelineHealthLegend li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+}
+
+.MetricsPipelineHealthLegend .swatch {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+}
+
+/* Swatch colour assignments — sourced from tokens.css :root variables so
+ * the colour palette stays centralized. Each variable carries a WCAG-1.4.11
+ * contrast-ratio comment alongside its definition in tokens.css. */
+.MetricsPipelineHealthLegend .swatch--fetch-desktop {
+    background-color: var(--pipelineHealthFetchDesktop);
+}
+
+.MetricsPipelineHealthLegend .swatch--fetch-mobile {
+    background-color: var(--pipelineHealthFetchMobile);
+}
+
+.MetricsPipelineHealthLegend .swatch--beacon-desktop {
+    background-color: var(--pipelineHealthBeaconDesktop);
+}
+
+.MetricsPipelineHealthLegend .swatch--beacon-mobile {
+    background-color: var(--pipelineHealthBeaconMobile);
+}
+
+/* Stacked-bar rect fills — matched to the legend swatch palette. */
+.MetricsPipelineHealthBar--fetch-desktop {
+    fill: var(--pipelineHealthFetchDesktop);
+}
+
+.MetricsPipelineHealthBar--fetch-mobile {
+    fill: var(--pipelineHealthFetchMobile);
+}
+
+.MetricsPipelineHealthBar--beacon-desktop {
+    fill: var(--pipelineHealthBeaconDesktop);
+}
+
+.MetricsPipelineHealthBar--beacon-mobile {
+    fill: var(--pipelineHealthBeaconMobile);
+}
+
+@media (max-width: 1100px) {
+    /* At narrower viewports the four-item legend row crowds long swatch
+     * labels; wrap below the chart so each label retains its full width. */
+    .MetricsPipelineHealthLegend {
+        flex-wrap: wrap;
+    }
+}

@@ -57,6 +57,7 @@ import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
 
 import {
+  fetchGroupedTimeseries,
   fetchSummary,
   fetchTimeseries,
   fetchTopEvents,
@@ -65,11 +66,12 @@ import {
   _resetPaneResizersForTests,
   initPaneResizers,
 } from "./pane-resizer.js";
+import { renderPipelineHealthChart } from "./render-pipeline-health-chart.js";
 import { renderSummary } from "./render-summary.js";
 import { renderTimeseriesChart } from "./render-timeseries-chart.js";
 import { renderTopTable } from "./render-top-table.js";
 
-type MetricsWindow = "day" | "week" | "month" | "year";
+export type MetricsWindow = "day" | "week" | "month" | "year";
 type MetricsCategory = "api" | "ui" | "domain";
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type LastFlushBucket =
@@ -88,6 +90,7 @@ interface InFlightRequests {
   tsUi: JQuery.jqXHR | null;
   tsDomain: JQuery.jqXHR | null;
   summary: JQuery.jqXHR | null;
+  pipelineHealth: JQuery.jqXHR | null;
 }
 
 interface CategoryPanelIds {
@@ -210,6 +213,7 @@ let _inFlight: InFlightRequests = {
   tsUi: null,
   tsDomain: null,
   summary: null,
+  pipelineHealth: null,
 };
 
 const TOP_SLOT_BY_CATEGORY: Record<
@@ -567,6 +571,7 @@ function abortInFlightRequests(): void {
     "tsUi",
     "tsDomain",
     "summary",
+    "pipelineHealth",
   ] as const) {
     const xhr = _inFlight[key];
     if (xhr !== null) {
@@ -936,14 +941,19 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
 }
 
 /**
- * Fire summary + per-category top-events for the current window. Each
- * `.done` callback writes to the per-category cache and re-renders the
- * active panel; `.fail` shows the error banner (unless the 429 prefilter
- * already replaced the page); every settled response refreshes
- * `_lastFetchPerf` for the visibility-refetch heuristic.
+ * Fire summary + grouped pipeline-health + per-category top-events for the
+ * current window. Each `.done` callback writes to the per-category cache
+ * and re-renders the active panel; `.fail` shows the error banner (unless
+ * the 429 prefilter already replaced the page); every settled response
+ * refreshes `_lastFetchPerf` for the visibility-refetch heuristic.
  *
- * Timeseries is fetched lazily — only when the user picks an event from a
- * panel's `<select>`. There is no stable default event to query on poll.
+ * The Pipeline Health card always uses `_currentWindow` and DELIBERATELY
+ * ignores the per-tab device filter — the card's whole point is to surface
+ * mobile-vs-desktop chattiness as a cross-tab signal.
+ *
+ * Timeseries (per-category) is fetched lazily — only when the user picks
+ * an event from a panel's `<select>`. There is no stable default event to
+ * query on poll.
  */
 function fetchAll(): void {
   abortInFlightRequests();
@@ -985,6 +995,52 @@ function fetchAll(): void {
     })
     .always(() => {
       _inFlight.summary = null;
+      _lastFetchPerf = performance.now();
+      onSettleAny();
+    });
+
+  // Pipeline Health card request — grouped timeseries over
+  // (batch_size_bucket, transport, device_type). The card always uses
+  // `_currentWindow` and DELIBERATELY ignores the per-tab device filter so
+  // mobile-vs-desktop chattiness shows up as a cross-tab signal. Server-side
+  // GROUP BY collapses time buckets within the window, and the renderer
+  // sums them per column to produce the four stacked bars.
+  const pipelineHealthRequest = fetchGroupedTimeseries({
+    eventName: "api_metrics_ingest_batch",
+    groupBy: ["batch_size_bucket", "transport", "device_type"],
+    window: _currentWindow,
+  });
+  _inFlight.pipelineHealth = pipelineHealthRequest;
+  const requestedWindow = _currentWindow;
+  pipelineHealthRequest
+    .done((response) => {
+      setBannerVisible({ visible: false });
+      const pipelineHealthSvg = getElementByIdOrNull<HTMLElement>(
+        "MetricsPipelineHealthChart",
+      ) as unknown as SVGSVGElement | null;
+      const legendRoot = getElementByIdOrNull<HTMLElement>(
+        "MetricsPipelineHealthLegend",
+      );
+      if (pipelineHealthSvg !== null) {
+        renderPipelineHealthChart({
+          svg: pipelineHealthSvg,
+          response,
+          legendRoot,
+          window: requestedWindow,
+        });
+      }
+    })
+    .fail((xhr) => {
+      if (is429Handled(xhr)) {
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      setBannerVisible({ visible: true });
+    })
+    .always(() => {
+      _inFlight.pipelineHealth = null;
       _lastFetchPerf = performance.now();
       onSettleAny();
     });
@@ -1045,7 +1101,8 @@ function onSettleAny(): void {
     _inFlight.tsApi !== null ||
     _inFlight.tsUi !== null ||
     _inFlight.tsDomain !== null ||
-    _inFlight.summary !== null;
+    _inFlight.summary !== null ||
+    _inFlight.pipelineHealth !== null;
   if (!anyInFlight) {
     setDashboardBusy({ busy: false });
     setRefreshButtonInFlight({ inFlight: false });
@@ -1483,6 +1540,7 @@ export function _resetMetricsDashboardForTests(): void {
     tsUi: null,
     tsDomain: null,
     summary: null,
+    pipelineHealth: null,
   };
   _topCache.clear();
   _selectedEventByCategory.clear();
