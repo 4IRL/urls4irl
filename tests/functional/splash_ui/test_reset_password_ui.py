@@ -31,6 +31,7 @@ from tests.functional.selenium_utils import (
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
 )
 
@@ -280,6 +281,12 @@ def test_password_reset_successful_reset_key(
     # never trigger submission. Targeting the input element directly is
     # deterministic and preserves the test's "user pressed Enter on the last
     # input" intent.
+    #
+    # Additionally, wait for the input to actually hold keyboard focus before
+    # dispatching ENTER. Without this guard, on slower parallel runs the
+    # ENTER keydown can land before the browser has confirmed focus on the
+    # input, causing the form-submit handler to miss the event.
+    wait_until_in_focus(browser, SPL.INPUT_CONFIRM_NEW_PASSWORD)
     confirm_new_password_input.send_keys(Keys.ENTER)
 
     wait_for_reset_password_close_button(browser)
