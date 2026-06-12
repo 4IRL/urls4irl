@@ -6,6 +6,10 @@ import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
+from backend.cli.metrics import (
+    COVERAGE_SUMMARY_API_LABEL,
+    COVERAGE_SUMMARY_HEADER,
+)
 from backend.metrics.audit import find_orphan_event_names
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
 
@@ -110,3 +114,52 @@ def test_audit_probe_with_full_coverage_returns_no_orphans(tmp_path: Path) -> No
     orphans = find_orphan_event_names(backend_root=tmp_backend)
 
     assert orphans == []
+
+
+def test_coverage_summary_outputs_tsv(app: Flask) -> None:
+    """
+    GIVEN the registered Flask app with the metrics CLI command group
+    WHEN `flask metrics coverage-summary` is invoked
+    THEN ensure
+        - exit code is 0,
+        - the first line is the canonical TSV header,
+        - the second line is the API (auto) row tagged `api`,
+        - per-category EventName member totals across rows match the
+          enum's grouping by EVENT_CATEGORY (each Domain/UI row sums to
+          the total number of DOMAIN/UI members in the enum).
+    """
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(args=["metrics", "coverage-summary"])
+
+    assert result.exit_code == 0, result.output
+
+    output_lines = result.output.strip().splitlines()
+    assert output_lines[0] == COVERAGE_SUMMARY_HEADER
+
+    api_row = output_lines[1].split("\t")
+    assert api_row[0] == COVERAGE_SUMMARY_API_LABEL
+    assert api_row[1] == EventCategory.API.value
+    assert int(api_row[2]) > 0
+
+    domain_rows = [
+        line.split("\t")
+        for line in output_lines[2:]
+        if line.split("\t")[1] == EventCategory.DOMAIN.value
+    ]
+    ui_rows = [
+        line.split("\t")
+        for line in output_lines[2:]
+        if line.split("\t")[1] == EventCategory.UI.value
+    ]
+
+    expected_domain_total = sum(
+        1
+        for event_name in EventName
+        if EVENT_CATEGORY[event_name] is EventCategory.DOMAIN
+    )
+    expected_ui_total = sum(
+        1 for event_name in EventName if EVENT_CATEGORY[event_name] is EventCategory.UI
+    )
+    assert sum(int(row[2]) for row in domain_rows) == expected_domain_total
+    assert sum(int(row[2]) for row in ui_rows) == expected_ui_total
