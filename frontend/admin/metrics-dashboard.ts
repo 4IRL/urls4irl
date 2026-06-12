@@ -1018,14 +1018,10 @@ function fetchAll(): void {
       const pipelineHealthSvg = getElementByIdOrNull<HTMLElement>(
         "MetricsPipelineHealthChart",
       ) as unknown as SVGSVGElement | null;
-      const legendRoot = getElementByIdOrNull<HTMLElement>(
-        "MetricsPipelineHealthLegend",
-      );
       if (pipelineHealthSvg !== null) {
         renderPipelineHealthChart({
           svg: pipelineHealthSvg,
           response,
-          legendRoot,
           window: requestedWindow,
         });
       }

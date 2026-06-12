@@ -189,12 +189,10 @@ function aggregateByBatchSizeAndStack(
 export function renderPipelineHealthChart({
   svg,
   response,
-  legendRoot: _legendRoot,
   window,
 }: {
   svg: SVGSVGElement;
   response: GroupedTimeseriesResponseSchema;
-  legendRoot: HTMLElement | null;
   window: MetricsWindow;
 }): void {
   clearSvgChildren({ svg });

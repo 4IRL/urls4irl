@@ -33,7 +33,6 @@ function buildResponse(
 
 describe("renderPipelineHealthChart", () => {
   let svg: SVGSVGElement;
-  let legendRoot: HTMLElement;
 
   beforeEach(() => {
     svg = document.createElementNS(
@@ -41,21 +40,17 @@ describe("renderPipelineHealthChart", () => {
       "svg",
     ) as unknown as SVGSVGElement;
     svg.setAttribute("viewBox", "0 0 800 240");
-    legendRoot = document.createElement("ul");
     document.body.appendChild(svg);
-    document.body.appendChild(legendRoot);
   });
 
   afterEach(() => {
     svg.remove();
-    legendRoot.remove();
   });
 
   it("renders empty-state text and no rects when buckets are empty", () => {
     renderPipelineHealthChart({
       svg,
       response: buildResponse([]),
-      legendRoot,
       window: "day",
     });
 
@@ -110,7 +105,6 @@ describe("renderPipelineHealthChart", () => {
     renderPipelineHealthChart({
       svg,
       response: buildResponse(buckets),
-      legendRoot,
       window: "day",
     });
 
@@ -157,7 +151,6 @@ describe("renderPipelineHealthChart", () => {
     renderPipelineHealthChart({
       svg,
       response: buildResponse(buckets),
-      legendRoot,
       window: "day",
     });
 
@@ -208,7 +201,6 @@ describe("renderPipelineHealthChart", () => {
     renderPipelineHealthChart({
       svg,
       response: buildResponse(buckets),
-      legendRoot,
       window: "day",
     });
 
@@ -249,7 +241,6 @@ describe("renderPipelineHealthChart", () => {
     renderPipelineHealthChart({
       svg,
       response: buildResponse(buckets),
-      legendRoot,
       window: "day",
     });
 
