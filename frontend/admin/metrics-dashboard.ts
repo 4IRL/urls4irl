@@ -1169,7 +1169,11 @@ function renderLastFlushBadge(): void {
   }
 
   if (_lastFlushAtMs === null) {
-    textNode.textContent = "";
+    // The flush sentinel is absent on fresh stacks (no flush has run yet)
+    // and after any operation that clears Redis (container restart, manual
+    // `make metrics-clear-*`). An empty badge in that state reads as a bug;
+    // surface the unknown state explicitly instead.
+    textNode.textContent = APP_CONFIG.strings.METRICS_LAST_FLUSH_UNKNOWN;
     badge.classList.remove(BADGE_STALE_CLASS);
     return;
   }
@@ -1240,7 +1244,9 @@ function renderLastEventBadge(): void {
   }
 
   if (_lastEventAtMs === null) {
-    textNode.textContent = "";
+    // Mirror the flush badge fallback: surface the unknown state instead of
+    // blanking the badge to a green dot with no text.
+    textNode.textContent = APP_CONFIG.strings.METRICS_LAST_EVENT_UNKNOWN;
     return;
   }
 
