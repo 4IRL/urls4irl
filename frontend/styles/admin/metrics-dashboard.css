@@ -592,6 +592,17 @@
 
 /* ---- Pipeline Health ------------------------------------------------- */
 
+/* The chart's viewBox is 800x240 (~3.33:1), so at full panel width on a
+ * large display the auto-height balloons to 400-600px+ and the axis font
+ * scales up with it. Cap at 75% width on wide viewports and center; the
+ * proportional font reduction is the "slightly smaller font for big
+ * screen" effect, no SVG attribute changes needed. */
+.MetricsPipelineHealthChart {
+    max-width: 75%;
+    display: block;
+    margin: 0 auto;
+}
+
 .MetricsPipelineHealthLegend {
     display: flex;
     gap: 1rem;
@@ -652,8 +663,13 @@
 
 @media (max-width: 1100px) {
     /* At narrower viewports the four-item legend row crowds long swatch
-     * labels; wrap below the chart so each label retains its full width. */
+     * labels; wrap below the chart so each label retains its full width.
+     * Also let the chart reclaim the full panel width — on tablets and
+     * smaller the 75% cap leaves too much wasted space. */
     .MetricsPipelineHealthLegend {
         flex-wrap: wrap;
+    }
+    .MetricsPipelineHealthChart {
+        max-width: 100%;
     }
 }
