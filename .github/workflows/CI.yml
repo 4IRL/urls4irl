@@ -32,6 +32,11 @@ jobs:
         name: 'Generated Types Freshness'
         uses: ./.github/workflows/types-staleness.yml
 
+    event-coverage:
+        needs: 'lint'
+        name: 'Event Coverage Audit'
+        uses: ./.github/workflows/event-coverage-staleness.yml
+
     build-image-test:
         needs: 'lint'
         name: 'Test Build Docker Container'

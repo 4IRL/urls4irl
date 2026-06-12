@@ -207,3 +207,6 @@ Review the diff for cross-module and deployment risks:
 - Config or environment variable changes without documentation
 - Dependency version changes that could cause conflicts
 - Changes to shared utilities that affect multiple callers
+- Adding an `EventName` member without a corresponding `DIMENSION_MODELS` entry (`backend/metrics/dimension_models.py`).
+- Adding an `EventName` member without updating `EVENT_CATEGORY` and `EVENT_DESCRIPTIONS` (`backend/metrics/events.py`).
+- Touching the Event Registry table in `plans/anonymous-metrics/anonymous-metrics-master.md` without re-running `flask metrics audit --strict` to confirm code/registry/Postgres three-way alignment.
