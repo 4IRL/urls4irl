@@ -60,9 +60,10 @@ const DASHBOARD_HTML = `
     <button class="MetricsWindowButton" data-window="month" aria-pressed="false"></button>
     <button class="MetricsWindowButton" data-window="year" aria-pressed="false"></button>
     <div id="MetricsTablist" role="tablist">
-      <button id="MetricsTabApi"    role="tab" aria-selected="true"  data-category="api"></button>
-      <button id="MetricsTabUi"     role="tab" aria-selected="false" data-category="ui"></button>
-      <button id="MetricsTabDomain" role="tab" aria-selected="false" data-category="domain"></button>
+      <button id="MetricsTabApi"            role="tab" aria-selected="true"  data-tab="api"></button>
+      <button id="MetricsTabUi"             role="tab" aria-selected="false" data-tab="ui"></button>
+      <button id="MetricsTabDomain"         role="tab" aria-selected="false" data-tab="domain"></button>
+      <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
@@ -86,6 +87,7 @@ const DASHBOARD_HTML = `
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain" class="top-table"><thead></thead><tbody></tbody></table>
     </section>
+    <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
   </main>
 `;

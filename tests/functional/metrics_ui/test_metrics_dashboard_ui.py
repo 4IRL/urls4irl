@@ -241,6 +241,11 @@ def test_pipeline_health_card_renders_with_seeded_data(
         config=provide_config,
     )
 
+    # Pipeline Health is the 4th tab and starts hidden. Click it so the user
+    # journey of "open dashboard, click Pipeline Health, see chart" is what
+    # gets validated, not just DOM presence under a hidden panel.
+    wait_then_click_element(browser, MDL.TAB_PIPELINE_HEALTH_BUTTON)
+
     # The card is server-pre-rendered (the partial ships in the HTML), so
     # its container always exists; the rects only appear after fetchAll()
     # completes the grouped-timeseries XHR and the renderer mutates the SVG.
@@ -289,6 +294,8 @@ def test_pipeline_health_card_renders_empty_state_with_no_data(
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
+
+    wait_then_click_element(browser, MDL.TAB_PIPELINE_HEALTH_BUTTON)
 
     empty_state_element = wait_for_element_presence(
         browser,

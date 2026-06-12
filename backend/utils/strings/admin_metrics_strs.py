@@ -4,6 +4,7 @@ class ADMIN_METRICS_STRINGS:
     METRICS_TAB_API: str = "Top Endpoints"
     METRICS_TAB_UI: str = "Top UI Events"
     METRICS_TAB_DOMAIN: str = "Top Domain Actions"
+    METRICS_TAB_PIPELINE_HEALTH: str = "Pipeline Health"
     METRICS_TIMESERIES_SELECT_ARIA: str = "Select event for timeseries chart"
     METRICS_LAST_FLUSH_JUST_NOW: str = "Last flush just now"
     METRICS_LAST_FLUSH_SECONDS: str = "Last flush {{ n }}s ago"

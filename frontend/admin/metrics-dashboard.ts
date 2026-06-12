@@ -73,6 +73,7 @@ import { renderTopTable } from "./render-top-table.js";
 
 export type MetricsWindow = "day" | "week" | "month" | "year";
 type MetricsCategory = "api" | "ui" | "domain";
+type MetricsTabId = MetricsCategory | "pipeline_health";
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type LastFlushBucket =
   | "just_now"
@@ -200,6 +201,29 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
 // Each `.done(...)` writes to `_topCache` and re-renders the panel.
 // Tablist navigation order also matches DOM order: API → UI → Domain.
 const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
+
+// All tabs in DOM order. Pipeline Health is a tab but not a category — it has
+// its own panel + fetch path (grouped-timeseries), separate from the per-
+// category top-events / timeseries flow. Keeping it out of `CATEGORIES`
+// avoids having to add null-branches for the category-specific caches
+// (`_topCache`, filters, charts) every time a category iteration is needed.
+const TAB_IDS: readonly MetricsTabId[] = [...CATEGORIES, "pipeline_health"];
+
+const PIPELINE_HEALTH_TAB_ID: string = "MetricsTabPipelineHealth";
+const PIPELINE_HEALTH_PANEL_ID: string = "MetricsPanelPipelineHealth";
+
+function getTabAndPanelIds(tabId: MetricsTabId): {
+  tab: string;
+  panel: string;
+} {
+  if (tabId === "pipeline_health") {
+    return { tab: PIPELINE_HEALTH_TAB_ID, panel: PIPELINE_HEALTH_PANEL_ID };
+  }
+  return {
+    tab: CATEGORY_PANEL_IDS[tabId].tab,
+    panel: CATEGORY_PANEL_IDS[tabId].panel,
+  };
+}
 
 let _pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFetchPerf: number = 0;
@@ -1340,27 +1364,26 @@ function handleWindowButtonClick(event: JQuery.TriggeredEvent): void {
  * keyboard users land inside the section content after switching.
  */
 function handleTabClick({
-  tabId: _tabId,
-  category,
+  tabId: _domTabId,
+  tab,
 }: {
   tabId: string;
-  category: MetricsCategory;
+  tab: MetricsTabId;
 }): void {
-  _currentCategory = category;
+  if (tab !== "pipeline_health") {
+    _currentCategory = tab;
+  }
 
-  for (const candidateCategory of CATEGORIES) {
-    const isActive = candidateCategory === category;
-    const tabElement = getElementByIdOrNull<HTMLButtonElement>(
-      CATEGORY_PANEL_IDS[candidateCategory].tab,
-    );
+  for (const candidateTab of TAB_IDS) {
+    const isActive = candidateTab === tab;
+    const ids = getTabAndPanelIds(candidateTab);
+    const tabElement = getElementByIdOrNull<HTMLButtonElement>(ids.tab);
     if (tabElement !== null) {
       tabElement.setAttribute("aria-selected", isActive ? "true" : "false");
       tabElement.setAttribute("tabindex", isActive ? "0" : "-1");
     }
 
-    const panelElement = getElementByIdOrNull<HTMLElement>(
-      CATEGORY_PANEL_IDS[candidateCategory].panel,
-    );
+    const panelElement = getElementByIdOrNull<HTMLElement>(ids.panel);
     if (panelElement !== null) {
       if (isActive) {
         panelElement.removeAttribute("hidden");
@@ -1370,23 +1393,27 @@ function handleTabClick({
     }
   }
 
-  // Re-render the active panel from cache so the latest top-events list and
-  // select options are visible immediately after the switch.
-  renderCategoryPanelFromCache({ category });
+  // For category tabs, re-render the active panel from cache so the latest
+  // top-events list and select options are visible immediately after the
+  // switch. Pipeline Health renders from the grouped-timeseries XHR fired
+  // by `fetchAll`, so no cache re-render is needed here.
+  if (tab !== "pipeline_health") {
+    renderCategoryPanelFromCache({ category: tab });
+  }
 
   const activePanel = getElementByIdOrNull<HTMLElement>(
-    CATEGORY_PANEL_IDS[category].panel,
+    getTabAndPanelIds(tab).panel,
   );
   activePanel?.focus();
 }
 
 function handleTabButtonClick(event: JQuery.TriggeredEvent): void {
   const tabElement = event.currentTarget as HTMLButtonElement;
-  const category = tabElement.dataset.category as MetricsCategory | undefined;
-  if (category === undefined) {
+  const tab = tabElement.dataset.tab as MetricsTabId | undefined;
+  if (tab === undefined) {
     return;
   }
-  handleTabClick({ tabId: tabElement.id, category });
+  handleTabClick({ tabId: tabElement.id, tab });
 }
 
 /**
@@ -1409,37 +1436,36 @@ function handleTabKeydown(event: JQuery.TriggeredEvent): void {
   }
 
   const tabElement = event.currentTarget as HTMLButtonElement;
-  const currentCategory = tabElement.dataset.category as
-    | MetricsCategory
-    | undefined;
-  if (currentCategory === undefined) {
+  const currentTab = tabElement.dataset.tab as MetricsTabId | undefined;
+  if (currentTab === undefined) {
     return;
   }
-  const currentIndex = CATEGORIES.indexOf(currentCategory);
+  const currentIndex = TAB_IDS.indexOf(currentTab);
   if (currentIndex === -1) {
     return;
   }
 
   let nextIndex: number;
   if (key === "ArrowLeft") {
-    nextIndex = (currentIndex - 1 + CATEGORIES.length) % CATEGORIES.length;
+    nextIndex = (currentIndex - 1 + TAB_IDS.length) % TAB_IDS.length;
   } else if (key === "ArrowRight") {
-    nextIndex = (currentIndex + 1) % CATEGORIES.length;
+    nextIndex = (currentIndex + 1) % TAB_IDS.length;
   } else if (key === "Home") {
     nextIndex = 0;
   } else {
-    nextIndex = CATEGORIES.length - 1;
+    nextIndex = TAB_IDS.length - 1;
   }
 
   event.preventDefault();
 
-  const nextCategory = CATEGORIES[nextIndex];
+  const nextTab = TAB_IDS[nextIndex];
+  const nextTabIds = getTabAndPanelIds(nextTab);
   const nextTabElement = getElementByIdOrNull<HTMLButtonElement>(
-    CATEGORY_PANEL_IDS[nextCategory].tab,
+    nextTabIds.tab,
   );
   handleTabClick({
-    tabId: CATEGORY_PANEL_IDS[nextCategory].tab,
-    category: nextCategory,
+    tabId: nextTabIds.tab,
+    tab: nextTab,
   });
   // After `handleTabClick` focuses the panel, return focus to the activated
   // tab so the user can keep navigating with arrow keys without re-tabbing

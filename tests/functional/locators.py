@@ -344,6 +344,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     TAB_API_BUTTON = "#MetricsTabApi"
     TAB_UI_BUTTON = "#MetricsTabUi"
     TAB_DOMAIN_BUTTON = "#MetricsTabDomain"
+    TAB_PIPELINE_HEALTH_BUTTON = "#MetricsTabPipelineHealth"
 
     # Per-section table IDs
     TOP_TABLE_API = "#MetricsTopTableApi"
