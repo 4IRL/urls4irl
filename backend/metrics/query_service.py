@@ -9,6 +9,7 @@ from sqlalchemy.orm import Query
 
 from backend import db
 from backend.extensions.metrics.writer import MetricsWriter
+from backend.metrics.dimension_models import DIMENSION_MODELS
 from backend.metrics.events import (
     DEVICE_TYPE_DIM_KEY,
     DeviceType,
@@ -19,6 +20,8 @@ from backend.metrics.resources import Resource, resource_filter_clause
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
+    GroupedTimeseriesBucket,
+    GroupedTimeseriesResponseSchema,
     SummaryCategoryCount,
     TimeseriesBucketSchema,
     TopEventRow,
@@ -403,6 +406,117 @@ def timeseries(
         )
         cursor = cursor + step
     return filled_buckets
+
+
+def _is_device_type_dim(event_name: EventName, group_by_key: str) -> bool:
+    """Return True when the dim field is typed as `DeviceType` on the dim model.
+
+    Why: the writer stores `device_type` as an integer (DeviceType IntEnum
+    value) inside the JSONB `dimensions` column. Postgres' JSONB extraction
+    needs `.as_integer()` for these values vs `.as_string()` for Literal-typed
+    string dims. Branching on the dim model's annotation keeps the SQL
+    generation aligned with the storage shape.
+    """
+    dim_model = DIMENSION_MODELS[event_name]
+    if dim_model is None:
+        return False
+    field_info = dim_model.model_fields.get(group_by_key)
+    if field_info is None:
+        return False
+    annotation = field_info.annotation
+    # `Annotated[DeviceType, BeforeValidator(...)]` resolves the runtime
+    # annotation to `DeviceType` itself, so a direct `is`/`issubclass` works.
+    return annotation is DeviceType or (
+        isinstance(annotation, type) and issubclass(annotation, DeviceType)
+    )
+
+
+def grouped_timeseries(
+    *,
+    event_name: EventName,
+    group_by: list[str],
+    window_start: datetime,
+    window_end: datetime,
+    resolution: Literal["hour", "day"],
+) -> GroupedTimeseriesResponseSchema:
+    """Return per-bucket counts split by a dimension tuple.
+
+    Returns one row per `(date_trunc(bucket), group_by[0], group_by[1], ...)`
+    combination inside the half-open window `[window_start, window_end)`.
+    Unlike `timeseries`, this helper does NOT zero-fill empty combinations —
+    the cross product of buckets × dim values can explode quickly, and the
+    frontend renderer treats absent combinations as "no segment for that
+    bucket".
+
+    `group_by` must contain field names declared on
+    `DIMENSION_MODELS[event_name]`. The HTTP route schema bounds the list at
+    1-3 entries; this helper raises `ValueError` if any entry is unknown, so
+    the route can map the error to a 400 response.
+    """
+    dim_model = DIMENSION_MODELS[event_name]
+    valid_fields: set[str] = (
+        set(dim_model.model_fields.keys()) if dim_model is not None else set()
+    )
+    unknown_keys = [key for key in group_by if key not in valid_fields]
+    if unknown_keys:
+        raise ValueError(
+            f"Unknown group_by key(s) for event '{event_name.value}': "
+            f"{', '.join(unknown_keys)}. Valid keys: "
+            f"{', '.join(sorted(valid_fields)) or '(none)'}."
+        )
+
+    bucket_column = func.date_trunc(resolution, Anonymous_Metrics.bucket_start).label(
+        "bucket"
+    )
+    dim_columns = []
+    for group_by_index, group_by_key in enumerate(group_by):
+        if _is_device_type_dim(event_name, group_by_key):
+            dim_column = Anonymous_Metrics.dimensions[group_by_key].as_integer()
+        else:
+            dim_column = Anonymous_Metrics.dimensions[group_by_key].as_string()
+        dim_columns.append(dim_column.label(f"dim{group_by_index}"))
+
+    count_column = func.sum(Anonymous_Metrics.count).label("count")
+    query = db.session.query(bucket_column, *dim_columns, count_column).filter(
+        Anonymous_Metrics.event_name == event_name.value,
+        Anonymous_Metrics.bucket_start >= window_start,
+        Anonymous_Metrics.bucket_start < window_end,
+    )
+    rows = (
+        query.group_by(bucket_column, *dim_columns)
+        .order_by(bucket_column, *dim_columns)
+        .all()
+    )
+
+    buckets: list[GroupedTimeseriesBucket] = []
+    for row in rows:
+        dim_values: dict[str, str | int] = {}
+        for group_by_index, group_by_key in enumerate(group_by):
+            raw_value = row[group_by_index + 1]
+            if raw_value is None:
+                # Rows missing the dim entirely shouldn't be silently grouped
+                # into a NULL bucket — skip them so the response shape stays
+                # consistent with declared `group_by` keys.
+                break
+            dim_values[group_by_key] = raw_value
+        else:
+            buckets.append(
+                GroupedTimeseriesBucket(
+                    bucket=row.bucket,
+                    dimensions=dim_values,
+                    count=int(row.count),
+                )
+            )
+
+    return GroupedTimeseriesResponseSchema(
+        event_name=event_name.value,
+        window=None,
+        resolution=resolution,
+        window_start=window_start,
+        window_end=window_end,
+        group_by=list(group_by),
+        buckets=buckets,
+    )
 
 
 def _by_category(start: datetime, end: datetime) -> dict[str, int]:

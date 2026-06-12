@@ -345,3 +345,58 @@ class SummaryQuerySchema(BaseModel):
     def _check_window_xor_range(self) -> Self:
         _validate_window_xor_range(self.window, self.start, self.end)
         return self
+
+
+class GroupedTimeseriesQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/grouped-timeseries`.
+
+    Returns one row per `(bucket × dim tuple)` instead of the single per-bucket
+    series produced by `timeseries`. Each `group_by` entry must be a dimension
+    field declared on `DIMENSION_MODELS[event_name]` — validated at the route
+    layer (the schema cannot bind to a per-event Literal because the valid set
+    depends on the requested event).
+
+    `group_by` arrives as repeated query-string keys
+    (`?group_by=transport&group_by=device_type`); the metrics-routes shared
+    `_parse_query_args(..., multi_value_keys=frozenset({"group_by"}))` helper
+    promotes those occurrences from a flat string to a list before validation.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_name: AllEventNameLiteral = Field(
+        description="Any EventName value (api, domain, or ui).",
+    )
+    group_by: list[str] = Field(
+        min_length=1,
+        max_length=3,
+        description=(
+            "List of dimension field names to group the timeseries by. Each "
+            "entry must be a field of `DIMENSION_MODELS[event_name]` (validated "
+            "at the route layer); shape is bounded at the schema layer to "
+            "1-3 non-empty entries ≤64 chars each."
+        ),
+    )
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+    resolution: ResolutionLiteral = Field(
+        default="hour",
+        description="date_trunc resolution: hour (default) or day.",
+    )
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+    @model_validator(mode="after")
+    def _check_group_by_entry_shape(self) -> Self:
+        for entry in self.group_by:
+            if not entry or len(entry) > 64:
+                raise ValueError(
+                    "Each `group_by` entry must be a non-empty string ≤64 chars."
+                )
+        return self

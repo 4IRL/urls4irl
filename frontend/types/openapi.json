@@ -748,6 +748,212 @@
         }
       }
     },
+    "/api/metrics/query/grouped-timeseries": {
+      "get": {
+        "operationId": "queryGroupedTimeseries",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return per-(bucket \u00d7 dim tuple) counts for a single event over an admin time window, grouped by 1-3 JSONB dimension keys.",
+        "parameters": [
+          {
+            "name": "event_name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": [
+                "api_hit",
+                "api_metrics_ingest_batch",
+                "email_verified",
+                "login_failure",
+                "login_success",
+                "member_added",
+                "member_removed",
+                "password_reset_completed",
+                "password_reset_requested",
+                "register_success",
+                "tag_applied",
+                "tag_deleted",
+                "tag_removed",
+                "url_accessed",
+                "url_added_to_utub",
+                "url_removed_from_utub",
+                "url_string_updated",
+                "url_title_updated",
+                "utub_created",
+                "utub_deleted",
+                "utub_desc_updated",
+                "utub_opened",
+                "utub_tag_created",
+                "utub_title_updated",
+                "ui_utub_select",
+                "ui_utub_create_open",
+                "ui_utub_delete_open",
+                "ui_utub_delete_confirm",
+                "ui_utub_delete_cancel",
+                "ui_utub_name_edit_open",
+                "ui_utub_desc_edit_open",
+                "ui_url_access",
+                "ui_url_card_click",
+                "ui_url_create_open",
+                "ui_url_title_edit_open",
+                "ui_url_string_edit_open",
+                "ui_url_delete_open",
+                "ui_url_delete_confirm",
+                "ui_url_delete_cancel",
+                "ui_url_copy",
+                "ui_url_access_warning",
+                "ui_url_access_warning_dismiss",
+                "ui_utub_search_open",
+                "ui_utub_search_close",
+                "ui_url_search_open",
+                "ui_url_search_close",
+                "ui_tag_apply",
+                "ui_tag_remove",
+                "ui_tag_create_open",
+                "ui_tag_delete_open",
+                "ui_tag_delete_confirm",
+                "ui_tag_delete_cancel",
+                "ui_tag_filter_toggle",
+                "ui_member_invite_open",
+                "ui_member_remove_open",
+                "ui_member_remove_confirm",
+                "ui_member_remove_cancel",
+                "ui_member_leave_open",
+                "ui_member_leave_confirm",
+                "ui_member_leave_cancel",
+                "ui_form_submit",
+                "ui_form_cancel",
+                "ui_validation_error",
+                "ui_deck_collapse",
+                "ui_deck_expand",
+                "ui_navbar_mobile_menu_open",
+                "ui_navbar_mobile_menu_close",
+                "ui_mobile_nav",
+                "ui_login_submit",
+                "ui_register_submit",
+                "ui_forgot_password_submit",
+                "ui_auth_form_switch",
+                "ui_auth_modal_open",
+                "ui_reset_password_submit",
+                "ui_email_validation_submit",
+                "ui_contact_submit",
+                "ui_error_page_refresh",
+                "ui_rate_limit_hit"
+              ],
+              "type": "string"
+            },
+            "description": "Any EventName value (api, domain, or ui)."
+          },
+          {
+            "name": "group_by",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "items": {
+                "type": "string"
+              },
+              "maxItems": 3,
+              "minItems": 1,
+              "type": "array"
+            },
+            "description": "List of dimension field names to group the timeseries by. Each entry must be a field of `DIMENSION_MODELS[event_name]` (validated at the route layer); shape is bounded at the schema layer to 1-3 non-empty entries \u226464 chars each."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": ["hour", "day"],
+              "type": "string"
+            },
+            "description": "date_trunc resolution: hour (default) or day."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/grouped-timeseries`.\n\n    Unlike the single-series `timeseries` endpoint, the grouped variant does\n    NOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product\n    expansion is expensive; the frontend renderer treats absent combos as\n    \"no segment for that bucket\".",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GroupedTimeseriesResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/register": {
       "post": {
         "operationId": "registerUser",
@@ -2757,6 +2963,95 @@
           "previous_window_start",
           "previous_window_end",
           "by_category"
+        ],
+        "type": "object"
+      },
+      "GroupedTimeseriesBucket": {
+        "description": "One row of the `grouped-timeseries` response \u2014 a single bucket \u00d7 dim-tuple.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket start (UTC, date_trunc'd to resolution)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "dimensions": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "description": "The dimension-tuple values for this row, keyed by the requested `group_by` fields. Closed-set values come from the per-event Literal dim model; typed loosely (`str | int`) for transport.",
+            "type": "object"
+          },
+          "count": {
+            "description": "Sum of counts within this (bucket, dim-tuple)",
+            "type": "integer"
+          }
+        },
+        "required": ["bucket", "dimensions", "count"],
+        "type": "object"
+      },
+      "GroupedTimeseriesResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/grouped-timeseries`.\n\nUnlike the single-series `timeseries` endpoint, the grouped variant does\nNOT zero-fill empty `(bucket, dim-tuple)` combinations. Cross-product\nexpansion is expensive; the frontend renderer treats absent combos as\n\"no segment for that bucket\".",
+        "properties": {
+          "event_name": {
+            "description": "EventName the series is filtered to",
+            "type": "string"
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "resolution": {
+            "description": "date_trunc resolution (hour | day)",
+            "enum": ["hour", "day"],
+            "type": "string"
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "group_by": {
+            "description": "Dimension field names the series is grouped by",
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "buckets": {
+            "description": "Per-(bucket \u00d7 dim tuple) rows, ordered chronologically and then alphabetically by dim values for deterministic output. NOT zero-filled \u2014 missing combinations are absent rather than zero-valued.",
+            "items": {
+              "$ref": "#/components/schemas/GroupedTimeseriesBucket"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "event_name",
+          "resolution",
+          "window_start",
+          "window_end",
+          "group_by",
+          "buckets"
         ],
         "type": "object"
       },
