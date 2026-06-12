@@ -981,6 +981,51 @@ def test_grouped_timeseries_rejects_unknown_group_by_key(
     assert "group_by" in body[STD_JSON.ERRORS]
 
 
+def test_grouped_timeseries_rejects_group_by_entry_over_64_chars(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/grouped-timeseries with a `group_by` entry
+        longer than 64 characters
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        `_check_group_by_entry_shape` model validator rejects any entry whose
+        length exceeds the 64-char ceiling before the route handler runs.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    over_limit_entry = "x" * 65
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=[over_limit_entry])
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_grouped_timeseries_rejects_empty_group_by_entry(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/grouped-timeseries with an empty-string
+        `group_by` entry
+    THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
+        `_check_group_by_entry_shape` model validator rejects an empty entry
+        before the route handler runs.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = _grouped_url_for(_INGEST_BATCH_EVENT, group_by=[""])
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
 def test_grouped_timeseries_returns_one_row_per_dim_tuple(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
