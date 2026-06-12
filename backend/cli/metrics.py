@@ -387,8 +387,7 @@ def _count_auto_counted_api_routes(app: Flask) -> int:
     for rule in app.url_map.iter_rules():
         if rule.methods is None:
             continue
-        view_function = app.view_functions.get(rule.endpoint)
-        if view_function is None:
+        if app.view_functions.get(rule.endpoint) is None:
             continue
         blueprint_name: str | None = (
             rule.endpoint.rsplit(".", 1)[0] if "." in rule.endpoint else None
