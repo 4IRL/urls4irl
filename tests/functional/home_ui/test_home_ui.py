@@ -104,6 +104,14 @@ def test_navbar_hamburger_desktop_regular_member(
     logout_btn = wait_then_get_element(browser, HPL.NAVBAR_LOGOUT)
     assert logout_btn is not None
 
+    # On desktop the dropdown is a compact panel anchored under the hamburger,
+    # not a full-width overlay (the full-bleed layout is mobile-only). Guard the
+    # >=992px width constraint so a regression to full-width is caught.
+    dropdown = wait_then_get_element(browser, HPL.NAVBAR_DROPDOWN)
+    assert dropdown is not None
+    viewport_width = browser.execute_script("return window.innerWidth")
+    assert dropdown.size["width"] < viewport_width / 2
+
     # A non-admin never renders the Admin · Metrics entry.
     assert not browser.find_elements(By.CSS_SELECTOR, HPL.NAVBAR_ADMIN_METRICS)
 

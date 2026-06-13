@@ -427,6 +427,43 @@ a {
     background-color: var(--navbarBackground);
 }
 
+/* Desktop: render the dropdown as a floating menu card anchored under the
+   hamburger rather than a full-bleed overlay (the full-width layout above is
+   only appropriate on narrow/mobile viewports). This block must follow the
+   rule above so its `left`/`right` reset wins on source order. `width:
+   max-content` grows to fit the longest row so no label is clipped; the min/max
+   keep it a comfortable panel size on any wide screen. */
+@media (min-width: 992px) {
+    .home#NavbarNavDropdown {
+        left: auto;
+        right: 0.75rem;
+        top: 3.4rem;
+        width: max-content;
+        min-width: 19rem;
+        max-width: 26rem;
+        border: 1px solid var(--navbarBackgroundHover);
+        /* Green top accent strip ties the menu to the app's deck-header green. */
+        border-top: 3px solid var(--deckHeaderGreen);
+        border-radius: 0.6rem;
+        overflow: hidden;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+    }
+
+    /* Inside the floating card the per-row top/bottom dividers are replaced by
+       the card's own border + shadow; keep a single hairline only between the
+       Admin·Metrics and Logout rows when both are present (admins). */
+    .home#NavbarNavDropdown #NavbarDropdownsHome button,
+    .home#NavbarNavDropdown #NavbarDropdownsHome #adminMetrics,
+    .home#NavbarNavDropdown .nav-item.home#logout {
+        border-top: 0;
+        border-bottom: 0;
+    }
+
+    .home#NavbarNavDropdown #adminMetrics + .nav-item#logout {
+        border-top: 1px solid var(--navbarBackgroundHover);
+    }
+}
+
 #NavbarDropdownsHome {
     display: flex;
     flex-direction: column;
