@@ -11,61 +11,20 @@ echo "Setting up volume permissions..."
 chown -R workflow:workflow /app/volume /app/workflow_logs /backups 2>/dev/null || true
 chmod -R 755 /backups /app/volume /app/workflow_logs 2>/dev/null || true
 
-# Function to load secrets from Docker secrets
-load_secrets() {
-    echo -e "Loading secrets..."
-    
-    # Load secrets from files and export them
-    for secret_file in /run/secrets/*; do
-        if [ -f "$secret_file" ]; then
-            secret_name=$(basename "$secret_file")
-            secret_value=$(cat "$secret_file")
-            export "$secret_name"="$secret_value"
-            echo -e "Loaded secret: $secret_name"
-        fi
-    done
-}
-
 if [ "$PRODUCTION" == "true" ]; then
     echo -e "\nLoading environments...\n"
-    load_secrets
-    # Assemble METRICS_REDIS_URI from REDIS_PASSWORD secret. The workflow
-    # container only writes to the metrics DB on the dedicated `redis-metrics`
-    # container (no sessions, no rate-limiter), so it does not need REDIS_URI.
-    # Mirrors the assembly in backend/config.py for the web container —
-    # including the urllib.parse.quote percent-encode so passwords containing
-    # URL-special characters (@, :, #, ?) do not produce a malformed URI here
-    # while web connects fine.
-    ENCODED_REDIS_PASSWORD=$(printf '%s' "${REDIS_PASSWORD}" | python3 -c 'import sys, urllib.parse; sys.stdout.write(urllib.parse.quote(sys.stdin.read()))')
-    export METRICS_REDIS_URI="redis://:${ENCODED_REDIS_PASSWORD}@redis-metrics:6379/0"
 else
     echo -e "\nRunning workflow in development mode\n"
 fi
 
-# Dump current env to a file readable by cron jobs
+# Write the cron environment dump. build_container_env.py is the single source
+# of truth for the allow-list and (in production) the Docker-secret loading +
+# METRICS_REDIS_URI percent-encode assembly — extracted from this entrypoint so
+# the filter and URI logic are unit-testable without booting the image. It reads
+# PRODUCTION / the compose env / /run/secrets itself and writes the KEY=value
+# dump; this script only tightens mode + ownership afterward.
 echo "Saving environment for cron jobs..."
-# Intentional one-var-per-line form: more diffable/reviewable for these 13 entries; deliberately diverges from scripts/daily-docker.sh's single-line SENSITIVE_VARS style.
-ALLOW_VARS=(
-  ACCESS_KEY
-  DEV_SERVER
-  METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS
-  METRICS_REDIS_URI
-  NOTIFICATION_URL
-  POSTGRES_DB
-  POSTGRES_HOST
-  POSTGRES_PASSWORD
-  POSTGRES_PORT
-  POSTGRES_USER
-  PRODUCTION
-  R2_ENDPOINT
-  SECRET_ACCESS_KEY
-)
-: > /app/container_environment
-for var in "${ALLOW_VARS[@]}"; do
-  if [[ -n "${!var+x}" ]]; then
-    printf '%s=%s\n' "$var" "${!var}" >> /app/container_environment
-  fi
-done
+python3 /app/build_container_env.py
 
 # Ensure proper permissions
 # Mode 600 is safe: cron daemon runs as root (Dockerfile.Workflow:88) so it can read regardless of mode bits; cron job lines run as UID 1001 / workflow (Dockerfile.Workflow:43) which owns this file.

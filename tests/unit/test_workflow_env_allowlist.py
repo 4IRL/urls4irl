@@ -1,11 +1,14 @@
-"""Defensive contract test. Asserts every os.environ key read by the cron-invoked
-Python scripts (scripts/flush_metrics.py, scripts/check_flush_liveness.py) is
-covered by the ALLOW_VARS bash array in docker/startup-workflow.sh. Catches future
-drift where a maintainer adds an os.environ access without updating the dump filter.
-Note: this test covers only Python cron scripts (flush_metrics.py,
-check_flush_liveness.py). Bash cron scripts (daily-docker.sh and its sourced
-helpers) are not covered by AST walking; when adding a new bash cron line, update
-ALLOW_VARS and the docker/crontab.workflow header manually.
+"""Defensive contract test for the workflow container's env-var allow-list.
+
+ALLOW_VARS in scripts/build_container_env.py is the single source of truth for
+which environment variables the cron jobs may see via /app/container_environment.
+This module asserts that every env var the cron-invoked scripts actually read is
+covered by ALLOW_VARS, catching future drift where a maintainer adds an access
+without updating the allow-list. Coverage spans BOTH the Python cron scripts
+(scripts/flush_metrics.py, scripts/check_flush_liveness.py, via AST walking) and
+the bash cron scripts (scripts/daily-docker.sh and its sourced helpers, via a
+reads-minus-assignments scan). It also unit-tests the pure builder functions
+(URI assembly, secret loading, dump rendering) without booting the image.
 """
 
 from __future__ import annotations
@@ -16,36 +19,34 @@ from pathlib import Path
 
 import pytest
 
+from scripts.build_container_env import (
+    ALLOW_VARS,
+    assemble_metrics_redis_uri,
+    build_env_mapping,
+    read_secret_files,
+    render_env_dump,
+)
+
 pytestmark = pytest.mark.unit
 
 
 _PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
-_STARTUP_SCRIPT: Path = _PROJECT_ROOT / "docker" / "startup-workflow.sh"
 _FLUSH_METRICS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "flush_metrics.py"
 _CHECK_LIVENESS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "check_flush_liveness.py"
-_ALLOW_VARS_BLOCK_RE: re.Pattern[str] = re.compile(
-    r"ALLOW_VARS=\((?P<body>.*?)\)", re.DOTALL
+_BASH_CRON_SCRIPTS: tuple[Path, ...] = (
+    _PROJECT_ROOT / "scripts" / "daily-docker.sh",
+    _PROJECT_ROOT / "scripts" / "backup-database.sh",
+    _PROJECT_ROOT / "scripts" / "backup-logs.sh",
+    _PROJECT_ROOT / "scripts" / "remote-object-storage.sh",
 )
 _BARE_NAME_RE: re.Pattern[str] = re.compile(r"^[A-Z][A-Z0-9_]*$")
-
-
-def _parse_allow_vars_from_shell(startup_script_path: Path) -> tuple[str, ...]:
-    """Extract the ALLOW_VARS bash-array entries from startup-workflow.sh.
-
-    Reads the file, matches the ``ALLOW_VARS=( ... )`` array literal via
-    ``_ALLOW_VARS_BLOCK_RE``, splits the captured body on whitespace, strips
-    empty tokens, and returns the entries as a tuple in source order.
-
-    Example:
-        >>> _parse_allow_vars_from_shell(Path("docker/startup-workflow.sh"))
-        ('ACCESS_KEY', 'DEV_SERVER', 'METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS', ...)
-    """
-    source = startup_script_path.read_text()
-    match = _ALLOW_VARS_BLOCK_RE.search(source)
-    if match is None:
-        return ()
-    body = match.group("body")
-    return tuple(token for token in body.split() if token)
+_BASH_VAR_READ_RE: re.Pattern[str] = re.compile(r"\$\{?([A-Z][A-Z0-9_]*)")
+_BASH_VAR_ASSIGN_RES: tuple[re.Pattern[str], ...] = (
+    re.compile(r"(?<![=!<>])\b([A-Z][A-Z0-9_]*)=(?!=)"),
+    re.compile(r"\bfor\s+([A-Z][A-Z0-9_]*)\s+in\b"),
+    re.compile(r"\bread\s+(?:-r\s+)?([A-Z][A-Z0-9_]*)\b"),
+)
+_ALLOWED: frozenset[str] = frozenset(ALLOW_VARS)
 
 
 def _walk_env_reads(source: str) -> frozenset[str]:
@@ -104,45 +105,69 @@ def _walk_env_reads(source: str) -> frozenset[str]:
     return frozenset(keys)
 
 
-def test_allow_list_block_is_parseable():
+def _bash_external_var_reads(script_paths: tuple[Path, ...]) -> frozenset[str]:
+    """Find externally-sourced env vars read by a set of bash scripts.
+
+    Scans every uppercase ``$VAR`` / ``${VAR}`` read and every assignment
+    (``VAR=``, ``export VAR=``, ``local VAR=``, ``for VAR in``, ``read VAR``)
+    across all ``script_paths`` as one combined unit, then returns
+    ``reads - assignments``. A var that is only ever read (never assigned
+    anywhere in the set, including by a parent that exports it) must come from
+    /app/container_environment — so it has to be in ALLOW_VARS. Locally-assigned
+    and parent-exported vars (DB_USER, LOG_FILE, …) drop out automatically, with
+    no manual ignore-list. The four bash cron scripts read no shell builtins
+    ($HOME/$PATH/etc.), so none leak through as false positives.
+
+    Example:
+        # daily-docker.sh reads $PRODUCTION (external) and assigns DB_USER=...
+        >>> _bash_external_var_reads((Path("scripts/daily-docker.sh"),))
+        frozenset({'PRODUCTION', ...})
     """
-    GIVEN the startup-workflow.sh script
-    WHEN the ALLOW_VARS array is parsed
-    THEN a non-empty tuple of entries is returned.
+    reads: set[str] = set()
+    assigned: set[str] = set()
+    for script_path in script_paths:
+        source = script_path.read_text()
+        reads.update(match.group(1) for match in _BASH_VAR_READ_RE.finditer(source))
+        for assign_re in _BASH_VAR_ASSIGN_RES:
+            assigned.update(match.group(1) for match in assign_re.finditer(source))
+    return frozenset(reads - assigned)
+
+
+def test_allow_list_is_non_empty():
     """
-    allow_vars = _parse_allow_vars_from_shell(_STARTUP_SCRIPT)
-    assert allow_vars, "ALLOW_VARS array not found or empty in startup-workflow.sh"
+    GIVEN the imported ALLOW_VARS tuple
+    WHEN its length is checked
+    THEN it is non-empty.
+    """
+    assert ALLOW_VARS, "ALLOW_VARS is empty"
 
 
 def test_allow_list_entries_are_uppercase_underscore_names():
     """
-    GIVEN the parsed ALLOW_VARS entries
+    GIVEN the ALLOW_VARS entries
     WHEN each entry is checked against the bare-name pattern
     THEN every entry is an uppercase-underscore identifier.
     """
-    allow_vars = _parse_allow_vars_from_shell(_STARTUP_SCRIPT)
-    for entry in allow_vars:
+    for entry in ALLOW_VARS:
         assert _BARE_NAME_RE.match(entry), f"'{entry}' is not an uppercase env-var name"
 
 
 def test_allow_list_has_no_duplicates():
     """
-    GIVEN the parsed ALLOW_VARS entries
+    GIVEN the ALLOW_VARS entries
     WHEN the entries are de-duplicated
     THEN no entry appears more than once.
     """
-    allow_vars = _parse_allow_vars_from_shell(_STARTUP_SCRIPT)
-    assert len(allow_vars) == len(set(allow_vars)), "ALLOW_VARS contains duplicates"
+    assert len(ALLOW_VARS) == len(set(ALLOW_VARS)), "ALLOW_VARS contains duplicates"
 
 
 def test_allow_list_is_alphabetized():
     """
-    GIVEN the parsed ALLOW_VARS entries
+    GIVEN the ALLOW_VARS entries
     WHEN the entries are sorted
-    THEN the source order already matches alphabetical order.
+    THEN the declared order already matches alphabetical order.
     """
-    allow_vars = _parse_allow_vars_from_shell(_STARTUP_SCRIPT)
-    assert list(allow_vars) == sorted(allow_vars), "ALLOW_VARS is not alphabetized"
+    assert list(ALLOW_VARS) == sorted(ALLOW_VARS), "ALLOW_VARS is not alphabetized"
 
 
 def test_allow_list_covers_flush_metrics_env_reads():
@@ -151,11 +176,10 @@ def test_allow_list_covers_flush_metrics_env_reads():
     WHEN they are compared against ALLOW_VARS
     THEN every read key is present in ALLOW_VARS.
     """
-    allowed = frozenset(_parse_allow_vars_from_shell(_STARTUP_SCRIPT))
     reads = _walk_env_reads(_FLUSH_METRICS_SCRIPT.read_text())
     assert (
-        reads <= allowed
-    ), f"flush_metrics.py reads {sorted(reads - allowed)} not in ALLOW_VARS"
+        reads <= _ALLOWED
+    ), f"flush_metrics.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
 
 
 def test_allow_list_covers_check_flush_liveness_env_reads():
@@ -164,11 +188,22 @@ def test_allow_list_covers_check_flush_liveness_env_reads():
     WHEN they are compared against ALLOW_VARS
     THEN every read key is present in ALLOW_VARS.
     """
-    allowed = frozenset(_parse_allow_vars_from_shell(_STARTUP_SCRIPT))
     reads = _walk_env_reads(_CHECK_LIVENESS_SCRIPT.read_text())
     assert (
-        reads <= allowed
-    ), f"check_flush_liveness.py reads {sorted(reads - allowed)} not in ALLOW_VARS"
+        reads <= _ALLOWED
+    ), f"check_flush_liveness.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+
+
+def test_allow_list_covers_bash_cron_env_reads():
+    """
+    GIVEN the externally-sourced env vars read by the bash cron scripts
+    WHEN they are compared against ALLOW_VARS
+    THEN every externally-sourced var is present in ALLOW_VARS.
+    """
+    external = _bash_external_var_reads(_BASH_CRON_SCRIPTS)
+    assert (
+        external <= _ALLOWED
+    ), f"bash cron scripts read {sorted(external - _ALLOWED)} not in ALLOW_VARS"
 
 
 def test_walk_env_reads_captures_all_three_call_shapes():
@@ -186,12 +221,90 @@ def test_walk_env_reads_captures_all_three_call_shapes():
     assert _walk_env_reads(source) == frozenset({"SUB", "GET", "ENV"})
 
 
-def test_parse_allow_vars_returns_empty_when_block_absent(tmp_path: Path):
+def test_assemble_metrics_redis_uri_percent_encodes_password():
     """
-    GIVEN a shell script lacking an ALLOW_VARS=(...) block
-    WHEN the allow-list is parsed
-    THEN the empty-tuple sentinel is returned.
+    GIVEN a password with URL-reserved characters, an empty password, and a
+        password containing a slash
+    WHEN the metrics Redis URI is assembled
+    THEN reserved chars are percent-encoded, empty yields an empty userinfo, and
+        '/' is left unencoded (documenting urllib.parse.quote's default).
     """
-    script_without_block = tmp_path / "no_allow_vars.sh"
-    script_without_block.write_text("#!/bin/bash\necho 'no allow vars here'\n")
-    assert _parse_allow_vars_from_shell(script_without_block) == ()
+    assert (
+        assemble_metrics_redis_uri(redis_password="p@ssword")
+        == "redis://:p%40ssword@redis-metrics:6379/0"
+    )
+    assert (
+        assemble_metrics_redis_uri(redis_password="")
+        == "redis://:@redis-metrics:6379/0"
+    )
+    assert (
+        assemble_metrics_redis_uri(redis_password="a/b")
+        == "redis://:a/b@redis-metrics:6379/0"
+    )
+
+
+def test_render_env_dump_filters_to_allow_list_and_present_only():
+    """
+    GIVEN an env mapping with allow-listed vars, an unset allow-listed var, and a
+        non-allow-listed secret
+    WHEN the dump is rendered
+    THEN only present allow-listed vars are emitted, in ALLOW_VARS order, and the
+        non-allow-listed secret is excluded.
+    """
+    env_mapping = {
+        "POSTGRES_DB": "u4i",
+        "PRODUCTION": "true",
+        "REDIS_PASSWORD": "should-not-appear",
+        "DEV_SERVER": "false",
+    }
+    dump = render_env_dump(env_mapping=env_mapping)
+    assert dump == "DEV_SERVER=false\nPOSTGRES_DB=u4i\nPRODUCTION=true\n"
+    assert "REDIS_PASSWORD" not in dump
+
+
+def test_read_secret_files_strips_trailing_newline_and_handles_missing_dir(
+    tmp_path: Path,
+):
+    """
+    GIVEN a secrets directory with files ending in a trailing newline
+    WHEN the secret files are read
+    THEN each value is keyed by basename with the trailing newline stripped, and
+        a missing directory yields an empty mapping.
+    """
+    (tmp_path / "REDIS_PASSWORD").write_text("hunter2\n")
+    (tmp_path / "POSTGRES_USER").write_text("u4i")
+    assert read_secret_files(secrets_dir=tmp_path) == {
+        "REDIS_PASSWORD": "hunter2",
+        "POSTGRES_USER": "u4i",
+    }
+    assert read_secret_files(secrets_dir=tmp_path / "missing") == {}
+
+
+def test_build_env_mapping_production_merges_secrets_and_assembles_uri():
+    """
+    GIVEN production mode with secrets and a pre-existing METRICS_REDIS_URI
+    WHEN the env mapping is built
+    THEN secrets override the base env and METRICS_REDIS_URI is re-assembled with
+        the percent-encoded password.
+    """
+    mapping = build_env_mapping(
+        base_environ={"PRODUCTION": "true", "METRICS_REDIS_URI": "stale"},
+        secrets={"REDIS_PASSWORD": "p@ss", "POSTGRES_DB": "u4i"},
+        production=True,
+    )
+    assert mapping["POSTGRES_DB"] == "u4i"
+    assert mapping["METRICS_REDIS_URI"] == "redis://:p%40ss@redis-metrics:6379/0"
+
+
+def test_build_env_mapping_non_production_passes_through():
+    """
+    GIVEN non-production mode
+    WHEN the env mapping is built
+    THEN the base environment is returned unchanged and secrets are ignored.
+    """
+    base = {"PRODUCTION": "false", "METRICS_REDIS_URI": "redis://compose-injected"}
+    mapping = build_env_mapping(
+        base_environ=base, secrets={"REDIS_PASSWORD": "ignored"}, production=False
+    )
+    assert mapping == base
+    assert "REDIS_PASSWORD" not in mapping

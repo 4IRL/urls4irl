@@ -31,9 +31,10 @@
 # TERM, SHLVL, PWD), the raw REDIS_PASSWORD (replaced by the pre-assembled
 # METRICS_REDIS_URI), and workflow-service env vars that the cron scripts do not
 # read at runtime (e.g. METRICS_BUCKET_SECONDS — consumed only by the web container).
-# Canonical allow-list lives in docker/startup-workflow.sh:ALLOW_VARS. tests/unit/test_workflow_env_allowlist.py
-# auto-enforces drift for the Python cron scripts only (flush_metrics.py, check_flush_liveness.py); bash cron
-# scripts (daily-docker.sh and its sourced helpers) must be audited manually whenever ALLOW_VARS changes.
+# Canonical allow-list lives in scripts/build_container_env.py:ALLOW_VARS. tests/unit/test_workflow_env_allowlist.py
+# auto-enforces drift for both the Python cron scripts (flush_metrics.py, check_flush_liveness.py) and the bash
+# cron scripts (daily-docker.sh and its sourced helpers), so adding a new sourced var to either must be matched
+# by an ALLOW_VARS entry or the test fails.
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 MAILTO=""
