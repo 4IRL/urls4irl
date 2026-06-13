@@ -12,6 +12,7 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.functional.assert_utils import (
     assert_login,
     assert_no_utub_selected,
+    assert_not_visible_css_selector,
     assert_utub_icon,
     assert_utub_selected,
 )
@@ -95,6 +96,10 @@ def test_navbar_hamburger_desktop_regular_member(
     assert inline_username.text == "Logged in as " + USERNAME_BASE + "2"
 
     click_on_navbar(browser)
+
+    # The dropdown-copy username is suppressed on desktop by the
+    # #NavbarDropdownsHome .nav-item.user { display:none } rule at >=992px.
+    assert_not_visible_css_selector(browser, HPL.LOGGED_IN_USERNAME_READ)
 
     logout_btn = wait_then_get_element(browser, HPL.NAVBAR_LOGOUT)
     assert logout_btn is not None
