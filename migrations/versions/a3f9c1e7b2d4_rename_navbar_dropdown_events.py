@@ -22,25 +22,22 @@ down_revision = "0538b281d033"
 branch_labels = None
 depends_on = None
 
-# (old_event_name, new_event_name, new_description)
-_RENAMES: tuple[tuple[str, str, str], ...] = (
+# (old_event_name, new_event_name, new_description, legacy_description)
+# legacy_description is the pre-rename wording in backend/metrics/event_registry.py,
+# re-applied when downgrade() restores the old EventRegistry rows.
+_RENAMES: tuple[tuple[str, str, str, str], ...] = (
     (
         "ui_navbar_mobile_menu_open",
         "ui_navbar_dropdown_open",
         "Navbar dropdown menu opened",
+        "Mobile hamburger menu opened",
     ),
     (
         "ui_navbar_mobile_menu_close",
         "ui_navbar_dropdown_close",
         "Navbar dropdown menu closed",
+        "Mobile hamburger menu closed",
     ),
-)
-
-# Descriptions used when re-creating the legacy EventRegistry rows on downgrade,
-# matched to the pre-rename wording in backend/metrics/event_registry.py.
-_LEGACY_EVENTS: tuple[tuple[str, str], ...] = (
-    ("ui_navbar_mobile_menu_open", "Mobile hamburger menu opened"),
-    ("ui_navbar_mobile_menu_close", "Mobile hamburger menu closed"),
 )
 
 
@@ -81,21 +78,20 @@ def _rename_event(old_name: str, new_name: str, new_description: str) -> None:
 
 
 def upgrade():
-    for old_name, new_name, new_description in _RENAMES:
+    for old_name, new_name, new_description, _ in _RENAMES:
         _rename_event(old_name, new_name, new_description)
 
 
 def downgrade():
-    # Restore the legacy EventRegistry rows first so the rename-back satisfies
-    # the AnonymousMetrics.eventName FK, then rewrite the rows in reverse.
-    for legacy_name, legacy_description in _LEGACY_EVENTS:
+    # Restore each legacy EventRegistry row first so the rename-back satisfies
+    # the AnonymousMetrics.eventName FK, then rewrite the rows onto the old name
+    # and drop the now-orphaned new EventRegistry row — all in one pass.
+    for old_name, new_name, _, legacy_description in _RENAMES:
         op.execute(f"""
             INSERT INTO "EventRegistry" (name, category, description)
-            VALUES ('{legacy_name}', 'ui', '{legacy_description}')
+            VALUES ('{old_name}', 'ui', '{legacy_description}')
             ON CONFLICT (name) DO NOTHING
             """)
-
-    for old_name, new_name, _ in _RENAMES:
         op.execute(f"""
             INSERT INTO "AnonymousMetrics" ("eventName", endpoint, method, "statusCode", "bucketStart", dimensions, count)
             SELECT '{old_name}', endpoint, method, "statusCode", "bucketStart", dimensions, count
