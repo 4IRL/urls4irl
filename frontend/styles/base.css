@@ -441,16 +441,33 @@ a {
         width: max-content;
         min-width: 19rem;
         max-width: 26rem;
-        border: 1px solid var(--navbarBackgroundHover);
-        /* Green top accent strip ties the menu to the app's deck-header green. */
-        border-top: 3px solid var(--deckHeaderGreen);
+        /* Bold, on-theme: a full green hairline border + a green glow layered
+           over the drop shadow so the menu pops against the dark page without
+           needing the page dimmer (dropped on desktop below). */
+        border: 1.5px solid var(--deckHeaderGreen);
         border-radius: 0.6rem;
         overflow: hidden;
-        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);
+        box-shadow:
+            0 12px 30px rgba(0, 0, 0, 0.5),
+            0 0 16px rgba(36, 167, 69, 0.45);
+    }
+
+    /* One-time entrance: fade + slight slide-down when the menu opens.
+       (Disabled for prefers-reduced-motion via the top-level override below.) */
+    .home#NavbarNavDropdown.show {
+        animation: navbarMenuIn 180ms ease-out;
+    }
+
+    /* Desktop: drop the full-page dimmer (it suits a mobile full-screen menu,
+       not a small corner dropdown). The backdrop element stays in the DOM but
+       transparent, so click-anywhere-to-close still works. */
+    .navbar-backdrop,
+    .navbar-backdrop.navbar-backdrop-show {
+        opacity: 0;
     }
 
     /* Inside the floating card the per-row top/bottom dividers are replaced by
-       the card's own border + shadow; keep a single hairline only between the
+       the card's own border + glow; keep a single hairline only between the
        Admin·Metrics and Logout rows when both are present (admins). */
     .home#NavbarNavDropdown #NavbarDropdownsHome button,
     .home#NavbarNavDropdown #NavbarDropdownsHome #adminMetrics,
@@ -460,7 +477,25 @@ a {
     }
 
     .home#NavbarNavDropdown #adminMetrics + .nav-item#logout {
-        border-top: 1px solid var(--navbarBackgroundHover);
+        border-top: 1px solid var(--deckSelectionGreenHover);
+    }
+}
+
+@keyframes navbarMenuIn {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home#NavbarNavDropdown.show {
+        animation: none;
     }
 }
 
