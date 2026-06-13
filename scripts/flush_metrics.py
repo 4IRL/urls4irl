@@ -242,9 +242,10 @@ def _load_env_from_container_dump(path: str = CONTAINER_ENVIRONMENT_FILE) -> Non
 
     Mirrors the cron-line pattern (``set -a && . /app/container_environment &&
     set +a``) for callers that bypass cron — e.g., a manual ``docker compose
-    exec workflow`` run. Parses ``KEY=value`` lines (the format ``printenv``
-    writes) and only sets entries not already present in ``os.environ`` so
-    genuine env-var overrides win. Silently no-ops if the file is missing.
+    exec workflow`` run. Parses ``KEY=value`` lines (the KEY=value format
+    written by startup-workflow.sh) and only sets entries not already present
+    in ``os.environ`` so genuine env-var overrides win. Silently no-ops if the
+    file is missing.
     """
     dump_path = Path(path)
     if not dump_path.is_file():

@@ -189,6 +189,8 @@ Present each design decision using `AskUserQuestion`:
 - All user answers (DD number → chosen option text and any user notes)
 - Instructions to: (1) apply each chosen option to the plan, (2) update the `**Chosen:**` field in the review document, (3) if the user selected "Other" with custom text, apply that instead
 
+**Fragility-pattern sweep (required for every DD that resolves a class of fragility):** When a DD resolves a fragility pattern — a readiness race (flat sleep vs. poll loop), an unquoted variable, a missing error guard, a stale assertion — the DD-application subagent MUST scan the same file/code-block area for all other occurrences of that identical fragility before marking the DD resolved. If sibling occurrences exist, apply the same fix to all of them in the same step and list each sibling in the DD resolution summary. Never mark a DD complete if the same fragility remains in a sibling block of the same file.
+
 The subagent reads the files, makes all edits, and returns a summary of what was changed. The orchestrator only needs the summary to continue.
 
 ### Step 7: Write Review Document via Subagent

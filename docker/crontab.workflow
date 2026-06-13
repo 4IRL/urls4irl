@@ -3,7 +3,7 @@
 # IMPORTANT — env-var inheritance for cron jobs:
 # Cron runs each line in a fresh /bin/sh with NO container env vars present.
 # To give a job access to REDIS_URI, POSTGRES_*, etc., the job must source
-# /app/container_environment (a `printenv` dump written by startup-workflow.sh).
+# /app/container_environment (a `KEY=value` dump written by startup-workflow.sh).
 # However: the `.` / `source` builtin only SETS shell variables — it does NOT
 # mark them as exported, so child processes (python, psql, …) inherit nothing.
 # Wrap the source with `set -a` / `set +a` to auto-export every assignment:

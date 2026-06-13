@@ -44,10 +44,31 @@ fi
 
 # Dump current env to a file readable by cron jobs
 echo "Saving environment for cron jobs..."
-printenv | grep -v "no_proxy" > /app/container_environment
+ALLOW_VARS=(
+  ACCESS_KEY
+  DEV_SERVER
+  METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS
+  METRICS_REDIS_URI
+  NOTIFICATION_URL
+  POSTGRES_DB
+  POSTGRES_HOST
+  POSTGRES_PASSWORD
+  POSTGRES_PORT
+  POSTGRES_USER
+  PRODUCTION
+  R2_ENDPOINT
+  SECRET_ACCESS_KEY
+)
+: > /app/container_environment
+for var in "${ALLOW_VARS[@]}"; do
+  if [[ -n "${!var+x}" ]]; then
+    printf '%s=%s\n' "$var" "${!var}" >> /app/container_environment
+  fi
+done
 
 # Ensure proper permissions
-chmod 644 /app/container_environment
+# Mode 600 is safe: cron daemon runs as root (Dockerfile.Workflow:88) so it can read regardless of mode bits; cron job lines run as UID 1001 / workflow (Dockerfile.Workflow:43) which owns this file.
+chmod 600 /app/container_environment
 chown workflow:workflow /app/container_environment
 
 echo -e "\nStarting cron daemon...\n"
