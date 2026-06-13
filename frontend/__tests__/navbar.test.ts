@@ -6,16 +6,16 @@ vi.mock("../lib/globals.js", () => ({
   bootstrap: window.bootstrap,
 }));
 
-const { initNavbarRouting, initMobileNavbarBackdrop } = await vi.hoisted(
+const { initNavbarRouting, initNavbarBackdrop } = await vi.hoisted(
   async () => ({
     initNavbarRouting: vi.fn(),
-    initMobileNavbarBackdrop: vi.fn(),
+    initNavbarBackdrop: vi.fn(),
   }),
 );
 
 vi.mock("../lib/navbar-shared.js", () => ({
   initNavbarRouting,
-  initMobileNavbarBackdrop,
+  initNavbarBackdrop,
 }));
 
 describe("generic navbar entry point", () => {
@@ -30,7 +30,7 @@ describe("generic navbar entry point", () => {
     await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
     expect(initNavbarRouting).toHaveBeenCalledTimes(1);
-    expect(initMobileNavbarBackdrop).toHaveBeenCalledTimes(1);
+    expect(initNavbarBackdrop).toHaveBeenCalledTimes(1);
   });
 });
 

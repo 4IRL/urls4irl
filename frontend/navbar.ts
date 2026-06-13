@@ -3,12 +3,9 @@ import "./styles/base.css";
 import "./styles/privacy-terms.css";
 import "./lib/security-check.js";
 import { $ } from "./lib/globals.js";
-import {
-  initMobileNavbarBackdrop,
-  initNavbarRouting,
-} from "./lib/navbar-shared.js";
+import { initNavbarBackdrop, initNavbarRouting } from "./lib/navbar-shared.js";
 
 $(document).ready(() => {
   initNavbarRouting();
-  initMobileNavbarBackdrop();
+  initNavbarBackdrop();
 });
