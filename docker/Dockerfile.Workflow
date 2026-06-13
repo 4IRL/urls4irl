@@ -55,6 +55,9 @@ COPY --chown=workflow:workflow scripts/backup-logs.sh /app/
 COPY --chown=workflow:workflow scripts/remote-object-storage.sh /app/
 COPY scripts/restricted-curl.sh /usr/bin/restricted_curl
 
+# Copy the cron-environment dump builder (called by startup-workflow.sh).
+COPY --chown=workflow:workflow scripts/build_container_env.py /app/build_container_env.py
+
 # Copy metrics flush + liveness scripts. flush_metrics.py side-loads two backend
 # leaf modules by absolute path (see _load_module_direct); copy only those two
 # files at their source-tree paths so the loader's "/app/<rel>" probe finds them.

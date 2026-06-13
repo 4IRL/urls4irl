@@ -322,6 +322,109 @@ For any plan involving a **new feature or bug fix** (not pure refactoring or cle
 - **Frontend – navigation/critical flows:** Use Selenium (end-to-end verification).
 - **Philosophy:** Tests are the contract; code is the fulfillment. Never write tests to fit existing feature code.
 
+## Step 4: Create GitHub Issue
+
+After the plan file is written, cross-linked, and tmp files cleaned up, create a corresponding GitHub issue and link it to the plan via YAML frontmatter. The issue is the publicly-visible **WHY**; the plan stays the source of truth for the HOW.
+
+### 4a. Search for existing matches
+
+Extract 2-4 distinguishing keywords from the plan title (drop stopwords like "the", "and", "for", "with"). Search open issues:
+
+```bash
+GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh issue list \
+  --state open --search "<keywords>" --limit 5 \
+  --json number,title,labels \
+  --repo 4IRL/urls4irl
+```
+
+If 1+ matches return, present up to the top 3 via `AskUserQuestion` with options labeled `#<N>: <title>` plus a "Create new" option.
+
+- **User picks existing #N:** capture `<issue-number>` and `<issue-url>=https://github.com/4IRL/urls4irl/issues/<N>`. Skip 4b and 4c. Proceed to 4d.
+- **User picks "Create new":** proceed to 4b.
+
+If no matches return, skip the question and proceed to 4b directly.
+
+### 4b. Generate issue body and labels
+
+Derive a condensed WHY-focused body in this exact structure:
+
+```markdown
+## Problem
+<one paragraph: what's broken/missing/unclear today>
+
+## Why
+<one paragraph: why this matters now, what prompted it>
+
+## Outcome
+<one paragraph: what "done" looks like in observable terms>
+
+---
+Plan: `plans/<topic>/<feature-name>.md`
+```
+
+You (the main agent) just wrote the plan — synthesize Problem/Why/Outcome from the plan's `## Summary` and `## Research Findings` sections. Do not delegate this to a subagent.
+
+Infer **category labels** from plan content. Use only existing labels (never invent new ones):
+
+| Signal in plan                                            | Label             |
+|-----------------------------------------------------------|-------------------|
+| Backend routes/services/models, Python files in `backend/` | `backend`         |
+| TS/JS files in `frontend/`, Jinja templates                | `frontend`        |
+| Docker, Vite, CI workflows, build/deploy                   | `Infrastructure`  |
+| Alembic migrations, SQLAlchemy models, `.sql` files        | `database`        |
+| Test files in `tests/` (any kind)                          | `testing`         |
+| Mobile-specific UI (≤991px breakpoints, touch targets)     | `mobile`          |
+| Desktop-specific UI                                        | `desktop`         |
+| New user-visible capability                                | `enhancement`     |
+| Defect fix (branch `fix/...` or plan describes a bug)      | `bug`             |
+
+A plan typically gets 1-3 labels.
+
+### 4c. Create the issue
+
+```bash
+GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh issue create \
+  --title "<plan-title-verbatim>" \
+  --body "<generated-body>" \
+  --label "<label1>" --label "<label2>" \
+  --repo 4IRL/urls4irl
+```
+
+Capture the printed URL as `<issue-url>` and parse `<issue-number>`.
+
+**Add to project board + assign bot via GraphQL.** Reuse the same project ID `PVT_kwDOCEIbTM4Ai9RV` ("URLS4IRL -> Real Life") and bot account that `/git-push` Step 9 uses for PRs. Fetch the issue's node ID first:
+
+```bash
+ISSUE_NODE_ID=$(GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh issue view <N> --repo 4IRL/urls4irl --json id --jq .id)
+```
+
+Then run the `addProjectV2ItemById` mutation and the bot-assignee mutation. Copy the exact mutation structures from `.claude/skills/git-push/SKILL.md` Step 9.
+
+### 4d. Detect master parent and back-link
+
+**Sub-plan mode** (Step 0 set `<sub-plan-mode>=true`): read `<master-path>` and grep its YAML frontmatter for `github_issue:`. If found, append `\n\nPart of #<umbrella>` to the new issue body via `gh issue edit --body-file`.
+
+**Default mode:** glob `plans/<topic>/*-master.md`. If exactly one file exists and its frontmatter has `github_issue:`, do the same append. If multiple master files exist or none have a linked issue, skip.
+
+### 4e. Write issue link to plan frontmatter
+
+Insert YAML frontmatter at the very top of `plans/<topic>/<feature-name>.md` (above the existing `# <Feature Name>` H1):
+
+```yaml
+---
+github_issue: <N>
+github_issue_url: <url>
+---
+```
+
+If frontmatter already exists, insert the two new keys preserving existing ones. This applies whether 4c created a new issue OR 4a linked to an existing one.
+
+### Failure handling
+
+If `gh issue create` fails (rate limit, transient API error), DO NOT block the plan creation. Surface the error and the manual `gh issue create` command to the user, then exit Step 4. The plan file still exists; the issue can be created later and frontmatter added manually.
+
 ## Handoff Message
 
-After the plan file is written, cross-linked, and the `tmp/research-*.md` files are cleaned up, the final user-facing message must suggest `/plan-reviewer` as the next step — never `/next-step-taker`. A freshly-written plan must be reviewed before execution begins. Use phrasing like: "Ready for review with `/plan-reviewer <plan-name>`."
+After the plan file is written, cross-linked, the `tmp/research-*.md` files are cleaned up, and the GitHub issue is created, the final user-facing message must:
+- Mention the issue: `Created issue #<N>: <url>` (or `Linked to existing issue #<N>: <url>` if 4a reused one)
+- Suggest `/plan-reviewer` as the next step — never `/next-step-taker`. A freshly-written plan must be reviewed before execution begins. Use phrasing like: "Ready for review with `/plan-reviewer <plan-name>`."

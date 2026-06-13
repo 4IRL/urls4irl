@@ -26,7 +26,7 @@ import redis
 LIVENESS_KEY: str = "metrics:flush:last_success_epoch"
 DEFAULT_THRESHOLD_SECONDS: int = 180
 
-# Same `printenv` dump that `startup-workflow.sh` writes and that the cron
+# Same `KEY=value` dump that `startup-workflow.sh` writes and that the cron
 # jobs source via `set -a && . /app/container_environment && set +a`. Docker
 # spawns healthcheck commands from the *static* compose `environment:` block,
 # not from the runtime env exported by the entrypoint, so this script must
@@ -37,8 +37,9 @@ CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 def _load_env_from_container_dump(path: str = CONTAINER_ENVIRONMENT_FILE) -> None:
     """Best-effort merge of the workflow container's env dump into ``os.environ``.
 
-    Parses ``KEY=value`` lines (the format ``printenv`` writes) and only sets
-    entries that are not already present in ``os.environ`` so genuine env-var
+    Parses ``KEY=value`` lines (the KEY=value format written by
+    startup-workflow.sh) and only sets entries that are not already present in
+    ``os.environ`` so genuine env-var
     overrides win. Silently no-ops if the file is missing — matching the cron
     pattern, which leaves env empty if the dump never landed.
     """

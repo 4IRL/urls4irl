@@ -21,7 +21,7 @@ cmd=$(jq -r '.tool_input.command // empty')
 [ -z "$cmd" ] && exit 0
 
 BLOCKED_PATTERNS=(
-  "git.*push||all||git push must run alone so existing hooks evaluate it independently. Split cleanup/setup into separate Bash calls and run git push by itself."
+  "(^|[^[:alnum:]._/-])git[[:space:]]+push([[:space:]]|$)||all||git push must run alone so existing hooks evaluate it independently. Split cleanup/setup into separate Bash calls and run git push by itself."
   "^[[:space:]]*sleep[[:space:]]+[^[:space:]&]+[[:space:]]*&&||and||Leading \`sleep N &&\` burns a blocked Bash turn. Use the Monitor tool to wait for a condition, or Bash with run_in_background for a fire-and-forget job. To just run the second command, drop the sleep."
 )
 

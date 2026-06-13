@@ -189,6 +189,10 @@ Present each design decision using `AskUserQuestion`:
 - All user answers (DD number → chosen option text and any user notes)
 - Instructions to: (1) apply each chosen option to the plan, (2) update the `**Chosen:**` field in the review document, (3) if the user selected "Other" with custom text, apply that instead
 
+**Fragility-pattern sweep (required for every DD that resolves a class of fragility):** When a DD resolves a fragility pattern — a readiness race (flat sleep vs. poll loop), an unquoted variable, a missing error guard, a stale assertion — the DD-application subagent MUST scan the same file/code-block area for all other occurrences of that identical fragility before marking the DD resolved. If sibling occurrences exist, apply the same fix to all of them in the same step and list each sibling in the DD resolution summary. Never mark a DD complete if the same fragility remains in a sibling block of the same file.
+
+**Use-site trace (required for every DD that introduces or widens a variable used in a guard or branch):** When a DD's chosen option introduces a new variable, widens a variable's type, or changes a condition (e.g., `=== 'flows'`, `=== 'pipeline_health'`, `!== null`), the DD-application subagent MUST trace that variable to every write site in the same code area and verify: (a) the write site actually assigns the gating value (e.g., if the gate is `x === 'flows'`, some code path must write `x = 'flows'`), and (b) the type width at the write site is not narrower than the gate requires. If no write site assigns the gating value, the DD resolution is internally inconsistent — flag it as a critical regression before marking the DD resolved. (This catches the dead-code-gate class: a variable widened in type but never assigned the gating value at its write site.)
+
 The subagent reads the files, makes all edits, and returns a summary of what was changed. The orchestrator only needs the summary to continue.
 
 ### Step 7: Write Review Document via Subagent

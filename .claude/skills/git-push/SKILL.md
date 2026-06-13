@@ -110,6 +110,36 @@ After the subagent returns, read `$TMPDIR/plan-folder.md` and parse the JSON (sc
 
 Store `<plan-dir>` and `<tmp-dir>` for use in all subagent prompts below.
 
+### 2c. Read Issue Link from Plan Frontmatter
+
+The plan file's YAML frontmatter (written by `/plan-creator` Step 4e) carries the GitHub issue number used to close the issue on PR merge.
+
+1. Locate the canonical plan file: glob `<plan-dir>/*.md`, excluding `*-master.md` and anything under `<plan-dir>/reviews/`. If exactly one match, that's `<plan-file>`. If multiple, pick the one whose name most closely matches `$BRANCH`. If zero matches, skip to Step 2d.
+2. Read the first ~20 lines of `<plan-file>`. If `github_issue:` is present in the YAML frontmatter, capture:
+   - `<plan-issue-number>` — the integer
+   - `<plan-issue-url>` — from the `github_issue_url:` line
+3. Also glob `<plan-dir>/*-master.md`. If exactly one match and its frontmatter contains `github_issue:`, capture `<master-issue-number>`. Otherwise skip the umbrella check.
+4. If `<master-issue-number>` was captured, determine whether this is the **final phase**:
+   - Read the master plan. For each `**Branch:**` line (excluding the verification phase), find the corresponding sub-plan file in `plans/<phase-topic>/`. Read each sub-plan's `## Status` block.
+   - If every phase except the current one has `finished: true`, set `<is-final-phase>=true`. Otherwise `<is-final-phase>=false`.
+
+These values feed into the PR body in Step 9. If 2c found a `<plan-file>` with no `github_issue:` line, do NOT trigger Step 2d — the plan exists but was created before this convention (or the issue creation failed in `/plan-creator`); surface a warning in the final report instead.
+
+### 2d. Auto-Create Issue for No-Plan PRs
+
+Skip this step if 2c found a `<plan-file>`. Trigger only when no plan file exists in `<plan-dir>` (a fresh folder or hotfix branch).
+
+1. Draft a title and body from branch + commits:
+   - Title: title-case the branch name with `/` stripped (e.g., `hotfix/login-timeout` → `Hotfix: Login timeout`)
+   - Body: condensed bullets from `git log origin/main..HEAD --pretty=format:"- %s"`, wrapped in a single `## Why` section
+2. Present via `AskUserQuestion` (`header: "No-plan PR"`):
+   - **Create as drafted** — proceed with the title and body shown
+   - **Edit title** — orchestrator follows up with a free-text prompt for the new title, body stays
+   - **Link to existing #** — orchestrator follows up with a free-text prompt for the issue number; validate via `gh issue view <N> --repo 4IRL/urls4irl` before accepting
+   - **Skip** — no issue, PR will not include `Closes #`. Surface a warning in the final report.
+3. On **Create** / **Edit**: call `gh issue create` with the title/body and a single inferred label (use the same signal table as `/plan-creator` Step 4b). **Do not add the issue to the project board** — hotfixes are not roadmap items. Assign the bot via the same GraphQL mutation pattern used for PRs in Step 9.
+4. Capture the result as `<plan-issue-number>` and `<plan-issue-url>` (same vars as 2c) so Step 9's body construction stays uniform.
+
 ### 3. Launch 7 Parallel Review Subagents
 
 Read `.claude/skills/git-push/references/subagent-prompts.md` for the full prompt definitions and expected response format.
@@ -475,6 +505,12 @@ Use the most dominant category. If changes span multiple areas, pick the primary
 
 #### PR Body Format
 
+Construct the PR body with two appended `Closes` lines when applicable (sourced from Step 2c / 2d):
+
+- Always append `Closes #<plan-issue-number>` if it was captured.
+- Also append `Closes #<master-issue-number>` if `<master-issue-number>` was captured AND `<is-final-phase>=true`. This closes the umbrella issue when the final phase merges.
+- If neither was captured (Step 2d "Skip" path), append nothing and include a note in the final report that the PR has no linked issue.
+
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr create \
   --base main \
@@ -498,9 +534,14 @@ What was done to address the problem. Reference key files/functions changed.
 - Tests added/modified and their markers
 - How to manually verify (if applicable)
 - Build verification status
+
+Closes #<plan-issue-number>
+Closes #<master-issue-number>
 EOF
 )"
 ```
+
+The trailing `Closes #` lines are how GitHub auto-closes the linked issue(s) on merge. Omit either line if the corresponding number wasn't captured — do not leave the literal `<plan-issue-number>` placeholder in the body.
 
 #### Apply Labels
 

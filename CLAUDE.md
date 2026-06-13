@@ -55,6 +55,26 @@ Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore
 **Before any push (`/git-push`):** Run `git cherry origin/main HEAD`. If ANY commit shows `-` (already in main), **STOP** and rebase before pushing. This check is mandatory and enforced in the `/git-push` skill as Step 0.
 
 
+### GitHub Issue Linking
+
+Every plan and every PR has a linked GitHub issue. The **issue** carries the public-facing WHY (Problem / Why / Outcome — read at a glance); the **plan** is the source of truth for HOW (detailed steps, file paths, code shapes).
+
+**Single-plan flow:**
+1. `/plan-creator` creates the plan file, then creates a GitHub issue (or links to an existing matching one) and writes `github_issue:` + `github_issue_url:` into the plan's YAML frontmatter.
+2. `/git-push` reads the frontmatter and appends `Closes #<N>` to the PR body. GitHub auto-closes the issue when the PR merges.
+
+**Master-plan flow:**
+1. `/master-plan-creator` writes the master and creates an **umbrella issue** linked via the master file's frontmatter.
+2. Each sub-plan (created by `/plan-creator` from a phase) gets its own issue, with `Part of #<umbrella>` appended to the body.
+3. The **final sub-PR** appends both `Closes #<sub>` and `Closes #<umbrella>` to its body, closing both on merge.
+
+**No-plan PRs (hotfixes):** `/git-push` auto-drafts a minimal issue from branch name + commit messages, prompts the user to confirm/edit/link/skip, then proceeds with `Closes #<N>`.
+
+**Issue metadata:** category labels (from the existing 16) + `URLS4IRL -> Real Life` project board + bot assignee. No milestone — that stays PR-only.
+
+**Repo for `gh` commands:** always `--repo 4IRL/urls4irl`. (`GPropersi/urls4irl` redirects but is not canonical.)
+
+
 ## Development and Coding Practices
 
 Code should be concise, but readable. We are looking for maintainability and future proofing.
