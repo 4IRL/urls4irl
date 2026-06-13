@@ -72,6 +72,17 @@ a {
 
 .navbar-toggler {
     margin-inline-end: 5px;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        transform 0.1s ease;
+}
+
+/* Green tint while the menu is open — applied on every viewport so the
+   hamburger's open state is consistent on mobile and desktop. */
+.navbar-toggler[aria-expanded="true"] {
+    background-color: var(--navbarBackgroundHover);
+    border-color: var(--deckHeaderGreen);
 }
 
 .nav-item {
@@ -134,6 +145,14 @@ a {
 .navbar-username-desktop {
     display: none;
     width: auto;
+    /* Breathing room so the username never crowds the hamburger. */
+    margin-inline-end: 1.25rem;
+}
+
+/* Match the original dropdown username styling (italic, no wrap). */
+#userLoggedInDesktop {
+    font-style: italic;
+    text-wrap: nowrap;
 }
 
 #userLoggedInDesktop:hover {
@@ -149,6 +168,12 @@ a {
     align-items: center;
     gap: 10px;
     width: 100%;
+    /* Match the Logout (button) row height so every dropdown row is the same
+       height on both desktop and mobile (buttons are 3.75rem). */
+    height: 3.75rem;
+    /* Same colour transition the buttons use, so the icon + text fade on hover
+       instead of snapping. */
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 
@@ -441,10 +466,11 @@ a {
         width: max-content;
         min-width: 19rem;
         max-width: 26rem;
-        /* Bold, on-theme: a full green hairline border + a green glow layered
-           over the drop shadow so the menu pops against the dark page without
-           needing the page dimmer (dropped on desktop below). */
-        border: 1.5px solid var(--deckHeaderGreen);
+        /* Bold but not boxed-in: only a green top accent strip; the sides and
+           bottom are defined by the drop shadow + green glow rather than a full
+           border. */
+        border: none;
+        border-top: 3px solid var(--deckHeaderGreen);
         border-radius: 0.6rem;
         overflow: hidden;
         box-shadow:
@@ -452,23 +478,26 @@ a {
             0 0 16px rgba(36, 167, 69, 0.45);
     }
 
-    /* One-time entrance: fade + slight slide-down when the menu opens.
-       (Disabled for prefers-reduced-motion via the top-level override below.) */
-    .home#NavbarNavDropdown.show {
-        animation: navbarMenuIn 180ms ease-out;
-    }
-
     /* Desktop: drop the full-page dimmer (it suits a mobile full-screen menu,
-       not a small corner dropdown). The backdrop element stays in the DOM but
-       transparent, so click-anywhere-to-close still works. */
-    .navbar-backdrop,
-    .navbar-backdrop.navbar-backdrop-show {
+       not a small corner dropdown), but keep the backdrop displayed and
+       click-catching so clicking anywhere outside still closes the menu.
+       `display: block` overrides a framework rule that otherwise collapses it
+       to display:none at this breakpoint. */
+    #mainNavbar .navbar-backdrop {
+        display: block;
         opacity: 0;
     }
 
-    /* Inside the floating card the per-row top/bottom dividers are replaced by
-       the card's own border + glow; keep a single hairline only between the
-       Admin·Metrics and Logout rows when both are present (admins). */
+    /* Remove the container's top gap so the first row (Admin·Metrics) sits flush
+       under the green accent — otherwise its hover highlight leaves an
+       un-highlighted strip at the top of the section. */
+    .home#NavbarNavDropdown #NavbarDropdownsHome {
+        padding-top: 0;
+    }
+
+    /* Drop the outer per-row borders (the top accent + glow frame the card),
+       then add back one distinct divider between the Admin·Metrics and Logout
+       sections so they read as separate items. */
     .home#NavbarNavDropdown #NavbarDropdownsHome button,
     .home#NavbarNavDropdown #NavbarDropdownsHome #adminMetrics,
     .home#NavbarNavDropdown .nav-item.home#logout {
@@ -477,27 +506,24 @@ a {
     }
 
     .home#NavbarNavDropdown #adminMetrics + .nav-item#logout {
-        border-top: 1px solid var(--deckSelectionGreenHover);
+        border-top: 1px solid var(--grayBadgeSelectionFocus);
+    }
+
+    /* Desktop-only hamburger feedback (hover doesn't apply on touch; the open
+       tint is shared globally). */
+    .navbar-toggler {
+        cursor: pointer;
+    }
+
+    .navbar-toggler:hover {
+        background-color: var(--navbarBackgroundHover);
+    }
+
+    .navbar-toggler:active {
+        transform: scale(0.93);
     }
 }
 
-@keyframes navbarMenuIn {
-    from {
-        opacity: 0;
-        transform: translateY(-6px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .home#NavbarNavDropdown.show {
-        animation: none;
-    }
-}
 
 #NavbarDropdownsHome {
     display: flex;
@@ -532,6 +558,24 @@ a {
 #NavbarDropdownsHome button:hover {
     background-color: var(--navbarBackgroundHover);
     color: var(--navbarTextHover);
+}
+
+/* The Admin · Metrics row is a link, not a button, so the button:hover rule
+   above misses it. Mirror the same icon + text colour inversion on hover so
+   every section in the menu reacts identically (the row background comes from
+   `.nav-bar-inner-item:hover`; the SVG icon follows via `fill: currentColor`). */
+#NavbarDropdownsHome #adminMetrics:hover #adminMetricsLink {
+    color: var(--navbarTextHover);
+}
+
+/* Keyboard focus mirrors the hover highlight (background + icon/text inversion)
+   on every dropdown row so tabbing through the menu is as clear as hovering.
+   Applies on both viewports for accessible keyboard navigation. */
+#NavbarDropdownsHome button:focus-visible,
+#NavbarDropdownsHome #adminMetricsLink:focus-visible {
+    background-color: var(--navbarBackgroundHover);
+    color: var(--navbarTextHover);
+    outline: none;
 }
 
 .nav-bar-inner-item.home {
