@@ -183,8 +183,8 @@ export type UIEventDimensions = {
   ui_validation_error: DimValidationError;
   ui_deck_collapse: DimDeckCollapse;
   ui_deck_expand: DimDeckExpand;
-  ui_navbar_mobile_menu_open: DimDeviceOnly;
-  ui_navbar_mobile_menu_close: DimDeviceOnly;
+  ui_navbar_dropdown_open: DimDeviceOnly;
+  ui_navbar_dropdown_close: DimDeviceOnly;
   ui_mobile_nav: DimMobileNav;
   ui_login_submit: DimDeviceOnly;
   ui_register_submit: DimDeviceOnly;

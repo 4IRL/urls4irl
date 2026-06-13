@@ -102,8 +102,8 @@ class EventName(StrEnum):
     # — Layout & Navigation
     UI_DECK_COLLAPSE = "ui_deck_collapse"
     UI_DECK_EXPAND = "ui_deck_expand"
-    UI_NAVBAR_MOBILE_MENU_OPEN = "ui_navbar_mobile_menu_open"
-    UI_NAVBAR_MOBILE_MENU_CLOSE = "ui_navbar_mobile_menu_close"
+    UI_NAVBAR_DROPDOWN_OPEN = "ui_navbar_dropdown_open"
+    UI_NAVBAR_DROPDOWN_CLOSE = "ui_navbar_dropdown_close"
     UI_MOBILE_NAV = "ui_mobile_nav"
     # — Auth / splash
     UI_LOGIN_SUBMIT = "ui_login_submit"

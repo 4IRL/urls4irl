@@ -29,7 +29,7 @@ export function initNavbarRouting(): void {
  * Pure DOM wiring; safe to call on any page whose layout includes the
  * standard `#mainNavbar` + `#NavbarNavDropdown` structure. The home
  * entry point has its own equivalent inside `home/navbar.ts` (wrapped
- * around `UI_NAVBAR_MOBILE_MENU_OPEN/CLOSE` metrics emits + suppression
+ * around `UI_NAVBAR_DROPDOWN_OPEN/CLOSE` metrics emits + suppression
  * for deck-switcher clicks); this helper covers pages whose navbar
  * does not need that metrics layer (admin, etc.).
  */

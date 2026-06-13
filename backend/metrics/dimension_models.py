@@ -346,8 +346,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # UI — Layout & Navigation
     EventName.UI_DECK_COLLAPSE: _DimDeckCollapse,
     EventName.UI_DECK_EXPAND: _DimDeckExpand,
-    EventName.UI_NAVBAR_MOBILE_MENU_OPEN: _DimDeviceOnly,
-    EventName.UI_NAVBAR_MOBILE_MENU_CLOSE: _DimDeviceOnly,
+    EventName.UI_NAVBAR_DROPDOWN_OPEN: _DimDeviceOnly,
+    EventName.UI_NAVBAR_DROPDOWN_CLOSE: _DimDeviceOnly,
     EventName.UI_MOBILE_NAV: _DimMobileNav,
     # UI — Auth (splash)
     EventName.UI_LOGIN_SUBMIT: _DimDeviceOnly,

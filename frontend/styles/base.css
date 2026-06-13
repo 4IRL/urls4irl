@@ -126,6 +126,22 @@ a {
     max-height: 100%;
 }
 
+/* Inline desktop username. Hidden by default so mobile keeps the username in
+   the dropdown; revealed inline at >=992px (see the min-width block below).
+   `width: auto` undoes `.nav-bar-inner-item { width: 100% }` so it doesn't
+   claim the whole nav row as a direct flex child, and the id-scoped :hover
+   neutralizes the inherited nav-item hover highlight. */
+.navbar-username-desktop {
+    display: none;
+    width: auto;
+}
+
+#userLoggedInDesktop:hover {
+    cursor: inherit;
+    background-color: inherit;
+    color: var(--grayBadgeSelection);
+}
+
 #adminMetricsLink {
     color: inherit;
     text-decoration: none;
@@ -356,16 +372,15 @@ a {
 }
 
 @media (min-width: 992px) {
-    #NavbarDropdownsHome {
-        height: 100%;
+    /* Desktop: the "Logged in as <user>" label sits inline in the bar, while
+       the dropdown copy (and its list-item) are hidden so the hamburger only
+       reveals the account actions (Admin · Metrics / Logout). */
+    .navbar-username-desktop {
+        display: flex;
     }
 
-    .home#NavbarNavDropdown {
-        height: 100%;
-    }
-
-    .nav-bar-inner-item.home button {
-        border-radius: 25px;
+    #NavbarDropdownsHome .nav-item.user {
+        display: none;
     }
 }
 
@@ -390,69 +405,92 @@ a {
     }
 }
 
-@media (max-width: 991.98px) {
-    /* `<nav>` is locked to height: 3rem so the brand + favicon row stays
-       compact at every viewport. The expanded dropdown therefore needs
-       to overlay the page content (positioned absolute below the nav
-       bar) rather than try to grow the nav vertically: otherwise the
-       items render outside the nav box and get clipped by
-       `main { overflow: hidden }`.
+/* The home account dropdown renders as an overlay menu at every viewport: the
+   authenticated navbar never expands inline (navbar-expand-none), so these
+   rules are no longer gated behind a mobile breakpoint.
 
-       z-index: 1050 sits above `.navbar-backdrop` (z-index 1040, set by
-       the home navbar dimmer) so dropdown items stay clickable; the
-       backdrop still dims the page underneath. */
-    .home#NavbarNavDropdown {
-        position: absolute;
-        top: 3rem;
-        left: 0;
-        right: 0;
-        z-index: 1050;
-        background-color: var(--navbarBackground);
-    }
+   `<nav>` is locked to height: 3rem so the brand + favicon row stays compact
+   at every viewport. The dropdown therefore overlays the page content
+   (positioned absolute below the nav bar) rather than growing the nav
+   vertically: otherwise the items render outside the nav box and get clipped
+   by `main { overflow: hidden }`.
 
-    #NavbarDropdownsHome {
-        display: flex;
-        flex-direction: column;
-        padding-top: 10px;
-    }
+   z-index: 1050 sits above `.navbar-backdrop` (z-index 1040, set by the home
+   navbar dimmer) so dropdown items stay clickable; the backdrop still dims the
+   page underneath. */
+.home#NavbarNavDropdown {
+    position: absolute;
+    top: 3rem;
+    left: 0;
+    right: 0;
+    z-index: 1050;
+    background-color: var(--navbarBackground);
+}
 
-    #NavbarDropdownsHome button {
-        background-color: inherit;
-        justify-content: flex-start;
-        color: var(--grayBadgeSelection);
-        height: 3.75rem;
-        display: flex;
-        flex-direction: row;
-        gap: 0.5rem;
-        padding-inline: 0.5rem;
-        transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        border-left: 0;
-        border-top: 2px solid var(--grayBadgeSelectionFocus);
-        border-bottom: 0;
-    }
+#NavbarDropdownsHome {
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
+}
 
-    /* The Admin · Metrics entry uses <li><div><a> (a link to a different
-     * page) rather than a <button>, so the rule above can't paint its
-     * divider. Scope the divider to that specific list-item so the menu
-     * shows a uniform horizontal line between every row, without double-
-     * painting on back_home_btn (which has its own inner <button>). */
-    #NavbarDropdownsHome #adminMetrics {
-        border-top: 2px solid var(--grayBadgeSelectionFocus);
-    }
+#NavbarDropdownsHome button {
+    background-color: inherit;
+    justify-content: flex-start;
+    color: var(--grayBadgeSelection);
+    height: 3.75rem;
+    display: flex;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding-inline: 0.5rem;
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-left: 0;
+    border-top: 2px solid var(--grayBadgeSelectionFocus);
+    border-bottom: 0;
+}
 
-    #NavbarDropdownsHome button:hover {
-        background-color: var(--navbarBackgroundHover);
-        color: var(--navbarTextHover);
-    }
+/* The Admin · Metrics entry uses <li><div><a> (a link to a different page)
+ * rather than a <button>, so the rule above can't paint its divider. Scope the
+ * divider to that specific list-item so the menu shows a uniform horizontal
+ * line between every row, without double-painting on back_home_btn (which has
+ * its own inner <button>). */
+#NavbarDropdownsHome #adminMetrics {
+    border-top: 2px solid var(--grayBadgeSelectionFocus);
+}
 
-    .nav-bar-inner-item.home {
-        justify-content: flex-start;
-    }
+#NavbarDropdownsHome button:hover {
+    background-color: var(--navbarBackgroundHover);
+    color: var(--navbarTextHover);
+}
 
-    .nav-item.home#logout {
-        border-bottom: 2px solid var(--grayBadgeSelectionFocus);
-    }
+.nav-bar-inner-item.home {
+    justify-content: flex-start;
+}
 
+.nav-item.home#logout {
+    border-bottom: 2px solid var(--grayBadgeSelectionFocus);
+}
+
+/* The navbar dimmer backdrop is injected by JS whenever the dropdown opens, on
+   any viewport, so its styles are unconditional too (previously gated to the
+   <768px splash breakpoint). */
+.navbar-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 1040;
+    width: 100vw;
+    height: 100vh;
+    background-color: #000;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.navbar-backdrop-show {
+    opacity: 0.5;
+}
+
+.navbar-backdrop-fade {
+    opacity: 0 !important;
 }
 
 @media (max-width: 767.98px) {
@@ -478,26 +516,6 @@ a {
     .nav-bar-inner-item.splash:hover {
         background-color: var(--navbarBackgroundHover);
         color: var(--navbarTextHover);
-    }
-
-    .navbar-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 1040;
-        width: 100vw;
-        height: 100vh;
-        background-color: #000;
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
-    }
-
-    .navbar-backdrop-show {
-        opacity: 0.5;
-    }
-
-    .navbar-backdrop-fade {
-        opacity: 0 !important;
     }
 
     #CookieBanner .btn-close {

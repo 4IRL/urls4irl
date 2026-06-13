@@ -34,7 +34,7 @@ def test_mobile_menu_open_emits_to_anonymous_metrics(
         test then dispatches a `pagehide` event to fire the metrics-client's
         real flush path
     THEN the flush worker drains the counter into Postgres and exactly one
-        `AnonymousMetrics` row exists for `ui_navbar_mobile_menu_open` with
+        `AnonymousMetrics` row exists for `ui_navbar_dropdown_open` with
         `dimensions = {"device_type": 1}` and count == 1.
 
     The mobile portrait viewport (420x900) triggers the matchMedia mobile
@@ -42,7 +42,7 @@ def test_mobile_menu_open_emits_to_anonymous_metrics(
     `device_type` to MOBILE (1). Tapping the toggler fires Bootstrap's
     `show.bs.collapse` event, which the navbar wiring in
     `frontend/home/navbar.ts::onMobileNavbarOpened` translates into
-    `emit(UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN)`.
+    `emit(UI_EVENTS.UI_NAVBAR_DROPDOWN_OPEN)`.
     """
     browser = browser_mobile_portrait
     user_id_for_test = 1
@@ -57,7 +57,7 @@ def test_mobile_menu_open_emits_to_anonymous_metrics(
         browser=browser,
         redis_client=metrics_redis_client,
         pg_conn=pg_conn_for_metrics_mobile,
-        event_name=EventName.UI_NAVBAR_MOBILE_MENU_OPEN,
+        event_name=EventName.UI_NAVBAR_DROPDOWN_OPEN,
         expected_dimensions=expected_dimensions,
     )
     assert matched_row["count"] == 1

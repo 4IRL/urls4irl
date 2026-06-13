@@ -125,8 +125,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     # UI — Layout & Navigation
     EventName.UI_DECK_COLLAPSE: Resource.DECK,
     EventName.UI_DECK_EXPAND: Resource.DECK,
-    EventName.UI_NAVBAR_MOBILE_MENU_OPEN: Resource.NAV,
-    EventName.UI_NAVBAR_MOBILE_MENU_CLOSE: Resource.NAV,
+    EventName.UI_NAVBAR_DROPDOWN_OPEN: Resource.NAV,
+    EventName.UI_NAVBAR_DROPDOWN_CLOSE: Resource.NAV,
     EventName.UI_MOBILE_NAV: Resource.NAV,
     # UI — Auth / splash
     EventName.UI_LOGIN_SUBMIT: Resource.AUTH,

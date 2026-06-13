@@ -21,13 +21,15 @@ Do NOT silently stash, reset, or force-checkout.
 
 ### 2. Refresh main
 
-Run as three separate in-sandbox Bash calls (no `dangerouslyDisableSandbox`):
+Run as three separate Bash calls:
 
 ```
-git checkout main
-git pull origin main
-git fetch -p
+git checkout main      # dangerouslyDisableSandbox: true
+git pull origin main   # dangerouslyDisableSandbox: true
+git fetch -p           # in-sandbox (only writes refs)
 ```
+
+`git checkout` and `git pull` rewrite working-tree files, including `.claude/` paths the sandbox denies writes to (`Operation not permitted` on unlink). A partially-applied checkout/pull tears the working tree — HEAD moves to main while blocked files keep the old branch's content, which then surfaces as phantom "local changes" / "untracked files would be overwritten" errors on every subsequent git command. Run both **with `dangerouslyDisableSandbox: true`** so the tree swaps atomically. `git fetch -p` only writes refs, so it stays in-sandbox.
 
 If `git pull` reports a non-fast-forward, merge conflict, or other error, surface it verbatim and stop. Do not attempt to resolve automatically.
 
@@ -76,5 +78,5 @@ One-line summary:
 
 - The `git cleanup` alias lives in `~/.gitconfig` and excludes `main` by design.
 - Never pipe `y` directly into `git cleanup` — always go through `AskUserQuestion`. The pipe is only for preview (`n`).
-- All commands run in-sandbox. No `dangerouslyDisableSandbox` is needed for any step of this workflow.
+- `git checkout main` and `git pull origin main` (Step 2) run with `dangerouslyDisableSandbox: true` because they rewrite `.claude/` working-tree files the sandbox blocks. `git branch -D` (Step 5) may print a `could not write config file .git/config: Operation not permitted` warning under sandbox — the branch is still deleted, so it's harmless; no DDS needed. All other steps run in-sandbox.
 - Branches with unique commits not on main are force-deleted via `-D` — acceptable because the user has explicitly opted in per branch.

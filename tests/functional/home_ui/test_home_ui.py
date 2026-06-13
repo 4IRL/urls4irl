@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 
+from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -23,6 +24,7 @@ from tests.functional.login_utils import (
 )
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
+    click_on_navbar,
     login_user_ui,
     select_utub_by_id,
     wait_for_element_to_be_removed,
@@ -41,7 +43,7 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     Tests a user's ability to logout.
 
     GIVEN a fresh load of the U4I Home page
-    WHEN user clicks the upper RHS logout button
+    WHEN user opens the navbar hamburger dropdown and clicks logout
     THEN ensure the U4I Splash page is displayed
     """
     app = provide_app
@@ -49,6 +51,8 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
 
+    # Logout now lives inside the always-collapsed navbar dropdown.
+    click_on_navbar(browser)
     logout_btn = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
     assert logout_btn is not None
     logout_btn.click()
@@ -66,6 +70,62 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     login_btn = navbar.find_element(By.CSS_SELECTOR, SPL.NAVBAR_LOGIN)
 
     assert login_btn.is_displayed()
+
+
+def test_navbar_hamburger_desktop_regular_member(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Tests the desktop navbar hamburger dropdown for a non-admin member.
+
+    GIVEN a logged-in non-admin user on the desktop home page
+    WHEN they open the always-visible navbar hamburger dropdown
+    THEN the username is shown inline on the bar, the dropdown contains
+        Logout, and no Admin · Metrics entry is present
+    """
+    app = provide_app
+    # User 1 is seeded as the admin; user 2 is a regular member.
+    user_id = 2
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    # Username sits inline on the desktop bar (not in the dropdown).
+    inline_username = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_DESKTOP)
+    assert inline_username is not None
+    assert inline_username.text == "Logged in as " + USERNAME_BASE + "2"
+
+    click_on_navbar(browser)
+
+    logout_btn = wait_then_get_element(browser, HPL.NAVBAR_LOGOUT)
+    assert logout_btn is not None
+
+    # A non-admin never renders the Admin · Metrics entry.
+    assert not browser.find_elements(By.CSS_SELECTOR, HPL.NAVBAR_ADMIN_METRICS)
+
+
+def test_navbar_hamburger_desktop_admin_member(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Tests the desktop navbar hamburger dropdown for an admin member.
+
+    GIVEN a logged-in ADMIN user on the desktop home page
+    WHEN they open the always-visible navbar hamburger dropdown
+    THEN the dropdown contains both Admin · Metrics and Logout
+    """
+    app = provide_app
+    # User 1 is seeded with the ADMIN role.
+    user_id = 1
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    click_on_navbar(browser)
+
+    admin_metrics = wait_then_get_element(browser, HPL.NAVBAR_ADMIN_METRICS)
+    assert admin_metrics is not None
+
+    logout_btn = wait_then_get_element(browser, HPL.NAVBAR_LOGOUT)
+    assert logout_btn is not None
 
 
 def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask):
