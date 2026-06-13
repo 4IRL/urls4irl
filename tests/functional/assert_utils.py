@@ -132,13 +132,13 @@ def assert_login(browser: WebDriver):
     """
 
     # Confirm user logged in
-    # Logout button visible
-    btn_logout = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
-    assert btn_logout is not None
-    assert btn_logout.text == "Logout"
+    # The hamburger toggler is always present for a logged-in user; the
+    # logout action now lives inside its dropdown rather than inline.
+    toggler = wait_then_get_element(browser, HPL.NAVBAR_TOGGLER)
+    assert toggler is not None
 
-    # Correct user logged in
-    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
+    # Correct user shown inline on the desktop bar
+    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_DESKTOP)
     assert user_logged_in is not None
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
@@ -155,13 +155,13 @@ def assert_login_with_username(browser: WebDriver, username: str):
     """
 
     # Confirm user logged in
-    # Logout button visible
-    btn_logout = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
-    assert btn_logout is not None
-    assert btn_logout.text == "Logout"
+    # The hamburger toggler is always present for a logged-in user; the
+    # logout action now lives inside its dropdown rather than inline.
+    toggler = wait_then_get_element(browser, HPL.NAVBAR_TOGGLER)
+    assert toggler is not None
 
-    # Correct user logged in
-    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
+    # Correct user shown inline on the desktop bar
+    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_DESKTOP)
     assert user_logged_in is not None
     userLoggedInText = "Logged in as " + username
 
