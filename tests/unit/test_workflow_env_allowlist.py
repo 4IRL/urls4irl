@@ -221,6 +221,21 @@ def test_walk_env_reads_captures_all_three_call_shapes():
     assert _walk_env_reads(source) == frozenset({"SUB", "GET", "ENV"})
 
 
+def test_bash_external_var_reads_drops_assigned_keeps_external(tmp_path: Path):
+    """
+    GIVEN a synthetic bash script that reads one external var and assigns then
+        reads another
+    WHEN the external reads are scanned
+    THEN only the externally-sourced var is returned and the assigned-then-read
+        var is dropped.
+    """
+    script_path = tmp_path / "synthetic.sh"
+    script_path.write_text(
+        '#!/bin/bash\necho "$EXTERNAL"\nLOCAL_VAR=computed\necho "$LOCAL_VAR"\n'
+    )
+    assert _bash_external_var_reads((script_path,)) == frozenset({"EXTERNAL"})
+
+
 def test_assemble_metrics_redis_uri_percent_encodes_password():
     """
     GIVEN a password with URL-reserved characters, an empty password, and a
@@ -294,6 +309,16 @@ def test_build_env_mapping_production_merges_secrets_and_assembles_uri():
     )
     assert mapping["POSTGRES_DB"] == "u4i"
     assert mapping["METRICS_REDIS_URI"] == "redis://:p%40ss@redis-metrics:6379/0"
+
+
+def test_build_env_mapping_production_absent_redis_password_yields_empty_userinfo():
+    """
+    GIVEN production mode with no REDIS_PASSWORD secret
+    WHEN the env mapping is built
+    THEN METRICS_REDIS_URI falls back to an empty userinfo.
+    """
+    mapping = build_env_mapping(base_environ={}, secrets={}, production=True)
+    assert mapping["METRICS_REDIS_URI"] == "redis://:@redis-metrics:6379/0"
 
 
 def test_build_env_mapping_non_production_passes_through():

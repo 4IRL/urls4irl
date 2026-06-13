@@ -62,9 +62,11 @@ def read_secret_files(*, secrets_dir: Path) -> dict[str, str]:
     """Read Docker secret files into a ``{basename: contents}`` mapping.
 
     Each regular file under ``secrets_dir`` becomes one entry keyed by its
-    basename, with trailing newlines stripped to match the bash
-    ``secret_value=$(cat …)`` semantics (command substitution drops trailing
-    newlines). A missing directory yields an empty mapping.
+    basename, with surrounding whitespace stripped. Beyond matching the bash
+    ``secret_value=$(cat …)`` trailing-newline drop, ``.strip()`` also removes
+    any embedded leading/trailing newline so a malformed secret cannot inject a
+    spurious ``KEY=value`` line into the env dump. A missing directory yields an
+    empty mapping.
 
     Example:
         Given /run/secrets/REDIS_PASSWORD containing "hunter2\\n":
@@ -76,9 +78,7 @@ def read_secret_files(*, secrets_dir: Path) -> dict[str, str]:
         return secrets
     for secret_file in sorted(secrets_dir.iterdir()):
         if secret_file.is_file():
-            secrets[secret_file.name] = secret_file.read_text(encoding="utf-8").rstrip(
-                "\n"
-            )
+            secrets[secret_file.name] = secret_file.read_text(encoding="utf-8").strip()
     return secrets
 
 
@@ -123,15 +123,33 @@ def render_env_dump(*, env_mapping: Mapping[str, str]) -> str:
     )
 
 
+def write_env_dump(*, dump: str) -> None:
+    """Write the env dump to CONTAINER_ENVIRONMENT_FILE at mode 600 atomically.
+
+    Uses ``os.open`` with ``O_CREAT`` and an explicit ``0o600`` mode so the file
+    is never world-readable, even briefly, between creation and the entrypoint's
+    follow-up ``chmod`` — closing the TOCTOU window that ``Path.write_text`` (which
+    creates at the process umask) would otherwise leave open. ``O_TRUNC`` clears
+    any stale contents; the mode argument is only honored when the file is newly
+    created, so a pre-existing file keeps its mode and the entrypoint's explicit
+    ``chmod 600`` remains the backstop.
+    """
+    file_descriptor = os.open(
+        CONTAINER_ENVIRONMENT_FILE,
+        os.O_WRONLY | os.O_CREAT | os.O_TRUNC,
+        0o600,
+    )
+    with os.fdopen(file_descriptor, "w", encoding="utf-8") as dump_file:
+        dump_file.write(dump)
+
+
 def main() -> None:
     production = os.environ.get("PRODUCTION") == "true"
     secrets = read_secret_files(secrets_dir=Path(SECRETS_DIR)) if production else {}
     env_mapping = build_env_mapping(
         base_environ=os.environ, secrets=secrets, production=production
     )
-    Path(CONTAINER_ENVIRONMENT_FILE).write_text(
-        render_env_dump(env_mapping=env_mapping), encoding="utf-8"
-    )
+    write_env_dump(dump=render_env_dump(env_mapping=env_mapping))
 
 
 if __name__ == "__main__":
