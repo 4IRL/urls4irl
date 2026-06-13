@@ -21,10 +21,8 @@ pytestmark = pytest.mark.unit
 
 _PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 _STARTUP_SCRIPT: Path = _PROJECT_ROOT / "docker" / "startup-workflow.sh"
-_CRON_PYTHON_SCRIPTS: tuple[Path, ...] = (
-    _PROJECT_ROOT / "scripts" / "flush_metrics.py",
-    _PROJECT_ROOT / "scripts" / "check_flush_liveness.py",
-)
+_FLUSH_METRICS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "flush_metrics.py"
+_CHECK_LIVENESS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "check_flush_liveness.py"
 _ALLOW_VARS_BLOCK_RE: re.Pattern[str] = re.compile(
     r"ALLOW_VARS=\((?P<body>.*?)\)", re.DOTALL
 )
@@ -154,7 +152,7 @@ def test_allow_list_covers_flush_metrics_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     allowed = frozenset(_parse_allow_vars_from_shell(_STARTUP_SCRIPT))
-    reads = _walk_env_reads(_CRON_PYTHON_SCRIPTS[0].read_text())
+    reads = _walk_env_reads(_FLUSH_METRICS_SCRIPT.read_text())
     assert (
         reads <= allowed
     ), f"flush_metrics.py reads {sorted(reads - allowed)} not in ALLOW_VARS"
@@ -167,7 +165,33 @@ def test_allow_list_covers_check_flush_liveness_env_reads():
     THEN every read key is present in ALLOW_VARS.
     """
     allowed = frozenset(_parse_allow_vars_from_shell(_STARTUP_SCRIPT))
-    reads = _walk_env_reads(_CRON_PYTHON_SCRIPTS[1].read_text())
+    reads = _walk_env_reads(_CHECK_LIVENESS_SCRIPT.read_text())
     assert (
         reads <= allowed
     ), f"check_flush_liveness.py reads {sorted(reads - allowed)} not in ALLOW_VARS"
+
+
+def test_walk_env_reads_captures_all_three_call_shapes():
+    """
+    GIVEN a source string using subscript, environ.get, and getenv access
+    WHEN the keys are walked
+    THEN all three string-literal keys are captured.
+    """
+    source = (
+        "import os\n"
+        'a = os.environ["SUB"]\n'
+        'b = os.environ.get("GET")\n'
+        'c = os.getenv("ENV")\n'
+    )
+    assert _walk_env_reads(source) == frozenset({"SUB", "GET", "ENV"})
+
+
+def test_parse_allow_vars_returns_empty_when_block_absent(tmp_path: Path):
+    """
+    GIVEN a shell script lacking an ALLOW_VARS=(...) block
+    WHEN the allow-list is parsed
+    THEN the empty-tuple sentinel is returned.
+    """
+    script_without_block = tmp_path / "no_allow_vars.sh"
+    script_without_block.write_text("#!/bin/bash\necho 'no allow vars here'\n")
+    assert _parse_allow_vars_from_shell(script_without_block) == ()

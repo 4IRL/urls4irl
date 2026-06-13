@@ -44,6 +44,7 @@ fi
 
 # Dump current env to a file readable by cron jobs
 echo "Saving environment for cron jobs..."
+# Intentional one-var-per-line form: more diffable/reviewable for these 13 entries; deliberately diverges from scripts/daily-docker.sh's single-line SENSITIVE_VARS style.
 ALLOW_VARS=(
   ACCESS_KEY
   DEV_SERVER

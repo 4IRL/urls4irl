@@ -19,7 +19,16 @@ CONTAINER_ID=""
 REDIS_CONTAINER_ID=""
 NETWORK_CREATED=0
 SMOKE_SECRETS_DIR=""
+LIVENESS_STDERR_FILE=""
 PROD_SIM_STARTED=""  # Non-empty signals cleanup that the prod-sim container was started
+
+# dev-sim injects 5 vars via `docker run -e` (POSTGRES_USER/DB/PASSWORD,
+# METRICS_REDIS_URI, METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS), all allow-listed.
+# Unfiltered `printenv` on this image is ~11 lines (5 injected + ~6 Docker
+# defaults like PATH/HOSTNAME/HOME), so a threshold of 8 sits above the
+# allow-listed set yet below the unfiltered baseline and reliably fires when
+# the filter regresses to unfiltered printenv.
+DEV_SIM_LINE_COUNT_MAX=8
 
 # Single cleanup function called from a single trap so all paths
 # (success, failure, error) tear everything down. Each step is guarded so
@@ -42,8 +51,22 @@ cleanup() {
     if [ -n "$SMOKE_SECRETS_DIR" ]; then
         rm -rf "$SMOKE_SECRETS_DIR" >/dev/null 2>&1 || true
     fi
+    rm -f "$LIVENESS_STDERR_FILE" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+
+# Poll until the named container has written /app/container_environment.
+# Guards against a race where assertions run before startup-workflow.sh
+# finishes the dump. Used by both the dev-sim and prod-sim legs.
+wait_for_env_file() {
+    local container_name=$1
+    local poll_attempt
+    for poll_attempt in $(seq 1 10); do
+        docker exec "$container_name" test -f /app/container_environment && return 0
+        sleep 1
+    done
+    docker exec "$container_name" test -f /app/container_environment
+}
 
 # Run the container (using Docker's internal healthcheck)
 echo "Running container..."
@@ -163,14 +186,7 @@ if [[ "$HEALTHCHECK_JSON" != *"$EXPECTED_HC_PYTHON"* ]] \
 fi
 echo "✅ HEALTHCHECK directive references $EXPECTED_HC_PYTHON $EXPECTED_HC_SCRIPT"
 
-# Poll until startup-workflow.sh has written /app/container_environment
-# (mirrors the Redis readiness loop above). Guards against a race where the
-# assertion runs before the dump file exists.
-for i in $(seq 1 10); do
-    docker exec "$SMOKE_MAIN" test -f /app/container_environment && break
-    sleep 1
-done
-docker exec "$SMOKE_MAIN" test -f /app/container_environment || { echo "TIMEOUT: /app/container_environment was not written within 10s" >&2; exit 1; }
+wait_for_env_file "$SMOKE_MAIN" || { echo "TIMEOUT: /app/container_environment was not written within 10s" >&2; exit 1; }
 
 echo "🔍 Asserting /app/container_environment mode + ownership + bounded line count..."
 MODE_OWNER="$(docker exec "$SMOKE_MAIN" stat -c '%a %U:%G' /app/container_environment)"
@@ -179,8 +195,8 @@ if [ "$MODE_OWNER" != "600 workflow:workflow" ]; then  # GNU stat -c '%a' output
     exit 1
 fi
 LINE_COUNT="$(docker exec "$SMOKE_MAIN" sh -c 'wc -l < /app/container_environment')"
-if [ "$LINE_COUNT" -gt 8 ]; then  # 8 = above the 5 allow-listed vars set in dev-sim, below the ~11-line unfiltered printenv baseline on this image; unfiltered printenv on the dev-sim produces ~11 lines (5 injected + ~6 Docker defaults), so a threshold of 8 reliably fires when the filter breaks
-    echo "❌ FAIL: /app/container_environment has $LINE_COUNT lines (>8). Either the allow-list grew significantly or the filter regressed to unfiltered printenv." >&2
+if [ "$LINE_COUNT" -gt "$DEV_SIM_LINE_COUNT_MAX" ]; then
+    echo "❌ FAIL: /app/container_environment has $LINE_COUNT lines (>$DEV_SIM_LINE_COUNT_MAX). Either the allow-list grew significantly or the filter regressed to unfiltered printenv." >&2
     exit 1
 fi
 echo "✅ /app/container_environment is mode 600 / workflow:workflow with $LINE_COUNT lines."
@@ -244,8 +260,6 @@ if ! grep -q "stale" "$LIVENESS_STDERR_FILE"; then
 fi
 echo "✅ State 3 PASSED"
 
-rm -f "$LIVENESS_STDERR_FILE"
-
 # Active 3-state verification above is strictly stronger than waiting up
 # to 75s for Docker to call the same script; skip the legacy poll loop
 # (it would never go healthy within 75s anyway — start-period=200s).
@@ -295,17 +309,11 @@ PROD_SIM_STARTED=$(docker run -d \
     "$IMAGE_NAME"
 )
 
-# Poll until startup-workflow.sh has written /app/container_environment
-# (mirrors the Redis readiness loop above and the dev-sim poll loop).
-for i in $(seq 1 10); do
-    docker exec "$SMOKE_PROD_SIM" test -f /app/container_environment && break
-    sleep 1
-done
-docker exec "$SMOKE_PROD_SIM" test -f /app/container_environment || { echo "TIMEOUT: /app/container_environment was not written within 10s in prod-sim" >&2; exit 1; }
+wait_for_env_file "$SMOKE_PROD_SIM" || { echo "TIMEOUT: /app/container_environment was not written within 10s in prod-sim" >&2; exit 1; }
 
 echo "🔍 Step C.1 — Asserting mode + ownership..."
 MODE_OWNER="$(docker exec "$SMOKE_PROD_SIM" stat -c '%a %U:%G' /app/container_environment)"
-if [ "$MODE_OWNER" != "600 workflow:workflow" ]; then  # GNU stat -c '%a' outputs octal without leading zeros; 600 = rw------- as expected for a restricted secrets file.
+if [ "$MODE_OWNER" != "600 workflow:workflow" ]; then
     echo "❌ Prod-sim FAIL: expected '600 workflow:workflow', got '$MODE_OWNER'" >&2
     exit 1
 fi
@@ -313,7 +321,10 @@ fi
 echo "🔍 Step C.2 — Asserting secret-derived vars made it into the dump..."
 DUMP="$(docker exec "$SMOKE_PROD_SIM" cat /app/container_environment)"
 for var in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD NOTIFICATION_URL ACCESS_KEY SECRET_ACCESS_KEY R2_ENDPOINT; do
-    if ! echo "$DUMP" | grep -q "^$var="; then
+    if ! echo "$DUMP" | grep -qF "${var}="; then
+        # On failure the full dump is echoed to CI logs, so this smoke test must
+        # only ever run against images built with fake/test secrets — never a
+        # real production image.
         echo "❌ Prod-sim FAIL: secret-derived var '$var' missing from /app/container_environment" >&2
         echo "Full dump:" >&2; echo "$DUMP" >&2
         exit 1
@@ -337,7 +348,7 @@ fi
 
 echo "🔍 Step C.5 — Asserting container metadata was excluded..."
 for unwanted in PATH HOSTNAME HOME LANG; do
-    if echo "$DUMP" | grep -q "^$unwanted="; then
+    if echo "$DUMP" | grep -qF "${unwanted}="; then
         echo "❌ Prod-sim FAIL: container metadata var '$unwanted' present in dump (allow-list filter regressed)" >&2
         exit 1
     fi
