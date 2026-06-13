@@ -41,6 +41,9 @@ class HomePageLocators(GenericPageLocator):
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
+    LOGGED_IN_USERNAME_DESKTOP = "#userLoggedInDesktop"
+    NAVBAR_ADMIN_METRICS = "#NavbarDropdownsHome #adminMetrics"
+    NAVBAR_ADMIN_METRICS_LINK = "#adminMetricsLink"
     NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
     NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
     NAVBAR_MEMBER_DECK = "#NavbarDropdownsHome #toMembers"

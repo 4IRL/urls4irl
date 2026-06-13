@@ -387,12 +387,12 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.UI,
         dimensions={"deck": ("members", "tags", "utubs")},
     ),
-    EventName.UI_NAVBAR_MOBILE_MENU_OPEN: EventRegistryEntry(
-        description="Mobile hamburger menu opened",
+    EventName.UI_NAVBAR_DROPDOWN_OPEN: EventRegistryEntry(
+        description="Navbar dropdown menu opened",
         category=EventCategory.UI,
     ),
-    EventName.UI_NAVBAR_MOBILE_MENU_CLOSE: EventRegistryEntry(
-        description="Mobile hamburger menu closed",
+    EventName.UI_NAVBAR_DROPDOWN_CLOSE: EventRegistryEntry(
+        description="Navbar dropdown menu closed",
         category=EventCategory.UI,
     ),
     EventName.UI_MOBILE_NAV: EventRegistryEntry(

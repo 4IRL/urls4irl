@@ -14,6 +14,7 @@ from tests.functional.login_utils import (
 )
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
+    click_on_navbar,
     contact_form_entry,
     modify_navigational_link_for_rate_limit,
     visit_contact_us_page,
@@ -82,6 +83,11 @@ def test_privacy_policy_return_home(
     login_user_with_cookie_from_session(browser, session_id)
 
     visit_privacy_page(browser)
+    # The back-home button now lives inside the always-collapsed navbar
+    # dropdown; the wordmark logo stays inline. Open the hamburger first when
+    # the target is the dropdown button.
+    if home_btn_css_selector == HPL.BACK_HOME_BTN:
+        click_on_navbar(browser)
     wait_then_click_element(browser, home_btn_css_selector, time=3)
     assert_login(browser)
 
@@ -142,6 +148,11 @@ def test_terms_return_home(
     login_user_with_cookie_from_session(browser, session_id)
 
     visit_terms_page(browser)
+    # The back-home button now lives inside the always-collapsed navbar
+    # dropdown; the wordmark logo stays inline. Open the hamburger first when
+    # the target is the dropdown button.
+    if home_btn_css_selector == HPL.BACK_HOME_BTN:
+        click_on_navbar(browser)
     wait_then_click_element(browser, home_btn_css_selector, time=3)
     assert_login(browser)
 
@@ -178,6 +189,11 @@ def test_visit_contact_page_return_home(
     login_user_with_cookie_from_session(browser, session_id)
 
     visit_contact_us_page(browser)
+    # The back-home button now lives inside the always-collapsed navbar
+    # dropdown; the wordmark logo stays inline. Open the hamburger first when
+    # the target is the dropdown button.
+    if home_btn_css_selector == HPL.BACK_HOME_BTN:
+        click_on_navbar(browser)
     wait_then_click_element(browser, home_btn_css_selector, time=3)
     assert_login(browser)
 

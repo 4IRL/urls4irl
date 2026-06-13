@@ -1,4 +1,4 @@
-import { initMobileNavbarBackdrop } from "../lib/navbar-shared.js";
+import { initNavbarBackdrop } from "../lib/navbar-shared.js";
 
 vi.mock("../lib/globals.js", () => ({
   $: window.jQuery,
@@ -26,7 +26,7 @@ const BACKDROP_FADE_REMOVE_MS = 300;
 const Z_INDEX_CLASS = "z9999";
 const BACKDROP_CLASS = "navbar-backdrop";
 
-describe("initMobileNavbarBackdrop", () => {
+describe("initNavbarBackdrop", () => {
   beforeEach(() => {
     document.body.innerHTML = NAVBAR_HTML;
     vi.clearAllMocks();
@@ -39,7 +39,7 @@ describe("initMobileNavbarBackdrop", () => {
   });
 
   it("injects backdrop and lifts brand/toggler/dropdown on show.bs.collapse", () => {
-    initMobileNavbarBackdrop();
+    initNavbarBackdrop();
 
     $("#NavbarNavDropdown").trigger("show.bs.collapse");
 
@@ -53,7 +53,7 @@ describe("initMobileNavbarBackdrop", () => {
   });
 
   it("fades and removes backdrop and strips z-index classes on hide.bs.collapse", () => {
-    initMobileNavbarBackdrop();
+    initNavbarBackdrop();
 
     $("#NavbarNavDropdown").trigger("show.bs.collapse");
     expect($(`.${BACKDROP_CLASS}`).length).toBe(1);

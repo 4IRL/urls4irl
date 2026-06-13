@@ -50,28 +50,28 @@ describe("navbar metrics emitters", () => {
     document.body.innerHTML = "";
   });
 
-  describe("UI_NAVBAR_MOBILE_MENU_OPEN", () => {
-    it("emits ui_navbar_mobile_menu_open when the navbar opens", async () => {
+  describe("UI_NAVBAR_DROPDOWN_OPEN", () => {
+    it("emits ui_navbar_dropdown_open when the navbar opens", async () => {
       const { emit } = await import("../../lib/metrics-client.js");
 
       onMobileNavbarOpened();
 
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
-        event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN,
+        event: UI_EVENTS.UI_NAVBAR_DROPDOWN_OPEN,
       });
     });
   });
 
-  describe("UI_NAVBAR_MOBILE_MENU_CLOSE", () => {
-    it("emits ui_navbar_mobile_menu_close on normal close (no suppression)", async () => {
+  describe("UI_NAVBAR_DROPDOWN_CLOSE", () => {
+    it("emits ui_navbar_dropdown_close on normal close (no suppression)", async () => {
       const { emit } = await import("../../lib/metrics-client.js");
 
       onMobileNavbarClosed();
 
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
-        event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+        event: UI_EVENTS.UI_NAVBAR_DROPDOWN_CLOSE,
       });
     });
 
@@ -99,7 +99,7 @@ describe("navbar metrics emitters", () => {
 
       expect(emit).toHaveBeenCalledTimes(1);
       expect(emit).toHaveBeenCalledWith({
-        event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+        event: UI_EVENTS.UI_NAVBAR_DROPDOWN_CLOSE,
       });
     });
   });
@@ -153,7 +153,7 @@ describe("navbar metrics emitters", () => {
       });
     });
 
-    it("a section button click emits ui_mobile_nav once and the subsequent navbar-hide does NOT emit ui_navbar_mobile_menu_close", async () => {
+    it("a section button click emits ui_mobile_nav once and the subsequent navbar-hide does NOT emit ui_navbar_dropdown_close", async () => {
       const { emit } = await import("../../lib/metrics-client.js");
       initNavbar();
 
@@ -168,7 +168,7 @@ describe("navbar metrics emitters", () => {
       const closeCalls = calls.filter(
         (call) =>
           (call[0] as { event?: string }).event ===
-          UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+          UI_EVENTS.UI_NAVBAR_DROPDOWN_CLOSE,
       );
       expect(mobileNavCalls).toHaveLength(1);
       expect(mobileNavCalls[0]).toEqual([

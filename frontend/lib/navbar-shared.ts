@@ -19,21 +19,25 @@ export function initNavbarRouting(): void {
 }
 
 /**
- * Wire the mobile navbar dropdown's open/close transitions to:
+ * Wire the navbar dropdown's open/close transitions to:
  *   - inject a `.navbar-backdrop` overlay so the dimmed page background
  *     visually separates the dropdown from the underlying content
  *   - lift the brand, toggler, and dropdown above the backdrop via the
  *     shared `.z9999` utility so they stay tappable
  *   - close the dropdown when the user taps anywhere on the backdrop
  *
+ * The backdrop applies at every viewport — the hamburger dropdown now
+ * collapses on desktop as well as mobile, so this wiring is not
+ * mobile-only.
+ *
  * Pure DOM wiring; safe to call on any page whose layout includes the
  * standard `#mainNavbar` + `#NavbarNavDropdown` structure. The home
  * entry point has its own equivalent inside `home/navbar.ts` (wrapped
- * around `UI_NAVBAR_MOBILE_MENU_OPEN/CLOSE` metrics emits + suppression
+ * around `UI_NAVBAR_DROPDOWN_OPEN/CLOSE` metrics emits + suppression
  * for deck-switcher clicks); this helper covers pages whose navbar
  * does not need that metrics layer (admin, etc.).
  */
-export function initMobileNavbarBackdrop(): void {
+export function initNavbarBackdrop(): void {
   const toggler = new bootstrap.Collapse("#NavbarNavDropdown", {
     toggle: false,
   });

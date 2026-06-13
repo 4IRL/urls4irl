@@ -1,0 +1,9 @@
+{# Desktop-only inline "Logged in as <user>" label. Lives as a direct child
+   of <nav> (outside the always-collapsed #NavbarNavDropdown) so it stays
+   visible inline on the desktop bar while the account actions are tucked
+   behind the hamburger. Hidden below 992px via CSS, where the dropdown copy
+   in logged_in_as.html takes over. `ms-auto` pushes it (and the trailing
+   hamburger) to the right edge of the bar. #}
+<div class="nav-bar-inner-item home navbar-username-desktop ms-auto" id="userLoggedInDesktop">
+    <b>Logged in as {{ current_user.username }}</b>
+</div>

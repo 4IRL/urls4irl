@@ -59,6 +59,18 @@ def click_on_navbar(browser: WebDriver):
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
 
 
+def close_navbar(browser: WebDriver):
+    """Collapse an already-open mobile navbar by tapping the toggler again.
+
+    Mirrors `click_on_navbar` but waits for the `show` class to be removed
+    from the dropdown, signalling Bootstrap's `hide.bs.collapse` animation
+    has finished. The toggler-driven hide fires `onMobileNavbarClosed`
+    (see `frontend/home/navbar.ts`), which emits `UI_NAVBAR_DROPDOWN_CLOSE`.
+    """
+    wait_then_click_element(browser, HPL.NAVBAR_TOGGLER)
+    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="show")
+
+
 def clear_then_send_keys(element: WebElement, input_text: str):
     """
     Streamlines clearing an input field and sending keys provided.

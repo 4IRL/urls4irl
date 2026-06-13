@@ -38,25 +38,25 @@ describe("splash/navbar metrics emitters", () => {
     document.body.innerHTML = "";
   });
 
-  it("emits ui_navbar_mobile_menu_open on show.bs.collapse", async () => {
+  it("emits ui_navbar_dropdown_open on show.bs.collapse", async () => {
     const { emit } = await import("../../lib/metrics-client.js");
 
     initNavbar();
     $("#NavbarNavDropdown").trigger("show.bs.collapse");
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_OPEN,
+      event: UI_EVENTS.UI_NAVBAR_DROPDOWN_OPEN,
     });
   });
 
-  it("emits ui_navbar_mobile_menu_close on hide.bs.collapse", async () => {
+  it("emits ui_navbar_dropdown_close on hide.bs.collapse", async () => {
     const { emit } = await import("../../lib/metrics-client.js");
 
     initNavbar();
     $("#NavbarNavDropdown").trigger("hide.bs.collapse");
 
     expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_NAVBAR_MOBILE_MENU_CLOSE,
+      event: UI_EVENTS.UI_NAVBAR_DROPDOWN_CLOSE,
     });
   });
 });
