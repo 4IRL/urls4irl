@@ -1,5 +1,4 @@
 import type { Schema } from "../../types/api-helpers.d.ts";
-import type { FlowId } from "../../types/metrics-flows.js";
 
 import { renderFlowCard, renderFlowGrid } from "../flow-card.js";
 
@@ -273,29 +272,6 @@ describe("renderFlowCard", () => {
     const card = renderFlowCard({ flowId: "create_utub", response });
     // Empty-state path still computes the aria-label with the placeholder.
     expect(card.getAttribute("aria-label")).toContain("–");
-  });
-
-  it("<2-step guard: renders empty-state, warns with flow id, and stays focusable", () => {
-    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const response: FlowResponseSchema = {
-      steps: [buildStep({ label: "Lonely", count: 5, pct_of_top: 1.0 })],
-    };
-
-    const flowId: FlowId = "login";
-    const card = renderFlowCard({ flowId, response });
-
-    const empty = card.querySelector(".flow-card-empty") as HTMLElement | null;
-    expect(empty).not.toBeNull();
-    expect(empty?.getAttribute("tabindex")).toBe("0");
-    expect(empty?.textContent).toBe(
-      "No funnel activity recorded in the selected window.",
-    );
-    expect(warnSpy).toHaveBeenCalledWith(
-      "metrics-flows: response contained fewer than 2 steps for flow",
-      flowId,
-      response,
-    );
-    warnSpy.mockRestore();
   });
 
   it("exposes the full event name on .step-event via aria-label", () => {

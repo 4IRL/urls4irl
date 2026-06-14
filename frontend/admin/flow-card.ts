@@ -24,7 +24,6 @@ type FlowBreakdownRow = Schema<"FlowBreakdownRow">;
 type FlowStream = FlowStepSchema["stream"];
 
 const NULL_PCT_PLACEHOLDER = "–";
-const MIN_FUNNEL_STEPS = 2;
 // Reject-causes carry the "reject" pill tint; everything else (cancels) the
 // "cancel" tint. The renderer only sees the breakdown event indirectly via the
 // step's stream, so the connector that PRECEDES a domain step is a rejection,
@@ -141,17 +140,17 @@ function buildConnector({
   arrow.className = "arrow";
   arrow.setAttribute("aria-hidden", "true");
   arrow.textContent = "↓";
-  // Number of users that continued from the previous step into this step.
-  const continued = Math.max(previousStep.count - step.count, 0);
+  // Number of users that dropped off between the previous step and this step.
+  const dropoff = Math.max(previousStep.count - step.count, 0);
   const dropoffText = document.createElement("span");
   dropoffText.className = "arrow-dropoff";
-  dropoffText.textContent = `${continued.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`;
+  dropoffText.textContent = `${dropoff.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`;
   arrowRow.appendChild(arrow);
   arrowRow.appendChild(dropoffText);
-  // Announce the continued count even when no per-cause breakdown exists.
+  // Announce the drop-off count even when no per-cause breakdown exists.
   connector.setAttribute(
     "aria-label",
-    `${continued.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`,
+    `${dropoff.toLocaleString()} ${APP_CONFIG.strings.METRICS_FLOW_DROPOFF}`,
   );
   connector.appendChild(arrowRow);
 
@@ -189,20 +188,6 @@ export function renderFlowCard({
 
   const steps = response.steps;
   const allZero = steps.every((step) => step.count === 0);
-
-  // Two empty-state triggers: a misconfigured flow (<2 steps) and a normal
-  // no-data window (all step counts zero, or an empty step list).
-  if (steps.length < MIN_FUNNEL_STEPS) {
-    // eslint-disable-next-line no-console
-    console.warn(
-      "metrics-flows: response contained fewer than 2 steps for flow",
-      flowId,
-      response,
-    );
-    card.setAttribute("aria-label", displayName);
-    card.appendChild(buildEmptyState());
-    return card;
-  }
 
   const topStep = steps[0];
   const lastStep = steps[steps.length - 1];
