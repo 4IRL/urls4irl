@@ -368,7 +368,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Form cancelled/dismissed",
         category=EventCategory.UI,
         dimensions={
-            "trigger": ("escape_key", "cancel_button", "outside_click"),
+            "trigger": ("escape_key", "cancel_button", "outside_click", "navigation"),
             "form": (
                 "url_create",
                 "url_title_edit",

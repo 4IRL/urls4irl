@@ -1,6 +1,7 @@
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import type { UtubTag, UtubUrlItem } from "../../../types/url.js";
@@ -227,6 +228,7 @@ export function newURLInputAddEventListeners(
       form: HOME_FORM.URL_CREATE,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     createURL(createURLTitleInput, createURLInput, utubID);
   });
 
@@ -236,6 +238,7 @@ export function newURLInputAddEventListeners(
       form: HOME_FORM.URL_CREATE,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     createURLHideInput();
   });
 

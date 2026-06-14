@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { clearOpenForm } from "../lib/modal-tracking.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
@@ -40,6 +41,7 @@ export function initLoginForm($modal: JQuery): void {
 function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
   emit({ event: UI_EVENTS.UI_LOGIN_SUBMIT });
+  clearOpenForm();
   $modal.find("#submit").attr("disabled", "disabled").attr("aria-busy", "true");
 
   // Allow user to attach a query param `next` if browser URL currently includes it

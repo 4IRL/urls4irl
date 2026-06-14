@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   makeTextInput,
@@ -94,6 +95,7 @@ export function createTagInputBlock(
       form: HOME_FORM.TAG_CREATE,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     createURLTag(urlTagTextInput, urlCard, utubID);
   });
 
@@ -108,6 +110,7 @@ export function createTagInputBlock(
       form: HOME_FORM.TAG_CREATE,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     hideAndResetCreateURLTagForm(urlCard);
   });
 
@@ -126,6 +129,7 @@ export function showCreateURLTagForm(
   urlTagBtnCreate: JQuery,
 ): void {
   emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: TAG_SCOPE.URL });
+  setOpenForm(HOME_FORM.TAG_CREATE);
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);

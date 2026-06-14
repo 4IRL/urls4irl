@@ -8,6 +8,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
@@ -59,6 +60,7 @@ function setupCreateMemberEventListeners(utubID: number): void {
       form: HOME_FORM.MEMBER_INVITE,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     createMember(utubID);
   });
 
@@ -68,6 +70,7 @@ function setupCreateMemberEventListeners(utubID: number): void {
       form: HOME_FORM.MEMBER_INVITE,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     createMemberHideInput();
   });
 
@@ -101,6 +104,7 @@ function bindCreateMemberFocusEventListeners(
             form: HOME_FORM.MEMBER_INVITE,
             trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
           });
+          clearOpenForm();
           createMember(utubID);
           break;
         case KEYS.ESCAPE:
@@ -110,6 +114,7 @@ function bindCreateMemberFocusEventListeners(
             form: HOME_FORM.MEMBER_INVITE,
             trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
           });
+          clearOpenForm();
           createMemberHideInput();
           break;
         default:
@@ -131,6 +136,7 @@ function resetNewMemberForm(): void {
 // Shows new Member input fields
 function createMemberShowInput(utubID: number): void {
   emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
+  setOpenForm(HOME_FORM.MEMBER_INVITE);
   $("#createMemberWrap").showClassFlex();
   $("#displayMemberWrap").hideClass();
   $("#memberBtnCreate").hideClass();

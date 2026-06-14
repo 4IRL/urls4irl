@@ -181,7 +181,7 @@ class _DimFormSubmit(UIBaseDimensions):
 
 
 class _DimFormCancel(UIBaseDimensions):
-    trigger: Literal["escape_key", "cancel_button", "outside_click"]
+    trigger: Literal["escape_key", "cancel_button", "outside_click", "navigation"]
     form: HomeForm
 
 

@@ -7,6 +7,7 @@ import {
   METHOD_TYPES,
 } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
@@ -110,6 +111,7 @@ function createUpdateURLStringInput(
       form: HOME_FORM.URL_STRING_EDIT,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     updateURL(urlStringTextInput, urlCard, utubID);
   });
 
@@ -124,6 +126,7 @@ function createUpdateURLStringInput(
       form: HOME_FORM.URL_STRING_EDIT,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     hideAndResetUpdateURLStringForm(urlCard);
   });
 
@@ -151,6 +154,7 @@ function setFocusEventListenersOnUpdateURLStringInput(
               form: HOME_FORM.URL_STRING_EDIT,
               trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
+            clearOpenForm();
             updateURL(urlStringInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
@@ -160,6 +164,7 @@ function setFocusEventListenersOnUpdateURLStringInput(
               form: HOME_FORM.URL_STRING_EDIT,
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
+            clearOpenForm();
             hideAndResetUpdateURLStringForm(urlCard);
             break;
           default:

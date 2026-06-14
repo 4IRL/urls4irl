@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { KEYS, SHOW_LOADING_ICON_AFTER_MS } from "../../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isEmptyString } from "./utils.js";
 import { isValidURL } from "../validation.js";
@@ -61,6 +62,7 @@ export function bindCreateURLFocusEventListeners(
           form: HOME_FORM.URL_CREATE,
           trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
         });
+        clearOpenForm();
         createURL(createURLTitleInput, createURLInput, utubID);
         break;
       case KEYS.ESCAPE:
@@ -70,6 +72,7 @@ export function bindCreateURLFocusEventListeners(
           form: HOME_FORM.URL_CREATE,
           trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
         });
+        clearOpenForm();
         createURLHideInput();
         break;
       default:
@@ -103,6 +106,7 @@ export function createURLHideInput(): void {
 // Hides new URL input prompt
 export function createURLShowInput(utubID: number): void {
   emit({ event: UI_EVENTS.UI_URL_CREATE_OPEN });
+  setOpenForm(HOME_FORM.URL_CREATE);
   if (!getNumOfURLs()) {
     hideURLsEmptyState();
   }

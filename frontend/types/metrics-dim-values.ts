@@ -100,6 +100,7 @@ export const FORM_CANCEL_TRIGGER = {
   ESCAPE_KEY: "escape_key",
   CANCEL_BUTTON: "cancel_button",
   OUTSIDE_CLICK: "outside_click",
+  NAVIGATION: "navigation",
 } as const;
 
 export const FORM_SUBMIT_TRIGGER = {

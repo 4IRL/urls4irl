@@ -102,7 +102,7 @@ export type DimFormSubmit = {
 
 export type DimFormCancel = {
   device_type: DeviceType;
-  trigger: "escape_key" | "cancel_button" | "outside_click";
+  trigger: "escape_key" | "cancel_button" | "outside_click" | "navigation";
   form: HomeForm;
 };
 

@@ -8,9 +8,11 @@ import {
   initMetricsClient,
   resetMetricsClient,
 } from "../metrics-client.js";
+import { setOpenForm } from "../modal-tracking.js";
 
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
+  HOME_FORM,
   SEARCH_ACTIVE,
   URL_ACCESS_TRIGGER,
   URL_COPY_RESULT,
@@ -462,6 +464,98 @@ describe("metrics-client", () => {
         document.dispatchEvent(new Event("visibilitychange"));
       }).not.toThrow();
       expect(sendBeaconMock).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe("pagehide navigation-cancel for an open form", () => {
+    let sendBeaconMock: Mock;
+
+    async function beaconEvents(): Promise<
+      Array<{ event_name: string; dimensions: Record<string, unknown> }>
+    > {
+      const blob = sendBeaconMock.mock.calls[0][1] as Blob;
+      const text = await blob.text();
+      return JSON.parse(text).events;
+    }
+
+    beforeEach(() => {
+      resetMetricsClient();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn().mockResolvedValue({
+          ok: true,
+          status: 200,
+          json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+        } as unknown as Response),
+      );
+      sendBeaconMock = vi.fn(() => true);
+      Object.defineProperty(navigator, "sendBeacon", {
+        value: sendBeaconMock,
+        configurable: true,
+        writable: true,
+      });
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      resetMetricsClient();
+      delete (navigator as Partial<Navigator>).sendBeacon;
+    });
+
+    it("emits UI_FORM_CANCEL with trigger=navigation for an open non-auth form", async () => {
+      initMetricsClient();
+      setOpenForm(HOME_FORM.URL_CREATE);
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      const events = await beaconEvents();
+      const cancel = events.find(
+        (entry) => entry.event_name === UI_EVENTS.UI_FORM_CANCEL,
+      );
+      expect(cancel).toBeDefined();
+      expect(cancel?.dimensions.form).toBe(HOME_FORM.URL_CREATE);
+      expect(cancel?.dimensions.trigger).toBe("navigation");
+    });
+
+    it("emits no cancel when no form is open", async () => {
+      initMetricsClient();
+      emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      const events = await beaconEvents();
+      const cancel = events.find(
+        (entry) =>
+          entry.event_name === UI_EVENTS.UI_FORM_CANCEL ||
+          entry.event_name === UI_EVENTS.UI_AUTH_CANCEL,
+      );
+      expect(cancel).toBeUndefined();
+    });
+
+    it("emits UI_AUTH_CANCEL with form=login trigger=navigation for an open login form", async () => {
+      initMetricsClient();
+      setOpenForm("login");
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      const events = await beaconEvents();
+      const cancel = events.find(
+        (entry) => entry.event_name === UI_EVENTS.UI_AUTH_CANCEL,
+      );
+      expect(cancel).toBeDefined();
+      expect(cancel?.dimensions.form).toBe("login");
+      expect(cancel?.dimensions.trigger).toBe("navigation");
+    });
+
+    it("emits UI_AUTH_CANCEL with form=register trigger=navigation for an open register form", async () => {
+      initMetricsClient();
+      setOpenForm("register");
+      window.dispatchEvent(new Event("pagehide"));
+      expect(sendBeaconMock).toHaveBeenCalledOnce();
+      const events = await beaconEvents();
+      const cancel = events.find(
+        (entry) => entry.event_name === UI_EVENTS.UI_AUTH_CANCEL,
+      );
+      expect(cancel).toBeDefined();
+      expect(cancel?.dimensions.form).toBe("register");
+      expect(cancel?.dimensions.trigger).toBe("navigation");
     });
   });
 

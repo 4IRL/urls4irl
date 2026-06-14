@@ -9,6 +9,7 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   disableEditingURLTitle,
@@ -38,6 +39,7 @@ import { createEditURLIcon } from "./options/edit-string-btn.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { getState, setState } from "../../../store/app-store.js";
 import {
+  HOME_FORM,
   SEARCH_ACTIVE,
   URL_ACCESS_TRIGGER,
   VALIDATION_FORM,
@@ -63,6 +65,7 @@ export function showUpdateURLStringForm(
   urlStringBtnUpdate: JQuery,
 ): void {
   emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
+  setOpenForm(HOME_FORM.URL_STRING_EDIT);
   urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
