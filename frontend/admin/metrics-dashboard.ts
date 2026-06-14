@@ -76,8 +76,24 @@ import { renderTimeseriesChart } from "./render-timeseries-chart.js";
 import { renderTopTable } from "./render-top-table.js";
 
 export type MetricsWindow = "day" | "week" | "month" | "year";
-type MetricsCategory = "api" | "ui" | "domain";
-type MetricsTabId = MetricsCategory | "pipeline_health" | "flows";
+
+// Single source of truth for the tab-identifier strings that cross the
+// template↔TS boundary: the template renders `data-tab="flows"` (etc.) and this
+// module reads `dataset.tab` and compares against these values. `api`/`ui`/
+// `domain` mirror the backend `EventCategory`; `flows`/`pipeline_health` are
+// frontend-only dashboard views with no backend equivalent.
+const TAB = {
+  API: "api",
+  UI: "ui",
+  DOMAIN: "domain",
+  FLOWS: "flows",
+  PIPELINE_HEALTH: "pipeline_health",
+} as const;
+type MetricsCategory = typeof TAB.API | typeof TAB.UI | typeof TAB.DOMAIN;
+type MetricsTabId =
+  | MetricsCategory
+  | typeof TAB.FLOWS
+  | typeof TAB.PIPELINE_HEALTH;
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
 type LastFlushBucket =
@@ -209,7 +225,7 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
 // All three categories are kept warm by polling so tab switching is instant.
 // Each `.done(...)` writes to `_topCache` and re-renders the panel.
 // Tablist navigation order also matches DOM order: API → UI → Domain.
-const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
+const CATEGORIES: readonly MetricsCategory[] = [TAB.API, TAB.UI, TAB.DOMAIN];
 
 // All tabs in DOM order. Flows and Pipeline Health are tabs but not categories
 // — each has its own panel + fetch path, separate from the per-category
@@ -220,8 +236,8 @@ const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
 // `pages/admin_metrics.html`.
 const TAB_IDS: readonly MetricsTabId[] = [
   ...CATEGORIES,
-  "flows",
-  "pipeline_health",
+  TAB.FLOWS,
+  TAB.PIPELINE_HEALTH,
 ];
 
 const PIPELINE_HEALTH_TAB_ID: string = "MetricsTabPipelineHealth";
@@ -247,10 +263,10 @@ function getTabAndPanelIds(tabId: MetricsTabId): {
   tab: string;
   panel: string;
 } {
-  if (tabId === "pipeline_health") {
+  if (tabId === TAB.PIPELINE_HEALTH) {
     return { tab: PIPELINE_HEALTH_TAB_ID, panel: PIPELINE_HEALTH_PANEL_ID };
   }
-  if (tabId === "flows") {
+  if (tabId === TAB.FLOWS) {
     return { tab: FLOWS_TAB_ID, panel: FLOWS_PANEL_ID };
   }
   return {
@@ -262,12 +278,12 @@ function getTabAndPanelIds(tabId: MetricsTabId): {
 let _pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFetchPerf: number = 0;
 let _currentWindow: MetricsWindow = "day";
-let _currentCategory: MetricsCategory = "api";
+let _currentCategory: MetricsCategory = TAB.API;
 // The currently-visible tab. Distinct from `_currentCategory` (which only ever
 // holds true `MetricsCategory` values) so the Flows-fetch gate can key on tab
 // visibility without widening the category type. Set unconditionally for every
 // tab in `handleTabClick`.
-let _activeTab: MetricsTabId = "api";
+let _activeTab: MetricsTabId = TAB.API;
 let _inFlight: InFlightRequests = {
   topApi: null,
   topUi: null,
@@ -411,10 +427,10 @@ function topTableNameHeader({
 }: {
   category: MetricsCategory;
 }): string {
-  if (category === "api") {
+  if (category === TAB.API) {
     return APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_ENDPOINT;
   }
-  if (category === "domain") {
+  if (category === TAB.DOMAIN) {
     return APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_ACTION;
   }
   return APP_CONFIG.strings.METRICS_TOP_TABLE_HEADER_EVENT;
@@ -726,7 +742,7 @@ function renderTimeseriesSelect({
     // "api_hit", and the (endpoint, method) pair lives in flat columns. We
     // stash all three on the option so the timeseries handler can issue a
     // properly-filtered query without re-parsing the displayed label.
-    if (category === "api") {
+    if (category === TAB.API) {
       const [methodPart] = event.event_name.split(" ", 1);
       optionElement.dataset.eventName = "api_hit";
       if (event.api_endpoint !== null && event.api_endpoint !== undefined) {
@@ -1242,7 +1258,7 @@ function fetchAll(): void {
   // only fire while the Flows tab is visible, not every 60 s tick. `_activeTab`
   // is the single source of truth here — `_currentCategory` never equals
   // "flows", so gating on it would be dead code.
-  if (_activeTab === "flows") {
+  if (_activeTab === TAB.FLOWS) {
     fetchFlows();
   }
 }
@@ -1522,7 +1538,7 @@ function handleTabClick({
   // pipeline_health, flows). `_currentCategory` keeps only true category
   // values — guarded against ever receiving "pipeline_health" / "flows".
   _activeTab = tab;
-  if (tab !== "pipeline_health" && tab !== "flows") {
+  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS) {
     _currentCategory = tab;
   }
 
@@ -1550,14 +1566,14 @@ function handleTabClick({
   // switch. Pipeline Health renders from the grouped-timeseries XHR fired by
   // `fetchAll`; Flows renders from `_flowCache` (its own XHRs), so neither
   // needs a category-cache re-render here.
-  if (tab !== "pipeline_health" && tab !== "flows") {
+  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS) {
     renderCategoryPanelFromCache({ category: tab });
   }
 
   // First activation of the Flows tab fires the fan-out immediately rather
   // than waiting up to 60 s for the next `fetchAll` tick. Subsequent switches
   // re-render from the warm cache.
-  if (tab === "flows") {
+  if (tab === TAB.FLOWS) {
     if (Object.keys(_flowCache).length === 0) {
       fetchFlows();
     } else {
@@ -1717,8 +1733,8 @@ export function _resetMetricsDashboardForTests(): void {
   abortInFlightRequests();
   _lastFetchPerf = 0;
   _currentWindow = "day";
-  _currentCategory = "api";
-  _activeTab = "api";
+  _currentCategory = TAB.API;
+  _activeTab = TAB.API;
   _inFlight = {
     topApi: null,
     topUi: null,
