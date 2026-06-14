@@ -44,3 +44,6 @@ MAILTO=""
 
 # Anonymous metrics flush — every minute (uses the set -a env pattern above)
 * * * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py >> /app/workflow_logs/metrics-flush.log 2>&1
+
+# Anonymous metrics gauge sample — hourly point-in-time snapshot (uses the set -a env pattern above)
+0 * * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/sample_gauges.py >> /app/workflow_logs/metrics-gauge.log 2>&1
