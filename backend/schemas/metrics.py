@@ -250,3 +250,76 @@ class SummaryResponseSchema(BaseSchema):
     by_category: list[SummaryCategoryCount] = Field(
         description="Per-category current vs. previous totals",
     )
+
+
+class FlowBreakdownRow(BaseSchema):
+    """One per-cause row of a flow step's drop-off breakdown.
+
+    `pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so
+    cause-pill widths are self-consistent regardless of the step's absolute
+    count. It is a `float` (never null): a breakdown with no rows collapses to
+    `null` on the owning step (DD-6) before any row is constructed.
+    """
+
+    label: str = Field(
+        description=(
+            "Raw dimension value for this cause (e.g. 'escape_key', "
+            "'invalid_url'); the renderer maps it to a human-readable label."
+        ),
+    )
+    count: int = Field(description="Summed count for this cause in the window.")
+    pct_of_step: float = Field(
+        description=(
+            "Fraction of the breakdown total this cause represents (0.0-1.0); "
+            "all rows in one breakdown sum to ~1.0."
+        ),
+    )
+
+
+class FlowStepSchema(BaseSchema):
+    """One step of an assembled funnel returned by `GET /api/metrics/query/flow`."""
+
+    stream: Literal["ui", "api", "domain"] = Field(
+        description="Metric stream — drives renderer coloring/category.",
+    )
+    label: str = Field(description="Display label for this step.")
+    event_name: str = Field(
+        description=(
+            "The underlying event name counted for this step; for API steps "
+            "this carries the step's display label instead (the Flask endpoint "
+            "name is an internal routing identifier, not display-suitable)."
+        ),
+    )
+    count: int = Field(description="Summed count for this step in the window.")
+    pct_of_top: float | None = Field(
+        default=None,
+        description=(
+            "This step's count as a fraction of the funnel-top (steps[0]) "
+            "count, capped at 1.0. Null when the top count is zero "
+            "(division-by-zero guard, DD-6 graceful-degrade)."
+        ),
+    )
+    breakdown: list[FlowBreakdownRow] | None = Field(
+        default=None,
+        description=(
+            "Per-cause drop-off rows for the transition INTO this step; null "
+            "when the step has no configured breakdown or the breakdown event "
+            "has no rows in the window (DD-6 graceful-degrade)."
+        ),
+    )
+
+
+class FlowResponseSchema(BaseSchema):
+    """Envelope returned by `GET /api/metrics/query/flow`.
+
+    A `steps` wrapper (not a bare list) is required because
+    `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+    needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+    """
+
+    steps: list[FlowStepSchema] = Field(
+        description=(
+            "Ordered funnel steps assembled server-side from the FLOWS "
+            "registry; one entry per FlowDefinition step, in funnel order."
+        ),
+    )

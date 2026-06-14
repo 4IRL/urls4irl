@@ -30,11 +30,13 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_STRING_UPDATED,
         EventName.UTUB_TAG_CREATED,
         EventName.REGISTER_SUCCESS,
+        EventName.REGISTER_REJECTED,
         EventName.LOGIN_SUCCESS,
         EventName.LOGIN_FAILURE,
         EventName.EMAIL_VERIFIED,
         EventName.PASSWORD_RESET_REQUESTED,
         EventName.PASSWORD_RESET_COMPLETED,
+        EventName.URL_CREATE_REJECTED,
     }
 )
 """DOMAIN events whose pipeline coverage lives in dedicated per-route emit tests.
@@ -43,9 +45,13 @@ URL_ACCESSED and the URL_*/UTUB_TAG_CREATED events fire from URL/tag service
 flows that the shared system-level seed does not exercise; the auth lifecycle
 events (REGISTER_SUCCESS, LOGIN_SUCCESS, LOGIN_FAILURE, EMAIL_VERIFIED,
 PASSWORD_RESET_*) fire from unauthenticated splash routes that the
-authenticated test fixture cannot reach. Each excluded event has its own
-per-route emit test under tests/integration/<feature>/ and flushes through
-the same pipeline, so the end-to-end invariant is still covered.
+authenticated test fixture cannot reach. The rejection events
+(REGISTER_REJECTED, URL_CREATE_REJECTED) fire only on the register / URL-create
+failure branches, which the shared authenticated success-path seed never
+drives — each has its own per-cause emit test under
+tests/integration/splash/ and tests/integration/utuburls/. Each excluded event
+has its own per-route emit test under tests/integration/<feature>/ and flushes
+through the same pipeline, so the end-to-end invariant is still covered.
 """
 
 

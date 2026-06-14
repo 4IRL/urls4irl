@@ -13,6 +13,7 @@ from pydantic import (
 )
 
 from backend.metrics.events import EVENT_CATEGORY, DeviceType, EventCategory, EventName
+from backend.metrics.flow_ids import ALL_FLOW_IDS
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 _BOTH_WINDOW_AND_RANGE_ERROR: str = (
@@ -457,6 +458,39 @@ class FlowFilterParamsSchema(BaseModel):
     def _check_filter_entry_shape(self) -> Self:
         if self.filter is not None:
             _validate_flow_filter_entries(self.filter)
+        return self
+
+
+# Module-level tuple of every FlowId value, mirroring `ALL_EVENT_NAMES`. Built
+# from the `flows` registry's `FlowId` StrEnum so the query schema's accepted
+# flow ids stay in lockstep with the source of truth.
+FlowIdLiteral = Literal[*ALL_FLOW_IDS]  # type: ignore[valid-type]
+
+
+class FlowQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/flow`.
+
+    Carries the funnel selector (`flow_id`) plus the same window/range XOR all
+    other window-bearing query schemas use. The per-step `filter`/`group_by`
+    slicing is configured server-side in the `FLOWS` registry — the caller only
+    names the flow and the time window.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    flow_id: FlowIdLiteral = Field(
+        description="Which funnel to assemble (create_utub | add_url_to_utub | "
+        "register | login).",
+    )
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
         return self
 
 

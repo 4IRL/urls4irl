@@ -11,6 +11,7 @@ from flask.testing import FlaskClient
 from backend import db
 from backend.metrics.constants import MetricsErrorCodes
 from backend.metrics.events import EVENT_DESCRIPTIONS, EventCategory, EventName
+from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
@@ -49,12 +50,19 @@ def _seed_event_with_count(
     bucket_start: datetime,
     count: int,
     dimensions: dict | None = None,
+    endpoint: str | None = None,
+    method: str | None = None,
+    status_code: int | None = None,
 ) -> None:
     """Seed one EventRegistry + AnonymousMetrics row through SQLAlchemy.
 
     Why ORM (not raw psycopg2): `login_admin_user_with_register` depends on
     the SAVEPOINT-based `app` fixture; raw psycopg2 writes would land outside
     the savepoint and roll back independently.
+
+    `endpoint`/`method`/`status_code` populate the flat promoted columns the
+    API-category `grouped_counts` branch matches against — `API_HIT` rows store
+    these as columns, NOT as `dimensions` entries.
     """
     if Event_Registry.query.filter_by(name=event_name.value).one_or_none() is None:
         db.session.add(
@@ -71,6 +79,9 @@ def _seed_event_with_count(
             bucket_start=bucket_start,
             dimensions=dimensions if dimensions is not None else {},
             count=count,
+            endpoint=endpoint,
+            method=method,
+            status_code=status_code,
         )
     )
     db.session.commit()
@@ -1135,3 +1146,404 @@ def test_grouped_timeseries_does_not_zero_fill_missing_dim_combos(
     only_row = body["buckets"][0]
     assert only_row["dimensions"] == {"transport": "fetch", "device_type": 2}
     assert only_row["count"] == 1
+
+
+# ---------------------------------------------------------------------------
+# `flow` — admin gating + window-XOR + unknown flow_id + filter-field 400 +
+# seeded happy path + pct_of_top edge cases + DD-6 null-breakdown paths
+# ---------------------------------------------------------------------------
+
+
+_FLOW_URL = "/api/metrics/query/flow"
+_ADD_URL_FLOW: str = FlowId.ADD_URL_TO_UTUB.value
+_CREATE_UTUB_FLOW: str = FlowId.CREATE_UTUB.value
+
+
+def _flow_url(flow_id: str, *, window: str = "day") -> str:
+    return f"{_FLOW_URL}?flow_id={flow_id}&window={window}"
+
+
+def _seed_add_url_flow(bucket_start: datetime, *, with_rejections: bool) -> None:
+    """Seed the four ADD_URL_TO_UTUB steps + an optional rejection breakdown.
+
+    Counts are intentionally distinct so step-to-step mapping is unambiguous:
+        step0 UI_URL_CREATE_OPEN  = 10  (funnel top / denominator)
+        step1 UI_FORM_SUBMIT      = 8   (form=url_create)
+        step2 API_HIT POST        = 7   (urls.create_url)
+        step3 URL_ADDED_TO_UTUB   = 6
+    When `with_rejections` is True, two URL_CREATE_REJECTED rows seed the
+    step3 drop_breakdown (invalid_url=2, url_already_in_utub=1).
+    """
+    _seed_event_with_count(
+        event_name=EventName.UI_URL_CREATE_OPEN,
+        category=EventCategory.UI,
+        bucket_start=bucket_start,
+        count=10,
+        dimensions={"device_type": 2},
+    )
+    _seed_event_with_count(
+        event_name=EventName.UI_FORM_SUBMIT,
+        category=EventCategory.UI,
+        bucket_start=bucket_start,
+        count=8,
+        dimensions={"trigger": "button_click", "form": "url_create", "device_type": 2},
+    )
+    _seed_event_with_count(
+        event_name=EventName.API_HIT,
+        category=EventCategory.API,
+        bucket_start=bucket_start,
+        count=7,
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=201,
+    )
+    _seed_event_with_count(
+        event_name=EventName.URL_ADDED_TO_UTUB,
+        category=EventCategory.DOMAIN,
+        bucket_start=bucket_start,
+        count=6,
+        dimensions={"device_type": 2},
+    )
+    if with_rejections:
+        _seed_event_with_count(
+            event_name=EventName.URL_CREATE_REJECTED,
+            category=EventCategory.DOMAIN,
+            bucket_start=bucket_start,
+            count=2,
+            dimensions={"reason": "invalid_url", "device_type": 2},
+        )
+        _seed_event_with_count(
+            event_name=EventName.URL_CREATE_REJECTED,
+            category=EventCategory.DOMAIN,
+            bucket_start=bucket_start,
+            count=1,
+            dimensions={"reason": "url_already_in_utub", "device_type": 2},
+        )
+
+
+def test_flow_anonymous_returns_401(app: Flask, client: FlaskClient) -> None:
+    """
+    GIVEN an anonymous client (no session)
+    WHEN GETing /api/metrics/query/flow
+    THEN the response is 401 with a JSON failure envelope (NOT a 302 redirect).
+    """
+    response = client.get(_flow_url(_ADD_URL_FLOW))
+
+    assert response.status_code == 401
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_flow_non_admin_returns_404(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in user with the default User_Role.USER
+    WHEN GETing /api/metrics/query/flow
+    THEN the response is 404 with a JSON failure envelope (not advertised to
+        non-admins) — matches the other @admin_required query endpoints.
+    """
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW))
+
+    assert response.status_code == 404
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_flow_admin_missing_ajax_header_redirects_to_home(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/flow WITHOUT X-Requested-With
+    THEN the response is a 302 redirect to /home — `ajax_required=True` fires
+        after @admin_required admits the admin user.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _flow_url(_ADD_URL_FLOW), headers={URL_VALIDATION.X_REQUESTED_WITH: ""}
+    )
+
+    assert response.status_code == 302
+    assert response.location.endswith("/home")
+
+
+def test_flow_unknown_flow_id_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/flow with an unknown `flow_id`
+    THEN the response is 400 — `FlowIdLiteral` rejects the value at the schema
+        layer and `_parse_query_args` maps the ValidationError to a 400.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(_flow_url("not_a_real_flow"), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "flow_id" in body[STD_JSON.ERRORS]
+
+
+def test_flow_window_xor_enforced(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/flow with both `window` and `start`
+    THEN the response is 400 — the shared `_validate_window_xor_range`
+        validator rejects the combo at the schema layer.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = (
+        f"{_FLOW_URL}?flow_id={_ADD_URL_FLOW}&window=day" f"&start=2026-01-01T00:00:00Z"
+    )
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
+def test_flow_invalid_window_param_returns_400_with_field_window(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/flow with a malformed `window` value
+    THEN the response is 400 and the errors map keys on `window` — the FIRST
+        try/except maps the `resolve_query_window` ValueError onto the window
+        field specifically (isolating it from filter errors).
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = f"{_FLOW_URL}?flow_id={_ADD_URL_FLOW}&window=not_a_window"
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "window" in body[STD_JSON.ERRORS]
+
+
+def test_flow_invalid_filter_key_returns_400_with_field_filter(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """
+    GIVEN an admin client and a FLOW whose first step carries a filter key that
+        is not a valid dim on its event (simulating a FLOWS misconfiguration,
+        the only way a `grouped_counts` ValueError surfaces from the second
+        try/except since the registry filters are otherwise developer-controlled)
+    WHEN GETing /api/metrics/query/flow for that flow
+    THEN the response is 400 and the errors map keys on `filter` — the SECOND
+        try/except maps the `grouped_counts` ValueError onto the filter field.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    broken_flow = FlowDefinition(
+        display_name="Broken",
+        steps=[
+            FlowStep(
+                stream="ui",
+                label="Open",
+                event_name=EventName.UI_URL_CREATE_OPEN,
+                filter=[("nonexistent_dim", "x")],
+            ),
+            FlowStep(
+                stream="ui",
+                label="Submit",
+                event_name=EventName.UI_FORM_SUBMIT,
+            ),
+        ],
+    )
+    monkeypatch.setitem(FLOWS, FlowId.ADD_URL_TO_UTUB, broken_flow)
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "filter" in body[STD_JSON.ERRORS]
+
+
+def test_flow_admin_happy_path_returns_steps_with_breakdown(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a fully-seeded ADD_URL_TO_UTUB funnel (open=10,
+        submit=8, api=7, domain=6) plus two URL_CREATE_REJECTED rows
+    WHEN GETing /api/metrics/query/flow?flow_id=add_url_to_utub
+    THEN the response is 200 with one step per FlowDefinition step, correct
+        counts, capped `pct_of_top`, the domain step's reject breakdown, and
+        the submit step's `breakdown=null` (its UI_FORM_CANCEL has no rows).
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_add_url_flow(_bucket_inside_window(), with_rejections=True)
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    steps = body["steps"]
+    assert len(steps) == len(FLOWS[FlowId.ADD_URL_TO_UTUB].steps)
+
+    assert [step["count"] for step in steps] == [10, 8, 7, 6]
+    assert [step["stream"] for step in steps] == ["ui", "ui", "api", "domain"]
+    # API step carries its display label as `event_name`, not the endpoint name.
+    assert steps[2]["event_name"] == "POST .../urls"
+    # pct_of_top denominated against step0 (10), capped at 1.0.
+    assert steps[0]["pct_of_top"] == 1.0
+    assert steps[3]["pct_of_top"] == 6 / 10
+
+    # Submit step (index 1) has a UI_FORM_CANCEL breakdown configured, but no
+    # cancel rows were seeded → DD-6 graceful-degrade to null.
+    assert steps[1]["breakdown"] is None
+
+    # Domain step (index 3) reject breakdown — two causes, pcts sum to ~1.0.
+    domain_breakdown = steps[3]["breakdown"]
+    assert domain_breakdown is not None
+    rows_by_label = {row["label"]: row for row in domain_breakdown}
+    assert rows_by_label["invalid_url"]["count"] == 2
+    assert rows_by_label["url_already_in_utub"]["count"] == 1
+    assert abs(sum(row["pct_of_step"] for row in domain_breakdown) - 1.0) < 1e-9
+
+
+def test_flow_step_without_drop_breakdown_returns_null_breakdown(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a seeded CREATE_UTUB funnel (ships success-only,
+        the domain step has no drop_breakdown configured)
+    WHEN GETing /api/metrics/query/flow?flow_id=create_utub
+    THEN the domain step's `breakdown` is null (no breakdown configured) — the
+        DD-6 path for a step that simply has no rejection lens.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UI_UTUB_CREATE_OPEN,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=4,
+            dimensions={"device_type": 2},
+        )
+        _seed_event_with_count(
+            event_name=EventName.UTUB_CREATED,
+            category=EventCategory.DOMAIN,
+            bucket_start=_bucket_inside_window(),
+            count=3,
+            dimensions={"device_type": 2},
+        )
+
+    response = logged_in_client.get(_flow_url(_CREATE_UTUB_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    steps = response.get_json()["steps"]
+    assert len(steps) == len(FLOWS[FlowId.CREATE_UTUB].steps)
+    # The domain step (last) has no drop_breakdown in the registry → null.
+    assert steps[-1]["breakdown"] is None
+
+
+def test_flow_breakdown_is_null_when_breakdown_event_has_no_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and an ADD_URL_TO_UTUB funnel seeded with only domain
+        and API events (no URL_CREATE_REJECTED rows in the window)
+    WHEN GETing /api/metrics/query/flow?flow_id=add_url_to_utub
+    THEN the domain step's `breakdown` is null (not an empty list) — the DD-6
+        graceful-degrade path: an empty raw_rows list collapses to None before
+        any FlowBreakdownRow is constructed.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_add_url_flow(_bucket_inside_window(), with_rejections=False)
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    steps = response.get_json()["steps"]
+    assert steps[3]["breakdown"] is None
+
+
+def test_flow_pct_of_top_is_null_when_top_step_has_zero_count(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and an ADD_URL_TO_UTUB window where the FIRST step's
+        event (UI_URL_CREATE_OPEN) has zero rows, but downstream steps do not
+    WHEN GETing /api/metrics/query/flow?flow_id=add_url_to_utub
+    THEN every step's `pct_of_top` is null (top_count == 0 division guard).
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UI_FORM_SUBMIT,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=5,
+            dimensions={
+                "trigger": "button_click",
+                "form": "url_create",
+                "device_type": 2,
+            },
+        )
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    steps = response.get_json()["steps"]
+    assert steps[0]["count"] == 0
+    assert all(step["pct_of_top"] is None for step in steps)
+
+
+def test_flow_pct_of_top_capped_at_one_when_downstream_exceeds_denominator(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and an ADD_URL_TO_UTUB window where a downstream step
+        count (submit=8) exceeds the top step count (open=5) — simulating
+        per-guard dual-fire / beacon undercount of the top event
+    WHEN GETing /api/metrics/query/flow?flow_id=add_url_to_utub
+    THEN the downstream step's `pct_of_top` is exactly 1.0 (the min() cap), not
+        greater than 1.0.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        _seed_event_with_count(
+            event_name=EventName.UI_URL_CREATE_OPEN,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=5,
+            dimensions={"device_type": 2},
+        )
+        _seed_event_with_count(
+            event_name=EventName.UI_FORM_SUBMIT,
+            category=EventCategory.UI,
+            bucket_start=_bucket_inside_window(),
+            count=8,
+            dimensions={
+                "trigger": "button_click",
+                "form": "url_create",
+                "device_type": 2,
+            },
+        )
+
+    response = logged_in_client.get(_flow_url(_ADD_URL_FLOW), headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    steps = response.get_json()["steps"]
+    assert steps[0]["count"] == 5
+    assert steps[1]["count"] == 8
+    assert steps[1]["pct_of_top"] == 1.0
