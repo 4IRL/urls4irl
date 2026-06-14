@@ -19,6 +19,7 @@ from tests.functional.metrics_ui.selenium_utils import (
 from tests.functional.selenium_utils import (
     wait_for_element_presence,
     wait_then_click_element,
+    wait_then_get_at_least_n_elements,
     wait_then_get_element,
     wait_then_get_elements,
 )
@@ -343,8 +344,11 @@ def test_flows_tab_renders_funnel_cards_with_seeded_data(
 
     wait_then_click_element(browser, MDL.TAB_FLOWS_BUTTON)
 
-    flow_cards = wait_then_get_elements(
-        browser, MDL.FLOWS_CARD, time=FLOWS_RENDER_TIMEOUT
+    flow_cards = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.FLOWS_CARD,
+        minimum_count=EXPECTED_FLOW_CARD_COUNT,
+        time=FLOWS_RENDER_TIMEOUT,
     )
     assert len(flow_cards) >= EXPECTED_FLOW_CARD_COUNT, (
         f"Expected at least {EXPECTED_FLOW_CARD_COUNT} flow cards, "
