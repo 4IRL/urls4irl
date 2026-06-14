@@ -168,7 +168,7 @@
     outline-offset: 2px;
 }
 
-/* On phones the five tabs overflow the viewport. Contain the overflow to the
+/* On phones the six tabs overflow the viewport. Contain the overflow to the
    tablist box (horizontal scroll within its own width) instead of letting the
    page overscroll horizontally. Desktop keeps the `width: fit-content` single
    row above. The window-selector wraps below the tablist via the `.tablist-row`
@@ -755,6 +755,95 @@
     text-align: center;
 }
 
+/* ---- Gauges (sampled scalar trend charts) --------------------------- */
+
+/* Reveal the panel-scoped loading spinner only while the Gauges panel itself
+ * is in a loading state — NOT when any other dashboard fetch sets aria-busy
+ * on the root #MetricsDashboard element (DD-7). */
+.gauges-loading-spinner {
+    display: none;
+}
+
+#MetricsPanelGauges[aria-busy="true"] .gauges-loading-spinner {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 0.5rem auto;
+    border: 2px solid var(--borderColor);
+    border-top-color: var(--splashGreen);
+    border-radius: 50%;
+    animation: metricsGaugeSpin 0.8s linear infinite;
+}
+
+@keyframes metricsGaugeSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Two columns ≥1100px, collapsing to one below (matches .flow-grid's
+ * breakpoint). Gauge cards are purely display (a header + a read-only inline
+ * trend chart, no tappable interaction), so no `min-height: 44px` touch-target
+ * rule is required here. */
+.gauge-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.gauge-card {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.gauge-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.gauge-title {
+    margin: 0;
+    font-size: 1rem;
+    flex: 1 1 auto;
+}
+
+.gauge-kind {
+    font-size: 0.75rem;
+    color: var(--cardURLTextColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+}
+
+.gauge-last-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--splashGreen);
+}
+
+.gauge-chart {
+    width: 100%;
+    height: auto;
+    /* read-only chart — no touch-target rule; min-height ensures SVG text
+     * labels remain legible at narrow viewport widths */
+    min-height: 120px;
+}
+
+.gauge-card--suppressed .gauge-last-value {
+    color: var(--cardURLTextColor);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.gauge-card--suppressed .gauge-chart {
+    opacity: 0.7;
+}
+
 .flow-header {
     display: flex;
     flex-wrap: wrap;
@@ -910,10 +999,16 @@
     .flow-grid {
         grid-template-columns: 1fr;
     }
+    .gauge-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 @media (max-width: 575.98px) {
     .flow-grid {
+        grid-template-columns: 1fr;
+    }
+    .gauge-grid {
         grid-template-columns: 1fr;
     }
     /* Reset the proportional width via the custom property so narrow steps

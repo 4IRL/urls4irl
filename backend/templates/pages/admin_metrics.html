@@ -34,6 +34,7 @@
             <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui">{{             CONSTANTS.STRINGS.METRICS_TAB_UI }}</button>
             <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain">{{         CONSTANTS.STRINGS.METRICS_TAB_DOMAIN }}</button>
             <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows">{{          CONSTANTS.STRINGS.METRICS_TAB_FLOWS }}</button>
+            <button id="MetricsTabGauges"         role="tab" aria-selected="false" aria-controls="MetricsPanelGauges"         tabindex="-1" data-tab="gauges">{{         CONSTANTS.STRINGS.METRICS_TAB_GAUGES }}</button>
             <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health">{{ CONSTANTS.STRINGS.METRICS_TAB_PIPELINE_HEALTH }}</button>
         </div>
 
@@ -57,6 +58,11 @@
         <span class="flows-loading-spinner" aria-hidden="true"></span>
         <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
         <div id="MetricsFlowGrid" class="flow-grid"></div>
+    </section>
+    <section id="MetricsPanelGauges" role="tabpanel" aria-labelledby="MetricsTabGauges" tabindex="0" hidden>
+        <span class="gauges-loading-spinner" aria-hidden="true"></span>
+        <span id="MetricsPanelGaugesAnnouncement" class="visually-hidden" aria-live="polite"></span>
+        <div id="MetricsGaugeGrid" class="gauge-grid"></div>
     </section>
     <section id="MetricsPanelPipelineHealth" role="tabpanel" aria-labelledby="MetricsTabPipelineHealth" tabindex="0" hidden>{% include 'components/admin/pipeline_health_panel.html' %}</section>
 

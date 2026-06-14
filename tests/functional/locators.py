@@ -352,6 +352,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     TAB_DOMAIN_BUTTON = "#MetricsTabDomain"
     TAB_PIPELINE_HEALTH_BUTTON = "#MetricsTabPipelineHealth"
     TAB_FLOWS_BUTTON = "#MetricsTabFlows"
+    TAB_GAUGES_BUTTON = "#MetricsTabGauges"
 
     # Per-section table IDs
     TOP_TABLE_API = "#MetricsTopTableApi"
@@ -416,3 +417,11 @@ class MetricsDashboardLocators(GenericPageLocator):
     FLOWS_FUNNEL_STEP = "#MetricsFlowGrid .flow-card .funnel-step"
     FLOWS_CAUSE_PILL = "#MetricsFlowGrid .flow-card .cause-pill"
     FLOWS_CARD_EMPTY = "#MetricsFlowGrid .flow-card .flow-card-empty"
+
+    # Gauges tab (sampled scalar trend charts)
+    GAUGES_PANEL = "#MetricsPanelGauges"
+    GAUGES_GRID = "#MetricsGaugeGrid"
+    GAUGES_CARD = "#MetricsGaugeGrid .gauge-card"
+    GAUGES_CARD_CHART = "#MetricsGaugeGrid .gauge-card svg.gauge-chart"
+    GAUGES_CARD_SUPPRESSED = "#MetricsGaugeGrid .gauge-card--suppressed"
+    GAUGES_PANEL_EMPTY_STATE = "#MetricsGaugeGrid .MetricsEmptyState"

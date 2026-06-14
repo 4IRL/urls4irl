@@ -32,6 +32,7 @@ const TIMESERIES_ENDPOINT = "/api/metrics/query/timeseries";
 const GROUPED_TIMESERIES_ENDPOINT = "/api/metrics/query/grouped-timeseries";
 const SUMMARY_ENDPOINT = "/api/metrics/query/summary";
 const FLOW_ENDPOINT = "/api/metrics/query/flow";
+const GAUGES_TIMESERIES_ENDPOINT = "/api/metrics/query/gauges/timeseries";
 
 /**
  * Fetch the top-N events for a window, optionally scoped to a single category.
@@ -207,5 +208,44 @@ export function fetchFlow({
   const url = `${FLOW_ENDPOINT}?${queryString}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryFlow">
+  >;
+}
+
+/**
+ * Fetch every gauge's windowed series in ONE batched request — the response
+ * carries one entry per gauge, each folding in its own `kind`/`description`
+ * metadata, so no separate `gauges/list` round-trip is needed. There is NO
+ * `name` query param: the endpoint is batched and returns all gauges.
+ *
+ * `window` is typed `string` (not `MetricsWindow`) to avoid a circular import —
+ * `MetricsWindow` lives in `metrics-dashboard.ts`, which already imports from
+ * this module; the call site passes `_currentWindow` (a `MetricsWindow`, which
+ * is assignable to `string`), mirroring `fetchTimeseries`.
+ *
+ * Example: `fetchGaugesTimeseries({ window: "day" })`
+ * issues `GET /api/metrics/query/gauges/timeseries?window=day`.
+ */
+export function fetchGaugesTimeseries({
+  window,
+  start,
+  end,
+}: {
+  window?: string;
+  start?: string;
+  end?: string;
+}): JQuery.jqXHR<SuccessResponse<"queryGaugesTimeseries">> {
+  const params = new URLSearchParams();
+  if (window !== undefined) {
+    params.set("window", window);
+  }
+  if (start !== undefined) {
+    params.set("start", start);
+  }
+  if (end !== undefined) {
+    params.set("end", end);
+  }
+  const url = `${GAUGES_TIMESERIES_ENDPOINT}?${params.toString()}`;
+  return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"queryGaugesTimeseries">
   >;
 }

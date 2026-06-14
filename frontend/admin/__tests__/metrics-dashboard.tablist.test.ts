@@ -17,20 +17,24 @@ const {
   fetchTimeseriesSpy,
   fetchGroupedTimeseriesSpy,
   fetchFlowSpy,
+  fetchGaugesTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
   renderFlowGridSpy,
+  renderGaugeGridSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
   fetchFlowSpy: vi.fn(),
+  fetchGaugesTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
   renderFlowGridSpy: vi.fn(),
+  renderGaugeGridSpy: vi.fn(),
 }));
 
 vi.mock("../metrics-query-client.js", () => ({
@@ -39,6 +43,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTimeseries: fetchTimeseriesSpy,
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
   fetchFlow: fetchFlowSpy,
+  fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -57,6 +62,10 @@ vi.mock("../flow-card.js", () => ({
   renderFlowGrid: renderFlowGridSpy,
 }));
 
+vi.mock("../gauge-card.js", () => ({
+  renderGaugeGrid: renderGaugeGridSpy,
+}));
+
 import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import { $ } from "../../lib/globals.js";
 import {
@@ -69,13 +78,15 @@ type TabId =
   | "MetricsTabUi"
   | "MetricsTabDomain"
   | "MetricsTabPipelineHealth"
-  | "MetricsTabFlows";
+  | "MetricsTabFlows"
+  | "MetricsTabGauges";
 type PanelId =
   | "MetricsPanelApi"
   | "MetricsPanelUi"
   | "MetricsPanelDomain"
   | "MetricsPanelPipelineHealth"
-  | "MetricsPanelFlows";
+  | "MetricsPanelFlows"
+  | "MetricsPanelGauges";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
@@ -89,6 +100,7 @@ const DASHBOARD_HTML = `
       <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui"></button>
       <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain"></button>
       <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows"></button>
+      <button id="MetricsTabGauges"         role="tab" aria-selected="false" aria-controls="MetricsPanelGauges"         tabindex="-1" data-tab="gauges"></button>
       <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
@@ -109,6 +121,11 @@ const DASHBOARD_HTML = `
       <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
+    <section id="MetricsPanelGauges" role="tabpanel" tabindex="0" hidden>
+      <span class="gauges-loading-spinner" aria-hidden="true"></span>
+      <span id="MetricsPanelGaugesAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div id="MetricsGaugeGrid" class="gauge-grid"></div>
+    </section>
     <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
   </main>
@@ -120,6 +137,61 @@ function getTab(tabId: TabId): HTMLButtonElement {
 
 function getPanel(panelId: PanelId): HTMLElement {
   return document.getElementById(panelId) as HTMLElement;
+}
+
+interface MockGaugeSample {
+  sampled_at: string;
+  value_int: number | null;
+  value_float: number | null;
+}
+interface MockGaugeSeries {
+  gauge_name: string;
+  kind: string;
+  description: string;
+  samples: MockGaugeSample[];
+}
+interface MockGaugesResponse {
+  window: string | null;
+  window_start: string;
+  window_end: string;
+  gauges: MockGaugeSeries[];
+}
+
+function buildGaugeSeries(gaugeName: string): MockGaugeSeries {
+  return {
+    gauge_name: gaugeName,
+    kind: "volume",
+    description: "Total Users",
+    samples: [
+      {
+        sampled_at: "2026-06-01T01:00:00+00:00",
+        value_int: 5,
+        value_float: null,
+      },
+    ],
+  };
+}
+
+function buildGaugesResponse(gauges: MockGaugeSeries[]): MockGaugesResponse {
+  return {
+    window: "day",
+    window_start: "2026-06-01T00:00:00+00:00",
+    window_end: "2026-06-02T00:00:00+00:00",
+    gauges,
+  };
+}
+
+// A jqXHR mock whose `.done` invokes its callback synchronously with `response`
+// so the gauge fetch resolves in-test; `.fail`/`.always` are chainable no-ops.
+function createDoneJqXHR(response: MockGaugesResponse): JQuery.jqXHR {
+  return createMockJqXHRChainable({
+    done: (callback: unknown) => {
+      (callback as (value: MockGaugesResponse) => void)(response);
+    },
+    always: (callback: unknown) => {
+      (callback as () => void)();
+    },
+  });
 }
 
 describe("metrics-dashboard tablist a11y", () => {
@@ -135,10 +207,12 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
     fetchFlowSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
     renderFlowGridSpy.mockReset();
+    renderGaugeGridSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
@@ -147,6 +221,9 @@ describe("metrics-dashboard tablist a11y", () => {
       createMockJqXHRChainable(),
     );
     fetchFlowSpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
 
     vi.useFakeTimers();
     initMetricsDashboard();
@@ -198,10 +275,22 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
-  it("ArrowRight from Flows moves to Pipeline Health", () => {
+  it("ArrowRight from Flows moves to Gauges", () => {
     getTab("MetricsTabFlows").click();
     getTab("MetricsTabFlows").focus();
     $("#MetricsTabFlows").trigger($.Event("keydown", { key: "ArrowRight" }));
+
+    expect(getTab("MetricsTabGauges").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getTab("MetricsTabGauges").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(getTab("MetricsTabGauges"));
+  });
+
+  it("ArrowRight from Gauges moves to Pipeline Health", () => {
+    getTab("MetricsTabGauges").click();
+    getTab("MetricsTabGauges").focus();
+    $("#MetricsTabGauges").trigger($.Event("keydown", { key: "ArrowRight" }));
 
     expect(
       getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
@@ -260,6 +349,7 @@ describe("metrics-dashboard tablist a11y", () => {
       true,
     );
     expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(true);
 
     getTab("MetricsTabUi").click();
 
@@ -270,8 +360,9 @@ describe("metrics-dashboard tablist a11y", () => {
       true,
     );
     expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(true);
 
-    getTab("MetricsTabFlows").click();
+    getTab("MetricsTabGauges").click();
 
     expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(true);
@@ -279,7 +370,8 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
       true,
     );
-    expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(false);
+    expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(false);
   });
 
   it("activating the Flows tab fires the per-flow fan-out on first load", () => {
@@ -289,6 +381,57 @@ describe("metrics-dashboard tablist a11y", () => {
 
     // One XHR per FlowId (create_utub, add_url_to_utub, register, login).
     expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
+  });
+
+  it("activating the Gauges tab fires exactly one batched request and renders the grid", () => {
+    const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createDoneJqXHR(response),
+    );
+
+    expect(fetchGaugesTimeseriesSpy).not.toHaveBeenCalled();
+    getTab("MetricsTabGauges").click();
+
+    // Single batched request, not a fan-out.
+    expect(fetchGaugesTimeseriesSpy).toHaveBeenCalledTimes(1);
+    expect(renderGaugeGridSpy).toHaveBeenCalledTimes(1);
+    expect(renderGaugeGridSpy.mock.calls[0][0].response).toBe(response);
+  });
+
+  it("renders the panel empty-state (no crash) when the batched gauges[] is empty", () => {
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createDoneJqXHR(buildGaugesResponse([])),
+    );
+
+    getTab("MetricsTabGauges").click();
+
+    // renderGaugeGrid is NOT called for the empty case — renderGaugesPanel owns
+    // the empty state, appending a MetricsEmptyState element to the grid.
+    expect(renderGaugeGridSpy).not.toHaveBeenCalled();
+    const grid = document.getElementById("MetricsGaugeGrid") as HTMLElement;
+    expect(grid.querySelector(".MetricsEmptyState")).not.toBeNull();
+  });
+
+  it("changing the window while Gauges is active refetches exactly once (DD-10)", () => {
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createDoneJqXHR(buildGaugesResponse([buildGaugeSeries("total_users")])),
+    );
+
+    getTab("MetricsTabGauges").click();
+    fetchGaugesTimeseriesSpy.mockClear();
+
+    // All four window selector buttons are present and operable on this tab.
+    expect(document.querySelectorAll(".MetricsWindowButton").length).toBe(4);
+
+    const weekButton = document.querySelector(
+      '.MetricsWindowButton[data-window="week"]',
+    ) as HTMLButtonElement;
+    weekButton.click();
+
+    expect(fetchGaugesTimeseriesSpy).toHaveBeenCalledTimes(1);
+    expect(fetchGaugesTimeseriesSpy.mock.calls[0][0]).toEqual({
+      window: "week",
+    });
   });
 
   it("changing the per-panel select fires fetchTimeseries with the chosen event", () => {

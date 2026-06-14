@@ -59,8 +59,10 @@ import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
 
 import { renderFlowGrid } from "./flow-card.js";
+import { renderGaugeGrid } from "./gauge-card.js";
 import {
   fetchFlow,
+  fetchGaugesTimeseries,
   fetchGroupedTimeseries,
   fetchSummary,
   fetchTimeseries,
@@ -87,15 +89,18 @@ const TAB = {
   UI: "ui",
   DOMAIN: "domain",
   FLOWS: "flows",
+  GAUGES: "gauges",
   PIPELINE_HEALTH: "pipeline_health",
 } as const;
 type MetricsCategory = typeof TAB.API | typeof TAB.UI | typeof TAB.DOMAIN;
 type MetricsTabId =
   | MetricsCategory
   | typeof TAB.FLOWS
+  | typeof TAB.GAUGES
   | typeof TAB.PIPELINE_HEALTH;
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
+type GaugesTimeseriesResponse = Schema<"GaugesTimeseriesResponseSchema">;
 type LastFlushBucket =
   | "just_now"
   | "seconds"
@@ -113,6 +118,7 @@ interface InFlightRequests {
   tsDomain: JQuery.jqXHR | null;
   summary: JQuery.jqXHR | null;
   pipelineHealth: JQuery.jqXHR | null;
+  gaugesTimeseries: JQuery.jqXHR | null;
   flowCreateUtub: JQuery.jqXHR | null;
   flowAddUrl: JQuery.jqXHR | null;
   flowRegister: JQuery.jqXHR | null;
@@ -237,6 +243,7 @@ const CATEGORIES: readonly MetricsCategory[] = [TAB.API, TAB.UI, TAB.DOMAIN];
 const TAB_IDS: readonly MetricsTabId[] = [
   ...CATEGORIES,
   TAB.FLOWS,
+  TAB.GAUGES,
   TAB.PIPELINE_HEALTH,
 ];
 
@@ -246,6 +253,10 @@ const FLOWS_TAB_ID: string = "MetricsTabFlows";
 const FLOWS_PANEL_ID: string = "MetricsPanelFlows";
 const FLOWS_GRID_ID: string = "MetricsFlowGrid";
 const FLOWS_ANNOUNCEMENT_ID: string = "MetricsPanelFlowsAnnouncement";
+const GAUGES_TAB_ID: string = "MetricsTabGauges";
+const GAUGES_PANEL_ID: string = "MetricsPanelGauges";
+const GAUGES_GRID_ID: string = "MetricsGaugeGrid";
+const GAUGES_ANNOUNCEMENT_ID: string = "MetricsPanelGaugesAnnouncement";
 
 // Maps each FlowId to its dedicated in-flight slot so per-flow XHRs are aborted
 // independently (mirrors TOP_SLOT_BY_CATEGORY).
@@ -268,6 +279,9 @@ function getTabAndPanelIds(tabId: MetricsTabId): {
   }
   if (tabId === TAB.FLOWS) {
     return { tab: FLOWS_TAB_ID, panel: FLOWS_PANEL_ID };
+  }
+  if (tabId === TAB.GAUGES) {
+    return { tab: GAUGES_TAB_ID, panel: GAUGES_PANEL_ID };
   }
   return {
     tab: CATEGORY_PANEL_IDS[tabId].tab,
@@ -293,6 +307,7 @@ let _inFlight: InFlightRequests = {
   tsDomain: null,
   summary: null,
   pipelineHealth: null,
+  gaugesTimeseries: null,
   flowCreateUtub: null,
   flowAddUrl: null,
   flowRegister: null,
@@ -301,6 +316,10 @@ let _inFlight: InFlightRequests = {
 // Last successful `/flow` response per flow id, so a tab switch back to Flows
 // renders instantly from cache. Populated by `fetchFlows`.
 let _flowCache: Partial<Record<FlowId, FlowResponseSchema>> = {};
+// Last successful batched `gauges/timeseries` response (the full envelope, not
+// `GaugeSeries[]`), so a tab switch back to Gauges renders instantly from cache.
+// Populated by `fetchGauges`; `null` until the first batched request settles.
+let _gaugesCache: GaugesTimeseriesResponse | null = null;
 
 const TOP_SLOT_BY_CATEGORY: Record<
   MetricsCategory,
@@ -394,6 +413,22 @@ function setDashboardBusy({ busy }: { busy: boolean }): void {
 // entirely so the `[aria-busy="true"]` spinner selector stops matching.
 function setFlowsPanelBusy({ busy }: { busy: boolean }): void {
   const panel = getElementByIdOrNull<HTMLElement>(FLOWS_PANEL_ID);
+  if (panel === null) {
+    return;
+  }
+  if (busy) {
+    panel.setAttribute("aria-busy", "true");
+  } else {
+    panel.removeAttribute("aria-busy");
+  }
+}
+
+// Gauge XHR settle-state is tracked separately from the global dashboard busy
+// path (DD-7), mirroring `setFlowsPanelBusy`: set/clear `aria-busy` on the
+// Gauges panel only so the `.gauges-loading-spinner` reveals without coupling
+// to the root dashboard fetch. Excluded from `onSettleAny`.
+function setGaugesPanelBusy({ busy }: { busy: boolean }): void {
+  const panel = getElementByIdOrNull<HTMLElement>(GAUGES_PANEL_ID);
   if (panel === null) {
     return;
   }
@@ -675,6 +710,7 @@ function abortInFlightRequests(): void {
     "tsDomain",
     "summary",
     "pipelineHealth",
+    "gaugesTimeseries",
     "flowCreateUtub",
     "flowAddUrl",
     "flowRegister",
@@ -1126,6 +1162,78 @@ function fetchFlows(): void {
   }
 }
 
+/**
+ * Render the Gauges panel from `_gaugesCache`. Owns the no-data case (DD): when
+ * the cache is `null` or carries an empty `gauges[]`, the grid is cleared and a
+ * single panel-level `MetricsEmptyState` element is appended — `renderGaugeGrid`
+ * itself never emits an empty state. Otherwise every gauge card is rendered (and
+ * reconciled in place) from the full cached batched response.
+ */
+function renderGaugesPanel(): void {
+  const grid = getElementByIdOrNull<HTMLElement>(GAUGES_GRID_ID);
+  if (grid === null) {
+    return;
+  }
+  if (_gaugesCache === null || _gaugesCache.gauges.length === 0) {
+    while (grid.firstChild !== null) {
+      grid.removeChild(grid.firstChild);
+    }
+    const emptyState = document.createElement("p");
+    emptyState.className = "MetricsEmptyState";
+    emptyState.tabIndex = 0;
+    emptyState.textContent = APP_CONFIG.strings.METRICS_EMPTY_STATE;
+    grid.appendChild(emptyState);
+    return;
+  }
+  renderGaugeGrid({ container: grid, response: _gaugesCache });
+}
+
+/**
+ * Fire the single batched `gauges/timeseries` request (mirrors the single-XHR
+ * `fetchPipelineHealth()` shape, NOT the per-flow fan-out). One request returns
+ * every gauge's windowed series; the batched response is cached and the panel
+ * re-rendered on success. `_currentWindow` is read here, so each window change
+ * re-requests the batched series (DD-10).
+ *
+ * Deliberately separate from `fetchAll`'s global busy / `onSettleAny` path:
+ * gauge settle-state lives only on `#MetricsPanelGauges` aria-busy (DD-7).
+ */
+function fetchGauges(): void {
+  setGaugesPanelBusy({ busy: true });
+  let succeeded = false;
+  const gaugesRequest = fetchGaugesTimeseries({ window: _currentWindow });
+  _inFlight.gaugesTimeseries = gaugesRequest;
+  gaugesRequest
+    .done((response) => {
+      succeeded = true;
+      setBannerVisible({ visible: false });
+      _gaugesCache = response;
+      renderGaugesPanel();
+    })
+    .fail((xhr) => {
+      if (is429Handled(xhr)) {
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      setBannerVisible({ visible: true });
+    })
+    .always(() => {
+      _inFlight.gaugesTimeseries = null;
+      _lastFetchPerf = performance.now();
+      setGaugesPanelBusy({ busy: false });
+      if (succeeded) {
+        const announcement = getElementByIdOrNull<HTMLElement>(
+          GAUGES_ANNOUNCEMENT_ID,
+        );
+        if (announcement !== null) {
+          announcement.textContent = APP_CONFIG.strings.METRICS_GAUGES_LOADED;
+        }
+      }
+    });
+}
+
 function fetchAll(): void {
   abortInFlightRequests();
   setDashboardBusy({ busy: true });
@@ -1260,6 +1368,14 @@ function fetchAll(): void {
   // "flows", so gating on it would be dead code.
   if (_activeTab === TAB.FLOWS) {
     fetchFlows();
+  }
+
+  // Gate the single batched gauges request on the active tab (same pattern as
+  // the Flows gate). `fetchGauges()` reads `_currentWindow`, so each window
+  // change re-requests the batched series — keeping the window selector live on
+  // the Gauges tab for free (DD-10).
+  if (_activeTab === TAB.GAUGES) {
+    fetchGauges();
   }
 }
 
@@ -1538,7 +1654,7 @@ function handleTabClick({
   // pipeline_health, flows). `_currentCategory` keeps only true category
   // values — guarded against ever receiving "pipeline_health" / "flows".
   _activeTab = tab;
-  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS) {
+  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS && tab !== TAB.GAUGES) {
     _currentCategory = tab;
   }
 
@@ -1566,7 +1682,7 @@ function handleTabClick({
   // switch. Pipeline Health renders from the grouped-timeseries XHR fired by
   // `fetchAll`; Flows renders from `_flowCache` (its own XHRs), so neither
   // needs a category-cache re-render here.
-  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS) {
+  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS && tab !== TAB.GAUGES) {
     renderCategoryPanelFromCache({ category: tab });
   }
 
@@ -1578,6 +1694,16 @@ function handleTabClick({
       fetchFlows();
     } else {
       renderFlowsPanel();
+    }
+  }
+
+  // First activation of the Gauges tab fires the single batched request
+  // immediately; subsequent switches re-render from the warm cache.
+  if (tab === TAB.GAUGES) {
+    if (_gaugesCache === null) {
+      fetchGauges();
+    } else {
+      renderGaugesPanel();
     }
   }
 
@@ -1744,12 +1870,14 @@ export function _resetMetricsDashboardForTests(): void {
     tsDomain: null,
     summary: null,
     pipelineHealth: null,
+    gaugesTimeseries: null,
     flowCreateUtub: null,
     flowAddUrl: null,
     flowRegister: null,
     flowLogin: null,
   };
   _flowCache = {};
+  _gaugesCache = null;
   _topCache.clear();
   _selectedEventByCategory.clear();
   _chartFetchedWindowByCategory.clear();
