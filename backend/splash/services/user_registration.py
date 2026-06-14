@@ -54,6 +54,12 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
             dimensions={"reason": "username_taken"},
         )
 
+    # A taken username and an unvalidated-email match can co-occur for the same
+    # request. The username error populates `errors` and is recorded above, so
+    # this early return fires first and the `unvalidated_email` branch below is
+    # never reached — only `username_taken` is recorded. This is intentional:
+    # a hard form error takes precedence over offering to log the user into
+    # their unvalidated account.
     if errors:
         warning_log("Form errors when registering")
         return build_field_error_response(

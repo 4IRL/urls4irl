@@ -214,9 +214,9 @@ class _DimAuthModalOpen(UIBaseDimensions):
 
 
 class _DimAuthCancel(UIBaseDimensions):
-    # `trigger` is intentionally a single-value Literal — Phase 15 only emits
-    # the navigation cancel for auth forms. Future phases widen both this
-    # Literal and the EVENT_REGISTRY tuple together.
+    # `trigger` is a single-value Literal — only `navigation` is currently
+    # emitted for auth-form abandonment. Widen this Literal and the
+    # EVENT_REGISTRY tuple together when more triggers are added.
     form: Literal["login", "register"]
     trigger: Literal["navigation"]
 
