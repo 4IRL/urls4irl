@@ -151,6 +151,7 @@
     cursor: pointer;
     border-radius: 6px;
     font-size: 0.92rem;
+    white-space: nowrap;
     transition: background-color 0.15s, color 0.15s;
 }
 
@@ -165,6 +166,27 @@
 #MetricsTablist [role='tab']:focus-visible {
     outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
+}
+
+/* On phones the five tabs overflow the viewport. Contain the overflow to the
+   tablist box (horizontal scroll within its own width) instead of letting the
+   page overscroll horizontally. Desktop keeps the `width: fit-content` single
+   row above. The window-selector wraps below the tablist via the `.tablist-row`
+   flex-wrap already in place. */
+@media (max-width: 575.98px) {
+    .tablist {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    #MetricsTablist [role='tab'] {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
 }
 
 .window-selector {

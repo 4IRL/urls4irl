@@ -88,8 +88,8 @@ const DASHBOARD_HTML = `
       <button id="MetricsTabApi"            role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"            tabindex="0"  data-tab="api"></button>
       <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui"></button>
       <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain"></button>
-      <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
       <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows"></button>
+      <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
     <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
@@ -104,12 +104,12 @@ const DASHBOARD_HTML = `
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
     </section>
-    <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <section id="MetricsPanelFlows" role="tabpanel" tabindex="0" hidden>
       <span class="flows-loading-spinner" aria-hidden="true"></span>
       <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
+    <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
   </main>
 `;
@@ -189,22 +189,38 @@ describe("metrics-dashboard tablist a11y", () => {
     getTab("MetricsTabApi").focus();
     $("#MetricsTabApi").trigger($.Event("keydown", { key: "ArrowLeft" }));
 
-    expect(getTab("MetricsTabFlows").getAttribute("aria-selected")).toBe(
-      "true",
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(getTab("MetricsTabPipelineHealth").getAttribute("tabindex")).toBe(
+      "0",
     );
-    expect(getTab("MetricsTabFlows").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabFlows"));
+    expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
+  });
+
+  it("ArrowRight from Flows moves to Pipeline Health", () => {
+    getTab("MetricsTabFlows").click();
+    getTab("MetricsTabFlows").focus();
+    $("#MetricsTabFlows").trigger($.Event("keydown", { key: "ArrowRight" }));
+
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(getTab("MetricsTabPipelineHealth").getAttribute("tabindex")).toBe(
+      "0",
+    );
+    expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
   it("Home key activates the first tab", () => {
     // Start with the last tab active so Home has work to do.
-    getTab("MetricsTabFlows").click();
-    expect(getTab("MetricsTabFlows").getAttribute("aria-selected")).toBe(
-      "true",
-    );
+    getTab("MetricsTabPipelineHealth").click();
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
 
-    getTab("MetricsTabFlows").focus();
-    $("#MetricsTabFlows").trigger($.Event("keydown", { key: "Home" }));
+    getTab("MetricsTabPipelineHealth").focus();
+    $("#MetricsTabPipelineHealth").trigger($.Event("keydown", { key: "Home" }));
 
     expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
     expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
@@ -215,17 +231,21 @@ describe("metrics-dashboard tablist a11y", () => {
     getTab("MetricsTabApi").focus();
     $("#MetricsTabApi").trigger($.Event("keydown", { key: "End" }));
 
-    expect(getTab("MetricsTabFlows").getAttribute("aria-selected")).toBe(
-      "true",
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(getTab("MetricsTabPipelineHealth").getAttribute("tabindex")).toBe(
+      "0",
     );
-    expect(getTab("MetricsTabFlows").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabFlows"));
+    expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
   it("ArrowRight on the last tab wraps to the first", () => {
-    getTab("MetricsTabFlows").click();
-    getTab("MetricsTabFlows").focus();
-    $("#MetricsTabFlows").trigger($.Event("keydown", { key: "ArrowRight" }));
+    getTab("MetricsTabPipelineHealth").click();
+    getTab("MetricsTabPipelineHealth").focus();
+    $("#MetricsTabPipelineHealth").trigger(
+      $.Event("keydown", { key: "ArrowRight" }),
+    );
 
     expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
     expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");

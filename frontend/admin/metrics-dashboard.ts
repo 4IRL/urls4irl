@@ -211,15 +211,17 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
 // Tablist navigation order also matches DOM order: API → UI → Domain.
 const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
 
-// All tabs in DOM order. Pipeline Health and Flows are tabs but not categories
+// All tabs in DOM order. Flows and Pipeline Health are tabs but not categories
 // — each has its own panel + fetch path, separate from the per-category
 // top-events / timeseries flow. Keeping them out of `CATEGORIES` avoids having
 // to add null-branches for the category-specific caches (`_topCache`, filters,
-// charts) every time a category iteration is needed.
+// charts) every time a category iteration is needed. Pipeline Health is always
+// the last tab; Flows precedes it, matching the DOM order in
+// `pages/admin_metrics.html`.
 const TAB_IDS: readonly MetricsTabId[] = [
   ...CATEGORIES,
-  "pipeline_health",
   "flows",
+  "pipeline_health",
 ];
 
 const PIPELINE_HEALTH_TAB_ID: string = "MetricsTabPipelineHealth";
