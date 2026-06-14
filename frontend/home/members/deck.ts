@@ -48,6 +48,7 @@ export function setMemberDeckOnUTubSelected(
   utubID: number,
 ): void {
   resetMemberDeck();
+  $("#displayMemberWrap").showClassFlex();
   const parent = $("#listMembers");
 
   if (isCurrentUserOwner) setupShowCreateMemberFormEventListeners(utubID);
@@ -89,8 +90,15 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#memberBtnCreate").hideClass();
   $("#memberSelfBtnDelete").hideClass();
 
-  // Subheader prompt hidden
+  // Hide the Owner/Members labels until a UTub is selected
+  $("#displayMemberWrap").hideClass();
+
+  // Collapse the subheader band so it takes no vertical space when empty
   $("#MemberDeckSubheader").text("");
+  $("#MemberDeckSubheader")
+    .closest(".titleElement")
+    .removeClass("height-2rem")
+    .hideClass();
 }
 
 export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
@@ -113,7 +121,7 @@ export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
   }
 
   // Subheader prompt shown
-  memberDeckSubheader.closest(".titleElement").show();
+  memberDeckSubheader.closest(".titleElement").removeHideClass();
 }
 
 on(

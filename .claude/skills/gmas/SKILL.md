@@ -21,15 +21,24 @@ Do NOT silently stash, reset, or force-checkout.
 
 ### 2. Refresh main
 
-Run as three separate Bash calls:
+Run as separate Bash calls, in this order:
 
 ```
-git checkout main      # dangerouslyDisableSandbox: true
-git pull origin main   # dangerouslyDisableSandbox: true
-git fetch -p           # in-sandbox (only writes refs)
+git fetch -p                            # in-sandbox — prunes + updates origin/main
+git diff --name-only HEAD origin/main   # in-sandbox — read-only; lists the working-tree delta
+git checkout main                       # in-sandbox by default; DDS only if protected-path hit (see below)
+git pull origin main                    # in-sandbox by default; DDS only if protected-path hit (see below)
 ```
 
-`git checkout` and `git pull` rewrite working-tree files, including `.claude/` paths the sandbox denies writes to (`Operation not permitted` on unlink). A partially-applied checkout/pull tears the working tree — HEAD moves to main while blocked files keep the old branch's content, which then surfaces as phantom "local changes" / "untracked files would be overwritten" errors on every subsequent git command. Run both **with `dangerouslyDisableSandbox: true`** so the tree swaps atomically. `git fetch -p` only writes refs, so it stays in-sandbox.
+**Why the diff gate.** The sandbox writes git internals (`.git/objects`, `.git/refs`) fine — `git fetch` and `git pull` of ordinary code changes run in-sandbox with no prompt. The sandbox only denies a narrow set of **working-tree paths**: `.claude/settings.json`, `.claude/settings.local.json`, `.claude/hooks/**`, `.claude/skills/**`, `.mcp.json` (plus `.git/config`). A checkout/pull that rewrites one of those partially fails and **tears the working tree** (HEAD moves but blocked files keep old content → phantom "local changes" on every later git command). `dangerouslyDisableSandbox: true` swaps the tree atomically, but it forces a per-call confirmation that can't be allowlisted — so apply it **only when actually needed**.
+
+**Decision rule** (after the `git diff --name-only HEAD origin/main`):
+- If any line matches `.claude/settings.json`, `.claude/settings.local.json`, `.claude/hooks/`, `.claude/skills/`, or `.mcp.json` → run **both** `git checkout main` and `git pull origin main` with `dangerouslyDisableSandbox: true` (the incoming update touches a sandbox-protected path; the one confirmation is warranted — a human should glance at a hooks/skills/settings change anyway).
+- Otherwise → run both **in-sandbox** (no DDS). `git checkout` is allowlisted; `git pull origin main` is allowlisted via `Bash(git pull origin main:*)`, so neither prompts.
+
+The `git diff HEAD origin/main` captures the full delta from the current branch to the target, covering both the checkout and the fast-forward pull in one check.
+
+**Fallback.** If an in-sandbox `git checkout`/`git pull` unexpectedly fails with `Operation not permitted` (a protected path the glob list missed), retry that single command with `dangerouslyDisableSandbox: true`, then continue.
 
 If `git pull` reports a non-fast-forward, merge conflict, or other error, surface it verbatim and stop. Do not attempt to resolve automatically.
 
@@ -78,5 +87,5 @@ One-line summary:
 
 - The `git cleanup` alias lives in `~/.gitconfig` and excludes `main` by design.
 - Never pipe `y` directly into `git cleanup` — always go through `AskUserQuestion`. The pipe is only for preview (`n`).
-- `git checkout main` and `git pull origin main` (Step 2) run with `dangerouslyDisableSandbox: true` because they rewrite `.claude/` working-tree files the sandbox blocks. `git branch -D` (Step 5) may print a `could not write config file .git/config: Operation not permitted` warning under sandbox — the branch is still deleted, so it's harmless; no DDS needed. All other steps run in-sandbox.
+- `git checkout main` and `git pull origin main` (Step 2) run **in-sandbox by default** — git internals (`.git/objects`, `.git/refs`) are sandbox-writable. They escalate to `dangerouslyDisableSandbox: true` **only** when the `git diff --name-only HEAD origin/main` check shows the incoming update modifies a sandbox-protected working-tree path (`.claude/settings*.json`, `.claude/hooks/**`, `.claude/skills/**`, `.mcp.json`), which would otherwise tear the tree. `git branch -D` (Step 5) may print a `could not write config file .git/config: Operation not permitted` warning under sandbox — the branch is still deleted, so it's harmless; no DDS needed. All other steps run in-sandbox.
 - Branches with unique commits not on main are force-deleted via `-D` — acceptable because the user has explicitly opted in per branch.

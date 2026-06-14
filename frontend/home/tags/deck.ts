@@ -64,7 +64,9 @@ export function setTagDeckOnUTubSelected(
 
   $("#utubTagBtnCreate").showClassNormal();
 
-  $("#TagDeck > .dynamic-subheader").addClass("height-2p5rem");
+  $("#TagDeck > .dynamic-subheader")
+    .addClass("height-2p5rem")
+    .removeHideClass();
 }
 
 export function resetTagDeck(): void {
@@ -114,6 +116,7 @@ export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
 
 export function setTagDeckSubheaderWhenNoUTubSelected(): void {
   $("#TagDeckSubheader").text("");
+  $("#TagDeck > .dynamic-subheader").hideClass();
 }
 
 export function updateCountOfTagFiltersApplied(selectedTagCount: number): void {

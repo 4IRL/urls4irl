@@ -1,4 +1,8 @@
-import { updateTagDeck } from "../deck.js";
+import {
+  setTagDeckOnUTubSelected,
+  setTagDeckSubheaderWhenNoUTubSelected,
+  updateTagDeck,
+} from "../deck.js";
 import { resetStore, setState } from "../../../store/app-store.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 
@@ -72,5 +76,45 @@ describe("updateTagDeck - applyDeckDiff config", () => {
     config.removeElement(7);
 
     expect(document.querySelector('[data-utub-tag-id="7"]')).toBeNull();
+  });
+});
+
+describe("Tag deck subheader visibility on UTub selection", () => {
+  const TAG_DECK_HTML = `
+    <div id="TagDeck">
+      <div class="titleElement dynamic-subheader hidden">
+        <h5 id="TagDeckSubheader"></h5>
+      </div>
+      <div id="listTags"></div>
+      <button id="utubTagBtnCreate" class="hidden"></button>
+      <button id="unselectAllTagFilters" class="hidden"></button>
+      <button id="utubTagBtnUpdateAllOpen" class="hidden"></button>
+    </div>
+  `;
+
+  beforeEach(() => {
+    resetStore();
+    document.body.innerHTML = TAG_DECK_HTML;
+  });
+
+  it("reveals the subheader when a UTub is selected", () => {
+    const subheader = window.jQuery("#TagDeck > .dynamic-subheader");
+    expect(subheader.hasClass("hidden")).toBe(true);
+
+    setTagDeckOnUTubSelected([], 42);
+
+    expect(subheader.hasClass("hidden")).toBe(false);
+    expect(subheader.hasClass("height-2p5rem")).toBe(true);
+  });
+
+  it("collapses the subheader and clears its text when no UTub is selected", () => {
+    const subheader = window.jQuery("#TagDeck > .dynamic-subheader");
+    subheader.removeClass("hidden");
+    window.jQuery("#TagDeckSubheader").text("2 of 5 tag filters applied");
+
+    setTagDeckSubheaderWhenNoUTubSelected();
+
+    expect(subheader.hasClass("hidden")).toBe(true);
+    expect(window.jQuery("#TagDeckSubheader").text()).toBe("");
   });
 });
