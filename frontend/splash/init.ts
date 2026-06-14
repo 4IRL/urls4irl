@@ -39,6 +39,8 @@ function isFormFieldName(key: string): key is FormFieldName {
 export function initSplash(): void {
   setToRegisterButton();
   setToLoginButton();
+  clearOpenFormOnAuthModalHide($("#LoginModal"));
+  clearOpenFormOnAuthModalHide($("#RegisterModal"));
   initLoginForm($("#LoginModal"));
   initRegisterForm($("#RegisterModal"));
   initForgotPasswordForm($("#ForgotPasswordModal"));
@@ -65,6 +67,18 @@ function setToLoginButton(): void {
   $(".to-login").offAndOn("click", function () {
     loginModalOpener();
     NAVBAR_TOGGLER.toggler?.hide();
+  });
+}
+
+// Submit and explicit cancel already call clearOpenForm(), but a Bootstrap
+// X-button/backdrop dismiss (data-bs-dismiss) does not. Without this, a dismiss
+// followed by page navigation leaves the open-form registry populated, so the
+// pagehide handler emits a spurious UI_AUTH_CANCEL{trigger:navigation}. Clearing
+// on hidden.bs.modal closes that false-positive. offAndOn (off-then-on) keeps the
+// binding idempotent across repeated shows/hides and re-inits of initSplash.
+export function clearOpenFormOnAuthModalHide($modal: JQuery): void {
+  $modal.offAndOn("hidden.bs.modal", () => {
+    clearOpenForm();
   });
 }
 
