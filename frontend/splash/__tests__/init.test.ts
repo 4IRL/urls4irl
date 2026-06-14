@@ -6,6 +6,7 @@ import {
   createMockModal,
 } from "../../__tests__/helpers/mock-jquery.js";
 import {
+  clearOpenFormOnAuthModalHide,
   createLogoutOnExit,
   switchModal,
   loginModalOpener,
@@ -18,6 +19,11 @@ import {
   handleUserHasAccountNotEmailValidated,
   emailValidationModalOpener,
 } from "../init.js";
+import {
+  clearOpenForm,
+  getOpenForm,
+  setOpenForm,
+} from "../../lib/modal-tracking.js";
 import { initEmailValidationForm } from "../email-validation-form.js";
 import {
   AUTH_FORM_SWITCH_TARGET,
@@ -294,6 +300,159 @@ describe("registerModalOpener", () => {
     });
     expect(emit).toHaveBeenCalledTimes(1);
     expect(mockToModal.show).toHaveBeenCalled();
+  });
+});
+
+describe("clearOpenFormOnAuthModalHide", () => {
+  beforeEach(() => {
+    document.body.innerHTML =
+      modalShell("LoginModal") + modalShell("RegisterModal");
+    clearOpenForm();
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    clearOpenForm();
+    vi.restoreAllMocks();
+  });
+
+  it("clears the open-form registry when the login modal fires hidden.bs.modal", () => {
+    clearOpenFormOnAuthModalHide($("#LoginModal"));
+    setOpenForm("login");
+    expect(getOpenForm()).toBe("login");
+
+    $("#LoginModal").trigger("hidden.bs.modal");
+
+    expect(getOpenForm()).toBeNull();
+  });
+
+  it("clears the open-form registry when the register modal fires hidden.bs.modal", () => {
+    clearOpenFormOnAuthModalHide($("#RegisterModal"));
+    setOpenForm("register");
+    expect(getOpenForm()).toBe("register");
+
+    $("#RegisterModal").trigger("hidden.bs.modal");
+
+    expect(getOpenForm()).toBeNull();
+  });
+
+  it("re-binding is idempotent — a single hidden.bs.modal clear, no stacked handlers", () => {
+    clearOpenFormOnAuthModalHide($("#LoginModal"));
+    clearOpenFormOnAuthModalHide($("#LoginModal"));
+    setOpenForm("login");
+
+    $("#LoginModal").trigger("hidden.bs.modal");
+    expect(getOpenForm()).toBeNull();
+
+    // A later open + dismiss still clears (persistent listener, not one-shot).
+    setOpenForm("login");
+    $("#LoginModal").trigger("hidden.bs.modal");
+    expect(getOpenForm()).toBeNull();
+  });
+});
+
+// End-to-end DD-3 guard: an X-button/backdrop dismiss of the login modal
+// (hidden.bs.modal) clears the open-form registry, so a subsequent page
+// navigation no longer emits a spurious UI_AUTH_CANCEL{trigger:navigation}.
+// Uses the REAL metrics-client pagehide handler (via vi.importActual) and the
+// real modal-tracking registry the dismiss listener writes to.
+describe("auth-modal dismiss suppresses spurious navigation cancel", () => {
+  let sendBeaconMock: Mock;
+
+  beforeEach(() => {
+    document.body.innerHTML = modalShell("LoginModal");
+    clearOpenForm();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: vi.fn().mockResolvedValue({ status: "Success", accepted: 1 }),
+      } as unknown as Response),
+    );
+    sendBeaconMock = vi.fn(() => true);
+    Object.defineProperty(navigator, "sendBeacon", {
+      value: sendBeaconMock,
+      configurable: true,
+      writable: true,
+    });
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    clearOpenForm();
+    delete (navigator as Partial<Navigator>).sendBeacon;
+    vi.restoreAllMocks();
+  });
+
+  it("dismissing the login modal then navigating emits NO UI_AUTH_CANCEL", async () => {
+    const { initMetricsClient, resetMetricsClient } = await vi.importActual<
+      typeof import("../../lib/metrics-client.js")
+    >("../../lib/metrics-client.js");
+
+    initMetricsClient();
+    try {
+      clearOpenFormOnAuthModalHide($("#LoginModal"));
+      // Simulate the open-form registry being set when the login modal opens.
+      setOpenForm("login");
+
+      // User dismisses via the Bootstrap X / backdrop — clears the registry.
+      $("#LoginModal").trigger("hidden.bs.modal");
+      expect(getOpenForm()).toBeNull();
+
+      // Then the user navigates away.
+      window.dispatchEvent(new Event("pagehide"));
+
+      // A beacon may still fire to flush the buffer, but it must NOT contain a
+      // navigation cancel for the (now-cleared) login form.
+      for (const call of sendBeaconMock.mock.calls) {
+        const blob = call[1] as Blob;
+        const text = await blob.text();
+        const events = JSON.parse(text).events as Array<{
+          event_name: string;
+        }>;
+        expect(
+          events.some((entry) => entry.event_name === UI_EVENTS.UI_AUTH_CANCEL),
+        ).toBe(false);
+      }
+    } finally {
+      resetMetricsClient();
+    }
+  });
+
+  it("WITHOUT the dismiss listener, navigating after open emits UI_AUTH_CANCEL", async () => {
+    const { initMetricsClient, resetMetricsClient } = await vi.importActual<
+      typeof import("../../lib/metrics-client.js")
+    >("../../lib/metrics-client.js");
+
+    initMetricsClient();
+    try {
+      // No dismiss-clear wiring: registry stays populated through navigation.
+      setOpenForm("login");
+      window.dispatchEvent(new Event("pagehide"));
+
+      const cancelEmitted = await (async () => {
+        for (const call of sendBeaconMock.mock.calls) {
+          const blob = call[1] as Blob;
+          const text = await blob.text();
+          const events = JSON.parse(text).events as Array<{
+            event_name: string;
+          }>;
+          if (
+            events.some(
+              (entry) => entry.event_name === UI_EVENTS.UI_AUTH_CANCEL,
+            )
+          ) {
+            return true;
+          }
+        }
+        return false;
+      })();
+
+      expect(cancelEmitted).toBe(true);
+    } finally {
+      resetMetricsClient();
+    }
   });
 });
 

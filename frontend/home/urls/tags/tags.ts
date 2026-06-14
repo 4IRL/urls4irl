@@ -3,6 +3,7 @@ import type { UtubTag } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
 import { deleteURLTag } from "./delete.js";
@@ -78,6 +79,7 @@ export function setFocusEventListenersOnCreateURLTagInput(
               form: HOME_FORM.TAG_CREATE,
               trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
+            clearOpenForm();
             createURLTag(urlTagInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
@@ -87,6 +89,7 @@ export function setFocusEventListenersOnCreateURLTagInput(
               form: HOME_FORM.TAG_CREATE,
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
+            clearOpenForm();
             hideAndResetCreateURLTagForm(urlCard);
             break;
           default:

@@ -66,16 +66,22 @@ export const DEVICE_TYPE = {
 
 export type DeviceType = (typeof DEVICE_TYPE)[keyof typeof DEVICE_TYPE];
 
+export const AUTH_CANCEL_FORM = {
+  LOGIN: "login",
+  REGISTER: "register",
+} as const;
+
+export const AUTH_CANCEL_TRIGGER = {
+  NAVIGATION: "navigation",
+} as const;
+
 export const AUTH_FORM_SWITCH_TARGET = {
   LOGIN: "login",
   REGISTER: "register",
   FORGOT_PASSWORD: "forgot_password",
 } as const;
 
-export const AUTH_MODAL_OPEN_FORM = {
-  LOGIN: "login",
-  REGISTER: "register",
-} as const;
+export const AUTH_MODAL_OPEN_FORM = AUTH_CANCEL_FORM;
 
 export const DECK_COLLAPSE_DECK = {
   MEMBERS: "members",
@@ -94,6 +100,7 @@ export const FORM_CANCEL_TRIGGER = {
   ESCAPE_KEY: "escape_key",
   CANCEL_BUTTON: "cancel_button",
   OUTSIDE_CLICK: "outside_click",
+  NAVIGATION: "navigation",
 } as const;
 
 export const FORM_SUBMIT_TRIGGER = {

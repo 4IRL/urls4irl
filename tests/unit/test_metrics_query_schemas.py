@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.metrics.events import EventCategory, EventName
+from backend.metrics.flows import _parse_flow_filter_condition
 from backend.schemas.metrics import (
     SummaryCategoryCount,
     SummaryResponseSchema,
@@ -583,3 +584,58 @@ def test_summary_response_schema_round_trip():
     assert response.previous_window_start == prev_start
     assert response.previous_window_end == prev_end
     assert len(response.by_category) == 2
+
+
+# ----------------------- _parse_flow_filter_condition ----------------------
+
+
+def test_parse_flow_filter_condition_well_formed_returns_tuple():
+    """A well-formed `dim:value` scalar parses into a `(dim, value)` tuple."""
+    assert _parse_flow_filter_condition("form:utub_create") == ("form", "utub_create")
+
+
+def test_parse_flow_filter_condition_value_may_contain_colons():
+    """Only the FIRST colon splits dim from value, so values may contain colons."""
+    assert _parse_flow_filter_condition("endpoint:urls:create") == (
+        "endpoint",
+        "urls:create",
+    )
+
+
+def test_parse_flow_filter_condition_passes_through_existing_tuple():
+    """An already-tuple input (in-code `FLOWS` entries) passes through unchanged."""
+    assert _parse_flow_filter_condition(("form", "login")) == ("form", "login")
+
+
+def test_parse_flow_filter_condition_rejects_entry_without_colon():
+    """A scalar lacking a colon raises `ValueError`."""
+    with pytest.raises(ValueError):
+        _parse_flow_filter_condition("nocolon")
+
+
+def test_parse_flow_filter_condition_rejects_empty_dim():
+    """A scalar with an empty dim (leading colon) raises `ValueError`."""
+    with pytest.raises(ValueError):
+        _parse_flow_filter_condition(":value")
+
+
+def test_parse_flow_filter_condition_accepts_empty_value():
+    """An empty value after the colon (`form:`) parses to `("form", "")`.
+
+    Empty values are allowed by design — only an empty dim (before the colon)
+    or a missing colon is rejected. The funnel never queries an empty value in
+    practice, but the parser stays permissive so a future filter on a sentinel
+    empty-string dim value does not require a change.
+    """
+    assert _parse_flow_filter_condition("form:") == ("form", "")
+
+
+def test_parse_flow_filter_condition_rejects_non_str_non_tuple():
+    """A scalar that is neither a `str` nor a `tuple` raises `ValueError`.
+
+    The `BeforeValidator` accepts only the colon-encoded `str` wire form or an
+    already-parsed `tuple` passthrough; any other type (here an `int`) is
+    rejected before Pydantic binds the `tuple[str, str]` field.
+    """
+    with pytest.raises(ValueError):
+        _parse_flow_filter_condition(42)

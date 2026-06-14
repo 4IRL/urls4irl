@@ -5,6 +5,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -55,6 +56,7 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
 
     function openDescriptionEdit(trigger: "pencil_icon" | "keyboard"): void {
       emit({ event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN, trigger });
+      setOpenForm(HOME_FORM.UTUB_DESC_EDIT);
       deselectAllURLs();
       updateUTubNameHideInput();
       updateUTubDescriptionShowInput(utubID);
@@ -80,6 +82,7 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
       form: HOME_FORM.UTUB_DESC_EDIT,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     updateUTubDescription(utubID);
   });
 
@@ -89,6 +92,7 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
       form: HOME_FORM.UTUB_DESC_EDIT,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     updateUTubDescriptionHideInput(utubID);
   });
 }
@@ -110,6 +114,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
                 form: HOME_FORM.UTUB_DESC_EDIT,
                 trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
               });
+              clearOpenForm();
               updateUTubDescription(utubID);
               break;
             case KEYS.ESCAPE:
@@ -119,6 +124,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
                 form: HOME_FORM.UTUB_DESC_EDIT,
                 trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
               });
+              clearOpenForm();
               updateUTubDescriptionHideInput(utubID);
               break;
             default:
@@ -154,6 +160,7 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
         form: HOME_FORM.UTUB_DESC_EDIT,
         trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
       });
+      clearOpenForm();
       // Hide UTub description update fields
       updateUTubDescriptionHideInput(utubID);
     },
@@ -175,6 +182,7 @@ export function showCreateDescriptionButtonAlways(utubID: number): void {
       event: UI_EVENTS.UI_UTUB_DESC_EDIT_OPEN,
       trigger: UTUB_DESC_EDIT_OPEN_TRIGGER.CREATE_BUTTON,
     });
+    setOpenForm(HOME_FORM.UTUB_DESC_EDIT);
     clickToCreateDesc
       .removeClass("opa-1 height-2rem")
       .addClass("opa-0 height-0 width-0");

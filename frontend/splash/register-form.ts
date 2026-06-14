@@ -2,6 +2,7 @@ import type { Schema, SuccessResponse } from "../types/api-helpers.d.ts";
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { clearOpenForm } from "../lib/modal-tracking.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
@@ -37,6 +38,7 @@ export function initRegisterForm($modal: JQuery): void {
 function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   event.preventDefault();
   emit({ event: UI_EVENTS.UI_REGISTER_SUBMIT });
+  clearOpenForm();
   $modal.find("#submit").attr("disabled", "disabled").attr("aria-busy", "true");
 
   const username: string = String($modal.find("#username").val() ?? "");

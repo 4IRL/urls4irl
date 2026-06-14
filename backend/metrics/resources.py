@@ -62,6 +62,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UTUB_DESC_UPDATED: Resource.UTUB,
     EventName.URL_ACCESSED: Resource.URL,
     EventName.URL_ADDED_TO_UTUB: Resource.URL,
+    EventName.URL_CREATE_REJECTED: Resource.URL,
     EventName.URL_REMOVED_FROM_UTUB: Resource.URL,
     EventName.URL_STRING_UPDATED: Resource.URL,
     EventName.URL_TITLE_UPDATED: Resource.URL,
@@ -76,6 +77,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.LOGIN_SUCCESS: Resource.AUTH,
     EventName.PASSWORD_RESET_COMPLETED: Resource.AUTH,
     EventName.PASSWORD_RESET_REQUESTED: Resource.AUTH,
+    EventName.REGISTER_REJECTED: Resource.AUTH,
     EventName.REGISTER_SUCCESS: Resource.AUTH,
     # UI — UTubs
     EventName.UI_UTUB_SELECT: Resource.UTUB,
@@ -132,6 +134,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_LOGIN_SUBMIT: Resource.AUTH,
     EventName.UI_REGISTER_SUBMIT: Resource.AUTH,
     EventName.UI_FORGOT_PASSWORD_SUBMIT: Resource.AUTH,
+    EventName.UI_AUTH_CANCEL: Resource.AUTH,
     EventName.UI_AUTH_FORM_SWITCH: Resource.AUTH,
     EventName.UI_AUTH_MODAL_OPEN: Resource.AUTH,
     EventName.UI_RESET_PASSWORD_SUBMIT: Resource.AUTH,

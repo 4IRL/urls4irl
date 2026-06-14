@@ -461,12 +461,14 @@
                 "member_removed",
                 "password_reset_completed",
                 "password_reset_requested",
+                "register_rejected",
                 "register_success",
                 "tag_applied",
                 "tag_deleted",
                 "tag_removed",
                 "url_accessed",
                 "url_added_to_utub",
+                "url_create_rejected",
                 "url_removed_from_utub",
                 "url_string_updated",
                 "url_title_updated",
@@ -523,6 +525,7 @@
                 "ui_login_submit",
                 "ui_register_submit",
                 "ui_forgot_password_submit",
+                "ui_auth_cancel",
                 "ui_auth_form_switch",
                 "ui_auth_modal_open",
                 "ui_reset_password_submit",
@@ -775,12 +778,14 @@
                 "member_removed",
                 "password_reset_completed",
                 "password_reset_requested",
+                "register_rejected",
                 "register_success",
                 "tag_applied",
                 "tag_deleted",
                 "tag_removed",
                 "url_accessed",
                 "url_added_to_utub",
+                "url_create_rejected",
                 "url_removed_from_utub",
                 "url_string_updated",
                 "url_title_updated",
@@ -837,6 +842,7 @@
                 "ui_login_submit",
                 "ui_register_submit",
                 "ui_forgot_password_submit",
+                "ui_auth_cancel",
                 "ui_auth_form_switch",
                 "ui_auth_modal_open",
                 "ui_reset_password_submit",
@@ -915,6 +921,109 @@
                     },
                     {
                       "$ref": "#/components/schemas/GroupedTimeseriesResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics/query/flow": {
+      "get": {
+        "operationId": "queryFlow",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Assemble one conversion funnel (UI intent \u2192 API request \u2192 domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns from the server-side FLOWS registry.",
+        "parameters": [
+          {
+            "name": "flow_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "enum": ["create_utub", "add_url_to_utub", "register", "login"],
+              "type": "string"
+            },
+            "description": "Which funnel to assemble (create_utub | add_url_to_utub | register | login)."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\n    A `steps` wrapper (not a bare list) is required because\n    `APIResponse.to_response()` spreads the payload via `**data_dict`, which\n    needs a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/FlowResponseSchema"
                     }
                   ]
                 }
@@ -2599,6 +2708,7 @@
               "ui_login_submit",
               "ui_register_submit",
               "ui_forgot_password_submit",
+              "ui_auth_cancel",
               "ui_auth_form_switch",
               "ui_auth_modal_open",
               "ui_reset_password_submit",
@@ -3053,6 +3163,90 @@
           "group_by",
           "buckets"
         ],
+        "type": "object"
+      },
+      "FlowBreakdownRow": {
+        "description": "One per-cause row of a flow step's drop-off breakdown.\n\n`pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so\ncause-pill widths are self-consistent regardless of the step's absolute\ncount. It is a `float` (never null): a breakdown with no rows collapses to\n`null` on the owning step (DD-6) before any row is constructed.",
+        "properties": {
+          "label": {
+            "description": "Raw dimension value for this cause (e.g. 'escape_key', 'invalid_url'); the renderer maps it to a human-readable label.",
+            "type": "string"
+          },
+          "count": {
+            "description": "Summed count for this cause in the window.",
+            "type": "integer"
+          },
+          "pct_of_step": {
+            "description": "Fraction of the breakdown total this cause represents (0.0-1.0); all rows in one breakdown sum to ~1.0.",
+            "type": "number"
+          }
+        },
+        "required": ["label", "count", "pct_of_step"],
+        "type": "object"
+      },
+      "FlowStepSchema": {
+        "description": "One step of an assembled funnel returned by `GET /api/metrics/query/flow`.",
+        "properties": {
+          "stream": {
+            "description": "Metric stream \u2014 drives renderer coloring/category.",
+            "enum": ["ui", "api", "domain"],
+            "type": "string"
+          },
+          "label": {
+            "description": "Display label for this step.",
+            "type": "string"
+          },
+          "event_name": {
+            "description": "The underlying event name counted for this step; for API steps this carries the step's display label instead (the Flask endpoint name is an internal routing identifier, not display-suitable).",
+            "type": "string"
+          },
+          "count": {
+            "description": "Summed count for this step in the window.",
+            "type": "integer"
+          },
+          "pct_of_top": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade)."
+          },
+          "breakdown": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FlowBreakdownRow"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade)."
+          }
+        },
+        "required": ["stream", "label", "event_name", "count"],
+        "type": "object"
+      },
+      "FlowResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/flow`.\n\nA `steps` wrapper (not a bare list) is required because\n`APIResponse.to_response()` spreads the payload via `**data_dict`, which\nneeds a `BaseModel`-derived schema; the wire payload is `{\"steps\": [...]}`.",
+        "properties": {
+          "steps": {
+            "description": "Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order.",
+            "items": {
+              "$ref": "#/components/schemas/FlowStepSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["steps"],
         "type": "object"
       },
       "RegisterRequest": {

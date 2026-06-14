@@ -110,6 +110,21 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="URL associated with a UTub (new or existing URL row)",
         category=EventCategory.DOMAIN,
     ),
+    EventName.URL_CREATE_REJECTED: EventRegistryEntry(
+        description=(
+            "URL-create attempt rejected on a service-level failure branch, "
+            "tagged with closed-set rejection reason"
+        ),
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "reason": (
+                "credentials_url",
+                "invalid_url",
+                "unexpected_error",
+                "url_already_in_utub",
+            ),
+        },
+    ),
     EventName.URL_REMOVED_FROM_UTUB: EventRegistryEntry(
         description="URL disassociated from a UTub",
         category=EventCategory.DOMAIN,
@@ -121,6 +136,16 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UTUB_TAG_CREATED: EventRegistryEntry(
         description=("New tag vocabulary added to a UTub (distinct from TAG_APPLIED)"),
         category=EventCategory.DOMAIN,
+    ),
+    EventName.REGISTER_REJECTED: EventRegistryEntry(
+        description=(
+            "Registration attempt rejected on a service-level guard, tagged "
+            "with closed-set rejection reason"
+        ),
+        category=EventCategory.DOMAIN,
+        dimensions={
+            "reason": ("email_taken", "username_taken", "unvalidated_email"),
+        },
     ),
     EventName.REGISTER_SUCCESS: EventRegistryEntry(
         description="New user account successfully registered",
@@ -343,7 +368,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Form cancelled/dismissed",
         category=EventCategory.UI,
         dimensions={
-            "trigger": ("escape_key", "cancel_button", "outside_click"),
+            "trigger": ("escape_key", "cancel_button", "outside_click", "navigation"),
             "form": (
                 "url_create",
                 "url_title_edit",
@@ -411,6 +436,17 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UI_FORGOT_PASSWORD_SUBMIT: EventRegistryEntry(
         description="Forgot password form submitted",
         category=EventCategory.UI,
+    ),
+    EventName.UI_AUTH_CANCEL: EventRegistryEntry(
+        description=(
+            "Auth form (login/register) abandoned via page navigation before "
+            "submit; tagged with which form was open and the cancel trigger"
+        ),
+        category=EventCategory.UI,
+        dimensions={
+            "form": ("login", "register"),
+            "trigger": ("navigation",),
+        },
     ),
     EventName.UI_AUTH_FORM_SWITCH: EventRegistryEntry(
         description="Auth form switched",

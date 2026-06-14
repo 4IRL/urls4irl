@@ -25,7 +25,12 @@ from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.models_for_test import valid_url_strings
-from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+    REJECTION_REASON_DIM_KEY,
+)
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
@@ -170,6 +175,188 @@ def test_add_url_to_utub_records_metric(
 
     assert add_url_response.status_code == 200
     assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 1
+
+
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_url_create_rejected_invalid_url(
+    mock_validate_url,
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub with metrics enabled
+    WHEN they POST a URL that fails validation (driven down the invalid-url branch)
+    THEN the request returns HTTP 400 AND exactly one URL_CREATE_REJECTED
+        counter key is written with reason="invalid_url", and no
+        URL_ADDED_TO_UTUB counter is written.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    valid_url_to_add = valid_url_strings[0]
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        utub_id_to_add_to = current_utub_member_of.id
+
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 0
+
+    mock_validate_url.side_effect = InvalidURLError
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: valid_url_to_add,
+            URL_FORM.URL_TITLE: f"This is {valid_url_to_add}",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 1
+    counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_CREATE_REJECTED
+    )
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "invalid_url"
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
+
+
+def test_url_create_rejected_credentials_url(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub with metrics enabled
+    WHEN they POST a URL with embedded credentials (user:pass@host)
+    THEN the request returns HTTP 400 AND exactly one URL_CREATE_REJECTED
+        counter key is written with reason="credentials_url", and no
+        URL_ADDED_TO_UTUB counter is written.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    credentials_url = "http://user:pass@example.com"
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        utub_id_to_add_to = current_utub_member_of.id
+
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 0
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: credentials_url,
+            URL_FORM.URL_TITLE: "Credentials URL",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 1
+    counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_CREATE_REJECTED
+    )
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "credentials_url"
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
+
+
+@mock.patch("backend.extensions.notifications.notifications.threading.Thread")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_url_create_rejected_unexpected_error(
+    mock_validate_url,
+    mock_thread,
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub with metrics enabled
+    WHEN URL validation raises an unexpected exception
+    THEN the request returns HTTP 400 AND exactly one URL_CREATE_REJECTED
+        counter key is written with reason="unexpected_error", and no
+        URL_ADDED_TO_UTUB counter is written.
+    """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
+    client, csrf_token, _, app = login_first_user_without_register
+    valid_url_to_add = valid_url_strings[0]
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        utub_id_to_add_to = current_utub_member_of.id
+
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 0
+
+    mock_validate_url.side_effect = Exception("boom")
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: valid_url_to_add,
+            URL_FORM.URL_TITLE: f"This is {valid_url_to_add}",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 1
+    counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_CREATE_REJECTED
+    )
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "unexpected_error"
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
+
+
+def test_url_create_rejected_url_already_in_utub(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub with metrics enabled and a URL already
+        present in that UTub
+    WHEN they POST the same URL into the same UTub again
+    THEN the request returns HTTP 409 AND exactly one URL_CREATE_REJECTED
+        counter key is written with reason="url_already_in_utub".
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        utub_id_to_add_to = current_utub_member_of.id
+
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 0
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: f"This is {url_string_to_add}",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 409
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 1
+    counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_CREATE_REJECTED
+    )
+    assert (
+        parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "url_already_in_utub"
+    )
 
 
 def test_add_valid_url_as_utub_creator(

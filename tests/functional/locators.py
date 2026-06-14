@@ -351,6 +351,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     TAB_UI_BUTTON = "#MetricsTabUi"
     TAB_DOMAIN_BUTTON = "#MetricsTabDomain"
     TAB_PIPELINE_HEALTH_BUTTON = "#MetricsTabPipelineHealth"
+    TAB_FLOWS_BUTTON = "#MetricsTabFlows"
 
     # Per-section table IDs
     TOP_TABLE_API = "#MetricsTopTableApi"
@@ -407,3 +408,11 @@ class MetricsDashboardLocators(GenericPageLocator):
         "#MetricsPipelineHealthChart .MetricsPipelineHealthBar--beacon-mobile"
     )
     PIPELINE_HEALTH_EMPTY_STATE = "#MetricsPipelineHealthChart .MetricsEmptyState"
+
+    # Flows tab (conversion funnels)
+    FLOWS_PANEL = "#MetricsPanelFlows"
+    FLOWS_GRID = "#MetricsFlowGrid"
+    FLOWS_CARD = "#MetricsFlowGrid .flow-card"
+    FLOWS_FUNNEL_STEP = "#MetricsFlowGrid .flow-card .funnel-step"
+    FLOWS_CAUSE_PILL = "#MetricsFlowGrid .flow-card .cause-pill"
+    FLOWS_CARD_EMPTY = "#MetricsFlowGrid .flow-card .flow-card-empty"

@@ -6,6 +6,7 @@ import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { highlightInput } from "../btns-forms.js";
 import {
@@ -56,6 +57,7 @@ function createNewUTubEventListeners(): void {
       form: HOME_FORM.UTUB_CREATE,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
   });
 
@@ -65,6 +67,7 @@ function createNewUTubEventListeners(): void {
       form: HOME_FORM.UTUB_CREATE,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     createUTubHideInput();
   });
 
@@ -119,6 +122,7 @@ function handleOnFocusEventListenersForCreateUTub(
         form: HOME_FORM.UTUB_CREATE,
         trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
       });
+      clearOpenForm();
       checkSameNameUTubOnCreate(getInputValue("#utubNameCreate"));
       break;
     case KEYS.ESCAPE:
@@ -128,6 +132,7 @@ function handleOnFocusEventListenersForCreateUTub(
         form: HOME_FORM.UTUB_CREATE,
         trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
       });
+      clearOpenForm();
       $("#utubNameCreate").trigger("blur");
       $("#utubDescriptionCreate").trigger("blur");
       createUTubHideInput();
@@ -180,6 +185,7 @@ function sameUTubNameOnNewUTubWarningShowModal(): void {
 // Shows new UTub input fields
 function createUTubShowInput(): void {
   emit({ event: UI_EVENTS.UI_UTUB_CREATE_OPEN });
+  setOpenForm(HOME_FORM.UTUB_CREATE);
   $("#createUTubWrap").showClassFlex();
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");

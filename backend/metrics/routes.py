@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Literal
 
 from flask import Blueprint, request
@@ -17,12 +18,17 @@ from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
+from backend.metrics.flows import FLOWS, FlowId, FlowStep
+from backend.metrics.query_service import grouped_count_by, grouped_count_scalar
 from backend.metrics.resources import Resource
 from backend.schemas.errors import (
     ErrorResponse,
     build_field_error_response,
 )
 from backend.schemas.metrics import (
+    FlowBreakdownRow,
+    FlowResponseSchema,
+    FlowStepSchema,
     GroupedTimeseriesResponseSchema,
     MetricsIngestResponseSchema,
     SummaryResponseSchema,
@@ -30,6 +36,7 @@ from backend.schemas.metrics import (
     TopEventsResponseSchema,
 )
 from backend.schemas.requests.metrics import (
+    FlowQuerySchema,
     GroupedTimeseriesQuerySchema,
     MetricsIngestRequest,
     SummaryQuerySchema,
@@ -402,4 +409,143 @@ def query_grouped_timeseries() -> FlaskResponse:
     # `window` value back into the envelope so the response reflects the
     # client's request shape.
     response_schema = response_schema.model_copy(update={"window": parsed.window})
+    return APIResponse(data=response_schema, status_code=200).to_response()
+
+
+def _count_flow_step(
+    step: FlowStep, window_start: datetime, window_end: datetime
+) -> int:
+    """Compute the scalar count for one funnel step over the window.
+
+    UI/DOMAIN steps count `step.event_name`; API steps match `API_HIT`'s flat
+    `endpoint`/`method` columns (plus any per-step filter). Both call
+    `grouped_count_scalar`, which returns a scalar `int`.
+    """
+    if step.event_name is not None:
+        return grouped_count_scalar(
+            event_name=step.event_name,
+            window_start=window_start,
+            window_end=window_end,
+            dim_filter=step.dim_filter,
+        )
+    api_filter: list[tuple[str, str]] = [
+        ("endpoint", step.api_endpoint or ""),
+        ("method", step.api_method or ""),
+    ] + (step.dim_filter or [])
+    return grouped_count_scalar(
+        event_name=EventName.API_HIT,
+        window_start=window_start,
+        window_end=window_end,
+        dim_filter=api_filter,
+    )
+
+
+def _build_step_breakdown(
+    step: FlowStep, window_start: datetime, window_end: datetime
+) -> list[FlowBreakdownRow] | None:
+    """Build a step's per-cause breakdown rows, or `None` when empty (DD-6).
+
+    Returns `None` both when the step has no `drop_breakdown` configured and
+    when the breakdown event has no rows in the window, so the renderer can
+    skip the per-cause pill block uniformly.
+    """
+    if step.drop_breakdown is None:
+        return None
+    raw_rows = grouped_count_by(
+        event_name=step.drop_breakdown.event_name,
+        window_start=window_start,
+        window_end=window_end,
+        dim_filter=step.drop_breakdown.dim_filter,
+        group_by=step.drop_breakdown.group_by,
+    )
+    if not raw_rows:
+        return None
+    breakdown_total = sum(count for _, count in raw_rows)
+    return [
+        FlowBreakdownRow(
+            label=group_value,
+            count=count,
+            pct_of_step=0.0 if breakdown_total == 0 else count / breakdown_total,
+        )
+        for group_value, count in raw_rows
+    ]
+
+
+@metrics.route("/api/metrics/query/flow", methods=["GET"])
+@admin_required
+@api_route(
+    query_schema=FlowQuerySchema,
+    response_schema=FlowResponseSchema,
+    ajax_required=True,
+    tags=[OPEN_API.METRICS],
+    description=(
+        "Assemble one conversion funnel (UI intent → API request → domain "
+        "outcome) for an admin time window, fanning out per-step counts plus "
+        "per-cause drop-off breakdowns from the server-side FLOWS registry."
+    ),
+    status_codes={
+        200: FlowResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def query_flow() -> FlaskResponse:
+    # No `multi_value_keys` here: `FlowQuerySchema` carries only `flow_id` +
+    # window. Per-step `filter`/`group_by` slicing is configured server-side in
+    # the FLOWS registry, never sent by the caller, so promoting a `filter`
+    # query key would inject an empty list that `extra="forbid"` rejects.
+    parsed = _parse_query_args(FlowQuerySchema)
+    if not isinstance(parsed, BaseModel):
+        return parsed
+
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_WINDOW,
+            errors={"window": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    flow = FLOWS[FlowId(parsed.flow_id)]
+
+    try:
+        step_counts = [
+            _count_flow_step(step, window_start, window_end) for step in flow.steps
+        ]
+        step_breakdowns = [
+            _build_step_breakdown(step, window_start, window_end) for step in flow.steps
+        ]
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_QUERY,
+            errors={"filter": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    top_count = step_counts[0]
+    response_steps: list[FlowStepSchema] = []
+    for step, count, breakdown in zip(flow.steps, step_counts, step_breakdowns):
+        pct_of_top = None if top_count == 0 else min(count, top_count) / top_count
+        event_name = step.label if step.event_name is None else step.event_name.value
+        response_steps.append(
+            FlowStepSchema(
+                stream=step.stream,
+                label=step.label,
+                event_name=event_name,
+                count=count,
+                pct_of_top=pct_of_top,
+                breakdown=breakdown,
+            )
+        )
+
+    response_schema = FlowResponseSchema(steps=response_steps)
     return APIResponse(data=response_schema, status_code=200).to_response()

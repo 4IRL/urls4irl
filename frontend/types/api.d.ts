@@ -140,6 +140,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metrics/query/flow": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Assemble one conversion funnel (UI intent → API request → domain outcome) for an admin time window, fanning out per-step counts plus per-cause drop-off breakdowns from the server-side FLOWS registry. */
+    get: operations["queryFlow"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -589,6 +606,7 @@ export interface components {
         | "ui_login_submit"
         | "ui_register_submit"
         | "ui_forgot_password_submit"
+        | "ui_auth_cancel"
         | "ui_auth_form_switch"
         | "ui_auth_modal_open"
         | "ui_reset_password_submit"
@@ -825,6 +843,57 @@ export interface components {
       group_by: string[];
       /** @description Per-(bucket × dim tuple) rows, ordered chronologically and then alphabetically by dim values for deterministic output. NOT zero-filled — missing combinations are absent rather than zero-valued. */
       buckets: components["schemas"]["GroupedTimeseriesBucket"][];
+    };
+    /**
+     * @description One per-cause row of a flow step's drop-off breakdown.
+     *
+     *     `pct_of_step` normalizes WITHIN the breakdown (all rows sum to ~1.0) so
+     *     cause-pill widths are self-consistent regardless of the step's absolute
+     *     count. It is a `float` (never null): a breakdown with no rows collapses to
+     *     `null` on the owning step (DD-6) before any row is constructed.
+     */
+    FlowBreakdownRow: {
+      /** @description Raw dimension value for this cause (e.g. 'escape_key', 'invalid_url'); the renderer maps it to a human-readable label. */
+      label: string;
+      /** @description Summed count for this cause in the window. */
+      count: number;
+      /** @description Fraction of the breakdown total this cause represents (0.0-1.0); all rows in one breakdown sum to ~1.0. */
+      pct_of_step: number;
+    };
+    /** @description One step of an assembled funnel returned by `GET /api/metrics/query/flow`. */
+    FlowStepSchema: {
+      /**
+       * @description Metric stream — drives renderer coloring/category.
+       * @enum {string}
+       */
+      stream: "ui" | "api" | "domain";
+      /** @description Display label for this step. */
+      label: string;
+      /** @description The underlying event name counted for this step; for API steps this carries the step's display label instead (the Flask endpoint name is an internal routing identifier, not display-suitable). */
+      event_name: string;
+      /** @description Summed count for this step in the window. */
+      count: number;
+      /**
+       * @description This step's count as a fraction of the funnel-top (steps[0]) count, capped at 1.0. Null when the top count is zero (division-by-zero guard, DD-6 graceful-degrade).
+       * @default null
+       */
+      pct_of_top: number | null;
+      /**
+       * @description Per-cause drop-off rows for the transition INTO this step; null when the step has no configured breakdown or the breakdown event has no rows in the window (DD-6 graceful-degrade).
+       * @default null
+       */
+      breakdown: components["schemas"]["FlowBreakdownRow"][] | null;
+    };
+    /**
+     * @description Envelope returned by `GET /api/metrics/query/flow`.
+     *
+     *     A `steps` wrapper (not a bare list) is required because
+     *     `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+     *     needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+     */
+    FlowResponseSchema: {
+      /** @description Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order. */
+      steps: components["schemas"]["FlowStepSchema"][];
     };
     RegisterRequest: {
       /**
@@ -1495,12 +1564,14 @@ export interface operations {
           | "member_removed"
           | "password_reset_completed"
           | "password_reset_requested"
+          | "register_rejected"
           | "register_success"
           | "tag_applied"
           | "tag_deleted"
           | "tag_removed"
           | "url_accessed"
           | "url_added_to_utub"
+          | "url_create_rejected"
           | "url_removed_from_utub"
           | "url_string_updated"
           | "url_title_updated"
@@ -1557,6 +1628,7 @@ export interface operations {
           | "ui_login_submit"
           | "ui_register_submit"
           | "ui_forgot_password_submit"
+          | "ui_auth_cancel"
           | "ui_auth_form_switch"
           | "ui_auth_modal_open"
           | "ui_reset_password_submit"
@@ -1693,12 +1765,14 @@ export interface operations {
           | "member_removed"
           | "password_reset_completed"
           | "password_reset_requested"
+          | "register_rejected"
           | "register_success"
           | "tag_applied"
           | "tag_deleted"
           | "tag_removed"
           | "url_accessed"
           | "url_added_to_utub"
+          | "url_create_rejected"
           | "url_removed_from_utub"
           | "url_string_updated"
           | "url_title_updated"
@@ -1755,6 +1829,7 @@ export interface operations {
           | "ui_login_submit"
           | "ui_register_submit"
           | "ui_forgot_password_submit"
+          | "ui_auth_cancel"
           | "ui_auth_form_switch"
           | "ui_auth_modal_open"
           | "ui_reset_password_submit"
@@ -1794,6 +1869,69 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["GroupedTimeseriesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryFlow: {
+    parameters: {
+      query: {
+        /** @description Which funnel to assemble (create_utub | add_url_to_utub | register | login). */
+        flow_id: "create_utub" | "add_url_to_utub" | "register" | "login";
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Envelope returned by `GET /api/metrics/query/flow`.
+       *
+       *         A `steps` wrapper (not a bare list) is required because
+       *         `APIResponse.to_response()` spreads the payload via `**data_dict`, which
+       *         needs a `BaseModel`-derived schema; the wire payload is `{"steps": [...]}`.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["FlowResponseSchema"];
         };
       };
       /** @description Bad request */

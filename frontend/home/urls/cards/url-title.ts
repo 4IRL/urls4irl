@@ -2,6 +2,7 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ICON_SIZE_LG, KEYS, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   updateURLTitle,
@@ -141,6 +142,7 @@ function createUpdateURLTitleInput(
               form: HOME_FORM.URL_TITLE_EDIT,
               trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
+            clearOpenForm();
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
@@ -149,6 +151,7 @@ function createUpdateURLTitleInput(
               form: HOME_FORM.URL_TITLE_EDIT,
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
+            clearOpenForm();
             hideAndResetUpdateURLTitleForm(urlCard);
             break;
           default:
@@ -173,6 +176,7 @@ function createUpdateURLTitleInput(
       form: HOME_FORM.URL_TITLE_EDIT,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     updateURLTitle(urlTitleTextInput, urlCard, utubID);
   });
 
@@ -187,6 +191,7 @@ function createUpdateURLTitleInput(
       form: HOME_FORM.URL_TITLE_EDIT,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     hideAndResetUpdateURLTitleForm(urlCard);
   });
 

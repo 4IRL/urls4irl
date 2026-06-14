@@ -16,17 +16,21 @@ const {
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
   fetchGroupedTimeseriesSpy,
+  fetchFlowSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
+  renderFlowGridSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
+  fetchFlowSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
+  renderFlowGridSpy: vi.fn(),
 }));
 
 vi.mock("../metrics-query-client.js", () => ({
@@ -34,6 +38,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
+  fetchFlow: fetchFlowSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -48,6 +53,10 @@ vi.mock("../render-timeseries-chart.js", () => ({
   renderTimeseriesChart: renderTimeseriesChartSpy,
 }));
 
+vi.mock("../flow-card.js", () => ({
+  renderFlowGrid: renderFlowGridSpy,
+}));
+
 import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import { $ } from "../../lib/globals.js";
 import {
@@ -59,12 +68,14 @@ type TabId =
   | "MetricsTabApi"
   | "MetricsTabUi"
   | "MetricsTabDomain"
-  | "MetricsTabPipelineHealth";
+  | "MetricsTabPipelineHealth"
+  | "MetricsTabFlows";
 type PanelId =
   | "MetricsPanelApi"
   | "MetricsPanelUi"
   | "MetricsPanelDomain"
-  | "MetricsPanelPipelineHealth";
+  | "MetricsPanelPipelineHealth"
+  | "MetricsPanelFlows";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
@@ -77,6 +88,7 @@ const DASHBOARD_HTML = `
       <button id="MetricsTabApi"            role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"            tabindex="0"  data-tab="api"></button>
       <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui"></button>
       <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain"></button>
+      <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows"></button>
       <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
@@ -91,6 +103,11 @@ const DASHBOARD_HTML = `
     <section id="MetricsPanelDomain" role="tabpanel" tabindex="0" hidden>
       <select id="MetricsTimeseriesEventDomain"></select>
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
+    </section>
+    <section id="MetricsPanelFlows" role="tabpanel" tabindex="0" hidden>
+      <span class="flows-loading-spinner" aria-hidden="true"></span>
+      <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
     <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
@@ -117,9 +134,11 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchFlowSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
+    renderFlowGridSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
@@ -127,6 +146,7 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchGroupedTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );
+    fetchFlowSpy.mockImplementation(() => createMockJqXHRChainable());
 
     vi.useFakeTimers();
     initMetricsDashboard();
@@ -178,6 +198,20 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
+  it("ArrowRight from Flows moves to Pipeline Health", () => {
+    getTab("MetricsTabFlows").click();
+    getTab("MetricsTabFlows").focus();
+    $("#MetricsTabFlows").trigger($.Event("keydown", { key: "ArrowRight" }));
+
+    expect(
+      getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(getTab("MetricsTabPipelineHealth").getAttribute("tabindex")).toBe(
+      "0",
+    );
+    expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
+  });
+
   it("Home key activates the first tab", () => {
     // Start with the last tab active so Home has work to do.
     getTab("MetricsTabPipelineHealth").click();
@@ -206,6 +240,18 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
+  it("ArrowRight on the last tab wraps to the first", () => {
+    getTab("MetricsTabPipelineHealth").click();
+    getTab("MetricsTabPipelineHealth").focus();
+    $("#MetricsTabPipelineHealth").trigger(
+      $.Event("keydown", { key: "ArrowRight" }),
+    );
+
+    expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
+    expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(getTab("MetricsTabApi"));
+  });
+
   it("hidden attribute toggles on tabpanels in sync with selection", () => {
     expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(false);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(true);
@@ -213,6 +259,7 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
       true,
     );
+    expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(true);
 
     getTab("MetricsTabUi").click();
 
@@ -222,15 +269,26 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
       true,
     );
+    expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(true);
 
-    getTab("MetricsTabPipelineHealth").click();
+    getTab("MetricsTabFlows").click();
 
     expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelDomain").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
-      false,
+      true,
     );
+    expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(false);
+  });
+
+  it("activating the Flows tab fires the per-flow fan-out on first load", () => {
+    expect(fetchFlowSpy).not.toHaveBeenCalled();
+
+    getTab("MetricsTabFlows").click();
+
+    // One XHR per FlowId (create_utub, add_url_to_utub, register, login).
+    expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
   });
 
   it("changing the per-panel select fires fetchTimeseries with the chosen event", () => {

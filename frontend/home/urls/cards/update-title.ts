@@ -5,7 +5,9 @@ import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
+import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
+import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import {
   setTimeoutAndShowURLCardLoadingIcon,
@@ -39,6 +41,7 @@ export function showUpdateURLTitleForm(
   urlCard: JQuery,
 ): void {
   emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
+  setOpenForm(HOME_FORM.URL_TITLE_EDIT);
   urlTitleAndShowUpdateIconWrap.hideClass();
   const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
     ".updateUrlTitleWrap",

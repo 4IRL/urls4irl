@@ -13,6 +13,7 @@
 
 import type { SuccessResponse } from "../types/api-helpers.d.ts";
 import type { DeviceType } from "../types/metrics-dim-values.js";
+import type { FlowId } from "../types/metrics-flows.js";
 import type { ResourceName } from "../types/metrics-resources.js";
 
 import { ajaxCall } from "../lib/ajax.js";
@@ -30,6 +31,7 @@ const TOP_ENDPOINT = "/api/metrics/query/top";
 const TIMESERIES_ENDPOINT = "/api/metrics/query/timeseries";
 const GROUPED_TIMESERIES_ENDPOINT = "/api/metrics/query/grouped-timeseries";
 const SUMMARY_ENDPOINT = "/api/metrics/query/summary";
+const FLOW_ENDPOINT = "/api/metrics/query/flow";
 
 /**
  * Fetch the top-N events for a window, optionally scoped to a single category.
@@ -179,5 +181,31 @@ export function fetchSummary({
   const url = `${SUMMARY_ENDPOINT}?${queryString}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"querySummary">
+  >;
+}
+
+/**
+ * Fetch one assembled conversion funnel for a window. The server loops over the
+ * flow's `FlowStep` list and fans out per-step `grouped_count_scalar` /
+ * `grouped_count_by` calls, so the
+ * client only needs the flow id + window.
+ *
+ * Example: `fetchFlow({ flowId: "add_url_to_utub", window: "day" })`
+ * issues `GET /api/metrics/query/flow?flow_id=add_url_to_utub&window=day`.
+ */
+export function fetchFlow({
+  flowId,
+  window,
+}: {
+  flowId: FlowId;
+  window: string;
+}): JQuery.jqXHR<SuccessResponse<"queryFlow">> {
+  const queryString = new URLSearchParams({
+    flow_id: flowId,
+    window,
+  }).toString();
+  const url = `${FLOW_ENDPOINT}?${queryString}`;
+  return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"queryFlow">
   >;
 }

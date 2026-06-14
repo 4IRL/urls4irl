@@ -2,8 +2,10 @@ import type { Schema } from "../types/api-helpers.d.ts";
 import type { UIEventDimensions } from "../types/metrics-dimensions.d.ts";
 import type { UIEventName } from "../types/metrics-events.js";
 
+import { UI_EVENTS } from "../types/metrics-events.js";
 import { APP_CONFIG } from "./config.js";
 import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
+import { clearOpenForm, getOpenForm } from "./modal-tracking.js";
 
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
 type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
@@ -247,6 +249,25 @@ export function initMetricsClient(): void {
     }
   };
   _onPageHide = () => {
+    // A form left open at navigation time is an abandoned form. Emit a
+    // navigation cancel for it (into the buffer) before the beacon flush so
+    // the funnel's "unknown" residual shrinks. Auth forms (login/register)
+    // carry their own event with a `form` dim; all other forms use the
+    // generic UI_FORM_CANCEL.
+    const openFormId = getOpenForm();
+    if (openFormId === "login" || openFormId === "register") {
+      emit({
+        event: UI_EVENTS.UI_AUTH_CANCEL,
+        form: openFormId,
+        trigger: "navigation" as const,
+      });
+    } else if (openFormId !== null) {
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: openFormId,
+        trigger: "navigation" as const,
+      });
+    }
     flushBeacon();
   };
   document.addEventListener("visibilitychange", _onVisibilityChange);
@@ -254,6 +275,7 @@ export function initMetricsClient(): void {
 }
 
 export function resetMetricsClient(): void {
+  clearOpenForm();
   _buffer.length = 0;
   _dedupe.clear();
   _clearInFlight();

@@ -176,6 +176,40 @@ def wait_then_get_elements(
         return []
 
 
+def wait_then_get_at_least_n_elements(
+    browser: WebDriver, css_selector: str, minimum_count: int, time: float = 2
+) -> list[WebElement]:
+    """
+    Waits until at least ``minimum_count`` elements matching the selector are
+    present in the DOM, then returns every matching element.
+
+    Use this instead of ``wait_then_get_elements`` when a known number of
+    elements fill in asynchronously (e.g. one card per independent XHR). The
+    underlying ``visibility_of_all_elements_located`` wait used by
+    ``wait_then_get_elements`` resolves as soon as a single element is visible,
+    so it can snapshot a partially-rendered grid; this helper polls the live
+    count so the sample is only taken once the expected number has settled.
+
+    Args:
+        browser: WebDriver open to U4I
+        css_selector: A target CSS selector string
+        minimum_count: The minimum number of matching elements to wait for
+        time: (Optional) Time to wait, default 2s
+
+    Returns:
+        List of WebElements matching the selector (empty list on timeout)
+    """
+
+    try:
+        WebDriverWait(browser, time).until(
+            lambda driver: len(driver.find_elements(By.CSS_SELECTOR, css_selector))
+            >= minimum_count
+        )
+        return browser.find_elements(By.CSS_SELECTOR, css_selector)
+    except TimeoutException:
+        return browser.find_elements(By.CSS_SELECTOR, css_selector)
+
+
 def wait_then_click_element(
     browser: WebDriver, css_selector: str, time: float = 2
 ) -> WebElement | None:

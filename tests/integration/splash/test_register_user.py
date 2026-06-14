@@ -1,23 +1,31 @@
 from copy import deepcopy
-from flask import url_for, request
+
+from flask import Flask, request, url_for
 from flask_login import current_user
 import pytest
 from werkzeug.security import check_password_hash
 
+from backend import db
 from backend.metrics.events import EventName
+from backend.models.email_validations import Email_Validations
+from backend.models.users import Users
 from backend.schemas.users import RegisterResponseSchema
 from backend.splash.constants import RegisterErrorCodes
-from backend.utils.strings.html_identifiers import IDENTIFIERS
-from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token
-from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
-from tests.integration.splash.conftest import register_json
-from tests.integration.system.metrics_helpers import count_counter_keys
-from tests.integration.utils import assert_response_conforms_to_schema
 from backend.utils.strings.user_strs import USER_FAILURE
+from tests.integration.splash.conftest import register_json
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+    REJECTION_REASON_DIM_KEY,
+)
+from tests.integration.utils import assert_response_conforms_to_schema
+from tests.models_for_test import valid_user_1, valid_user_2, valid_user_3
+from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.splash
 
@@ -101,6 +109,233 @@ def test_register_new_user_records_metric(
 
     assert response.status_code == 201
     assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 1
+
+
+def _create_user(
+    app: Flask, username: str, email: str, password: str, *, validated: bool
+) -> None:
+    """Persist a single Users row with the requested validation state.
+
+    A validated user models a fully-confirmed account (its username/email
+    cause taken-conflict rejections); an unvalidated user gets an attached
+    Email_Validations row and models the email-not-validated rejection path.
+    """
+    with app.app_context():
+        new_user = Users(
+            username=username,
+            email=email.lower(),
+            plaintext_password=password,
+        )
+        if validated:
+            new_user.email_validated = True
+        else:
+            new_user.email_confirm = Email_Validations(
+                validation_token=new_user.get_email_validation_token()
+            )
+        db.session.add(new_user)
+        db.session.commit()
+
+
+def test_register_rejected_email_taken(
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+):
+    """
+    GIVEN a validated user whose email is already taken (username is free)
+    WHEN a new user POSTs to "/register" with that email and a fresh username
+    THEN the request returns HTTP 400 AND exactly one REGISTER_REJECTED counter
+        key is written with reason="email_taken".
+    """
+    _create_user(
+        app,
+        username=valid_user_2[REGISTER_FORM.USERNAME],
+        email=valid_user_1[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=True,
+    )
+    client, csrf_token_string = load_register_page
+
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 0
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.USERNAME] = valid_user_3[REGISTER_FORM.USERNAME]
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "email_taken"
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+
+
+def test_register_rejected_username_taken(
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+):
+    """
+    GIVEN a validated user whose username is already taken (email is free)
+    WHEN a new user POSTs to "/register" with that username and a fresh email
+    THEN the request returns HTTP 400 AND exactly one REGISTER_REJECTED counter
+        key is written with reason="username_taken".
+    """
+    _create_user(
+        app,
+        username=valid_user_1[REGISTER_FORM.USERNAME],
+        email=valid_user_2[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=True,
+    )
+    client, csrf_token_string = load_register_page
+
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 0
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.EMAIL] = valid_user_3[REGISTER_FORM.EMAIL]
+    new_user[REGISTER_FORM.CONFIRM_EMAIL] = valid_user_3[REGISTER_FORM.CONFIRM_EMAIL]
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "username_taken"
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+
+
+def test_register_rejected_email_and_username_both_taken_records_two_events(
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+):
+    """
+    GIVEN a validated user whose email is taken AND a different validated user
+        whose username is taken
+    WHEN a new user POSTs to "/register" with both the taken email and the taken
+        username
+    THEN the request returns HTTP 400 AND two REGISTER_REJECTED counter keys are
+        written — one with reason="email_taken" and one with
+        reason="username_taken".
+    """
+    _create_user(
+        app,
+        username=valid_user_2[REGISTER_FORM.USERNAME],
+        email=valid_user_1[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=True,
+    )
+    _create_user(
+        app,
+        username=valid_user_1[REGISTER_FORM.USERNAME],
+        email=valid_user_3[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=True,
+    )
+    client, csrf_token_string = load_register_page
+
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 0
+
+    new_user = deepcopy(valid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 2
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
+    recorded_reasons = {
+        parse_dims(counter_key)[REJECTION_REASON_DIM_KEY]
+        for counter_key in counter_keys
+    }
+    assert recorded_reasons == {"email_taken", "username_taken"}
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+
+
+def test_register_rejected_unvalidated_email(
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+):
+    """
+    GIVEN an unvalidated-email user whose email is taken (username is free)
+    WHEN a new user POSTs to "/register" with that email and a fresh username
+    THEN the request returns HTTP 401 AND exactly one REGISTER_REJECTED counter
+        key is written with reason="unvalidated_email".
+    """
+    _create_user(
+        app,
+        username=valid_user_2[REGISTER_FORM.USERNAME],
+        email=valid_user_1[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=False,
+    )
+    client, csrf_token_string = load_register_page
+
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 0
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.USERNAME] = valid_user_3[REGISTER_FORM.USERNAME]
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 401
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "unvalidated_email"
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_SUCCESS) == 0
+
+
+def test_register_rejected_unvalidated_email_with_taken_username_records_only_username_taken(
+    app, metrics_enabled_app, provide_metrics_redis, load_register_page
+):
+    """
+    GIVEN a validated user with a taken username AND an unvalidated user whose
+        email is taken
+    WHEN a new user POSTs to "/register" with both the taken username and the
+        taken (unvalidated) email
+    THEN the request returns HTTP 400 AND exactly one REGISTER_REJECTED counter
+        key is written with reason="username_taken" — the unvalidated_email path
+        is suppressed because the `if errors:` guard returns before the 401 branch.
+    """
+    _create_user(
+        app,
+        username=valid_user_1[REGISTER_FORM.USERNAME],
+        email=valid_user_2[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=True,
+    )
+    _create_user(
+        app,
+        username=valid_user_3[REGISTER_FORM.USERNAME],
+        email=valid_user_1[REGISTER_FORM.EMAIL],
+        password=valid_user_1[REGISTER_FORM.PASSWORD],
+        validated=False,
+    )
+    client, csrf_token_string = load_register_page
+
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 0
+
+    new_user = deepcopy(valid_user_1)
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED) == 1
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.REGISTER_REJECTED)
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "username_taken"
 
 
 def test_register_duplicate_user(app, load_register_page, register_first_user):

@@ -2,6 +2,7 @@ import type { Schema } from "../types/api-helpers.d.ts";
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { emit } from "../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../lib/modal-tracking.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
@@ -38,6 +39,8 @@ function isFormFieldName(key: string): key is FormFieldName {
 export function initSplash(): void {
   setToRegisterButton();
   setToLoginButton();
+  clearOpenFormOnAuthModalHide($("#LoginModal"));
+  clearOpenFormOnAuthModalHide($("#RegisterModal"));
   initLoginForm($("#LoginModal"));
   initRegisterForm($("#RegisterModal"));
   initForgotPasswordForm($("#ForgotPasswordModal"));
@@ -67,6 +70,18 @@ function setToLoginButton(): void {
   });
 }
 
+// Submit and explicit cancel already call clearOpenForm(), but a Bootstrap
+// X-button/backdrop dismiss (data-bs-dismiss) does not. Without this, a dismiss
+// followed by page navigation leaves the open-form registry populated, so the
+// pagehide handler emits a spurious UI_AUTH_CANCEL{trigger:navigation}. Clearing
+// on hidden.bs.modal closes that false-positive. offAndOn (off-then-on) keeps the
+// binding idempotent across repeated shows/hides and re-inits of initSplash.
+export function clearOpenFormOnAuthModalHide($modal: JQuery): void {
+  $modal.offAndOn("hidden.bs.modal", () => {
+    clearOpenForm();
+  });
+}
+
 export function createLogoutOnExit(): () => void {
   return () => {
     $.get(APP_CONFIG.routes.logout).always(() => {
@@ -87,6 +102,11 @@ function targetFromSelector(
 export function switchModal($fromModal: JQuery, toSelector: string): void {
   const target = targetFromSelector(toSelector);
   if (target !== null) emit({ event: UI_EVENTS.UI_AUTH_FORM_SWITCH, target });
+  if (target === "login" || target === "register") {
+    setOpenForm(target);
+  } else {
+    clearOpenForm();
+  }
 
   const fromModal = bootstrap.Modal.getInstance($fromModal[0]);
   if (fromModal) {
@@ -104,6 +124,7 @@ export function loginModalOpener(): void {
     event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
     form: AUTH_MODAL_OPEN_FORM.LOGIN,
   });
+  setOpenForm("login");
   bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
@@ -112,6 +133,7 @@ export function registerModalOpener(): void {
     event: UI_EVENTS.UI_AUTH_MODAL_OPEN,
     form: AUTH_MODAL_OPEN_FORM.REGISTER,
   });
+  setOpenForm("register");
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 

@@ -19,7 +19,9 @@ from tests.functional.metrics_ui.selenium_utils import (
 from tests.functional.selenium_utils import (
     wait_for_element_presence,
     wait_then_click_element,
+    wait_then_get_at_least_n_elements,
     wait_then_get_element,
+    wait_then_get_elements,
 )
 
 pytestmark = pytest.mark.metrics_ui
@@ -28,6 +30,8 @@ DEFAULT_ADMIN_USER_ID: int = 1
 SEEDED_TABLE_ROW_SELECTOR: str = f"{MDL.TOP_TABLE_API} tbody tr.MetricsTopTableRow"
 WINDOW_BUTTON_TIMEOUT_SECONDS: int = 5
 PIPELINE_HEALTH_RENDER_TIMEOUT: int = 15
+FLOWS_RENDER_TIMEOUT: int = 15
+EXPECTED_FLOW_CARD_COUNT: int = 4
 ALL_PIPELINE_HEALTH_BAR_SELECTORS: tuple[str, ...] = (
     MDL.PIPELINE_HEALTH_BAR_FETCH_DESKTOP,
     MDL.PIPELINE_HEALTH_BAR_FETCH_MOBILE,
@@ -314,3 +318,78 @@ def test_pipeline_health_card_renders_empty_state_with_no_data(
             f"Expected no rects for {bar_selector} in the empty-state, "
             f"got {len(rendered_bars)}."
         )
+
+
+def test_flows_tab_renders_funnel_cards_with_seeded_data(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN seed-uniform-test-data has inserted AnonymousMetrics rows spanning
+        the UI / API / domain streams the funnels join
+    WHEN an admin opens `/admin/metrics` and clicks the Flows tab
+    THEN one funnel card renders per defined flow (four) and at least one
+        funnel step row is present in the grid.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(browser, MDL.TAB_FLOWS_BUTTON)
+
+    flow_cards = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.FLOWS_CARD,
+        minimum_count=EXPECTED_FLOW_CARD_COUNT,
+        time=FLOWS_RENDER_TIMEOUT,
+    )
+    assert len(flow_cards) >= EXPECTED_FLOW_CARD_COUNT, (
+        f"Expected at least {EXPECTED_FLOW_CARD_COUNT} flow cards, "
+        f"got {len(flow_cards)}."
+    )
+
+    funnel_steps = wait_then_get_elements(
+        browser, MDL.FLOWS_FUNNEL_STEP, time=FLOWS_RENDER_TIMEOUT
+    )
+    assert len(funnel_steps) >= 1, "Expected at least one funnel step row to render."
+
+
+def test_flows_tab_renders_empty_state_with_no_data(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the AnonymousMetrics table has been emptied AFTER the autouse seed
+        fixture (so no flow events exist)
+    WHEN an admin opens `/admin/metrics` and clicks the Flows tab
+    THEN every funnel card renders the empty-state text instead of a funnel.
+    """
+    with provide_app.app_context():
+        Anonymous_Metrics.query.delete()
+        db.session.commit()
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(browser, MDL.TAB_FLOWS_BUTTON)
+
+    empty_state_element = wait_for_element_presence(
+        browser, MDL.FLOWS_CARD_EMPTY, timeout=FLOWS_RENDER_TIMEOUT
+    )
+    assert empty_state_element is not None
+    assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_FLOW_EMPTY

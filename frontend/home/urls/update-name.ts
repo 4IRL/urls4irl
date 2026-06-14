@@ -6,6 +6,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
+import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   getCurrentUTubName,
@@ -69,6 +70,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
 
   function openNameEdit(trigger: "pencil_icon" | "keyboard"): void {
     emit({ event: UI_EVENTS.UI_UTUB_NAME_EDIT_OPEN, trigger });
+    setOpenForm(HOME_FORM.UTUB_NAME_EDIT);
     deselectAllURLs();
     updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
@@ -95,6 +97,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
       form: HOME_FORM.UTUB_NAME_EDIT,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
+    clearOpenForm();
     // Skip if update is identical to original
     if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
       updateUTubNameHideInput();
@@ -109,6 +112,7 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
       form: HOME_FORM.UTUB_NAME_EDIT,
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
+    clearOpenForm();
     updateUTubNameHideInput();
   });
 }
@@ -128,6 +132,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
               form: HOME_FORM.UTUB_NAME_EDIT,
               trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
             });
+            clearOpenForm();
             // Skip if update is identical
             if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
               updateUTubNameHideInput();
@@ -142,6 +147,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
               form: HOME_FORM.UTUB_NAME_EDIT,
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
+            clearOpenForm();
             updateUTubNameHideInput();
             break;
           default:
@@ -175,6 +181,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
       form: HOME_FORM.UTUB_NAME_EDIT,
       trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
     });
+    clearOpenForm();
     // Hide UTub name update fields
     updateUTubNameHideInput();
   });

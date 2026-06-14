@@ -102,7 +102,7 @@ export type DimFormSubmit = {
 
 export type DimFormCancel = {
   device_type: DeviceType;
-  trigger: "escape_key" | "cancel_button" | "outside_click";
+  trigger: "escape_key" | "cancel_button" | "outside_click" | "navigation";
   form: HomeForm;
 };
 
@@ -124,6 +124,12 @@ export type DimDeckExpand = {
 export type DimMobileNav = {
   device_type: DeviceType;
   target: "utubs" | "urls" | "members" | "tags";
+};
+
+export type DimAuthCancel = {
+  device_type: DeviceType;
+  form: "login" | "register";
+  trigger: "navigation";
 };
 
 export type DimAuthFormSwitch = {
@@ -189,6 +195,7 @@ export type UIEventDimensions = {
   ui_login_submit: DimDeviceOnly;
   ui_register_submit: DimDeviceOnly;
   ui_forgot_password_submit: DimDeviceOnly;
+  ui_auth_cancel: DimAuthCancel;
   ui_auth_form_switch: DimAuthFormSwitch;
   ui_auth_modal_open: DimAuthModalOpen;
   ui_reset_password_submit: DimDeviceOnly;
