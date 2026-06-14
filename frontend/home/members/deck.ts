@@ -94,8 +94,8 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#displayMemberWrap").hideClass();
 
   // Collapse the subheader band so it takes no vertical space when empty
-  $("#MemberDeckSubheader").text("");
   $("#MemberDeckSubheader")
+    .text("")
     .closest(".titleElement")
     .removeClass("height-2rem")
     .hideClass();

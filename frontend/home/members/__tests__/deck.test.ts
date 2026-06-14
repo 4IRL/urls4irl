@@ -91,4 +91,22 @@ describe("Member deck visibility on UTub selection", () => {
         .hasClass("hidden"),
     ).toBe(false);
   });
+
+  it("shows the leave button and count-only subheader for a non-owner UTub", () => {
+    window.jQuery("#listMembers").append(`<span class="member">a</span>`);
+
+    setMemberDeckForUTub(false);
+
+    expect(window.jQuery("#MemberDeckSubheader").text()).toBe("2 members");
+    expect(
+      window
+        .jQuery("#MemberDeckSubheader")
+        .closest(".titleElement")
+        .hasClass("hidden"),
+    ).toBe(false);
+    expect(window.jQuery("#memberSelfBtnDelete").hasClass("hidden")).toBe(
+      false,
+    );
+    expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
+  });
 });
