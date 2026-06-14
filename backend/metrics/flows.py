@@ -11,8 +11,9 @@ breakdown explaining WHY users dropped between the previous step and this one:
 
 Each flow is one `FlowDefinition` entry in `FLOWS`, holding `display_name` and
 an ordered `steps` list. The `/api/metrics/query/flow` endpoint loops over
-`flow.steps`, fanning out one `grouped_counts()` call per step (plus one per
-drop_breakdown) over the requested window; nothing is inferred from the data —
+`flow.steps`, fanning out one `grouped_count_scalar()` call per step (plus one
+`grouped_count_by()` per drop_breakdown) over the requested window; nothing is
+inferred from the data —
 the steps are exactly the events named here. The first step is the funnel top
 (the `pct_of_top` denominator).
 
@@ -149,7 +150,7 @@ FlowFilterCondition = Annotated[
 class FlowStepBreakdown(BaseModel):
     """Per-cause breakdown of WHY users dropped into the owning step.
 
-    The `/flow` handler fans out one extra `grouped_counts(group_by=...)` call
+    The `/flow` handler fans out one extra `grouped_count_by(group_by=...)` call
     per breakdown, then exposes the result as the step's `breakdown` rows
     (or `null` when the breakdown event has no rows in the window — DD-6).
     """

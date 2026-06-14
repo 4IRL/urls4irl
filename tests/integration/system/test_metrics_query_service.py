@@ -16,7 +16,8 @@ from backend.metrics.events import (
     EventName,
 )
 from backend.metrics.query_service import (
-    grouped_counts,
+    grouped_count_by,
+    grouped_count_scalar,
     summary,
     timeseries,
     top_events,
@@ -1744,7 +1745,7 @@ def test_grouped_counts_filters_and_groups_by_dim(
     )
 
     with app.app_context():
-        result = grouped_counts(
+        result = grouped_count_by(
             event_name=EventName.UI_FORM_CANCEL,
             window_start=window_start,
             window_end=window_end,
@@ -1793,7 +1794,7 @@ def test_grouped_counts_no_filter_no_group_by(
     )
 
     with app.app_context():
-        result = grouped_counts(
+        result = grouped_count_scalar(
             event_name=EventName.UTUB_OPENED,
             window_start=window_start,
             window_end=window_end,
@@ -1809,7 +1810,7 @@ def test_grouped_counts_group_by_none_returns_int(
 ) -> None:
     """
     GIVEN zero matching rows for an event in the window
-    WHEN grouped_counts is called with group_by=None explicitly
+    WHEN grouped_count_scalar is called
     THEN it returns the integer 0 (not an empty list, not None).
     """
     app = metrics_enabled_runner_app
@@ -1819,11 +1820,10 @@ def test_grouped_counts_group_by_none_returns_int(
     assert _count_rows_for_event(metrics_pg_conn, EventName.UTUB_OPENED) == 0
 
     with app.app_context():
-        result = grouped_counts(
+        result = grouped_count_scalar(
             event_name=EventName.UTUB_OPENED,
             window_start=window_start,
             window_end=window_end,
-            group_by=None,
         )
 
     assert result == 0
@@ -1859,7 +1859,7 @@ def test_grouped_counts_group_by_set_returns_list_of_tuples(
     )
 
     with app.app_context():
-        result = grouped_counts(
+        result = grouped_count_by(
             event_name=EventName.UI_FORM_CANCEL,
             window_start=window_start,
             window_end=window_end,
@@ -1880,7 +1880,7 @@ def test_grouped_counts_invalid_filter_key_nonapi_event_raises_value_error(
 ) -> None:
     """
     GIVEN a non-API event (JSONB dimension path)
-    WHEN grouped_counts is called with an unknown dim key in dim_filter
+    WHEN grouped_count_scalar is called with an unknown dim key in dim_filter
     THEN ValueError is raised.
     """
     app = metrics_enabled_runner_app
@@ -1889,7 +1889,7 @@ def test_grouped_counts_invalid_filter_key_nonapi_event_raises_value_error(
 
     with app.app_context():
         with pytest.raises(ValueError):
-            grouped_counts(
+            grouped_count_scalar(
                 event_name=EventName.UI_FORM_CANCEL,
                 window_start=window_start,
                 window_end=window_end,
@@ -1903,7 +1903,7 @@ def test_grouped_counts_invalid_filter_key_api_event_raises_value_error(
 ) -> None:
     """
     GIVEN an API-category event (flat-column path)
-    WHEN grouped_counts is called with a key outside {endpoint, method,
+    WHEN grouped_count_scalar is called with a key outside {endpoint, method,
         status_code} (e.g. device_type, which is not a flat column)
     THEN ValueError is raised.
     """
@@ -1913,7 +1913,7 @@ def test_grouped_counts_invalid_filter_key_api_event_raises_value_error(
 
     with app.app_context():
         with pytest.raises(ValueError):
-            grouped_counts(
+            grouped_count_scalar(
                 event_name=EventName.API_HIT,
                 window_start=window_start,
                 window_end=window_end,
@@ -1968,13 +1968,13 @@ def test_grouped_counts_api_category_filters_by_flat_columns(
     )
 
     with app.app_context():
-        endpoint_method_total = grouped_counts(
+        endpoint_method_total = grouped_count_scalar(
             event_name=EventName.API_HIT,
             window_start=window_start,
             window_end=window_end,
             dim_filter=[("endpoint", "urls.create_url"), ("method", "POST")],
         )
-        status_code_total = grouped_counts(
+        status_code_total = grouped_count_scalar(
             event_name=EventName.API_HIT,
             window_start=window_start,
             window_end=window_end,
@@ -1995,7 +1995,7 @@ def test_grouped_counts_status_code_nonnumeric_filter_value_raises_value_error(
 ) -> None:
     """
     GIVEN an API_HIT query with a non-numeric status_code filter value
-    WHEN grouped_counts is called
+    WHEN grouped_count_scalar is called
     THEN ValueError is raised with the controlled status_code message (not the
         raw int() error message that would leak the input).
     """
@@ -2005,7 +2005,7 @@ def test_grouped_counts_status_code_nonnumeric_filter_value_raises_value_error(
 
     with app.app_context():
         with pytest.raises(ValueError) as exc_info:
-            grouped_counts(
+            grouped_count_scalar(
                 event_name=EventName.API_HIT,
                 window_start=window_start,
                 window_end=window_end,
@@ -2021,7 +2021,7 @@ def test_grouped_counts_device_type_nonnumeric_filter_value_raises_value_error(
 ) -> None:
     """
     GIVEN a non-API event filtered on device_type with a non-numeric value
-    WHEN grouped_counts is called
+    WHEN grouped_count_scalar is called
     THEN ValueError is raised with the controlled device_type message (not the
         raw int() error message that would leak the input).
     """
@@ -2031,7 +2031,7 @@ def test_grouped_counts_device_type_nonnumeric_filter_value_raises_value_error(
 
     with app.app_context():
         with pytest.raises(ValueError) as exc_info:
-            grouped_counts(
+            grouped_count_scalar(
                 event_name=EventName.UI_FORM_CANCEL,
                 window_start=window_start,
                 window_end=window_end,

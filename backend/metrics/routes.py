@@ -19,7 +19,7 @@ from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
 from backend.metrics.flows import FLOWS, FlowId, FlowStep
-from backend.metrics.query_service import grouped_counts
+from backend.metrics.query_service import grouped_count_by, grouped_count_scalar
 from backend.metrics.resources import Resource
 from backend.schemas.errors import (
     ErrorResponse,
@@ -419,30 +419,25 @@ def _count_flow_step(
 
     UI/DOMAIN steps count `step.event_name`; API steps match `API_HIT`'s flat
     `endpoint`/`method` columns (plus any per-step filter). Both call
-    `grouped_counts(group_by=None)`, which returns a scalar `int`.
+    `grouped_count_scalar`, which returns a scalar `int`.
     """
     if step.event_name is not None:
-        count = grouped_counts(
+        return grouped_count_scalar(
             event_name=step.event_name,
             window_start=window_start,
             window_end=window_end,
             dim_filter=step.dim_filter,
-            group_by=None,
         )
-    else:
-        api_filter: list[tuple[str, str]] = [
-            ("endpoint", step.api_endpoint or ""),
-            ("method", step.api_method or ""),
-        ] + (step.dim_filter or [])
-        count = grouped_counts(
-            event_name=EventName.API_HIT,
-            window_start=window_start,
-            window_end=window_end,
-            dim_filter=api_filter,
-            group_by=None,
-        )
-    assert isinstance(count, int)
-    return count
+    api_filter: list[tuple[str, str]] = [
+        ("endpoint", step.api_endpoint or ""),
+        ("method", step.api_method or ""),
+    ] + (step.dim_filter or [])
+    return grouped_count_scalar(
+        event_name=EventName.API_HIT,
+        window_start=window_start,
+        window_end=window_end,
+        dim_filter=api_filter,
+    )
 
 
 def _build_step_breakdown(
@@ -456,14 +451,13 @@ def _build_step_breakdown(
     """
     if step.drop_breakdown is None:
         return None
-    raw_rows = grouped_counts(
+    raw_rows = grouped_count_by(
         event_name=step.drop_breakdown.event_name,
         window_start=window_start,
         window_end=window_end,
         dim_filter=step.drop_breakdown.dim_filter,
         group_by=step.drop_breakdown.group_by,
     )
-    assert isinstance(raw_rows, list)
     if not raw_rows:
         return None
     breakdown_total = sum(count for _, count in raw_rows)
