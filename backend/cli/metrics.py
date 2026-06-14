@@ -12,6 +12,7 @@ from backend.extensions.metrics.buckets import previous_window, resolve_query_wi
 from backend.extensions.metrics.dim_types_generator import (
     generate_dim_types_ts,
     generate_dim_values_ts,
+    generate_flows_ts,
     generate_resources_ts,
     generate_ui_events_ts,
 )
@@ -180,6 +181,33 @@ def generate_resources_command(output_path: str):
     target = Path(output_path)
     target.write_text(source, encoding="utf-8")
     click.echo(f"metrics: wrote resources → {target}")
+
+
+@metrics_cli.command(
+    "generate-flows",
+    help="Emit TypeScript FLOW_IDS const + FlowId type + FLOW_METADATA from the FLOWS registry.",
+)
+@click.option(
+    "--output",
+    "output_path",
+    required=True,
+    type=click.Path(dir_okay=False, writable=True),
+    help="Target path for the generated .ts file.",
+)
+def generate_flows_command(output_path: str):
+    """Render `frontend/types/metrics-flows.ts` from `backend/metrics/flows.py`.
+
+    Walks the `FlowId` enum + `FLOWS` registry; emits the flow id list plus
+    per-flow display metadata (display name + ordered, variable-length
+    `stepLabels`) consumed by the admin dashboard's funnel-card renderer.
+    Pure walk of `FLOWS`/`FlowId`; no app context needed (no database or
+    Redis access), so it runs in `event-coverage-staleness.yml` where
+    `METRICS_ENABLED=false` and no Flask extensions are initialized.
+    """
+    source = generate_flows_ts()
+    target = Path(output_path)
+    target.write_text(source, encoding="utf-8")
+    click.echo(f"metrics: wrote flows → {target}")
 
 
 @metrics_cli.command("top", help="Show top events by count for a time window.")

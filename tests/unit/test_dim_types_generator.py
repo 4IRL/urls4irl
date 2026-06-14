@@ -9,11 +9,13 @@ from backend.extensions.metrics.dim_types_generator import (
     _ts_for_annotation,
     generate_dim_types_ts,
     generate_dim_values_ts,
+    generate_flows_ts,
     generate_resources_ts,
     generate_ui_events_ts,
 )
 from backend.metrics.dimension_models import HomeForm
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
+from backend.metrics.flows import FLOWS, FlowId
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 pytestmark = pytest.mark.unit
@@ -217,3 +219,43 @@ def test_ts_for_annotation_named_alias_returns_alias_name() -> None:
     named_aliases = _named_alias_annotations()
 
     assert _ts_for_annotation(HomeForm, named_aliases) == "HomeForm"
+
+
+def test_generate_flows_ts_emits_flow_ids_metadata_and_header() -> None:
+    """
+    GIVEN the `FlowId` StrEnum and the `FLOWS` registry
+    WHEN generate_flows_ts() renders the TS source
+    THEN the output declares the `FLOW_IDS` const, the `FlowId` derived type,
+        and the `FLOW_METADATA` mapping, carries the `DO NOT EDIT` header, and
+        lists every FlowId member.
+    """
+    ts_source = generate_flows_ts()
+
+    assert "DO NOT EDIT" in ts_source
+    assert "export const FLOW_IDS = {" in ts_source
+    assert "export type FlowId = (typeof FLOW_IDS)[keyof typeof FLOW_IDS];" in ts_source
+    assert "export const FLOW_METADATA = {" in ts_source
+
+    for flow_id in FlowId:
+        assert f'{flow_id.name}: "{flow_id.value}",' in ts_source
+
+
+def test_generate_flows_ts_step_labels_match_flow_definition_steps() -> None:
+    """
+    GIVEN a known FlowId whose FlowDefinition has a variable-length steps list
+    WHEN generate_flows_ts() renders the TS source
+    THEN the emitted `stepLabels` array for that flow has exactly one entry per
+        `FlowStep`, and its first and last entries match the first and last
+        step labels in the registry (the generator walks `steps` in order).
+    """
+    ts_source = generate_flows_ts()
+
+    flow_id = FlowId.ADD_URL_TO_UTUB
+    steps = FLOWS[flow_id].steps
+    expected_labels = [step.label for step in steps]
+    expected_array = ", ".join(f'"{label}"' for label in expected_labels)
+
+    assert f"stepLabels: [{expected_array}] as const," in ts_source
+    assert len(expected_labels) == len(steps)
+    assert expected_labels[0] == steps[0].label
+    assert expected_labels[-1] == steps[-1].label

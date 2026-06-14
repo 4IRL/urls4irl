@@ -46,3 +46,28 @@ jobs:
             echo "::error::Event coverage audit failed. Run 'make audit' locally and reconcile drift between backend/metrics/event_registry.py and the EventName enum / DIMENSION_MODELS."
             exit 1
           fi
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: '24'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Generate metrics-flows.ts
+        run: flask metrics generate-flows --output frontend/types/metrics-flows.ts
+
+      - name: Format metrics-flows.ts with prettier
+        working-directory: frontend
+        run: npx prettier --write types/metrics-flows.ts
+
+      - name: Check metrics-flows.ts is not stale
+        run: |
+          if ! git diff --exit-code frontend/types/metrics-flows.ts; then
+            echo "::error::frontend/types/metrics-flows.ts is stale. Run 'make generate-types' and commit the updated file."
+            exit 1
+          fi
