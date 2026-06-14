@@ -46,6 +46,8 @@
  */
 
 import type { Schema } from "../types/api-helpers.d.ts";
+import type { FlowId } from "../types/metrics-flows.js";
+import { FLOW_IDS } from "../types/metrics-flows.js";
 import {
   RESOURCES,
   RESOURCES_BY_CATEGORY,
@@ -56,7 +58,9 @@ import { APP_CONFIG } from "../lib/config.js";
 import { $ } from "../lib/globals.js";
 import { is429Handled } from "../lib/ajax.js";
 
+import { renderFlowGrid } from "./flow-card.js";
 import {
+  fetchFlow,
   fetchGroupedTimeseries,
   fetchSummary,
   fetchTimeseries,
@@ -73,8 +77,9 @@ import { renderTopTable } from "./render-top-table.js";
 
 export type MetricsWindow = "day" | "week" | "month" | "year";
 type MetricsCategory = "api" | "ui" | "domain";
-type MetricsTabId = MetricsCategory | "pipeline_health";
+type MetricsTabId = MetricsCategory | "pipeline_health" | "flows";
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
+type FlowResponseSchema = Schema<"FlowResponseSchema">;
 type LastFlushBucket =
   | "just_now"
   | "seconds"
@@ -92,6 +97,10 @@ interface InFlightRequests {
   tsDomain: JQuery.jqXHR | null;
   summary: JQuery.jqXHR | null;
   pipelineHealth: JQuery.jqXHR | null;
+  flowCreateUtub: JQuery.jqXHR | null;
+  flowAddUrl: JQuery.jqXHR | null;
+  flowRegister: JQuery.jqXHR | null;
+  flowLogin: JQuery.jqXHR | null;
 }
 
 interface CategoryPanelIds {
@@ -202,15 +211,35 @@ const CATEGORY_PANEL_IDS: Record<MetricsCategory, CategoryPanelIds> = {
 // Tablist navigation order also matches DOM order: API → UI → Domain.
 const CATEGORIES: readonly MetricsCategory[] = ["api", "ui", "domain"];
 
-// All tabs in DOM order. Pipeline Health is a tab but not a category — it has
-// its own panel + fetch path (grouped-timeseries), separate from the per-
-// category top-events / timeseries flow. Keeping it out of `CATEGORIES`
-// avoids having to add null-branches for the category-specific caches
-// (`_topCache`, filters, charts) every time a category iteration is needed.
-const TAB_IDS: readonly MetricsTabId[] = [...CATEGORIES, "pipeline_health"];
+// All tabs in DOM order. Pipeline Health and Flows are tabs but not categories
+// — each has its own panel + fetch path, separate from the per-category
+// top-events / timeseries flow. Keeping them out of `CATEGORIES` avoids having
+// to add null-branches for the category-specific caches (`_topCache`, filters,
+// charts) every time a category iteration is needed.
+const TAB_IDS: readonly MetricsTabId[] = [
+  ...CATEGORIES,
+  "pipeline_health",
+  "flows",
+];
 
 const PIPELINE_HEALTH_TAB_ID: string = "MetricsTabPipelineHealth";
 const PIPELINE_HEALTH_PANEL_ID: string = "MetricsPanelPipelineHealth";
+const FLOWS_TAB_ID: string = "MetricsTabFlows";
+const FLOWS_PANEL_ID: string = "MetricsPanelFlows";
+const FLOWS_GRID_ID: string = "MetricsFlowGrid";
+const FLOWS_ANNOUNCEMENT_ID: string = "MetricsPanelFlowsAnnouncement";
+
+// Maps each FlowId to its dedicated in-flight slot so per-flow XHRs are aborted
+// independently (mirrors TOP_SLOT_BY_CATEGORY).
+const FLOW_SLOT_BY_FLOW_ID: Record<
+  FlowId,
+  "flowCreateUtub" | "flowAddUrl" | "flowRegister" | "flowLogin"
+> = {
+  [FLOW_IDS.CREATE_UTUB]: "flowCreateUtub",
+  [FLOW_IDS.ADD_URL_TO_UTUB]: "flowAddUrl",
+  [FLOW_IDS.REGISTER]: "flowRegister",
+  [FLOW_IDS.LOGIN]: "flowLogin",
+};
 
 function getTabAndPanelIds(tabId: MetricsTabId): {
   tab: string;
@@ -218,6 +247,9 @@ function getTabAndPanelIds(tabId: MetricsTabId): {
 } {
   if (tabId === "pipeline_health") {
     return { tab: PIPELINE_HEALTH_TAB_ID, panel: PIPELINE_HEALTH_PANEL_ID };
+  }
+  if (tabId === "flows") {
+    return { tab: FLOWS_TAB_ID, panel: FLOWS_PANEL_ID };
   }
   return {
     tab: CATEGORY_PANEL_IDS[tabId].tab,
@@ -229,6 +261,11 @@ let _pollIntervalId: ReturnType<typeof setInterval> | null = null;
 let _lastFetchPerf: number = 0;
 let _currentWindow: MetricsWindow = "day";
 let _currentCategory: MetricsCategory = "api";
+// The currently-visible tab. Distinct from `_currentCategory` (which only ever
+// holds true `MetricsCategory` values) so the Flows-fetch gate can key on tab
+// visibility without widening the category type. Set unconditionally for every
+// tab in `handleTabClick`.
+let _activeTab: MetricsTabId = "api";
 let _inFlight: InFlightRequests = {
   topApi: null,
   topUi: null,
@@ -238,7 +275,14 @@ let _inFlight: InFlightRequests = {
   tsDomain: null,
   summary: null,
   pipelineHealth: null,
+  flowCreateUtub: null,
+  flowAddUrl: null,
+  flowRegister: null,
+  flowLogin: null,
 };
+// Last successful `/flow` response per flow id, so a tab switch back to Flows
+// renders instantly from cache. Populated by `fetchFlows`.
+let _flowCache: Partial<Record<FlowId, FlowResponseSchema>> = {};
 
 const TOP_SLOT_BY_CATEGORY: Record<
   MetricsCategory,
@@ -323,6 +367,23 @@ function setDashboardBusy({ busy }: { busy: boolean }): void {
     return;
   }
   root.setAttribute("aria-busy", busy ? "true" : "false");
+}
+
+// Flow XHR settle-state is tracked separately from the global dashboard busy
+// path (DD-10): set/clear `aria-busy` on the Flows panel only, so the
+// per-flow loading spinner reveals without coupling to the root dashboard
+// fetch. When `busy` clears, the panel-scoped `aria-busy` attribute is removed
+// entirely so the `[aria-busy="true"]` spinner selector stops matching.
+function setFlowsPanelBusy({ busy }: { busy: boolean }): void {
+  const panel = getElementByIdOrNull<HTMLElement>(FLOWS_PANEL_ID);
+  if (panel === null) {
+    return;
+  }
+  if (busy) {
+    panel.setAttribute("aria-busy", "true");
+  } else {
+    panel.removeAttribute("aria-busy");
+  }
 }
 
 function setRefreshButtonInFlight({ inFlight }: { inFlight: boolean }): void {
@@ -596,6 +657,10 @@ function abortInFlightRequests(): void {
     "tsDomain",
     "summary",
     "pipelineHealth",
+    "flowCreateUtub",
+    "flowAddUrl",
+    "flowRegister",
+    "flowLogin",
   ] as const) {
     const xhr = _inFlight[key];
     if (xhr !== null) {
@@ -979,6 +1044,70 @@ function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
  * an event from a panel's `<select>`. There is no stable default event to
  * query on poll.
  */
+// Re-render the Flows grid from the per-flow cache. Cards fill in as each
+// `/flow` XHR settles; flows without a cached response are skipped.
+function renderFlowsPanel(): void {
+  const grid = getElementByIdOrNull<HTMLElement>(FLOWS_GRID_ID);
+  if (grid === null) {
+    return;
+  }
+  renderFlowGrid({ container: grid, responsesByFlowId: _flowCache });
+}
+
+/**
+ * Fan out the four per-flow `/flow` XHRs (one per FlowId). Sets panel-scoped
+ * `aria-busy` while any request is in flight and clears it after ALL four
+ * settle, then announces completion on the aria-live span (DD-25 / DD-26).
+ *
+ * Deliberately separate from `fetchAll`'s global busy / `onSettleAny` path:
+ * flow settle-state lives only on `#MetricsPanelFlows` (DD-10).
+ */
+function fetchFlows(): void {
+  const flowIds = Object.values(FLOW_IDS);
+  setFlowsPanelBusy({ busy: true });
+  let pending = flowIds.length;
+
+  const onFlowSettle = (): void => {
+    pending -= 1;
+    if (pending > 0) {
+      return;
+    }
+    setFlowsPanelBusy({ busy: false });
+    const announcement = getElementByIdOrNull<HTMLElement>(
+      FLOWS_ANNOUNCEMENT_ID,
+    );
+    if (announcement !== null) {
+      announcement.textContent = APP_CONFIG.strings.METRICS_FLOWS_LOADED;
+    }
+  };
+
+  for (const flowId of flowIds) {
+    const slotName = FLOW_SLOT_BY_FLOW_ID[flowId];
+    const flowRequest = fetchFlow({ flowId, window: _currentWindow });
+    _inFlight[slotName] = flowRequest;
+    flowRequest
+      .done((response) => {
+        setBannerVisible({ visible: false });
+        _flowCache[flowId] = response;
+        renderFlowsPanel();
+      })
+      .fail((xhr) => {
+        if (is429Handled(xhr)) {
+          return;
+        }
+        if (xhr.readyState === 0) {
+          return;
+        }
+        setBannerVisible({ visible: true });
+      })
+      .always(() => {
+        _inFlight[slotName] = null;
+        _lastFetchPerf = performance.now();
+        onFlowSettle();
+      });
+  }
+}
+
 function fetchAll(): void {
   abortInFlightRequests();
   setDashboardBusy({ busy: true });
@@ -1106,12 +1235,23 @@ function fetchAll(): void {
         onSettleAny();
       });
   }
+
+  // Gate the per-flow fan-out on the active tab (DD-21): the ~4 flow requests
+  // only fire while the Flows tab is visible, not every 60 s tick. `_activeTab`
+  // is the single source of truth here — `_currentCategory` never equals
+  // "flows", so gating on it would be dead code.
+  if (_activeTab === "flows") {
+    fetchFlows();
+  }
 }
 
 /**
  * Clear UI in-flight indicators when no requests remain pending. Both
  * `aria-busy` on the dashboard root and the Refresh button's `aria-disabled`
- * track the union of all three in-flight requests.
+ * track the union of all in-flight requests.
+ *
+ * Flow slots (flowCreateUtub, flowAddUrl, flowRegister, flowLogin) excluded —
+ * tracked via #MetricsPanelFlows aria-busy instead.
  */
 function onSettleAny(): void {
   const anyInFlight =
@@ -1376,7 +1516,11 @@ function handleTabClick({
   tabId: string;
   tab: MetricsTabId;
 }): void {
-  if (tab !== "pipeline_health") {
+  // `_activeTab` tracks the visible tab for EVERY tab (categories,
+  // pipeline_health, flows). `_currentCategory` keeps only true category
+  // values — guarded against ever receiving "pipeline_health" / "flows".
+  _activeTab = tab;
+  if (tab !== "pipeline_health" && tab !== "flows") {
     _currentCategory = tab;
   }
 
@@ -1401,10 +1545,22 @@ function handleTabClick({
 
   // For category tabs, re-render the active panel from cache so the latest
   // top-events list and select options are visible immediately after the
-  // switch. Pipeline Health renders from the grouped-timeseries XHR fired
-  // by `fetchAll`, so no cache re-render is needed here.
-  if (tab !== "pipeline_health") {
+  // switch. Pipeline Health renders from the grouped-timeseries XHR fired by
+  // `fetchAll`; Flows renders from `_flowCache` (its own XHRs), so neither
+  // needs a category-cache re-render here.
+  if (tab !== "pipeline_health" && tab !== "flows") {
     renderCategoryPanelFromCache({ category: tab });
+  }
+
+  // First activation of the Flows tab fires the fan-out immediately rather
+  // than waiting up to 60 s for the next `fetchAll` tick. Subsequent switches
+  // re-render from the warm cache.
+  if (tab === "flows") {
+    if (Object.keys(_flowCache).length === 0) {
+      fetchFlows();
+    } else {
+      renderFlowsPanel();
+    }
   }
 
   const activePanel = getElementByIdOrNull<HTMLElement>(
@@ -1560,6 +1716,7 @@ export function _resetMetricsDashboardForTests(): void {
   _lastFetchPerf = 0;
   _currentWindow = "day";
   _currentCategory = "api";
+  _activeTab = "api";
   _inFlight = {
     topApi: null,
     topUi: null,
@@ -1569,7 +1726,12 @@ export function _resetMetricsDashboardForTests(): void {
     tsDomain: null,
     summary: null,
     pipelineHealth: null,
+    flowCreateUtub: null,
+    flowAddUrl: null,
+    flowRegister: null,
+    flowLogin: null,
   };
+  _flowCache = {};
   _topCache.clear();
   _selectedEventByCategory.clear();
   _chartFetchedWindowByCategory.clear();

@@ -685,3 +685,218 @@
         max-width: 100%;
     }
 }
+
+/* ---- Flows (conversion funnels) ------------------------------------- */
+
+/* Reveal the panel-scoped loading spinner only while the Flows panel itself
+ * is in a loading state — NOT when any other dashboard fetch sets aria-busy
+ * on the root #MetricsDashboard element. */
+.flows-loading-spinner {
+    display: none;
+}
+
+#MetricsPanelFlows[aria-busy="true"] .flows-loading-spinner {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 0.5rem auto;
+    border: 2px solid var(--borderColor);
+    border-top-color: var(--splashGreen);
+    border-radius: 50%;
+    animation: metricsFlowSpin 0.8s linear infinite;
+}
+
+@keyframes metricsFlowSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.flow-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.flow-card {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.flow-card .flow-card-empty {
+    color: var(--cardURLTextColor);
+    font-size: 14px;
+    font-style: italic;
+    padding: 1rem;
+    text-align: center;
+}
+
+.flow-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.flow-header .flow-title {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.flow-header .flow-summary {
+    color: var(--cardURLTextColor);
+    font-size: 0.85rem;
+}
+
+.funnel {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.funnel-step {
+    --w: 100%;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    width: var(--w);
+    min-width: 12rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    background-color: var(--borderColor);
+    border-left: 3px solid var(--cardURLTextColor);
+}
+
+.funnel-step.ui {
+    border-left-color: var(--addTagColor);
+}
+
+.funnel-step.api {
+    border-left-color: var(--copyURLColor);
+}
+
+.funnel-step.domain {
+    border-left-color: var(--splashGreen);
+}
+
+.funnel-step .step-kind {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cardURLTextColor);
+}
+
+.funnel-step.ui .step-kind {
+    color: var(--addTagColor);
+}
+
+.funnel-step.api .step-kind {
+    color: var(--copyURLColor);
+}
+
+.funnel-step.domain .step-kind {
+    color: var(--splashGreen);
+}
+
+.funnel-step .step-labels {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.funnel-step .step-label {
+    font-size: 0.85rem;
+}
+
+.funnel-step .step-event {
+    font-size: 0.72rem;
+    color: var(--cardURLTextColor);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.funnel-step .step-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.funnel-step .step-pct {
+    font-variant-numeric: tabular-nums;
+    color: var(--cardURLTextColor);
+    font-size: 0.8rem;
+}
+
+.funnel-connector {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.1rem 0.75rem;
+}
+
+.funnel-connector .arrow-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--cardURLTextColor);
+    font-size: 0.78rem;
+}
+
+.funnel-connector .arrow {
+    color: var(--cardURLTextColor);
+}
+
+.funnel-connector .causes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.cause-pill {
+    --w: 0%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    background-color: var(--borderColor);
+}
+
+.cause-pill .cause-count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+/* Tints: cancels (UI abandon) cyan; rejects (domain failure) red. */
+.cause-pill.cancel {
+    border: 1px solid var(--addTagColor);
+    color: var(--addTagColor);
+}
+
+.cause-pill.reject {
+    border: 1px solid var(--removeIconColor);
+    color: var(--removeIconColor);
+}
+
+@media (max-width: 1100px) {
+    .flow-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .flow-grid {
+        grid-template-columns: 1fr;
+    }
+    /* Reset the proportional width via the custom property so narrow steps
+     * don't collapse below readability on phones. */
+    .funnel-step {
+        --w: 100%;
+    }
+}

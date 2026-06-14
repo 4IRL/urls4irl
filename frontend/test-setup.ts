@@ -181,6 +181,14 @@ const appConfig = {
     METRICS_PIPELINE_HEALTH_LEGEND_BEACON_MOBILE: "beacon · mobile",
     METRICS_PIPELINE_HEALTH_CHART_DESC:
       "Stacked bar chart of accepted ingest batches grouped by batch size and split by transport and device type.",
+    METRICS_FLOW_SUCCEEDED: "succeeded",
+    METRICS_FLOW_CONVERSION: "conversion",
+    METRICS_FLOW_DROPOFF: "drop-off",
+    METRICS_FLOW_CATEGORY_UI: "UI",
+    METRICS_FLOW_CATEGORY_API: "API",
+    METRICS_FLOW_CATEGORY_DOMAIN: "Domain",
+    METRICS_FLOW_EMPTY: "No funnel activity recorded in the selected window.",
+    METRICS_FLOWS_LOADED: "Flow funnels updated.",
   },
 };
 

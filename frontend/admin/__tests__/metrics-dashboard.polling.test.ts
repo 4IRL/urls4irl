@@ -16,14 +16,18 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchGroupedTimeseriesSpy,
+  fetchFlowSpy,
   renderSummarySpy,
   renderTopTableSpy,
+  renderFlowGridSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
+  fetchFlowSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
+  renderFlowGridSpy: vi.fn(),
 }));
 
 /**
@@ -52,6 +56,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: vi.fn(),
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
+  fetchFlow: fetchFlowSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -60,6 +65,10 @@ vi.mock("../render-summary.js", () => ({
 
 vi.mock("../render-top-table.js", () => ({
   renderTopTable: renderTopTableSpy,
+}));
+
+vi.mock("../flow-card.js", () => ({
+  renderFlowGrid: renderFlowGridSpy,
 }));
 
 import {
@@ -84,6 +93,15 @@ const DASHBOARD_HTML = `
     <section id="MetricsPanelDomain">
       <table id="MetricsTopTableDomain"><tbody></tbody></table>
     </section>
+    <div id="MetricsTablist" role="tablist">
+      <button id="MetricsTabApi"            role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"            tabindex="0"  data-tab="api"></button>
+      <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows"></button>
+    </div>
+    <section id="MetricsPanelFlows" role="tabpanel" tabindex="0" hidden>
+      <span class="flows-loading-spinner" aria-hidden="true"></span>
+      <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div id="MetricsFlowGrid" class="flow-grid"></div>
+    </section>
     <div id="MetricsErrorBanner" class="hidden"></div>
   </main>
 `;
@@ -103,12 +121,15 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchFlowSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
+    renderFlowGridSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => makeSettlingXhr());
     fetchTopEventsSpy.mockImplementation(() => makeSettlingXhr());
     fetchGroupedTimeseriesSpy.mockImplementation(() => makeSettlingXhr());
+    fetchFlowSpy.mockImplementation(() => makeSettlingXhr());
 
     // CRITICAL: install fake timers BEFORE initMetricsDashboard so the
     // initial fetchAll() is counted against the timer-controlled lifecycle.
@@ -400,5 +421,77 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
 
     // Only the initial fetchAll() round should have run.
     expect(totalFetchAllCalls()).toBe(1);
+  });
+
+  it("fetchFlow NOT called on fetchAll when Flows tab inactive (_activeTab gate)", () => {
+    // The default active tab after init is "api", so the per-flow fan-out
+    // must not fire on the initial fetchAll() nor on subsequent polls.
+    initMetricsDashboard();
+    expect(fetchFlowSpy).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(120_000);
+    expect(fetchFlowSpy).not.toHaveBeenCalled();
+  });
+
+  it("fetchFlow called on fetchAll once the Flows tab is active (_activeTab gate)", () => {
+    initMetricsDashboard();
+    // Activate Flows: this fires an immediate first-load fan-out (4 calls).
+    const flowsTab = document.getElementById(
+      "MetricsTabFlows",
+    ) as HTMLButtonElement;
+    flowsTab.click();
+    expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
+
+    fetchFlowSpy.mockClear();
+    // A polling tick with _activeTab === "flows" re-fires the fan-out.
+    vi.advanceTimersByTime(60_000);
+    expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
+  });
+
+  it("first-load aria-busy is set on #MetricsPanelFlows while the four flow XHRs are in-flight, and cleared after all four settle (DD-25)", () => {
+    // Four separate deferred stubs so the panel stays busy until ALL settle.
+    const flowDeferreds: Array<() => void> = [];
+    fetchFlowSpy.mockImplementation(() => {
+      let settle: () => void = () => {};
+      const chainable = {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockReturnThis(),
+        always: vi.fn().mockImplementation((callback: () => void) => {
+          settle = callback;
+          return chainable;
+        }),
+        abort: vi.fn(),
+      };
+      flowDeferreds.push(() => settle());
+      return chainable as unknown as JQuery.jqXHR;
+    });
+
+    initMetricsDashboard();
+
+    const flowsTab = document.getElementById(
+      "MetricsTabFlows",
+    ) as HTMLButtonElement;
+    flowsTab.click();
+
+    const flowsPanel = document.getElementById(
+      "MetricsPanelFlows",
+    ) as HTMLElement;
+    const announcement = document.getElementById(
+      "MetricsPanelFlowsAnnouncement",
+    ) as HTMLElement;
+
+    expect(flowDeferreds.length).toBe(4);
+    expect(flowsPanel.getAttribute("aria-busy")).toBe("true");
+
+    // Settle the first three — panel must still report busy.
+    flowDeferreds[0]();
+    flowDeferreds[1]();
+    flowDeferreds[2]();
+    expect(flowsPanel.getAttribute("aria-busy")).toBe("true");
+
+    // Settle the fourth — now aria-busy clears and the announcement fires.
+    flowDeferreds[3]();
+    expect(flowsPanel.hasAttribute("aria-busy")).toBe(false);
+    expect(announcement.textContent).toBe("Flow funnels updated.");
   });
 });
