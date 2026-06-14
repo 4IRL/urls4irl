@@ -65,6 +65,10 @@ def create_url_in_utub(
         warning_log(
             f"User={current_user.id} tried adding URL.id={validated_new_url.url.id} but already exists in UTub.id={current_utub.id}"
         )
+        record_event(
+            EventName.URL_CREATE_REJECTED,
+            dimensions={"reason": "url_already_in_utub"},
+        )
         return build_url_conflict_error_response(
             message=URL_FAILURE.URL_IN_UTUB,
             url_string=validated_new_url.url.url_string,
@@ -289,6 +293,10 @@ def handle_url_with_credentials_error(normalized_url: NormalizedUrl) -> FlaskRes
         + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
 
+    record_event(
+        EventName.URL_CREATE_REJECTED,
+        dimensions={"reason": "credentials_url"},
+    )
     return build_detail_error_response(
         message=URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
         details=str(normalized_url.exception),
@@ -320,6 +328,10 @@ def handle_invalid_url_error(normalized_url: NormalizedUrl) -> FlaskResponse:
         + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
 
+    record_event(
+        EventName.URL_CREATE_REJECTED,
+        dimensions={"reason": "invalid_url"},
+    )
     return build_detail_error_response(
         message=URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
         details=str(normalized_url.exception),
@@ -358,6 +370,10 @@ def handle_unexpected_url_validation_error(
         f"Unexpected exception validating {normalized_url.input_url_string} | Exception={str(normalized_url.exception)}"
     )
 
+    record_event(
+        EventName.URL_CREATE_REJECTED,
+        dimensions={"reason": "unexpected_error"},
+    )
     return build_detail_error_response(
         message=URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
         details=str(normalized_url.exception),

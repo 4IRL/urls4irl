@@ -213,6 +213,14 @@ class _DimAuthModalOpen(UIBaseDimensions):
     form: Literal["login", "register"]
 
 
+class _DimAuthCancel(UIBaseDimensions):
+    # `trigger` is intentionally a single-value Literal — Phase 15 only emits
+    # the navigation cancel for auth forms. Future phases widen both this
+    # Literal and the EVENT_REGISTRY tuple together.
+    form: Literal["login", "register"]
+    trigger: Literal["navigation"]
+
+
 class _DimEmailValidationSubmit(UIBaseDimensions):
     # `manual_click` covers the user explicitly clicking the resend button;
     # `auto_after_register` covers the modal auto-firing the request on
@@ -264,6 +272,23 @@ class _DimLoginFailure(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUrlCreateRejected(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Literal[
+        "credentials_url",
+        "invalid_url",
+        "unexpected_error",
+        "url_already_in_utub",
+    ]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
+class _DimRegisterRejected(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    reason: Literal["email_taken", "username_taken", "unvalidated_email"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 # ---------------------------------------------------------------------------
 # DIMENSION_MODELS — every member of EventName keyed. `None` for events
 # without dimensions. Order mirrors `EventName` for review-friendliness.
@@ -283,12 +308,14 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_REQUESTED: _DimDeviceOnly,
+    EventName.REGISTER_REJECTED: _DimRegisterRejected,
     EventName.REGISTER_SUCCESS: _DimDeviceOnly,
     EventName.TAG_APPLIED: _DimDeviceOnly,
     EventName.TAG_DELETED: _DimDeviceOnly,
     EventName.TAG_REMOVED: _DimDeviceOnly,
     EventName.URL_ACCESSED: _DimDeviceOnly,
     EventName.URL_ADDED_TO_UTUB: _DimDeviceOnly,
+    EventName.URL_CREATE_REJECTED: _DimUrlCreateRejected,
     EventName.URL_REMOVED_FROM_UTUB: _DimDeviceOnly,
     EventName.URL_STRING_UPDATED: _DimDeviceOnly,
     EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
@@ -353,6 +380,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_LOGIN_SUBMIT: _DimDeviceOnly,
     EventName.UI_REGISTER_SUBMIT: _DimDeviceOnly,
     EventName.UI_FORGOT_PASSWORD_SUBMIT: _DimDeviceOnly,
+    EventName.UI_AUTH_CANCEL: _DimAuthCancel,
     EventName.UI_AUTH_FORM_SWITCH: _DimAuthFormSwitch,
     EventName.UI_AUTH_MODAL_OPEN: _DimAuthModalOpen,
     EventName.UI_RESET_PASSWORD_SUBMIT: _DimDeviceOnly,

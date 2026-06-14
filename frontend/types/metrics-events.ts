@@ -53,6 +53,7 @@ export const UI_EVENTS = {
   UI_LOGIN_SUBMIT: "ui_login_submit",
   UI_REGISTER_SUBMIT: "ui_register_submit",
   UI_FORGOT_PASSWORD_SUBMIT: "ui_forgot_password_submit",
+  UI_AUTH_CANCEL: "ui_auth_cancel",
   UI_AUTH_FORM_SWITCH: "ui_auth_form_switch",
   UI_AUTH_MODAL_OPEN: "ui_auth_modal_open",
   UI_RESET_PASSWORD_SUBMIT: "ui_reset_password_submit",

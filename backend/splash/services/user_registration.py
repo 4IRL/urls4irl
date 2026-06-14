@@ -40,11 +40,19 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
     if email_user:
         if email_user.email_validated:
             errors[REGISTER_LOGIN_FORM.EMAIL] = [USER_FAILURE.EMAIL_TAKEN]
+            record_event(
+                EventName.REGISTER_REJECTED,
+                dimensions={"reason": "email_taken"},
+            )
         else:
             unvalidated_email = True
 
     if username_user and username_user.email_validated:
         errors[REGISTER_LOGIN_FORM.USERNAME] = [USER_FAILURE.USERNAME_TAKEN]
+        record_event(
+            EventName.REGISTER_REJECTED,
+            dimensions={"reason": "username_taken"},
+        )
 
     if errors:
         warning_log("Form errors when registering")
@@ -57,6 +65,10 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
     if unvalidated_email:
         login_user(email_user)
         warning_log(f"User={email_user.id} has not validated email yet")
+        record_event(
+            EventName.REGISTER_REJECTED,
+            dimensions={"reason": "unvalidated_email"},
+        )
         return build_message_error_response(
             message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
             error_code=RegisterErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,

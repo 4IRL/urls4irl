@@ -126,6 +126,12 @@ export type DimMobileNav = {
   target: "utubs" | "urls" | "members" | "tags";
 };
 
+export type DimAuthCancel = {
+  device_type: DeviceType;
+  form: "login" | "register";
+  trigger: "navigation";
+};
+
 export type DimAuthFormSwitch = {
   device_type: DeviceType;
   target: "login" | "register" | "forgot_password";
@@ -189,6 +195,7 @@ export type UIEventDimensions = {
   ui_login_submit: DimDeviceOnly;
   ui_register_submit: DimDeviceOnly;
   ui_forgot_password_submit: DimDeviceOnly;
+  ui_auth_cancel: DimAuthCancel;
   ui_auth_form_switch: DimAuthFormSwitch;
   ui_auth_modal_open: DimAuthModalOpen;
   ui_reset_password_submit: DimDeviceOnly;
