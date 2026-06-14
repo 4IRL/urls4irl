@@ -15,7 +15,12 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
-from backend.metrics.query_service import summary, timeseries, top_events
+from backend.metrics.query_service import (
+    grouped_counts,
+    summary,
+    timeseries,
+    top_events,
+)
 from backend.metrics.resources import Resource
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
@@ -1657,3 +1662,380 @@ def test_timeseries_filters_by_device_type(
     assert len(nonzero) == 1
     assert nonzero[0].count == expected_count
     assert nonzero[0].bucket == inside
+
+
+# --------------------------- grouped_counts --------------------------------
+
+
+def _count_rows_for_event(pg_conn: Any, event_name: EventName) -> int:
+    """Return the raw COUNT(*) of AnonymousMetrics rows for an event.
+
+    Used for assert-before-state checks proving the window starts empty before
+    the rows under test are seeded.
+    """
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            'SELECT COUNT(*) FROM "AnonymousMetrics" WHERE "eventName" = %s',
+            (event_name.value,),
+        )
+        return cur.fetchone()[0]
+
+
+def test_grouped_counts_filters_and_groups_by_dim(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN several UI_FORM_CANCEL rows across (form, trigger) combinations
+    WHEN grouped_counts is called filtering form=utub_create grouped by trigger
+    THEN it returns a list of (trigger, count) tuples summed across buckets,
+        excluding non-matching form values.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_rows_for_event(metrics_pg_conn, EventName.UI_FORM_CANCEL) == 0
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_FORM_CANCEL,
+        bucket_start=inside,
+        dimensions={
+            "form": "utub_create",
+            "trigger": "escape_key",
+            "device_type": int(DeviceType.DESKTOP),
+        },
+        count=3,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_FORM_CANCEL,
+        bucket_start=inside + timedelta(hours=2),
+        dimensions={
+            "form": "utub_create",
+            "trigger": "escape_key",
+            "device_type": int(DeviceType.DESKTOP),
+        },
+        count=4,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_FORM_CANCEL,
+        bucket_start=inside + timedelta(hours=1),
+        dimensions={
+            "form": "utub_create",
+            "trigger": "cancel_button",
+            "device_type": int(DeviceType.DESKTOP),
+        },
+        count=2,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_FORM_CANCEL,
+        bucket_start=inside,
+        dimensions={
+            "form": "url_create",
+            "trigger": "escape_key",
+            "device_type": int(DeviceType.DESKTOP),
+        },
+        count=99,
+    )
+
+    with app.app_context():
+        result = grouped_counts(
+            event_name=EventName.UI_FORM_CANCEL,
+            window_start=window_start,
+            window_end=window_end,
+            dim_filter=[("form", "utub_create")],
+            group_by="trigger",
+        )
+
+    assert isinstance(result, list)
+    for entry in result:
+        assert isinstance(entry, tuple)
+        assert isinstance(entry[0], str)
+        assert isinstance(entry[1], int)
+    result_dict = dict(result)
+    assert result_dict == {"escape_key": 7, "cancel_button": 2}
+    # Descending-by-count ordering.
+    assert result[0] == ("escape_key", 7)
+
+
+def test_grouped_counts_no_filter_no_group_by(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN several rows for a single event in the window
+    WHEN grouped_counts is called with no dim_filter and no group_by
+    THEN it returns the summed total as a scalar int (not a list).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_rows_for_event(metrics_pg_conn, EventName.UTUB_OPENED) == 0
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside,
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UTUB_OPENED,
+        bucket_start=inside + timedelta(hours=1),
+        count=7,
+    )
+
+    with app.app_context():
+        result = grouped_counts(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+        )
+
+    assert isinstance(result, int)
+    assert result == 12
+
+
+def test_grouped_counts_group_by_none_returns_int(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN zero matching rows for an event in the window
+    WHEN grouped_counts is called with group_by=None explicitly
+    THEN it returns the integer 0 (not an empty list, not None).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    assert _count_rows_for_event(metrics_pg_conn, EventName.UTUB_OPENED) == 0
+
+    with app.app_context():
+        result = grouped_counts(
+            event_name=EventName.UTUB_OPENED,
+            window_start=window_start,
+            window_end=window_end,
+            group_by=None,
+        )
+
+    assert result == 0
+    assert isinstance(result, int)
+
+
+def test_grouped_counts_group_by_set_returns_list_of_tuples(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN rows for an event with varying trigger dim values
+    WHEN grouped_counts is called with group_by="trigger"
+    THEN the return is a list whose elements are (str, int) tuples.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_rows_for_event(metrics_pg_conn, EventName.UI_FORM_CANCEL) == 0
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.UI_FORM_CANCEL,
+        bucket_start=inside,
+        dimensions={
+            "form": "utub_create",
+            "trigger": "escape_key",
+            "device_type": int(DeviceType.DESKTOP),
+        },
+        count=1,
+    )
+
+    with app.app_context():
+        result = grouped_counts(
+            event_name=EventName.UI_FORM_CANCEL,
+            window_start=window_start,
+            window_end=window_end,
+            group_by="trigger",
+        )
+
+    assert isinstance(result, list)
+    for entry in result:
+        assert isinstance(entry, tuple)
+        assert isinstance(entry[0], str)
+        assert isinstance(entry[1], int)
+    assert result == [("escape_key", 1)]
+
+
+def test_grouped_counts_invalid_filter_key_nonapi_event_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a non-API event (JSONB dimension path)
+    WHEN grouped_counts is called with an unknown dim key in dim_filter
+    THEN ValueError is raised.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    with app.app_context():
+        with pytest.raises(ValueError):
+            grouped_counts(
+                event_name=EventName.UI_FORM_CANCEL,
+                window_start=window_start,
+                window_end=window_end,
+                dim_filter=[("nonexistent_dim", "value")],
+            )
+
+
+def test_grouped_counts_invalid_filter_key_api_event_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an API-category event (flat-column path)
+    WHEN grouped_counts is called with a key outside {endpoint, method,
+        status_code} (e.g. device_type, which is not a flat column)
+    THEN ValueError is raised.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    with app.app_context():
+        with pytest.raises(ValueError):
+            grouped_counts(
+                event_name=EventName.API_HIT,
+                window_start=window_start,
+                window_end=window_end,
+                dim_filter=[("device_type", "2")],
+            )
+
+
+def test_grouped_counts_api_category_filters_by_flat_columns(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN API_HIT rows with distinct endpoint/method/status_code combos
+    WHEN grouped_counts filters by flat columns (endpoint+method, then
+        status_code)
+    THEN only rows matching those flat-column values are counted, and the
+        status_code integer cast works.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_rows_for_event(metrics_pg_conn, EventName.API_HIT) == 0
+
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside,
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=200,
+        count=5,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=1),
+        endpoint="urls.create_url",
+        method="POST",
+        status_code=400,
+        count=3,
+    )
+    _insert_metric_row(
+        metrics_pg_conn,
+        event_name=EventName.API_HIT,
+        bucket_start=inside + timedelta(hours=2),
+        endpoint="utubs.get_single_utub",
+        method="GET",
+        status_code=200,
+        count=11,
+    )
+
+    with app.app_context():
+        endpoint_method_total = grouped_counts(
+            event_name=EventName.API_HIT,
+            window_start=window_start,
+            window_end=window_end,
+            dim_filter=[("endpoint", "urls.create_url"), ("method", "POST")],
+        )
+        status_code_total = grouped_counts(
+            event_name=EventName.API_HIT,
+            window_start=window_start,
+            window_end=window_end,
+            dim_filter=[
+                ("endpoint", "urls.create_url"),
+                ("method", "POST"),
+                ("status_code", "200"),
+            ],
+        )
+
+    assert endpoint_method_total == 8
+    assert status_code_total == 5
+
+
+def test_grouped_counts_status_code_nonnumeric_filter_value_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN an API_HIT query with a non-numeric status_code filter value
+    WHEN grouped_counts is called
+    THEN ValueError is raised with the controlled status_code message (not the
+        raw int() error message that would leak the input).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    with app.app_context():
+        with pytest.raises(ValueError) as exc_info:
+            grouped_counts(
+                event_name=EventName.API_HIT,
+                window_start=window_start,
+                window_end=window_end,
+                dim_filter=[("status_code", "abc")],
+            )
+
+    assert "filter value for status_code must be an integer" in str(exc_info.value)
+
+
+def test_grouped_counts_device_type_nonnumeric_filter_value_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN a non-API event filtered on device_type with a non-numeric value
+    WHEN grouped_counts is called
+    THEN ValueError is raised with the controlled device_type message (not the
+        raw int() error message that would leak the input).
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    with app.app_context():
+        with pytest.raises(ValueError) as exc_info:
+            grouped_counts(
+                event_name=EventName.UI_FORM_CANCEL,
+                window_start=window_start,
+                window_end=window_end,
+                dim_filter=[("device_type", "phone")],
+            )
+
+    assert "filter value for device_type must be an integer" in str(exc_info.value)
