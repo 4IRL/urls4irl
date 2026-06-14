@@ -31,8 +31,8 @@ Adding a new funnel
                          NOT the URL pattern. Run `flask routes` or check
                          ENDPOINT_REGISTRY.md for the correct value. Exactly one
                          of (event_name) or (api_endpoint+api_method) must be set
-     - filter            optional per-step AND-filter (e.g. [("form","login")])
-     - drop_breakdown    optional FlowStepBreakdown(event_name, filter, group_by)
+     - dim_filter        optional per-step AND-filter (e.g. [("form","login")])
+     - drop_breakdown    optional FlowStepBreakdown(event_name, dim_filter, group_by)
                          explaining the drop from the previous step (e.g.
                          UI_FORM_CANCEL grouped by "trigger", or a rejection
                          event grouped by "reason"). Each step carries at most
@@ -71,18 +71,18 @@ first step is always the denominator.
 
 from __future__ import annotations
 
-from typing import Literal, Self
+from enum import StrEnum
+from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 
 from backend.metrics.events import EventName
-from backend.metrics.flow_ids import ALL_FLOW_IDS, FlowId
-from backend.schemas.requests.metrics import FlowFilterCondition
 
 __all__ = [
     "ALL_FLOW_IDS",
     "FLOWS",
     "FlowDefinition",
+    "FlowFilterCondition",
     "FlowId",
     "FlowStep",
     "FlowStepBreakdown",
@@ -95,6 +95,55 @@ _FLOW_STEP_XOR_ERROR: str = (
 _FLOW_DEFINITION_MIN_STEPS_ERROR: str = (
     "A FlowDefinition must declare at least 2 steps."
 )
+_FILTER_FORMAT_ERROR: str = (
+    "Each `filter` entry must be `dim:value` with a non-empty dim before the "
+    "first colon."
+)
+
+
+class FlowId(StrEnum):
+    CREATE_UTUB = "create_utub"
+    ADD_URL_TO_UTUB = "add_url_to_utub"
+    REGISTER = "register"
+    LOGIN = "login"
+
+
+# Module-level tuple of every FlowId value. Reused by `FlowIdLiteral` in the
+# query schema and by `generate_flows_ts()` so the wire contract and the
+# codegen surface stay aligned with this source of truth.
+ALL_FLOW_IDS: tuple[str, ...] = tuple(member.value for member in FlowId)
+
+
+def _parse_flow_filter_condition(value: object) -> object:
+    """Split one `dim:value` filter scalar into a `(dim, value)` tuple.
+
+    Per DD-2, a colon-encoded filter scalar (`form:url_create`) is split on the
+    FIRST colon so dim values may themselves contain colons (e.g. a URL
+    pattern). A `BeforeValidator` runs this before Pydantic binds the field to
+    `tuple[str, str]`. Already-tuple inputs (e.g. the in-code `FLOWS` registry
+    entries) pass through unchanged so the type is usable outside any HTTP
+    boundary.
+
+    Examples:
+        "form:url_create"        -> ("form", "url_create")
+        "endpoint:urls.create"   -> ("endpoint", "urls.create")
+        ("form", "url_create")   -> ("form", "url_create")
+    """
+    if isinstance(value, tuple):
+        return value
+    if not isinstance(value, str) or ":" not in value:
+        raise ValueError(_FILTER_FORMAT_ERROR)
+    dim_key, _, dim_value = value.partition(":")
+    if not dim_key:
+        raise ValueError(_FILTER_FORMAT_ERROR)
+    return (dim_key, dim_value)
+
+
+# A single parsed AND-filter predicate: `(dim, value)`. Bound from a
+# `dim:value` scalar via the `BeforeValidator` above.
+FlowFilterCondition = Annotated[
+    tuple[str, str], BeforeValidator(_parse_flow_filter_condition)
+]
 
 
 class FlowStepBreakdown(BaseModel):
@@ -110,7 +159,7 @@ class FlowStepBreakdown(BaseModel):
     event_name: EventName = Field(
         description="The event whose grouped counts explain the drop-off."
     )
-    filter: list[FlowFilterCondition] | None = Field(
+    dim_filter: list[FlowFilterCondition] | None = Field(
         default=None,
         description="Optional AND-filter scoping the breakdown (e.g. form scope).",
     )
@@ -150,7 +199,7 @@ class FlowStep(BaseModel):
         default=None,
         description="HTTP method matched against API_HIT's flat `method` column.",
     )
-    filter: list[FlowFilterCondition] | None = Field(
+    dim_filter: list[FlowFilterCondition] | None = Field(
         default=None,
         description="Optional per-step AND-filter applied to this step's count.",
     )
@@ -201,10 +250,10 @@ FLOWS: dict[FlowId, FlowDefinition] = {
                 stream="ui",
                 label="Submit",
                 event_name=EventName.UI_FORM_SUBMIT,
-                filter=[("form", "utub_create")],
+                dim_filter=[("form", "utub_create")],
                 drop_breakdown=FlowStepBreakdown(
                     event_name=EventName.UI_FORM_CANCEL,
-                    filter=[("form", "utub_create")],
+                    dim_filter=[("form", "utub_create")],
                     group_by="trigger",
                 ),
             ),
@@ -233,10 +282,10 @@ FLOWS: dict[FlowId, FlowDefinition] = {
                 stream="ui",
                 label="Submit",
                 event_name=EventName.UI_FORM_SUBMIT,
-                filter=[("form", "url_create")],
+                dim_filter=[("form", "url_create")],
                 drop_breakdown=FlowStepBreakdown(
                     event_name=EventName.UI_FORM_CANCEL,
-                    filter=[("form", "url_create")],
+                    dim_filter=[("form", "url_create")],
                     group_by="trigger",
                 ),
             ),
@@ -264,7 +313,7 @@ FLOWS: dict[FlowId, FlowDefinition] = {
                 stream="ui",
                 label="Open register form",
                 event_name=EventName.UI_AUTH_MODAL_OPEN,
-                filter=[("form", "register")],
+                dim_filter=[("form", "register")],
             ),
             FlowStep(
                 stream="ui",
@@ -272,7 +321,7 @@ FLOWS: dict[FlowId, FlowDefinition] = {
                 event_name=EventName.UI_REGISTER_SUBMIT,
                 drop_breakdown=FlowStepBreakdown(
                     event_name=EventName.UI_AUTH_CANCEL,
-                    filter=[("form", "register")],
+                    dim_filter=[("form", "register")],
                     group_by="trigger",
                 ),
             ),
@@ -300,7 +349,7 @@ FLOWS: dict[FlowId, FlowDefinition] = {
                 stream="ui",
                 label="Open login form",
                 event_name=EventName.UI_AUTH_MODAL_OPEN,
-                filter=[("form", "login")],
+                dim_filter=[("form", "login")],
             ),
             FlowStep(
                 stream="ui",
@@ -308,7 +357,7 @@ FLOWS: dict[FlowId, FlowDefinition] = {
                 event_name=EventName.UI_LOGIN_SUBMIT,
                 drop_breakdown=FlowStepBreakdown(
                     event_name=EventName.UI_AUTH_CANCEL,
-                    filter=[("form", "login")],
+                    dim_filter=[("form", "login")],
                     group_by="trigger",
                 ),
             ),

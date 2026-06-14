@@ -1356,7 +1356,7 @@ def test_flow_invalid_filter_key_returns_400_with_field_filter(
                 stream="ui",
                 label="Open",
                 event_name=EventName.UI_URL_CREATE_OPEN,
-                filter=[("nonexistent_dim", "x")],
+                dim_filter=[("nonexistent_dim", "x")],
             ),
             FlowStep(
                 stream="ui",

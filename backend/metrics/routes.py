@@ -18,8 +18,7 @@ from backend.metrics import query_service
 from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
-from backend.metrics.flow_ids import FlowId
-from backend.metrics.flows import FLOWS, FlowStep
+from backend.metrics.flows import FLOWS, FlowId, FlowStep
 from backend.metrics.query_service import grouped_counts
 from backend.metrics.resources import Resource
 from backend.schemas.errors import (
@@ -427,14 +426,14 @@ def _count_flow_step(
             event_name=step.event_name,
             window_start=window_start,
             window_end=window_end,
-            dim_filter=step.filter,
+            dim_filter=step.dim_filter,
             group_by=None,
         )
     else:
         api_filter: list[tuple[str, str]] = [
             ("endpoint", step.api_endpoint or ""),
             ("method", step.api_method or ""),
-        ] + (step.filter or [])
+        ] + (step.dim_filter or [])
         count = grouped_counts(
             event_name=EventName.API_HIT,
             window_start=window_start,
@@ -461,7 +460,7 @@ def _build_step_breakdown(
         event_name=step.drop_breakdown.event_name,
         window_start=window_start,
         window_end=window_end,
-        dim_filter=step.drop_breakdown.filter,
+        dim_filter=step.drop_breakdown.dim_filter,
         group_by=step.drop_breakdown.group_by,
     )
     assert isinstance(raw_rows, list)

@@ -6,6 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.metrics.events import EventCategory, EventName
+from backend.metrics.flows import _parse_flow_filter_condition
 from backend.schemas.metrics import (
     SummaryCategoryCount,
     SummaryResponseSchema,
@@ -16,12 +17,9 @@ from backend.schemas.metrics import (
 )
 from backend.schemas.requests.metrics import (
     _BOTH_WINDOW_AND_RANGE_ERROR,
-    _MAX_FILTER_ENTRIES,
-    _MAX_FILTER_VALUE_LENGTH,
     _MISSING_WINDOW_OR_RANGE_ERROR,
     _PARTIAL_RANGE_ERROR,
     _RANGE_ORDER_ERROR,
-    FlowFilterParamsSchema,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,
@@ -588,68 +586,45 @@ def test_summary_response_schema_round_trip():
     assert len(response.by_category) == 2
 
 
-# ----------------------- FlowFilterParamsSchema ----------------------------
+# ----------------------- _parse_flow_filter_condition ----------------------
 
 
-def test_flow_filter_params_well_formed_parses_to_tuples():
-    """Well-formed `dim:value` scalars parse into a list of `(dim, value)` tuples."""
-    parsed = FlowFilterParamsSchema.model_validate(
-        {"filter": ["form:utub_create", "trigger:escape_key"], "group_by": "trigger"}
-    )
-    assert parsed.filter == [("form", "utub_create"), ("trigger", "escape_key")]
-    assert parsed.group_by == "trigger"
+def test_parse_flow_filter_condition_well_formed_returns_tuple():
+    """A well-formed `dim:value` scalar parses into a `(dim, value)` tuple."""
+    assert _parse_flow_filter_condition("form:utub_create") == ("form", "utub_create")
 
 
-def test_flow_filter_params_value_may_contain_colons():
+def test_parse_flow_filter_condition_value_may_contain_colons():
     """Only the FIRST colon splits dim from value, so values may contain colons."""
-    parsed = FlowFilterParamsSchema.model_validate({"filter": ["endpoint:urls:create"]})
-    assert parsed.filter == [("endpoint", "urls:create")]
+    assert _parse_flow_filter_condition("endpoint:urls:create") == (
+        "endpoint",
+        "urls:create",
+    )
 
 
-def test_flow_filter_params_defaults_to_none():
-    """`filter` and `group_by` default to None when omitted."""
-    parsed = FlowFilterParamsSchema.model_validate({})
-    assert parsed.filter is None
-    assert parsed.group_by is None
+def test_parse_flow_filter_condition_passes_through_existing_tuple():
+    """An already-tuple input (in-code `FLOWS` entries) passes through unchanged."""
+    assert _parse_flow_filter_condition(("form", "login")) == ("form", "login")
 
 
-def test_flow_filter_params_rejects_entry_without_colon():
-    """A `filter` entry lacking a colon raises `ValidationError`."""
-    with pytest.raises(ValidationError):
-        FlowFilterParamsSchema.model_validate({"filter": ["nocolon"]})
+def test_parse_flow_filter_condition_rejects_entry_without_colon():
+    """A scalar lacking a colon raises `ValueError`."""
+    with pytest.raises(ValueError):
+        _parse_flow_filter_condition("nocolon")
 
 
-def test_flow_filter_params_rejects_empty_dim():
-    """A `filter` entry with an empty dim (leading colon) raises `ValidationError`."""
-    with pytest.raises(ValidationError):
-        FlowFilterParamsSchema.model_validate({"filter": [":value"]})
+def test_parse_flow_filter_condition_rejects_empty_dim():
+    """A scalar with an empty dim (leading colon) raises `ValueError`."""
+    with pytest.raises(ValueError):
+        _parse_flow_filter_condition(":value")
 
 
-def test_flow_filter_params_accepts_empty_value():
+def test_parse_flow_filter_condition_accepts_empty_value():
     """An empty value after the colon (`form:`) parses to `("form", "")`.
 
     Empty values are allowed by design — only an empty dim (before the colon)
     or a missing colon is rejected. The funnel never queries an empty value in
     practice, but the parser stays permissive so a future filter on a sentinel
-    empty-string dim value does not require a schema change.
+    empty-string dim value does not require a change.
     """
-    parsed = FlowFilterParamsSchema.model_validate({"filter": ["form:"]})
-    assert parsed.filter == [("form", "")]
-
-
-def test_flow_filter_params_rejects_too_many_entries():
-    """More than `_MAX_FILTER_ENTRIES` entries raises `ValidationError`.
-
-    Uses a single repeated valid dim key so the rejection is attributable to
-    the entry-count cap, not to any per-dim or unknown-key check.
-    """
-    too_many = ["form:value"] * (_MAX_FILTER_ENTRIES + 1)
-    with pytest.raises(ValidationError):
-        FlowFilterParamsSchema.model_validate({"filter": too_many})
-
-
-def test_flow_filter_params_rejects_over_length_value():
-    """A `filter` value longer than `_MAX_FILTER_VALUE_LENGTH` raises `ValidationError`."""
-    over_length_value = "x" * (_MAX_FILTER_VALUE_LENGTH + 1)
-    with pytest.raises(ValidationError):
-        FlowFilterParamsSchema.model_validate({"filter": [f"form:{over_length_value}"]})
+    assert _parse_flow_filter_condition("form:") == ("form", "")

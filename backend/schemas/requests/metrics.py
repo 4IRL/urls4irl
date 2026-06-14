@@ -13,7 +13,7 @@ from pydantic import (
 )
 
 from backend.metrics.events import EVENT_CATEGORY, DeviceType, EventCategory, EventName
-from backend.metrics.flow_ids import ALL_FLOW_IDS
+from backend.metrics.flows import ALL_FLOW_IDS
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 _BOTH_WINDOW_AND_RANGE_ERROR: str = (
@@ -345,119 +345,6 @@ class SummaryQuerySchema(BaseModel):
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:
         _validate_window_xor_range(self.window, self.start, self.end)
-        return self
-
-
-# Bounds on a single `filter` query entry, shared by the parser and the
-# `@model_validator` so the wire contract and the error messages stay aligned.
-_MAX_FILTER_ENTRIES: int = 8
-_MAX_FILTER_KEY_LENGTH: int = 64
-_MAX_FILTER_VALUE_LENGTH: int = 255
-
-_FILTER_FORMAT_ERROR: str = (
-    "Each `filter` entry must be `dim:value` with a non-empty dim before the "
-    "first colon."
-)
-_FILTER_TOO_MANY_ERROR: str = (
-    f"At most {_MAX_FILTER_ENTRIES} `filter` entries are allowed."
-)
-_FILTER_KEY_TOO_LONG_ERROR: str = (
-    f"Each `filter` dim must be a non-empty string ≤{_MAX_FILTER_KEY_LENGTH} chars."
-)
-_FILTER_VALUE_TOO_LONG_ERROR: str = (
-    f"Each `filter` value must be ≤{_MAX_FILTER_VALUE_LENGTH} chars."
-)
-
-
-def _parse_flow_filter_condition(value: object) -> object:
-    """Split one `dim:value` filter scalar into a `(dim, value)` tuple.
-
-    Per DD-2, the `filter` query param arrives as repeated colon-encoded
-    scalars (`?filter=form:url_create&filter=trigger:escape_key`). Each scalar
-    is split on the FIRST colon so dim values may themselves contain colons
-    (e.g. a URL pattern). A `BeforeValidator` runs this before Pydantic binds
-    the field to `tuple[str, str]`. Already-tuple inputs (e.g. constructed
-    in-code) pass through unchanged so the schema is usable outside the HTTP
-    boundary.
-
-    Examples:
-        "form:url_create"        -> ("form", "url_create")
-        "endpoint:urls.create"   -> ("endpoint", "urls.create")
-        ("form", "url_create")   -> ("form", "url_create")
-    """
-    if isinstance(value, tuple):
-        return value
-    if not isinstance(value, str) or ":" not in value:
-        raise ValueError(_FILTER_FORMAT_ERROR)
-    dim_key, _, dim_value = value.partition(":")
-    if not dim_key:
-        raise ValueError(_FILTER_FORMAT_ERROR)
-    return (dim_key, dim_value)
-
-
-# A single parsed AND-filter predicate: `(dim, value)`. Bound from a
-# `dim:value` query scalar via the `BeforeValidator` above.
-FlowFilterCondition = Annotated[
-    tuple[str, str], BeforeValidator(_parse_flow_filter_condition)
-]
-
-
-def _validate_flow_filter_entries(filter_conditions: list[tuple[str, str]]) -> None:
-    """Bound the entry count and per-entry key/value lengths of a `filter` list.
-
-    Mirrors `GroupedTimeseriesQuerySchema`'s `_check_group_by_entry_shape`
-    entry validator: raises `ValueError` so Pydantic wraps it into a
-    `ValidationError` the route layer maps to a 400.
-    """
-    if len(filter_conditions) > _MAX_FILTER_ENTRIES:
-        raise ValueError(_FILTER_TOO_MANY_ERROR)
-    for dim_key, dim_value in filter_conditions:
-        if not dim_key or len(dim_key) > _MAX_FILTER_KEY_LENGTH:
-            raise ValueError(_FILTER_KEY_TOO_LONG_ERROR)
-        if len(dim_value) > _MAX_FILTER_VALUE_LENGTH:
-            raise ValueError(_FILTER_VALUE_TOO_LONG_ERROR)
-
-
-class FlowFilterParamsSchema(BaseModel):
-    """Reusable `filter` + `group_by` query-param carrier for flow slicing.
-
-    Defines the dim-slicing primitives consumed by `grouped_counts`:
-      * `filter` — an AND-joined list of `(dim, value)` predicates, each parsed
-        from a `dim:value` query scalar (DD-2). Repeated `?filter=...` keys are
-        promoted to a list by the route's
-        `_parse_query_args(..., multi_value_keys=frozenset({"filter"}))`.
-      * `group_by` — a single dim name to group the aggregate by.
-
-    Step 3's `FlowQuerySchema` carries `flow_id` + window and the per-flow
-    slicing is configured server-side in the `FLOWS` registry, so this schema
-    holds only the reusable slicing fields for direct/ad-hoc use and tests.
-    """
-
-    model_config = ConfigDict(extra="forbid")
-
-    filter: list[FlowFilterCondition] | None = Field(
-        default=None,
-        description=(
-            "List of AND-joined `dim:value` filter predicates. Each entry is "
-            "parsed from a colon-encoded query scalar; repeated `filter` keys "
-            "build the list. Bounded to "
-            f"{_MAX_FILTER_ENTRIES} entries, dims ≤{_MAX_FILTER_KEY_LENGTH} "
-            f"chars, values ≤{_MAX_FILTER_VALUE_LENGTH} chars."
-        ),
-    )
-    group_by: str | None = Field(
-        default=None,
-        max_length=_MAX_FILTER_KEY_LENGTH,
-        description=(
-            "Optional single dimension name to group the flat aggregate by. "
-            "When omitted, `grouped_counts` returns a scalar total."
-        ),
-    )
-
-    @model_validator(mode="after")
-    def _check_filter_entry_shape(self) -> Self:
-        if self.filter is not None:
-            _validate_flow_filter_entries(self.filter)
         return self
 
 
