@@ -628,3 +628,14 @@ def test_parse_flow_filter_condition_accepts_empty_value():
     empty-string dim value does not require a change.
     """
     assert _parse_flow_filter_condition("form:") == ("form", "")
+
+
+def test_parse_flow_filter_condition_rejects_non_str_non_tuple():
+    """A scalar that is neither a `str` nor a `tuple` raises `ValueError`.
+
+    The `BeforeValidator` accepts only the colon-encoded `str` wire form or an
+    already-parsed `tuple` passthrough; any other type (here an `int`) is
+    rejected before Pydantic binds the `tuple[str, str]` field.
+    """
+    with pytest.raises(ValueError):
+        _parse_flow_filter_condition(42)

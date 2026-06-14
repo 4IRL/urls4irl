@@ -1313,6 +1313,27 @@ def test_flow_window_xor_enforced(
     assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
 
 
+def test_flow_missing_window_and_range_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/flow with a valid `flow_id` but no `window`,
+        `start`, or `end`
+    THEN the response is 400 — the shared window-XOR-range validator rejects an
+        empty time spec at the schema layer, surfaced as INVALID_QUERY_PARAM.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+    url = f"{_FLOW_URL}?flow_id={_ADD_URL_FLOW}"
+
+    response = logged_in_client.get(url, headers=_AJAX_HEADERS)
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+
+
 def test_flow_invalid_window_param_returns_400_with_field_window(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:

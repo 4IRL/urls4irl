@@ -1921,6 +1921,41 @@ def test_grouped_counts_invalid_filter_key_api_event_raises_value_error(
             )
 
 
+def test_grouped_counts_invalid_group_by_key_raises_value_error(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN both a non-API event (JSONB dimension path) and an API-category event
+        (flat-column path)
+    WHEN grouped_count_by is called with a `group_by` key that is not a valid
+        dimension on the event
+    THEN ValueError is raised on BOTH paths — the unknown group_by key is
+        rejected by `_raise_on_unknown_keys` before any query runs.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    with app.app_context():
+        with pytest.raises(ValueError):
+            grouped_count_by(
+                event_name=EventName.UI_FORM_CANCEL,
+                window_start=window_start,
+                window_end=window_end,
+                dim_filter=[],
+                group_by="nonexistent",
+            )
+        with pytest.raises(ValueError):
+            grouped_count_by(
+                event_name=EventName.API_HIT,
+                window_start=window_start,
+                window_end=window_end,
+                dim_filter=[],
+                group_by="nonexistent",
+            )
+
+
 def test_grouped_counts_api_category_filters_by_flat_columns(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
