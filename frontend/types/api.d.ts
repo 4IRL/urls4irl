@@ -157,6 +157,57 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metrics/query/gauges/timeseries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return every gauge's windowed sample series for an admin time window in one batched response, each series folding in its kind + description. */
+    get: operations["queryGaugesTimeseries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/gauges/latest": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return the most-recent sample for every gauge that has rows. */
+    get: operations["queryGaugesLatest"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/gauges/list": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return static metadata (name, kind, description) for every gauge. */
+    get: operations["queryGaugesList"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -894,6 +945,112 @@ export interface components {
     FlowResponseSchema: {
       /** @description Ordered funnel steps assembled server-side from the FLOWS registry; one entry per FlowDefinition step, in funnel order. */
       steps: components["schemas"]["FlowStepSchema"][];
+    };
+    /**
+     * @description One sampled point of a gauge's timeseries.
+     *
+     *     COUNT/MAX gauges populate `value_int`; AVG gauges populate `value_float`
+     *     (the other stays null). A k-anon-suppressed `max_*` sample has BOTH null —
+     *     the renderer drops such points before charting.
+     */
+    GaugeSampleSchema: {
+      /**
+       * Format: date-time
+       * @description UTC instant this gauge was sampled
+       */
+      sampled_at: string;
+      /**
+       * @description Integer value for COUNT/MAX gauges; null otherwise
+       * @default null
+       */
+      value_int: number | null;
+      /**
+       * @description Fractional value for AVG gauges; null otherwise
+       * @default null
+       */
+      value_float: number | null;
+    };
+    /**
+     * @description One gauge's full windowed series with its folded-in metadata.
+     *
+     *     `kind`/`description` are folded into each series so the batched response is
+     *     self-describing — the dashboard renders a card straight from the entry with
+     *     no separate `gauges/list` round-trip.
+     */
+    GaugeSeries: {
+      /** @description GaugeName value (e.g. max_urls_per_utub) */
+      gauge_name: string;
+      /** @description GaugeKind value (volume | distribution_max | ...) */
+      kind: string;
+      /** @description Human-readable gauge description */
+      description: string;
+      /** @description Window-filtered samples ordered by sampled_at */
+      samples: components["schemas"]["GaugeSampleSchema"][];
+    };
+    /**
+     * @description Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.
+     *
+     *     Carries every gauge's windowed series in one response (mirrors
+     *     `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in
+     *     the window is absent from `gauges` rather than zero-filled.
+     */
+    GaugesTimeseriesResponseSchema: {
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /** @description One series per gauge that has samples in the window */
+      gauges: components["schemas"]["GaugeSeries"][];
+    };
+    /** @description One gauge's most-recent sample for the `gauges/latest` response. */
+    GaugeLatestRow: {
+      /** @description GaugeName value */
+      gauge_name: string;
+      /**
+       * Format: date-time
+       * @description UTC instant of the newest sample
+       */
+      sampled_at: string;
+      /**
+       * @description Integer value for COUNT/MAX gauges; null otherwise
+       * @default null
+       */
+      value_int: number | null;
+      /**
+       * @description Fractional value for AVG gauges; null otherwise
+       * @default null
+       */
+      value_float: number | null;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/gauges/latest`. */
+    GaugesLatestResponseSchema: {
+      /** @description The newest sample for each gauge that has any rows */
+      gauges: components["schemas"]["GaugeLatestRow"][];
+    };
+    /** @description One gauge's static metadata for the `gauges/list` response. */
+    GaugeMetadataRow: {
+      /** @description GaugeName value */
+      gauge_name: string;
+      /** @description GaugeKind value */
+      kind: string;
+      /** @description Human-readable gauge description */
+      description: string;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/gauges/list`. */
+    GaugesListResponseSchema: {
+      /** @description Metadata for every registered gauge, in registry order */
+      gauges: components["schemas"]["GaugeMetadataRow"][];
     };
     RegisterRequest: {
       /**
@@ -1941,6 +2098,145 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryGaugesTimeseries: {
+    parameters: {
+      query?: {
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.
+       *
+       *         Carries every gauge's windowed series in one response (mirrors
+       *         `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in
+       *         the window is absent from `gauges` rather than zero-filled.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["GaugesTimeseriesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryGaugesLatest: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/gauges/latest`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["GaugesLatestResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryGaugesList: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/gauges/list`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["GaugesListResponseSchema"];
         };
       };
       /** @description Unauthorized */

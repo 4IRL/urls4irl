@@ -17,10 +17,22 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.gauges import (
+    GAUGE_DESCRIPTIONS,
+    GAUGE_KIND,
+    GAUGE_REGISTRY,
+    GaugeName,
+)
 from backend.metrics.resources import Resource, resource_filter_clause
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
+    GaugeLatestRow,
+    GaugeMetadataRow,
+    GaugeSampleSchema,
+    GaugeSeries,
+    GaugesTimeseriesResponseSchema,
     GroupedTimeseriesBucket,
     GroupedTimeseriesResponseSchema,
     SummaryCategoryCount,
@@ -812,3 +824,153 @@ def summary(
         last_flush_at=last_flush_at,
         last_event_at=last_event_at,
     )
+
+
+def _gauge_sample_from_row(row: Anonymous_Gauges) -> GaugeSampleSchema:
+    """Build one `GaugeSampleSchema` from a stored gauge row.
+
+    `value_float` is stored as `Numeric(20, 6)`, which SQLAlchemy returns as a
+    `Decimal`; cast it to `float` so the response serializes as a JSON number
+    rather than a string. `value_int` is already a Python `int`.
+    """
+    return GaugeSampleSchema(
+        sampled_at=row.sampled_at,
+        value_int=row.value_int,
+        value_float=None if row.value_float is None else float(row.value_float),
+    )
+
+
+def gauges_timeseries_all(
+    *,
+    window: str | None,
+    window_start: datetime,
+    window_end: datetime,
+) -> GaugesTimeseriesResponseSchema:
+    """Return every gauge's windowed sample series in one batched response.
+
+    Selects all `Anonymous_Gauges` rows whose `sampled_at` falls in the
+    half-open window `[window_start, window_end)`, ordered by
+    `("gaugeName", "sampledAt")`, then groups them per gauge in a single scan.
+    Each `GaugeSeries` folds in the gauge's `kind` + `description` (from
+    `GAUGE_KIND` / `GAUGE_DESCRIPTIONS`) so the dashboard needs no separate
+    metadata round-trip to render a card. A gauge with no rows in the window is
+    simply absent from `gauges` — the renderer pads nothing.
+
+    Mirrors `grouped_timeseries`'s batched envelope shape: the route threads the
+    original `window` query value back into the response so the wire payload
+    reflects the client's request shape.
+    """
+    rows = (
+        db.session.query(Anonymous_Gauges)
+        .filter(
+            Anonymous_Gauges.sampled_at >= window_start,
+            Anonymous_Gauges.sampled_at < window_end,
+        )
+        .order_by(Anonymous_Gauges.gauge_name, Anonymous_Gauges.sampled_at)
+        .all()
+    )
+
+    samples_by_gauge: dict[str, list[GaugeSampleSchema]] = {}
+    for row in rows:
+        samples_by_gauge.setdefault(row.gauge_name, []).append(
+            _gauge_sample_from_row(row)
+        )
+
+    gauge_series: list[GaugeSeries] = []
+    # Emit in GaugeName declaration order so the dashboard's chart order is
+    # deterministic regardless of insertion order in the table.
+    for gauge_name in GaugeName:
+        samples = samples_by_gauge.get(gauge_name.value)
+        if not samples:
+            continue
+        gauge_series.append(
+            GaugeSeries(
+                gauge_name=gauge_name.value,
+                kind=GAUGE_KIND[gauge_name].value,
+                description=GAUGE_DESCRIPTIONS[gauge_name],
+                samples=samples,
+            )
+        )
+
+    return GaugesTimeseriesResponseSchema(
+        window=window,
+        window_start=window_start,
+        window_end=window_end,
+        gauges=gauge_series,
+    )
+
+
+def gauge_timeseries_one(
+    *,
+    gauge_name: GaugeName,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[GaugeSampleSchema]:
+    """Return one gauge's window-filtered samples, ordered by `sampled_at`.
+
+    A per-name helper backing the `flask metrics gauge-timeseries --name` CLI
+    only — the batched HTTP endpoint never calls this. Selects rows where
+    `gaugeName == gauge_name.value` and `sampledAt` is in the half-open window
+    `[window_start, window_end)`.
+    """
+    rows = (
+        db.session.query(Anonymous_Gauges)
+        .filter(
+            Anonymous_Gauges.gauge_name == gauge_name.value,
+            Anonymous_Gauges.sampled_at >= window_start,
+            Anonymous_Gauges.sampled_at < window_end,
+        )
+        .order_by(Anonymous_Gauges.sampled_at)
+        .all()
+    )
+    return [_gauge_sample_from_row(row) for row in rows]
+
+
+def latest_gauge_snapshot() -> list[GaugeLatestRow]:
+    """Return the most-recent sample for each gauge that has any rows.
+
+    Uses Postgres `DISTINCT ON ("gaugeName")` with a descending `sampledAt`
+    order so each gauge collapses to its newest row. Gauges with no rows yet are
+    simply absent from the result. Ordered by `GaugeName` declaration order for
+    a deterministic wire shape.
+    """
+    rows = (
+        db.session.query(Anonymous_Gauges)
+        .distinct(Anonymous_Gauges.gauge_name)
+        .order_by(
+            Anonymous_Gauges.gauge_name,
+            Anonymous_Gauges.sampled_at.desc(),
+        )
+        .all()
+    )
+    latest_by_name: dict[str, Anonymous_Gauges] = {row.gauge_name: row for row in rows}
+    latest_rows: list[GaugeLatestRow] = []
+    for gauge_name in GaugeName:
+        row = latest_by_name.get(gauge_name.value)
+        if row is None:
+            continue
+        latest_rows.append(
+            GaugeLatestRow(
+                gauge_name=row.gauge_name,
+                sampled_at=row.sampled_at,
+                value_int=row.value_int,
+                value_float=None if row.value_float is None else float(row.value_float),
+            )
+        )
+    return latest_rows
+
+
+def list_gauges() -> list[GaugeMetadataRow]:
+    """Return metadata for every registered gauge (a pure `GAUGE_REGISTRY` walk).
+
+    Touches no database — the gauge catalog is code-defined. Ordered by
+    `GaugeName` declaration order so the listing matches the registry source.
+    """
+    return [
+        GaugeMetadataRow(
+            gauge_name=gauge_name.value,
+            kind=definition.kind.value,
+            description=definition.description,
+        )
+        for gauge_name, definition in GAUGE_REGISTRY.items()
+    ]

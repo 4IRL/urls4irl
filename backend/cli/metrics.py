@@ -27,13 +27,27 @@ from backend.metrics.audit import (
     find_string_literal_record_event_callers,
 )
 from backend.metrics.events import EVENT_CATEGORY, EventCategory
+from backend.metrics.gauges import GaugeName
 from backend.metrics.resources import EVENT_NAME_TO_RESOURCE, Resource
-from backend.schemas.requests.metrics import TopEventsQuerySchema
+from backend.schemas.requests.metrics import (
+    GaugesTimeseriesQuerySchema,
+    TopEventsQuerySchema,
+)
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 EMPTY_TOP_EVENTS_OUTPUT = "No metrics rows in the requested window."
 TOP_EVENTS_HEADER = "event_name\tcategory\tdescription\ttotal_count"
+
+GAUGE_TIMESERIES_HEADER = "sampled_at\tvalue_int\tvalue_float"
+EMPTY_GAUGE_TIMESERIES_OUTPUT = "No gauge samples in the requested window."
+GAUGES_LATEST_HEADER = "gauge_name\tsampled_at\tvalue_int\tvalue_float"
+EMPTY_GAUGES_LATEST_OUTPUT = "No gauge samples recorded yet."
+GAUGES_LIST_HEADER = "gauge_name\tkind\tdescription"
+
+# Sentinel rendered for a NULL value column (k-anon suppression or AVG/INT
+# split) so a blank TSV cell never collapses two adjacent columns.
+_GAUGE_NULL_CELL = ""
 
 AUDIT_NONE_PLACEHOLDER: str = "(none)"
 AUDIT_SECTION_ORPHANS: str = "# Orphan EventName members"
@@ -485,6 +499,142 @@ def coverage_summary_command() -> None:
         click.echo("\t".join([resource.value, EventCategory.DOMAIN.value, str(count)]))
     for resource, count in _count_events_per_resource(EventCategory.UI):
         click.echo("\t".join([resource.value, EventCategory.UI.value, str(count)]))
+
+
+def _gauge_value_cell(value: int | float | None) -> str:
+    """Render a gauge value column for TSV, mapping `None` to the null sentinel.
+
+    Examples:
+        _gauge_value_cell(6)    -> "6"
+        _gauge_value_cell(4.0)  -> "4.0"
+        _gauge_value_cell(None) -> ""
+    """
+    return _GAUGE_NULL_CELL if value is None else str(value)
+
+
+@metrics_cli.command(
+    "gauge-timeseries",
+    help="Show one gauge's sampled values over a time window.",
+)
+@click.option(
+    "--name",
+    type=click.Choice([member.value for member in GaugeName]),
+    required=True,
+    help="Which gauge to chart (a GaugeName value, e.g. total_users).",
+)
+@click.option(
+    "--window",
+    type=str,
+    default=None,
+    help="day | week | month | year | Nh | Nd (mutually exclusive with --start/--end)",
+)
+@click.option(
+    "--start",
+    type=str,
+    default=None,
+    help="ISO-8601 with timezone (e.g., 2026-06-06T00:00:00Z); pair with --end",
+)
+@click.option(
+    "--end",
+    type=str,
+    default=None,
+    help="ISO-8601 with timezone (e.g., 2026-06-06T00:00:00Z); pair with --start",
+)
+@with_appcontext
+def gauge_timeseries_command(
+    name: str,
+    window: str | None,
+    start: str | None,
+    end: str | None,
+) -> None:
+    """Parity CLI for one gauge's timeseries (per-name; the HTTP endpoint is batched).
+
+    `--name` is validated by `click.Choice` (the batched
+    `GaugesTimeseriesQuerySchema` carries no `name` field), and the
+    window/range XOR is enforced by the same `GaugesTimeseriesQuerySchema` the
+    HTTP route uses so terminal and dashboard behave identically.
+    """
+    try:
+        parsed = GaugesTimeseriesQuerySchema.model_validate(
+            {"window": window, "start": start, "end": end}
+        )
+    except ValidationError as schema_validation_error:
+        for error in schema_validation_error.errors():
+            field_path = ".".join(str(part) for part in error["loc"]) or "__root__"
+            click.echo(f"{field_path}: {error['msg']}", err=True)
+        raise SystemExit(1)
+
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as range_resolution_error:
+        click.echo(str(range_resolution_error), err=True)
+        raise SystemExit(1)
+
+    samples = query_service.gauge_timeseries_one(
+        gauge_name=GaugeName(name),
+        window_start=window_start,
+        window_end=window_end,
+    )
+
+    if not samples:
+        click.echo(EMPTY_GAUGE_TIMESERIES_OUTPUT)
+        return
+
+    click.echo(GAUGE_TIMESERIES_HEADER)
+    for sample in samples:
+        click.echo(
+            "\t".join(
+                [
+                    sample.sampled_at.isoformat(),
+                    _gauge_value_cell(sample.value_int),
+                    _gauge_value_cell(sample.value_float),
+                ]
+            )
+        )
+
+
+@metrics_cli.command(
+    "gauges-latest",
+    help="Show the most-recent sample for every gauge that has rows.",
+)
+@with_appcontext
+def gauges_latest_command() -> None:
+    """Parity CLI for the `/api/metrics/query/gauges/latest` endpoint."""
+    rows = query_service.latest_gauge_snapshot()
+
+    if not rows:
+        click.echo(EMPTY_GAUGES_LATEST_OUTPUT)
+        return
+
+    click.echo(GAUGES_LATEST_HEADER)
+    for row in rows:
+        click.echo(
+            "\t".join(
+                [
+                    row.gauge_name,
+                    row.sampled_at.isoformat(),
+                    _gauge_value_cell(row.value_int),
+                    _gauge_value_cell(row.value_float),
+                ]
+            )
+        )
+
+
+@metrics_cli.command(
+    "gauges-list",
+    help="Show static metadata (name, kind, description) for every gauge.",
+)
+@with_appcontext
+def gauges_list_command() -> None:
+    """Parity CLI for the `/api/metrics/query/gauges/list` endpoint (pure registry walk)."""
+    click.echo(GAUGES_LIST_HEADER)
+    for row in query_service.list_gauges():
+        click.echo("\t".join([row.gauge_name, row.kind, row.description]))
 
 
 def register_metrics_cli(app: Flask):

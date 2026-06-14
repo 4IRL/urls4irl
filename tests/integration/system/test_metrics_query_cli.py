@@ -7,7 +7,15 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 
 from backend import db
-from backend.cli.metrics import EMPTY_TOP_EVENTS_OUTPUT, TOP_EVENTS_HEADER
+from backend.cli.metrics import (
+    EMPTY_GAUGE_TIMESERIES_OUTPUT,
+    EMPTY_GAUGES_LATEST_OUTPUT,
+    EMPTY_TOP_EVENTS_OUTPUT,
+    GAUGE_TIMESERIES_HEADER,
+    GAUGES_LATEST_HEADER,
+    GAUGES_LIST_HEADER,
+    TOP_EVENTS_HEADER,
+)
 from backend.extensions.metrics.buckets import (
     _WINDOW_PARSE_ERROR_FMT,
     WINDOW_NAMED,
@@ -17,6 +25,8 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.gauges import GaugeName
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 
@@ -345,3 +355,175 @@ def test_flask_metrics_top_missing_window_and_range_exits_nonzero(
     assert result.exit_code != 0
     combined_output = result.output + (result.stderr if result.stderr_bytes else "")
     assert "Provide `window` or both `start` and `end`." in combined_output
+
+
+# ---------------------------------------------------------------------------
+# Gauge CLI commands — gauge-timeseries / gauges-latest / gauges-list
+# ---------------------------------------------------------------------------
+
+
+def _seed_gauge_row(
+    gauge_name: GaugeName,
+    sampled_at: datetime,
+    *,
+    value_int: int | None = None,
+    value_float: float | None = None,
+) -> None:
+    """Seed one AnonymousGauges row through SQLAlchemy under an app context."""
+    db.session.add(
+        Anonymous_Gauges(
+            gauge_name=gauge_name.value,
+            sampled_at=sampled_at,
+            value_int=value_int,
+            value_float=value_float,
+            dimensions={},
+        )
+    )
+    db.session.commit()
+
+
+def test_flask_metrics_gauge_timeseries_empty_window_prints_sentinel(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN no AnonymousGauges rows exist
+    WHEN `flask metrics gauge-timeseries --name=total_users --window=day` runs
+    THEN the CLI exits 0 and prints the empty-result sentinel.
+    """
+    app = metrics_enabled_runner_app
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=["metrics", "gauge-timeseries", "--name=total_users", "--window=day"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert EMPTY_GAUGE_TIMESERIES_OUTPUT in result.output
+
+
+def test_flask_metrics_gauge_timeseries_prints_header_and_seeded_values(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN two TOTAL_USERS samples seeded inside the window
+    WHEN `flask metrics gauge-timeseries --name=total_users --window=day` runs
+    THEN the CLI exits 0, prints the header, and the seeded integer values appear.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+        _seed_gauge_row(
+            GaugeName.TOTAL_USERS, inside - timedelta(minutes=30), value_int=10
+        )
+        _seed_gauge_row(GaugeName.TOTAL_USERS, inside, value_int=12)
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=["metrics", "gauge-timeseries", "--name=total_users", "--window=day"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert GAUGE_TIMESERIES_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    header_index = lines.index(GAUGE_TIMESERIES_HEADER)
+    data_lines = lines[header_index + 1 :]
+    assert len(data_lines) == 2
+    value_int_cells = [line.split("\t")[1] for line in data_lines]
+    assert value_int_cells == ["10", "12"]
+
+
+def test_flask_metrics_gauge_timeseries_invalid_window_exits_nonzero(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN an unparseable window string
+    WHEN `flask metrics gauge-timeseries --name=total_users --window=bogus` runs
+    THEN the CLI exits non-zero and emits the parse-error message.
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(
+        args=["metrics", "gauge-timeseries", "--name=total_users", "--window=bogus"]
+    )
+
+    expected_message = _WINDOW_PARSE_ERROR_FMT.format(value="bogus", names=WINDOW_NAMED)
+    assert result.exit_code != 0
+    combined_output = result.output + (result.stderr if result.stderr_bytes else "")
+    assert expected_message in combined_output
+
+
+def test_flask_metrics_gauges_latest_empty_prints_sentinel(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN no AnonymousGauges rows exist
+    WHEN `flask metrics gauges-latest` runs
+    THEN the CLI exits 0 and prints the empty-result sentinel.
+    """
+    app = metrics_enabled_runner_app
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(args=["metrics", "gauges-latest"])
+
+    assert result.exit_code == 0, result.output
+    assert EMPTY_GAUGES_LATEST_OUTPUT in result.output
+
+
+def test_flask_metrics_gauges_latest_prints_newest_per_gauge(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN one gauge with two samples seeded
+    WHEN `flask metrics gauges-latest` runs
+    THEN the CLI exits 0, prints the header, and the newest value appears.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+        _seed_gauge_row(GaugeName.TOTAL_USERS, inside - timedelta(hours=1), value_int=5)
+        _seed_gauge_row(GaugeName.TOTAL_USERS, inside, value_int=9)
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(args=["metrics", "gauges-latest"])
+
+    assert result.exit_code == 0, result.output
+    assert GAUGES_LATEST_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    data_lines = lines[lines.index(GAUGES_LATEST_HEADER) + 1 :]
+    total_users_row = next(
+        line for line in data_lines if line.startswith(GaugeName.TOTAL_USERS.value)
+    )
+    assert total_users_row.split("\t")[2] == "9"
+
+
+def test_flask_metrics_gauges_list_prints_every_gauge(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN any state (gauges-list is a pure registry walk)
+    WHEN `flask metrics gauges-list` runs
+    THEN the CLI exits 0, prints the header, and one row per GaugeName appears.
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(args=["metrics", "gauges-list"])
+
+    assert result.exit_code == 0, result.output
+    assert GAUGES_LIST_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    data_lines = lines[lines.index(GAUGES_LIST_HEADER) + 1 :]
+    assert len(data_lines) == len(GaugeName)
+    listed_names = {line.split("\t")[0] for line in data_lines}
+    assert listed_names == {member.value for member in GaugeName}
