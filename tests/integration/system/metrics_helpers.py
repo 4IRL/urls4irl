@@ -21,6 +21,8 @@ WINDOWS_CHROME_UA = (
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
+REJECTION_REASON_DIM_KEY = "reason"
+
 
 DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
     {

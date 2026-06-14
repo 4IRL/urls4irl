@@ -29,6 +29,7 @@ from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
     parse_dims,
+    REJECTION_REASON_DIM_KEY,
 )
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
@@ -38,8 +39,6 @@ from tests.unit.test_url_validation import (
 from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
 
 pytestmark = pytest.mark.urls
-
-_REJECTION_REASON_DIM_KEY = "reason"
 
 
 def test_add_valid_url_as_utub_member(
@@ -219,7 +218,7 @@ def test_url_create_rejected_invalid_url(
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.URL_CREATE_REJECTED
     )
-    assert parse_dims(counter_keys[0])[_REJECTION_REASON_DIM_KEY] == "invalid_url"
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "invalid_url"
     assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
 
 
@@ -261,7 +260,7 @@ def test_url_create_rejected_credentials_url(
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.URL_CREATE_REJECTED
     )
-    assert parse_dims(counter_keys[0])[_REJECTION_REASON_DIM_KEY] == "credentials_url"
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "credentials_url"
     assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
 
 
@@ -312,7 +311,7 @@ def test_url_create_rejected_unexpected_error(
     counter_keys = find_counter_keys(
         provide_metrics_redis, EventName.URL_CREATE_REJECTED
     )
-    assert parse_dims(counter_keys[0])[_REJECTION_REASON_DIM_KEY] == "unexpected_error"
+    assert parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "unexpected_error"
     assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 0
 
 
@@ -356,7 +355,7 @@ def test_url_create_rejected_url_already_in_utub(
         provide_metrics_redis, EventName.URL_CREATE_REJECTED
     )
     assert (
-        parse_dims(counter_keys[0])[_REJECTION_REASON_DIM_KEY] == "url_already_in_utub"
+        parse_dims(counter_keys[0])[REJECTION_REASON_DIM_KEY] == "url_already_in_utub"
     )
 
 
