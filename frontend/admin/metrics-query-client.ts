@@ -186,7 +186,8 @@ export function fetchSummary({
 
 /**
  * Fetch one assembled conversion funnel for a window. The server loops over the
- * flow's `FlowStep` list and fans out per-step `grouped_counts` calls, so the
+ * flow's `FlowStep` list and fans out per-step `grouped_count_scalar` /
+ * `grouped_count_by` calls, so the
  * client only needs the flow id + window.
  *
  * Example: `fetchFlow({ flowId: "add_url_to_utub", window: "day" })`
