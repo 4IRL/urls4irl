@@ -190,6 +190,7 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 2. **Never use Bash to write files** — use the `Write` tool instead of `cat >`, `cat <<`, `echo >`, `tee`, or `printf >`. Heredocs and redirects with JSON/code content trigger security prompts due to brace+quote detection. The `Write` tool bypasses this entirely.
 3. **Never use inline `python3 -c` with braces** — write the script to a temp file and execute it. Inline Python with `{}` (dicts, f-strings, sets) triggers the same brace+quote security check.
 4. **Never use Bash brace expansion** — `{a,b,c}` in shell commands triggers the same brace+quote security check. Use Glob tool, wildcards (`*.md`), or list files individually instead.
+5. **Never set `dangerouslyDisableSandbox: true` on `grep`** — `grep` is read-only and runs fine inside the sandbox; disabling the sandbox forces an un-suppressible permission prompt (the same class as `gh`). The bare `grep ...` form (grep as the **first token**, no compounding, no `awk`/`sed` wrapper) is allowlisted via `Bash(grep:*)` and runs prompt-free in-sandbox — keep it bare so the allowlist matches. This is a sandbox/allowlist rule only; it does **not** change the standing "prefer the dedicated Grep/Read/Glob tools over Bash" preference (when the Grep tool exists in the session, use it).
 
 ### Test Output Location
 

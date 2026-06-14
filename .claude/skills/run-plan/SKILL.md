@@ -17,6 +17,7 @@ Autonomously execute all remaining steps of a plan. The **main agent is an orche
 
 - **Git commands** (`git add`, `git commit`, `git status`, `git diff`, etc.): run in **default sandbox** — never use `dangerouslyDisableSandbox`
 - **Docker/make commands**: use `dangerouslyDisableSandbox: true` (Docker socket requires it)
+- **`grep`**: read-only — run **bare and sandboxed** (`grep ...` as the first token, no compounding/`awk`/`sed` wrapper); **never** set `dangerouslyDisableSandbox` on grep (it forces an un-suppressible prompt; the bare form is allowlisted via `Bash(grep:*)`)
 - Subagent prompts must include these rules so subagents follow them too
 
 ## Workflow
@@ -170,7 +171,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Tests run via synchronous Bash inside subagents.** Subagents invoke `make test-*` synchronously (with `dangerouslyDisableSandbox: true`) and block until it exits. The orchestrator waits for the subagent's Agent-tool reply — that reply IS the completion signal. Do not poll the subagent's result file while the subagent is still in flight, do not arm a Monitor on it, and do not reach into a container to inspect process state (`docker compose exec ... pgrep`, raw `ps`, etc.). After the subagent replies, the orchestrator may read `/tmp/claude/test-*.txt` for full output.
 - **Each subagent runs the full /next-step-taker workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
 - **Test output goes to temp files** — test runner subagents write output to `/tmp/claude/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
-- **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.
+- **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`; `grep` runs bare and sandboxed (never `dangerouslyDisableSandbox` on grep — it forces an un-suppressible prompt). Include this rule in all subagent prompts.
 - If a step modifies the plan itself (e.g., adds sub-steps), the main agent re-reads the plan before continuing.
 - When stopping on a blocker, report: which step failed, what was tried, what needs user input.
 - **Investigate every test failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times. Include this rule in all subagent prompts that run or evaluate tests.
