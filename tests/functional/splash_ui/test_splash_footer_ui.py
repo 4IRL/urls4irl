@@ -135,13 +135,17 @@ def test_privacy_btn_color_passes_wcag_at_380px(browser: WebDriver):
     THEN ensure the #PrivacyBtn link color is white (--UTubDescriptionColor),
         confirming the narrow-viewport contrast rule lands and was not overridden
     """
-    browser.set_window_size(NARROW_VIEWPORT_WIDTH_PX, NARROW_VIEWPORT_HEIGHT_PX)
-    browser.refresh()
-    scroll_footer_link_into_view(browser, HPL.PRIVACY_BTN)
-    privacy_btn_color = browser.execute_script(
-        "return getComputedStyle(document.getElementById('PrivacyBtn')).color"
-    )
-    assert privacy_btn_color == EXPECTED_PRIVACY_BTN_COLOR_AT_380PX
+    original_size = browser.get_window_size()
+    try:
+        browser.set_window_size(NARROW_VIEWPORT_WIDTH_PX, NARROW_VIEWPORT_HEIGHT_PX)
+        browser.refresh()
+        scroll_footer_link_into_view(browser, HPL.PRIVACY_BTN)
+        privacy_btn_color = browser.execute_script(
+            "return getComputedStyle(document.getElementById('PrivacyBtn')).color"
+        )
+        assert privacy_btn_color == EXPECTED_PRIVACY_BTN_COLOR_AT_380PX
+    finally:
+        browser.set_window_size(original_size["width"], original_size["height"])
 
 
 def test_contact_textarea_min_height(browser: WebDriver):

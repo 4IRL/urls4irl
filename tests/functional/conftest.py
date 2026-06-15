@@ -46,6 +46,12 @@ from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
 # Redis ships with 16 databases (indices 0-15) by default per the default redis.conf
 REDIS_DEFAULT_MAX_DATABASES = 16
 
+# Canonical desktop viewport for the shared session-scoped Chrome driver. Defined
+# once here so build_driver and the per-test teardown agree on a single size,
+# preventing a test that resizes the shared window from polluting later tests.
+DESKTOP_VIEWPORT_WIDTH_PX = 1920
+DESKTOP_VIEWPORT_HEIGHT_PX = 1080
+
 
 def _get_worker_num(worker_id: str) -> Optional[int]:
     """Returns None for 'master' (non-parallel), else the integer worker number."""
@@ -250,7 +256,9 @@ def build_driver(
         driver = webdriver.Chrome(options=options)
         url = UI_TEST_STRINGS.BASE_URL
 
-    driver.set_window_size(width=1920, height=1080)
+    driver.set_window_size(
+        width=DESKTOP_VIEWPORT_WIDTH_PX, height=DESKTOP_VIEWPORT_HEIGHT_PX
+    )
 
     ping_server(url + str(open_port))
 
@@ -364,6 +372,12 @@ def browser_without_cookie_banner_cookie(
     driver.switch_to.window(init_handle)
     driver.delete_all_cookies()
     driver.get("about:blank")
+
+    # Restore the canonical desktop window size so a test that resized the
+    # shared session-scoped driver cannot pollute later desktop tests.
+    driver.set_window_size(
+        width=DESKTOP_VIEWPORT_WIDTH_PX, height=DESKTOP_VIEWPORT_HEIGHT_PX
+    )
 
 
 @pytest.fixture
