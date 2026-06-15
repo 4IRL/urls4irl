@@ -32,6 +32,11 @@ from backend.models.event_registry import Event_Registry
 
 pytestmark = pytest.mark.cli
 
+# AVG-kind gauge sample value used to exercise the `_gauge_value_cell(float)`
+# TSV-formatting branch end-to-end. `str(4.5)` renders as "4.5".
+GAUGE_FLOAT_VALUE: float = 4.5
+GAUGE_FLOAT_VALUE_CELL: str = str(GAUGE_FLOAT_VALUE)
+
 
 def _seed_event_with_count(
     event_name: EventName,
@@ -505,6 +510,79 @@ def test_flask_metrics_gauges_latest_prints_newest_per_gauge(
         line for line in data_lines if line.startswith(GaugeName.TOTAL_USERS.value)
     )
     assert total_users_row.split("\t")[2] == "9"
+
+
+def test_flask_metrics_gauges_latest_formats_float_value_cell(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN an AVG-kind gauge seeded with a non-None value_float (and value_int None)
+    WHEN `flask metrics gauges-latest` runs
+    THEN the CLI exits 0 and the formatted float appears in the value_float cell,
+        exercising the `_gauge_value_cell(float)` branch end-to-end.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+        _seed_gauge_row(
+            GaugeName.AVG_URLS_PER_UTUB, inside, value_float=GAUGE_FLOAT_VALUE
+        )
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(args=["metrics", "gauges-latest"])
+
+    assert result.exit_code == 0, result.output
+    assert GAUGES_LATEST_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    data_lines = lines[lines.index(GAUGES_LATEST_HEADER) + 1 :]
+    avg_gauge_row = next(
+        line
+        for line in data_lines
+        if line.startswith(GaugeName.AVG_URLS_PER_UTUB.value)
+    )
+    columns = avg_gauge_row.split("\t")
+    assert columns[2] == ""
+    assert columns[3] == GAUGE_FLOAT_VALUE_CELL
+
+
+def test_flask_metrics_gauge_timeseries_formats_float_value_cell(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN an AVG-kind gauge seeded with a non-None value_float (and value_int None)
+    WHEN `flask metrics gauge-timeseries --name=avg_urls_per_utub --window=day` runs
+    THEN the CLI exits 0 and the formatted float appears in the value_float cell,
+        exercising the `_gauge_value_cell(float)` branch end-to-end.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+        _seed_gauge_row(
+            GaugeName.AVG_URLS_PER_UTUB, inside, value_float=GAUGE_FLOAT_VALUE
+        )
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=[
+            "metrics",
+            "gauge-timeseries",
+            "--name=avg_urls_per_utub",
+            "--window=day",
+        ]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert GAUGE_TIMESERIES_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    data_lines = lines[lines.index(GAUGE_TIMESERIES_HEADER) + 1 :]
+    assert len(data_lines) == 1
+    columns = data_lines[0].split("\t")
+    assert columns[1] == ""
+    assert columns[2] == GAUGE_FLOAT_VALUE_CELL
 
 
 def test_flask_metrics_gauges_list_prints_every_gauge(
