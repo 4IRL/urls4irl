@@ -31,6 +31,7 @@ from types import ModuleType
 
 import psycopg2
 import psycopg2.extras
+import redis
 
 logging.basicConfig(
     level=logging.INFO,
@@ -158,17 +159,15 @@ def run_sample(
 def _record_sample_success(now_epoch: int) -> None:
     """Best-effort stamp of the gauge liveness sentinel after a successful run.
 
-    Wrapped in try/except (including the redis import) so a transient Redis
-    hiccup at the very end of an otherwise-successful sample run does not flip
-    the whole run to failure — the Postgres commit has already landed. Skips
-    silently when ``METRICS_REDIS_URI`` is absent.
+    Wrapped in try/except so a transient Redis hiccup at the very end of an
+    otherwise-successful sample run does not flip the whole run to failure — the
+    Postgres commit has already landed. Skips silently when ``METRICS_REDIS_URI``
+    is absent.
     """
     metrics_uri = os.environ.get("METRICS_REDIS_URI")
     if not metrics_uri:
         return
     try:
-        import redis
-
         redis_client = redis.Redis.from_url(metrics_uri)
         try:
             redis_client.set(GAUGE_LAST_SUCCESS_KEY, str(now_epoch))
