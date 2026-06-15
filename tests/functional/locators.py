@@ -326,6 +326,8 @@ class SplashPageLocators(GenericPageLocator):
     SPLASH_MOCK_URL_SELECTED = ".mock-url-row--selected"
     SPLASH_MOCK_TAGS = ".mock-tag"
     SPLASH_MOCK_ACTIONS = ".mock-action"
+    SPLASH_MOCK_UTUBS_DECK = ".mock-deck--utubs"
+    SPLASH_MOCK_URLS_DECK = ".mock-deck--urls"
 
     # Reset Password
     INPUT_NEW_PASSWORD = "#newPassword"

@@ -9,6 +9,8 @@ pytestmark = pytest.mark.mobile_ui
 
 MIN_TOUCH_TARGET_PX = 44
 EXPECTED_TILE_COUNT = 3
+EXPECTED_MOCK_UTUB_COUNT = 4
+EXPECTED_MOCK_ACTION_COUNT = 5
 
 
 def test_mobile_splash_hero_ctas_meet_touch_target(
@@ -66,3 +68,46 @@ def test_mobile_splash_features_stack_vertically(
     # feature grid to a single column, so all three tiles share one x offset.
     tile_x_offsets = {tile.location["x"] for tile in tiles}
     assert len(tile_x_offsets) == 1
+
+
+def test_mobile_splash_product_preview_visible_and_stacked(
+    browser_mobile_portrait: WebDriver,
+):
+    """
+    GIVEN a fresh load of the U4I splash page on a mobile-portrait viewport
+    WHEN the user scrolls to the product-preview section
+    THEN the app mock is shown (not hidden) as a single-column preview — the
+        UTubs deck stacked above the selected UTub's URLs deck, with its rows,
+        tags, and action buttons all rendered
+    """
+    browser = browser_mobile_portrait
+
+    preview = wait_for_element_presence(browser, SPL.SPLASH_PRODUCT_PREVIEW)
+    assert preview is not None
+    browser.execute_script("arguments[0].scrollIntoView();", preview)
+    assert preview.is_displayed()
+
+    mock = wait_for_element_presence(browser, SPL.SPLASH_PRODUCT_MOCK)
+    assert mock is not None
+    assert mock.is_displayed()
+
+    utub_rows = browser.find_elements(By.CSS_SELECTOR, SPL.SPLASH_MOCK_UTUB_ROWS)
+    url_rows = browser.find_elements(By.CSS_SELECTOR, SPL.SPLASH_MOCK_URL_ROWS)
+    actions = browser.find_elements(By.CSS_SELECTOR, SPL.SPLASH_MOCK_ACTIONS)
+    assert len(utub_rows) == EXPECTED_MOCK_UTUB_COUNT
+    assert len(url_rows) >= 1
+    assert len(actions) == EXPECTED_MOCK_ACTION_COUNT
+
+    # Single column on mobile: the URLs deck sits below the UTubs deck (the
+    # two-column grid collapsed at the 768px breakpoint), so the URLs deck's
+    # top edge is at or below the UTubs deck's bottom edge.
+    utubs_deck = browser.find_element(By.CSS_SELECTOR, SPL.SPLASH_MOCK_UTUBS_DECK)
+    urls_deck = browser.find_element(By.CSS_SELECTOR, SPL.SPLASH_MOCK_URLS_DECK)
+    urls_below_utubs = browser.execute_script(
+        "const utubsRect = arguments[0].getBoundingClientRect();"
+        "const urlsRect = arguments[1].getBoundingClientRect();"
+        "return urlsRect.top >= utubsRect.bottom;",
+        utubs_deck,
+        urls_deck,
+    )
+    assert urls_below_utubs
