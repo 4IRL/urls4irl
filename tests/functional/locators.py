@@ -312,6 +312,11 @@ class SplashPageLocators(GenericPageLocator):
     SPLASH_HERO = "#splashHero"
     SPLASH_TAGLINE = "#splash-mini-text"
 
+    # Feature tiles
+    SPLASH_FEATURES = "#splashFeatures"
+    SPLASH_FEATURES_HEADING = "#splashFeaturesHeading"
+    SPLASH_FEATURE_TILES = ".splash-feature-tile"
+
     # Reset Password
     INPUT_NEW_PASSWORD = "#newPassword"
     INPUT_CONFIRM_NEW_PASSWORD = "#confirmNewPassword"

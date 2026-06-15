@@ -12,6 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
@@ -1130,7 +1131,33 @@ def get_css_selector_for_url_by_id(url_id: int) -> str:
     return f"{HPL.ROWS_URLS}[utuburlid='{url_id}']"
 
 
+def scroll_footer_link_into_view(
+    browser: WebDriver, css_selector: str, timeout: int = 10
+):
+    """Scroll a below-the-fold footer link into the viewport before clicking it.
+
+    On taller splash pages the footer links sit below the fold. Selenium's
+    native `.click()` auto-scroll assigns the document root's `scrollTop`, which
+    no-ops under headless Chrome, so the link stays out of view and the click is
+    intercepted. Sending `Keys.END` to the body performs a real key-driven
+    scroll (which headless Chrome does honor), bringing the footer into view.
+    """
+    link = wait_for_element_presence(browser, css_selector)
+    if link is None:
+        return
+    body = browser.find_element(By.TAG_NAME, "body")
+    body.send_keys(Keys.END)
+    WebDriverWait(browser, timeout).until(
+        lambda driver: driver.execute_script(
+            "const rect = arguments[0].getBoundingClientRect();"
+            "return rect.top >= 0 && rect.bottom <= window.innerHeight;",
+            link,
+        )
+    )
+
+
 def visit_privacy_page(browser: WebDriver):
+    scroll_footer_link_into_view(browser, HPL.PRIVACY_BTN)
     wait_then_click_element(browser, HPL.PRIVACY_BTN, time=3)
     privacy_title = wait_then_get_element(browser, HPL.PRIVACY_HEADER)
     assert privacy_title
@@ -1139,6 +1166,7 @@ def visit_privacy_page(browser: WebDriver):
 
 
 def visit_terms_page(browser: WebDriver):
+    scroll_footer_link_into_view(browser, HPL.TERMS_BTN)
     wait_then_click_element(browser, HPL.TERMS_BTN, time=3)
     terms_title = wait_then_get_element(browser, HPL.TERMS_HEADER)
     assert terms_title

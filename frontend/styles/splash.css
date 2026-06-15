@@ -249,3 +249,69 @@ form {
     line-height: 1.6;
     text-align: center;
 }
+
+/* Feature tiles */
+
+.splash-features {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-4);
+    text-align: center;
+}
+.splash-features-heading {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--splashLabelGreen);
+    margin: 0 0 var(--space-8) 0;
+}
+.splash-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: var(--space-6);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.splash-feature-tile {
+    background-color: var(--panelBackgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: var(--space-3);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.splash-feature-tile:hover {
+    border-color: var(--splashGreen);
+    transform: translateY(-2px);
+}
+.splash-feature-icon {
+    color: var(--splashLabelGreen);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md);
+    background-color: rgba(40, 167, 69, 0.1);
+}
+.splash-feature-title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    margin: 0;
+    color: var(--UTubDescriptionColor);
+}
+.splash-feature-body {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-regular);
+    line-height: 1.5;
+    margin: 0;
+    color: var(--cardURLTextColor);
+}
+@media (prefers-reduced-motion: reduce) {
+    .splash-feature-tile { transition: none; }
+    .splash-feature-tile:hover { transform: none; }
+}
