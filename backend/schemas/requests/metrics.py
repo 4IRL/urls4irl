@@ -434,3 +434,27 @@ class GroupedTimeseriesQuerySchema(BaseModel):
                     "Each `group_by` entry must be a non-empty string ≤64 chars."
                 )
         return self
+
+
+class GaugesTimeseriesQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/gauges/timeseries`.
+
+    The batched gauge timeseries endpoint returns EVERY gauge's series in one
+    response, so it carries only the window/range selector — there is no `name`
+    field (mirroring `GroupedTimeseriesQuerySchema`'s window-only shape). The
+    per-name `--name` filter lives only in the CLI, validated by `click.Choice`.
+    A stray `name` (or any other) key is rejected by `extra="forbid"`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self

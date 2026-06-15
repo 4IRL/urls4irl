@@ -168,7 +168,7 @@
     outline-offset: 2px;
 }
 
-/* On phones the five tabs overflow the viewport. Contain the overflow to the
+/* On phones the six tabs overflow the viewport. Contain the overflow to the
    tablist box (horizontal scroll within its own width) instead of letting the
    page overscroll horizontally. Desktop keeps the `width: fit-content` single
    row above. The window-selector wraps below the tablist via the `.tablist-row`
@@ -753,6 +753,149 @@
     font-style: italic;
     padding: 1rem;
     text-align: center;
+}
+
+/* ---- Gauges (sampled scalar trend charts) --------------------------- */
+
+/* Reveal the panel-scoped loading spinner only while the Gauges panel itself
+ * is in a loading state — NOT when any other dashboard fetch sets aria-busy
+ * on the root #MetricsDashboard element (DD-7). */
+.gauges-loading-spinner {
+    display: none;
+}
+
+#MetricsPanelGauges[aria-busy="true"] .gauges-loading-spinner {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 0.5rem auto;
+    border: 2px solid var(--borderColor);
+    border-top-color: var(--splashGreen);
+    border-radius: 50%;
+    animation: metricsGaugeSpin 0.8s linear infinite;
+}
+
+@keyframes metricsGaugeSpin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Stacked layout: a 2-column gauge table on top, the selected gauge's
+ * timeseries chart (or a select-a-gauge prompt) beneath it. */
+.gauge-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.gauge-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.gauge-table th {
+    text-align: left;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--cardURLTextColor);
+    padding: 0.6rem 1rem;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+.gauge-table th:last-child,
+.gauge-value-cell {
+    text-align: right;
+}
+
+.gauge-row {
+    cursor: pointer;
+    /* 44px min touch target for the clickable row (the row IS the widget). */
+    min-height: 44px;
+}
+
+.gauge-row + .gauge-row td {
+    border-top: 1px solid var(--borderColor);
+}
+
+.gauge-row:hover,
+.gauge-row:focus-visible {
+    background-color: var(--panelHoverBackgroundColor, rgba(0, 0, 0, 0.04));
+    outline: none;
+}
+
+.gauge-row--selected {
+    background-color: var(--panelHoverBackgroundColor, rgba(0, 0, 0, 0.06));
+}
+
+.gauge-row--selected td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--splashGreen);
+}
+
+.gauge-name-cell {
+    padding: 0.6rem 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.gauge-title {
+    font-size: 1rem;
+}
+
+.gauge-kind {
+    font-size: 0.75rem;
+    color: var(--cardURLTextColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 999px;
+    padding: 0.1rem 0.5rem;
+}
+
+.gauge-value-cell {
+    padding: 0.6rem 1rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--splashGreen);
+    white-space: nowrap;
+}
+
+.gauge-row--suppressed .gauge-value-cell {
+    color: var(--cardURLTextColor);
+    font-style: italic;
+    font-weight: 400;
+}
+
+.gauge-detail {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.gauge-detail-title {
+    margin: 0 0 0.75rem;
+    font-size: 1rem;
+}
+
+.gauge-detail-prompt {
+    margin: 0;
+    color: var(--cardURLTextColor);
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.gauge-chart {
+    width: 100%;
+    height: auto;
+    /* read-only chart — no touch-target rule; min-height ensures SVG text
+     * labels remain legible at narrow viewport widths */
+    min-height: 120px;
 }
 
 .flow-header {

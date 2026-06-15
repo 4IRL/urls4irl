@@ -12,6 +12,8 @@ from backend import db
 from backend.metrics.constants import MetricsErrorCodes
 from backend.metrics.events import EVENT_DESCRIPTIONS, EventCategory, EventName
 from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
+from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
@@ -1568,3 +1570,172 @@ def test_flow_pct_of_top_capped_at_one_when_downstream_exceeds_denominator(
     assert steps[0]["count"] == 5
     assert steps[1]["count"] == 8
     assert steps[1]["pct_of_top"] == 1.0
+
+
+# ---------------------------------------------------------------------------
+# Gauges query endpoints — batched timeseries (auth + happy)
+# ---------------------------------------------------------------------------
+
+
+_GAUGES_TIMESERIES_URL = "/api/metrics/query/gauges/timeseries"
+
+
+def _seed_gauge_row(
+    gauge_name: GaugeName,
+    sampled_at: datetime,
+    *,
+    value_int: int | None = None,
+    value_float: float | None = None,
+) -> None:
+    """Seed one AnonymousGauges row through SQLAlchemy.
+
+    ORM (not raw psycopg2) because `login_admin_user_with_register` is
+    SAVEPOINT-based — a raw psycopg2 write would land outside the savepoint and
+    roll back independently of the test transaction.
+    """
+    db.session.add(
+        Anonymous_Gauges(
+            gauge_name=gauge_name.value,
+            sampled_at=sampled_at,
+            value_int=value_int,
+            value_float=value_float,
+            dimensions={},
+        )
+    )
+    db.session.commit()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _GAUGES_TIMESERIES_URL + "?window=day",
+    ],
+)
+def test_gauges_endpoints_anonymous_return_401(
+    app: Flask, client: FlaskClient, url: str
+) -> None:
+    """
+    GIVEN an anonymous client (no session)
+    WHEN GETing any gauges query endpoint
+    THEN the response is 401 with a JSON failure envelope (mirrors the other
+        admin-only query endpoints).
+    """
+    response = client.get(url)
+
+    assert response.status_code == 401
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _GAUGES_TIMESERIES_URL + "?window=day",
+    ],
+)
+def test_gauges_endpoints_non_admin_return_404(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask], url: str
+) -> None:
+    """
+    GIVEN a logged-in user with the default User_Role.USER
+    WHEN GETing any gauges query endpoint
+    THEN the response is 404 with a JSON failure envelope (not advertised to
+        non-admins).
+    """
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    response = logged_in_client.get(url)
+
+    assert response.status_code == 404
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_gauges_timeseries_admin_happy_path_returns_batched_series(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and two gauges seeded with samples inside the window
+    WHEN GETing /api/metrics/query/gauges/timeseries?window=day
+    THEN the response is 200 with the batched wrapper keys (`gauges`, `window`,
+        `window_start`, `window_end`), one `gauges[]` entry per seeded gauge
+        carrying `gauge_name`/`kind`/`description`/`samples`, and the sample's
+        `sampled_at` serializes as ISO-8601 UTC.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        sampled_at = _bucket_inside_window()
+        _seed_gauge_row(GaugeName.TOTAL_USERS, sampled_at, value_int=12)
+        _seed_gauge_row(GaugeName.AVG_URLS_PER_UTUB, sampled_at, value_float=4.5)
+
+    response = logged_in_client.get(
+        _GAUGES_TIMESERIES_URL + "?window=day", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert "gauges" in body
+    assert "window" in body
+    assert "window_start" in body
+    assert "window_end" in body
+    assert body["window"] == "day"
+
+    series_by_name = {series["gauge_name"]: series for series in body["gauges"]}
+    assert set(series_by_name) == {
+        GaugeName.TOTAL_USERS.value,
+        GaugeName.AVG_URLS_PER_UTUB.value,
+    }
+
+    users_series = series_by_name[GaugeName.TOTAL_USERS.value]
+    assert users_series["kind"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].kind.value
+    assert (
+        users_series["description"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].description
+    )
+    assert users_series["samples"][0]["value_int"] == 12
+    assert _ISO_8601_UTC_REGEX.match(users_series["samples"][0]["sampled_at"])
+
+    avg_series = series_by_name[GaugeName.AVG_URLS_PER_UTUB.value]
+    assert avg_series["samples"][0]["value_float"] == 4.5
+
+
+def test_gauges_timeseries_bad_window_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/gauges/timeseries?window=bogus
+    THEN the response is 400 with error_code=INVALID_QUERY_PARAM and a `window`
+        field error — guards the resolve_query_window 400 path on the batched route.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _GAUGES_TIMESERIES_URL + "?window=bogus", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "window" in body[STD_JSON.ERRORS]
+
+
+def test_gauges_timeseries_stray_name_param_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing the batched gauges timeseries with a stray `name` query param
+    THEN the response is 400 — the batched schema has no `name` field and
+        `extra="forbid"` rejects it.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _GAUGES_TIMESERIES_URL + "?window=day&name=total_users",
+        headers=_AJAX_HEADERS,
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE

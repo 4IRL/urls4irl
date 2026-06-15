@@ -189,6 +189,15 @@ const appConfig = {
     METRICS_FLOW_CATEGORY_DOMAIN: "Domain",
     METRICS_FLOW_EMPTY: "No funnel activity recorded in the selected window.",
     METRICS_FLOWS_LOADED: "Flow funnels updated.",
+    METRICS_GAUGE_KIND_VOLUME: "Volume",
+    METRICS_GAUGE_KIND_DISTRIBUTION_MAX: "Distribution (max)",
+    METRICS_GAUGE_KIND_DISTRIBUTION_AVG: "Distribution (avg)",
+    METRICS_GAUGE_SUPPRESSED_ARIA: "Value unavailable",
+    METRICS_GAUGES_LOADED: "Gauge values updated.",
+    METRICS_GAUGE_SELECT_PROMPT: "Select a gauge to view its timeseries.",
+    METRICS_GAUGE_COL_NAME: "Gauge",
+    METRICS_GAUGE_COL_VALUE: "Value",
+    METRICS_GAUGES_EMPTY: "No gauge samples recorded in the selected window.",
   },
 };
 

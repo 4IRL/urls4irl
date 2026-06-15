@@ -310,7 +310,7 @@ If the fix subagent reports `VALIDATION: FAIL` or has `UNRESOLVED` items, the ma
 - **Always review via subagents**: The Subagent Review Pipeline is mandatory before reporting to the user
 - **Always update tracking**: Mark progress after every step/item completion
 - **Always pause**: Never auto-continue to next step without user confirmation
-- **CRITICAL: Set `dangerouslyDisableSandbox: true`** on every Bash call running `make` or `docker`
+- **CRITICAL: Set `dangerouslyDisableSandbox: true`** on every Bash call running `make` or `docker` — but **never** on `grep` (read-only; runs bare and sandboxed, allowlisted via `Bash(grep:*)`; DDS on grep forces an un-suppressible prompt)
 - **Test runs use synchronous Bash** — every `make test-*` invocation (integration, UI, single-marker, parallel, full suite) runs via the synchronous `Bash` tool with `dangerouslyDisableSandbox: true`. Never wrap test runs in a `Monitor`, never use `run_in_background`. Output goes to `/tmp/claude/<name>.txt`; this subagent blocks until make exits and reports the result in its Agent-tool reply.
 - **Follow existing patterns**: Read code before making changes
 - **Clean up**: Remove debug code, console.logs, window globals per CLAUDE.md

@@ -72,6 +72,12 @@ def truncate_metrics_tables(pg_conn: Any) -> None:
     pg_conn.commit()
 
 
+def truncate_gauges_tables(pg_conn: Any) -> None:
+    with pg_conn.cursor() as cursor:
+        cursor.execute('TRUNCATE TABLE "AnonymousGauges" RESTART IDENTITY CASCADE')
+    pg_conn.commit()
+
+
 def count_counter_keys(metrics_redis: Redis, event: EventName) -> int:
     return len(find_counter_keys(metrics_redis, event))
 

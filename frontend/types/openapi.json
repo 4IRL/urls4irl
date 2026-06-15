@@ -1063,6 +1063,99 @@
         }
       }
     },
+    "/api/metrics/query/gauges/timeseries": {
+      "get": {
+        "operationId": "queryGaugesTimeseries",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return every gauge's windowed sample series for an admin time window in one batched response, each series folding in its kind + description.",
+        "parameters": [
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.\n\n    Carries every gauge's windowed series in one response (mirrors\n    `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in\n    the window is absent from `gauges` rather than zero-filled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/GaugesTimeseriesResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/register": {
       "post": {
         "operationId": "registerUser",
@@ -3247,6 +3340,104 @@
           }
         },
         "required": ["steps"],
+        "type": "object"
+      },
+      "GaugeSampleSchema": {
+        "description": "One sampled point of a gauge's timeseries.\n\nCOUNT/MAX gauges populate `value_int`; AVG gauges populate `value_float`\n(the other stays null). A k-anon-suppressed `max_*` sample has BOTH null \u2014\nthe renderer drops such points before charting.",
+        "properties": {
+          "sampled_at": {
+            "description": "UTC instant this gauge was sampled",
+            "format": "date-time",
+            "type": "string"
+          },
+          "value_int": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Integer value for COUNT/MAX gauges; null otherwise"
+          },
+          "value_float": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Fractional value for AVG gauges; null otherwise"
+          }
+        },
+        "required": ["sampled_at"],
+        "type": "object"
+      },
+      "GaugeSeries": {
+        "description": "One gauge's full windowed series with its folded-in metadata.\n\n`kind`/`description` are folded into each series so the batched response is\nself-describing \u2014 the dashboard renders a card straight from the entry, with\nall gauge data sourced from this single batched endpoint.",
+        "properties": {
+          "gauge_name": {
+            "description": "GaugeName value (e.g. max_urls_per_utub)",
+            "type": "string"
+          },
+          "kind": {
+            "description": "GaugeKind value (volume | distribution_max | ...)",
+            "type": "string"
+          },
+          "description": {
+            "description": "Human-readable gauge description",
+            "type": "string"
+          },
+          "samples": {
+            "description": "Window-filtered samples ordered by sampled_at",
+            "items": {
+              "$ref": "#/components/schemas/GaugeSampleSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["gauge_name", "kind", "description", "samples"],
+        "type": "object"
+      },
+      "GaugesTimeseriesResponseSchema": {
+        "description": "Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.\n\nCarries every gauge's windowed series in one response (mirrors\n`GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in\nthe window is absent from `gauges` rather than zero-filled.",
+        "properties": {
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "gauges": {
+            "description": "One series per gauge that has samples in the window",
+            "items": {
+              "$ref": "#/components/schemas/GaugeSeries"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["window_start", "window_end", "gauges"],
         "type": "object"
       },
       "RegisterRequest": {

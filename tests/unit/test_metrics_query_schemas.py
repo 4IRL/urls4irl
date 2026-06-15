@@ -20,6 +20,7 @@ from backend.schemas.requests.metrics import (
     _MISSING_WINDOW_OR_RANGE_ERROR,
     _PARTIAL_RANGE_ERROR,
     _RANGE_ORDER_ERROR,
+    GaugesTimeseriesQuerySchema,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,
@@ -321,6 +322,68 @@ def test_summary_query_rejects_extra_keys():
     """`extra="forbid"` rejects unknown query params."""
     with pytest.raises(ValidationError):
         SummaryQuerySchema.model_validate({"window": "day", "category": "api"})
+
+
+# ---------------------- GaugesTimeseriesQuerySchema ------------------------
+
+
+def test_gauges_timeseries_query_happy_path_with_window_only():
+    """`{"window": "day"}` parses; start/end default to None (batched, no name)."""
+    parsed = GaugesTimeseriesQuerySchema.model_validate({"window": "day"})
+    assert parsed.window == "day"
+    assert parsed.start is None
+    assert parsed.end is None
+
+
+def test_gauges_timeseries_query_accepts_absolute_range():
+    """`start`+`end` alone (no window) is accepted."""
+    parsed = GaugesTimeseriesQuerySchema.model_validate(
+        {"start": ABS_RANGE_START_ISO, "end": ABS_RANGE_END_ISO}
+    )
+    assert parsed.window is None
+    assert parsed.start == ABS_RANGE_START
+    assert parsed.end == ABS_RANGE_END
+
+
+def test_gauges_timeseries_query_rejects_stray_name_key():
+    """A `name` key is rejected — the batched schema has no `name` field (extra=forbid)."""
+    with pytest.raises(ValidationError):
+        GaugesTimeseriesQuerySchema.model_validate(
+            {"window": "day", "name": "total_users"}
+        )
+
+
+def test_gauges_timeseries_query_rejects_extra_keys():
+    """`extra="forbid"` rejects any unknown query param."""
+    with pytest.raises(ValidationError):
+        GaugesTimeseriesQuerySchema.model_validate({"window": "day", "foo": "bar"})
+
+
+def test_gauges_timeseries_query_rejects_window_and_range_together():
+    """Supplying both `window` and `start`+`end` is ambiguous → 400 via XOR validator."""
+    with pytest.raises(ValidationError) as exc_info:
+        GaugesTimeseriesQuerySchema.model_validate(
+            {
+                "window": "day",
+                "start": ABS_RANGE_START_ISO,
+                "end": ABS_RANGE_END_ISO,
+            }
+        )
+    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+
+
+def test_gauges_timeseries_query_rejects_missing_window_and_range():
+    """No window and no range → 400 via the missing-spec XOR branch."""
+    with pytest.raises(ValidationError) as exc_info:
+        GaugesTimeseriesQuerySchema.model_validate({})
+    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+
+
+def test_gauges_timeseries_query_rejects_partial_range():
+    """`start` without `end` is incomplete → 400 via the partial-range XOR branch."""
+    with pytest.raises(ValidationError) as exc_info:
+        GaugesTimeseriesQuerySchema.model_validate({"start": ABS_RANGE_START_ISO})
+    _assert_first_validation_message(exc_info.value, _PARTIAL_RANGE_ERROR)
 
 
 # -------------------- Window XOR Absolute-Range Validation -----------------

@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import inspect
 
 from backend import db
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.event_registry import Event_Registry
@@ -48,3 +49,16 @@ def test_metrics_tables_exist(app):
 
         assert inspector.has_table(Event_Registry.__tablename__)
         assert inspector.has_table(Anonymous_Metrics.__tablename__)
+
+
+def test_gauge_tables_exist(app):
+    """
+    GIVEN a valid database with all given tables
+    WHEN these tests are running
+    THEN ensure the gauge table exists in the database
+    """
+    with app.app_context():
+        engine = db.engine
+        inspector = inspect(engine)
+
+        assert inspector.has_table(Anonymous_Gauges.__tablename__)

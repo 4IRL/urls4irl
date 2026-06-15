@@ -6,6 +6,7 @@ from flask import Flask, current_app, session
 from flask.cli import AppGroup, with_appcontext
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
+from sqlalchemy.exc import ProgrammingError
 
 from backend.utils.db_table_names import TABLE_NAMES
 from backend.db import db
@@ -17,11 +18,23 @@ from backend.cli.mock_data.utubmembers import generate_mock_utubmembers
 from backend.cli.mock_data.utubs import generate_mock_utubs
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import DeviceType, EventName
+from backend.metrics.gauges import GAUGE_REGISTRY, GaugeKind
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.users import Users
 from backend.utils.datetime_utils import utc_now
 
 SEED_TEST_DATA_HOUR_OFFSETS: tuple[int, ...] = (0, 1, 2)
+
+# Two fixed sample-time offsets (hours back from the current hour) so every
+# seeded gauge has at least two timeseries points for the dashboard charts.
+SEED_GAUGE_HOUR_OFFSETS: tuple[int, ...] = (0, 1)
+
+# Deterministic sample values per gauge kind, keyed by sample-time offset so the
+# seeded series shows movement across the two points. VOLUME / DISTRIBUTION_MAX
+# write an integer (valueInt); DISTRIBUTION_AVG writes a float (valueFloat).
+SEED_GAUGE_INT_VALUES: dict[int, int] = {0: 42, 1: 40}
+SEED_GAUGE_FLOAT_VALUES: dict[int, float] = {0: 4.5, 1: 4.0}
 
 HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""
 
@@ -130,7 +143,9 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     generate_mock_urls(db)
     generate_mock_tags(db)
     rows_written = _seed_uniform_test_data()
-    print(f"\n--- Seeded {rows_written} AnonymousMetrics rows for UI tests ---")
+    print(
+        f"\n--- Seeded {rows_written} AnonymousMetrics + AnonymousGauges rows for UI tests ---"
+    )
     print(
         "\n--- Finished adding all mock users, UTubs, members, urls, tags, and metrics ---\n\n"
     )
@@ -290,8 +305,12 @@ def _seed_uniform_test_data() -> int:
     Examples:
         Writes nine rows across three hour buckets ending at the current
         hour, one row per bucket for each of: api_hit (API),
-        ui_login_submit (UI), utub_created (DOMAIN). Returns the count of
-        rows actually inserted (zero on a re-run with all rows present).
+        ui_login_submit (UI), utub_created (DOMAIN). Also calls
+        `_seed_uniform_gauges()` at the end so AnonymousGauges is seeded for
+        every consumer of `seed-uniform-test-data` (e.g. the Selenium
+        `seeded_metrics` autouse fixture). Returns the combined count of
+        AnonymousMetrics + AnonymousGauges rows actually inserted (zero on a
+        re-run with all rows present).
     """
     sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
 
@@ -381,6 +400,74 @@ def _seed_uniform_test_data() -> int:
             )
             rows_written += 1
     db.session.commit()
+    gauge_rows_written = _seed_uniform_gauges()
+    return rows_written + gauge_rows_written
+
+
+def _seed_uniform_gauges() -> int:
+    """Insert a deterministic set of AnonymousGauges rows for UI tests.
+
+    Writes two timeseries points (two sample timestamps ending at the current
+    hour) for every `GaugeName`, so the admin dashboard's Gauges tab renders a
+    non-empty trend chart per gauge during the Selenium smoke test. VOLUME and
+    DISTRIBUTION_MAX gauges populate `value_int`; DISTRIBUTION_AVG gauges
+    populate `value_float` (the other column stays NULL), matching the
+    sampler's per-kind column routing. Idempotent on `(gaugeName, sampledAt)`
+    via a `one_or_none()` existence skip — repeated runs insert nothing new.
+    Requires an active Flask app context.
+
+    The INSERT/commit body is wrapped in `try/except ProgrammingError`: if the
+    `AnonymousGauges` table does not exist yet (e.g. a migration-downgrade
+    state before the table was added), the exception is logged as a warning and
+    the function returns 0, so `flask addmock all` stays safe at any migration
+    revision.
+
+    Examples:
+        With two sample offsets and sixteen gauges, writes thirty-two rows on a
+        fresh DB (two points per gauge) and returns 32; a re-run with all rows
+        already present returns 0.
+    """
+    now = utc_now()
+    current_hour_aligned = now.replace(minute=0, second=0, microsecond=0)
+    rows_written = 0
+    try:
+        for hour_offset in SEED_GAUGE_HOUR_OFFSETS:
+            sampled_at = current_hour_aligned - timedelta(hours=hour_offset)
+            int_value = SEED_GAUGE_INT_VALUES[hour_offset]
+            float_value = SEED_GAUGE_FLOAT_VALUES[hour_offset]
+
+            for gauge_name, definition in GAUGE_REGISTRY.items():
+                existing_row = Anonymous_Gauges.query.filter_by(
+                    gauge_name=gauge_name.value,
+                    sampled_at=sampled_at,
+                ).one_or_none()
+                if existing_row is not None:
+                    continue
+
+                if definition.kind is GaugeKind.DISTRIBUTION_AVG:
+                    value_int = None
+                    value_float = float_value
+                else:
+                    value_int = int_value
+                    value_float = None
+
+                db.session.add(
+                    Anonymous_Gauges(
+                        gauge_name=gauge_name.value,
+                        sampled_at=sampled_at,
+                        value_int=value_int,
+                        value_float=value_float,
+                        dimensions={},
+                    )
+                )
+                rows_written += 1
+        db.session.commit()
+    except ProgrammingError:
+        db.session.rollback()
+        current_app.logger.warning(
+            "addmock: AnonymousGauges table missing; skipped gauge seeding"
+        )
+        return 0
     return rows_written
 
 
@@ -392,6 +479,16 @@ def _seed_uniform_test_data() -> int:
 def seed_uniform_test_data_command() -> None:
     rows_written = _seed_uniform_test_data()
     click.echo(f"metrics: seeded {rows_written} AnonymousMetrics rows for UI tests.")
+
+
+@mocks_cli.command(
+    "seed-uniform-gauges",
+    help="Seed a small fixed set of AnonymousGauges rows for Selenium tests.",
+)
+@with_appcontext
+def seed_uniform_gauges_command() -> None:
+    rows_written = _seed_uniform_gauges()
+    click.echo(f"metrics: seeded {rows_written} AnonymousGauges rows for UI tests.")
 
 
 def register_mocks_db_cli(app: Flask):

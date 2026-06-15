@@ -7,7 +7,12 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 
 from backend import db
-from backend.cli.metrics import EMPTY_TOP_EVENTS_OUTPUT, TOP_EVENTS_HEADER
+from backend.cli.metrics import (
+    EMPTY_GAUGE_TIMESERIES_OUTPUT,
+    EMPTY_TOP_EVENTS_OUTPUT,
+    GAUGE_TIMESERIES_HEADER,
+    TOP_EVENTS_HEADER,
+)
 from backend.extensions.metrics.buckets import (
     _WINDOW_PARSE_ERROR_FMT,
     WINDOW_NAMED,
@@ -17,10 +22,17 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.gauges import GaugeName
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 
 pytestmark = pytest.mark.cli
+
+# AVG-kind gauge sample value used to exercise the `_gauge_value_cell(float)`
+# TSV-formatting branch end-to-end. `str(4.5)` renders as "4.5".
+GAUGE_FLOAT_VALUE: float = 4.5
+GAUGE_FLOAT_VALUE_CELL: str = str(GAUGE_FLOAT_VALUE)
 
 
 def _seed_event_with_count(
@@ -345,3 +357,142 @@ def test_flask_metrics_top_missing_window_and_range_exits_nonzero(
     assert result.exit_code != 0
     combined_output = result.output + (result.stderr if result.stderr_bytes else "")
     assert "Provide `window` or both `start` and `end`." in combined_output
+
+
+# ---------------------------------------------------------------------------
+# Gauge CLI commands — gauge-timeseries
+# ---------------------------------------------------------------------------
+
+
+def _seed_gauge_row(
+    gauge_name: GaugeName,
+    sampled_at: datetime,
+    *,
+    value_int: int | None = None,
+    value_float: float | None = None,
+) -> None:
+    """Seed one AnonymousGauges row through SQLAlchemy under an app context."""
+    db.session.add(
+        Anonymous_Gauges(
+            gauge_name=gauge_name.value,
+            sampled_at=sampled_at,
+            value_int=value_int,
+            value_float=value_float,
+            dimensions={},
+        )
+    )
+    db.session.commit()
+
+
+def test_flask_metrics_gauge_timeseries_empty_window_prints_sentinel(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN no AnonymousGauges rows exist
+    WHEN `flask metrics gauge-timeseries --name=total_users --window=day` runs
+    THEN the CLI exits 0 and prints the empty-result sentinel.
+    """
+    app = metrics_enabled_runner_app
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=["metrics", "gauge-timeseries", "--name=total_users", "--window=day"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert EMPTY_GAUGE_TIMESERIES_OUTPUT in result.output
+
+
+def test_flask_metrics_gauge_timeseries_prints_header_and_seeded_values(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN two TOTAL_USERS samples seeded inside the window
+    WHEN `flask metrics gauge-timeseries --name=total_users --window=day` runs
+    THEN the CLI exits 0, prints the header, and the seeded integer values appear.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+        _seed_gauge_row(
+            GaugeName.TOTAL_USERS, inside - timedelta(minutes=30), value_int=10
+        )
+        _seed_gauge_row(GaugeName.TOTAL_USERS, inside, value_int=12)
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=["metrics", "gauge-timeseries", "--name=total_users", "--window=day"]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert GAUGE_TIMESERIES_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    header_index = lines.index(GAUGE_TIMESERIES_HEADER)
+    data_lines = lines[header_index + 1 :]
+    assert len(data_lines) == 2
+    value_int_cells = [line.split("\t")[1] for line in data_lines]
+    assert value_int_cells == ["10", "12"]
+
+
+def test_flask_metrics_gauge_timeseries_invalid_window_exits_nonzero(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN an unparseable window string
+    WHEN `flask metrics gauge-timeseries --name=total_users --window=bogus` runs
+    THEN the CLI exits non-zero and emits the parse-error message.
+    """
+    app = metrics_enabled_runner_app
+    runner: FlaskCliRunner = app.test_cli_runner()
+
+    result = runner.invoke(
+        args=["metrics", "gauge-timeseries", "--name=total_users", "--window=bogus"]
+    )
+
+    expected_message = _WINDOW_PARSE_ERROR_FMT.format(value="bogus", names=WINDOW_NAMED)
+    assert result.exit_code != 0
+    combined_output = result.output + (result.stderr if result.stderr_bytes else "")
+    assert expected_message in combined_output
+
+
+def test_flask_metrics_gauge_timeseries_formats_float_value_cell(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN an AVG-kind gauge seeded with a non-None value_float (and value_int None)
+    WHEN `flask metrics gauge-timeseries --name=avg_urls_per_utub --window=day` runs
+    THEN the CLI exits 0 and the formatted float appears in the value_float cell,
+        exercising the `_gauge_value_cell(float)` branch end-to-end.
+    """
+    app = metrics_enabled_runner_app
+    inside = _bucket_inside_day_window()
+
+    with app.app_context():
+        assert Anonymous_Gauges.query.count() == 0
+        _seed_gauge_row(
+            GaugeName.AVG_URLS_PER_UTUB, inside, value_float=GAUGE_FLOAT_VALUE
+        )
+
+    runner: FlaskCliRunner = app.test_cli_runner()
+    result = runner.invoke(
+        args=[
+            "metrics",
+            "gauge-timeseries",
+            "--name=avg_urls_per_utub",
+            "--window=day",
+        ]
+    )
+
+    assert result.exit_code == 0, result.output
+    assert GAUGE_TIMESERIES_HEADER in result.output
+    lines = [line for line in result.output.splitlines() if line.strip()]
+    data_lines = lines[lines.index(GAUGE_TIMESERIES_HEADER) + 1 :]
+    assert len(data_lines) == 1
+    columns = data_lines[0].split("\t")
+    assert columns[1] == ""
+    assert columns[2] == GAUGE_FLOAT_VALUE_CELL

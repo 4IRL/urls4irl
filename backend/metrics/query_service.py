@@ -17,10 +17,18 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.gauges import (
+    GAUGE_REGISTRY,
+    GaugeName,
+)
 from backend.metrics.resources import Resource, resource_filter_clause
+from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
+    GaugeSampleSchema,
+    GaugeSeries,
+    GaugesTimeseriesResponseSchema,
     GroupedTimeseriesBucket,
     GroupedTimeseriesResponseSchema,
     SummaryCategoryCount,
@@ -812,3 +820,103 @@ def summary(
         last_flush_at=last_flush_at,
         last_event_at=last_event_at,
     )
+
+
+def _gauge_sample_from_row(row: Anonymous_Gauges) -> GaugeSampleSchema:
+    """Build one `GaugeSampleSchema` from a stored gauge row.
+
+    `value_float` is stored as `Numeric(20, 6)`, which SQLAlchemy returns as a
+    `Decimal`; cast it to `float` so the response serializes as a JSON number
+    rather than a string. `value_int` is already a Python `int`.
+    """
+    return GaugeSampleSchema(
+        sampled_at=row.sampled_at,
+        value_int=row.value_int,
+        value_float=None if row.value_float is None else float(row.value_float),
+    )
+
+
+def gauges_timeseries_all(
+    *,
+    window: str | None,
+    window_start: datetime,
+    window_end: datetime,
+) -> GaugesTimeseriesResponseSchema:
+    """Return every gauge's windowed sample series in one batched response.
+
+    Selects all `Anonymous_Gauges` rows whose `sampled_at` falls in the
+    half-open window `[window_start, window_end)`, ordered by
+    `("gaugeName", "sampledAt")`, then groups them per gauge in a single scan.
+    Each `GaugeSeries` folds in the gauge's `kind` + `description` (read inline
+    from `GAUGE_REGISTRY`) so the dashboard needs no separate metadata
+    round-trip to render a card. A gauge with no rows in the window is
+    simply absent from `gauges` — the renderer pads nothing.
+
+    Mirrors `grouped_timeseries`'s batched envelope shape: the route threads the
+    original `window` query value back into the response so the wire payload
+    reflects the client's request shape.
+    """
+    rows = (
+        db.session.query(Anonymous_Gauges)
+        .filter(
+            Anonymous_Gauges.sampled_at >= window_start,
+            Anonymous_Gauges.sampled_at < window_end,
+        )
+        .order_by(Anonymous_Gauges.gauge_name, Anonymous_Gauges.sampled_at)
+        .all()
+    )
+
+    samples_by_gauge: dict[str, list[GaugeSampleSchema]] = {}
+    for row in rows:
+        samples_by_gauge.setdefault(row.gauge_name, []).append(
+            _gauge_sample_from_row(row)
+        )
+
+    gauge_series: list[GaugeSeries] = []
+    # Emit in GaugeName declaration order so the dashboard's chart order is
+    # deterministic regardless of insertion order in the table.
+    for gauge_name in GaugeName:
+        samples = samples_by_gauge.get(gauge_name.value)
+        if not samples:
+            continue
+        gauge_series.append(
+            GaugeSeries(
+                gauge_name=gauge_name.value,
+                kind=GAUGE_REGISTRY[gauge_name].kind.value,
+                description=GAUGE_REGISTRY[gauge_name].description,
+                samples=samples,
+            )
+        )
+
+    return GaugesTimeseriesResponseSchema(
+        window=window,
+        window_start=window_start,
+        window_end=window_end,
+        gauges=gauge_series,
+    )
+
+
+def gauge_timeseries_one(
+    *,
+    gauge_name: GaugeName,
+    window_start: datetime,
+    window_end: datetime,
+) -> list[GaugeSampleSchema]:
+    """Return one gauge's window-filtered samples, ordered by `sampled_at`.
+
+    A per-name helper backing the `flask metrics gauge-timeseries --name` CLI
+    only — the batched HTTP endpoint never calls this. Selects rows where
+    `gaugeName == gauge_name.value` and `sampledAt` is in the half-open window
+    `[window_start, window_end)`.
+    """
+    rows = (
+        db.session.query(Anonymous_Gauges)
+        .filter(
+            Anonymous_Gauges.gauge_name == gauge_name.value,
+            Anonymous_Gauges.sampled_at >= window_start,
+            Anonymous_Gauges.sampled_at < window_end,
+        )
+        .order_by(Anonymous_Gauges.sampled_at)
+        .all()
+    )
+    return [_gauge_sample_from_row(row) for row in rows]

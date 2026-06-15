@@ -323,3 +323,58 @@ class FlowResponseSchema(BaseSchema):
             "registry; one entry per FlowDefinition step, in funnel order."
         ),
     )
+
+
+class GaugeSampleSchema(BaseSchema):
+    """One sampled point of a gauge's timeseries.
+
+    COUNT/MAX gauges populate `value_int`; AVG gauges populate `value_float`
+    (the other stays null). A k-anon-suppressed `max_*` sample has BOTH null —
+    the renderer drops such points before charting.
+    """
+
+    sampled_at: datetime = Field(description="UTC instant this gauge was sampled")
+    value_int: int | None = Field(
+        default=None, description="Integer value for COUNT/MAX gauges; null otherwise"
+    )
+    value_float: float | None = Field(
+        default=None, description="Fractional value for AVG gauges; null otherwise"
+    )
+
+
+class GaugeSeries(BaseSchema):
+    """One gauge's full windowed series with its folded-in metadata.
+
+    `kind`/`description` are folded into each series so the batched response is
+    self-describing — the dashboard renders a card straight from the entry, with
+    all gauge data sourced from this single batched endpoint.
+    """
+
+    gauge_name: str = Field(description="GaugeName value (e.g. max_urls_per_utub)")
+    kind: str = Field(description="GaugeKind value (volume | distribution_max | ...)")
+    description: str = Field(description="Human-readable gauge description")
+    samples: list[GaugeSampleSchema] = Field(
+        description="Window-filtered samples ordered by sampled_at",
+    )
+
+
+class GaugesTimeseriesResponseSchema(BaseSchema):
+    """Batched envelope returned by `GET /api/metrics/query/gauges/timeseries`.
+
+    Carries every gauge's windowed series in one response (mirrors
+    `GroupedTimeseriesResponseSchema`'s envelope shape). A gauge with no rows in
+    the window is absent from `gauges` rather than zero-filled.
+    """
+
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
+    window_start: datetime = Field(description="Inclusive UTC start of the window")
+    window_end: datetime = Field(description="Exclusive UTC end of the window")
+    gauges: list[GaugeSeries] = Field(
+        description="One series per gauge that has samples in the window",
+    )

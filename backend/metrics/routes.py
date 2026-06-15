@@ -29,6 +29,7 @@ from backend.schemas.metrics import (
     FlowBreakdownRow,
     FlowResponseSchema,
     FlowStepSchema,
+    GaugesTimeseriesResponseSchema,
     GroupedTimeseriesResponseSchema,
     MetricsIngestResponseSchema,
     SummaryResponseSchema,
@@ -37,6 +38,7 @@ from backend.schemas.metrics import (
 )
 from backend.schemas.requests.metrics import (
     FlowQuerySchema,
+    GaugesTimeseriesQuerySchema,
     GroupedTimeseriesQuerySchema,
     MetricsIngestRequest,
     SummaryQuerySchema,
@@ -548,4 +550,50 @@ def query_flow() -> FlaskResponse:
         )
 
     response_schema = FlowResponseSchema(steps=response_steps)
+    return APIResponse(data=response_schema, status_code=200).to_response()
+
+
+@metrics.route("/api/metrics/query/gauges/timeseries", methods=["GET"])
+@admin_required
+@api_route(
+    query_schema=GaugesTimeseriesQuerySchema,
+    response_schema=GaugesTimeseriesResponseSchema,
+    ajax_required=True,
+    tags=[OPEN_API.METRICS],
+    description=(
+        "Return every gauge's windowed sample series for an admin time window "
+        "in one batched response, each series folding in its kind + description."
+    ),
+    status_codes={
+        200: GaugesTimeseriesResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def query_gauges_timeseries() -> FlaskResponse:
+    parsed = _parse_query_args(GaugesTimeseriesQuerySchema)
+    if not isinstance(parsed, BaseModel):
+        return parsed
+
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_WINDOW,
+            errors={"window": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    response_schema = query_service.gauges_timeseries_all(
+        window=parsed.window,
+        window_start=window_start,
+        window_end=window_end,
+    )
     return APIResponse(data=response_schema, status_code=200).to_response()

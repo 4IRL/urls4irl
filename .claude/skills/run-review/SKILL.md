@@ -17,6 +17,7 @@ Autonomously execute all pending TODO items from a review file. The **main agent
 
 - **Git commands** (`git add`, `git commit`, `git status`, `git diff`, etc.): run in **default sandbox** — never use `dangerouslyDisableSandbox`
 - **Docker/make commands**: use `dangerouslyDisableSandbox: true` (Docker socket requires it)
+- **`grep`**: read-only — run **bare and sandboxed** (`grep ...` as the first token, no compounding/`awk`/`sed` wrapper); **never** set `dangerouslyDisableSandbox` on grep (it forces an un-suppressible prompt; the bare form is allowlisted via `Bash(grep:*)`)
 - Subagent prompts must include these rules so subagents follow them too
 
 ## Workflow
@@ -182,7 +183,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Each subagent runs the full /next-step-taker review mode workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
 - **Test output goes to temp files** — test runner subagents write output to `/tmp/claude/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
 - **Tests run via synchronous Bash inside subagents** — the subagent invokes `make test-*` with the synchronous `Bash` tool (and `dangerouslyDisableSandbox: true`), blocks until make exits, and reports the result. The orchestrator waits for the subagent's Agent-tool reply — that reply IS the completion signal. Do not arm a Monitor on the result file, do not poll a running subagent, and do not reach into a container with a side-channel probe.
-- **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.
+- **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`; `grep` runs bare and sandboxed (never `dangerouslyDisableSandbox` on grep — it forces an un-suppressible prompt). Include this rule in all subagent prompts.
 - **Review item ordering** — process items in the order they appear in the review file. Do not reorder or parallelize, as later items may depend on earlier fixes.
 - When stopping on a blocker, report: which item failed, what was tried, what needs user input.
 - **Investigate every test failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times. Include this rule in all subagent prompts that run or evaluate tests.

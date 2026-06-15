@@ -19,6 +19,7 @@ const {
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
   fetchGroupedTimeseriesSpy,
+  fetchGaugesTimeseriesSpy,
   renderSummarySpy,
   renderTimeseriesChartSpy,
 } = vi.hoisted(() => ({
@@ -26,6 +27,7 @@ const {
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
+  fetchGaugesTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
 }));
@@ -35,6 +37,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
+  fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -138,12 +141,16 @@ describe("metrics-dashboard top-table row clicks", () => {
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );
 
@@ -360,12 +367,16 @@ describe("metrics-dashboard auto-default timeseries selection", () => {
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );
 

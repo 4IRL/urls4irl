@@ -7,3 +7,9 @@ class METRICS_REDIS:
     # worker's actual cadence rather than the most recent bucketStart (which
     # only advances when traffic lands).
     FLUSH_LAST_SUCCESS_KEY: str = "metrics:flush:last_success_epoch"
+    # Gauge-sampler liveness sentinel: the standalone gauge sampler stamps this
+    # with the current Unix epoch after each successful sample run (Redis ->
+    # observability only; the workflow container's single healthcheck stays
+    # check_flush_liveness.py). Written best-effort, so a Redis hiccup after a
+    # successful Postgres commit does not fail the sample run.
+    GAUGE_LAST_SUCCESS_KEY: str = "metrics:gauges:last_sample_epoch"
