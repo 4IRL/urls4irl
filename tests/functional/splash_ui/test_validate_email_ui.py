@@ -17,7 +17,6 @@ from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
     login_user_ui,
     wait_for_element_to_be_removed,
-    wait_for_modal_hidden,
     wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
@@ -166,11 +165,15 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     # Close the modal — this should trigger logout via logoutOnExit
     email_validation_btn_close = f"{SPL.EMAIL_VALIDATION_MODAL} .btn-close"
     wait_then_click_element(browser, email_validation_btn_close)
-    wait_for_modal_hidden(browser, SPL.EMAIL_VALIDATION_MODAL)
 
-    # Wait for the async logout AJAX + window.location.replace("/") to reload the page.
-    # staleness_of detects when the DOM element is destroyed by the page navigation,
-    # which is a structural signal (not a timing guess) that the redirect completed.
+    # The btn-close fires Bootstrap's modal-hide AND logoutOnExit's async logout
+    # AJAX, which then runs window.location.replace("/"). The anonymous splash page
+    # re-renders a fresh (hidden) #EmailValidationModal, so a selector-based hidden
+    # wait can re-locate that fresh element mid-navigation and latch onto a transient
+    # reload state. Instead, wait on the ORIGINAL modal element going stale: that is
+    # the structural signal that the redirect destroyed the old DOM, which together
+    # with the anonymous WELCOME_TEXT assertion below proves both the modal closed
+    # and the logout/redirect completed.
     assert wait_for_element_to_be_removed(browser, modal_element, timeout=10)
 
     # After logout, user should be redirected to splash page as anonymous
