@@ -317,6 +317,16 @@ class SplashPageLocators(GenericPageLocator):
     SPLASH_FEATURES_HEADING = "#splashFeaturesHeading"
     SPLASH_FEATURE_TILES = ".splash-feature-tile"
 
+    # Product preview mock
+    SPLASH_PRODUCT_PREVIEW = "#splashProductPreview"
+    SPLASH_PRODUCT_MOCK = ".splash-product-mock"
+    SPLASH_MOCK_UTUB_ROWS = ".mock-utub-row"
+    SPLASH_MOCK_UTUB_SELECTED = ".mock-utub-row--selected"
+    SPLASH_MOCK_URL_ROWS = ".mock-url-row"
+    SPLASH_MOCK_URL_SELECTED = ".mock-url-row--selected"
+    SPLASH_MOCK_TAGS = ".mock-tag"
+    SPLASH_MOCK_ACTIONS = ".mock-action"
+
     # Reset Password
     INPUT_NEW_PASSWORD = "#newPassword"
     INPUT_CONFIRM_NEW_PASSWORD = "#confirmNewPassword"

@@ -315,3 +315,121 @@ form {
     .splash-feature-tile { transition: none; }
     .splash-feature-tile:hover { transform: none; }
 }
+
+.splash-product-preview {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-4) var(--space-16);
+    text-align: center;
+}
+.splash-product-preview-heading {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--splashLabelGreen);
+    margin: 0 0 var(--space-2) 0;
+}
+.splash-product-preview-caption {
+    font-size: var(--fs-md);
+    color: var(--cardURLTextColor);
+    margin: 0 0 var(--space-8) 0;
+}
+.splash-product-mock {
+    display: grid;
+    grid-template-columns: minmax(0, 13rem) 1fr;
+    gap: var(--space-4);
+    text-align: left;
+    box-shadow: var(--shadow-md), var(--shadow-glow-green);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    background-color: rgba(0, 0, 0, 0.25);
+}
+/* Deck panel chrome (matches real UTubs / URL deck) */
+.mock-deck {
+    background-color: var(--panelBackgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+}
+.mock-deck-header { display: flex; align-items: center; gap: var(--space-2); }
+.mock-deck-caret { color: var(--splashLabelGreen); font-size: 0.7rem; flex-shrink: 0; }
+.mock-deck-title {
+    color: var(--splashLabelGreen);
+    margin: 0;
+    font-weight: var(--fw-bold);
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    line-height: 1.1;
+}
+.mock-deck--utubs .mock-deck-title { font-size: var(--fs-lg); }
+.mock-deck--urls  .mock-deck-title { font-size: var(--fs-2xl); }
+.mock-deck-actions { display: flex; gap: var(--space-1); align-items: center; flex-shrink: 0; }
+.mock-deck-btn {
+    width: 1.5rem; height: 1.5rem;
+    border-radius: var(--radius-sm);
+    border: none; cursor: default;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: white;
+}
+.mock-deck-btn--add    { background-color: var(--darkSplashLabelGreen); }
+.mock-deck-btn--search { background-color: transparent; color: var(--splashLabelGreen); }
+.mock-deck-btn svg { width: 0.85rem; height: 0.85rem; fill: currentColor; }
+.mock-deck-description { margin: 0; font-size: var(--fs-sm); color: var(--cardURLTextColor); font-style: italic; }
+
+/* UTubs deck — rounded-rectangle rows (NOT pills) */
+.mock-utub-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.mock-utub-row {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 2px solid var(--borderColor);
+    border-radius: 10px;
+    background-color: var(--cardBackgroundColor);
+    color: var(--cardURLTextColor);
+    font-size: var(--fs-sm); font-weight: var(--fw-bold);
+}
+.mock-utub-row--selected { border-color: var(--deckSelectionGreen); color: var(--deckSelectionGreen); }
+.mock-utub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mock-utub-icon { color: var(--memberRoleIconColor); display: inline-flex; flex-shrink: 0; }
+.mock-utub-icon svg { width: 0.85rem; height: 0.85rem; fill: currentColor; }
+
+/* URLs deck — flat list, hairline separators (no per-row card bg) */
+.mock-url-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mock-url-row { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-2); border-top: 1px solid var(--borderColor); }
+.mock-url-row:first-child { border-top: none; padding-top: var(--space-2); }
+.mock-url-title { font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--splashLabelGreen); }
+.mock-url-string { font-size: var(--fs-sm); color: var(--cardURLTextColor); font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Selected URL — tag pills + 5 action buttons */
+.mock-url-row--selected { gap: var(--space-2); padding-block: var(--space-3) var(--space-4); }
+.mock-url-tags { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-1); }
+.mock-tag {
+    font-size: var(--fs-xs);
+    color: var(--splashLabelGreen);
+    background-color: transparent;
+    border: 1.5px solid var(--splashLabelGreen);
+    border-radius: var(--radius-pill);
+    padding: 2px var(--space-3);
+    font-weight: var(--fw-bold);
+}
+.mock-url-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.mock-action {
+    width: 2.25rem; height: 1.85rem;
+    border-radius: var(--radius-sm);
+    border: none; cursor: default;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: white;
+}
+.mock-action svg { width: 1rem; height: 1rem; fill: currentColor; }
+.mock-action--access { background-color: var(--accessLinkColor); color: black; }
+.mock-action--tag    { background-color: var(--addTagColor);     color: black; }
+.mock-action--copy   { background-color: var(--copyURLColor);    color: white; }
+.mock-action--edit   { background-color: var(--editURLColor);    color: black; }
+.mock-action--delete { background-color: var(--deleteURLColor);  color: black; }
+
+/* Mobile — stack the two decks vertically */
+@media (max-width: 768px) {
+    .splash-product-mock { grid-template-columns: 1fr; }
+}

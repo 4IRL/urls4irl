@@ -1175,6 +1175,7 @@ def visit_terms_page(browser: WebDriver):
 
 
 def visit_contact_us_page(browser: WebDriver):
+    scroll_footer_link_into_view(browser, HPL.CONTACT_BTN)
     wait_then_click_element(browser, HPL.CONTACT_BTN, time=3)
     terms_title = wait_then_get_element(browser, HPL.CONTACT_US_HEADER)
     assert terms_title
