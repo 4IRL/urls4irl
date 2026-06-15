@@ -24,10 +24,10 @@ main {
 }
 
 footer {
-    height: 1.75rem;
+    min-height: 1.75rem;
     justify-content: center;
     gap: 1rem;
-    align-items: flex-start;
+    align-items: center;
     color: var(--footerURLColor);
 }
 
