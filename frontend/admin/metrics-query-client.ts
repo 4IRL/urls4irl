@@ -214,8 +214,9 @@ export function fetchFlow({
 /**
  * Fetch every gauge's windowed series in ONE batched request — the response
  * carries one entry per gauge, each folding in its own `kind`/`description`
- * metadata, so no separate `gauges/list` round-trip is needed. There is NO
- * `name` query param: the endpoint is batched and returns all gauges.
+ * metadata, so all gauge data the dashboard needs comes from this single
+ * endpoint. There is NO `name` query param: the endpoint is batched and
+ * returns all gauges.
  *
  * `window` is typed `string` (not `MetricsWindow`) to avoid a circular import —
  * `MetricsWindow` lives in `metrics-dashboard.ts`, which already imports from

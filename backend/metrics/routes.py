@@ -29,8 +29,6 @@ from backend.schemas.metrics import (
     FlowBreakdownRow,
     FlowResponseSchema,
     FlowStepSchema,
-    GaugesLatestResponseSchema,
-    GaugesListResponseSchema,
     GaugesTimeseriesResponseSchema,
     GroupedTimeseriesResponseSchema,
     MetricsIngestResponseSchema,
@@ -598,42 +596,4 @@ def query_gauges_timeseries() -> FlaskResponse:
         window_start=window_start,
         window_end=window_end,
     )
-    return APIResponse(data=response_schema, status_code=200).to_response()
-
-
-@metrics.route("/api/metrics/query/gauges/latest", methods=["GET"])
-@admin_required
-@api_route(
-    response_schema=GaugesLatestResponseSchema,
-    ajax_required=True,
-    tags=[OPEN_API.METRICS],
-    description="Return the most-recent sample for every gauge that has rows.",
-    status_codes={
-        200: GaugesLatestResponseSchema,
-        401: ErrorResponse,
-        404: ErrorResponse,
-    },
-)
-def query_gauges_latest() -> FlaskResponse:
-    response_schema = GaugesLatestResponseSchema(
-        gauges=query_service.latest_gauge_snapshot()
-    )
-    return APIResponse(data=response_schema, status_code=200).to_response()
-
-
-@metrics.route("/api/metrics/query/gauges/list", methods=["GET"])
-@admin_required
-@api_route(
-    response_schema=GaugesListResponseSchema,
-    ajax_required=True,
-    tags=[OPEN_API.METRICS],
-    description="Return static metadata (name, kind, description) for every gauge.",
-    status_codes={
-        200: GaugesListResponseSchema,
-        401: ErrorResponse,
-        404: ErrorResponse,
-    },
-)
-def query_gauges_list() -> FlaskResponse:
-    response_schema = GaugesListResponseSchema(gauges=query_service.list_gauges())
     return APIResponse(data=response_schema, status_code=200).to_response()

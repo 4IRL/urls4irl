@@ -174,40 +174,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/metrics/query/gauges/latest": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Return the most-recent sample for every gauge that has rows. */
-    get: operations["queryGaugesLatest"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  "/api/metrics/query/gauges/list": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /** @description Return static metadata (name, kind, description) for every gauge. */
-    get: operations["queryGaugesList"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/register": {
     parameters: {
       query?: never;
@@ -974,8 +940,8 @@ export interface components {
      * @description One gauge's full windowed series with its folded-in metadata.
      *
      *     `kind`/`description` are folded into each series so the batched response is
-     *     self-describing — the dashboard renders a card straight from the entry with
-     *     no separate `gauges/list` round-trip.
+     *     self-describing — the dashboard renders a card straight from the entry, with
+     *     all gauge data sourced from this single batched endpoint.
      */
     GaugeSeries: {
       /** @description GaugeName value (e.g. max_urls_per_utub) */
@@ -1012,45 +978,6 @@ export interface components {
       window_end: string;
       /** @description One series per gauge that has samples in the window */
       gauges: components["schemas"]["GaugeSeries"][];
-    };
-    /** @description One gauge's most-recent sample for the `gauges/latest` response. */
-    GaugeLatestRow: {
-      /** @description GaugeName value */
-      gauge_name: string;
-      /**
-       * Format: date-time
-       * @description UTC instant of the newest sample
-       */
-      sampled_at: string;
-      /**
-       * @description Integer value for COUNT/MAX gauges; null otherwise
-       * @default null
-       */
-      value_int: number | null;
-      /**
-       * @description Fractional value for AVG gauges; null otherwise
-       * @default null
-       */
-      value_float: number | null;
-    };
-    /** @description Envelope returned by `GET /api/metrics/query/gauges/latest`. */
-    GaugesLatestResponseSchema: {
-      /** @description The newest sample for each gauge that has any rows */
-      gauges: components["schemas"]["GaugeLatestRow"][];
-    };
-    /** @description One gauge's static metadata for the `gauges/list` response. */
-    GaugeMetadataRow: {
-      /** @description GaugeName value */
-      gauge_name: string;
-      /** @description GaugeKind value */
-      kind: string;
-      /** @description Human-readable gauge description */
-      description: string;
-    };
-    /** @description Envelope returned by `GET /api/metrics/query/gauges/list`. */
-    GaugesListResponseSchema: {
-      /** @description Metadata for every registered gauge, in registry order */
-      gauges: components["schemas"]["GaugeMetadataRow"][];
     };
     RegisterRequest: {
       /**
@@ -2159,84 +2086,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-    };
-  };
-  queryGaugesLatest: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Envelope returned by `GET /api/metrics/query/gauges/latest`. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SuccessEnvelope"] &
-            components["schemas"]["GaugesLatestResponseSchema"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-      /** @description Not found */
-      404: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
-        };
-      };
-    };
-  };
-  queryGaugesList: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Envelope returned by `GET /api/metrics/query/gauges/list`. */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["SuccessEnvelope"] &
-            components["schemas"]["GaugesListResponseSchema"];
         };
       };
       /** @description Unauthorized */

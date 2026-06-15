@@ -26,8 +26,6 @@ from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
-    GaugeLatestRow,
-    GaugeMetadataRow,
     GaugeSampleSchema,
     GaugeSeries,
     GaugesTimeseriesResponseSchema,
@@ -922,54 +920,3 @@ def gauge_timeseries_one(
         .all()
     )
     return [_gauge_sample_from_row(row) for row in rows]
-
-
-def latest_gauge_snapshot() -> list[GaugeLatestRow]:
-    """Return the most-recent sample for each gauge that has any rows.
-
-    Uses Postgres `DISTINCT ON ("gaugeName")` with a descending `sampledAt`
-    order so each gauge collapses to its newest row. Gauges with no rows yet are
-    simply absent from the result. Ordered by `GaugeName` declaration order for
-    a deterministic wire shape.
-    """
-    rows = (
-        db.session.query(Anonymous_Gauges)
-        # SQLAlchemy legacy Query: .distinct(col) emits DISTINCT ON (col) in Postgres.
-        .distinct(Anonymous_Gauges.gauge_name)
-        .order_by(
-            Anonymous_Gauges.gauge_name,
-            Anonymous_Gauges.sampled_at.desc(),
-        )
-        .all()
-    )
-    latest_by_name: dict[str, Anonymous_Gauges] = {row.gauge_name: row for row in rows}
-    latest_rows: list[GaugeLatestRow] = []
-    for gauge_name in GaugeName:
-        row = latest_by_name.get(gauge_name.value)
-        if row is None:
-            continue
-        latest_rows.append(
-            GaugeLatestRow(
-                gauge_name=row.gauge_name,
-                sampled_at=row.sampled_at,
-                value_int=row.value_int,
-                value_float=None if row.value_float is None else float(row.value_float),
-            )
-        )
-    return latest_rows
-
-
-def list_gauges() -> list[GaugeMetadataRow]:
-    """Return metadata for every registered gauge (a pure `GAUGE_REGISTRY` walk).
-
-    Touches no database — the gauge catalog is code-defined. Ordered by
-    `GaugeName` declaration order so the listing matches the registry source.
-    """
-    return [
-        GaugeMetadataRow(
-            gauge_name=gauge_name.value,
-            kind=definition.kind.value,
-            description=definition.description,
-        )
-        for gauge_name, definition in GAUGE_REGISTRY.items()
-    ]

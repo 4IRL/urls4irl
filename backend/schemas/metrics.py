@@ -346,8 +346,8 @@ class GaugeSeries(BaseSchema):
     """One gauge's full windowed series with its folded-in metadata.
 
     `kind`/`description` are folded into each series so the batched response is
-    self-describing — the dashboard renders a card straight from the entry with
-    no separate `gauges/list` round-trip.
+    self-describing — the dashboard renders a card straight from the entry, with
+    all gauge data sourced from this single batched endpoint.
     """
 
     gauge_name: str = Field(description="GaugeName value (e.g. max_urls_per_utub)")
@@ -377,41 +377,4 @@ class GaugesTimeseriesResponseSchema(BaseSchema):
     window_end: datetime = Field(description="Exclusive UTC end of the window")
     gauges: list[GaugeSeries] = Field(
         description="One series per gauge that has samples in the window",
-    )
-
-
-class GaugeLatestRow(BaseSchema):
-    """One gauge's most-recent sample for the `gauges/latest` response."""
-
-    gauge_name: str = Field(description="GaugeName value")
-    sampled_at: datetime = Field(description="UTC instant of the newest sample")
-    value_int: int | None = Field(
-        default=None, description="Integer value for COUNT/MAX gauges; null otherwise"
-    )
-    value_float: float | None = Field(
-        default=None, description="Fractional value for AVG gauges; null otherwise"
-    )
-
-
-class GaugesLatestResponseSchema(BaseSchema):
-    """Envelope returned by `GET /api/metrics/query/gauges/latest`."""
-
-    gauges: list[GaugeLatestRow] = Field(
-        description="The newest sample for each gauge that has any rows",
-    )
-
-
-class GaugeMetadataRow(BaseSchema):
-    """One gauge's static metadata for the `gauges/list` response."""
-
-    gauge_name: str = Field(description="GaugeName value")
-    kind: str = Field(description="GaugeKind value")
-    description: str = Field(description="Human-readable gauge description")
-
-
-class GaugesListResponseSchema(BaseSchema):
-    """Envelope returned by `GET /api/metrics/query/gauges/list`."""
-
-    gauges: list[GaugeMetadataRow] = Field(
-        description="Metadata for every registered gauge, in registry order",
     )

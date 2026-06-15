@@ -9,11 +9,8 @@ from flask.testing import FlaskCliRunner
 from backend import db
 from backend.cli.metrics import (
     EMPTY_GAUGE_TIMESERIES_OUTPUT,
-    EMPTY_GAUGES_LATEST_OUTPUT,
     EMPTY_TOP_EVENTS_OUTPUT,
     GAUGE_TIMESERIES_HEADER,
-    GAUGES_LATEST_HEADER,
-    GAUGES_LIST_HEADER,
     TOP_EVENTS_HEADER,
 )
 from backend.extensions.metrics.buckets import (
@@ -363,7 +360,7 @@ def test_flask_metrics_top_missing_window_and_range_exits_nonzero(
 
 
 # ---------------------------------------------------------------------------
-# Gauge CLI commands — gauge-timeseries / gauges-latest / gauges-list
+# Gauge CLI commands — gauge-timeseries
 # ---------------------------------------------------------------------------
 
 
@@ -463,90 +460,6 @@ def test_flask_metrics_gauge_timeseries_invalid_window_exits_nonzero(
     assert expected_message in combined_output
 
 
-def test_flask_metrics_gauges_latest_empty_prints_sentinel(
-    metrics_enabled_runner_app: Flask,
-) -> None:
-    """
-    GIVEN no AnonymousGauges rows exist
-    WHEN `flask metrics gauges-latest` runs
-    THEN the CLI exits 0 and prints the empty-result sentinel.
-    """
-    app = metrics_enabled_runner_app
-
-    with app.app_context():
-        assert Anonymous_Gauges.query.count() == 0
-
-    runner: FlaskCliRunner = app.test_cli_runner()
-    result = runner.invoke(args=["metrics", "gauges-latest"])
-
-    assert result.exit_code == 0, result.output
-    assert EMPTY_GAUGES_LATEST_OUTPUT in result.output
-
-
-def test_flask_metrics_gauges_latest_prints_newest_per_gauge(
-    metrics_enabled_runner_app: Flask,
-) -> None:
-    """
-    GIVEN one gauge with two samples seeded
-    WHEN `flask metrics gauges-latest` runs
-    THEN the CLI exits 0, prints the header, and the newest value appears.
-    """
-    app = metrics_enabled_runner_app
-    inside = _bucket_inside_day_window()
-
-    with app.app_context():
-        assert Anonymous_Gauges.query.count() == 0
-        _seed_gauge_row(GaugeName.TOTAL_USERS, inside - timedelta(hours=1), value_int=5)
-        _seed_gauge_row(GaugeName.TOTAL_USERS, inside, value_int=9)
-
-    runner: FlaskCliRunner = app.test_cli_runner()
-    result = runner.invoke(args=["metrics", "gauges-latest"])
-
-    assert result.exit_code == 0, result.output
-    assert GAUGES_LATEST_HEADER in result.output
-    lines = [line for line in result.output.splitlines() if line.strip()]
-    data_lines = lines[lines.index(GAUGES_LATEST_HEADER) + 1 :]
-    total_users_row = next(
-        line for line in data_lines if line.startswith(GaugeName.TOTAL_USERS.value)
-    )
-    assert total_users_row.split("\t")[2] == "9"
-
-
-def test_flask_metrics_gauges_latest_formats_float_value_cell(
-    metrics_enabled_runner_app: Flask,
-) -> None:
-    """
-    GIVEN an AVG-kind gauge seeded with a non-None value_float (and value_int None)
-    WHEN `flask metrics gauges-latest` runs
-    THEN the CLI exits 0 and the formatted float appears in the value_float cell,
-        exercising the `_gauge_value_cell(float)` branch end-to-end.
-    """
-    app = metrics_enabled_runner_app
-    inside = _bucket_inside_day_window()
-
-    with app.app_context():
-        assert Anonymous_Gauges.query.count() == 0
-        _seed_gauge_row(
-            GaugeName.AVG_URLS_PER_UTUB, inside, value_float=GAUGE_FLOAT_VALUE
-        )
-
-    runner: FlaskCliRunner = app.test_cli_runner()
-    result = runner.invoke(args=["metrics", "gauges-latest"])
-
-    assert result.exit_code == 0, result.output
-    assert GAUGES_LATEST_HEADER in result.output
-    lines = [line for line in result.output.splitlines() if line.strip()]
-    data_lines = lines[lines.index(GAUGES_LATEST_HEADER) + 1 :]
-    avg_gauge_row = next(
-        line
-        for line in data_lines
-        if line.startswith(GaugeName.AVG_URLS_PER_UTUB.value)
-    )
-    columns = avg_gauge_row.split("\t")
-    assert columns[2] == ""
-    assert columns[3] == GAUGE_FLOAT_VALUE_CELL
-
-
 def test_flask_metrics_gauge_timeseries_formats_float_value_cell(
     metrics_enabled_runner_app: Flask,
 ) -> None:
@@ -583,25 +496,3 @@ def test_flask_metrics_gauge_timeseries_formats_float_value_cell(
     columns = data_lines[0].split("\t")
     assert columns[1] == ""
     assert columns[2] == GAUGE_FLOAT_VALUE_CELL
-
-
-def test_flask_metrics_gauges_list_prints_every_gauge(
-    metrics_enabled_runner_app: Flask,
-) -> None:
-    """
-    GIVEN any state (gauges-list is a pure registry walk)
-    WHEN `flask metrics gauges-list` runs
-    THEN the CLI exits 0, prints the header, and one row per GaugeName appears.
-    """
-    app = metrics_enabled_runner_app
-    runner: FlaskCliRunner = app.test_cli_runner()
-
-    result = runner.invoke(args=["metrics", "gauges-list"])
-
-    assert result.exit_code == 0, result.output
-    assert GAUGES_LIST_HEADER in result.output
-    lines = [line for line in result.output.splitlines() if line.strip()]
-    data_lines = lines[lines.index(GAUGES_LIST_HEADER) + 1 :]
-    assert len(data_lines) == len(GaugeName)
-    listed_names = {line.split("\t")[0] for line in data_lines}
-    assert listed_names == {member.value for member in GaugeName}

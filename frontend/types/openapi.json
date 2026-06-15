@@ -1156,110 +1156,6 @@
         }
       }
     },
-    "/api/metrics/query/gauges/latest": {
-      "get": {
-        "operationId": "queryGaugesLatest",
-        "tags": ["metrics"],
-        "security": [
-          {
-            "sessionAuth": [],
-            "adminSession": []
-          }
-        ],
-        "description": "Return the most-recent sample for every gauge that has rows.",
-        "responses": {
-          "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/gauges/latest`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/SuccessEnvelope"
-                    },
-                    {
-                      "$ref": "#/components/schemas/GaugesLatestResponseSchema"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/metrics/query/gauges/list": {
-      "get": {
-        "operationId": "queryGaugesList",
-        "tags": ["metrics"],
-        "security": [
-          {
-            "sessionAuth": [],
-            "adminSession": []
-          }
-        ],
-        "description": "Return static metadata (name, kind, description) for every gauge.",
-        "responses": {
-          "200": {
-            "description": "Envelope returned by `GET /api/metrics/query/gauges/list`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "allOf": [
-                    {
-                      "$ref": "#/components/schemas/SuccessEnvelope"
-                    },
-                    {
-                      "$ref": "#/components/schemas/GaugesListResponseSchema"
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/register": {
       "post": {
         "operationId": "registerUser",
@@ -3483,7 +3379,7 @@
         "type": "object"
       },
       "GaugeSeries": {
-        "description": "One gauge's full windowed series with its folded-in metadata.\n\n`kind`/`description` are folded into each series so the batched response is\nself-describing \u2014 the dashboard renders a card straight from the entry with\nno separate `gauges/list` round-trip.",
+        "description": "One gauge's full windowed series with its folded-in metadata.\n\n`kind`/`description` are folded into each series so the batched response is\nself-describing \u2014 the dashboard renders a card straight from the entry, with\nall gauge data sourced from this single batched endpoint.",
         "properties": {
           "gauge_name": {
             "description": "GaugeName value (e.g. max_urls_per_utub)",
@@ -3542,93 +3438,6 @@
           }
         },
         "required": ["window_start", "window_end", "gauges"],
-        "type": "object"
-      },
-      "GaugeLatestRow": {
-        "description": "One gauge's most-recent sample for the `gauges/latest` response.",
-        "properties": {
-          "gauge_name": {
-            "description": "GaugeName value",
-            "type": "string"
-          },
-          "sampled_at": {
-            "description": "UTC instant of the newest sample",
-            "format": "date-time",
-            "type": "string"
-          },
-          "value_int": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Integer value for COUNT/MAX gauges; null otherwise"
-          },
-          "value_float": {
-            "anyOf": [
-              {
-                "type": "number"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Fractional value for AVG gauges; null otherwise"
-          }
-        },
-        "required": ["gauge_name", "sampled_at"],
-        "type": "object"
-      },
-      "GaugesLatestResponseSchema": {
-        "description": "Envelope returned by `GET /api/metrics/query/gauges/latest`.",
-        "properties": {
-          "gauges": {
-            "description": "The newest sample for each gauge that has any rows",
-            "items": {
-              "$ref": "#/components/schemas/GaugeLatestRow"
-            },
-            "type": "array"
-          }
-        },
-        "required": ["gauges"],
-        "type": "object"
-      },
-      "GaugeMetadataRow": {
-        "description": "One gauge's static metadata for the `gauges/list` response.",
-        "properties": {
-          "gauge_name": {
-            "description": "GaugeName value",
-            "type": "string"
-          },
-          "kind": {
-            "description": "GaugeKind value",
-            "type": "string"
-          },
-          "description": {
-            "description": "Human-readable gauge description",
-            "type": "string"
-          }
-        },
-        "required": ["gauge_name", "kind", "description"],
-        "type": "object"
-      },
-      "GaugesListResponseSchema": {
-        "description": "Envelope returned by `GET /api/metrics/query/gauges/list`.",
-        "properties": {
-          "gauges": {
-            "description": "Metadata for every registered gauge, in registry order",
-            "items": {
-              "$ref": "#/components/schemas/GaugeMetadataRow"
-            },
-            "type": "array"
-          }
-        },
-        "required": ["gauges"],
         "type": "object"
       },
       "RegisterRequest": {

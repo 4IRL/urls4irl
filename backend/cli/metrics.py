@@ -41,9 +41,6 @@ TOP_EVENTS_HEADER = "event_name\tcategory\tdescription\ttotal_count"
 
 GAUGE_TIMESERIES_HEADER = "sampled_at\tvalue_int\tvalue_float"
 EMPTY_GAUGE_TIMESERIES_OUTPUT = "No gauge samples in the requested window."
-GAUGES_LATEST_HEADER = "gauge_name\tsampled_at\tvalue_int\tvalue_float"
-EMPTY_GAUGES_LATEST_OUTPUT = "No gauge samples recorded yet."
-GAUGES_LIST_HEADER = "gauge_name\tkind\tdescription"
 
 AUDIT_NONE_PLACEHOLDER: str = "(none)"
 AUDIT_SECTION_ORPHANS: str = "# Orphan EventName members"
@@ -592,45 +589,6 @@ def gauge_timeseries_command(
                 ]
             )
         )
-
-
-@metrics_cli.command(
-    "gauges-latest",
-    help="Show the most-recent sample for every gauge that has rows.",
-)
-@with_appcontext
-def gauges_latest_command() -> None:
-    """Parity CLI for the `/api/metrics/query/gauges/latest` endpoint."""
-    rows = query_service.latest_gauge_snapshot()
-
-    if not rows:
-        click.echo(EMPTY_GAUGES_LATEST_OUTPUT)
-        return
-
-    click.echo(GAUGES_LATEST_HEADER)
-    for row in rows:
-        click.echo(
-            "\t".join(
-                [
-                    row.gauge_name,
-                    row.sampled_at.isoformat(),
-                    _gauge_value_cell(row.value_int),
-                    _gauge_value_cell(row.value_float),
-                ]
-            )
-        )
-
-
-@metrics_cli.command(
-    "gauges-list",
-    help="Show static metadata (name, kind, description) for every gauge.",
-)
-@with_appcontext
-def gauges_list_command() -> None:
-    """Parity CLI for the `/api/metrics/query/gauges/list` endpoint (pure registry walk)."""
-    click.echo(GAUGES_LIST_HEADER)
-    for row in query_service.list_gauges():
-        click.echo("\t".join([row.gauge_name, row.kind, row.description]))
 
 
 def register_metrics_cli(app: Flask):

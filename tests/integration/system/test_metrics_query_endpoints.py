@@ -1573,13 +1573,11 @@ def test_flow_pct_of_top_capped_at_one_when_downstream_exceeds_denominator(
 
 
 # ---------------------------------------------------------------------------
-# Gauges query endpoints — batched timeseries + latest + list (auth + happy)
+# Gauges query endpoints — batched timeseries (auth + happy)
 # ---------------------------------------------------------------------------
 
 
 _GAUGES_TIMESERIES_URL = "/api/metrics/query/gauges/timeseries"
-_GAUGES_LATEST_URL = "/api/metrics/query/gauges/latest"
-_GAUGES_LIST_URL = "/api/metrics/query/gauges/list"
 
 
 def _seed_gauge_row(
@@ -1611,8 +1609,6 @@ def _seed_gauge_row(
     "url",
     [
         _GAUGES_TIMESERIES_URL + "?window=day",
-        _GAUGES_LATEST_URL,
-        _GAUGES_LIST_URL,
     ],
 )
 def test_gauges_endpoints_anonymous_return_401(
@@ -1635,8 +1631,6 @@ def test_gauges_endpoints_anonymous_return_401(
     "url",
     [
         _GAUGES_TIMESERIES_URL + "?window=day",
-        _GAUGES_LATEST_URL,
-        _GAUGES_LIST_URL,
     ],
 )
 def test_gauges_endpoints_non_admin_return_404(
@@ -1745,51 +1739,3 @@ def test_gauges_timeseries_stray_name_param_returns_400(
     assert response.status_code == 400
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
-
-
-def test_gauges_latest_admin_happy_path_returns_newest_per_gauge(
-    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """
-    GIVEN an admin client and a gauge seeded with two samples
-    WHEN GETing /api/metrics/query/gauges/latest
-    THEN the response is 200 and `gauges[]` carries one row per gauge with the
-        newest sample's value.
-    """
-    logged_in_client, _, _, app = login_admin_user_with_register
-    with app.app_context():
-        base = _bucket_inside_window()
-        _seed_gauge_row(GaugeName.TOTAL_USERS, base - timedelta(hours=1), value_int=5)
-        _seed_gauge_row(GaugeName.TOTAL_USERS, base, value_int=9)
-
-    response = logged_in_client.get(_GAUGES_LATEST_URL, headers=_AJAX_HEADERS)
-
-    assert response.status_code == 200
-    body = response.get_json()
-    assert "gauges" in body
-    rows_by_name = {row["gauge_name"]: row for row in body["gauges"]}
-    assert rows_by_name[GaugeName.TOTAL_USERS.value]["value_int"] == 9
-
-
-def test_gauges_list_admin_happy_path_returns_every_gauge(
-    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """
-    GIVEN an admin client
-    WHEN GETing /api/metrics/query/gauges/list
-    THEN the response is 200 and `gauges[]` carries one metadata row per
-        GaugeName, each with kind/description matching the registry.
-    """
-    logged_in_client, _, _, _ = login_admin_user_with_register
-
-    response = logged_in_client.get(_GAUGES_LIST_URL, headers=_AJAX_HEADERS)
-
-    assert response.status_code == 200
-    body = response.get_json()
-    rows_by_name = {row["gauge_name"]: row for row in body["gauges"]}
-    assert set(rows_by_name) == {member.value for member in GaugeName}
-    sample_row = rows_by_name[GaugeName.TOTAL_USERS.value]
-    assert sample_row["kind"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].kind.value
-    assert (
-        sample_row["description"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].description
-    )

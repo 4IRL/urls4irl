@@ -13,8 +13,6 @@ from backend.metrics.gauges import (
 from backend.metrics.query_service import (
     gauge_timeseries_one,
     gauges_timeseries_all,
-    latest_gauge_snapshot,
-    list_gauges,
 )
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
@@ -253,80 +251,3 @@ def test_gauge_timeseries_one_returns_single_gauge_ordered_samples(
     finally:
         truncate_gauges_tables(pg_conn)
         pg_conn.close()
-
-
-def test_latest_gauge_snapshot_returns_newest_row_per_gauge(
-    metrics_enabled_runner_app: Flask,
-) -> None:
-    """
-    GIVEN a gauge with three samples at different timestamps
-    WHEN latest_gauge_snapshot is called
-    THEN exactly one row per gauge is returned, carrying the newest sample.
-    """
-    app = metrics_enabled_runner_app
-    pg_conn = build_pg_conn(app)
-    try:
-        truncate_gauges_tables(pg_conn)
-        assert _count_gauge_rows(pg_conn) == 0
-
-        base = _bucket_inside_window()
-        _seed_gauge_row(
-            pg_conn,
-            gauge_name=GaugeName.TOTAL_USERS.value,
-            sampled_at=base - timedelta(hours=2),
-            value_int=1,
-        )
-        _seed_gauge_row(
-            pg_conn,
-            gauge_name=GaugeName.TOTAL_USERS.value,
-            sampled_at=base,
-            value_int=3,
-        )
-        _seed_gauge_row(
-            pg_conn,
-            gauge_name=GaugeName.TOTAL_USERS.value,
-            sampled_at=base - timedelta(hours=1),
-            value_int=2,
-        )
-        _seed_gauge_row(
-            pg_conn,
-            gauge_name=GaugeName.TOTAL_UTUBS.value,
-            sampled_at=base,
-            value_int=7,
-        )
-
-        with app.app_context():
-            rows = latest_gauge_snapshot()
-
-        by_name = {row.gauge_name: row for row in rows}
-        assert set(by_name) == {
-            GaugeName.TOTAL_USERS.value,
-            GaugeName.TOTAL_UTUBS.value,
-        }
-        assert by_name[GaugeName.TOTAL_USERS.value].value_int == 3
-        assert by_name[GaugeName.TOTAL_UTUBS.value].value_int == 7
-    finally:
-        truncate_gauges_tables(pg_conn)
-        pg_conn.close()
-
-
-def test_list_gauges_covers_every_gauge_with_matching_metadata(
-    metrics_enabled_runner_app: Flask,
-) -> None:
-    """
-    GIVEN no database dependency (list_gauges is a pure registry walk)
-    WHEN list_gauges is called
-    THEN one row per GaugeName is returned, each row's kind/description matching
-        the registry.
-    """
-    app = metrics_enabled_runner_app
-    with app.app_context():
-        rows = list_gauges()
-
-    assert len(rows) == len(GaugeName)
-    by_name = {row.gauge_name: row for row in rows}
-    assert set(by_name) == {member.value for member in GaugeName}
-    for gauge_name in GaugeName:
-        row = by_name[gauge_name.value]
-        assert row.kind == GAUGE_REGISTRY[gauge_name].kind.value
-        assert row.description == GAUGE_REGISTRY[gauge_name].description
