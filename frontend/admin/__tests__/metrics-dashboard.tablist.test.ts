@@ -382,7 +382,8 @@ describe("metrics-dashboard tablist a11y", () => {
 
   it("hides the global summary on Flows and Gauges, restores it on category tabs", () => {
     const summary = document.getElementById("MetricsSummary") as HTMLElement;
-    // Default tab (API, a category tab) shows the summary.
+    // On init handleTabClick is not called, so the summary inherits its HTML
+    // initial state (hidden) regardless of the default tab.
     expect(summary.hasAttribute("hidden")).toBe(true);
 
     // A category tab restores the summary.
