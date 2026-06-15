@@ -454,6 +454,53 @@ describe("metrics-dashboard tablist a11y", () => {
     );
   });
 
+  it.each([["Enter"], [" "]])(
+    "pressing %s on a gauge row re-renders the grid with that gauge selected",
+    (key) => {
+      const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
+      fetchGaugesTimeseriesSpy.mockImplementation(() =>
+        createDoneJqXHR(response),
+      );
+      getTab("MetricsTabGauges").click();
+      renderGaugeGridSpy.mockClear();
+
+      // renderGaugeGrid is mocked (no-op), so inject a row the delegated keydown
+      // handler can resolve — the keydown bubbles to the grid binding wired at
+      // init, mirroring the top-table keydown activation path.
+      const grid = document.getElementById("MetricsGaugeGrid") as HTMLElement;
+      const row = document.createElement("tr");
+      row.className = "gauge-row";
+      row.dataset.gaugeName = "total_users";
+      grid.appendChild(row);
+
+      $(row).trigger($.Event("keydown", { key }));
+
+      expect(renderGaugeGridSpy).toHaveBeenCalledTimes(1);
+      expect(renderGaugeGridSpy.mock.calls[0][0].selectedGaugeName).toBe(
+        "total_users",
+      );
+    },
+  );
+
+  it("ignores non-activation keys (e.g. Tab) on a gauge row", () => {
+    const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createDoneJqXHR(response),
+    );
+    getTab("MetricsTabGauges").click();
+    renderGaugeGridSpy.mockClear();
+
+    const grid = document.getElementById("MetricsGaugeGrid") as HTMLElement;
+    const row = document.createElement("tr");
+    row.className = "gauge-row";
+    row.dataset.gaugeName = "total_users";
+    grid.appendChild(row);
+
+    $(row).trigger($.Event("keydown", { key: "Tab" }));
+
+    expect(renderGaugeGridSpy).not.toHaveBeenCalled();
+  });
+
   it("renders the panel empty-state (no crash) when the batched gauges[] is empty", () => {
     fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createDoneJqXHR(buildGaugesResponse([])),
