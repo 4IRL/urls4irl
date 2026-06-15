@@ -22,6 +22,7 @@ same key. The unit test `tests/unit/test_gauges.py` asserts
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -29,6 +30,14 @@ from enum import StrEnum
 # distinct population grouped over is below this count, so a single outlier
 # entity cannot be re-identified from an extreme maximum.
 MIN_GAUGE_POPULATION = 5
+
+# The EVENT_DERIVED_MAX branch of `build_gauge_sql` f-string-interpolates a
+# gauge's `event_name` / `dimension_key` straight into SQL (no parameter
+# binding), so those values must be plain SQL-safe identifiers. Validated at
+# registry-definition (import) time by `GaugeDefinition.__post_init__`, turning a
+# future unsafe value (e.g. one containing a quote) into a loud import-time error
+# instead of broken or injectable SQL when the reserved branch is exercised.
+_SAFE_SQL_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 class GaugeKind(StrEnum):
@@ -98,6 +107,25 @@ class GaugeDefinition:
     # Reserved for the future EVENT_DERIVED_MAX kind; the JSONB dimension key to
     # group by. No shipped gauge sets it.
     dimension_key: str | None = None
+
+    def __post_init__(self) -> None:
+        """Reject unsafe `event_name` / `dimension_key` at definition time.
+
+        Both feed the EVENT_DERIVED_MAX SQL branch via raw f-string
+        interpolation, so any non-`None` value must be a plain SQL-safe
+        identifier. A value failing the pattern (e.g. containing a quote) raises
+        immediately, surfacing as an import-time error when `GAUGE_REGISTRY` is
+        built rather than as broken/injectable SQL later.
+        """
+        for field_name, field_value in (
+            ("event_name", self.event_name),
+            ("dimension_key", self.dimension_key),
+        ):
+            if field_value is not None and not _SAFE_SQL_IDENTIFIER.match(field_value):
+                raise ValueError(
+                    f"GaugeDefinition {field_name}={field_value!r} is not a safe "
+                    f"SQL identifier (must match {_SAFE_SQL_IDENTIFIER.pattern})"
+                )
 
 
 GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {

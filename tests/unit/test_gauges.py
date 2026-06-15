@@ -18,6 +18,7 @@ import pytest
 from backend.metrics import gauges
 from backend.metrics.gauges import (
     GAUGE_REGISTRY,
+    GaugeDefinition,
     GaugeKind,
     GaugeName,
     build_gauge_sql,
@@ -145,6 +146,60 @@ def test_gauges_module_is_flask_free() -> None:
         f"gauges module pulled in a forbidden import on side-load:\n"
         f"stdout={result.stdout}\nstderr={result.stderr}"
     )
+
+
+def test_all_shipped_definitions_have_safe_sql_identifiers() -> None:
+    """Every shipped `GaugeDefinition` passes the import-time identifier guard.
+
+    All 16 relational gauges leave `event_name` / `dimension_key` as `None`, so
+    the guard is a no-op for them today; constructing a fresh copy of each
+    definition re-runs `__post_init__` and proves none would raise.
+    """
+    for definition in GAUGE_REGISTRY.values():
+        GaugeDefinition(
+            kind=definition.kind,
+            description=definition.description,
+            table=definition.table,
+            distinct_column=definition.distinct_column,
+            group_by_column=definition.group_by_column,
+            count_column=definition.count_column,
+            event_name=definition.event_name,
+            dimension_key=definition.dimension_key,
+        )
+
+
+def test_safe_sql_identifiers_accept_plain_names() -> None:
+    """A definition with plain-identifier event/dimension values constructs fine."""
+    definition = GaugeDefinition(
+        kind=GaugeKind.EVENT_DERIVED_MAX,
+        description="future event-derived max gauge",
+        event_name="url_accessed",
+        dimension_key="url_id",
+    )
+    assert definition.event_name == "url_accessed"
+    assert definition.dimension_key == "url_id"
+
+
+def test_unsafe_event_name_raises_at_definition_time() -> None:
+    """An `event_name` containing a quote raises `ValueError` on construction."""
+    with pytest.raises(ValueError, match="event_name"):
+        GaugeDefinition(
+            kind=GaugeKind.EVENT_DERIVED_MAX,
+            description="malicious",
+            event_name="url'; DROP TABLE Users; --",
+            dimension_key="url_id",
+        )
+
+
+def test_unsafe_dimension_key_raises_at_definition_time() -> None:
+    """A `dimension_key` containing a quote raises `ValueError` on construction."""
+    with pytest.raises(ValueError, match="dimension_key"):
+        GaugeDefinition(
+            kind=GaugeKind.EVENT_DERIVED_MAX,
+            description="malicious",
+            event_name="url_accessed",
+            dimension_key="url_id' OR '1'='1",
+        )
 
 
 def test_value_column_for() -> None:
