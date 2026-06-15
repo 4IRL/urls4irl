@@ -440,11 +440,13 @@ form {
     .splash-product-preview-heading { font-size: var(--fs-xl); }
     .splash-features,
     .splash-product-preview { padding: var(--space-8) var(--space-4); }
-    /* Keep the two CTAs side by side on mobile, sharing the row as equal-width
-       buttons rather than stacking vertically. min-width: 0 overrides the base
-       11rem so both fit two-up on narrow phones; min-height (44px) is retained. */
-    .splash-button { flex: 1 1 0; min-width: 0; }
-    .splash-hero-cta-row { flex-wrap: nowrap; max-width: 22rem; margin-inline: auto; }
+    /* Keep the two CTAs side by side on mobile as equal-width buttons that fill
+       the row, rather than stacking vertically or hugging their text. flex-basis
+       50% + min-width:0 forces both to the same width regardless of label length
+       ("Register" vs "Login"); the row fills the hero content width (capped on
+       small tablets) so the buttons read wide. min-height (44px) is retained. */
+    .splash-button { flex: 1 1 50%; min-width: 0; }
+    .splash-hero-cta-row { flex-wrap: nowrap; max-width: 28rem; margin-inline: auto; }
 }
 @media (max-width: 480px) {
     .splash-hero-title { font-size: var(--fs-2xl); }
