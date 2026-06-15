@@ -446,7 +446,10 @@ form {
        ("Register" vs "Login"); the row fills the hero content width (capped on
        small tablets) so the buttons read wide. min-height (44px) is retained. */
     .splash-button { flex: 1 1 50%; min-width: 0; }
-    .splash-hero-cta-row { flex-wrap: nowrap; max-width: 28rem; margin-inline: auto; }
+    /* width: 100% is required because #splashHero is a column flex with
+       align-items: center, which shrink-wraps this row to its content width —
+       without it the max-width cap never engages and the buttons stay narrow. */
+    .splash-hero-cta-row { flex-wrap: nowrap; width: 100%; max-width: 28rem; margin-inline: auto; }
 }
 @media (max-width: 480px) {
     .splash-hero-title { font-size: var(--fs-2xl); }
