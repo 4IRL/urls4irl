@@ -18,8 +18,6 @@ from backend.metrics.events import (
     EventName,
 )
 from backend.metrics.gauges import (
-    GAUGE_DESCRIPTIONS,
-    GAUGE_KIND,
     GAUGE_REGISTRY,
     GaugeName,
 )
@@ -851,9 +849,9 @@ def gauges_timeseries_all(
     Selects all `Anonymous_Gauges` rows whose `sampled_at` falls in the
     half-open window `[window_start, window_end)`, ordered by
     `("gaugeName", "sampledAt")`, then groups them per gauge in a single scan.
-    Each `GaugeSeries` folds in the gauge's `kind` + `description` (from
-    `GAUGE_KIND` / `GAUGE_DESCRIPTIONS`) so the dashboard needs no separate
-    metadata round-trip to render a card. A gauge with no rows in the window is
+    Each `GaugeSeries` folds in the gauge's `kind` + `description` (read inline
+    from `GAUGE_REGISTRY`) so the dashboard needs no separate metadata
+    round-trip to render a card. A gauge with no rows in the window is
     simply absent from `gauges` — the renderer pads nothing.
 
     Mirrors `grouped_timeseries`'s batched envelope shape: the route threads the
@@ -886,8 +884,8 @@ def gauges_timeseries_all(
         gauge_series.append(
             GaugeSeries(
                 gauge_name=gauge_name.value,
-                kind=GAUGE_KIND[gauge_name].value,
-                description=GAUGE_DESCRIPTIONS[gauge_name],
+                kind=GAUGE_REGISTRY[gauge_name].kind.value,
+                description=GAUGE_REGISTRY[gauge_name].description,
                 samples=samples,
             )
         )

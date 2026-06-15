@@ -218,18 +218,6 @@ GAUGE_REGISTRY: dict[GaugeName, GaugeDefinition] = {
 }
 
 
-# Derived projections — mirror EVENT_DESCRIPTIONS / EVENT_CATEGORY in
-# event_registry.py. Built immediately after the registry so consumers read a
-# single source of truth.
-GAUGE_DESCRIPTIONS: dict[GaugeName, str] = {
-    gauge_name: definition.description
-    for gauge_name, definition in GAUGE_REGISTRY.items()
-}
-GAUGE_KIND: dict[GaugeName, GaugeKind] = {
-    gauge_name: definition.kind for gauge_name, definition in GAUGE_REGISTRY.items()
-}
-
-
 def value_column_for(kind: GaugeKind) -> str:
     """Return the AnonymousGauges value column a gauge of `kind` writes/reads.
 
@@ -341,8 +329,6 @@ def build_gauge_sql(gauge_name: GaugeName) -> str:
 
 __all__ = [
     "ALL_GAUGE_NAMES",
-    "GAUGE_DESCRIPTIONS",
-    "GAUGE_KIND",
     "GAUGE_REGISTRY",
     "MIN_GAUGE_POPULATION",
     "GaugeDefinition",

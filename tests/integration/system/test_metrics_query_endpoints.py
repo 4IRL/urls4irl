@@ -12,7 +12,7 @@ from backend import db
 from backend.metrics.constants import MetricsErrorCodes
 from backend.metrics.events import EVENT_DESCRIPTIONS, EventCategory, EventName
 from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
-from backend.metrics.gauges import GAUGE_DESCRIPTIONS, GAUGE_KIND, GaugeName
+from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
 from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
@@ -1693,8 +1693,10 @@ def test_gauges_timeseries_admin_happy_path_returns_batched_series(
     }
 
     users_series = series_by_name[GaugeName.TOTAL_USERS.value]
-    assert users_series["kind"] == GAUGE_KIND[GaugeName.TOTAL_USERS].value
-    assert users_series["description"] == GAUGE_DESCRIPTIONS[GaugeName.TOTAL_USERS]
+    assert users_series["kind"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].kind.value
+    assert (
+        users_series["description"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].description
+    )
     assert users_series["samples"][0]["value_int"] == 12
     assert _ISO_8601_UTC_REGEX.match(users_series["samples"][0]["sampled_at"])
 
@@ -1787,5 +1789,7 @@ def test_gauges_list_admin_happy_path_returns_every_gauge(
     rows_by_name = {row["gauge_name"]: row for row in body["gauges"]}
     assert set(rows_by_name) == {member.value for member in GaugeName}
     sample_row = rows_by_name[GaugeName.TOTAL_USERS.value]
-    assert sample_row["kind"] == GAUGE_KIND[GaugeName.TOTAL_USERS].value
-    assert sample_row["description"] == GAUGE_DESCRIPTIONS[GaugeName.TOTAL_USERS]
+    assert sample_row["kind"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].kind.value
+    assert (
+        sample_row["description"] == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].description
+    )

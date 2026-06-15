@@ -7,8 +7,7 @@ import pytest
 from flask import Flask
 
 from backend.metrics.gauges import (
-    GAUGE_DESCRIPTIONS,
-    GAUGE_KIND,
+    GAUGE_REGISTRY,
     GaugeName,
 )
 from backend.metrics.query_service import (
@@ -112,13 +111,16 @@ def test_gauges_timeseries_all_groups_per_gauge_with_folded_metadata(
         }
 
         users_series = series_by_name[GaugeName.TOTAL_USERS.value]
-        assert users_series.kind == GAUGE_KIND[GaugeName.TOTAL_USERS].value
-        assert users_series.description == GAUGE_DESCRIPTIONS[GaugeName.TOTAL_USERS]
+        assert users_series.kind == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].kind.value
+        assert (
+            users_series.description
+            == GAUGE_REGISTRY[GaugeName.TOTAL_USERS].description
+        )
         # Ordered by sampled_at ascending: earlier (10) then base (12).
         assert [sample.value_int for sample in users_series.samples] == [10, 12]
 
         avg_series = series_by_name[GaugeName.AVG_URLS_PER_UTUB.value]
-        assert avg_series.kind == GAUGE_KIND[GaugeName.AVG_URLS_PER_UTUB].value
+        assert avg_series.kind == GAUGE_REGISTRY[GaugeName.AVG_URLS_PER_UTUB].kind.value
         assert len(avg_series.samples) == 1
         assert avg_series.samples[0].value_float == 4.5
     finally:
@@ -295,5 +297,5 @@ def test_list_gauges_covers_every_gauge_with_matching_metadata(
     assert set(by_name) == {member.value for member in GaugeName}
     for gauge_name in GaugeName:
         row = by_name[gauge_name.value]
-        assert row.kind == GAUGE_KIND[gauge_name].value
-        assert row.description == GAUGE_DESCRIPTIONS[gauge_name]
+        assert row.kind == GAUGE_REGISTRY[gauge_name].kind.value
+        assert row.description == GAUGE_REGISTRY[gauge_name].description
