@@ -13,6 +13,7 @@
 
 import type { Schema } from "../../types/api-helpers.d.ts";
 
+import { APP_CONFIG } from "../../lib/config.js";
 import { formatGaugeLastValue, renderGaugeGrid } from "../gauge-card.js";
 
 type GaugesTimeseriesResponse = Schema<"GaugesTimeseriesResponseSchema">;
@@ -21,7 +22,6 @@ type GaugeSampleSchema = Schema<"GaugeSampleSchema">;
 
 const WINDOW_START = "2026-06-01T00:00:00+00:00";
 const WINDOW_END = "2026-06-02T00:00:00+00:00";
-const SELECT_PROMPT = "Select a gauge to view its timeseries.";
 
 function buildSample(
   overrides: Partial<GaugeSampleSchema> = {},
@@ -159,7 +159,9 @@ describe("renderGaugeGrid detail area", () => {
 
     const prompt = container.querySelector<HTMLElement>(".gauge-detail-prompt");
     expect(prompt).not.toBeNull();
-    expect(prompt!.textContent).toBe(SELECT_PROMPT);
+    expect(prompt!.textContent).toBe(
+      APP_CONFIG.strings.METRICS_GAUGE_SELECT_PROMPT,
+    );
     expect(container.querySelector("svg.gauge-chart")).toBeNull();
   });
 
@@ -211,7 +213,7 @@ describe("renderGaugeGrid detail area", () => {
     });
 
     expect(container.querySelector(".gauge-detail-prompt")!.textContent).toBe(
-      SELECT_PROMPT,
+      APP_CONFIG.strings.METRICS_GAUGE_SELECT_PROMPT,
     );
     expect(container.querySelector("svg.gauge-chart")).toBeNull();
   });
