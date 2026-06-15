@@ -432,4 +432,41 @@ form {
 /* Mobile — stack the two decks vertically */
 @media (max-width: 768px) {
     .splash-product-mock { grid-template-columns: 1fr; }
+    .splash-hero-title { font-size: var(--fs-3xl); }
+    .splash-hero-tagline { font-size: var(--fs-lg); }
+    #splashHero { padding: var(--space-8) var(--space-4); }
+    .splash-features-grid { grid-template-columns: 1fr; }
+    .splash-features-heading,
+    .splash-product-preview-heading { font-size: var(--fs-xl); }
+    .splash-features,
+    .splash-product-preview { padding: var(--space-8) var(--space-4); }
+    .splash-button { width: 100%; max-width: 20rem; }
+    .splash-hero-cta-row { flex-direction: column; align-items: center; }
+}
+@media (max-width: 480px) {
+    .splash-hero-title { font-size: var(--fs-2xl); }
+    #splashHero { padding: var(--space-6) var(--space-3); gap: var(--space-4); }
+    /*
+     * DESIGN DECISION — hide entire .splash-product-preview at ≤480px (small phones).
+     *
+     * Rationale: at this width the two-column product mock (UTubs deck + URLs deck) is
+     * already stacked vertically (768px rule above) and the individual deck cards become
+     * too narrow to be legible or visually meaningful.  Rather than leave an orphaned
+     * heading ("A peek inside URLS4IRL") with no readable visual below it, the entire
+     * section — heading, caption, and mock — is hidden with display:none.  This also
+     * removes it from the a11y tree, so screen readers on small-phone viewports skip
+     * the section rather than reading a heading that leads nowhere useful.
+     *
+     * The feature-tile section above the preview already conveys the product value in
+     * text form (three tiles: group URLs, tag, share).  Dropping the visual mock at the
+     * smallest breakpoint is a deliberate content trade-off: keep the layout clean and
+     * focused on the hero CTA + feature tiles rather than cramming a decorative mock
+     * that cannot render meaningfully at ≤480px.
+     *
+     * Fragility-pattern sweep (other display:none in Step 6 media queries):
+     * No other display:none rules appear in the 480px or 768px blocks of this step.
+     * The 768px block only adjusts column count and spacing — it hides nothing.  This
+     * comment documents the only text-bearing content hidden by display:none in Step 6.
+     */
+    .splash-product-preview { display: none; }
 }

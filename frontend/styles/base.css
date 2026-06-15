@@ -647,6 +647,14 @@ a {
     }
 }
 
+@media (max-width: 768px) {
+    #PrivacyBtn, #TermsBtn, #ContactBtn {
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
   #CookieBanner {
     transition: none;
