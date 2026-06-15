@@ -1236,7 +1236,7 @@ function renderGaugesPanel(): void {
     const emptyState = document.createElement("p");
     emptyState.className = "MetricsEmptyState";
     emptyState.tabIndex = 0;
-    emptyState.textContent = APP_CONFIG.strings.METRICS_EMPTY_STATE;
+    emptyState.textContent = APP_CONFIG.strings.METRICS_GAUGES_EMPTY;
     grid.appendChild(emptyState);
     return;
   }

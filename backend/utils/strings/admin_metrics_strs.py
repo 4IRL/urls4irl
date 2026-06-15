@@ -85,3 +85,4 @@ class ADMIN_METRICS_STRINGS:
     METRICS_GAUGE_SELECT_PROMPT: str = "Select a gauge to view its timeseries."
     METRICS_GAUGE_COL_NAME: str = "Gauge"
     METRICS_GAUGE_COL_VALUE: str = "Value"
+    METRICS_GAUGES_EMPTY: str = "No gauge samples recorded in the selected window."

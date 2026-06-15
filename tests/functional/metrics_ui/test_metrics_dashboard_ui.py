@@ -505,7 +505,7 @@ def test_gauges_tab_renders_empty_state_with_no_data(
         browser, MDL.GAUGES_PANEL_EMPTY_STATE, timeout=GAUGES_RENDER_TIMEOUT
     )
     assert empty_state_element is not None
-    assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_EMPTY_STATE
+    assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_GAUGES_EMPTY
     assert (
         len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_ROW)) == 0
     ), "No gauge rows should render when the batched response is empty."

@@ -197,6 +197,7 @@ const appConfig = {
     METRICS_GAUGE_SELECT_PROMPT: "Select a gauge to view its timeseries.",
     METRICS_GAUGE_COL_NAME: "Gauge",
     METRICS_GAUGE_COL_VALUE: "Value",
+    METRICS_GAUGES_EMPTY: "No gauge samples recorded in the selected window.",
   },
 };
 
