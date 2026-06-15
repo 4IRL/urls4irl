@@ -45,10 +45,6 @@ GAUGES_LATEST_HEADER = "gauge_name\tsampled_at\tvalue_int\tvalue_float"
 EMPTY_GAUGES_LATEST_OUTPUT = "No gauge samples recorded yet."
 GAUGES_LIST_HEADER = "gauge_name\tkind\tdescription"
 
-# Sentinel rendered for a NULL value column (k-anon suppression or AVG/INT
-# split) so a blank TSV cell never collapses two adjacent columns.
-_GAUGE_NULL_CELL = ""
-
 AUDIT_NONE_PLACEHOLDER: str = "(none)"
 AUDIT_SECTION_ORPHANS: str = "# Orphan EventName members"
 AUDIT_SECTION_STRING_LITERAL: str = "# String-literal record_event callers"
@@ -502,14 +498,14 @@ def coverage_summary_command() -> None:
 
 
 def _gauge_value_cell(value: int | float | None) -> str:
-    """Render a gauge value column for TSV, mapping `None` to the null sentinel.
+    """Render a gauge value column for TSV, mapping `None` to an empty cell.
 
     Examples:
         _gauge_value_cell(6)    -> "6"
         _gauge_value_cell(4.0)  -> "4.0"
         _gauge_value_cell(None) -> ""
     """
-    return _GAUGE_NULL_CELL if value is None else str(value)
+    return "" if value is None else str(value)
 
 
 @metrics_cli.command(
