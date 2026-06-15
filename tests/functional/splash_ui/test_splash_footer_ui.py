@@ -123,6 +123,26 @@ def test_visit_contact_page_return_splash(
 
 EXPECTED_TEXTAREA_MIN_HEIGHT_PX = "320px"
 
+NARROW_VIEWPORT_WIDTH_PX = 380
+NARROW_VIEWPORT_HEIGHT_PX = 812
+EXPECTED_PRIVACY_BTN_COLOR_AT_380PX = "rgb(255, 255, 255)"
+
+
+def test_privacy_btn_color_passes_wcag_at_380px(browser: WebDriver):
+    """
+    GIVEN a fresh load of the U4I Splash page at a 380px-wide viewport
+    WHEN the footer renders
+    THEN ensure the #PrivacyBtn link color is white (--UTubDescriptionColor),
+        confirming the narrow-viewport contrast rule lands and was not overridden
+    """
+    browser.set_window_size(NARROW_VIEWPORT_WIDTH_PX, NARROW_VIEWPORT_HEIGHT_PX)
+    browser.refresh()
+    scroll_footer_link_into_view(browser, HPL.PRIVACY_BTN)
+    privacy_btn_color = browser.execute_script(
+        "return getComputedStyle(document.getElementById('PrivacyBtn')).color"
+    )
+    assert privacy_btn_color == EXPECTED_PRIVACY_BTN_COLOR_AT_380PX
+
 
 def test_contact_textarea_min_height(browser: WebDriver):
     """

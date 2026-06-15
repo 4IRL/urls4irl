@@ -22,7 +22,6 @@ from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.email_validation_strs import (
     EMAILS,
     EMAILS_FAILURE,
-    VALIDATE_YOUR_EMAIL,
 )
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.integration.splash.conftest import register_json
@@ -30,8 +29,6 @@ from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.splash
-
-VALIDATE_EMAIL_MODAL_TITLE = f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'
 
 
 def test_registered_user_is_not_email_validated(app, load_register_page):

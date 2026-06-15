@@ -24,7 +24,9 @@ from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PAS
 pytestmark = pytest.mark.splash
 
 USER_CONSTANTS = U4I_CONSTANTS.USER_CONSTANTS
-FORGOT_PASSWORD_MODAL_TITLE = f'<h4 class="modal-title">{FORGOT_YOUR_PASSWORD}</h4>'
+FORGOT_PASSWORD_MODAL_TITLE = (
+    f'<h4 class="modal-title" id="ForgotPasswordModalLabel">{FORGOT_YOUR_PASSWORD}</h4>'
+)
 
 
 def test_valid_user_requests_forgot_password_form(register_first_user, load_login_page):

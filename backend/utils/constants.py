@@ -5,6 +5,7 @@ from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
 from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
+from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.email_validation_strs import (
     VALIDATE_MY_EMAIL,
@@ -540,4 +541,5 @@ def provide_config_for_constants() -> dict:
             constants=generate_constants_js(),
             strings=generate_strings_js(),
         ),
+        current_year=utc_now().year,
     )
