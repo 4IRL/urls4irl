@@ -23,6 +23,7 @@ const {
   fetchTopEventsSpy,
   fetchTimeseriesSpy,
   fetchGroupedTimeseriesSpy,
+  fetchGaugesTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
@@ -31,6 +32,7 @@ const {
   fetchTopEventsSpy: vi.fn(),
   fetchTimeseriesSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
+  fetchGaugesTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
@@ -41,6 +43,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: fetchTimeseriesSpy,
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
+  fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -126,6 +129,7 @@ describe("metrics-dashboard last-flush badge", () => {
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -134,6 +138,9 @@ describe("metrics-dashboard last-flush badge", () => {
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );
 
@@ -297,6 +304,7 @@ describe("metrics-dashboard last-event badge", () => {
     fetchTopEventsSpy.mockReset();
     fetchTimeseriesSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
@@ -305,6 +313,9 @@ describe("metrics-dashboard last-event badge", () => {
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTimeseriesSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchGroupedTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );
 

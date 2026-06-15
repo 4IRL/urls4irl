@@ -16,6 +16,7 @@ const {
   fetchSummarySpy,
   fetchTopEventsSpy,
   fetchGroupedTimeseriesSpy,
+  fetchGaugesTimeseriesSpy,
   fetchFlowSpy,
   renderSummarySpy,
   renderTopTableSpy,
@@ -24,6 +25,7 @@ const {
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
   fetchGroupedTimeseriesSpy: vi.fn(),
+  fetchGaugesTimeseriesSpy: vi.fn(),
   fetchFlowSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
@@ -56,6 +58,7 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchTopEvents: fetchTopEventsSpy,
   fetchTimeseries: vi.fn(),
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
+  fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
   fetchFlow: fetchFlowSpy,
 }));
 
@@ -121,6 +124,7 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
     fetchSummarySpy.mockReset();
     fetchTopEventsSpy.mockReset();
     fetchGroupedTimeseriesSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockReset();
     fetchFlowSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
@@ -129,6 +133,7 @@ describe("metrics-dashboard polling + visibility lifecycle", () => {
     fetchSummarySpy.mockImplementation(() => makeSettlingXhr());
     fetchTopEventsSpy.mockImplementation(() => makeSettlingXhr());
     fetchGroupedTimeseriesSpy.mockImplementation(() => makeSettlingXhr());
+    fetchGaugesTimeseriesSpy.mockImplementation(() => makeSettlingXhr());
     fetchFlowSpy.mockImplementation(() => makeSettlingXhr());
 
     // CRITICAL: install fake timers BEFORE initMetricsDashboard so the

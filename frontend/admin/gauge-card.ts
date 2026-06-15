@@ -1,7 +1,10 @@
 /**
- * Render each gauge from a batched `gauges/timeseries` response as a
- * `.gauge-card` — a header (description + bridged kind chip + last-value
- * headline) plus a line chart of that gauge's samples over the active window.
+ * Render the Gauges tab as a 2-column table (gauge description + last value),
+ * one `.gauge-row` per gauge, plus a single detail area beneath it. Selecting a
+ * row (driven by `selectedGaugeName`) renders ONE timeseries chart for that
+ * gauge in the detail area; with no selection the detail area shows a prompt to
+ * pick a gauge. This replaces the previous all-charts-at-once card grid: only
+ * the chosen gauge's trend is plotted at a time.
  *
  * The chart is built by the shared `renderTimeseriesChart` primitive via a
  * fully-valid `TimeseriesResponseSchema` adapter (`gaugeTimeseriesToChartResponse`):
@@ -9,7 +12,8 @@
  * mapping, so an all-null gauge yields an empty bucket list and the chart's
  * built-in empty state renders instead of crashing.
  *
- * Pure DOM mutation; no fetching, no event binding.
+ * Pure DOM mutation; no fetching, no event binding (row clicks are wired in
+ * `metrics-dashboard.ts`, mirroring the top-table row-click pattern).
  */
 
 import type { Schema } from "../types/api-helpers.d.ts";
@@ -35,6 +39,8 @@ const GAUGE_KIND_LABELS: Record<string, string> = {
   distribution_max: APP_CONFIG.strings.METRICS_GAUGE_KIND_DISTRIBUTION_MAX,
   distribution_avg: APP_CONFIG.strings.METRICS_GAUGE_KIND_DISTRIBUTION_AVG,
 };
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
 
 /**
  * Build a fully-valid `TimeseriesResponseSchema` from a single gauge's series
@@ -103,39 +109,39 @@ export function formatGaugeLastValue({
   return SUPPRESSED_PLACEHOLDER;
 }
 
-const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
-
 /**
- * Build one `.gauge-card` for a single gauge series. Never throws on a missing
- * or empty series — it renders the empty-chart card (and applies the
- * `gauge-card--suppressed` modifier) instead.
+ * Build one `<tr.gauge-row>` for a single gauge: a name cell (description + kind
+ * chip) and a value cell (last sample value). The row is a focusable, clickable
+ * widget (`role="button"`, `tabindex="0"`) carrying its `data-gauge-name` so the
+ * dashboard's delegated click/keydown handler can resolve the clicked gauge.
  */
-export function renderGaugeCard({
+function renderGaugeRow({
   entry,
-  window,
-  window_start,
-  window_end,
+  selected,
 }: {
   entry: GaugeSeries;
-  window: string | null;
-  window_start: string;
-  window_end: string;
-}): HTMLElement {
-  const card = document.createElement("section");
-  card.className = "gauge-card";
-  // Stable identity so `renderGaugeGrid` can reconcile per-gauge in place.
-  card.dataset.gaugeName = entry.gauge_name;
+  selected: boolean;
+}): HTMLTableRowElement {
+  const row = document.createElement("tr");
+  row.className = "gauge-row";
+  row.dataset.gaugeName = entry.gauge_name;
+  row.setAttribute("role", "button");
+  row.tabIndex = 0;
 
   const lastValueText = formatGaugeLastValue({ samples: entry.samples });
   const isSuppressed = lastValueText === SUPPRESSED_PLACEHOLDER;
   if (isSuppressed) {
-    card.classList.add("gauge-card--suppressed");
+    row.classList.add("gauge-row--suppressed");
+  }
+  if (selected) {
+    row.classList.add("gauge-row--selected");
+    row.setAttribute("aria-current", "true");
   }
 
-  const header = document.createElement("div");
-  header.className = "gauge-header";
+  const nameCell = document.createElement("td");
+  nameCell.className = "gauge-name-cell";
 
-  const title = document.createElement("h3");
+  const title = document.createElement("span");
   title.className = "gauge-title";
   title.textContent = entry.description;
 
@@ -143,25 +149,65 @@ export function renderGaugeCard({
   kindChip.className = "gauge-kind";
   kindChip.textContent = GAUGE_KIND_LABELS[entry.kind] ?? entry.kind;
 
-  const lastValue = document.createElement("span");
-  lastValue.className = "gauge-last-value";
-  lastValue.textContent = lastValueText;
+  nameCell.appendChild(title);
+  nameCell.appendChild(kindChip);
+
+  const valueCell = document.createElement("td");
+  valueCell.className = "gauge-value-cell";
+  valueCell.textContent = lastValueText;
   if (isSuppressed) {
     // The bare en dash is meaningless read aloud — announce the suppressed
     // state with the bridged aria label instead (DD-11).
-    lastValue.setAttribute(
+    valueCell.setAttribute(
       "aria-label",
       APP_CONFIG.strings.METRICS_GAUGE_SUPPRESSED_ARIA,
     );
   }
 
-  header.appendChild(title);
-  header.appendChild(kindChip);
-  header.appendChild(lastValue);
-  card.appendChild(header);
+  // Screen-reader summary of the whole row (DD-9).
+  row.setAttribute("aria-label", `${entry.description}: ${lastValueText}`);
 
-  // Screen-reader summary of the whole card (DD-9).
-  card.setAttribute("aria-label", `${entry.description}: ${lastValueText}`);
+  row.appendChild(nameCell);
+  row.appendChild(valueCell);
+  return row;
+}
+
+/**
+ * Render the selected gauge's timeseries chart into the detail container, or the
+ * bridged "select a gauge" prompt when no gauge is selected (or the selected
+ * name is no longer present in the response). Never throws on an empty / all-null
+ * series — `renderTimeseriesChart` shows its built-in empty state.
+ */
+function renderGaugeDetail({
+  detail,
+  response,
+  selectedGaugeName,
+}: {
+  detail: HTMLElement;
+  response: GaugesTimeseriesResponse;
+  selectedGaugeName: string | null;
+}): void {
+  while (detail.firstChild !== null) {
+    detail.removeChild(detail.firstChild);
+  }
+
+  const selectedEntry =
+    selectedGaugeName === null
+      ? undefined
+      : response.gauges.find((entry) => entry.gauge_name === selectedGaugeName);
+
+  if (selectedEntry === undefined) {
+    const prompt = document.createElement("p");
+    prompt.className = "gauge-detail-prompt";
+    prompt.textContent = APP_CONFIG.strings.METRICS_GAUGE_SELECT_PROMPT;
+    detail.appendChild(prompt);
+    return;
+  }
+
+  const heading = document.createElement("h3");
+  heading.className = "gauge-detail-title";
+  heading.textContent = selectedEntry.description;
+  detail.appendChild(heading);
 
   const svg = document.createElementNS(SVG_NAMESPACE, "svg");
   svg.setAttribute("class", "gauge-chart");
@@ -169,7 +215,7 @@ export function renderGaugeCard({
   svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
   // `renderTimeseriesChart` relies on these aria hooks being pre-set (mirrors
   // the static template in `metrics_panel.html`).
-  const svgId = `gauge-chart-${entry.gauge_name}`;
+  const svgId = `gauge-chart-${selectedEntry.gauge_name}`;
   svg.setAttribute("id", svgId);
   svg.setAttribute("role", "img");
   svg.setAttribute("aria-labelledby", `${svgId}-title`);
@@ -178,77 +224,82 @@ export function renderGaugeCard({
   renderTimeseriesChart({
     svg: svg as SVGSVGElement,
     response: gaugeTimeseriesToChartResponse({
-      description: entry.description,
-      samples: entry.samples,
-      window,
-      window_start,
-      window_end,
+      description: selectedEntry.description,
+      samples: selectedEntry.samples,
+      window: response.window,
+      window_start: response.window_start,
+      window_end: response.window_end,
     }),
   });
-  card.appendChild(svg);
-
-  return card;
+  detail.appendChild(svg);
 }
 
-// Remembers the batched response last rendered per grid container so
-// `renderGaugeGrid` reconciles per-gauge in place (replace one card) rather than
-// clearing the container wholesale — which would detach held element references
-// (e.g. a Selenium assertion). WeakMap-keyed by the container so a
-// detached/replaced grid does not leak state.
-const lastRenderedGaugeState: WeakMap<HTMLElement, GaugesTimeseriesResponse> =
-  new WeakMap();
+/**
+ * Build the `.gauge-table` skeleton (header row + empty tbody) inside the grid
+ * container. The "Gauge" / "Value" column headers are bridged through
+ * APP_CONFIG so no display string is hardcoded in TS.
+ */
+function buildGaugeTable(): HTMLTableElement {
+  const table = document.createElement("table");
+  table.className = "gauge-table";
+
+  const thead = document.createElement("thead");
+  const headRow = document.createElement("tr");
+  const nameHead = document.createElement("th");
+  nameHead.setAttribute("scope", "col");
+  nameHead.textContent = APP_CONFIG.strings.METRICS_GAUGE_COL_NAME;
+  const valueHead = document.createElement("th");
+  valueHead.setAttribute("scope", "col");
+  valueHead.textContent = APP_CONFIG.strings.METRICS_GAUGE_COL_VALUE;
+  headRow.appendChild(nameHead);
+  headRow.appendChild(valueHead);
+  thead.appendChild(headRow);
+
+  const tbody = document.createElement("tbody");
+
+  table.appendChild(thead);
+  table.appendChild(tbody);
+  return table;
+}
 
 /**
- * Render the full Gauges grid: one `.gauge-card` per gauge in the batched
- * response's order (the backend orders by GaugeName declaration order).
+ * Render the full Gauges panel: a 2-column table (one `.gauge-row` per gauge in
+ * the batched response's declaration order) plus a detail area showing the
+ * selected gauge's chart — or the select-a-gauge prompt when nothing is chosen.
  *
- * Pure card-renderer — does NOT emit an empty state; that responsibility lives
- * exclusively in `renderGaugesPanel`. A gauge whose `samples` is empty or all
- * suppressed still renders a card with an empty-chart state.
- *
- * Reconciles per-gauge by `data-gauge-name`: an existing card whose series is
- * unchanged by reference is left in place; otherwise the card is rebuilt and
- * replaced. Because the batched fetch always returns a fresh response, every
- * series reference differs and all cards rebuild each fetch; the WeakMap keeps
- * the in-place replacement so held element references survive an update.
+ * Pure renderer — does NOT emit the no-data empty state; that responsibility
+ * lives exclusively in `renderGaugesPanel`. The table/detail scaffold is rebuilt
+ * each call from the fresh batched response (the fetch always returns a new
+ * object), and the detail re-renders so the selected gauge's chart and the row
+ * values stay current across polls.
  */
 export function renderGaugeGrid({
   container,
   response,
+  selectedGaugeName = null,
 }: {
   container: HTMLElement;
   response: GaugesTimeseriesResponse;
+  selectedGaugeName?: string | null;
 }): void {
-  const previous = lastRenderedGaugeState.get(container);
-  const previousByName: Map<string, GaugeSeries> = new Map(
-    (previous?.gauges ?? []).map((series) => [series.gauge_name, series]),
-  );
-  let previousCard: HTMLElement | null = null;
-  for (const entry of response.gauges) {
-    const existingCard = container.querySelector<HTMLElement>(
-      `.gauge-card[data-gauge-name="${entry.gauge_name}"]`,
-    );
-    if (
-      existingCard !== null &&
-      previousByName.get(entry.gauge_name) === entry
-    ) {
-      previousCard = existingCard;
-      continue;
-    }
-    const newCard = renderGaugeCard({
-      entry,
-      window: response.window,
-      window_start: response.window_start,
-      window_end: response.window_end,
-    });
-    if (existingCard !== null) {
-      container.replaceChild(newCard, existingCard);
-    } else if (previousCard !== null) {
-      previousCard.insertAdjacentElement("afterend", newCard);
-    } else {
-      container.insertBefore(newCard, container.firstChild);
-    }
-    previousCard = newCard;
+  while (container.firstChild !== null) {
+    container.removeChild(container.firstChild);
   }
-  lastRenderedGaugeState.set(container, response);
+
+  const table = buildGaugeTable();
+  const tbody = table.querySelector("tbody")!;
+  for (const entry of response.gauges) {
+    tbody.appendChild(
+      renderGaugeRow({
+        entry,
+        selected: entry.gauge_name === selectedGaugeName,
+      }),
+    );
+  }
+  container.appendChild(table);
+
+  const detail = document.createElement("div");
+  detail.className = "gauge-detail";
+  renderGaugeDetail({ detail, response, selectedGaugeName });
+  container.appendChild(detail);
 }

@@ -418,10 +418,13 @@ class MetricsDashboardLocators(GenericPageLocator):
     FLOWS_CAUSE_PILL = "#MetricsFlowGrid .flow-card .cause-pill"
     FLOWS_CARD_EMPTY = "#MetricsFlowGrid .flow-card .flow-card-empty"
 
-    # Gauges tab (sampled scalar trend charts)
+    # Gauges tab (2-column table; click a row to show that gauge's trend chart)
     GAUGES_PANEL = "#MetricsPanelGauges"
     GAUGES_GRID = "#MetricsGaugeGrid"
-    GAUGES_CARD = "#MetricsGaugeGrid .gauge-card"
-    GAUGES_CARD_CHART = "#MetricsGaugeGrid .gauge-card svg.gauge-chart"
-    GAUGES_CARD_SUPPRESSED = "#MetricsGaugeGrid .gauge-card--suppressed"
+    GAUGES_TABLE = "#MetricsGaugeGrid .gauge-table"
+    GAUGES_ROW = "#MetricsGaugeGrid .gauge-row"
+    GAUGES_ROW_SUPPRESSED = "#MetricsGaugeGrid .gauge-row--suppressed"
+    GAUGES_ROW_SELECTED = "#MetricsGaugeGrid .gauge-row--selected"
+    GAUGES_DETAIL_PROMPT = "#MetricsGaugeGrid .gauge-detail-prompt"
+    GAUGES_DETAIL_CHART = "#MetricsGaugeGrid .gauge-detail svg.gauge-chart"
     GAUGES_PANEL_EMPTY_STATE = "#MetricsGaugeGrid .MetricsEmptyState"

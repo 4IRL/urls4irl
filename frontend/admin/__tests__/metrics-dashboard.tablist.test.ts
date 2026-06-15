@@ -262,9 +262,9 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabUi"));
   });
 
-  it("ArrowLeft on the first tab wraps to the last", () => {
-    getTab("MetricsTabApi").focus();
-    $("#MetricsTabApi").trigger($.Event("keydown", { key: "ArrowLeft" }));
+  it("ArrowLeft on the first tab (Gauges) wraps to the last", () => {
+    getTab("MetricsTabGauges").focus();
+    $("#MetricsTabGauges").trigger($.Event("keydown", { key: "ArrowLeft" }));
 
     expect(
       getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
@@ -275,23 +275,11 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
-  it("ArrowRight from Flows moves to Gauges", () => {
+  it("ArrowRight from Flows moves to Pipeline Health", () => {
     getTab("MetricsTabFlows").click();
     getTab("MetricsTabFlows").focus();
     $("#MetricsTabFlows").trigger($.Event("keydown", { key: "ArrowRight" }));
 
-    expect(getTab("MetricsTabGauges").getAttribute("aria-selected")).toBe(
-      "true",
-    );
-    expect(getTab("MetricsTabGauges").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabGauges"));
-  });
-
-  it("ArrowRight from Gauges moves to Pipeline Health", () => {
-    getTab("MetricsTabGauges").click();
-    getTab("MetricsTabGauges").focus();
-    $("#MetricsTabGauges").trigger($.Event("keydown", { key: "ArrowRight" }));
-
     expect(
       getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
     ).toBe("true");
@@ -301,7 +289,17 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
-  it("Home key activates the first tab", () => {
+  it("ArrowRight from Gauges (first) moves to API", () => {
+    getTab("MetricsTabGauges").click();
+    getTab("MetricsTabGauges").focus();
+    $("#MetricsTabGauges").trigger($.Event("keydown", { key: "ArrowRight" }));
+
+    expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
+    expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(getTab("MetricsTabApi"));
+  });
+
+  it("Home key activates the first tab (Gauges)", () => {
     // Start with the last tab active so Home has work to do.
     getTab("MetricsTabPipelineHealth").click();
     expect(
@@ -311,9 +309,11 @@ describe("metrics-dashboard tablist a11y", () => {
     getTab("MetricsTabPipelineHealth").focus();
     $("#MetricsTabPipelineHealth").trigger($.Event("keydown", { key: "Home" }));
 
-    expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
-    expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabApi"));
+    expect(getTab("MetricsTabGauges").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getTab("MetricsTabGauges").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(getTab("MetricsTabGauges"));
   });
 
   it("End key activates the last tab", () => {
@@ -329,16 +329,18 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
-  it("ArrowRight on the last tab wraps to the first", () => {
+  it("ArrowRight on the last tab wraps to the first (Gauges)", () => {
     getTab("MetricsTabPipelineHealth").click();
     getTab("MetricsTabPipelineHealth").focus();
     $("#MetricsTabPipelineHealth").trigger(
       $.Event("keydown", { key: "ArrowRight" }),
     );
 
-    expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
-    expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
-    expect(document.activeElement).toBe(getTab("MetricsTabApi"));
+    expect(getTab("MetricsTabGauges").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getTab("MetricsTabGauges").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(getTab("MetricsTabGauges"));
   });
 
   it("hidden attribute toggles on tabpanels in sync with selection", () => {
@@ -374,6 +376,22 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(false);
   });
 
+  it("hides the global summary on Flows and Gauges, restores it on category tabs", () => {
+    const summary = document.getElementById("MetricsSummary") as HTMLElement;
+    // Default tab (API, a category tab) shows the summary.
+    expect(summary.hasAttribute("hidden")).toBe(false);
+
+    getTab("MetricsTabFlows").click();
+    expect(summary.hasAttribute("hidden")).toBe(true);
+
+    getTab("MetricsTabGauges").click();
+    expect(summary.hasAttribute("hidden")).toBe(true);
+
+    // Switching back to a category tab restores the summary.
+    getTab("MetricsTabUi").click();
+    expect(summary.hasAttribute("hidden")).toBe(false);
+  });
+
   it("activating the Flows tab fires the per-flow fan-out on first load", () => {
     expect(fetchFlowSpy).not.toHaveBeenCalled();
 
@@ -383,19 +401,48 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(fetchFlowSpy).toHaveBeenCalledTimes(4);
   });
 
-  it("activating the Gauges tab fires exactly one batched request and renders the grid", () => {
+  it("loads the default Gauges tab with one batched request and renders the grid", () => {
+    // Gauges is the default landing tab, so a fresh init fires the single
+    // batched request (not a fan-out) and renders the grid with no gauge
+    // selected — the detail area shows the prompt.
+    _resetMetricsDashboardForTests();
+    const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
+    fetchGaugesTimeseriesSpy.mockReset();
+    fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createDoneJqXHR(response),
+    );
+    renderGaugeGridSpy.mockClear();
+
+    initMetricsDashboard();
+
+    expect(fetchGaugesTimeseriesSpy).toHaveBeenCalledTimes(1);
+    expect(renderGaugeGridSpy).toHaveBeenCalledTimes(1);
+    expect(renderGaugeGridSpy.mock.calls[0][0].response).toBe(response);
+    expect(renderGaugeGridSpy.mock.calls[0][0].selectedGaugeName).toBeNull();
+  });
+
+  it("clicking a gauge row re-renders the grid with that gauge selected", () => {
     const response = buildGaugesResponse([buildGaugeSeries("total_users")]);
     fetchGaugesTimeseriesSpy.mockImplementation(() =>
       createDoneJqXHR(response),
     );
-
-    expect(fetchGaugesTimeseriesSpy).not.toHaveBeenCalled();
     getTab("MetricsTabGauges").click();
+    renderGaugeGridSpy.mockClear();
 
-    // Single batched request, not a fan-out.
-    expect(fetchGaugesTimeseriesSpy).toHaveBeenCalledTimes(1);
+    // renderGaugeGrid is mocked (no-op), so inject a row the delegated handler
+    // can resolve — the click bubbles to the grid binding wired at init.
+    const grid = document.getElementById("MetricsGaugeGrid") as HTMLElement;
+    const row = document.createElement("tr");
+    row.className = "gauge-row";
+    row.dataset.gaugeName = "total_users";
+    grid.appendChild(row);
+
+    row.click();
+
     expect(renderGaugeGridSpy).toHaveBeenCalledTimes(1);
-    expect(renderGaugeGridSpy.mock.calls[0][0].response).toBe(response);
+    expect(renderGaugeGridSpy.mock.calls[0][0].selectedGaugeName).toBe(
+      "total_users",
+    );
   });
 
   it("renders the panel empty-state (no crash) when the batched gauges[] is empty", () => {

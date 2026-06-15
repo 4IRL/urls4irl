@@ -194,6 +194,9 @@ const appConfig = {
     METRICS_GAUGE_KIND_DISTRIBUTION_AVG: "Distribution (avg)",
     METRICS_GAUGE_SUPPRESSED_ARIA: "Value unavailable",
     METRICS_GAUGES_LOADED: "Gauge values updated.",
+    METRICS_GAUGE_SELECT_PROMPT: "Select a gauge to view its timeseries.",
+    METRICS_GAUGE_COL_NAME: "Gauge",
+    METRICS_GAUGE_COL_VALUE: "Value",
   },
 };
 

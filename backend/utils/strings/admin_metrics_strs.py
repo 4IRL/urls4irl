@@ -82,3 +82,6 @@ class ADMIN_METRICS_STRINGS:
     METRICS_GAUGE_KIND_DISTRIBUTION_AVG: str = "Distribution (avg)"
     METRICS_GAUGE_SUPPRESSED_ARIA: str = "Value unavailable"
     METRICS_GAUGES_LOADED: str = "Gauge values updated."
+    METRICS_GAUGE_SELECT_PROMPT: str = "Select a gauge to view its timeseries."
+    METRICS_GAUGE_COL_NAME: str = "Gauge"
+    METRICS_GAUGE_COL_VALUE: str = "Value"

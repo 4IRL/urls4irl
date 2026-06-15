@@ -240,10 +240,13 @@ const CATEGORIES: readonly MetricsCategory[] = [TAB.API, TAB.UI, TAB.DOMAIN];
 // charts) every time a category iteration is needed. Pipeline Health is always
 // the last tab; Flows precedes it, matching the DOM order in
 // `pages/admin_metrics.html`.
+// Gauges is the default landing tab and sits leftmost; the remaining tabs keep
+// their relative order. This array is the source of truth for arrow-key /
+// Home / End tablist navigation, so it must match the template's button order.
 const TAB_IDS: readonly MetricsTabId[] = [
+  TAB.GAUGES,
   ...CATEGORIES,
   TAB.FLOWS,
-  TAB.GAUGES,
   TAB.PIPELINE_HEALTH,
 ];
 
@@ -257,6 +260,9 @@ const GAUGES_TAB_ID: string = "MetricsTabGauges";
 const GAUGES_PANEL_ID: string = "MetricsPanelGauges";
 const GAUGES_GRID_ID: string = "MetricsGaugeGrid";
 const GAUGES_ANNOUNCEMENT_ID: string = "MetricsPanelGaugesAnnouncement";
+// The global per-window event-totals summary, shown above the event-category
+// tabs but hidden on Flows and Gauges (neither is about window-wide event counts).
+const SUMMARY_SECTION_ID: string = "MetricsSummary";
 
 // Maps each FlowId to its dedicated in-flight slot so per-flow XHRs are aborted
 // independently (mirrors TOP_SLOT_BY_CATEGORY).
@@ -296,8 +302,8 @@ let _currentCategory: MetricsCategory = TAB.API;
 // The currently-visible tab. Distinct from `_currentCategory` (which only ever
 // holds true `MetricsCategory` values) so the Flows-fetch gate can key on tab
 // visibility without widening the category type. Set unconditionally for every
-// tab in `handleTabClick`.
-let _activeTab: MetricsTabId = TAB.API;
+// tab in `handleTabClick`. Initialized to Gauges, the default landing tab.
+let _activeTab: MetricsTabId = TAB.GAUGES;
 let _inFlight: InFlightRequests = {
   topApi: null,
   topUi: null,
@@ -320,6 +326,11 @@ let _flowCache: Partial<Record<FlowId, FlowResponseSchema>> = {};
 // `GaugeSeries[]`), so a tab switch back to Gauges renders instantly from cache.
 // Populated by `fetchGauges`; `null` until the first batched request settles.
 let _gaugesCache: GaugesTimeseriesResponse | null = null;
+// `gauge_name` of the row whose timeseries is shown in the Gauges detail area.
+// `null` means no gauge is selected — the detail area shows the select-a-gauge
+// prompt. Set by `handleGaugeRowClick`; survives polls so the chosen chart
+// re-renders with fresh samples each tick.
+let _selectedGaugeName: string | null = null;
 
 const TOP_SLOT_BY_CATEGORY: Record<
   MetricsCategory,
@@ -1013,6 +1024,50 @@ function handleTopRowKeydown(event: JQuery.TriggeredEvent): void {
   handleTopRowClick(event);
 }
 
+/**
+ * Handle a click anywhere inside the Gauges table. Resolve the clicked row to
+ * its `data-gauge-name`, record it as the selected gauge, and re-render the
+ * panel so that gauge's timeseries chart replaces the prompt (or the previously
+ * selected gauge's chart) in the detail area, then scrolls the chart into view
+ * (the table can be tall on mobile, where the detail otherwise sits off-screen).
+ * Clicks outside a `.gauge-row` (e.g. the header) are ignored.
+ */
+function handleGaugeRowClick(event: JQuery.TriggeredEvent): void {
+  const row = (event.target as HTMLElement).closest<HTMLTableRowElement>(
+    "tr.gauge-row",
+  );
+  if (row === null) {
+    return;
+  }
+  const gaugeName = row.dataset.gaugeName;
+  if (gaugeName === undefined) {
+    return;
+  }
+  _selectedGaugeName = gaugeName;
+  renderGaugesPanel();
+
+  // Bring the freshly rendered chart into view on both mobile and desktop. The
+  // scroll only fires on this explicit user action — never on poll re-renders,
+  // which would yank the viewport unexpectedly.
+  const grid = getElementByIdOrNull<HTMLElement>(GAUGES_GRID_ID);
+  const detail = grid?.querySelector<HTMLElement>(".gauge-detail") ?? null;
+  detail?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/**
+ * Keyboard activation for gauge rows. Enter and Space both fire the same action
+ * as a mouse click, matching the ARIA Authoring Practices Guide for activating a
+ * focusable, non-button widget.
+ */
+function handleGaugeRowKeydown(event: JQuery.TriggeredEvent): void {
+  const key = event.key;
+  if (key !== "Enter" && key !== " ") {
+    return;
+  }
+  event.preventDefault();
+  handleGaugeRowClick(event);
+}
+
 function handleTimeseriesSelectChange(event: JQuery.TriggeredEvent): void {
   const selectElement = event.currentTarget as HTMLSelectElement;
   if (selectElement.value === "") {
@@ -1185,7 +1240,11 @@ function renderGaugesPanel(): void {
     grid.appendChild(emptyState);
     return;
   }
-  renderGaugeGrid({ container: grid, response: _gaugesCache });
+  renderGaugeGrid({
+    container: grid,
+    response: _gaugesCache,
+    selectedGaugeName: _selectedGaugeName,
+  });
 }
 
 /**
@@ -1658,6 +1717,19 @@ function handleTabClick({
     _currentCategory = tab;
   }
 
+  // The global summary section reports window-wide EVENT totals, so it is
+  // hidden on the Flows and Gauges tabs: Flows carries its own per-funnel
+  // conversion summaries, and Gauges shows sampled scalar values that the event
+  // totals say nothing about. It stays visible on the event-category tabs.
+  const summarySection = getElementByIdOrNull<HTMLElement>(SUMMARY_SECTION_ID);
+  if (summarySection !== null) {
+    if (tab === TAB.FLOWS || tab === TAB.GAUGES) {
+      summarySection.setAttribute("hidden", "");
+    } else {
+      summarySection.removeAttribute("hidden");
+    }
+  }
+
   for (const candidateTab of TAB_IDS) {
     const isActive = candidateTab === tab;
     const ids = getTabAndPanelIds(candidateTab);
@@ -1839,10 +1911,28 @@ export function initMetricsDashboard(): void {
     );
   }
 
+  // Delegate gauge row click + keydown on the stable grid container. The table
+  // (and its rows) is rebuilt by `renderGaugeGrid` on each render, but events
+  // bubble from those rows to the server-rendered grid, so a single binding at
+  // init covers every subsequent render — mirrors the top-table tbody binding.
+  const gaugeGrid = getElementByIdOrNull<HTMLElement>(GAUGES_GRID_ID);
+  if (gaugeGrid !== null) {
+    $(gaugeGrid).offAndOnExact(
+      "click.metricsDashboardGaugeRow",
+      handleGaugeRowClick,
+    );
+    $(gaugeGrid).offAndOnExact(
+      "keydown.metricsDashboardGaugeRow",
+      handleGaugeRowKeydown,
+    );
+  }
+
   document.addEventListener("visibilitychange", handleVisibilityChange);
 
   initPaneResizers();
 
+  // `_activeTab` defaults to Gauges, so `fetchAll`'s active-tab gate fires the
+  // batched gauges request on load — no separate call needed.
   fetchAll();
   startPolling();
   startBadgeTicker();
@@ -1860,7 +1950,7 @@ export function _resetMetricsDashboardForTests(): void {
   _lastFetchPerf = 0;
   _currentWindow = "day";
   _currentCategory = TAB.API;
-  _activeTab = TAB.API;
+  _activeTab = TAB.GAUGES;
   _inFlight = {
     topApi: null,
     topUi: null,
@@ -1878,6 +1968,7 @@ export function _resetMetricsDashboardForTests(): void {
   };
   _flowCache = {};
   _gaugesCache = null;
+  _selectedGaugeName = null;
   _topCache.clear();
   _selectedEventByCategory.clear();
   _chartFetchedWindowByCategory.clear();

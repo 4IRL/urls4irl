@@ -1,22 +1,19 @@
 /**
- * Renderer tests for the Gauges tab cards (`gauge-card.ts`). The renderer is
- * pure DOM, so no jQuery/XHR mock is needed — only the global APP_CONFIG.strings
- * mock from `test-setup.ts`.
+ * Renderer tests for the Gauges tab (`gauge-card.ts`). The renderer is pure DOM,
+ * so no jQuery/XHR mock is needed — only the global APP_CONFIG.strings mock from
+ * `test-setup.ts`.
  *
- * Happy path: a full batched response renders one charted `.gauge-card` per
- * gauge with the correct identity, kind chip, formatted last value, and aria
- * hooks. Sad path: a k-anon-suppressed series (every sample null) and an
- * empty-samples series both render an empty-chart card without crashing.
- * Reconcile: updating one gauge replaces only its card.
+ * Happy path: a full batched response renders one `.gauge-row` per gauge with
+ * the correct identity, kind chip and formatted last value; with no selection
+ * the detail area shows the select-a-gauge prompt and no chart. Selecting a
+ * gauge renders exactly one chart (that gauge's) in the detail area and marks
+ * its row. Sad path: a k-anon-suppressed series (every sample null) and an
+ * empty-samples series render an en-dash value and an empty-chart detail.
  */
 
 import type { Schema } from "../../types/api-helpers.d.ts";
 
-import {
-  formatGaugeLastValue,
-  renderGaugeCard,
-  renderGaugeGrid,
-} from "../gauge-card.js";
+import { formatGaugeLastValue, renderGaugeGrid } from "../gauge-card.js";
 
 type GaugesTimeseriesResponse = Schema<"GaugesTimeseriesResponseSchema">;
 type GaugeSeries = Schema<"GaugeSeries">;
@@ -24,6 +21,7 @@ type GaugeSampleSchema = Schema<"GaugeSampleSchema">;
 
 const WINDOW_START = "2026-06-01T00:00:00+00:00";
 const WINDOW_END = "2026-06-02T00:00:00+00:00";
+const SELECT_PROMPT = "Select a gauge to view its timeseries.";
 
 function buildSample(
   overrides: Partial<GaugeSampleSchema> = {},
@@ -96,101 +94,131 @@ function buildFullResponse(): GaugesTimeseriesResponse {
   );
 }
 
-describe("renderGaugeGrid happy path", () => {
-  it("renders one charted card per gauge in response order", () => {
+describe("renderGaugeGrid table (happy path)", () => {
+  it("renders a 2-column table with one row per gauge in response order", () => {
     const container = document.createElement("div");
     renderGaugeGrid({ container, response: buildFullResponse() });
 
-    const cards = container.querySelectorAll<HTMLElement>(".gauge-card");
-    expect(cards.length).toBe(16);
-    // First card matches the first gauge in the response (declaration order).
-    expect(cards[0]!.dataset.gaugeName).toBe("total_users");
-    expect(cards[5]!.dataset.gaugeName).toBe("max_urls_per_utub");
+    const headers = container.querySelectorAll<HTMLElement>(".gauge-table th");
+    expect(Array.from(headers).map((th) => th.textContent)).toEqual([
+      "Gauge",
+      "Value",
+    ]);
 
-    // Each card carries a chart svg with a rendered polyline (a chart, not a
-    // value card).
-    cards.forEach((card) => {
-      const svg = card.querySelector("svg.gauge-chart");
-      expect(svg).not.toBeNull();
-      expect(svg!.querySelector("polyline")).not.toBeNull();
-    });
+    const rows = container.querySelectorAll<HTMLElement>(".gauge-row");
+    expect(rows.length).toBe(16);
+    expect(rows[0]!.dataset.gaugeName).toBe("total_users");
+    expect(rows[5]!.dataset.gaugeName).toBe("max_urls_per_utub");
+
+    // No charts are rendered until a row is selected.
+    expect(container.querySelectorAll("svg.gauge-chart").length).toBe(0);
   });
 
-  it("renders the bridged kind chip and formatted last value", () => {
+  it("renders the bridged kind chip and formatted last value per row", () => {
     const container = document.createElement("div");
     renderGaugeGrid({ container, response: buildFullResponse() });
 
-    const volumeCard = container.querySelector<HTMLElement>(
-      '.gauge-card[data-gauge-name="total_users"]',
+    const volumeRow = container.querySelector<HTMLElement>(
+      '.gauge-row[data-gauge-name="total_users"]',
     )!;
-    expect(volumeCard.querySelector(".gauge-kind")!.textContent).toBe("Volume");
-    // Last non-null integer sample formatted with thousands grouping.
-    expect(volumeCard.querySelector(".gauge-last-value")!.textContent).toBe(
-      "7",
-    );
+    expect(volumeRow.querySelector(".gauge-kind")!.textContent).toBe("Volume");
+    expect(volumeRow.querySelector(".gauge-value-cell")!.textContent).toBe("7");
 
-    const avgCard = container.querySelector<HTMLElement>(
-      '.gauge-card[data-gauge-name="avg_urls_per_utub"]',
+    const avgRow = container.querySelector<HTMLElement>(
+      '.gauge-row[data-gauge-name="avg_urls_per_utub"]',
     )!;
-    expect(avgCard.querySelector(".gauge-kind")!.textContent).toBe(
+    expect(avgRow.querySelector(".gauge-kind")!.textContent).toBe(
       "Distribution (avg)",
     );
-    // Last float sample formatted with 1–2 fraction digits.
-    expect(avgCard.querySelector(".gauge-last-value")!.textContent).toBe(
-      "3.25",
+    expect(avgRow.querySelector(".gauge-value-cell")!.textContent).toBe("3.25");
+  });
+
+  it("makes each row a focusable button widget with a summary aria-label", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({
+      container,
+      response: buildResponse([
+        buildSeries({
+          description: "Total Users",
+          samples: [buildSample({ value_int: 42 })],
+        }),
+      ]),
+    });
+
+    const row = container.querySelector<HTMLElement>(".gauge-row")!;
+    expect(row.getAttribute("role")).toBe("button");
+    expect(row.tabIndex).toBe(0);
+    expect(row.getAttribute("aria-label")).toBe("Total Users: 42");
+  });
+});
+
+describe("renderGaugeGrid detail area", () => {
+  it("shows the select-a-gauge prompt and no chart when nothing is selected", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({ container, response: buildFullResponse() });
+
+    const prompt = container.querySelector<HTMLElement>(".gauge-detail-prompt");
+    expect(prompt).not.toBeNull();
+    expect(prompt!.textContent).toBe(SELECT_PROMPT);
+    expect(container.querySelector("svg.gauge-chart")).toBeNull();
+  });
+
+  it("renders only the selected gauge's chart with a plotted line", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({
+      container,
+      response: buildFullResponse(),
+      selectedGaugeName: "total_users",
+    });
+
+    const charts = container.querySelectorAll<SVGSVGElement>("svg.gauge-chart");
+    expect(charts.length).toBe(1);
+    const chart = charts[0]!;
+    expect(chart.getAttribute("id")).toBe("gauge-chart-total_users");
+    expect(chart.querySelector("polyline")).not.toBeNull();
+    expect(container.querySelector(".gauge-detail-prompt")).toBeNull();
+
+    // Detail title is the human description, and the SVG <title> mirrors it.
+    expect(container.querySelector(".gauge-detail-title")!.textContent).toBe(
+      "Total Users",
     );
+    expect(chart.querySelector("title")!.textContent).toBe("Total Users");
   });
 
-  it("sets aria hooks: role=img, labelledby->title, describedby->desc", () => {
-    const card = renderGaugeCard({
-      entry: buildSeries(),
-      window: "day",
-      window_start: WINDOW_START,
-      window_end: WINDOW_END,
+  it("marks the selected row with the selected class and aria-current", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({
+      container,
+      response: buildFullResponse(),
+      selectedGaugeName: "total_urls",
     });
 
-    const svg = card.querySelector("svg.gauge-chart")!;
-    expect(svg.getAttribute("role")).toBe("img");
-    const labelledBy = svg.getAttribute("aria-labelledby")!;
-    const describedBy = svg.getAttribute("aria-describedby")!;
-    expect(svg.querySelector("title")).not.toBeNull();
-    expect(svg.querySelector("desc")).not.toBeNull();
-    expect(labelledBy).toBe(`${svg.getAttribute("id")}-title`);
-    expect(describedBy).toBe(`${svg.getAttribute("id")}-desc`);
+    const selectedRow = container.querySelector<HTMLElement>(
+      ".gauge-row--selected",
+    )!;
+    expect(selectedRow.dataset.gaugeName).toBe("total_urls");
+    expect(selectedRow.getAttribute("aria-current")).toBe("true");
+    // Exactly one row is selected.
+    expect(container.querySelectorAll(".gauge-row--selected").length).toBe(1);
   });
 
-  it("svg <title> text is the human description, not the snake_case name", () => {
-    const card = renderGaugeCard({
-      entry: buildSeries({
-        gauge_name: "max_urls_per_utub",
-        description: "Max URLs per UTub",
-      }),
-      window: "day",
-      window_start: WINDOW_START,
-      window_end: WINDOW_END,
+  it("falls back to the prompt when the selected gauge is absent", () => {
+    const container = document.createElement("div");
+    renderGaugeGrid({
+      container,
+      response: buildResponse([buildSeries()]),
+      selectedGaugeName: "no_such_gauge",
     });
 
-    const title = card.querySelector("svg.gauge-chart title")!;
-    expect(title.textContent).toBe("Max URLs per UTub");
-    expect(title.textContent).not.toBe("max_urls_per_utub");
-  });
-
-  it("sets a card-level aria-label of 'description: lastValue' (DD-9)", () => {
-    const card = renderGaugeCard({
-      entry: buildSeries({
-        description: "Total Users",
-        samples: [buildSample({ value_int: 42 })],
-      }),
-      window: "day",
-      window_start: WINDOW_START,
-      window_end: WINDOW_END,
-    });
-    expect(card.getAttribute("aria-label")).toBe("Total Users: 42");
+    expect(container.querySelector(".gauge-detail-prompt")!.textContent).toBe(
+      SELECT_PROMPT,
+    );
+    expect(container.querySelector("svg.gauge-chart")).toBeNull();
   });
 });
 
 describe("renderGaugeGrid sad path (suppressed / empty)", () => {
-  it("renders an empty-chart suppressed card for an all-null max gauge", () => {
+  it("renders an en-dash value row for an all-null max gauge", () => {
     const container = document.createElement("div");
     const suppressed = buildSeries({
       gauge_name: "max_urls_per_utub",
@@ -203,93 +231,49 @@ describe("renderGaugeGrid sad path (suppressed / empty)", () => {
     });
     renderGaugeGrid({ container, response: buildResponse([suppressed]) });
 
-    const card = container.querySelector<HTMLElement>(".gauge-card")!;
-    expect(card.classList.contains("gauge-card--suppressed")).toBe(true);
-    // Empty-chart state: the empty-state <text> renders, no polyline / no NaN.
-    const svg = card.querySelector("svg.gauge-chart")!;
+    const row = container.querySelector<HTMLElement>(".gauge-row")!;
+    expect(row.classList.contains("gauge-row--suppressed")).toBe(true);
+    const valueCell = row.querySelector(".gauge-value-cell")!;
+    expect(valueCell.textContent).toBe("–");
+    expect(valueCell.getAttribute("aria-label")).toBe("Value unavailable");
+  });
+
+  it("renders an empty-chart detail when an all-null gauge is selected", () => {
+    const container = document.createElement("div");
+    const suppressed = buildSeries({
+      gauge_name: "max_urls_per_utub",
+      description: "Max URLs per UTub",
+      samples: [buildSample({ value_int: null, value_float: null })],
+    });
+    renderGaugeGrid({
+      container,
+      response: buildResponse([suppressed]),
+      selectedGaugeName: "max_urls_per_utub",
+    });
+
+    const svg = container.querySelector("svg.gauge-chart")!;
     expect(svg.querySelector(".MetricsEmptyState")).not.toBeNull();
     expect(svg.querySelector("polyline")).toBeNull();
     expect(svg.innerHTML).not.toContain("NaN");
-
-    const lastValue = card.querySelector(".gauge-last-value")!;
-    expect(lastValue.textContent).toBe("–");
-    expect(lastValue.getAttribute("aria-label")).toBe("Value unavailable");
   });
 
-  it("renders an empty-chart placeholder card for an empty samples array", () => {
+  it("renders an empty-chart detail for an empty samples array", () => {
     const container = document.createElement("div");
     const empty = buildSeries({
       gauge_name: "total_tags",
       description: "Total Tags",
       samples: [],
     });
-    renderGaugeGrid({ container, response: buildResponse([empty]) });
-
-    const card = container.querySelector<HTMLElement>(".gauge-card")!;
-    expect(card.classList.contains("gauge-card--suppressed")).toBe(true);
-    const svg = card.querySelector("svg.gauge-chart")!;
-    expect(svg.querySelector(".MetricsEmptyState")).not.toBeNull();
-    expect(svg.querySelector("polyline")).toBeNull();
-  });
-
-  it("gaugeTimeseriesToChartResponse produces zero buckets for an all-null series", () => {
-    // Indirect assertion via the rendered card: an all-null series -> empty
-    // chart -> no data points (circles) plotted.
-    const card = renderGaugeCard({
-      entry: buildSeries({
-        samples: [
-          buildSample({ value_int: null, value_float: null }),
-          buildSample({ value_int: null, value_float: null }),
-        ],
-      }),
-      window: "day",
-      window_start: WINDOW_START,
-      window_end: WINDOW_END,
-    });
-    expect(card.querySelectorAll("svg.gauge-chart circle").length).toBe(0);
-  });
-});
-
-describe("renderGaugeGrid reconcile", () => {
-  it("replaces only the updated gauge's card; other cards keep their reference", () => {
-    const container = document.createElement("div");
-    const seriesA = buildSeries({ gauge_name: "total_users" });
-    const seriesB = buildSeries({
-      gauge_name: "total_utubs",
-      description: "Total UTubs",
-    });
-    renderGaugeGrid({ container, response: buildResponse([seriesA, seriesB]) });
-
-    const cardARef = container.querySelector(
-      '.gauge-card[data-gauge-name="total_users"]',
-    );
-    const cardBRef = container.querySelector(
-      '.gauge-card[data-gauge-name="total_utubs"]',
-    );
-
-    // Re-render with the SAME seriesA reference but a NEW seriesB object.
-    const seriesBUpdated = buildSeries({
-      gauge_name: "total_utubs",
-      description: "Total UTubs",
-      samples: [buildSample({ value_int: 99 })],
-    });
     renderGaugeGrid({
       container,
-      response: buildResponse([seriesA, seriesBUpdated]),
+      response: buildResponse([empty]),
+      selectedGaugeName: "total_tags",
     });
 
-    // Card A's element reference is unchanged (same series reference).
-    expect(
-      container.querySelector('.gauge-card[data-gauge-name="total_users"]'),
-    ).toBe(cardARef);
-    // Card B was rebuilt (new series object).
-    const cardBNew = container.querySelector(
-      '.gauge-card[data-gauge-name="total_utubs"]',
-    );
-    expect(cardBNew).not.toBe(cardBRef);
-    expect(cardBNew!.querySelector(".gauge-last-value")!.textContent).toBe(
-      "99",
-    );
+    const svg = container.querySelector("svg.gauge-chart")!;
+    expect(svg.querySelector(".MetricsEmptyState")).not.toBeNull();
+    expect(svg.querySelector("polyline")).toBeNull();
+    expect(svg.querySelectorAll("circle").length).toBe(0);
   });
 });
 

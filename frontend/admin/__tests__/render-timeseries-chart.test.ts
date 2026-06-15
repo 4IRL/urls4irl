@@ -97,6 +97,11 @@ describe("renderTimeseriesChart", () => {
     expect(xLabels.length).toBe(3);
     expect(xLabels[0].textContent).not.toBe("");
     expect(xLabels[2].textContent).not.toBe("");
+    // Edge labels are anchored inward so neither overflows the viewBox and gets
+    // clipped; the interior label stays centered.
+    expect(xLabels[0].getAttribute("text-anchor")).toBe("start");
+    expect(xLabels[1].getAttribute("text-anchor")).toBe("middle");
+    expect(xLabels[2].getAttribute("text-anchor")).toBe("end");
   });
 
   it("wires <title> and <desc> for screen readers", () => {

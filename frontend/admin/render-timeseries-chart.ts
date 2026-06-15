@@ -259,13 +259,20 @@ export function renderTimeseriesChart({
     response.buckets.length > 1
       ? PLOT_WIDTH / (response.buckets.length - 1)
       : 0;
+  const lastIndex = response.buckets.length - 1;
   for (const index of xLabelIndices) {
     const xPosition = AXIS_LEFT_PADDING + index * stepX;
     const label = document.createElementNS(SVG_NAMESPACE, "text");
     label.setAttribute("class", "MetricsAxisLabel MetricsAxisLabelX");
     label.setAttribute("x", String(xPosition));
     label.setAttribute("y", String(xLabelY));
-    label.setAttribute("text-anchor", "middle");
+    // The plot spans the full viewBox width, so the edge labels sit at x=0 and
+    // x=VIEWBOX_WIDTH. Anchor the first label to its start and the last to its
+    // end (interior labels stay centered) so neither overflows the viewBox and
+    // gets clipped — the rightmost date was being cut off on mobile + desktop.
+    const textAnchor =
+      index === 0 ? "start" : index === lastIndex ? "end" : "middle";
+    label.setAttribute("text-anchor", textAnchor);
     label.textContent = formatBucketLabel(response.buckets[index]!.bucket);
     svg.appendChild(label);
   }

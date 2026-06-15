@@ -20,6 +20,27 @@ set -eu
 cmd=$(jq -r '.tool_input.command // empty')
 [ -z "$cmd" ] && exit 0
 
+# EXEMPT: known-good compounds — checked FIRST, before every block rule below.
+# A match here means the command is allowed to proceed to the normal
+# permission/sandbox flow even though it contains a chain operator. This is the
+# escape hatch for documented patterns that legitimately chain commands.
+# To add an exemption: append one extended-regex line (matched against the full
+# command). Keep each pattern as specific as possible so it can't shelter an
+# unrelated destructive command.
+EXEMPT_PATTERNS=(
+  # pytest inside the Docker web container (CLAUDE.md documented test invocation)
+  'source /code/venv/bin/activate[[:space:]]*&&[[:space:]]*(python3?[[:space:]]+-m[[:space:]]+)?pytest'
+  # GitHub App token prefix for gh / authenticated git push (command substitution)
+  '^GH_TOKEN=\$\('
+  # branch capture used by the push flow
+  '^BRANCH=\$\(git branch --show-current\)'
+)
+for exempt in "${EXEMPT_PATTERNS[@]}"; do
+  if printf '%s' "$cmd" | grep -qE "$exempt"; then
+    exit 0
+  fi
+done
+
 BLOCKED_PATTERNS=(
   "(^|[^[:alnum:]._/-])git[[:space:]]+push([[:space:]]|$)||all||git push must run alone so existing hooks evaluate it independently. Split cleanup/setup into separate Bash calls and run git push by itself."
   "^[[:space:]]*sleep[[:space:]]+[^[:space:]&]+[[:space:]]*&&||and||Leading \`sleep N &&\` burns a blocked Bash turn. Use the Monitor tool to wait for a condition, or Bash with run_in_background for a fire-and-forget job. To just run the second command, drop the sleep."
@@ -70,5 +91,17 @@ for entry in "${BLOCKED_PATTERNS[@]}"; do
     deny "$reason"
   fi
 done
+
+# General sequence-compound block: any command joined with && || ; is denied so
+# each piece is permission-checked on its own and destructive ops (e.g. rm -rf)
+# can't hide mid-chain. Pipes (|) and command-substitution $(...) are NOT treated
+# as compounds. The `\|\|` alternative matches a literal `||` only — a single `|`
+# (pipe, or grep BRE `\|` alternation) never matches. `;` matches only when
+# followed by whitespace or end-of-string, so a semicolon inside a quoted arg
+# (grep 'a;b', sed 's/x/y/;...') is not a false positive. Known-good compounds
+# are exempted at the top of this file.
+if printf '%s' "$cmd" | grep -qE '&&|\|\||;[[:space:]]|;$'; then
+  deny "Compound commands joined with \`&&\`, \`||\`, or \`;\` are blocked. Split into separate Bash tool calls — run independent ones in the same message to parallelize. This keeps each command individually permission-checked and stops destructive ops (e.g. \`rm -rf\`) from hiding inside a chain. Pipes (\`|\`) and \$(...) are fine. If this is a legitimate recurring pattern, add it to EXEMPT_PATTERNS in .claude/hooks/block-compound-commands.sh."
+fi
 
 exit 0

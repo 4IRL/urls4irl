@@ -156,6 +156,12 @@ def test_substring_filter_narrows_top_table_to_no_matches(
 
     wait_for_element_presence(browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10)
 
+    # Gauges is the default tab, so the API panel (and its substring filter)
+    # is hidden until the API tab is clicked.
+    wait_then_click_element(
+        browser, MDL.TAB_API_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
     substring_input = wait_then_get_element(
         browser, MDL.TOP_SUBSTRING_FILTER_API, time=5
     )
@@ -398,7 +404,7 @@ def test_flows_tab_renders_empty_state_with_no_data(
     assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_FLOW_EMPTY
 
 
-def test_gauges_tab_renders_charts_with_seeded_data(
+def test_gauges_tab_is_default_and_renders_chart_on_row_click(
     browser: WebDriver,
     create_test_users,
     provide_app: Flask,
@@ -408,14 +414,13 @@ def test_gauges_tab_renders_charts_with_seeded_data(
     """
     GIVEN the autouse `seeded_metrics` fixture has seeded AnonymousGauges rows
         (each gauge gets multiple sample timestamps via `_seed_uniform_gauges`)
-    WHEN an admin opens `/admin/metrics` and clicks the Gauges tab
-    THEN one trend-chart card renders per shipped gauge, each containing an
-        inline `svg.gauge-chart` with a plotted line.
+    WHEN an admin opens `/admin/metrics`
+    THEN the Gauges tab is selected by default (no click needed): a 2-column
+        table renders one row per shipped gauge, the global summary is hidden,
+        and no chart is shown (only the select-a-gauge prompt); clicking the
+        total_users row renders exactly that gauge's inline `svg.gauge-chart`
+        with a plotted line.
     """
-    assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_CARD)) == 0
-    ), "Gauge cards must not be present before the Gauges tab is activated."
-
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
         browser=browser,
@@ -424,32 +429,49 @@ def test_gauges_tab_renders_charts_with_seeded_data(
         config=provide_config,
     )
 
-    wait_then_click_element(browser, MDL.TAB_GAUGES_BUTTON)
+    # Gauges is the default landing tab — it loads without any tab click.
+    gauges_tab = wait_then_get_element(browser, MDL.TAB_GAUGES_BUTTON, time=5)
+    assert gauges_tab is not None
+    assert gauges_tab.get_attribute("aria-selected") == "true"
 
-    gauge_cards = wait_then_get_at_least_n_elements(
+    gauge_rows = wait_then_get_at_least_n_elements(
         browser,
-        MDL.GAUGES_CARD,
+        MDL.GAUGES_ROW,
         minimum_count=len(GaugeName),
         time=GAUGES_RENDER_TIMEOUT,
     )
-    assert len(gauge_cards) >= len(GaugeName), (
-        f"Expected at least {len(GaugeName)} gauge cards, " f"got {len(gauge_cards)}."
+    assert len(gauge_rows) >= len(GaugeName), (
+        f"Expected at least {len(GaugeName)} gauge rows, " f"got {len(gauge_rows)}."
     )
 
-    gauge_charts = wait_then_get_elements(
-        browser, MDL.GAUGES_CARD_CHART, time=GAUGES_RENDER_TIMEOUT
+    # The global event-totals summary is hidden on the Gauges tab.
+    summary = browser.find_element(By.CSS_SELECTOR, MDL.SUMMARY_SECTION)
+    assert not summary.is_displayed(), "Summary must be hidden on the Gauges tab."
+
+    # No chart until a row is clicked — only the prompt is shown.
+    prompt = wait_for_element_presence(
+        browser, MDL.GAUGES_DETAIL_PROMPT, timeout=GAUGES_RENDER_TIMEOUT
     )
-    assert len(gauge_charts) >= len(
-        GaugeName
-    ), "Every gauge card must render an inline svg.gauge-chart."
-    # A known volume gauge (total_users) has multiple seeded timestamps, so its
-    # chart must contain a plotted line.
+    assert prompt is not None
+    assert prompt.text == ADMIN_METRICS_STRINGS.METRICS_GAUGE_SELECT_PROMPT
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_DETAIL_CHART)) == 0
+    ), "No gauge chart should render before a row is clicked."
+
+    # Click a known volume gauge (total_users) that has multiple seeded
+    # timestamps, so its chart must contain a plotted line.
+    wait_then_click_element(browser, f'{MDL.GAUGES_ROW}[data-gauge-name="total_users"]')
     total_users_polyline = wait_for_element_presence(
         browser,
         "#gauge-chart-total_users polyline",
         timeout=GAUGES_RENDER_TIMEOUT,
     )
     assert total_users_polyline is not None
+    detail_charts = browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_DETAIL_CHART)
+    assert len(detail_charts) == 1, "Only the selected gauge's chart should render."
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_DETAIL_PROMPT)) == 0
+    ), "The prompt must be replaced by the chart once a row is selected."
 
 
 def test_gauges_tab_renders_empty_state_with_no_data(
@@ -462,17 +484,13 @@ def test_gauges_tab_renders_empty_state_with_no_data(
     """
     GIVEN the AnonymousGauges table has been emptied AFTER the autouse seed
         fixture (so the batched response carries an empty gauges[])
-    WHEN an admin opens `/admin/metrics` and clicks the Gauges tab
+    WHEN an admin opens `/admin/metrics` (Gauges is the default tab)
     THEN the panel-level empty state renders (a single MetricsEmptyState element
-        appended to the grid) and no gauge cards are present.
+        appended to the grid) and no gauge rows are present.
     """
     with provide_app.app_context():
         Anonymous_Gauges.query.delete()
         db.session.commit()
-
-    assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_CARD)) == 0
-    ), "Gauge cards must not be present before the Gauges tab is activated."
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
@@ -482,13 +500,12 @@ def test_gauges_tab_renders_empty_state_with_no_data(
         config=provide_config,
     )
 
-    wait_then_click_element(browser, MDL.TAB_GAUGES_BUTTON)
-
+    # Gauges is the default tab, so the empty state renders without a tab click.
     empty_state_element = wait_for_element_presence(
         browser, MDL.GAUGES_PANEL_EMPTY_STATE, timeout=GAUGES_RENDER_TIMEOUT
     )
     assert empty_state_element is not None
     assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_EMPTY_STATE
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_CARD)) == 0
-    ), "No gauge cards should render when the batched response is empty."
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_ROW)) == 0
+    ), "No gauge rows should render when the batched response is empty."
