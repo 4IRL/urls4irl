@@ -20,7 +20,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Service**    | `render_template()` direct                                                       |
 | **Template**   | `pages/splash.html` (includes `components/splash/marketing/features.html`, `components/splash/marketing/product_preview.html`) |
 | **JS Module**  | `frontend/splash/init.ts`                                                        |
-| **Tests**      | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`), `tests/integration/splash/test_splash_feature_tiles_a11y.py` (marker: `splash`), `tests/integration/splash/test_splash_chrome_a11y.py` (marker: `splash`), `tests/functional/splash_ui/test_splash_hero_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_splash_features_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_splash_product_preview_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_splash_footer_ui.py` (marker: `splash_ui`) |
+| **Tests**      | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`), `tests/integration/splash/test_splash_feature_tiles_a11y.py` (marker: `splash`), `tests/integration/splash/test_splash_chrome_a11y.py` (marker: `splash`), `tests/functional/splash_ui/test_splash_hero_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_splash_features_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_splash_product_preview_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_splash_footer_ui.py` (marker: `splash_ui`), `tests/functional/splash_ui/test_mobile_splash_modernized_ui.py` (marker: `mobile_ui`) |
 
 ### POST /login
 
