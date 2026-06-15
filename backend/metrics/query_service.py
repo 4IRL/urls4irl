@@ -936,6 +936,7 @@ def latest_gauge_snapshot() -> list[GaugeLatestRow]:
     """
     rows = (
         db.session.query(Anonymous_Gauges)
+        # SQLAlchemy legacy Query: .distinct(col) emits DISTINCT ON (col) in Postgres.
         .distinct(Anonymous_Gauges.gauge_name)
         .order_by(
             Anonymous_Gauges.gauge_name,
