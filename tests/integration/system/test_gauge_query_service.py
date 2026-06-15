@@ -174,6 +174,37 @@ def test_gauges_timeseries_all_excludes_samples_outside_window(
         pg_conn.close()
 
 
+def test_gauges_timeseries_all_returns_empty_gauges_on_no_data(
+    metrics_enabled_runner_app: Flask,
+) -> None:
+    """
+    GIVEN no gauge rows in the table
+    WHEN gauges_timeseries_all is called over the window
+    THEN the response carries an empty gauges list (no padding).
+    """
+    app = metrics_enabled_runner_app
+    pg_conn = build_pg_conn(app)
+    try:
+        truncate_gauges_tables(pg_conn)
+        assert _count_gauge_rows(pg_conn) == 0
+
+        base = _bucket_inside_window()
+        window_start = base - timedelta(days=1)
+        window_end = base + timedelta(hours=1)
+        with app.app_context():
+            response = gauges_timeseries_all(
+                window="day",
+                window_start=window_start,
+                window_end=window_end,
+            )
+
+        assert response.window == "day"
+        assert response.gauges == []
+    finally:
+        truncate_gauges_tables(pg_conn)
+        pg_conn.close()
+
+
 def test_gauge_timeseries_one_returns_single_gauge_ordered_samples(
     metrics_enabled_runner_app: Flask,
 ) -> None:
