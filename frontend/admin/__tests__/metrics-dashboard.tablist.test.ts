@@ -96,15 +96,15 @@ const DASHBOARD_HTML = `
     <button class="MetricsWindowButton" data-window="month" aria-pressed="false"></button>
     <button class="MetricsWindowButton" data-window="year" aria-pressed="false"></button>
     <div id="MetricsTablist" role="tablist">
-      <button id="MetricsTabApi"            role="tab" aria-selected="true"  aria-controls="MetricsPanelApi"            tabindex="0"  data-tab="api"></button>
+      <button id="MetricsTabGauges"         role="tab" aria-selected="true"  aria-controls="MetricsPanelGauges"         tabindex="0"  data-tab="gauges"></button>
+      <button id="MetricsTabApi"            role="tab" aria-selected="false" aria-controls="MetricsPanelApi"            tabindex="-1" data-tab="api"></button>
       <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui"></button>
       <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain"></button>
       <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows"></button>
-      <button id="MetricsTabGauges"         role="tab" aria-selected="false" aria-controls="MetricsPanelGauges"         tabindex="-1" data-tab="gauges"></button>
       <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
     </div>
-    <section id="MetricsSummary"><div id="MetricsSummaryGrid"></div></section>
-    <section id="MetricsPanelApi" role="tabpanel" tabindex="0">
+    <section id="MetricsSummary" hidden><div id="MetricsSummaryGrid"></div></section>
+    <section id="MetricsPanelApi" role="tabpanel" tabindex="0" hidden>
       <select id="MetricsTimeseriesEventApi"></select>
       <table id="MetricsTopTableApi"><tbody></tbody></table>
     </section>
@@ -121,7 +121,7 @@ const DASHBOARD_HTML = `
       <span id="MetricsPanelFlowsAnnouncement" class="visually-hidden" aria-live="polite"></span>
       <div id="MetricsFlowGrid" class="flow-grid"></div>
     </section>
-    <section id="MetricsPanelGauges" role="tabpanel" tabindex="0" hidden>
+    <section id="MetricsPanelGauges" role="tabpanel" tabindex="0">
       <span class="gauges-loading-spinner" aria-hidden="true"></span>
       <span id="MetricsPanelGaugesAnnouncement" class="visually-hidden" aria-live="polite"></span>
       <div id="MetricsGaugeGrid" class="gauge-grid"></div>
@@ -236,15 +236,19 @@ describe("metrics-dashboard tablist a11y", () => {
   });
 
   it("clicking a tab updates aria-selected and roving tabindex", () => {
-    expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("true");
-    expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("0");
+    expect(getTab("MetricsTabGauges").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getTab("MetricsTabGauges").getAttribute("tabindex")).toBe("0");
     expect(getTab("MetricsTabUi").getAttribute("aria-selected")).toBe("false");
     expect(getTab("MetricsTabUi").getAttribute("tabindex")).toBe("-1");
 
     getTab("MetricsTabUi").click();
 
-    expect(getTab("MetricsTabApi").getAttribute("aria-selected")).toBe("false");
-    expect(getTab("MetricsTabApi").getAttribute("tabindex")).toBe("-1");
+    expect(getTab("MetricsTabGauges").getAttribute("aria-selected")).toBe(
+      "false",
+    );
+    expect(getTab("MetricsTabGauges").getAttribute("tabindex")).toBe("-1");
     expect(getTab("MetricsTabUi").getAttribute("aria-selected")).toBe("true");
     expect(getTab("MetricsTabUi").getAttribute("tabindex")).toBe("0");
     expect(getTab("MetricsTabDomain").getAttribute("aria-selected")).toBe(
@@ -344,14 +348,14 @@ describe("metrics-dashboard tablist a11y", () => {
   });
 
   it("hidden attribute toggles on tabpanels in sync with selection", () => {
-    expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(false);
+    expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(false);
+    expect(getPanel("MetricsPanelApi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelUi").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelDomain").hasAttribute("hidden")).toBe(true);
     expect(getPanel("MetricsPanelPipelineHealth").hasAttribute("hidden")).toBe(
       true,
     );
     expect(getPanel("MetricsPanelFlows").hasAttribute("hidden")).toBe(true);
-    expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(true);
 
     getTab("MetricsTabUi").click();
 
@@ -379,6 +383,10 @@ describe("metrics-dashboard tablist a11y", () => {
   it("hides the global summary on Flows and Gauges, restores it on category tabs", () => {
     const summary = document.getElementById("MetricsSummary") as HTMLElement;
     // Default tab (API, a category tab) shows the summary.
+    expect(summary.hasAttribute("hidden")).toBe(true);
+
+    // A category tab restores the summary.
+    getTab("MetricsTabApi").click();
     expect(summary.hasAttribute("hidden")).toBe(false);
 
     getTab("MetricsTabFlows").click();
