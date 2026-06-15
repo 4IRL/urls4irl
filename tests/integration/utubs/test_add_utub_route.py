@@ -4,6 +4,7 @@ import time
 
 from flask import url_for
 from flask_login import current_user
+from markupsafe import escape
 import pytest
 import redis
 from redis.client import Redis
@@ -21,7 +22,7 @@ from tests.models_for_test import (
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.all_routes import ROUTES
-from backend.utils.constants import CONFIG_CONSTANTS
+from backend.utils.constants import CONFIG_CONSTANTS, CONSTANTS
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.json_strs import (
     FIELD_REQUIRED_STR,
@@ -688,10 +689,7 @@ def test_session_expiration(
 
     # Hits splash page due to session expiration
     assert response.status_code == 200
-    assert (
-        bytes("A simple, clean way to permanently save and share URLs.", "utf-8")
-        in response.data
-    )
+    assert str(escape(CONSTANTS.STRINGS.SPLASH_TAGLINE)).encode() in response.data
 
 
 def test_add_multiple_valid_utubs(login_first_user_with_register):

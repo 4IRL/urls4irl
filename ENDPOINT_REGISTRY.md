@@ -20,7 +20,7 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Service**    | `render_template()` direct                                                       |
 | **Template**   | `pages/splash.html`                                                              |
 | **JS Module**  | `frontend/splash/init.ts`                                                        |
-| **Tests**      | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`) |
+| **Tests**      | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`), `tests/functional/splash_ui/test_splash_hero_ui.py` (marker: `splash_ui`) |
 
 ### POST /login
 

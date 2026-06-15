@@ -307,8 +307,10 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_X_MODAL_DISMISS = f"{LOGIN_MODAL} .close-register-login-modal"
     REGISTER_X_MODAL_DISMISS = f"{REGISTER_MODAL} .close-register-login-modal"
 
-    # Jumbotron
+    # Hero section
     WELCOME_TEXT = "#splash-major-text"
+    SPLASH_HERO = "#splashHero"
+    SPLASH_TAGLINE = "#splash-mini-text"
 
     # Reset Password
     INPUT_NEW_PASSWORD = "#newPassword"

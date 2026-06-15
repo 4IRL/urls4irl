@@ -638,13 +638,6 @@ a {
         width: 5%;
     }
 }
-@media (max-width: 558px) {
-    #splash-mini-text {
-        font-size: 0.8rem;
-        text-align: center;
-    }
-}
-
 @media (max-width: 380px) {
     footer {
         font-size: 0.8rem;
