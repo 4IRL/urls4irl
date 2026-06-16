@@ -150,6 +150,29 @@ describe("settings-page tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("SettingsTabUiSettings"));
   });
 
+  it("an unrecognized key (Enter) on a tab leaves all tab state unchanged", () => {
+    getTab("SettingsTabAccount").focus();
+    $("#SettingsTabAccount").trigger($.Event("keydown", { key: "Enter" }));
+
+    expect(getTab("SettingsTabAccount").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getTab("SettingsTabAccount").getAttribute("tabindex")).toBe("0");
+    expect(getTab("SettingsTabStats").getAttribute("aria-selected")).toBe(
+      "false",
+    );
+    expect(getTab("SettingsTabStats").getAttribute("tabindex")).toBe("-1");
+
+    expect(getPanel("SettingsPanelAccount").hasAttribute("hidden")).toBe(false);
+    expect(getPanel("SettingsPanelStats").hasAttribute("hidden")).toBe(true);
+    expect(getPanel("SettingsPanelPrivacyData").hasAttribute("hidden")).toBe(
+      true,
+    );
+    expect(getPanel("SettingsPanelUiSettings").hasAttribute("hidden")).toBe(
+      true,
+    );
+  });
+
   it("clicking a tab moves focus to that tab's panel (mouse activation)", () => {
     getTab("SettingsTabStats").click();
 
