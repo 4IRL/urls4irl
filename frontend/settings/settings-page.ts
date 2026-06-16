@@ -85,7 +85,7 @@ function handleTabButtonClick(event: JQuery.TriggeredEvent): void {
  */
 // keydown (not keyup) — ARIA APG tablist spec; intentional deviation from repo's keyup convention — do not change to keyup
 function handleTabKeydown(event: JQuery.TriggeredEvent): void {
-  const key = event.key as string | undefined;
+  const key = event.key;
   if (
     key !== "ArrowLeft" &&
     key !== "ArrowRight" &&
