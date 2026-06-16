@@ -690,16 +690,16 @@ def test_query_top_resource_invalid_for_category_returns_400(
 ) -> None:
     """
     GIVEN an admin client
-    WHEN GETing /api/metrics/query/top?window=day&category=domain&resource=search
-        (`search` does not appear in `RESOURCE_BY_CATEGORY[DOMAIN]` — domain
-        covers utub, url, tag, member, auth only)
+    WHEN GETing /api/metrics/query/top?window=day&category=domain&resource=form
+        (`form` does not appear in `RESOURCE_BY_CATEGORY[DOMAIN]` — domain
+        covers utub, url, tag, member, auth, and search only)
     THEN the response is 400 with `error_code=INVALID_QUERY_PARAM` — the
         model_validator rejects pairs not listed in `RESOURCE_BY_CATEGORY`.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
 
     response = logged_in_client.get(
-        _TOP_URL + "?window=day&category=domain&resource=search",
+        _TOP_URL + "?window=day&category=domain&resource=form",
         headers=_AJAX_HEADERS,
     )
 
