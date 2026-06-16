@@ -39,8 +39,13 @@ const SETTINGS_TABS = [
  * tablist (ARIA APG).
  */
 function handleTabClick({ tabId }: { tabId: string }): void {
+  let activePanelId: string | null = null;
+
   for (const entry of SETTINGS_TABS) {
     const isActive = entry.tab === tabId;
+    if (isActive) {
+      activePanelId = entry.panel;
+    }
 
     const tabElement = document.getElementById(entry.tab);
     if (tabElement !== null) {
@@ -58,9 +63,8 @@ function handleTabClick({ tabId }: { tabId: string }): void {
     }
   }
 
-  const activeEntry = SETTINGS_TABS.find((entry) => entry.tab === tabId);
-  if (activeEntry !== undefined) {
-    document.getElementById(activeEntry.panel)?.focus();
+  if (activePanelId !== null) {
+    document.getElementById(activePanelId)?.focus();
   }
 }
 
