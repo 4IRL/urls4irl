@@ -25,6 +25,18 @@ def test_search_query_schema_rejects_whitespace_only_string():
         SearchQuerySchema.model_validate({"q": "   "})
 
 
+def test_search_query_schema_accepts_single_char():
+    single_char_query = "a" * SEARCH_CONSTANTS.MIN_QUERY_LENGTH
+    validated = SearchQuerySchema.model_validate({"q": single_char_query})
+    assert validated.q == single_char_query
+
+
+def test_search_query_schema_accepts_max_length_string():
+    max_length_query = "a" * SEARCH_CONSTANTS.MAX_QUERY_LENGTH
+    validated = SearchQuerySchema.model_validate({"q": max_length_query})
+    assert validated.q == max_length_query
+
+
 def test_search_query_schema_rejects_query_exceeding_max_length():
     too_long_query = "a" * (SEARCH_CONSTANTS.MAX_QUERY_LENGTH + 1)
     with pytest.raises(ValidationError):
