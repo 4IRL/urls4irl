@@ -583,3 +583,52 @@ def test_search_tiebreak_across_groups_by_match_count_desc(
         results = search_across_user_utubs(query="countquery", user_id=FIRST_USER_ID)
 
         assert results.results[0].utub_id == utub_alfa.id
+
+
+def test_search_tiebreak_across_groups_by_utub_name_asc(
+    register_multiple_users,
+    app: Flask,
+):
+    with app.app_context():
+        creating_user: Users = Users.query.get(FIRST_USER_ID)
+
+        utub_bravo = Utubs(
+            name="Bravo",
+            utub_creator=creating_user.id,
+            utub_description="",
+        )
+        utub_alpha = Utubs(
+            name="Alpha",
+            utub_creator=creating_user.id,
+            utub_description="",
+        )
+        db.session.add(utub_bravo)
+        db.session.add(utub_alpha)
+        db.session.commit()
+
+        for utub in (utub_bravo, utub_alpha):
+            membership = Utub_Members()
+            membership.utub_id = utub.id
+            membership.user_id = creating_user.id
+            db.session.add(membership)
+        db.session.commit()
+
+        _add_url_to_utub(
+            utub_bravo,
+            "https://nomatch-bravo.com/",
+            "namequery title",
+            creating_user.id,
+        )
+        _add_url_to_utub(
+            utub_alpha,
+            "https://nomatch-alpha.com/",
+            "namequery title",
+            creating_user.id,
+        )
+
+        assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_bravo.id).count() == 1
+        assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_alpha.id).count() == 1
+
+        results = search_across_user_utubs(query="namequery", user_id=FIRST_USER_ID)
+
+        assert results.results[0].utub_name == "Alpha"
