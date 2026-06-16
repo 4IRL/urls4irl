@@ -547,12 +547,13 @@ a {
     border-bottom: 0;
 }
 
-/* The Admin · Metrics entry uses <li><div><a> (a link to a different page)
- * rather than a <button>, so the rule above can't paint its divider. Scope the
- * divider to that specific list-item so the menu shows a uniform horizontal
- * line between every row, without double-painting on back_home_btn (which has
- * its own inner <button>). */
-#NavbarDropdownsHome #adminMetrics {
+/* The Admin · Metrics and Settings entries use <li><div><a> (links to other
+ * pages) rather than <button>s, so the rule above can't paint their dividers.
+ * Scope the divider to those specific list-items so the menu shows a uniform
+ * horizontal line between every row, without double-painting on back_home_btn
+ * (which has its own inner <button>). */
+#NavbarDropdownsHome #adminMetrics,
+#NavbarDropdownsHome #userSettings {
     border-top: 2px solid var(--grayBadgeSelectionFocus);
 }
 
