@@ -1,9 +1,9 @@
 from typing import Tuple
 from urllib.parse import urlsplit
 
+import pytest
 from flask import Flask, url_for
 from flask.testing import FlaskClient
-import pytest
 
 from backend.models.users import Users
 from backend.search.constants import SearchErrorCodes, SearchFailureMessages
