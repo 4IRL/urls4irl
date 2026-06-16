@@ -84,12 +84,17 @@ def test_mobile_splash_product_preview_visible_and_stacked(
 
     preview = wait_for_element_presence(browser, SPL.SPLASH_PRODUCT_PREVIEW)
     assert preview is not None
-    browser.execute_script("arguments[0].scrollIntoView();", preview)
     assert preview.is_displayed()
 
+    # The mock is shown on mobile (the section is no longer display:none). It
+    # fades in via scroll-reveal, so assert it is laid out and sized rather than
+    # is_displayed(): the reveal's opacity transition only fires once the element
+    # scrolls into view, which headless Chrome's programmatic scroll does not
+    # reliably trigger. display != none + a non-zero height proves the un-hiding.
     mock = wait_for_element_presence(browser, SPL.SPLASH_PRODUCT_MOCK)
     assert mock is not None
-    assert mock.is_displayed()
+    assert mock.value_of_css_property("display") != "none"
+    assert mock.size["height"] > 0
 
     utub_rows = browser.find_elements(By.CSS_SELECTOR, SPL.SPLASH_MOCK_UTUB_ROWS)
     url_rows = browser.find_elements(By.CSS_SELECTOR, SPL.SPLASH_MOCK_URL_ROWS)

@@ -13,6 +13,7 @@ import {
   SEND_INITIAL_EMAIL,
 } from "./email-validation-form.js";
 import { AUTH_MODAL_OPEN_FORM } from "../types/metrics-dim-values.js";
+import { initScrollReveal } from "./scroll-reveal.js";
 
 type ErrorResponse = Schema<"ErrorResponse">;
 
@@ -37,6 +38,7 @@ function isFormFieldName(key: string): key is FormFieldName {
  * Sets up button handlers and rate limit error handling
  */
 export function initSplash(): void {
+  initScrollReveal();
   setToRegisterButton();
   setToLoginButton();
   clearOpenFormOnAuthModalHide($("#LoginModal"));
