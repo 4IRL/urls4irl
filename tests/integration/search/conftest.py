@@ -1,5 +1,5 @@
-from flask import Flask
 import pytest
+from flask import Flask
 
 from backend import db
 from backend.models.utub_tags import Utub_Tags
