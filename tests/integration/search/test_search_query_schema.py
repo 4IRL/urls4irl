@@ -1,5 +1,5 @@
-import pytest
 from pydantic import ValidationError
+import pytest
 
 from backend.schemas.requests.search import SearchQuerySchema
 from backend.schemas.search import SearchHitSchema
