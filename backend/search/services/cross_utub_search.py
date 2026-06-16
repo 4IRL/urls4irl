@@ -4,6 +4,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
 
 from backend import db
+from backend.extensions.metrics.writer import record_event
+from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -137,4 +139,8 @@ def search_across_user_utubs(*, query: str, user_id: int) -> SearchResultsSchema
         SearchUtubGroupSchema.from_utub_urls(hit_list[0][0].utub, hit_list)
         for _group_utub_id, hit_list in sorted_groups
     ]
+    record_event(
+        EventName.CROSS_UTUB_SEARCH_PERFORMED,
+        dimensions={"has_results": "true" if results else "false"},
+    )
     return SearchResultsSchema(results=results)

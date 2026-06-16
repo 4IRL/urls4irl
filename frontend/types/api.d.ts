@@ -1684,6 +1684,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
           | "login_success"
@@ -1885,6 +1886,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
           | "login_success"

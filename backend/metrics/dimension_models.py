@@ -266,6 +266,12 @@ class _DimApiMetricsIngestBatch(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class _DimCrossUtubSearchPerformed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    has_results: Literal["true", "false"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimLoginFailure(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Literal["unknown_user", "bad_password", "email_unverified"]
@@ -301,6 +307,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.API_METRICS_INGEST_BATCH: _DimApiMetricsIngestBatch,
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
     # `LOGIN_FAILURE` is the only domain event with a closed-set extra dim (`reason`).
+    EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
     EventName.LOGIN_SUCCESS: _DimDeviceOnly,

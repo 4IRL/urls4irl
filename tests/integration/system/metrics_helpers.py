@@ -26,6 +26,7 @@ REJECTION_REASON_DIM_KEY = "reason"
 
 DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
     {
+        EventName.CROSS_UTUB_SEARCH_PERFORMED,
         EventName.URL_ACCESSED,
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
@@ -51,7 +52,10 @@ authenticated test fixture cannot reach. The rejection events
 (REGISTER_REJECTED, URL_CREATE_REJECTED) fire only on the register / URL-create
 failure branches, which the shared authenticated success-path seed never
 drives — each has its own per-cause emit test under
-tests/integration/splash/ and tests/integration/utuburls/. Each excluded event
+tests/integration/splash/ and tests/integration/utuburls/.
+CROSS_UTUB_SEARCH_PERFORMED fires only from the /search service flow, which the
+shared seed does not exercise; its per-dimension emit test lives under
+tests/integration/search/. Each excluded event
 has its own per-route emit test under tests/integration/<feature>/ and flushes
 through the same pipeline, so the end-to-end invariant is still covered.
 """

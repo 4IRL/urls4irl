@@ -58,6 +58,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     # -----------------------------------------------------------------------
     # Domain — explicit record_event() calls in service layer
     # -----------------------------------------------------------------------
+    EventName.CROSS_UTUB_SEARCH_PERFORMED: EventRegistryEntry(
+        description="Cross-UTub search executed across the user's member UTubs",
+        category=EventCategory.DOMAIN,
+        dimensions={"has_results": ("true", "false")},
+    ),
     EventName.UTUB_CREATED: EventRegistryEntry(
         description="New UTub created",
         category=EventCategory.DOMAIN,
