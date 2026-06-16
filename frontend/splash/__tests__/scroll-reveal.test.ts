@@ -93,6 +93,21 @@ describe("splash/scroll-reveal", () => {
     ).toBe(true);
   });
 
+  it("reveals all targets immediately when IntersectionObserver is unavailable", () => {
+    window.IntersectionObserver =
+      undefined as unknown as typeof IntersectionObserver;
+
+    initScrollReveal();
+
+    expect(observeMock).not.toHaveBeenCalled();
+    expect(
+      document.getElementById("tileA")!.classList.contains("is-revealed"),
+    ).toBe(true);
+    expect(
+      document.getElementById("tileB")!.classList.contains("is-revealed"),
+    ).toBe(true);
+  });
+
   it("no-ops when there are no reveal targets", () => {
     document.body.innerHTML = "";
 

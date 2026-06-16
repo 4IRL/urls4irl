@@ -98,6 +98,11 @@
     --cookieBannerTextColor: var(--offWhiteSplashBackgroundBanner);
     --cookieBannerTitleColor: rgba(106, 246, 141, 0.94);
 
+    /* Brand green channels (R, G, B) for composing rgba() at varied alphas */
+    --color-brand-green-rgb: 40, 167, 69;
+    /* Dark scrim overlay (e.g. behind the splash product mock) */
+    --color-overlay-dark: rgba(0, 0, 0, 0.25);
+
     /* Layout sizing */
     --deckSubheaderMinHeight: 2.25rem;
 
@@ -154,6 +159,7 @@
 
     /* Radius */
     --radius-sm: 6px;
+    --radius-card: 10px;
     --radius-md: 12px;
     --radius-lg: 15px;
     --radius-pill: 25px;
@@ -162,7 +168,7 @@
     --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
     --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.7);
-    --shadow-glow-green: 0 0 15px rgba(40, 167, 69, 0.3);
+    --shadow-glow-green: 0 0 15px rgba(var(--color-brand-green-rgb), 0.3);
 
     /* Font family */
     --font-display: 'Nunito', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;

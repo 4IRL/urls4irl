@@ -1143,8 +1143,7 @@ def scroll_footer_link_into_view(
     scroll (which headless Chrome does honor), bringing the footer into view.
     """
     link = wait_for_element_presence(browser, css_selector)
-    if link is None:
-        return
+    assert link is not None
     body = browser.find_element(By.TAG_NAME, "body")
     body.send_keys(Keys.END)
     WebDriverWait(browser, timeout).until(
