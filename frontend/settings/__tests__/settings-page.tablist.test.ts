@@ -172,6 +172,19 @@ describe("settings-page tablist a11y", () => {
     expect(visiblePanels[0].id).toBe("SettingsPanelAccount");
   });
 
+  it("initSettingsPage with no #SettingsPage in the DOM is a no-op that binds no handlers", () => {
+    document.body.innerHTML = "";
+    initSettingsPage();
+
+    const orphanTab = document.createElement("button");
+    orphanTab.type = "button";
+    orphanTab.setAttribute("role", "tab");
+    orphanTab.id = "SettingsTabAccount";
+    document.body.appendChild(orphanTab);
+
+    expect(() => orphanTab.click()).not.toThrow();
+  });
+
   it("a tab button with an unknown id is ignored without throwing", () => {
     const orphanTab = document.createElement("button");
     orphanTab.type = "button";
