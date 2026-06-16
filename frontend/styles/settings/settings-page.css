@@ -10,10 +10,32 @@
 
 #SettingsPage {
     background: var(--defaultPageBackgroundColor);
+    /* Center the column on desktop and keep content off the screen edges on
+       mobile — the flush-left title was missing this inset (see mockup). */
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 1.75rem 1.25rem 0;
 }
 
 #SettingsPage h1 {
     color: #fff;
+    /* Larger, heavier title with a short green accent underline (matching the
+       active-tab green) so the page header reads as a clear anchor. */
+    display: inline-block;
+    font-size: clamp(2rem, 6vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    margin: 0 0 1.25rem;
+}
+
+#SettingsPage h1::after {
+    content: "";
+    display: block;
+    width: 2.75rem;
+    height: 4px;
+    margin-top: 0.5rem;
+    border-radius: 2px;
+    background: var(--deckHeaderGreen);
 }
 
 /* ---- Tablist ----------------------------------------------------------- */
