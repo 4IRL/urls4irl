@@ -415,6 +415,10 @@ def test_delete_member_submit_button_enabled_on_second_modal_open(
     # Open the delete modal for the second member
     delete_member_active_utub(browser, second_member_user.username)
 
+    # Gate on the modal being fully rendered before asserting on its submit button,
+    # so the button-enabled check is not raced against modal render under parallel load
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+
     # Assert the submit button is NOT disabled when the modal opens for the second member
     WebDriverWait(browser, 5).until(
         lambda driver: not driver.find_element(
