@@ -3540,7 +3540,7 @@
       "SearchUtubGroupSchema": {
         "properties": {
           "utubID": {
-            "description": "Source UTub id \u2014 Phase 2 calls selectUTub(utub_id)",
+            "description": "Source UTub id \u2014 consumers use this to navigate to or label the matching UTub.",
             "type": "integer"
           },
           "utubName": {

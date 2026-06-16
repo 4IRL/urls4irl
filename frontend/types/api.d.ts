@@ -1011,7 +1011,7 @@ export interface components {
       matchedFields: components["schemas"]["MatchedField"][];
     };
     SearchUtubGroupSchema: {
-      /** @description Source UTub id — Phase 2 calls selectUTub(utub_id) */
+      /** @description Source UTub id — consumers use this to navigate to or label the matching UTub. */
       utubID: number;
       /** @description Source UTub name for the group label */
       utubName: string;

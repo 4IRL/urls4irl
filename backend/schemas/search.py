@@ -52,7 +52,8 @@ class SearchHitSchema(BaseSchema):
 
 class SearchUtubGroupSchema(BaseSchema):
     utub_id: int = Field(
-        alias=UTUB_ID, description="Source UTub id — Phase 2 calls selectUTub(utub_id)"
+        alias=UTUB_ID,
+        description="Source UTub id — consumers use this to navigate to or label the matching UTub.",
     )
     utub_name: str = Field(
         alias=UTUB_NAME, description="Source UTub name for the group label"
