@@ -13,7 +13,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 @pytest.fixture
 def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
     app: Flask, add_one_url_to_each_utub_no_tags, add_tags_to_utubs
-):
+) -> None:
     """
     After each user has made their own UTub, with one URL added by that user to each UTub,
     now add first user to second UTub as UTub member, and add tags to all currently added URLs
