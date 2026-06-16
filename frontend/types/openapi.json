@@ -1156,6 +1156,61 @@
         }
       }
     },
+    "/search": {
+      "get": {
+        "operationId": "searchAcrossUtubs",
+        "tags": ["search"],
+        "security": [
+          {
+            "sessionAuth": []
+          }
+        ],
+        "description": "Search across all of the current user's member UTubs, grouped by source UTub.",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "examples": ["python"],
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "description": "Case-insensitive search term matched against URL strings, titles, and tags."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Search results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SearchResultsSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/register": {
       "post": {
         "operationId": "registerUser",
@@ -3440,6 +3495,96 @@
         "required": ["window_start", "window_end", "gauges"],
         "type": "object"
       },
+      "MatchedField": {
+        "enum": ["url", "title", "tag"],
+        "type": "string"
+      },
+      "SearchHitSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Utub_Urls association id (the .urlRow[utuburlid] DOM key)",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "urlTitle": {
+            "description": "Per-UTub display title for the URL",
+            "type": "string"
+          },
+          "urlTags": {
+            "description": "Tags applied to this URL in its UTub",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagOnAddDeleteSchema"
+            },
+            "type": "array"
+          },
+          "matchedFields": {
+            "description": "Which fields the query matched (title/url/tag) \u2014 Phase 2 highlights these",
+            "items": {
+              "$ref": "#/components/schemas/MatchedField"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlString",
+          "urlTitle",
+          "urlTags",
+          "matchedFields"
+        ],
+        "type": "object"
+      },
+      "SearchUtubGroupSchema": {
+        "properties": {
+          "utubID": {
+            "description": "Source UTub id \u2014 Phase 2 calls selectUTub(utub_id)",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Source UTub name for the group label",
+            "type": "string"
+          },
+          "urls": {
+            "description": "Matching URLs within this UTub, ranked best-first",
+            "items": {
+              "$ref": "#/components/schemas/SearchHitSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["utubID", "utubName", "urls"],
+        "type": "object"
+      },
+      "UtubTagOnAddDeleteSchema": {
+        "properties": {
+          "utubTagID": {
+            "description": "Unique tag ID within the UTub",
+            "type": "integer"
+          },
+          "tagString": {
+            "description": "Tag label text",
+            "type": "string"
+          }
+        },
+        "required": ["utubTagID", "tagString"],
+        "type": "object"
+      },
+      "SearchResultsSchema": {
+        "properties": {
+          "results": {
+            "description": "Groups ranked best-first; one group per source UTub with \u22651 matching URL",
+            "items": {
+              "$ref": "#/components/schemas/SearchUtubGroupSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["results"],
+        "type": "object"
+      },
       "RegisterRequest": {
         "properties": {
           "username": {
@@ -3799,20 +3944,6 @@
           "EMPTY_URL"
         ],
         "description": "Error codes for URLErrorCodes"
-      },
-      "UtubTagOnAddDeleteSchema": {
-        "properties": {
-          "utubTagID": {
-            "description": "Unique tag ID within the UTub",
-            "type": "integer"
-          },
-          "tagString": {
-            "description": "Tag label text",
-            "type": "string"
-          }
-        },
-        "required": ["utubTagID", "tagString"],
-        "type": "object"
       },
       "UtubUrlDetailSchema": {
         "properties": {

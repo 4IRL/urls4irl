@@ -152,6 +152,7 @@ def create_app(
     from backend.contact.routes import contact
     from backend.members.routes import members
     from backend.metrics.routes import metrics
+    from backend.search.routes import search
     from backend.splash.routes import splash
     from backend.system.routes import system
     from backend.urls.routes import urls
@@ -170,6 +171,7 @@ def create_app(
     app.register_blueprint(contact)
     app.register_blueprint(members)
     app.register_blueprint(metrics)
+    app.register_blueprint(search)
     app.register_blueprint(splash)
     app.register_blueprint(system)
     app.register_blueprint(urls)

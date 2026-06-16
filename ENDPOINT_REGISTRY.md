@@ -409,6 +409,28 @@ Base path: `/api/metrics`
 
 ---
 
+## Search Blueprint
+
+Base path: `/search`
+
+### GET /search
+
+| Layer            | Location                                                                                                                                                                                                                                                                                                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**      | `backend/search/routes.py:search_across_utubs`                                                                                                                                                                                                                                                                                          |
+| **Decorators**   | `@email_validation_required`, `@api_route(query_schema=SearchQuerySchema, response_schema=SearchResultsSchema, ajax_required=True, tags=[OPEN_API.SEARCH], description="Search across all of the current user's member UTubs, grouped by source UTub.", status_codes={200: SearchResultsSchema, 400: ErrorResponse})`                     |
+| **Service**      | `backend/search/services/cross_utub_search.py:search_across_user_utubs`                                                                                                                                                                                                                                                                 |
+| **Request**      | `backend/schemas/requests/search.py:SearchQuerySchema`                                                                                                                                                                                                                                                                                  |
+| **Query Params** | Required `q` (1–100 chars, stripped) — case-insensitive term matched against URL strings, per-UTub titles, and tag text. Validated at runtime via `_parse_query_args` (the `query_schema` decorator arg is OpenAPI metadata only).                                                                                                       |
+| **Response**     | `backend/schemas/search.py:SearchResultsSchema` (→ `SearchUtubGroupSchema` → `SearchHitSchema`); `MatchedField` StrEnum (`backend/search/constants.py`)                                                                                                                                                                                  |
+| **Template**     | None — JSON only                                                                                                                                                                                                                                                                                                                       |
+| **JS Module**    | None yet — Phase 2 consumes `APP_CONFIG.routes.crossUtubSearch` (`backend/utils/all_routes.py:generate_routes_js`) and the generated `SearchResultsSchema`/`MatchedField` types from `frontend/types/api.d.ts`                                                                                                                          |
+| **CSRF**         | None — GETs not CSRF-checked by Flask-WTF default                                                                                                                                                                                                                                                                                       |
+| **Auth**         | `@email_validation_required` — unauthenticated/unvalidated requests 302-redirect (not 401); membership scoped in SQL to the caller's `Utub_Members` rows                                                                                                                                                                                |
+| **Tests**        | `tests/integration/search/test_search_query_schema.py` (marker: `urls`), `tests/integration/search/test_cross_utub_search_service.py` (marker: `urls`), `tests/integration/search/test_search_route.py` (marker: `urls`)                                                                                                                 |
+
+---
+
 ## Tags Blueprint — UTub Tags
 
 Base path: `/utubs/<utub_id>/tags`
