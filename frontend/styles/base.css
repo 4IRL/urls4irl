@@ -24,10 +24,10 @@ main {
 }
 
 footer {
-    height: 1.75rem;
+    min-height: 1.75rem;
     justify-content: center;
     gap: 1rem;
-    align-items: flex-start;
+    align-items: center;
     color: var(--footerURLColor);
 }
 
@@ -638,16 +638,20 @@ a {
         width: 5%;
     }
 }
-@media (max-width: 558px) {
-    #splash-mini-text {
-        font-size: 0.8rem;
-        text-align: center;
+@media (max-width: 380px) {
+    footer {
+        font-size: 0.85rem;
+    }
+    footer a {
+        color: var(--UTubDescriptionColor);
     }
 }
 
-@media (max-width: 380px) {
-    footer {
-        font-size: 0.8rem;
+@media (max-width: 768px) {
+    #PrivacyBtn, #TermsBtn, #ContactBtn {
+        min-height: 2.75rem;
+        display: inline-flex;
+        align-items: center;
     }
 }
 

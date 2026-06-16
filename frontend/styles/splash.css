@@ -16,16 +16,6 @@ form {
 
 /* Splash */
 
-#BG-img {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
-}
-
 .email-container {
     text-align: center;
     display: flex;
@@ -36,43 +26,138 @@ form {
     width: 100%;
 }
 
-.container-fluid {
-    padding-right: 0px;
-    padding-left: 0px;
+.splash-page-main {
+    min-height: calc(100dvh - 3rem - 1.75rem);  /* navbar 3rem + footer 1.75rem */
+    background-color: var(--defaultPageBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    overflow-y: auto;
+    font-family: var(--font-display);
 }
 
-.jumbotron-holder {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-}
-
-
-.jumbotron-holder {
-    z-index: 1;
-}
-
-.jumbotron {
-    background: var(--offWhiteSplashBackgroundBanner);
-    padding: 6rem 1rem;
+#splashHero {
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 100%;
+    justify-content: center;
+    gap: var(--space-6);
+    padding: var(--space-16) var(--space-4);
+    text-align: center;
+    max-width: 64rem;
+    margin: 0 auto;
+}
+
+.splash-hero-title {
+    font-size: var(--fs-display);
+    font-weight: var(--fw-light);
+    line-height: 1.1;
+    margin: 0;
+}
+
+.splash-hero-tagline {
+    font-size: var(--fs-xl);
+    font-weight: var(--fw-medium);
+    color: var(--splashLabelGreen);
+    max-width: 36rem;
+    margin: 0;
+}
+
+.splash-hero-cta-row {
+    display: flex;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 .splash-button {
-    margin-top: 10px;
-    width: 20%;
-    min-width: 250px;
-    max-width: 450px;
+    min-width: 11rem;
+    min-height: 2.75rem;          /* 44px touch target */
+    padding: var(--space-2) var(--space-6);
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    border-radius: var(--radius-md);
+    background-color: var(--darkSplashLabelGreen);  /* WCAG AA: 4.66:1 with white */
+    border-color: var(--darkSplashLabelGreen);
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.splash-button:hover {
     background-color: var(--splashGreen);
-    border-color: var(--splashGreen);
+    transform: translateY(-1px);
+}
+
+.splash-button:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* ===== Flair: scroll-reveal, hero depth, CTA emphasis, living mock ===== */
+
+/* Scroll-reveal — elements start hidden + shifted; scroll-reveal.ts adds
+   .is-revealed when they enter the viewport, animating opacity + translateY. */
+.reveal-on-scroll {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease, transform 0.6s ease;
+    will-change: opacity, transform;
+}
+.reveal-on-scroll.is-revealed {
+    opacity: 1;
+    transform: none;
+}
+/* Stagger the three feature tiles so the grid reveals as a cascade. */
+.splash-feature-tile.reveal-on-scroll:nth-child(2) { transition-delay: 0.12s; }
+.splash-feature-tile.reveal-on-scroll:nth-child(3) { transition-delay: 0.24s; }
+
+/* Hero depth — ambient brand-green radial glow behind the headline. */
+#splashHero {
+    position: relative;
+    isolation: isolate;
+}
+#splashHero::before {
+    content: "";
+    position: absolute;
+    inset: -10% 0 auto 0;
+    height: 130%;
+    z-index: -1;
+    background: radial-gradient(55% 55% at 50% 28%, rgba(var(--color-brand-green-rgb), 0.20), transparent 72%);
+    pointer-events: none;
+}
+/* Gradient wordmark on the hero title. */
+.splash-hero-title {
+    background: linear-gradient(120deg, #ffffff 0%, #ffffff 45%, var(--splashGreen) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+/* Register CTA emphasis — soft pulsing brand glow draws the eye to the primary action. */
+.to-register.splash-button {
+    animation: registerPulse 2.6s ease-in-out infinite;
+}
+@keyframes registerPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(var(--color-brand-green-rgb), 0); }
+    50% { box-shadow: 0 0 18px 2px rgba(var(--color-brand-green-rgb), 0.5); }
+}
+
+/* Living product mock — the float owns `transform`, so its reveal fades opacity
+   only (no translateY) to avoid fighting the animation. Once revealed it gently
+   floats with a pulsing green glow so the preview reads as a live product. */
+.splash-product-mock.reveal-on-scroll { transform: none; }
+.splash-product-mock.is-revealed { animation: mockFloat 6s ease-in-out infinite; }
+@keyframes mockFloat {
+    0%, 100% { transform: translateY(0); box-shadow: var(--shadow-md), var(--shadow-glow-green); }
+    50% { transform: translateY(-6px); box-shadow: var(--shadow-md), 0 0 28px rgba(var(--color-brand-green-rgb), 0.4); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .splash-button { transition: none; }
+    .splash-button:hover { transform: none; }
+    /* Flair off — reveal content immediately, no pulses or float. */
+    .reveal-on-scroll { opacity: 1; transform: none; transition: none; }
+    .to-register.splash-button { animation: none; }
+    .splash-product-mock,
+    .splash-product-mock.is-revealed { animation: none; }
 }
 
 .splash-page-links {
@@ -81,14 +166,6 @@ form {
 
 .splash-page-links:hover {
     color: var(--blueLinkOnHover) !important;
-}
-
-#splash-mini-text {
-    font-weight: 700;
-    font-size: 120%;
-    padding-top: 20px;
-    color: var(--darkSplashLabelGreen);
-    width: fit-content;
 }
 
 /** Modals **/
@@ -238,30 +315,217 @@ form {
     text-align: center;
 }
 
+/* Feature tiles */
 
-/* Responsive splash page */
-@media (max-width: 529.98px) {
-    #splash-mini-text {
-        width: 85%;
-        text-align: center;
-    }
-
-    #splash-major-text {
-        text-align: center;
-    }
+.splash-features {
+    max-width: 72rem;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-4);
+    text-align: center;
+}
+.splash-features-heading {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--splashLabelGreen);
+    margin: 0 0 var(--space-8) 0;
+}
+.splash-features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+    gap: var(--space-6);
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+.splash-feature-tile {
+    background-color: var(--panelBackgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+    padding: var(--space-6);
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    gap: var(--space-3);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.splash-feature-tile:hover {
+    border-color: var(--splashGreen);
+    transform: translateY(-2px);
+}
+.splash-feature-icon {
+    color: var(--splashLabelGreen);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3rem;
+    height: 3rem;
+    border-radius: var(--radius-md);
+    background-color: rgba(var(--color-brand-green-rgb), 0.1);
+}
+.splash-feature-title {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    margin: 0;
+    color: var(--UTubDescriptionColor);
+}
+.splash-feature-body {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-regular);
+    line-height: 1.5;
+    margin: 0;
+    color: var(--cardURLTextColor);
+}
+@media (prefers-reduced-motion: reduce) {
+    .splash-feature-tile { transition: none; }
+    .splash-feature-tile:hover { transform: none; }
 }
 
-@media (max-width: 992px) {
-    .bg-cover {
-        overflow-y: hidden;
-    }
+.splash-product-preview {
+    max-width: 60rem;
+    margin: 0 auto;
+    padding: var(--space-12) var(--space-4) var(--space-16);
+    text-align: center;
+}
+.splash-product-preview-heading {
+    font-size: var(--fs-2xl);
+    font-weight: var(--fw-bold);
+    color: var(--splashLabelGreen);
+    margin: 0 0 var(--space-2) 0;
+}
+.splash-product-preview-caption {
+    font-size: var(--fs-md);
+    color: var(--cardURLTextColor);
+    margin: 0 0 var(--space-8) 0;
+}
+.splash-product-mock {
+    display: grid;
+    grid-template-columns: minmax(0, 13rem) 1fr;
+    gap: var(--space-4);
+    text-align: left;
+    box-shadow: var(--shadow-md), var(--shadow-glow-green);
+    border-radius: var(--radius-lg);
+    padding: var(--space-4);
+    background-color: var(--color-overlay-dark);
+}
+/* Deck panel chrome (matches real UTubs / URL deck) */
+.mock-deck {
+    background-color: var(--panelBackgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-width: 0;
+}
+.mock-deck-header { display: flex; align-items: center; gap: var(--space-2); }
+.mock-deck-caret { color: var(--splashLabelGreen); font-size: 0.7rem; flex-shrink: 0; }
+.mock-deck-title {
+    color: var(--splashLabelGreen);
+    margin: 0;
+    font-weight: var(--fw-bold);
+    flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    line-height: 1.1;
+}
+.mock-deck--utubs .mock-deck-title { font-size: var(--fs-lg); }
+.mock-deck--urls  .mock-deck-title { font-size: var(--fs-2xl); }
+.mock-deck-actions { display: flex; gap: var(--space-1); align-items: center; flex-shrink: 0; }
+.mock-deck-btn {
+    width: 1.5rem; height: 1.5rem;
+    border-radius: var(--radius-sm);
+    border: none; cursor: default;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: white;
+}
+.mock-deck-btn--add    { background-color: var(--darkSplashLabelGreen); }
+.mock-deck-btn--search { background-color: transparent; color: var(--splashLabelGreen); }
+.mock-deck-btn svg { width: 0.85rem; height: 0.85rem; fill: currentColor; }
+.mock-deck-description { margin: 0; font-size: var(--fs-sm); color: var(--cardURLTextColor); font-style: italic; }
 
-    .bg-img {
-        /* https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80 */
-        background: url("/static/styles/splash.jpg");
-        background-size: cover;
-        background-position: center center;
-        background-repeat: no-repeat;
-        min-height: 380px;
-    }
+/* UTubs deck — rounded-rectangle rows (NOT pills) */
+.mock-utub-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.mock-utub-row {
+    display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    border: 2px solid var(--borderColor);
+    border-radius: var(--radius-card);
+    background-color: var(--cardBackgroundColor);
+    color: var(--cardURLTextColor);
+    font-size: var(--fs-sm); font-weight: var(--fw-bold);
+}
+.mock-utub-row--selected { border-color: var(--deckSelectionGreen); color: var(--deckSelectionGreen); }
+.mock-utub-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mock-utub-icon { color: var(--memberRoleIconColor); display: inline-flex; flex-shrink: 0; }
+.mock-utub-icon svg { width: 0.85rem; height: 0.85rem; fill: currentColor; }
+
+/* URLs deck — flat list, hairline separators (no per-row card bg) */
+.mock-url-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.mock-url-row { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-2); border-top: 1px solid var(--borderColor); }
+.mock-url-row:first-child { border-top: none; padding-top: var(--space-2); }
+.mock-url-title { font-size: var(--fs-md); font-weight: var(--fw-bold); color: var(--splashLabelGreen); }
+.mock-url-string { font-size: var(--fs-sm); color: var(--cardURLTextColor); font-family: ui-monospace, 'SFMono-Regular', Consolas, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Selected URL — tag pills + 5 action buttons */
+.mock-url-row--selected { gap: var(--space-2); padding-block: var(--space-3) var(--space-4); }
+.mock-url-tags { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-1); }
+.mock-tag {
+    font-size: var(--fs-xs);
+    color: var(--splashLabelGreen);
+    background-color: transparent;
+    border: 1.5px solid var(--splashLabelGreen); /* intentional hairline width for the pill aesthetic, distinct from the 1px/2px scale */
+    border-radius: var(--radius-pill);
+    padding: 2px var(--space-3);
+    font-weight: var(--fw-bold);
+}
+.mock-url-actions { display: flex; gap: var(--space-2); margin-top: var(--space-2); }
+.mock-action {
+    width: 2.25rem; height: 1.85rem;
+    border-radius: var(--radius-sm);
+    border: none; cursor: default;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: white;
+}
+.mock-action svg { width: 1rem; height: 1rem; fill: currentColor; }
+.mock-action--access { background-color: var(--accessLinkColor); color: black; }
+.mock-action--tag    { background-color: var(--addTagColor);     color: black; }
+.mock-action--copy   { background-color: var(--copyURLColor);    color: white; }
+.mock-action--edit   { background-color: var(--editURLColor);    color: black; }
+.mock-action--delete { background-color: var(--deleteURLColor);  color: black; }
+
+/* Mobile — stack the two decks vertically */
+@media (max-width: 768px) {
+    .splash-product-mock { grid-template-columns: 1fr; }
+    .splash-hero-title { font-size: var(--fs-3xl); }
+    .splash-hero-tagline { font-size: var(--fs-lg); }
+    #splashHero { padding: var(--space-8) var(--space-4); }
+    .splash-features-grid { grid-template-columns: 1fr; }
+    .splash-features-heading,
+    .splash-product-preview-heading { font-size: var(--fs-xl); }
+    .splash-features,
+    .splash-product-preview { padding: var(--space-8) var(--space-4); }
+    /* Keep the two CTAs side by side on mobile as equal-width buttons that fill
+       the row, rather than stacking vertically or hugging their text. flex-basis
+       50% + min-width:0 forces both to the same width regardless of label length
+       ("Register" vs "Login"); the row fills the hero content width (capped on
+       small tablets) so the buttons read wide. min-height (44px) is retained. */
+    .splash-button { flex: 1 1 50%; min-width: 0; }
+    /* width: 100% is required because #splashHero is a column flex with
+       align-items: center, which shrink-wraps this row to its content width —
+       without it the max-width cap never engages and the buttons stay narrow. */
+    .splash-hero-cta-row { flex-wrap: nowrap; width: 100%; max-width: 28rem; margin-inline: auto; }
+}
+@media (max-width: 480px) {
+    .splash-hero-title { font-size: var(--fs-2xl); }
+    #splashHero { padding: var(--space-6) var(--space-3); gap: var(--space-4); }
+    /* On phones the product mock stays visible as a single-column preview of the
+       app: the UTubs deck stacked above the selected UTub's URLs (the 768px rule
+       already collapses the two-column grid to one column). Here we tighten type
+       and padding so each deck stays legible at the narrowest widths. */
+    .splash-product-preview { padding: var(--space-8) var(--space-3); }
+    .splash-product-mock { padding: var(--space-3); gap: var(--space-3); }
+    .mock-deck--urls .mock-deck-title { font-size: var(--fs-xl); }
+    .mock-url-title { font-size: var(--fs-sm); }
+    .mock-url-string { font-size: var(--fs-xs); }
 }

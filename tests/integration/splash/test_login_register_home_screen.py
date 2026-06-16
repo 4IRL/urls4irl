@@ -1,7 +1,9 @@
 from flask import url_for
+from markupsafe import escape
 import pytest
 
 from backend.utils.all_routes import ROUTES
+from backend.utils.constants import CONSTANTS
 
 pytestmark = pytest.mark.splash
 
@@ -20,10 +22,7 @@ def test_get_home_screen_not_logged_in(app_with_server_name, client):
 
         # Hits splash page
         assert response.status_code == 200
-        assert (
-            bytes("A simple, clean way to permanently save and share URLs.", "utf-8")
-            in response.data
-        )
+        assert str(escape(CONSTANTS.STRINGS.SPLASH_TAGLINE)).encode() in response.data
 
 
 def test_post_home_screen_not_logged_in(app_with_server_name, client):
