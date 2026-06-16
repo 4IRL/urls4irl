@@ -1,0 +1,106 @@
+/* User settings page styling.
+ *
+ * Intentionally isolated from the admin metrics dashboard: this is a self-
+ * contained copy of the tablist treatment scoped under the distinct
+ * `#SettingsTablist` / `#SettingsPage` id namespace, so the two pages cannot
+ * collide. Colors reference the dark-theme custom properties from tokens.css —
+ * never hardcode color literals here. A future refactor can extract a shared
+ * tablist stylesheet (out of scope for this anchor PR).
+ */
+
+#SettingsPage {
+    background: var(--defaultPageBackgroundColor);
+}
+
+#SettingsPage h1 {
+    color: #fff;
+}
+
+/* ---- Tablist ----------------------------------------------------------- */
+
+.tablist {
+    display: flex;
+    gap: 0;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+}
+
+#SettingsTablist [role="tab"] {
+    background-color: transparent;
+    border: 0;
+    color: var(--cardURLTextColor);
+    padding: 8px 16px;
+    /* 44px min touch target — WCAG 2.5.5 (improvement over the ~34px dashboard tabs). */
+    min-height: 2.75rem;
+    cursor: pointer;
+    border-radius: 6px;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+#SettingsTablist [role="tab"]:hover {
+    color: var(--deckSelectionGreen);
+}
+
+#SettingsTablist [role="tab"][aria-selected="true"] {
+    background-color: var(--cardBackgroundColor);
+    color: var(--deckSelectionGreen);
+    box-shadow: inset 0 -2px 0 var(--deckHeaderGreen);
+}
+
+#SettingsTablist [role="tab"]:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* On phones the four tabs can overflow the viewport. Contain the overflow to
+   the tablist box (horizontal scroll within its own width) instead of letting
+   the page overscroll horizontally. Desktop keeps `width: fit-content` above. */
+@media (max-width: 575.98px) {
+    .tablist {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    #SettingsTablist [role="tab"] {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
+}
+
+/* ---- Tab panels -------------------------------------------------------- */
+
+#SettingsPage [role="tabpanel"] {
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 28px 24px;
+    min-height: 220px;
+}
+
+/* Panels receive programmatic focus on mouse-click activation, so they need a
+   visible focus indicator (WCAG 2.4.7). The inset -2px offset matches the
+   mockup; the panel border above keeps the inset outline from collapsing to
+   invisibility against the panel edge. */
+#SettingsPage [role="tabpanel"]:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: -2px;
+}
+
+#SettingsPage [role="tabpanel"] h2 {
+    color: #fff;
+}
+
+.SettingsEmptyState {
+    color: var(--cardURLTextColor);
+    font-style: italic;
+}
