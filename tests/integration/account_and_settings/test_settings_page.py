@@ -99,3 +99,28 @@ def test_settings_page_exposes_csrf_meta_and_app_config(
     assert resp.status_code == 200
     assert b'name="csrf-token"' in resp.data
     assert b'id="app-config"' in resp.data
+
+
+def test_settings_nav_link_present_on_home(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The authenticated home page renders the Settings nav link."""
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    resp = logged_in_client.get(url_for(ROUTES.UTUBS.HOME))
+
+    assert resp.status_code == 200
+    assert b'href="/settings"' in resp.data
+    assert b'id="userSettingsLink"' in resp.data
+
+
+def test_settings_nav_link_hidden_on_settings_page(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """The Settings nav link is omitted while viewing the settings page itself."""
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    resp = logged_in_client.get(url_for(ROUTES.USERS.SETTINGS))
+
+    assert resp.status_code == 200
+    assert b'id="userSettingsLink"' not in resp.data
