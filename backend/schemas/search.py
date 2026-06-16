@@ -42,9 +42,10 @@ class SearchHitSchema(BaseSchema):
             url_title=utub_url.url_title,
             url_tags=[
                 UtubTagOnAddDeleteSchema(
-                    utub_tag_id=tag[M.UTUB_TAG_ID], tag_string=tag[M.TAG_STRING]
+                    utub_tag_id=tag.utub_tag_id,
+                    tag_string=tag.utub_tag_item.tag_string,
                 )
-                for tag in utub_url.associated_tags
+                for tag in utub_url.url_tags
             ],
             matched_fields=matched_fields,
         )
