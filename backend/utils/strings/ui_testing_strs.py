@@ -12,6 +12,7 @@ from backend.utils.strings.url_strs import (
     URL_SEARCH_NO_RESULTS,
     UTUB_NO_URLS,
 )
+from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
 from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
 from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
@@ -109,3 +110,12 @@ class UI_TEST_STRINGS:
     METRICS_PIPELINE_HEALTH_CHART_DESC = (
         ADMIN_METRICS_STRINGS.METRICS_PIPELINE_HEALTH_CHART_DESC
     )
+
+    # User settings page — re-export backend constants so test
+    # assertions stay locked to the user-facing strings.
+    SETTINGS_PAGE_TITLE = USER_SETTINGS_STRINGS.PAGE_TITLE
+    SETTINGS_TAB_ACCOUNT = USER_SETTINGS_STRINGS.TAB_ACCOUNT
+    SETTINGS_TAB_STATS = USER_SETTINGS_STRINGS.TAB_STATS
+    SETTINGS_TAB_PRIVACY_DATA = USER_SETTINGS_STRINGS.TAB_PRIVACY_DATA
+    SETTINGS_TAB_UI_SETTINGS = USER_SETTINGS_STRINGS.TAB_UI_SETTINGS
+    SETTINGS_PLACEHOLDER = USER_SETTINGS_STRINGS.PLACEHOLDER

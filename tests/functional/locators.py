@@ -447,3 +447,32 @@ class MetricsDashboardLocators(GenericPageLocator):
     GAUGES_DETAIL_PROMPT = "#MetricsGaugeGrid .gauge-detail-prompt"
     GAUGES_DETAIL_CHART = "#MetricsGaugeGrid .gauge-detail svg.gauge-chart"
     GAUGES_PANEL_EMPTY_STATE = "#MetricsGaugeGrid .MetricsEmptyState"
+
+
+class SettingsPageLocators(GenericPageLocator):
+    """A collector class for user settings page locators.
+
+    Selectors mirror the IDs defined in
+    `backend/templates/pages/settings.html` (the ARIA tablist + four
+    placeholder tabpanels).
+    """
+
+    PAGE_ROOT = "#SettingsPage"
+    TABLIST = "#SettingsTablist"
+
+    # Tab buttons
+    TAB_ACCOUNT_BUTTON = "#SettingsTabAccount"
+    TAB_STATS_BUTTON = "#SettingsTabStats"
+    TAB_PRIVACY_DATA_BUTTON = "#SettingsTabPrivacyData"
+    TAB_UI_SETTINGS_BUTTON = "#SettingsTabUiSettings"
+
+    # Tab panels
+    PANEL_ACCOUNT = "#SettingsPanelAccount"
+    PANEL_STATS = "#SettingsPanelStats"
+    PANEL_PRIVACY_DATA = "#SettingsPanelPrivacyData"
+    PANEL_UI_SETTINGS = "#SettingsPanelUiSettings"
+
+    # Cross-page locator: #userSettingsLink is rendered in the navbar on
+    # /home (hidden on /settings). Placed here because
+    # test_settings_nav_link_present_on_home lives in the settings_ui suite.
+    SETTINGS_NAV_LINK = "#userSettingsLink"

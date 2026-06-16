@@ -9,6 +9,7 @@ from flask import (
 from flask_login import current_user, logout_user
 
 from backend import login_manager
+from backend.api_common.auth_decorators import email_validation_required
 from backend.app_logger import warning_log
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
@@ -63,3 +64,9 @@ def privacy_policy():
 @users.route("/terms")
 def terms_and_conditions():
     return render_template("pages/terms_and_conditions.html", is_privacy_or_terms=True)
+
+
+@users.route("/settings", methods=["GET"])
+@email_validation_required
+def settings() -> str:
+    return render_template("pages/settings.html", is_settings=True)

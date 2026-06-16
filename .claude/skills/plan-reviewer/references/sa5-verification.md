@@ -2,7 +2,7 @@
 
 **Role:** Ensure each step has sufficient, layer-appropriate verification.
 
-**What to read:** The plan's verification commands, test files referenced in the plan, and `pytest.ini` / `Makefile` for available markers and targets.
+**What to read:** The plan's verification commands, test files referenced in the plan, `pytest.ini` / `Makefile` for available markers and targets, and — when the plan defines any explicit header dict, login fixture, or test-client helper for test code — the definition of the test client class and login fixtures to verify the plan's setup is not redundant with what the fixture already provides automatically (e.g., `AjaxFlaskLoginClient` auto-injects `X-Requested-With: XMLHttpRequest`).
 
 **Review checklist:**
 

@@ -1,0 +1,38 @@
+{% extends "pages/layout.html" %}
+{% block modal_extender %}{% endblock %}
+{% block mainbody %}
+<main id="SettingsPage">
+    <div class="SettingsContent">
+    <h1>{{ CONSTANTS.STRINGS.SETTINGS_PAGE_TITLE }}</h1>
+
+    <div id="SettingsTablist" class="tablist" role="tablist" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_TABLIST_ARIA_LABEL }}">
+        <button type="button" role="tab" id="SettingsTabAccount"     aria-controls="SettingsPanelAccount"     data-tab="account"      aria-selected="true"  tabindex="0">{{  CONSTANTS.STRINGS.SETTINGS_TAB_ACCOUNT }}</button>
+        <button type="button" role="tab" id="SettingsTabStats"       aria-controls="SettingsPanelStats"       data-tab="stats"        aria-selected="false" tabindex="-1">{{ CONSTANTS.STRINGS.SETTINGS_TAB_STATS }}</button>
+        <button type="button" role="tab" id="SettingsTabPrivacyData" aria-controls="SettingsPanelPrivacyData" data-tab="privacy_data" aria-selected="false" tabindex="-1">{{ CONSTANTS.STRINGS.SETTINGS_TAB_PRIVACY_DATA }}</button>
+        <button type="button" role="tab" id="SettingsTabUiSettings"  aria-controls="SettingsPanelUiSettings"  data-tab="ui_settings"  aria-selected="false" tabindex="-1">{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</button>
+    </div>
+
+    <section role="tabpanel" id="SettingsPanelAccount" aria-labelledby="SettingsTabAccount" tabindex="0">
+        <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_ACCOUNT }}</h2>
+        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+    </section>
+    <section role="tabpanel" id="SettingsPanelStats" aria-labelledby="SettingsTabStats" tabindex="0" hidden>
+        <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_STATS }}</h2>
+        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+    </section>
+    <section role="tabpanel" id="SettingsPanelPrivacyData" aria-labelledby="SettingsTabPrivacyData" tabindex="0" hidden>
+        <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_PRIVACY_DATA }}</h2>
+        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+    </section>
+    <section role="tabpanel" id="SettingsPanelUiSettings" aria-labelledby="SettingsTabUiSettings" tabindex="0" hidden>
+        <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</h2>
+        <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
+    </section>
+    </div>
+
+    {% if config.VITE_DEV_SERVER %}
+    <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>
+    {% endif %}
+    <script nonce="{{ nonce }}" type="module" src="{{ vite_asset('settings.ts') }}"></script>
+</main>
+{% endblock %}

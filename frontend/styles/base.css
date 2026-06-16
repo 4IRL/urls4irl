@@ -161,7 +161,8 @@ a {
     color: var(--grayBadgeSelection);
 }
 
-#adminMetricsLink {
+#adminMetricsLink,
+#userSettingsLink {
     color: inherit;
     text-decoration: none;
     display: flex;
@@ -546,12 +547,13 @@ a {
     border-bottom: 0;
 }
 
-/* The Admin · Metrics entry uses <li><div><a> (a link to a different page)
- * rather than a <button>, so the rule above can't paint its divider. Scope the
- * divider to that specific list-item so the menu shows a uniform horizontal
- * line between every row, without double-painting on back_home_btn (which has
- * its own inner <button>). */
-#NavbarDropdownsHome #adminMetrics {
+/* The Admin · Metrics and Settings entries use <li><div><a> (links to other
+ * pages) rather than <button>s, so the rule above can't paint their dividers.
+ * Scope the divider to those specific list-items so the menu shows a uniform
+ * horizontal line between every row, without double-painting on back_home_btn
+ * (which has its own inner <button>). */
+#NavbarDropdownsHome #adminMetrics,
+#NavbarDropdownsHome #userSettings {
     border-top: 2px solid var(--grayBadgeSelectionFocus);
 }
 
@@ -560,11 +562,13 @@ a {
     color: var(--navbarTextHover);
 }
 
-/* The Admin · Metrics row is a link, not a button, so the button:hover rule
-   above misses it. Mirror the same icon + text colour inversion on hover so
-   every section in the menu reacts identically (the row background comes from
-   `.nav-bar-inner-item:hover`; the SVG icon follows via `fill: currentColor`). */
-#NavbarDropdownsHome #adminMetrics:hover #adminMetricsLink {
+/* The Admin · Metrics and Settings rows are links, not buttons, so the
+   button:hover rule above misses them. Mirror the same icon + text colour
+   inversion on hover so every section in the menu reacts identically (the row
+   background comes from `.nav-bar-inner-item:hover`; the SVG icon follows via
+   `fill: currentColor`). */
+#NavbarDropdownsHome #adminMetrics:hover #adminMetricsLink,
+#NavbarDropdownsHome #userSettings:hover #userSettingsLink {
     color: var(--navbarTextHover);
 }
 
@@ -572,7 +576,8 @@ a {
    on every dropdown row so tabbing through the menu is as clear as hovering.
    Applies on both viewports for accessible keyboard navigation. */
 #NavbarDropdownsHome button:focus-visible,
-#NavbarDropdownsHome #adminMetricsLink:focus-visible {
+#NavbarDropdownsHome #adminMetricsLink:focus-visible,
+#NavbarDropdownsHome #userSettingsLink:focus-visible {
     background-color: var(--navbarBackgroundHover);
     color: var(--navbarTextHover);
     outline: none;
