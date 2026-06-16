@@ -1007,7 +1007,7 @@ export interface components {
       urlTitle: string;
       /** @description Tags applied to this URL in its UTub */
       urlTags: components["schemas"]["UtubTagOnAddDeleteSchema"][];
-      /** @description Which fields the query matched (title/url/tag) — Phase 2 highlights these */
+      /** @description Which fields the query matched (title/url/tag) — consumers may highlight these in the UI. */
       matchedFields: components["schemas"]["MatchedField"][];
     };
     SearchUtubGroupSchema: {

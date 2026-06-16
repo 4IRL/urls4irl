@@ -3521,7 +3521,7 @@
             "type": "array"
           },
           "matchedFields": {
-            "description": "Which fields the query matched (title/url/tag) \u2014 Phase 2 highlights these",
+            "description": "Which fields the query matched (title/url/tag) \u2014 consumers may highlight these in the UI.",
             "items": {
               "$ref": "#/components/schemas/MatchedField"
             },

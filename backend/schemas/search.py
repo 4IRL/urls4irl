@@ -29,7 +29,7 @@ class SearchHitSchema(BaseSchema):
     )
     matched_fields: list[MatchedField] = Field(
         alias=M.MATCHED_FIELDS,
-        description="Which fields the query matched (title/url/tag) — Phase 2 highlights these",
+        description="Which fields the query matched (title/url/tag) — consumers may highlight these in the UI.",
     )
 
     @classmethod
