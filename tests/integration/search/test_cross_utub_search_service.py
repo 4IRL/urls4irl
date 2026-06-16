@@ -87,6 +87,23 @@ def _seed_single_utub_with_one_url(
     return new_utub.id
 
 
+def _add_url_to_utub(
+    utub: Utubs, url_string: str, url_title: str, user_id: int
+) -> None:
+    """Add a single URL (with title) to an existing UTub on behalf of `user_id`."""
+    new_url = Urls(normalized_url=url_string, current_user_id=user_id)
+    db.session.add(new_url)
+    db.session.commit()
+
+    new_utub_url = Utub_Urls()
+    new_utub_url.url_id = new_url.id
+    new_utub_url.utub_id = utub.id
+    new_utub_url.user_id = user_id
+    new_utub_url.url_title = url_title
+    db.session.add(new_utub_url)
+    db.session.commit()
+
+
 def test_search_matches_on_url_string(
     add_all_urls_and_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
@@ -518,22 +535,24 @@ def test_search_tiebreak_across_groups_by_match_count_desc(
             db.session.add(membership)
         db.session.commit()
 
-        def _add_url_with_title(utub: Utubs, url_string: str, url_title: str) -> None:
-            new_url = Urls(normalized_url=url_string, current_user_id=creating_user.id)
-            db.session.add(new_url)
-            db.session.commit()
-
-            new_utub_url = Utub_Urls()
-            new_utub_url.url_id = new_url.id
-            new_utub_url.utub_id = utub.id
-            new_utub_url.user_id = creating_user.id
-            new_utub_url.url_title = url_title
-            db.session.add(new_utub_url)
-            db.session.commit()
-
-        _add_url_with_title(utub_alfa, "https://nomatch-alfa-1.com/", "countquery one")
-        _add_url_with_title(utub_alfa, "https://nomatch-alfa-2.com/", "countquery two")
-        _add_url_with_title(utub_beta, "https://nomatch-beta-1.com/", "countquery solo")
+        _add_url_to_utub(
+            utub_alfa,
+            "https://nomatch-alfa-1.com/",
+            "countquery one",
+            creating_user.id,
+        )
+        _add_url_to_utub(
+            utub_alfa,
+            "https://nomatch-alfa-2.com/",
+            "countquery two",
+            creating_user.id,
+        )
+        _add_url_to_utub(
+            utub_beta,
+            "https://nomatch-beta-1.com/",
+            "countquery solo",
+            creating_user.id,
+        )
 
         assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_alfa.id).count() == 2
         assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_beta.id).count() == 1
