@@ -59,7 +59,8 @@ def login_user_and_open_home(
     directly to the authenticated home page.
 
     Used by the cross-page nav-link test, which verifies the Settings
-    nav link (added in Step 4) is reachable from the home page.
+    nav link (`#userSettingsLink`) rendered in the home navbar dropdown
+    is reachable from the home page.
     """
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)

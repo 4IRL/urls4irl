@@ -158,8 +158,8 @@ def test_settings_nav_link_present_on_home(
     """
     GIVEN a logged-in user on the authenticated home page
     WHEN the navbar renders
-    THEN the Settings nav link (`#userSettingsLink`, added in Step 4) is
-        present — proving it is reachable from the home page.
+    THEN the Settings nav link (`#userSettingsLink`) rendered in the home
+        navbar dropdown is present — proving it is reachable from the home page.
 
     Cross-page dependency note: this test exercises the home page nav,
     not the settings page.
