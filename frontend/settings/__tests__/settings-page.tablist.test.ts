@@ -111,6 +111,20 @@ describe("settings-page tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("SettingsTabUiSettings"));
   });
 
+  it("ArrowRight from the last tab (Display) wraps to the first (Account)", () => {
+    getTab("SettingsTabUiSettings").click();
+    getTab("SettingsTabUiSettings").focus();
+    $("#SettingsTabUiSettings").trigger(
+      $.Event("keydown", { key: "ArrowRight" }),
+    );
+
+    expect(getTab("SettingsTabAccount").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getPanel("SettingsPanelAccount").hasAttribute("hidden")).toBe(false);
+    expect(document.activeElement).toBe(getTab("SettingsTabAccount"));
+  });
+
   it("Home key jumps to the first tab (Account)", () => {
     getTab("SettingsTabUiSettings").click();
     getTab("SettingsTabUiSettings").focus();
