@@ -9,7 +9,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 
 from backend.models.users import Users
-from backend.utils.all_routes import ADMIN_ROUTES
+from backend.utils.all_routes import ADMIN_ROUTES, SEARCH_ROUTES
 
 pytestmark = pytest.mark.cli
 
@@ -69,3 +69,21 @@ def test_anonymous_user_does_not_see_admin_metrics_route_in_app_config(
     assert response.status_code == 200
     routes = _routes_from_response(response.data)
     assert "adminMetricsPage" not in routes
+
+
+def test_authenticated_user_sees_cross_utub_search_route_in_app_config(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Authenticated users get `crossUtubSearch` in their APP_CONFIG.routes
+    payload, pointing at the cross-UTub search endpoint.
+    """
+    client, _, _, _ = login_first_user_with_register
+
+    with client.application.test_request_context():
+        expected_cross_utub_search_url = url_for(SEARCH_ROUTES.SEARCH)
+
+    response = client.get("/home")
+
+    assert response.status_code == 200
+    routes = _routes_from_response(response.data)
+    assert routes.get("crossUtubSearch") == expected_cross_utub_search_url
