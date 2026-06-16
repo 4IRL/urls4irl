@@ -271,6 +271,29 @@ def test_search_escapes_underscore_wildcard(
         assert all_hits[0].url_string == "foo_bar"
 
 
+def test_search_escapes_backslash_in_query(
+    register_multiple_users,
+    app: Flask,
+):
+    with app.app_context():
+        seeded_utub_id = _seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Backslash UTub",
+            url_string="C:\\path",
+            url_title="Windows path",
+        )
+        seeded_count = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == seeded_utub_id
+        ).count()
+        assert seeded_count == 1
+
+        results = search_across_user_utubs(query="\\", user_id=FIRST_USER_ID)
+
+        all_hits = [hit for group in results.results for hit in group.urls]
+        assert len(all_hits) == 1
+        assert all_hits[0].url_string == "C:\\path"
+
+
 @pytest.mark.parametrize(
     "url_string, url_title, tag_strings, query, expected_fields",
     [
