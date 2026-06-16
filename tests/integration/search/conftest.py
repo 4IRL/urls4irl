@@ -1,0 +1,62 @@
+from flask import Flask
+import pytest
+
+from backend import db
+from backend.models.utub_tags import Utub_Tags
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utub_url_tags import Utub_Url_Tags
+
+
+@pytest.fixture
+def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
+    app: Flask, add_one_url_to_each_utub_no_tags, add_tags_to_utubs
+):
+    """
+    After each user has made their own UTub, with one URL added by that user to each UTub,
+    now add first user to second UTub as UTub member, and add tags to all currently added URLs
+
+    Remove the first UTub so first user is no longer creator of a UTub
+
+    Utub with ID of 2, created by User ID of 2, with URL ID of 2, now has member 1
+    All URLs have all tags associated with them
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_one_url_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
+            that user add a URL to their UTub
+        add_tags_to_all_utubs (pytest.fixture): Adds all tags to the database for easy adding to URLs
+    """
+    with app.app_context():
+        first_utub = Utubs.query.get(1)
+        db.session.delete(first_utub)
+        db.session.commit()
+        second_utub = Utubs.query.get(2)
+        all_tags = Utub_Tags.query.order_by(Utub_Tags.id).all()
+
+        # Add a single missing users to this UTub
+        new_user = Users.query.get(1)
+        new_utub_user_association = Utub_Members()
+        new_utub_user_association.to_user = new_user
+        new_utub_user_association.utub_id = second_utub.id
+        second_utub.members.append(new_utub_user_association)
+        db.session.add(new_utub_user_association)
+
+        urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in second_utub.utub_urls]
+
+        for url_in_utub in urls_in_utub:
+            url_id = url_in_utub.id
+
+            for tag in all_tags:
+                new_tag_url_utub_association = Utub_Url_Tags()
+                new_tag_url_utub_association.utub_containing_this_url_tag = second_utub
+                new_tag_url_utub_association.tagged_url = url_in_utub
+                new_tag_url_utub_association.utub_tag_item = tag
+                new_tag_url_utub_association.utub_id = second_utub.id
+                new_tag_url_utub_association.utub_url_id = url_id
+                new_tag_url_utub_association.utub_tag_id = tag.id
+                second_utub.utub_url_tags.append(new_tag_url_utub_association)
+
+        db.session.commit()
