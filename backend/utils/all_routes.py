@@ -51,6 +51,7 @@ class USER_ROUTES:
     LOGOUT = _USERS + "logout"
     PRIVACY = _USERS + "privacy_policy"
     TERMS = _USERS + "terms_and_conditions"
+    SETTINGS = _USERS + "settings"
 
 
 class ACCOUNT_AND_SETTING_ROUTES:

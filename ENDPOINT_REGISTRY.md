@@ -500,6 +500,17 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Template**   | `pages/terms_and_conditions.html` (vars: `is_privacy_or_terms=True`) |
 | **Tests**      | None identified                                                      |
 
+### GET /settings
+
+| Layer          | Location                                                                                                                                                                 |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/users/routes.py:settings`                                                                                                                                     |
+| **Decorators** | `@email_validation_required`                                                                                                                                           |
+| **Service**    | `render_template()` direct                                                                                                                                             |
+| **Template**   | `pages/settings.html` (vars: `is_settings=True`)                                                                                                                       |
+| **JS Module**  | `frontend/settings.ts` (via `initSettingsPage()`)                                                                                                                     |
+| **Tests**      | `tests/integration/account_and_settings/test_settings_page.py` (marker: `account_and_support`), `tests/functional/settings_ui/test_settings_page_ui.py` (marker: `settings_ui`) |
+
 ---
 
 ## Admin Blueprint
