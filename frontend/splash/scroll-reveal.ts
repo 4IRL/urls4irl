@@ -1,7 +1,11 @@
 const REVEAL_SELECTOR = ".reveal-on-scroll";
 const REVEALED_CLASS = "is-revealed";
-const REVEAL_THRESHOLD = 0.15;
-const REVEAL_ROOT_MARGIN = "0px 0px -10% 0px";
+// Reveal as soon as any part of a target enters the viewport. A positive
+// threshold or a negative bottom rootMargin would leave elements that sit in
+// the lower edge of the first screen visible-but-unrevealed (a blank gap on
+// load), so detect against the full viewport with a zero threshold.
+const REVEAL_THRESHOLD = 0;
+const REVEAL_ROOT_MARGIN = "0px";
 
 /**
  * Reveals marketing elements as they scroll into view by toggling a class that
