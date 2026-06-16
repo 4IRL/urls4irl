@@ -266,7 +266,7 @@ def test_query_endpoint_bad_window_returns_400_with_field_error(
         window=bogus
     THEN the response is 400 with error_code=INVALID_QUERY_PARAM and the
         field errors map contains a "window" key — guards the shared
-        `_parse_query_args` + `parse_window(ValueError → 400)` code path
+        `parse_query_args` + `parse_window(ValueError → 400)` code path
         across `top`, `timeseries`, and `summary`.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
@@ -899,7 +899,7 @@ def _grouped_url_for(
 ) -> str:
     """Build a grouped-timeseries URL with repeated `group_by` keys.
 
-    Matches the wire format `_parse_query_args(..., multi_value_keys=...)`
+    Matches the wire format `parse_query_args(..., multi_value_keys=...)`
     expects (one `group_by=<dim>` occurrence per dimension).
     """
     encoded_group_by = "&".join(f"group_by={key}" for key in group_by)
@@ -1280,7 +1280,7 @@ def test_flow_unknown_flow_id_returns_400(
     GIVEN an admin client
     WHEN GETing /api/metrics/query/flow with an unknown `flow_id`
     THEN the response is 400 — `FlowIdLiteral` rejects the value at the schema
-        layer and `_parse_query_args` maps the ValidationError to a 400.
+        layer and `parse_query_args` maps the ValidationError to a 400.
     """
     logged_in_client, _, _, _ = login_admin_user_with_register
 

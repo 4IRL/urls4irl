@@ -38,8 +38,8 @@ def _validate_window_xor_range(
     """Enforce: exactly one of (`window`) or (`start` AND `end`) is provided.
 
     Raises `ValueError` so Pydantic v2's `@model_validator(mode="after")`
-    wraps it into a `ValidationError` that the metrics routes' shared
-    `_parse_query_args` helper converts to a 400 envelope.
+    wraps it into a `ValidationError` that the shared
+    `parse_query_args` helper converts to a 400 envelope.
     """
     has_window = window is not None
     has_start = start is not None
@@ -391,8 +391,8 @@ class GroupedTimeseriesQuerySchema(BaseModel):
     depends on the requested event).
 
     `group_by` arrives as repeated query-string keys
-    (`?group_by=transport&group_by=device_type`); the metrics-routes shared
-    `_parse_query_args(..., multi_value_keys=frozenset({"group_by"}))` helper
+    (`?group_by=transport&group_by=device_type`); the shared
+    `parse_query_args(..., multi_value_keys=frozenset({"group_by"}))` helper
     promotes those occurrences from a flat string to a list before validation.
     """
 
