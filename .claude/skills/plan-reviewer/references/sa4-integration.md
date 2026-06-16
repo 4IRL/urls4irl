@@ -30,3 +30,5 @@
 - **Config consistency**: Env vars, lint rules, and CI config aligned with plan changes. When the plan adds or modifies a build/test tool invocation, compare the CI job command (in .github/workflows/*.yml) against the local Makefile target for the same tool — confirm flags, working directories, and config file paths are consistent or note documented divergences. Undocumented divergences between CI and local invocations are a **Minor** finding.
 
 - **Test markers**: Are markers correct per `pytest.ini`? Are new markers needed?
+
+- **Response-assertion style conformance (required for test code blocks):** When a plan's test code block asserts an HTTP response property (status code, headers, redirect location, cookies, body field), grep existing tests in the same `tests/integration/` tree for assertions on the same property. If the existing pattern differs from the plan's form (e.g., all existing redirect tests use `urlsplit(response.location).path` but the plan uses `response.headers['Location']`), flag as **Minor** and cite the canonical form. Never approve a new assertion style for a property that is already asserted uniformly elsewhere.
