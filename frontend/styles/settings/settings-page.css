@@ -10,11 +10,20 @@
 
 #SettingsPage {
     background: var(--defaultPageBackgroundColor);
-    /* Center the column on desktop and keep content off the screen edges on
-       mobile — the flush-left title was missing this inset (see mockup). */
+    /* The page background fills the viewport edge-to-edge (full-bleed); only the
+       inner .SettingsContent column is width-constrained. Constraining the
+       <main> itself would let the darker body color show on the sides on
+       wide/landscape viewports, rendering the page as a floating off-center box. */
+    overflow-y: auto;
+    padding-top: 1.75rem;
+}
+
+.SettingsContent {
     max-width: 880px;
     margin: 0 auto;
-    padding: 1.75rem 1.25rem 0;
+    /* Keep content off the screen edges on mobile (the flush-left title was
+       missing this inset — see mockup). */
+    padding: 0 1.25rem;
 }
 
 #SettingsPage h1 {

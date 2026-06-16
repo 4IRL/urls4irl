@@ -2,6 +2,7 @@
 {% block modal_extender %}{% endblock %}
 {% block mainbody %}
 <main id="SettingsPage">
+    <div class="SettingsContent">
     <h1>{{ CONSTANTS.STRINGS.SETTINGS_PAGE_TITLE }}</h1>
 
     <div id="SettingsTablist" class="tablist" role="tablist" aria-label="{{ CONSTANTS.STRINGS.SETTINGS_TABLIST_ARIA_LABEL }}">
@@ -27,6 +28,7 @@
         <h2>{{ CONSTANTS.STRINGS.SETTINGS_TAB_UI_SETTINGS }}</h2>
         <p class="SettingsEmptyState">{{ CONSTANTS.STRINGS.SETTINGS_PLACEHOLDER }}</p>
     </section>
+    </div>
 
     {% if config.VITE_DEV_SERVER %}
     <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>
