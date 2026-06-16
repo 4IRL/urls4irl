@@ -51,7 +51,6 @@
 
 .tablist {
     display: flex;
-    gap: 0;
     background-color: var(--panelBackgroundColor);
     border: 1px solid var(--borderColor);
     border-radius: 8px;
