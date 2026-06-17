@@ -221,6 +221,12 @@ def test_delete_member_btn(
     member_name = other_member.username
     delete_member_active_utub(browser, other_member.username)
 
+    # Gate on the modal being fully shown (fade-in transition settled) before clicking
+    # submit. Clicking while Bootstrap's show-transition is still running causes the
+    # subsequent modal("hide") issued by removeMemberSuccess to be dropped as an
+    # overlapping transition, which leaves the modal visible and races wait_until_hidden.
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Assert submit button is disabled immediately after click to prevent double-submit
