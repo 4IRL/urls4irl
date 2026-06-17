@@ -19,6 +19,7 @@ from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
+from tests.integration.search.helpers import seed_single_utub_with_one_url
 
 pytestmark = pytest.mark.urls
 
@@ -28,65 +29,6 @@ _SEARCH_PATH = "/search"
 _HOME_PATH = "/home"
 _HTTPS_QUERY = "https"
 _NO_MATCH_QUERY = "zzzznomatch"
-
-
-def _seed_single_utub_with_one_url(
-    *,
-    user_id: int,
-    utub_name: str,
-    url_string: str,
-    url_title: str,
-    tag_strings: list[str] | None = None,
-) -> int:
-    """Create one UTub owned by/including `user_id`, with one URL (and optional tags).
-
-    Returns the id of the created UTub.
-    """
-    creating_user: Users = Users.query.get(user_id)
-
-    new_utub = Utubs(
-        name=utub_name,
-        utub_creator=creating_user.id,
-        utub_description="",
-    )
-    db.session.add(new_utub)
-    db.session.commit()
-
-    membership = Utub_Members()
-    membership.utub_id = new_utub.id
-    membership.user_id = creating_user.id
-    db.session.add(membership)
-    db.session.commit()
-
-    new_url = Urls(normalized_url=url_string, current_user_id=creating_user.id)
-    db.session.add(new_url)
-    db.session.commit()
-
-    new_utub_url = Utub_Urls()
-    new_utub_url.url_id = new_url.id
-    new_utub_url.utub_id = new_utub.id
-    new_utub_url.user_id = creating_user.id
-    new_utub_url.url_title = url_title
-    db.session.add(new_utub_url)
-    db.session.commit()
-
-    for tag_string in tag_strings or []:
-        new_tag = Utub_Tags(
-            utub_id=new_utub.id,
-            tag_string=tag_string,
-            created_by=creating_user.id,
-        )
-        db.session.add(new_tag)
-        db.session.commit()
-
-        new_url_tag = Utub_Url_Tags()
-        new_url_tag.utub_id = new_utub.id
-        new_url_tag.utub_url_id = new_utub_url.id
-        new_url_tag.utub_tag_id = new_tag.id
-        db.session.add(new_url_tag)
-        db.session.commit()
-
-    return new_utub.id
 
 
 def _seed_utub_with_title_and_tag_match(
@@ -298,7 +240,7 @@ def test_search_route_honors_fields_subset(
     query_term = "subsetrouteterm"
 
     with app.app_context():
-        _seed_single_utub_with_one_url(
+        seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="SubsetRoute UTub",
             url_string="https://nomatch-subsetroute.com/",
@@ -385,7 +327,7 @@ def test_search_route_omitted_fields_searches_all(
     query_term = "omittedrouteterm"
 
     with app.app_context():
-        _seed_single_utub_with_one_url(
+        seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="OmittedRoute UTub",
             url_string="https://nomatch-omittedroute.com/",

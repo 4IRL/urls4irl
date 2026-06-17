@@ -11,80 +11,13 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.search.constants import MatchedField
 from backend.search.services.cross_utub_search import search_across_user_utubs
+from tests.integration.search.helpers import seed_single_utub_with_one_url
 from tests.models_for_test import all_tag_strings
 
 pytestmark = pytest.mark.urls
 
 FIRST_USER_ID = 1
 SECOND_USER_ID = 2
-
-
-def _seed_single_utub_with_one_url(
-    *,
-    user_id: int,
-    utub_name: str,
-    url_string: str,
-    url_title: str,
-    tag_strings: list[str] | None = None,
-) -> int:
-    """Create one UTub owned by and including `user_id`, with one URL (and optional tags).
-
-    Example:
-        _seed_single_utub_with_one_url(
-            user_id=1, utub_name="Solo", url_string="50% off",
-            url_title="Deal", tag_strings=["sale"],
-        )
-        -> creates UTub "Solo" with member user 1 and a single URL "50% off"
-           tagged "sale"; returns the new UTub id.
-
-    Returns:
-        The id of the created UTub.
-    """
-    creating_user: Users = Users.query.get(user_id)
-
-    new_utub = Utubs(
-        name=utub_name,
-        utub_creator=creating_user.id,
-        utub_description="",
-    )
-    db.session.add(new_utub)
-    db.session.commit()
-
-    membership = Utub_Members()
-    membership.utub_id = new_utub.id
-    membership.user_id = creating_user.id
-    db.session.add(membership)
-    db.session.commit()
-
-    new_url = Urls(normalized_url=url_string, current_user_id=creating_user.id)
-    db.session.add(new_url)
-    db.session.commit()
-
-    new_utub_url = Utub_Urls()
-    new_utub_url.url_id = new_url.id
-    new_utub_url.utub_id = new_utub.id
-    new_utub_url.user_id = creating_user.id
-    new_utub_url.url_title = url_title
-    db.session.add(new_utub_url)
-    db.session.commit()
-
-    for tag_string in tag_strings or []:
-        new_tag = Utub_Tags(
-            utub_id=new_utub.id,
-            tag_string=tag_string,
-            created_by=creating_user.id,
-        )
-        db.session.add(new_tag)
-        db.session.commit()
-
-        new_url_tag = Utub_Url_Tags()
-        new_url_tag.utub_id = new_utub.id
-        new_url_tag.utub_url_id = new_utub_url.id
-        new_url_tag.utub_tag_id = new_tag.id
-        db.session.add(new_url_tag)
-        db.session.commit()
-
-    return new_utub.id
 
 
 def _add_url_to_utub(
@@ -230,7 +163,7 @@ def test_search_escapes_percent_wildcard(
     app: Flask,
 ):
     with app.app_context():
-        seeded_utub_id = _seed_single_utub_with_one_url(
+        seeded_utub_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Percent UTub",
             url_string="50% off",
@@ -253,7 +186,7 @@ def test_search_escapes_underscore_wildcard(
     app: Flask,
 ):
     with app.app_context():
-        seeded_utub_id = _seed_single_utub_with_one_url(
+        seeded_utub_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Underscore UTub",
             url_string="foo_bar",
@@ -276,7 +209,7 @@ def test_search_escapes_backslash_in_query(
     app: Flask,
 ):
     with app.app_context():
-        seeded_utub_id = _seed_single_utub_with_one_url(
+        seeded_utub_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Backslash UTub",
             url_string="C:\\path",
@@ -333,7 +266,7 @@ def test_search_matched_fields_single_field(
     expected_fields,
 ):
     with app.app_context():
-        seeded_utub_id = _seed_single_utub_with_one_url(
+        seeded_utub_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Single Field UTub",
             url_string=url_string,
@@ -357,7 +290,7 @@ def test_search_matched_fields_multi_field_stable_order(
     app: Flask,
 ):
     with app.app_context():
-        seeded_utub_id = _seed_single_utub_with_one_url(
+        seeded_utub_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Multi Field UTub",
             url_string="https://nomatch.com/",
@@ -453,14 +386,14 @@ def test_search_ranks_across_groups_by_score(
     app: Flask,
 ):
     with app.app_context():
-        utub_a_id = _seed_single_utub_with_one_url(
+        utub_a_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Across A",
             url_string="https://nomatch-a.com/",
             url_title="unrelated a",
             tag_strings=["rankquery"],
         )
-        utub_b_id = _seed_single_utub_with_one_url(
+        utub_b_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Across B",
             url_string="https://nomatch-b.com/",
@@ -639,7 +572,7 @@ def test_search_fields_subset_excludes_unselected_field(
     app: Flask,
 ):
     with app.app_context():
-        seeded_utub_id = _seed_single_utub_with_one_url(
+        seeded_utub_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Subset UTub",
             url_string="https://nomatch.com/",
@@ -678,7 +611,7 @@ def test_search_fields_order_flips_within_group_rank(
     app: Flask,
 ):
     with app.app_context():
-        _seed_single_utub_with_one_url(
+        seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="FlipWithin",
             url_string="https://nomatch-flip.com/",
@@ -748,14 +681,14 @@ def test_search_fields_order_flips_across_group_rank(
     app: Flask,
 ):
     with app.app_context():
-        utub_a_id = _seed_single_utub_with_one_url(
+        utub_a_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Cross A",
             url_string="https://nomatch-cross-a.com/",
             url_title="unrelated a",
             tag_strings=["crossterm"],
         )
-        utub_b_id = _seed_single_utub_with_one_url(
+        utub_b_id = seed_single_utub_with_one_url(
             user_id=FIRST_USER_ID,
             utub_name="Cross B",
             url_string="https://nomatch-cross-b.com/",
