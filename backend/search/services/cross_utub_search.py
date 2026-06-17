@@ -64,6 +64,48 @@ def _compute_matched_fields(
     return matched
 
 
+def _hit_sort_key(hit: tuple[Utub_Urls, list[MatchedField]]) -> tuple[int, str]:
+    """Rank a single hit best-first within its UTub group.
+
+    Orders by best matched-field score descending (title=3 > url=2 > tag=1),
+    then by url_title ascending (case-insensitive) as a stable tiebreak.
+
+    Example:
+        a title match (score 3) sorts before a tag-only match (score 1);
+        two title matches sort by url_title A->Z.
+    """
+    utub_url, matched_fields = hit
+    score = max((_FIELD_WEIGHTS[field] for field in matched_fields), default=0)
+    return (-score, (utub_url.url_title or "").lower())
+
+
+def _group_sort_key(
+    group_item: tuple[int, list[tuple[Utub_Urls, list[MatchedField]]]],
+) -> tuple[int, int, str]:
+    """Rank a UTub group best-first across all groups.
+
+    Orders by the group's best hit score descending, then by match count
+    descending, then by utub_name ascending (case-insensitive) as a final
+    tiebreak.
+
+    Example:
+        a group with a title match outranks a group whose best is a tag match;
+        on equal best-score, the group with more matching URLs ranks first;
+        on equal score and count, "Alpha" outranks "Bravo".
+    """
+    _group_utub_id, hit_list = group_item
+    max_score = max(
+        (
+            _FIELD_WEIGHTS[field]
+            for _utub_url, matched_fields in hit_list
+            for field in matched_fields
+        ),
+        default=0,
+    )
+    utub_name = hit_list[0][0].utub.name
+    return (-max_score, -len(hit_list), utub_name.lower())
+
+
 def search_across_user_utubs(*, query: str, user_id: int) -> SearchResultsSchema:
     """Search every UTub the user is a member of, grouped and ranked best-first.
 
@@ -109,30 +151,8 @@ def search_across_user_utubs(*, query: str, user_id: int) -> SearchResultsSchema
     for utub_url, matched_fields in hits_with_fields:
         grouped.setdefault(utub_url.utub_id, []).append((utub_url, matched_fields))
 
-    def _hit_sort_key(
-        hit: tuple[Utub_Urls, list[MatchedField]],
-    ) -> tuple[int, str]:
-        utub_url, matched_fields = hit
-        score = max((_FIELD_WEIGHTS[field] for field in matched_fields), default=0)
-        return (-score, (utub_url.url_title or "").lower())
-
     for hit_list in grouped.values():
         hit_list.sort(key=_hit_sort_key)
-
-    def _group_sort_key(
-        group_item: tuple[int, list[tuple[Utub_Urls, list[MatchedField]]]],
-    ) -> tuple[int, int, str]:
-        _group_utub_id, hit_list = group_item
-        max_score = max(
-            (
-                _FIELD_WEIGHTS[field]
-                for _utub_url, matched_fields in hit_list
-                for field in matched_fields
-            ),
-            default=0,
-        )
-        utub_name = hit_list[0][0].utub.name
-        return (-max_score, -len(hit_list), utub_name.lower())
 
     sorted_groups = sorted(grouped.items(), key=_group_sort_key)
     results = [
