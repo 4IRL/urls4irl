@@ -32,8 +32,11 @@ def search_across_utubs() -> FlaskResponse:
         SearchQuerySchema,
         message=SearchFailureMessages.INVALID_QUERY,
         error_code=SearchErrorCodes.INVALID_QUERY_PARAM,
+        multi_value_keys=frozenset({"fields"}),
     )
     if not isinstance(parsed, BaseModel):
         return parsed
-    response_schema = search_across_user_utubs(query=parsed.q, user_id=current_user.id)
+    response_schema = search_across_user_utubs(
+        query=parsed.q, fields=parsed.fields, user_id=current_user.id
+    )
     return APIResponse(data=response_schema, status_code=200).to_response()
