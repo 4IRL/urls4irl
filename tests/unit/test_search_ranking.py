@@ -167,3 +167,58 @@ def test_group_sort_key_breaks_score_and_count_ties_by_name_ascending(
         )
 
         assert sorted([bravo, alpha], key=_group_sort_key) == [alpha, bravo]
+
+
+def test_hit_sort_key_honors_reordered_weights(app: Flask) -> None:
+    """
+    GIVEN an explicit weights map prioritizing tag over title over url
+    WHEN _hit_sort_key is computed with that weights argument
+    THEN scores follow the supplied map and sorting flips accordingly.
+    """
+    with app.app_context():
+        reordered_weights = {
+            MatchedField.TAG: 3,
+            MatchedField.URL_TITLE: 2,
+            MatchedField.URL_STRING: 1,
+        }
+        title_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_TITLE])
+        url_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_STRING])
+        tag_hit = _make_hit(url_title="a", matched_fields=[MatchedField.TAG])
+
+        assert _hit_sort_key(tag_hit, weights=reordered_weights)[0] == -3
+        assert _hit_sort_key(title_hit, weights=reordered_weights)[0] == -2
+        assert _hit_sort_key(url_hit, weights=reordered_weights)[0] == -1
+
+        ranked = sorted(
+            [url_hit, title_hit, tag_hit],
+            key=lambda hit: _hit_sort_key(hit, weights=reordered_weights),
+        )
+        assert ranked == [tag_hit, title_hit, url_hit]
+
+
+def test_group_sort_key_honors_reordered_weights(app: Flask) -> None:
+    """
+    GIVEN an explicit weights map prioritizing tag over title
+    WHEN _group_sort_key is computed with that weights argument
+    THEN the tag group's negated best-score outranks the title group's.
+    """
+    with app.app_context():
+        reordered_weights = {
+            MatchedField.TAG: 3,
+            MatchedField.URL_TITLE: 2,
+            MatchedField.URL_STRING: 1,
+        }
+        title_group = (
+            1,
+            [_make_hit(url_title="a", matched_fields=[MatchedField.URL_TITLE])],
+        )
+        tag_group = (2, [_make_hit(url_title="a", matched_fields=[MatchedField.TAG])])
+
+        assert _group_sort_key(tag_group, weights=reordered_weights)[0] == -3
+        assert _group_sort_key(title_group, weights=reordered_weights)[0] == -2
+
+        ranked = sorted(
+            [title_group, tag_group],
+            key=lambda group: _group_sort_key(group, weights=reordered_weights),
+        )
+        assert ranked == [tag_group, title_group]

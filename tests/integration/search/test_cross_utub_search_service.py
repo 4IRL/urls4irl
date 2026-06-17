@@ -632,3 +632,146 @@ def test_search_tiebreak_across_groups_by_utub_name_asc(
         results = search_across_user_utubs(query="namequery", user_id=FIRST_USER_ID)
 
         assert results.results[0].utub_name == "Alpha"
+
+
+def test_search_fields_subset_excludes_unselected_field(
+    register_multiple_users,
+    app: Flask,
+):
+    with app.app_context():
+        seeded_utub_id = _seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Subset UTub",
+            url_string="https://nomatch.com/",
+            url_title="unrelated",
+            tag_strings=["onlytag"],
+        )
+        seeded_count = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == seeded_utub_id
+        ).count()
+        assert seeded_count == 1
+
+        excluded_results = search_across_user_utubs(
+            query="onlytag",
+            user_id=FIRST_USER_ID,
+            fields=[MatchedField.URL_TITLE, MatchedField.URL_STRING],
+        )
+        excluded_hits = [
+            hit for group in excluded_results.results for hit in group.urls
+        ]
+        assert excluded_hits == []
+
+        included_results = search_across_user_utubs(
+            query="onlytag",
+            user_id=FIRST_USER_ID,
+            fields=[MatchedField.TAG],
+        )
+        included_hits = [
+            hit for group in included_results.results for hit in group.urls
+        ]
+        assert len(included_hits) == 1
+        assert included_hits[0].matched_fields == [MatchedField.TAG]
+
+
+def test_search_fields_order_flips_within_group_rank(
+    register_multiple_users,
+    app: Flask,
+):
+    with app.app_context():
+        _seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="FlipWithin",
+            url_string="https://nomatch-flip.com/",
+            url_title="flipterm title",
+        )
+        seeded_utub: Utubs = Utubs.query.filter_by(name="FlipWithin").one()
+        seeded_utub_id = seeded_utub.id
+
+        creating_user: Users = Users.query.get(FIRST_USER_ID)
+        url_b = Urls(
+            normalized_url="https://nomatch-flip2.com/",
+            current_user_id=creating_user.id,
+        )
+        db.session.add(url_b)
+        db.session.commit()
+
+        utub_url_b = Utub_Urls()
+        utub_url_b.url_id = url_b.id
+        utub_url_b.utub_id = seeded_utub_id
+        utub_url_b.user_id = creating_user.id
+        utub_url_b.url_title = "unrelated"
+        db.session.add(utub_url_b)
+        db.session.commit()
+
+        tag_b = Utub_Tags(
+            utub_id=seeded_utub_id,
+            tag_string="flipterm",
+            created_by=creating_user.id,
+        )
+        db.session.add(tag_b)
+        db.session.commit()
+
+        url_tag_b = Utub_Url_Tags()
+        url_tag_b.utub_id = seeded_utub_id
+        url_tag_b.utub_url_id = utub_url_b.id
+        url_tag_b.utub_tag_id = tag_b.id
+        db.session.add(url_tag_b)
+        db.session.commit()
+
+        assert Utub_Urls.query.filter(Utub_Urls.utub_id == seeded_utub_id).count() == 2
+
+        default_results = search_across_user_utubs(
+            query="flipterm", user_id=FIRST_USER_ID
+        )
+        default_group = next(
+            group
+            for group in default_results.results
+            if group.utub_id == seeded_utub_id
+        )
+        assert default_group.urls[0].url_title == "flipterm title"
+
+        flipped_results = search_across_user_utubs(
+            query="flipterm",
+            user_id=FIRST_USER_ID,
+            fields=[MatchedField.TAG, MatchedField.URL_TITLE],
+        )
+        flipped_group = next(
+            group
+            for group in flipped_results.results
+            if group.utub_id == seeded_utub_id
+        )
+        assert flipped_group.urls[0].url_title == "unrelated"
+
+
+def test_search_fields_order_flips_across_group_rank(
+    register_multiple_users,
+    app: Flask,
+):
+    with app.app_context():
+        utub_a_id = _seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Cross A",
+            url_string="https://nomatch-cross-a.com/",
+            url_title="unrelated a",
+            tag_strings=["crossterm"],
+        )
+        utub_b_id = _seed_single_utub_with_one_url(
+            user_id=FIRST_USER_ID,
+            utub_name="Cross B",
+            url_string="https://nomatch-cross-b.com/",
+            url_title="crossterm title",
+        )
+        assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_a_id).count() == 1
+        assert Utub_Urls.query.filter(Utub_Urls.utub_id == utub_b_id).count() == 1
+
+        default_results = search_across_user_utubs(
+            query="crossterm", user_id=FIRST_USER_ID
+        )
+        assert default_results.results[0].utub_id == utub_b_id
+
+        flipped_results = search_across_user_utubs(
+            query="crossterm",
+            user_id=FIRST_USER_ID,
+            fields=[MatchedField.TAG, MatchedField.URL_TITLE],
+        )
+        assert flipped_results.results[0].utub_id == utub_a_id
