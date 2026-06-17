@@ -318,6 +318,22 @@ def test_search_route_rejects_invalid_fields_token(
     assert body[STD_JSON.ERROR_CODE] == SearchErrorCodes.INVALID_QUERY_PARAM
 
 
+def test_search_route_rejects_duplicate_fields_token(
+    register_multiple_users,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """A repeated `fields` token fails validation → 400 with the error envelope."""
+    logged_in_client, _, _, _ = login_first_user_without_register
+
+    response = logged_in_client.get(_SEARCH_PATH + "?q=x&fields=title&fields=title")
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.MESSAGE] == SearchFailureMessages.INVALID_QUERY
+    assert body[STD_JSON.ERROR_CODE] == SearchErrorCodes.INVALID_QUERY_PARAM
+
+
 def test_search_route_omitted_fields_searches_all(
     register_multiple_users,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
