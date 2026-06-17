@@ -1180,6 +1180,20 @@
               "type": "string"
             },
             "description": "Case-insensitive search term matched against URL strings, titles, and tags."
+          },
+          {
+            "name": "fields",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "examples": [["title", "url", "tag"]],
+              "items": {
+                "$ref": "#/components/schemas/MatchedField"
+              },
+              "maxItems": 3,
+              "type": "array"
+            },
+            "description": "Ordered subset of fields to search (membership restricts which of title/url/tag match; order sets ranking priority, first = highest). Omitted/empty = all fields in default priority."
           }
         ],
         "responses": {
