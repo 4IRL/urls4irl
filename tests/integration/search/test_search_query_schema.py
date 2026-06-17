@@ -3,7 +3,7 @@ import pytest
 
 from backend.schemas.requests.search import SearchQuerySchema
 from backend.schemas.search import SearchHitSchema
-from backend.search.constants import MatchedField
+from backend.search.constants import DEFAULT_SEARCH_FIELDS, MatchedField
 from backend.utils.constants import SEARCH_CONSTANTS
 from backend.utils.strings.model_strs import MODELS as M
 
@@ -46,6 +46,39 @@ def test_search_query_schema_rejects_query_exceeding_max_length():
 def test_search_query_schema_rejects_unknown_extra_key():
     with pytest.raises(ValidationError):
         SearchQuerySchema.model_validate({"q": "x", "z": "1"})
+
+
+def test_search_query_schema_defaults_fields_when_omitted():
+    validated = SearchQuerySchema.model_validate({"q": "x"})
+    assert validated.fields == list(DEFAULT_SEARCH_FIELDS)
+
+
+def test_search_query_schema_normalizes_empty_fields_to_default():
+    validated = SearchQuerySchema.model_validate({"q": "x", "fields": []})
+    assert validated.fields == list(DEFAULT_SEARCH_FIELDS)
+
+
+def test_search_query_schema_accepts_field_subset_in_order():
+    validated = SearchQuerySchema.model_validate({"q": "x", "fields": ["tag", "title"]})
+    assert validated.fields == [MatchedField.TAG, MatchedField.URL_TITLE]
+
+
+def test_search_query_schema_rejects_duplicate_fields():
+    with pytest.raises(ValidationError):
+        SearchQuerySchema.model_validate({"q": "x", "fields": ["title", "title"]})
+
+
+def test_search_query_schema_rejects_unknown_field_token():
+    with pytest.raises(ValidationError):
+        SearchQuerySchema.model_validate({"q": "x", "fields": ["author"]})
+
+
+def test_search_query_schema_rejects_too_many_fields():
+    too_many_fields = [field.value for field in MatchedField] + [
+        MatchedField.URL_TITLE.value
+    ]
+    with pytest.raises(ValidationError):
+        SearchQuerySchema.model_validate({"q": "x", "fields": too_many_fields})
 
 
 def test_search_hit_schema_serializes_matched_fields_to_readable_values():

@@ -15,3 +15,10 @@ class MatchedField(StrEnum):
     URL_STRING = "url"
     URL_TITLE = "title"
     TAG = "tag"
+
+
+DEFAULT_SEARCH_FIELDS: tuple[MatchedField, ...] = (
+    MatchedField.URL_TITLE,
+    MatchedField.URL_STRING,
+    MatchedField.TAG,
+)
