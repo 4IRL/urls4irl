@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import functools
+from collections.abc import Sequence
 
 from sqlalchemy import or_
 from sqlalchemy.orm import joinedload, subqueryload
@@ -21,7 +22,7 @@ from backend.search.constants import DEFAULT_SEARCH_FIELDS, MatchedField
 
 
 def _weights_from_fields(
-    fields: list[MatchedField] | tuple[MatchedField, ...],
+    fields: Sequence[MatchedField],
 ) -> dict[MatchedField, int]:
     """Map an ordered field list to ranking weights (first field = highest).
 
