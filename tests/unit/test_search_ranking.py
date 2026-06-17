@@ -7,6 +7,7 @@ from backend.search.constants import MatchedField
 from backend.search.services.cross_utub_search import (
     _group_sort_key,
     _hit_sort_key,
+    _weights_from_fields,
 )
 
 pytestmark = pytest.mark.unit
@@ -222,3 +223,27 @@ def test_group_sort_key_honors_reordered_weights(app: Flask) -> None:
             key=lambda group: _group_sort_key(group, weights=reordered_weights),
         )
         assert ranked == [tag_group, title_group]
+
+
+def test_weights_from_fields_maps_order_to_descending_weights() -> None:
+    """
+    GIVEN an ordered field sequence
+    WHEN _weights_from_fields is computed
+    THEN the first field gets the highest weight, decreasing by one per position.
+    """
+    assert _weights_from_fields(
+        (MatchedField.URL_TITLE, MatchedField.URL_STRING, MatchedField.TAG)
+    ) == {
+        MatchedField.URL_TITLE: _TITLE_SCORE,
+        MatchedField.URL_STRING: _URL_SCORE,
+        MatchedField.TAG: _TAG_SCORE,
+    }
+
+
+def test_weights_from_fields_single_field_gets_weight_one() -> None:
+    """
+    GIVEN a single-field sequence
+    WHEN _weights_from_fields is computed
+    THEN the only field is mapped to weight 1.
+    """
+    assert _weights_from_fields((MatchedField.TAG,)) == {MatchedField.TAG: _TAG_SCORE}
