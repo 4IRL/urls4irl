@@ -89,6 +89,20 @@ class HomePageLocators(GenericPageLocator):
     TAG_FILTER_NO_RESULTS = "#URLTagFilterNoResults"
     TAG_FILTER_ANNOUNCEMENT = "#URLTagFilterAnnouncement"
 
+    # Cross-UTub search mode
+    CROSS_SEARCH_TRIGGER = "#toCrossUtubSearch"
+    CROSS_SEARCH_MODE = "#crossUtubSearchMode"
+    CROSS_SEARCH_INPUT = "#crossUtubSearchInput"
+    CROSS_SEARCH_CLOSE = "#crossUtubSearchClose"
+    CROSS_SEARCH_RESULTS = "#crossUtubSearchResults"
+    CROSS_SEARCH_GROUP = ".crossSearchGroup"
+    CROSS_SEARCH_HIT_CARD = ".crossSearchHitCard"
+    CROSS_SEARCH_NO_RESULTS = "#crossUtubSearchNoResults"
+    CROSS_SEARCH_FIELD_CONTROLS = "#crossUtubSearchFieldControls"
+    CROSS_SEARCH_HISTORY_LIST = "#crossUtubSearchHistoryList"
+    CROSS_SEARCH_HISTORY_ROW = ".crossSearchHistoryRow"
+    CROSS_SEARCH_HISTORY_CLEAR = "#crossUtubSearchHistoryClear"
+
     # Tag Deck
     HEADER_TAG_DECK = "#TagDeckHeader"
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"

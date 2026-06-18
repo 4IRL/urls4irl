@@ -39,6 +39,11 @@ type SearchResponse = SuccessResponse<"searchAcrossUtubs">;
 const MAX_SEARCH_LENGTH = 500;
 const SEARCH_DEBOUNCE_MS = 200;
 const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+// Matches the 0.3s opacity/visibility transition in cross-utub-search.css; the
+// overlay's computed `visibility` stays `hidden` until the transition completes,
+// so a focus attempt before then is a no-op. Used as the fallback delay when no
+// transitionend fires (e.g. prefers-reduced-motion, or a missing transition).
+const OVERLAY_TRANSITION_MS = 300;
 // Default field order; when the user's selection equals this, `&fields=` is
 // omitted from the request URL (backend defaults to url>title>tag).
 const DEFAULT_FIELD_ORDER: MatchedField[] = ["url", "title", "tag"];
@@ -229,6 +234,36 @@ function renderSearchHistory(): void {
   $("#crossUtubSearchResults").prepend(section);
 }
 
+// The overlay reveals via a `visibility` transition, whose computed value stays
+// `hidden` until the transition finishes — focusing the input before then is a
+// no-op. Wait for the overlay's transitionend (with a timeout fallback so the
+// focus still lands under prefers-reduced-motion or if no transition runs), then
+// focus the input.
+function focusSearchInputAfterReveal(): void {
+  const overlay = $("#crossUtubSearchMode");
+  const input = document.getElementById("crossUtubSearchInput");
+  if (input === null) return;
+
+  let focused = false;
+  const focusInput = (): void => {
+    if (focused) return;
+    focused = true;
+    overlay.off("transitionend.crossSearchFocus");
+    input.focus();
+  };
+
+  overlay
+    .off("transitionend.crossSearchFocus")
+    .on("transitionend.crossSearchFocus", (event: JQuery.TriggeredEvent) => {
+      const nativeEvent = event.originalEvent as TransitionEvent | undefined;
+      if (nativeEvent?.propertyName === "visibility") {
+        focusInput();
+      }
+    });
+  // Fallback: no transitionend (reduced motion / no transition) — focus anyway.
+  setTimeout(focusInput, OVERLAY_TRANSITION_MS);
+}
+
 export function enterCrossUtubSearchMode(): void {
   if (_searchModeActive) return;
   _searchModeActive = true;
@@ -255,7 +290,7 @@ export function enterCrossUtubSearchMode(): void {
 
   clearResultStates();
   renderSearchHistory();
-  $("#crossUtubSearchInput").trigger("focus");
+  focusSearchInputAfterReveal();
 }
 
 export function exitCrossUtubSearchMode(): void {
@@ -293,6 +328,11 @@ export function exitCrossUtubSearchMode(): void {
   } else {
     $("#leftPanel").removeClass("hidden");
   }
+
+  // Reset the input and result states so the next open starts fresh — an empty
+  // input lets renderSearchHistory() surface the recent-searches list.
+  $("#crossUtubSearchInput").val("");
+  clearResultStates();
 
   $("#toCrossUtubSearch").trigger("focus");
 }

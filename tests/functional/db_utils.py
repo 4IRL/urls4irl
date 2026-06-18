@@ -161,6 +161,84 @@ def create_test_searchable_urls_with_tags(
     return url_title_to_id, tag_id, utub_id
 
 
+def create_test_cross_utub_searchable_data(
+    app: Flask, user_id: int
+) -> list[dict[str, int]]:
+    """
+    Seeds the cross-UTub search scenario: two UTubs owned by ``user_id``, each
+    holding one URL whose title AND url_string both contain the shared query
+    term (so a match surfaces regardless of which fields are selected) plus one
+    non-matching filler URL. Searching the shared term therefore yields >=2
+    groups (one per UTub).
+
+    DB operations are duplicated here (not delegated to the integration seeders)
+    to avoid import-time coupling between the functional and integration test
+    packages.
+
+    Returns a list (one entry per UTub, in creation order) of:
+        {"utub_id": <id>, "matching_utub_url_id": <id>}
+    """
+    utub_names = UI_TEST_STRINGS.CROSS_SEARCH_UTUB_NAMES
+    matching_titles = UI_TEST_STRINGS.CROSS_SEARCH_MATCHING_TITLES
+    matching_urls = UI_TEST_STRINGS.CROSS_SEARCH_MATCHING_URLS
+    filler_titles = UI_TEST_STRINGS.CROSS_SEARCH_FILLER_TITLES
+    filler_urls = UI_TEST_STRINGS.CROSS_SEARCH_FILLER_URLS
+
+    seeded: list[dict[str, int]] = []
+
+    with app.app_context():
+        for index, utub_name in enumerate(utub_names):
+            new_utub = Utubs(name=utub_name, utub_description="", utub_creator=user_id)
+            db.session.add(new_utub)
+            db.session.flush()
+
+            utub_member = Utub_Members()
+            utub_member.utub_id = new_utub.id
+            utub_member.user_id = user_id
+            utub_member.member_role = Member_Role.CREATOR
+            db.session.add(utub_member)
+            db.session.flush()
+
+            matching_url = Urls(
+                normalized_url=matching_urls[index], current_user_id=user_id
+            )
+            db.session.add(matching_url)
+            db.session.flush()
+
+            matching_utub_url = Utub_Urls()
+            matching_utub_url.url_title = matching_titles[index]
+            matching_utub_url.url_id = matching_url.id
+            matching_utub_url.utub_id = new_utub.id
+            matching_utub_url.user_id = user_id
+            db.session.add(matching_utub_url)
+            db.session.flush()
+
+            filler_url = Urls(
+                normalized_url=filler_urls[index], current_user_id=user_id
+            )
+            db.session.add(filler_url)
+            db.session.flush()
+
+            filler_utub_url = Utub_Urls()
+            filler_utub_url.url_title = filler_titles[index]
+            filler_utub_url.url_id = filler_url.id
+            filler_utub_url.utub_id = new_utub.id
+            filler_utub_url.user_id = user_id
+            db.session.add(filler_utub_url)
+            db.session.flush()
+
+            seeded.append(
+                {
+                    "utub_id": new_utub.id,
+                    "matching_utub_url_id": matching_utub_url.id,
+                }
+            )
+
+        db.session.commit()
+
+    return seeded
+
+
 def get_other_member_in_utub(app: Flask, utub_id: int, current_user_id: int) -> Users:
     with app.app_context():
         other_member: Utub_Members = Utub_Members.query.filter(

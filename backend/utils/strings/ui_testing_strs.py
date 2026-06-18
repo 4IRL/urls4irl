@@ -14,6 +14,7 @@ from backend.utils.strings.url_strs import (
 )
 from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
 from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
+from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
 
@@ -65,6 +66,35 @@ class UI_TEST_STRINGS:
         "https://charlie-docs.io",
         "https://delta-forum.net",
     )
+
+    # Cross-UTub search — shared query term appears in BOTH the title and the
+    # url_string of one URL per UTub, so a match surfaces regardless of which
+    # field(s) are selected. Two member UTubs (user is creator) each get one
+    # matching URL plus a non-matching URL, so search yields >=2 groups.
+    CROSS_SEARCH_QUERY_TERM = "orbit"
+    CROSS_SEARCH_NO_MATCH_TERM = "zzqxnomatch"
+    CROSS_SEARCH_UTUB_NAMES = (
+        "Cross Search UTub One",
+        "Cross Search UTub Two",
+    )
+    CROSS_SEARCH_MATCHING_TITLES = (
+        "Orbit Mechanics One",
+        "Orbit Dynamics Two",
+    )
+    CROSS_SEARCH_MATCHING_URLS = (
+        "https://orbit-one.example.com",
+        "https://orbit-two.example.org",
+    )
+    CROSS_SEARCH_FILLER_TITLES = (
+        "Unrelated Page One",
+        "Unrelated Page Two",
+    )
+    CROSS_SEARCH_FILLER_URLS = (
+        "https://filler-one.example.com",
+        "https://filler-two.example.org",
+    )
+    # Asserted rendered no-results text — locked to the backend source constant.
+    CROSS_SEARCH_NO_RESULTS_TEXT = CROSS_SEARCH_NO_RESULTS
 
     TAG_FILTER_NO_URLS = TAG_FILTER_NO_RESULTS
     URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
