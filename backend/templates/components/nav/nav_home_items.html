@@ -41,6 +41,19 @@
         </svg>
         <b>Tags</b>
     </button>
+    {# Cross-UTub search trigger. Rendered hidden by default — initCrossUtubSearch()
+       removes `hidden` once the module is ready, but only when the user has ≥1 UTub.
+       If the user is a member of no UTubs, keep it hidden permanently (mirrors the
+       `length == 0` guard on #SearchUTubWrap in UTubDeckHeaders.html). Only current_user
+       + page-type flags are in this partial's context, so use utubs_is_member_of. #}
+    <button class="nav-item home hidden" id="toCrossUtubSearch" aria-label="Search across all your UTubs">
+        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-search"
+            viewBox="0 0 16 16">
+            <path
+                d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+        </svg>
+        <b>Search</b>
+    </button>
     {% endif %}
     {# Mirror the home page's deck-switcher pattern: the entry for the
        currently-active surface is omitted from the dropdown so the menu

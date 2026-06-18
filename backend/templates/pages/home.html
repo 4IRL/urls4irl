@@ -23,6 +23,10 @@
         {% include 'components/home/URLDeck/URLDeck.html' %}
     </div>
     <!-- End Center Panel -->
+
+    <!-- Cross-UTub Search Mode overlay -->
+    {% include 'components/home/SearchMode/SearchMode.html' %}
+    <!-- End Cross-UTub Search Mode overlay -->
 </main>
 <!-- Initial UTub data for client-side store seeding -->
 <script id="utubs-data" type="application/json">{{ utubs_for_this_user | tojson }}</script>
