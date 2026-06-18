@@ -14,7 +14,8 @@ export type RouteId =
   | "logout"
   | "createUTub"
   | "getUTubs"
-  | "contactUs";
+  | "contactUs"
+  | "crossUtubSearch";
 
 export interface AppRoutes {
   // Static routes (string values)
@@ -29,6 +30,7 @@ export interface AppRoutes {
   errorPage: string;
   logout: string;
   contactUs: string;
+  crossUtubSearch: string;
 
   // Dynamic single-param routes
   getUTub: (id: number) => string;
@@ -165,6 +167,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
         .replace("-4", String(userId)),
 
     contactUs: rawConfig.routes.contactUs,
+    crossUtubSearch: rawConfig.routes.crossUtubSearch,
   }),
   constants: Object.freeze(rawConfig.constants),
   strings: Object.freeze(rawConfig.strings),

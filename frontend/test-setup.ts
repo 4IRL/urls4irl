@@ -75,6 +75,7 @@ const appConfig = {
     createMember: "/utubs/-1/members",
     removeMember: "/utubs/-1/members/-4",
     contactUs: "/contact",
+    crossUtubSearch: "/search",
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,

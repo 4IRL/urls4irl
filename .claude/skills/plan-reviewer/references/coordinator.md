@@ -135,6 +135,7 @@ Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summar
 
 **Rules:**
 - Do not invent findings. Only work with what the reviewer files contain.
+- **Contradictory symbol-existence claims must be classified `conflict` (required):** If two reviewers make incompatible assertions about whether a named symbol, helper, constant, or route exists or is absent — even if both marked their findings as `mechanical` — classify the group as `conflict` with `fix_type: "design_decision"`. Add a resolution note in the `description`: "Resolution requires reading [file path] — do not apply either finding mechanically until the file is read." Never let a mechanical fix propagate an unverified presence/absence claim.
 - Do not re-evaluate the plan yourself — trust the reviewer findings as written.
 - If a reviewer file is missing or contains invalid JSON, record that reviewer as FAIL with a single finding: `{ "severity": "major", "fix_type": "mechanical", "classification": "unique", "sources": ["<reviewer>"], "step": "N/A", "title": "Reviewer output missing or unparseable", "description": "Re-run required.", "fix_description": "Re-run this reviewer." }`
 - Preserve all findings including minor ones. Do not filter by severity.
