@@ -1,7 +1,8 @@
 /* Cross-UTub search mode overlay.
-   Overlay/transition rules (.cross-search-hidden / .cross-search-visible) and
-   field-control styling land in Step 5/6. This file currently styles the
-   grouped read-only result cards rendered by render.ts (Step 4). */
+   Styling mirrors the app's existing dark theme: panel/card surfaces from
+   tokens.css, URL-card text conventions (.urlTitle / .urlString), tag pills
+   (.tagBadge), green deck headers, and the rounded green-focus search input.
+   All colors come from the shared design tokens in styles/tokens.css. */
 
 /* Centered, max-width results column — never edge-to-edge. */
 #crossUtubSearchResults {
@@ -10,141 +11,197 @@
     width: 100%;
 }
 
-/* Group section: one per source UTub. */
+/* Group section: one per source UTub. Heading mirrors the green deck headers. */
 .crossSearchGroup {
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-6);
 }
 
 .crossSearchGroupHeading {
-    font-size: 1.1rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.25rem;
-    border-bottom: 1px solid var(--border, #ccc);
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    color: var(--deckHeaderGreen);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--borderColor);
 }
 
-/* Read-only result card. */
+/* Read-only result card — same surface/border/radius language as URL cards. */
 .crossSearchHitCard {
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
-    padding: 0.75rem;
-    margin-bottom: 0.5rem;
-    border: 1px solid var(--border, #ddd);
-    border-radius: 0.5rem;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-card);
     cursor: pointer;
-    background-color: var(--cardBackground, #fff);
+    background-color: var(--cardBackgroundColor);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
 .crossSearchHitCard:hover {
-    border-color: var(--accent, #1b6ec2);
+    background-color: var(--oddUrlCardsBackgroundColor);
+    border-color: var(--deckSelectionGreenHover);
 }
 
 .crossSearchHitCard:focus-visible {
-    outline: 2px solid var(--accent, #1b6ec2);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
+/* Title mirrors .urlTitle (bold, light text). */
 .crossSearchTitle {
-    font-weight: 600;
+    margin: 0;
+    font-weight: var(--fw-bold);
+    color: whitesmoke;
 }
 
+/* URL mirrors .urlString (muted blue-gray, no underline). */
 .crossSearchUrl {
-    color: var(--accent, #1b6ec2);
+    color: var(--cardURLTextColor);
     word-break: break-all;
     text-decoration: none;
 }
 
+.crossSearchUrl:hover {
+    text-decoration: underline;
+}
+
 .crossSearchUrl:focus-visible {
-    outline: 2px solid var(--accent, #1b6ec2);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
 .crossSearchTags {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.25rem;
+    gap: var(--space-1);
 }
 
+/* Tag badge mirrors .tagBadge — green text on the dark page surface. */
 .crossSearchTag {
     display: inline-flex;
     align-items: center;
-    padding: 0.1rem 0.5rem;
-    border-radius: 1rem;
-    font-size: 0.8rem;
-    background-color: var(--tagBackground, #e9ecef);
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    color: var(--darkSplashGreen);
+    background: var(--pageBackgroundColor);
+    border: 1px solid var(--borderColor);
 }
 
 /* Field-level match emphasis — the API gives no character offsets, so the
-   whole matched element is emphasized. */
+   whole matched element is emphasized with a subtle brand-green wash rather
+   than an off-theme yellow. */
 .crossSearchMatched {
-    background-color: var(--searchHighlight, #fff3cd);
-    font-weight: 700;
-    border-radius: 0.2rem;
+    background-color: rgba(var(--color-brand-green-rgb), 0.28);
+    border-radius: var(--radius-sm);
+    padding: 0 4px;
 }
 
-/* Distinct empty-state styling so the two states read differently at a glance. */
+/* A matched tag adopts the app's selected-tag look (filled green pill). */
+.crossSearchTag.crossSearchMatched {
+    padding: 1px 8px;
+    color: var(--tagSelectedTextColor);
+    background: var(--tagBackgroundColorSelected);
+    border-color: var(--deckSelectionGreen);
+}
+
+/* Empty states mirror #URLSearchNoResults (muted, centered, italic). The two
+   states read differently: short-query is quieter; no-results is a touch more
+   prominent and carries the magnifier glyph. */
 #crossUtubSearchShortQuery {
-    color: var(--mutedText, #6c757d);
+    color: rgba(255, 255, 255, 0.5);
     font-style: italic;
     text-align: center;
-    margin-top: 1rem;
+    margin-top: var(--space-4);
+    font-size: var(--fs-lg);
+    letter-spacing: 0.025em;
 }
 
 #crossUtubSearchNoResults {
-    color: var(--text, #212529);
-    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
     text-align: center;
-    margin-top: 1.5rem;
-    padding: 1rem;
+    margin-top: var(--space-6);
+    padding: var(--space-4);
+    font-size: var(--fs-lg);
+    letter-spacing: 0.025em;
 }
 
 #crossUtubSearchNoResults::before {
     content: "🔍";
     display: block;
-    font-size: 1.75rem;
-    margin-bottom: 0.5rem;
+    font-size: var(--fs-2xl);
+    margin-bottom: var(--space-2);
 }
 
 /* Overlay container. Overlays both panels from within <main>. z-index sits
-   BELOW Bootstrap's modal (1050) so a modal always wins ESC/stacking. */
+   BELOW Bootstrap's modal (1050) so a modal always wins ESC/stacking. The
+   solid dark panel surface matches the home decks. */
 #crossUtubSearchMode {
     position: absolute;
     inset: 0;
     z-index: 1040;
     overflow-y: auto;
-    padding: 1rem;
-    background-color: var(--background, #fff);
+    padding: var(--space-4);
+    color: whitesmoke;
+    background-color: var(--panelBackgroundColor);
 }
 
 #crossUtubSearchHeader {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     max-width: 880px;
     margin-inline: auto;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
 }
 
+/* Input mirrors the rounded, green-focus .search-input convention. */
 #crossUtubSearchInput {
     flex: 1;
     min-width: 0;
-    padding: 0.5rem 0.75rem;
-    font-size: 1rem;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--fs-md);
+    color: whitesmoke;
+    background: var(--searchInputBackgroundColor);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#crossUtubSearchInput::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+#crossUtubSearchInput:hover {
+    border-color: var(--deckSelectionGreenHover);
+}
+
+#crossUtubSearchInput:focus,
+#crossUtubSearchInput:focus-visible {
+    border-color: var(--deckSelectionGreen);
 }
 
 #crossUtubSearchClose {
     flex: 0 0 auto;
-    font-size: 1.5rem;
+    font-size: var(--fs-xl);
     line-height: 1;
     background: none;
     border: none;
     cursor: pointer;
+    color: var(--cardURLTextColor);
+    transition: color 0.15s ease;
 }
 
-#crossUtubSearchInput:focus-visible,
+#crossUtubSearchClose:hover {
+    color: whitesmoke;
+}
+
 #crossUtubSearchClose:focus-visible {
-    outline: 2px solid var(--accent, #1b6ec2);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
@@ -187,19 +244,25 @@
 #crossUtubSearchFieldControls {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: var(--space-2);
     max-width: 880px;
     margin-inline: auto;
-    margin-bottom: 1rem;
+    margin-bottom: var(--space-4);
 }
 
 .crossSearchFieldRow {
     display: flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.25rem 0.5rem;
-    border: 1px solid var(--border, #ddd);
-    border-radius: 0.25rem;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-2);
+    color: whitesmoke;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+}
+
+.crossSearchFieldInclude {
+    accent-color: var(--splashGreen);
 }
 
 .crossSearchFieldLabel {
@@ -209,11 +272,19 @@
 .crossSearchFieldUp,
 .crossSearchFieldDown {
     background: none;
-    border: 1px solid var(--border, #ccc);
-    border-radius: 0.25rem;
+    color: whitesmoke;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
     cursor: pointer;
     line-height: 1;
     padding: 0.15rem 0.4rem;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.crossSearchFieldUp:hover:not([disabled]),
+.crossSearchFieldDown:hover:not([disabled]) {
+    border-color: var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
 }
 
 .crossSearchFieldUp[disabled],
@@ -225,7 +296,7 @@
 .crossSearchFieldInclude:focus-visible,
 .crossSearchFieldUp:focus-visible,
 .crossSearchFieldDown:focus-visible {
-    outline: 2px solid var(--accent, #1b6ec2);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
@@ -233,26 +304,34 @@
 #crossUtubSearchHistoryList {
     max-width: 880px;
     margin-inline: auto;
-    margin-bottom: 1.5rem;
+    margin-bottom: var(--space-6);
 }
 
 #crossUtubSearchHistoryHeading {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 0.5rem;
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    color: var(--deckHeaderGreen);
+    margin-bottom: var(--space-2);
 }
 
 #crossUtubSearchHistoryClear {
     background: none;
-    border: 1px solid var(--border, #ccc);
-    border-radius: 0.25rem;
-    padding: 0.25rem 0.5rem;
+    color: whitesmoke;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    padding: var(--space-1) var(--space-2);
     cursor: pointer;
-    margin-bottom: 0.5rem;
+    margin-bottom: var(--space-2);
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+#crossUtubSearchHistoryClear:hover {
+    border-color: var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
 }
 
 #crossUtubSearchHistoryClear:focus-visible {
-    outline: 2px solid var(--accent, #1b6ec2);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
@@ -265,22 +344,24 @@
 .crossSearchHistoryRow {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--space-2);
     width: 100%;
     text-align: left;
-    padding: 0.5rem 0.75rem;
+    color: whitesmoke;
+    padding: var(--space-2) var(--space-3);
     background: none;
     border: 1px solid transparent;
-    border-radius: 0.25rem;
+    border-radius: var(--radius-sm);
     cursor: pointer;
+    transition: background-color 0.15s ease;
 }
 
 .crossSearchHistoryRow:hover {
-    background-color: var(--cardBackground, #f1f3f5);
+    background-color: var(--cardBackgroundColor);
 }
 
 .crossSearchHistoryRow:focus-visible {
-    outline: 2px solid var(--accent, #1b6ec2);
+    outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
@@ -294,29 +375,53 @@
 
 .crossSearchHistoryField {
     flex: 0 0 auto;
-    padding: 0.1rem 0.4rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    background-color: var(--tagBackground, #e9ecef);
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: var(--fs-xs);
+    color: var(--darkSplashGreen);
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
 }
 
 .crossSearchHistoryTime {
     flex: 0 0 auto;
-    font-size: 0.8rem;
-    color: var(--mutedText, #6c757d);
+    font-size: var(--fs-sm);
+    color: var(--cardURLTextColor);
 }
 
 .crossSearchHistoryStale {
     flex: 0 0 auto;
-    font-size: 0.7rem;
-    font-weight: 700;
+    font-size: var(--fs-xs);
+    font-weight: var(--fw-bold);
     text-transform: uppercase;
-    color: var(--warningText, #856404);
+    color: var(--editURLColor);
 }
 
 /* Mobile: ≥44px touch targets for interactive elements. Inline anchors default
    to inline display and can be smaller than 44px, so flex them. */
 @media (max-width: 991.98px) {
+    /* Narrow viewports cannot fit the input, field controls, and close button on
+       one row — the field controls squeeze the input toward zero width. Stack the
+       header so the input gets a full-width row of its own, with the close button
+       pinned to that row's top-right. */
+    #crossUtubSearchHeader {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #crossUtubSearchInput {
+        width: 100%;
+        min-height: 2.75rem;
+        /* Leave room for the absolutely-positioned close button on its right. */
+        padding-right: 3rem;
+    }
+
+    #crossUtubSearchClose {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+    }
+
     a.crossSearchUrl {
         min-height: 2.75rem;
         display: flex;

@@ -34,6 +34,12 @@ pytestmark = pytest.mark.search_ui
 USER_ID_FOR_TEST = 1
 QUERY_TERM = UTS.CROSS_SEARCH_QUERY_TERM
 NO_MATCH_TERM = UTS.CROSS_SEARCH_NO_MATCH_TERM
+# Floor for the mobile search-input rendered width: comfortably above the broken
+# ~28px single-row collapse, but below the ~388px a full-width input yields on the
+# 420px mobile-portrait viewport, leaving slack for padding/rounding.
+MOBILE_INPUT_MIN_WIDTH_PX = 200
+# 44px (2.75rem) minimum touch-target dimension.
+MOBILE_TOUCH_TARGET_MIN_PX = 44
 
 
 @pytest.fixture
@@ -240,6 +246,31 @@ def test_escape_closes_cross_search(
 
     wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
     assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+
+def test_cross_search_input_is_usable_width_on_mobile(
+    browser_mobile_portrait: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN a logged-in user on a narrow (mobile) viewport
+    WHEN they open cross-UTub search mode
+    THEN the search input is laid out full-width on its own row rather than being
+        squeezed toward zero width by the inline field controls sharing its row
+    """
+    browser = browser_mobile_portrait
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+    search_input = wait_then_get_element(browser, HPL.CROSS_SEARCH_INPUT, time=10)
+    assert search_input is not None
+    # Pre-fix the input collapsed to ~28px on a 420px-wide viewport. A usable
+    # full-width input is far wider; assert a generous floor well above the break.
+    assert search_input.size["width"] >= MOBILE_INPUT_MIN_WIDTH_PX
+    # Touch-target height floor for the input on mobile.
+    assert search_input.size["height"] >= MOBILE_TOUCH_TARGET_MIN_PX
 
 
 def test_close_button_closes_cross_search(
