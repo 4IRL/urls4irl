@@ -120,4 +120,23 @@ describe("field-controls", () => {
       false,
     );
   });
+
+  it("(f) each row shows its 1-based priority ordinal, updating on reorder", async () => {
+    const { initFieldControls } = await import("../field-controls.js");
+    initFieldControls({ onChange: vi.fn() });
+
+    expect(rowFor("url").find(".crossSearchFieldPriority").text()).toBe("1st");
+    expect(rowFor("title").find(".crossSearchFieldPriority").text()).toBe(
+      "2nd",
+    );
+    expect(rowFor("tag").find(".crossSearchFieldPriority").text()).toBe("3rd");
+
+    clickUp("title");
+
+    expect(rowFor("title").find(".crossSearchFieldPriority").text()).toBe(
+      "1st",
+    );
+    expect(rowFor("url").find(".crossSearchFieldPriority").text()).toBe("2nd");
+    expect(rowFor("tag").find(".crossSearchFieldPriority").text()).toBe("3rd");
+  });
 });

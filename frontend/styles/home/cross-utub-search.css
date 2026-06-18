@@ -232,7 +232,8 @@
     transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-#crossUtubSearchSettingsBtn svg {
+#crossUtubSearchSettingsBtn svg,
+#crossUtubSearchClose svg {
     width: 20px;
     height: 20px;
 }
@@ -321,8 +322,17 @@
 
 .crossSearchFieldLabel {
     margin: 0;
-    margin-inline-end: var(--space-1);
+    /* Take the free space so the priority ordinal + reorder arrows are pushed
+       to the right edge of the row. */
+    flex: 1;
     cursor: default;
+}
+
+/* Compact priority ordinal (1st / 2nd / 3rd), sitting just left of the arrows. */
+.crossSearchFieldPriority {
+    flex: 0 0 auto;
+    font-size: var(--fs-sm);
+    color: var(--cardURLTextColor);
 }
 
 .crossSearchFieldUp,

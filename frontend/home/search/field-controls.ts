@@ -21,6 +21,21 @@ let _included: Record<MatchedField, boolean> = {
 };
 let _onChange: ((fields: MatchedField[]) => void) | null = null;
 
+// Compact English ordinal for a 1-based priority rank: 1 -> "1st", 2 -> "2nd",
+// 3 -> "3rd", 4 -> "4th". Handles the 11/12/13 special case for completeness
+// even though the field set only ever has three entries.
+function ordinalLabel(rank: number): string {
+  const lastTwo = rank % 100;
+  const lastOne = rank % 10;
+  let suffix = "th";
+  if (lastTwo < 11 || lastTwo > 13) {
+    if (lastOne === 1) suffix = "st";
+    else if (lastOne === 2) suffix = "nd";
+    else if (lastOne === 3) suffix = "rd";
+  }
+  return `${rank}${suffix}`;
+}
+
 function fieldDisplayName(field: MatchedField): string {
   switch (field) {
     case "url":
@@ -85,6 +100,16 @@ function buildRow(field: MatchedField, position: number): JQuery<HTMLElement> {
   $(document.createElement("label"))
     .addClass("crossSearchFieldLabel")
     .text(displayName)
+    .appendTo(row);
+
+  // Compact priority indicator (1st / 2nd / 3rd…) that updates on reorder. The
+  // arrows change it; the ordinal makes the priority order legible at a glance
+  // without taking much room on mobile. Decorative — DOM order already conveys
+  // priority to assistive tech.
+  $(document.createElement("span"))
+    .addClass("crossSearchFieldPriority")
+    .attr("aria-hidden", "true")
+    .text(ordinalLabel(position + 1))
     .appendTo(row);
 
   const upButton = $(document.createElement("button"))
