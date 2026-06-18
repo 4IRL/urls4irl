@@ -187,17 +187,25 @@
 
 #crossUtubSearchClose {
     flex: 0 0 auto;
-    font-size: var(--fs-xl);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: var(--fs-2xl);
     line-height: 1;
     background: none;
     border: none;
+    border-radius: var(--radius-sm);
     cursor: pointer;
     color: var(--cardURLTextColor);
-    transition: color 0.15s ease;
+    transition: color 0.15s ease, background-color 0.15s ease;
 }
 
 #crossUtubSearchClose:hover {
     color: whitesmoke;
+    background-color: var(--cardBackgroundColor);
 }
 
 #crossUtubSearchClose:focus-visible {
@@ -240,33 +248,68 @@
     }
 }
 
-/* Inline field-select + ordering controls (one row per searchable field). */
+/* Field-select + ordering controls, in their own labeled section below the
+   input so the header stays clean and the controls are self-explanatory. */
+#crossUtubSearchFields {
+    max-width: 880px;
+    margin-inline: auto;
+    margin-bottom: var(--space-4);
+}
+
+#crossUtubSearchFieldsLabel {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin: 0 0 var(--space-2);
+}
+
+.crossSearchFieldsTitle {
+    font-weight: var(--fw-bold);
+    color: var(--deckHeaderGreen);
+}
+
+.crossSearchFieldsHint {
+    font-size: var(--fs-sm);
+    color: var(--cardURLTextColor);
+}
+
+/* One pill chip per searchable field. */
 #crossUtubSearchFieldControls {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
-    max-width: 880px;
-    margin-inline: auto;
-    margin-bottom: var(--space-4);
 }
 
 .crossSearchFieldRow {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    padding: var(--space-1) var(--space-2);
+    padding: var(--space-2) var(--space-3);
     color: whitesmoke;
     background: var(--cardBackgroundColor);
     border: 1px solid var(--borderColor);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-pill);
+    transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+/* Excluded fields read as "off" — dimmed with a muted border. */
+.crossSearchFieldRow[data-included="false"] {
+    opacity: 0.55;
+    border-style: dashed;
 }
 
 .crossSearchFieldInclude {
     accent-color: var(--splashGreen);
+    width: 1.1rem;
+    height: 1.1rem;
+    flex: 0 0 auto;
+    cursor: pointer;
 }
 
 .crossSearchFieldLabel {
     margin: 0;
+    margin-inline-end: var(--space-1);
+    cursor: default;
 }
 
 .crossSearchFieldUp,
@@ -398,28 +441,14 @@
 }
 
 /* Mobile: ≥44px touch targets for interactive elements. Inline anchors default
-   to inline display and can be smaller than 44px, so flex them. */
+   to inline display and can be smaller than 44px, so flex them. The header is a
+   simple input + close flex row (field controls live in their own section
+   below), so the input keeps full width and the close button stays vertically
+   centered by the header's `align-items: center` — no stacking or absolute
+   positioning needed. */
 @media (max-width: 991.98px) {
-    /* Narrow viewports cannot fit the input, field controls, and close button on
-       one row — the field controls squeeze the input toward zero width. Stack the
-       header so the input gets a full-width row of its own, with the close button
-       pinned to that row's top-right. */
-    #crossUtubSearchHeader {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
     #crossUtubSearchInput {
-        width: 100%;
         min-height: 2.75rem;
-        /* Leave room for the absolutely-positioned close button on its right. */
-        padding-right: 3rem;
-    }
-
-    #crossUtubSearchClose {
-        position: absolute;
-        top: 1rem;
-        right: 1rem;
     }
 
     a.crossSearchUrl {

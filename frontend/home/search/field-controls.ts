@@ -67,7 +67,8 @@ function buildRow(field: MatchedField, position: number): JQuery<HTMLElement> {
 
   const row = $(document.createElement("div"))
     .addClass("crossSearchFieldRow")
-    .attr("data-field", field);
+    .attr("data-field", field)
+    .attr("data-included", String(_included[field]));
 
   const include = $(document.createElement("input"))
     .addClass("crossSearchFieldInclude")
@@ -76,6 +77,7 @@ function buildRow(field: MatchedField, position: number): JQuery<HTMLElement> {
   include.prop("checked", _included[field]);
   include.on("change", () => {
     _included[field] = include.prop("checked") as boolean;
+    row.attr("data-included", String(_included[field]));
     notifyChange();
   });
   include.appendTo(row);

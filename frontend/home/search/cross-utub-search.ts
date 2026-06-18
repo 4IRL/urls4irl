@@ -412,6 +412,11 @@ function navigateToHit({
 }
 
 export function initCrossUtubSearch(): void {
+  $("#crossUtubSearchInput").attr(
+    "placeholder",
+    APP_CONFIG.strings.CROSS_SEARCH_PLACEHOLDER,
+  );
+
   $("#toCrossUtubSearch").offAndOnExact("click.crossSearch", () =>
     enterCrossUtubSearchMode(),
   );

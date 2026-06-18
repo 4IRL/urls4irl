@@ -57,6 +57,9 @@ describe("field-controls", () => {
 
     expect(getSelectedFields()).toEqual(["url", "title"]);
     expect(onChange).toHaveBeenLastCalledWith(["url", "title"]);
+    // The deselected row is marked excluded so CSS can dim it; included rows stay marked.
+    expect(rowFor("tag").attr("data-included")).toBe("false");
+    expect(rowFor("url").attr("data-included")).toBe("true");
   });
 
   it("(c) reordering to title-first yields ['title','url','tag']", async () => {
