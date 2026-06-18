@@ -32,7 +32,6 @@ def search_across_utubs() -> FlaskResponse:
         SearchQuerySchema,
         message=SearchFailureMessages.INVALID_QUERY,
         error_code=SearchErrorCodes.INVALID_QUERY_PARAM,
-        multi_value_keys=frozenset({"fields"}),
     )
     if not isinstance(parsed, BaseModel):
         return parsed

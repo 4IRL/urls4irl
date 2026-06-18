@@ -1193,7 +1193,9 @@
               "maxItems": 3,
               "type": "array"
             },
-            "description": "Ordered subset of fields to search (membership restricts which of title/url/tag match; order sets ranking priority, first = highest). Omitted/empty = all fields in default priority."
+            "description": "Comma-separated, ordered subset of fields to search (e.g. `title,url,tag`). Membership restricts which of title/url/tag match; order sets ranking priority, first = highest. Omitted/empty = all fields in default priority.",
+            "style": "form",
+            "explode": false
           }
         ],
         "responses": {

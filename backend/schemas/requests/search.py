@@ -20,17 +20,36 @@ class SearchQuerySchema(BaseModel):
         default_factory=lambda: list(DEFAULT_SEARCH_FIELDS),
         max_length=len(MatchedField),
         description=(
-            "Ordered subset of fields to search (membership restricts which of "
-            "title/url/tag match; order sets ranking priority, first = highest). "
-            "Omitted/empty = all fields in default priority."
+            "Comma-separated, ordered subset of fields to search (e.g. "
+            "`title,url,tag`). Membership restricts which of title/url/tag match; "
+            "order sets ranking priority, first = highest. Omitted/empty = all "
+            "fields in default priority."
         ),
         examples=[["title", "url", "tag"]],
+        json_schema_extra={"explode": False},
     )
 
     @field_validator("q", mode="before")
     @classmethod
     def _strip_query(cls, value: str | None) -> str | None:
         return value.strip() if isinstance(value, str) else value
+
+    @field_validator("fields", mode="before")
+    @classmethod
+    def _split_comma_delimited_fields(cls, value: object) -> object:
+        """Split the comma-separated `fields` query string into an ordered list.
+
+        The param is sent as a single comma-delimited string (e.g.
+        `?fields=title,url,tag`) for URL readability. Whitespace around each
+        token is stripped and empty tokens (from leading/trailing/double commas)
+        are dropped, so `"title, url"` and `"title,,url"` both yield
+        `["title", "url"]`. An empty/blank string yields `[]`, which the
+        after-validator then normalizes to the default field priority.
+        Non-string input (already a list) passes through unchanged.
+        """
+        if isinstance(value, str):
+            return [token.strip() for token in value.split(",") if token.strip()]
+        return value
 
     @model_validator(mode="after")
     def _default_and_dedupe_fields(self) -> Self:

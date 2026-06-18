@@ -151,6 +151,10 @@ def _build_query_parameter_schema(field_schema: dict[str, Any]) -> dict[str, Any
     schema_copy.pop("title", None)
     schema_copy.pop("description", None)
     schema_copy.pop("default", None)
+    # `explode` is a parameter-level serialization key (lifted to the parameter
+    # object by `_extract_query_parameters`), not a JSON Schema keyword — strip
+    # it so it never leaks into the emitted `schema`.
+    schema_copy.pop("explode", None)
 
     # Pydantic v2 expresses `Field | None` as `anyOf: [{...}, {type: "null"}]`.
     # Collapse to the non-null branch since OpenAPI query params can be omitted
@@ -202,6 +206,11 @@ def _extract_query_parameters(
     parameters: list[dict[str, Any]] = []
     for field_name, field_schema in properties.items():
         description = field_schema.get("description")
+        # A field marked `json_schema_extra={"explode": False}` is serialized as
+        # a single comma-delimited value (OpenAPI `style: form, explode: false`,
+        # e.g. `?fields=title,url,tag`) rather than the array default of repeated
+        # keys. Unmarked array fields keep the OpenAPI default (repeated keys).
+        comma_delimited = field_schema.get("explode") is False
         parameter: dict[str, Any] = {
             "name": field_name,
             "in": "query",
@@ -210,6 +219,9 @@ def _extract_query_parameters(
         }
         if description:
             parameter["description"] = description
+        if comma_delimited:
+            parameter["style"] = "form"
+            parameter["explode"] = False
         parameters.append(parameter)
     return parameters
 

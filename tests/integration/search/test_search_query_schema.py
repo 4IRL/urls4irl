@@ -81,6 +81,42 @@ def test_search_query_schema_rejects_too_many_fields():
         SearchQuerySchema.model_validate({"q": "x", "fields": too_many_fields})
 
 
+def test_search_query_schema_splits_comma_delimited_fields_string():
+    validated = SearchQuerySchema.model_validate({"q": "x", "fields": "tag,title"})
+    assert validated.fields == [MatchedField.TAG, MatchedField.URL_TITLE]
+
+
+def test_search_query_schema_strips_whitespace_around_comma_fields():
+    validated = SearchQuerySchema.model_validate(
+        {"q": "x", "fields": "title, url, tag"}
+    )
+    assert validated.fields == [
+        MatchedField.URL_TITLE,
+        MatchedField.URL_STRING,
+        MatchedField.TAG,
+    ]
+
+
+def test_search_query_schema_drops_empty_tokens_in_comma_string():
+    validated = SearchQuerySchema.model_validate({"q": "x", "fields": "title,,tag"})
+    assert validated.fields == [MatchedField.URL_TITLE, MatchedField.TAG]
+
+
+def test_search_query_schema_normalizes_empty_string_fields_to_default():
+    validated = SearchQuerySchema.model_validate({"q": "x", "fields": ""})
+    assert validated.fields == list(DEFAULT_SEARCH_FIELDS)
+
+
+def test_search_query_schema_rejects_duplicate_comma_delimited_fields():
+    with pytest.raises(ValidationError):
+        SearchQuerySchema.model_validate({"q": "x", "fields": "title,title"})
+
+
+def test_search_query_schema_rejects_unknown_comma_delimited_field_token():
+    with pytest.raises(ValidationError):
+        SearchQuerySchema.model_validate({"q": "x", "fields": "title,author"})
+
+
 def test_search_hit_schema_serializes_matched_fields_to_readable_values():
     hit = SearchHitSchema(
         utub_url_id=7,

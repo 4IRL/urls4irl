@@ -257,7 +257,7 @@ def test_search_route_honors_fields_subset(
     assert len(default_groups) >= 1
     assert sum(len(group[M.URLS]) for group in default_groups) >= 1
 
-    filtered_response = logged_in_client.get(base_url + "&fields=title&fields=url")
+    filtered_response = logged_in_client.get(base_url + "&fields=title,url")
     assert filtered_response.status_code == 200
     filtered_body = filtered_response.get_json()
     filtered_hits = sum(len(group[M.URLS]) for group in filtered_body[M.SEARCH_RESULTS])
@@ -291,7 +291,7 @@ def test_search_route_honors_fields_order(
     )
     assert default_group[M.URLS][0][M.URL_TITLE] == f"{query_term} title"
 
-    flipped_response = logged_in_client.get(base_url + "&fields=tag&fields=title")
+    flipped_response = logged_in_client.get(base_url + "&fields=tag,title")
     assert flipped_response.status_code == 200
     flipped_body = flipped_response.get_json()
     flipped_group = next(
@@ -322,10 +322,10 @@ def test_search_route_rejects_duplicate_fields_token(
     register_multiple_users,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
-    """A repeated `fields` token fails validation → 400 with the error envelope."""
+    """A duplicated `fields` token in the comma list fails validation → 400."""
     logged_in_client, _, _, _ = login_first_user_without_register
 
-    response = logged_in_client.get(_SEARCH_PATH + "?q=x&fields=title&fields=title")
+    response = logged_in_client.get(_SEARCH_PATH + "?q=x&fields=title,title")
 
     assert response.status_code == 400
     body = response.get_json()
