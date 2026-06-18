@@ -99,6 +99,8 @@ class HomePageLocators(GenericPageLocator):
     CROSS_SEARCH_HIT_CARD = ".crossSearchHitCard"
     CROSS_SEARCH_NO_RESULTS = "#crossUtubSearchNoResults"
     CROSS_SEARCH_FIELD_CONTROLS = "#crossUtubSearchFieldControls"
+    CROSS_SEARCH_SETTINGS_BTN = "#crossUtubSearchSettingsBtn"
+    CROSS_SEARCH_SETTINGS_MODAL = "#crossUtubSearchSettingsModal"
     CROSS_SEARCH_HISTORY_LIST = "#crossUtubSearchHistoryList"
     CROSS_SEARCH_HISTORY_ROW = ".crossSearchHistoryRow"
     CROSS_SEARCH_HISTORY_CLEAR = "#crossUtubSearchHistoryClear"

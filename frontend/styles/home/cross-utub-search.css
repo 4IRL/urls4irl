@@ -213,6 +213,40 @@
     outline-offset: 2px;
 }
 
+/* Gear button mirrors the close button: a 2.75rem centered square with a light
+   icon and a hover wash. Opens the search-options modal. */
+#crossUtubSearchSettingsBtn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    line-height: 1;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--cardURLTextColor);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+#crossUtubSearchSettingsBtn svg {
+    width: 20px;
+    height: 20px;
+}
+
+#crossUtubSearchSettingsBtn:hover {
+    color: whitesmoke;
+    background-color: var(--cardBackgroundColor);
+}
+
+#crossUtubSearchSettingsBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
 /* Hidden/visible transition states. Using opacity + visibility (not display)
    so the transition runs; visibility:hidden also drops it from the tab order.
    The transform makes the open/close a deliberate "zoom into one place" motion
@@ -248,31 +282,10 @@
     }
 }
 
-/* Field-select + ordering controls, in their own labeled section below the
-   input so the header stays clean and the controls are self-explanatory. */
-#crossUtubSearchFields {
-    max-width: 880px;
-    margin-inline: auto;
-    margin-bottom: var(--space-4);
-}
-
-#crossUtubSearchFieldsLabel {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    margin: 0 0 var(--space-2);
-}
-
-.crossSearchFieldsTitle {
-    font-weight: var(--fw-bold);
-    color: var(--deckHeaderGreen);
-}
-
-.crossSearchFieldsHint {
-    font-size: var(--fs-sm);
-    color: var(--cardURLTextColor);
-}
-
+/* Field-select + ordering controls now live inside the search-options modal
+   (#crossUtubSearchSettingsModal). The rules below style the controls wherever
+   they render; the modal-scoped rules further down lay them out as a vertical
+   list within the modal body. */
 /* One pill chip per searchable field. */
 #crossUtubSearchFieldControls {
     display: flex;
@@ -473,4 +486,56 @@
         min-width: 2.75rem;
         min-height: 2.75rem;
     }
+
+    #crossUtubSearchSettingsBtn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
+/* Dark theming for the search-options modal, scoped to its own id so other
+   Bootstrap modals keep their default light surface. */
+#crossUtubSearchSettingsModal .modal-content {
+    background: var(--panelBackgroundColor);
+    color: whitesmoke;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+}
+
+#crossUtubSearchSettingsModal .modal-header,
+#crossUtubSearchSettingsModal .modal-footer {
+    border-color: var(--borderColor);
+}
+
+#crossUtubSearchSettingsModal .modal-title {
+    color: var(--deckHeaderGreen);
+}
+
+/* Bootstrap's close glyph is a dark SVG, invisible on the dark surface — invert
+   it to a light icon. */
+#crossUtubSearchSettingsModal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#crossUtubSearchSettingsModal .crossSearchSettingsIntro {
+    color: whitesmoke;
+    margin-bottom: var(--space-2);
+}
+
+#crossUtubSearchSettingsModal .crossSearchSettingsHelp {
+    color: var(--cardURLTextColor);
+    font-size: var(--fs-sm);
+    padding-left: 1.25rem;
+    margin-bottom: var(--space-4);
+}
+
+#crossUtubSearchSettingsModal .crossSearchSettingsHelp li {
+    margin-bottom: var(--space-1);
+}
+
+/* Inside the modal the field controls lay out as a clear vertical list (one chip
+   per row spanning the modal width) rather than wrapping horizontally. */
+#crossUtubSearchSettingsModal #crossUtubSearchFieldControls {
+    flex-direction: column;
+    align-items: stretch;
 }

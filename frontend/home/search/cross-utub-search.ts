@@ -436,6 +436,9 @@ export function initCrossUtubSearch(): void {
         navigateToHit({ utubID, utubUrlID });
       },
     );
+  $("#crossUtubSearchSettingsBtn").offAndOnExact("click.crossSearch", () =>
+    $("#crossUtubSearchSettingsModal").modal("show"),
+  );
   $("#crossUtubSearchClose").offAndOnExact("click.crossSearch", () =>
     exitCrossUtubSearchMode(),
   );

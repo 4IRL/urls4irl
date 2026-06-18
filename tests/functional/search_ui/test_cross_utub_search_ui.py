@@ -13,6 +13,7 @@ from tests.functional.db_utils import create_test_cross_utub_searchable_data
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_to_home_page
 from tests.functional.search_ui.selenium_utils import (
+    open_cross_search_settings,
     open_cross_search_via_shortcut,
     open_cross_search_via_trigger,
     type_cross_search_query,
@@ -189,6 +190,8 @@ def test_deselecting_tag_field_still_yields_results(
     type_cross_search_query(browser, QUERY_TERM)
     wait_for_cross_search_results(browser)
 
+    open_cross_search_settings(browser)
+
     tag_checkbox_selector = (
         f"{HPL.CROSS_SEARCH_FIELD_CONTROLS} "
         ".crossSearchFieldRow[data-field='tag'] .crossSearchFieldInclude"
@@ -215,6 +218,8 @@ def test_reordering_fields_keeps_results(
     open_cross_search_via_trigger(browser)
     type_cross_search_query(browser, QUERY_TERM)
     wait_for_cross_search_results(browser)
+
+    open_cross_search_settings(browser)
 
     title_up_selector = (
         f"{HPL.CROSS_SEARCH_FIELD_CONTROLS} "

@@ -42,6 +42,14 @@ def open_cross_search_via_shortcut(browser: WebDriver):
     wait_until_in_focus(browser, HPL.CROSS_SEARCH_INPUT)
 
 
+def open_cross_search_settings(browser: WebDriver):
+    """Opens the search-options modal via the gear button and waits for it to show."""
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_SETTINGS_BTN, time=10)
+    wait_until_visible_css_selector(
+        browser, HPL.CROSS_SEARCH_SETTINGS_MODAL, timeout=10
+    )
+
+
 def type_cross_search_query(browser: WebDriver, term: str):
     """Focuses the cross-search input and types the given query term."""
     wait_until_in_focus(browser, HPL.CROSS_SEARCH_INPUT)
