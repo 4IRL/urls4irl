@@ -5,7 +5,6 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
-    click_on_navbar,
     wait_then_click_element,
     wait_then_get_at_least_n_elements,
     wait_then_get_element,
@@ -14,24 +13,14 @@ from tests.functional.selenium_utils import (
 )
 
 
-def _navbar_dropdown_is_open(browser: WebDriver) -> bool:
-    dropdown = browser.find_element(By.CSS_SELECTOR, HPL.NAVBAR_DROPDOWN)
-    classes = dropdown.get_attribute("class") or ""
-    return "show" in classes.split()
-
-
 def open_cross_search_via_trigger(browser: WebDriver):
     """
     Opens cross-UTub search mode by clicking the navbar trigger.
 
-    The home navbar uses ``navbar-expand-none``, so the trigger lives inside the
-    collapsed dropdown and is only reachable after opening the navbar. The
-    dropdown may already be open (it stays open behind a prior search overlay),
-    so only toggle it open when it is currently collapsed — toggling an
-    already-open dropdown would collapse it and re-hide the trigger.
+    The trigger is a standalone icon button inline next to the hamburger (outside
+    the collapsed dropdown), so it is directly clickable on every viewport without
+    first opening the navbar menu.
     """
-    if not _navbar_dropdown_is_open(browser):
-        click_on_navbar(browser)
     wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_TRIGGER, timeout=10)
     wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER, time=10)
     wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_INPUT, timeout=10)
