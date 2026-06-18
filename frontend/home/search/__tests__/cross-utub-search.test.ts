@@ -34,6 +34,23 @@ vi.mock("../../utubs/search.js", () => ({
   resetUTubSearch: vi.fn(),
 }));
 
+vi.mock("../../utubs/selectors.js", () => ({
+  selectUTub: vi.fn(),
+  getSelectedUTubInfo: vi.fn(),
+}));
+
+vi.mock("../../urls/cards/selection.js", () => ({
+  selectURLCard: vi.fn(),
+}));
+
+vi.mock("../../utubs/utils.js", () => ({
+  getAllUTubs: vi.fn(),
+}));
+
+vi.mock("../../utubs/deck.js", () => ({
+  buildUTubDeck: vi.fn(),
+}));
+
 const $ = window.jQuery;
 
 const SEARCH_MODE_HTML = `
@@ -220,5 +237,63 @@ describe("cross-utub-search — mode mechanics", () => {
       event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
       target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
     });
+  });
+
+  it("(g) clicking a result card exits mode, selects the UTub, and selects the URL card after UTUB_SELECTED", async () => {
+    // Partial-mock the event bus: keep the real on/emit so the one-shot
+    // subscription wired by the click handler actually fires, but the rest of
+    // the module is shared with cross-utub-search.ts via importActual.
+    const eventBus = await vi.importActual<
+      typeof import("../../../lib/event-bus.js")
+    >("../../../lib/event-bus.js");
+    const { selectUTub } = await import("../../utubs/selectors.js");
+    const { selectURLCard } = await import("../../urls/cards/selection.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    // A rendered result card plus the UTub selector the click handler locates,
+    // and the target .urlRow the URL deck would render once UTUB_SELECTED fires.
+    const targetUtubID = 7;
+    const targetUrlID = 42;
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="${targetUtubID}" data-utub-url-id="${targetUrlID}"></div>`,
+    );
+    $(document.body).append(
+      `<div class="UTubSelector" utubid="${targetUtubID}"></div>` +
+        `<div class="urlRow" utuburlid="${targetUrlID}"></div>`,
+    );
+
+    $(`.crossSearchHitCard[data-utub-id="${targetUtubID}"]`).trigger("click");
+
+    // Mode exits and the source UTub is selected via its selector element.
+    expect($("#crossUtubSearchMode").hasClass("cross-search-hidden")).toBe(
+      true,
+    );
+    expect(selectUTub).toHaveBeenCalledTimes(1);
+    const selectUTubCall = (selectUTub as unknown as ReturnType<typeof vi.fn>)
+      .mock.calls[0];
+    expect(selectUTubCall[0]).toBe(targetUtubID);
+
+    // The URL card is NOT selected synchronously — only after UTUB_SELECTED.
+    expect(selectURLCard).not.toHaveBeenCalled();
+
+    eventBus.emit(eventBus.AppEvents.UTUB_SELECTED, {
+      utubID: targetUtubID,
+      utubName: "Seven",
+      urls: [],
+      tags: [],
+      members: [],
+      utubOwnerID: 1,
+      isCurrentUserOwner: true,
+      currentUserID: 1,
+    });
+
+    expect(selectURLCard).toHaveBeenCalledTimes(1);
+    const selectedCard = (selectURLCard as unknown as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0] as JQuery;
+    expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
   });
 });

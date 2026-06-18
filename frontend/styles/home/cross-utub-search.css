@@ -149,13 +149,18 @@
 }
 
 /* Hidden/visible transition states. Using opacity + visibility (not display)
-   so the transition runs; visibility:hidden also drops it from the tab order. */
+   so the transition runs; visibility:hidden also drops it from the tab order.
+   The transform makes the open/close a deliberate "zoom into one place" motion
+   (the overlay scales up slightly out of the page on close) rather than an
+   instant snap — closing on a result click reads as collapsing back to the UTub. */
 .cross-search-hidden {
     opacity: 0;
     pointer-events: none;
     visibility: hidden;
+    transform: scale(1.02);
     transition:
         opacity 0.3s ease,
+        transform 0.3s ease,
         visibility 0.3s ease;
 }
 
@@ -163,14 +168,17 @@
     opacity: 1;
     pointer-events: auto;
     visibility: visible;
+    transform: scale(1);
     transition:
         opacity 0.3s ease,
+        transform 0.3s ease,
         visibility 0.3s ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .cross-search-hidden,
     .cross-search-visible {
+        transform: none;
         transition: none;
     }
 }

@@ -5,13 +5,18 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { CROSS_UTUB_SEARCH_OPEN_TARGET } from "../../types/metrics-dim-values.js";
+import { AppEvents, on } from "../../lib/event-bus.js";
 import { getState } from "../../store/app-store.js";
 import {
   isMobile,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
 } from "../mobile.js";
+import { selectURLCard } from "../urls/cards/selection.js";
+import { buildUTubDeck } from "../utubs/deck.js";
 import { resetUTubSearch } from "../utubs/search.js";
+import { selectUTub } from "../utubs/selectors.js";
+import { getAllUTubs } from "../utubs/utils.js";
 import { renderSearchResults } from "./render.js";
 import {
   getSelectedFields,
@@ -321,10 +326,71 @@ function handleSearchInput(): void {
   }, SEARCH_DEBOUNCE_MS);
 }
 
+// Navigate from a search result card to its source UTub and highlight the
+// matched URL card. The URL deck is rebuilt asynchronously by selectUTub, so
+// the target .urlRow does not exist until AppEvents.UTUB_SELECTED fires — defer
+// selectURLCard until that event (one-shot), never synchronously after
+// selectUTub.
+function navigateToHit({
+  utubID,
+  utubUrlID,
+}: {
+  utubID: number;
+  utubUrlID: number;
+}): void {
+  exitCrossUtubSearchMode();
+
+  // Deck already built for this UTub: select the card directly.
+  if (getState().activeUTubID === utubID) {
+    selectURLCard($(`.urlRow[utuburlid=${utubUrlID}]`));
+    return;
+  }
+
+  // One-shot: unsubscribe first so it fires exactly once even if the handler
+  // throws.
+  const unsubscribe = on(AppEvents.UTUB_SELECTED, () => {
+    unsubscribe();
+    selectURLCard($(`.urlRow[utuburlid=${utubUrlID}]`));
+  });
+
+  const utubSelector = $(`.UTubSelector[utubid=${utubID}]`);
+  if (utubSelector.length > 0) {
+    selectUTub(utubID, utubSelector);
+    return;
+  }
+
+  // The selector is missing only in a race where the user was added to a UTub
+  // and searched before the deck reloaded — trust the search result and rebuild
+  // the deck, then select.
+  getAllUTubs().then((utubData) => {
+    buildUTubDeck(utubData.utubs);
+    const rebuiltSelector = $(`.UTubSelector[utubid=${utubID}]`);
+    if (rebuiltSelector.length > 0) {
+      selectUTub(utubID, rebuiltSelector);
+    }
+  });
+}
+
 export function initCrossUtubSearch(): void {
   $("#toCrossUtubSearch").offAndOnExact("click.crossSearch", () =>
     enterCrossUtubSearchMode(),
   );
+
+  // Delegated result-card clicks: leave search mode and navigate to the source
+  // UTub with the matched URL card highlighted. offAndOn does not support the
+  // delegated-selector form, so use off().on() directly for the delegation.
+  $("#crossUtubSearchResults")
+    .off("click.crossSearch")
+    .on(
+      "click.crossSearch",
+      ".crossSearchHitCard",
+      (event: JQuery.TriggeredEvent) => {
+        const card = $(event.currentTarget);
+        const utubID = parseInt(card.attr("data-utub-id")!, 10);
+        const utubUrlID = parseInt(card.attr("data-utub-url-id")!, 10);
+        navigateToHit({ utubID, utubUrlID });
+      },
+    );
   $("#crossUtubSearchClose").offAndOnExact("click.crossSearch", () =>
     exitCrossUtubSearchMode(),
   );
