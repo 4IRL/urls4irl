@@ -34,8 +34,8 @@ def _weights_from_fields(
     first field gets the largest weight, decreasing by one per position.
 
     Example:
-        _weights_from_fields((URL_TITLE, URL_STRING, TAG))
-        -> {URL_TITLE: 3, URL_STRING: 2, TAG: 1}
+        _weights_from_fields((URL_STRING, URL_TITLE, TAG))
+        -> {URL_STRING: 3, URL_TITLE: 2, TAG: 1}
     """
     return {field: len(fields) - index for index, field in enumerate(fields)}
 
