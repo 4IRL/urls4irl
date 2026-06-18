@@ -81,6 +81,14 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         EventName.UI_URL_SEARCH_CLOSE,
         {"target": "urls", "device_type": DeviceType.DESKTOP},
     ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_OPEN,
+        {"target": "cross_utub", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+        {"target": "cross_utub", "device_type": DeviceType.DESKTOP},
+    ),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": DeviceType.DESKTOP}),
     (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
@@ -391,6 +399,24 @@ def test_url_search_models_reject_utub_target():
         with pytest.raises(ValidationError):
             DIMENSION_MODELS[event_name].model_validate(
                 {"target": "utubs", "device_type": DeviceType.DESKTOP}
+            )
+
+
+def test_cross_utub_search_models_reject_non_cross_utub_target():
+    """`_DimCrossUtubSearchOpen`/`Close` restrict `target` to `Literal["cross_utub"]`.
+
+    Mirrors the UTub/URL search reject tests: a payload tagged with a
+    cross-UTub search event but carrying a foreign `target` (e.g. the URL
+    search target) must be rejected at validation time, not silently
+    accepted.
+    """
+    for event_name in (
+        EventName.UI_CROSS_UTUB_SEARCH_OPEN,
+        EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+    ):
+        with pytest.raises(ValidationError):
+            DIMENSION_MODELS[event_name].model_validate(
+                {"target": "urls", "device_type": DeviceType.MOBILE}
             )
 
 

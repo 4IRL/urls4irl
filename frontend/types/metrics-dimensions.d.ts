@@ -74,6 +74,16 @@ export type DimUrlSearchClose = {
   target: "urls";
 };
 
+export type DimCrossUtubSearchOpen = {
+  device_type: DeviceType;
+  target: "cross_utub";
+};
+
+export type DimCrossUtubSearchClose = {
+  device_type: DeviceType;
+  target: "cross_utub";
+};
+
 export type DimTagCreateOpen = {
   device_type: DeviceType;
   scope: TagScope;
@@ -170,6 +180,8 @@ export type UIEventDimensions = {
   ui_utub_search_close: DimUtubSearchClose;
   ui_url_search_open: DimUrlSearchOpen;
   ui_url_search_close: DimUrlSearchClose;
+  ui_cross_utub_search_open: DimCrossUtubSearchOpen;
+  ui_cross_utub_search_close: DimCrossUtubSearchClose;
   ui_tag_apply: DimDeviceOnly;
   ui_tag_remove: DimDeviceOnly;
   ui_tag_create_open: DimTagCreateOpen;

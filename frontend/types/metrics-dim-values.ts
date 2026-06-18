@@ -83,6 +83,12 @@ export const AUTH_FORM_SWITCH_TARGET = {
 
 export const AUTH_MODAL_OPEN_FORM = AUTH_CANCEL_FORM;
 
+export const CROSS_UTUB_SEARCH_CLOSE_TARGET = {
+  CROSS_UTUB: "cross_utub",
+} as const;
+
+export const CROSS_UTUB_SEARCH_OPEN_TARGET = CROSS_UTUB_SEARCH_CLOSE_TARGET;
+
 export const DECK_COLLAPSE_DECK = {
   MEMBERS: "members",
   TAGS: "tags",

@@ -28,6 +28,8 @@ export const UI_EVENTS = {
   UI_UTUB_SEARCH_CLOSE: "ui_utub_search_close",
   UI_URL_SEARCH_OPEN: "ui_url_search_open",
   UI_URL_SEARCH_CLOSE: "ui_url_search_close",
+  UI_CROSS_UTUB_SEARCH_OPEN: "ui_cross_utub_search_open",
+  UI_CROSS_UTUB_SEARCH_CLOSE: "ui_cross_utub_search_close",
   UI_TAG_APPLY: "ui_tag_apply",
   UI_TAG_REMOVE: "ui_tag_remove",
   UI_TAG_CREATE_OPEN: "ui_tag_create_open",
