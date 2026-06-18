@@ -21,11 +21,11 @@ class SearchQuerySchema(BaseModel):
         max_length=len(MatchedField),
         description=(
             "Comma-separated, ordered subset of fields to search (e.g. "
-            "`title,url,tag`). Membership restricts which of title/url/tag match; "
+            "`url,title,tag`). Membership restricts which of title/url/tag match; "
             "order sets ranking priority, first = highest. Omitted/empty = all "
-            "fields in default priority."
+            "fields in default priority (url > title > tag)."
         ),
-        examples=[["title", "url", "tag"]],
+        examples=[["url", "title", "tag"]],
         json_schema_extra={"explode": False},
     )
 

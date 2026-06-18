@@ -102,12 +102,12 @@ def _hit_sort_key(
     """Rank a single hit best-first within its UTub group.
 
     Orders by best matched-field score descending (per `weights`, default
-    title=3 > url=2 > tag=1), then by url_title ascending (case-insensitive) as
+    url=3 > title=2 > tag=1), then by url_title ascending (case-insensitive) as
     a stable tiebreak.
 
     Example:
-        a title match (score 3) sorts before a tag-only match (score 1);
-        two title matches sort by url_title A->Z.
+        a url match (score 3) sorts before a tag-only match (score 1);
+        two equal-score matches sort by url_title A->Z.
     """
     utub_url, matched_fields = hit
     score = max((weights[field] for field in matched_fields), default=0)
@@ -151,7 +151,7 @@ def search_across_user_utubs(
     Matches the case-insensitive query against the selected `fields` only —
     membership restricts which of URL string / URL title / tag text are searched,
     and order sets ranking priority (first = highest). Omitting `fields` searches
-    all three in the default priority (title > url > tag). Results are grouped by
+    all three in the default priority (url > title > tag). Results are grouped by
     source UTub; within a group hits are ranked by best matched-field score then
     url_title ASC; groups are ranked by max hit score, then match count DESC, then
     utub_name ASC.

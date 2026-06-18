@@ -2158,7 +2158,7 @@ export interface operations {
       query: {
         /** @description Case-insensitive search term matched against URL strings, titles, and tags. */
         q: string;
-        /** @description Comma-separated, ordered subset of fields to search (e.g. `title,url,tag`). Membership restricts which of title/url/tag match; order sets ranking priority, first = highest. Omitted/empty = all fields in default priority. */
+        /** @description Comma-separated, ordered subset of fields to search (e.g. `url,title,tag`). Membership restricts which of title/url/tag match; order sets ranking priority, first = highest. Omitted/empty = all fields in default priority (url > title > tag). */
         fields?: components["schemas"]["MatchedField"][];
       };
       header?: never;

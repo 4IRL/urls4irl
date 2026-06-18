@@ -20,8 +20,8 @@ class MatchedField(StrEnum):
 
 
 DEFAULT_SEARCH_FIELDS: tuple[MatchedField, ...] = (
-    MatchedField.URL_TITLE,
     MatchedField.URL_STRING,
+    MatchedField.URL_TITLE,
     MatchedField.TAG,
 )
 
@@ -35,7 +35,7 @@ def field_order_metric_value(fields: Sequence[MatchedField]) -> str:
 
     Examples::
 
-        field_order_metric_value((URL_TITLE, URL_STRING, TAG))  # "title>url>tag"
+        field_order_metric_value((URL_STRING, URL_TITLE, TAG))  # "url>title>tag"
         field_order_metric_value((TAG,))                        # "tag"
     """
     return ">".join(field.value for field in fields)

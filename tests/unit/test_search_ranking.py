@@ -18,8 +18,9 @@ from backend.search.services.cross_utub_search import (
 
 pytestmark = pytest.mark.unit
 
-_TITLE_SCORE = 3
-_URL_SCORE = 2
+# Default-priority weights (DEFAULT_SEARCH_FIELDS = url > title > tag).
+_URL_SCORE = 3
+_TITLE_SCORE = 2
 _TAG_SCORE = 1
 
 
@@ -41,23 +42,23 @@ def _make_hit(
     return (utub_url, matched_fields)
 
 
-def test_hit_sort_key_scores_title_above_url_above_tag(app: Flask) -> None:
+def test_hit_sort_key_scores_url_above_title_above_tag(app: Flask) -> None:
     """
-    GIVEN single-field hits matching on title, url, and tag
-    WHEN _hit_sort_key is computed for each
-    THEN the negated score orders title (3) before url (2) before tag (1).
+    GIVEN single-field hits matching on url, title, and tag
+    WHEN _hit_sort_key is computed for each (default priority url > title > tag)
+    THEN the negated score orders url (3) before title (2) before tag (1).
     """
     with app.app_context():
-        title_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_TITLE])
         url_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_STRING])
+        title_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_TITLE])
         tag_hit = _make_hit(url_title="a", matched_fields=[MatchedField.TAG])
 
-        assert _hit_sort_key(title_hit)[0] == -_TITLE_SCORE
         assert _hit_sort_key(url_hit)[0] == -_URL_SCORE
+        assert _hit_sort_key(title_hit)[0] == -_TITLE_SCORE
         assert _hit_sort_key(tag_hit)[0] == -_TAG_SCORE
 
         ranked = sorted([tag_hit, title_hit, url_hit], key=_hit_sort_key)
-        assert ranked == [title_hit, url_hit, tag_hit]
+        assert ranked == [url_hit, title_hit, tag_hit]
 
 
 def test_hit_sort_key_uses_best_field_when_multiple_match(app: Flask) -> None:
@@ -238,10 +239,10 @@ def test_weights_from_fields_maps_order_to_descending_weights() -> None:
     THEN the first field gets the highest weight, decreasing by one per position.
     """
     assert _weights_from_fields(
-        (MatchedField.URL_TITLE, MatchedField.URL_STRING, MatchedField.TAG)
+        (MatchedField.URL_STRING, MatchedField.URL_TITLE, MatchedField.TAG)
     ) == {
-        MatchedField.URL_TITLE: _TITLE_SCORE,
         MatchedField.URL_STRING: _URL_SCORE,
+        MatchedField.URL_TITLE: _TITLE_SCORE,
         MatchedField.TAG: _TAG_SCORE,
     }
 
