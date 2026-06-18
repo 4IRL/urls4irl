@@ -10,6 +10,7 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 # ---------------------------------------------------------------------------
 # Shared dimension literal aliases — extracted only when a literal appears in
@@ -269,6 +270,10 @@ class _DimApiMetricsIngestBatch(BaseModel):
 class _DimCrossUtubSearchPerformed(BaseModel):
     model_config = ConfigDict(extra="forbid")
     has_results: Literal["true", "false"]
+    # Closed set built from `SEARCH_FIELD_ORDER_VALUES` (the 15 ordered field
+    # subsets) so this Literal can never drift from the registry tuple — both
+    # derive from the same constant and the metrics audit set-compares them.
+    field_order: Literal[SEARCH_FIELD_ORDER_VALUES]  # type: ignore[valid-type]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 

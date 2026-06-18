@@ -18,7 +18,11 @@ from backend.schemas.search import (
     SearchResultsSchema,
     SearchUtubGroupSchema,
 )
-from backend.search.constants import DEFAULT_SEARCH_FIELDS, MatchedField
+from backend.search.constants import (
+    DEFAULT_SEARCH_FIELDS,
+    MatchedField,
+    field_order_metric_value,
+)
 
 
 def _weights_from_fields(
@@ -208,6 +212,9 @@ def search_across_user_utubs(
     ]
     record_event(
         EventName.CROSS_UTUB_SEARCH_PERFORMED,
-        dimensions={"has_results": "true" if results else "false"},
+        dimensions={
+            "has_results": "true" if results else "false",
+            "field_order": field_order_metric_value(effective_fields),
+        },
     )
     return SearchResultsSchema(results=results)

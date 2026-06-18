@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from backend.metrics.events import EventCategory, EventName
+from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 
 @dataclass(frozen=True)
@@ -61,7 +62,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.CROSS_UTUB_SEARCH_PERFORMED: EventRegistryEntry(
         description="Cross-UTub search executed across the user's member UTubs",
         category=EventCategory.DOMAIN,
-        dimensions={"has_results": ("true", "false")},
+        dimensions={
+            "has_results": ("true", "false"),
+            "field_order": SEARCH_FIELD_ORDER_VALUES,
+        },
     ),
     EventName.UTUB_CREATED: EventRegistryEntry(
         description="New UTub created",

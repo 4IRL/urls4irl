@@ -1,9 +1,15 @@
+import itertools
+
 from flask import Flask
 import pytest
 
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.search.constants import MatchedField
+from backend.search.constants import (
+    SEARCH_FIELD_ORDER_VALUES,
+    MatchedField,
+    field_order_metric_value,
+)
 from backend.search.services.cross_utub_search import (
     _group_sort_key,
     _hit_sort_key,
@@ -247,3 +253,40 @@ def test_weights_from_fields_single_field_gets_weight_one() -> None:
     THEN the only field is mapped to weight 1.
     """
     assert _weights_from_fields((MatchedField.TAG,)) == {MatchedField.TAG: _TAG_SCORE}
+
+
+def test_field_order_metric_value_joins_with_priority_separator() -> None:
+    """
+    GIVEN an ordered field sequence
+    WHEN field_order_metric_value is computed
+    THEN the field values are joined left-to-right with `>` (priority order).
+    """
+    assert (
+        field_order_metric_value((MatchedField.TAG, MatchedField.URL_TITLE))
+        == "tag>title"
+    )
+
+
+def test_field_order_values_cover_every_valid_ordered_subset() -> None:
+    """
+    GIVEN the closed set SEARCH_FIELD_ORDER_VALUES
+    WHEN compared against every ordered, duplicate-free, non-empty subset of
+        MatchedField (the only shapes SearchQuerySchema can emit)
+    THEN every such subset's serialized value is present, so no real emission
+        can ever fall outside the metric's declared closed set.
+    """
+    every_ordered_subset = {
+        field_order_metric_value(ordering)
+        for length in range(1, len(MatchedField) + 1)
+        for ordering in itertools.permutations(MatchedField, length)
+    }
+    assert every_ordered_subset == set(SEARCH_FIELD_ORDER_VALUES)
+
+
+def test_field_order_values_are_unique() -> None:
+    """
+    GIVEN the closed set SEARCH_FIELD_ORDER_VALUES
+    WHEN checked for duplicates
+    THEN every value is distinct (no permutation collides after serialization).
+    """
+    assert len(set(SEARCH_FIELD_ORDER_VALUES)) == len(SEARCH_FIELD_ORDER_VALUES)
