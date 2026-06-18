@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import itertools
 from collections.abc import Sequence
 from enum import IntEnum, StrEnum
+import itertools
 
 
 class SearchErrorCodes(IntEnum):
