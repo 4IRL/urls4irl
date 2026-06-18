@@ -412,6 +412,24 @@ class _QueryParamProbeSchema(BaseModel):
     )
 
 
+class _ArrayQueryParamProbeSchema(BaseModel):
+    """Fixture covering the two array-param serialization shapes: a field marked
+    `json_schema_extra={"explode": False}` (comma-delimited) and an unmarked
+    array field (OpenAPI default of repeated keys).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    comma_field: list[str] = Field(
+        default_factory=list,
+        description="Comma-delimited ordered list",
+        json_schema_extra={"explode": False},
+    )
+    repeated_field: list[str] = Field(
+        default_factory=list, description="Default repeated-key list"
+    )
+
+
 class TestExtractQueryParameters:
     """Tests for `_extract_query_parameters` — the helper that turns a Pydantic
     query model into the OpenAPI `parameters` list emitted on GET routes.
@@ -477,3 +495,33 @@ class TestExtractQueryParameters:
 
         assert "anyOf" not in category_param["schema"]
         assert category_param["schema"].get("type") == "string"
+
+    def test_explode_marked_array_emits_comma_delimited_serialization(self) -> None:
+        """
+        GIVEN an array field marked `json_schema_extra={"explode": False}`
+        WHEN _extract_query_parameters is called
+        THEN the parameter carries `style: form` + `explode: False` (comma-
+            delimited), and the marker does not leak into the emitted `schema`.
+        """
+        params = _extract_query_parameters(_ArrayQueryParamProbeSchema, {})
+        comma_param = next(param for param in params if param["name"] == "comma_field")
+
+        assert comma_param["style"] == "form"
+        assert comma_param["explode"] is False
+        assert "explode" not in comma_param["schema"]
+        assert comma_param["schema"].get("type") == "array"
+
+    def test_unmarked_array_keeps_repeated_key_default(self) -> None:
+        """
+        GIVEN an array field with no explode marker
+        WHEN _extract_query_parameters is called
+        THEN no `style`/`explode` keys are emitted, so the OpenAPI default
+            (repeated keys) applies — guarding the metrics `group_by` param.
+        """
+        params = _extract_query_parameters(_ArrayQueryParamProbeSchema, {})
+        repeated_param = next(
+            param for param in params if param["name"] == "repeated_field"
+        )
+
+        assert "style" not in repeated_param
+        assert "explode" not in repeated_param

@@ -174,6 +174,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Search across all of the current user's member UTubs, grouped by source UTub. */
+    get: operations["searchAcrossUtubs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/register": {
     parameters: {
       query?: never;
@@ -979,6 +996,38 @@ export interface components {
       /** @description One series per gauge that has samples in the window */
       gauges: components["schemas"]["GaugeSeries"][];
     };
+    /** @enum {string} */
+    MatchedField: "url" | "title" | "tag";
+    SearchHitSchema: {
+      /** @description Utub_Urls association id (the .urlRow[utuburlid] DOM key) */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description Per-UTub display title for the URL */
+      urlTitle: string;
+      /** @description Tags applied to this URL in its UTub */
+      urlTags: components["schemas"]["UtubTagOnAddDeleteSchema"][];
+      /** @description Which fields the query matched (title/url/tag) — consumers may highlight these in the UI. */
+      matchedFields: components["schemas"]["MatchedField"][];
+    };
+    SearchUtubGroupSchema: {
+      /** @description Source UTub id — consumers use this to navigate to or label the matching UTub. */
+      utubID: number;
+      /** @description Source UTub name for the group label */
+      utubName: string;
+      /** @description Matching URLs within this UTub, ranked best-first */
+      urls: components["schemas"]["SearchHitSchema"][];
+    };
+    UtubTagOnAddDeleteSchema: {
+      /** @description Unique tag ID within the UTub */
+      utubTagID: number;
+      /** @description Tag label text */
+      tagString: string;
+    };
+    SearchResultsSchema: {
+      /** @description Groups ranked best-first; one group per source UTub with ≥1 matching URL */
+      results: components["schemas"]["SearchUtubGroupSchema"][];
+    };
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -1142,12 +1191,6 @@ export interface components {
      * @enum {integer}
      */
     URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-    UtubTagOnAddDeleteSchema: {
-      /** @description Unique tag ID within the UTub */
-      utubTagID: number;
-      /** @description Tag label text */
-      tagString: string;
-    };
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -1641,6 +1684,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
           | "login_success"
@@ -1842,6 +1886,7 @@ export interface operations {
         event_name:
           | "api_hit"
           | "api_metrics_ingest_batch"
+          | "cross_utub_search_performed"
           | "email_verified"
           | "login_failure"
           | "login_success"
@@ -2099,6 +2144,41 @@ export interface operations {
       };
       /** @description Not found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  searchAcrossUtubs: {
+    parameters: {
+      query: {
+        /** @description Case-insensitive search term matched against URL strings, titles, and tags. */
+        q: string;
+        /** @description Comma-separated, ordered subset of fields to search (e.g. `url,title,tag`). Membership restricts which of title/url/tag match; order sets ranking priority, first = highest. Omitted/empty = all fields in default priority (url > title > tag). */
+        fields?: components["schemas"]["MatchedField"][];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Search results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["SearchResultsSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
         headers: {
           [name: string]: unknown;
         };

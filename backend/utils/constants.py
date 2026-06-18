@@ -126,6 +126,11 @@ class TAG_CONSTANTS:
     MAX_URL_TAGS = 5
 
 
+class SEARCH_CONSTANTS:
+    MIN_QUERY_LENGTH: int = 1
+    MAX_QUERY_LENGTH: int = 100
+
+
 class CONFIG_CONSTANTS:
     SESSION_LIFETIME = 31 * 86400  # 31 days before session and CSRF expiration
 
@@ -340,6 +345,7 @@ class CONSTANTS:
     CONFIG = CONFIG_CONSTANTS()
     STRINGS = STRINGS()
     SPLASH = SPLASH_CONSTANTS()
+    SEARCH = SEARCH_CONSTANTS()
 
 
 def generate_constants_js() -> (

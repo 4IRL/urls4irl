@@ -11,6 +11,7 @@ from flask_login import current_user
 from pydantic import BaseModel, ValidationError
 
 from backend.api_common.request_errors import pydantic_errors_to_dict
+from backend.api_common.responses import FlaskResponse
 from backend.app_logger import warning_log
 from backend.schemas.base import BaseSchema
 from backend.schemas.errors import (
@@ -21,6 +22,47 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
+
+
+def parse_query_args(
+    schema_cls: type[BaseModel],
+    message: str,
+    error_code: IntEnum | int,
+    multi_value_keys: frozenset[str] | None = None,
+) -> BaseModel | FlaskResponse:
+    """Validate `request.args` against a Pydantic query schema.
+
+    Returns the validated model on success or a 400 field-error response on
+    `ValidationError`. Callers check `isinstance(result, BaseModel)` to
+    short-circuit on the error branch. `@api_route(query_schema=...)` is
+    OpenAPI metadata only and does not validate at runtime, so every query
+    route runs this same args-to-dict + model_validate + error-envelope dance;
+    centralizing it keeps the route bodies focused on the service call and
+    envelope.
+
+    `message` and `error_code` populate the 400 field-error envelope so each
+    blueprint surfaces its own failure copy and error code.
+
+    `multi_value_keys` names query-string keys that should be promoted from a
+    single flat string to a list (via `request.args.getlist(key)`) before
+    Pydantic validation. Callers that pass `None` get the default empty
+    frozenset and the original flat behaviour. The `None` default mirrors
+    the project's non-mutable-default-arg convention even though `frozenset`
+    is immutable.
+    """
+    multi_value_keys = multi_value_keys or frozenset()
+    args_dict = request.args.to_dict(flat=True)
+    for multi_value_key in multi_value_keys:
+        args_dict[multi_value_key] = request.args.getlist(multi_value_key)
+    try:
+        return schema_cls.model_validate(args_dict)
+    except ValidationError as validation_error:
+        return build_field_error_response(
+            message=message,
+            errors=pydantic_errors_to_dict(validation_error),
+            error_code=error_code,
+            status_code=400,
+        )
 
 
 def _schema_name_to_kwarg(schema_cls: Type[BaseModel]) -> str:
@@ -69,7 +111,7 @@ def api_route(
     ``query_schema`` is OpenAPI-only metadata: it advertises the Pydantic model
     that describes the GET route's accepted query parameters so the OpenAPI
     generator can emit ``in: query`` parameter entries. Runtime query validation
-    still lives at the route layer (``_parse_query_args``); this kwarg never
+    still lives at the route layer (``parse_query_args``); this kwarg never
     changes request handling.
 
     ``response_schema`` is stashed on the wrapped function for introspection

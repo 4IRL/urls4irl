@@ -30,6 +30,7 @@ class EventName(StrEnum):
     API_METRICS_INGEST_BATCH = "api_metrics_ingest_batch"
 
     # Domain — explicit record_event() calls in service layer
+    CROSS_UTUB_SEARCH_PERFORMED = "cross_utub_search_performed"
     EMAIL_VERIFIED = "email_verified"
     LOGIN_FAILURE = "login_failure"
     LOGIN_SUCCESS = "login_success"

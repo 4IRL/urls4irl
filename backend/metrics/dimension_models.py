@@ -10,6 +10,7 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 # ---------------------------------------------------------------------------
 # Shared dimension literal aliases — extracted only when a literal appears in
@@ -266,6 +267,16 @@ class _DimApiMetricsIngestBatch(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+class _DimCrossUtubSearchPerformed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    has_results: Literal["true", "false"]
+    # Closed set built from `SEARCH_FIELD_ORDER_VALUES` (the 15 ordered field
+    # subsets) so this Literal can never drift from the registry tuple — both
+    # derive from the same constant and the metrics audit set-compares them.
+    field_order: Literal[SEARCH_FIELD_ORDER_VALUES]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimLoginFailure(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Literal["unknown_user", "bad_password", "email_unverified"]
@@ -301,6 +312,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.API_METRICS_INGEST_BATCH: _DimApiMetricsIngestBatch,
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
     # `LOGIN_FAILURE` is the only domain event with a closed-set extra dim (`reason`).
+    EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
     EventName.LOGIN_SUCCESS: _DimDeviceOnly,

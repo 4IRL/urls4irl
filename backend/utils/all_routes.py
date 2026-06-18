@@ -65,6 +65,11 @@ class ADMIN_ROUTES:
     METRICS_PAGE = _ADMIN + "admin_metrics"
 
 
+class SEARCH_ROUTES:
+    _SEARCH = "search."
+    SEARCH = _SEARCH + "search_across_utubs"
+
+
 class SYSTEM_ROUTES:
     _SYSTEM = "system."
     HEALTH = _SYSTEM + "health"
@@ -90,6 +95,7 @@ class ROUTES:
     USERS = USER_ROUTES
     ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
     ADMIN = ADMIN_ROUTES
+    SEARCH = SEARCH_ROUTES
     UTUBS = UTUB_ROUTES
 
 
@@ -142,6 +148,8 @@ def generate_routes_js() -> dict[str, str]:
         "logout": url_for(USER_ROUTES.LOGOUT),
         # Contact
         "contactUs": url_for(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT),
+        # Search
+        "crossUtubSearch": url_for(SEARCH_ROUTES.SEARCH),
     }
 
 

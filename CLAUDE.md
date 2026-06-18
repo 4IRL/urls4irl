@@ -38,6 +38,17 @@ Review files are stored at the project root level (`reviews/`), NOT under the `p
 - JS modules that call endpoints
 - Test files covering endpoints
 
+### Metrics Coverage for New Endpoints
+
+**Every new endpoint must be deliberately tied into the anonymous-metrics dashboard — never left untracked by default.** When adding (or materially changing) a route, decide and act on its metrics coverage in the same PR:
+
+1. **Confirm `API_HIT` covers it.** The `after_request` middleware (`backend/extensions/metrics/middleware.py`) auto-counts every request by `endpoint × method × status_code × device_type` — *unless* the endpoint is in `_SKIP_ENDPOINTS` or the metrics blueprint. This gives volume + status distribution for free. If the new route is in the skip-set, justify it.
+2. **Decide whether a DOMAIN event is warranted.** For a meaningful user action (a search performed, a resource created/opened, a flow completed), add an explicit `record_event(EventName.X, ...)` in the **service layer**, mirroring `UTUB_OPENED`. Prefer a low-cardinality closed-set dimension when it makes the metric actionable (e.g. `has_results: true/false`). If you deliberately rely on `API_HIT` only, say so in the PR body rather than silently skipping.
+3. **Full three-way registry alignment is mandatory for any new event:** `EventName` (`events.py`) + `EVENT_REGISTRY` (`event_registry.py`) + `DIMENSION_MODELS`/dim model (`dimension_models.py`) + `EVENT_NAME_TO_RESOURCE` (`resources.py`). The dim model's `Literal[...]` must exactly match the registry `dimensions` tuple. Then run `make audit` (must exit 0) and `make generate-types` (stage regenerated `frontend/types/*`).
+4. **Watch for resource-set fallout.** Introducing a `Resource` into a new category (e.g. adding `Resource.SEARCH` to DOMAIN) can flip previously-invalid `(category, resource)` query pairs to valid — update any negative dashboard/query tests that asserted the old invalid pair. Run the metrics query/service/CLI integration suites, not just unit, after such a change.
+
+Performance/latency is **not** measured anywhere today (the system is count-and-dimension only — no timers, histograms, or p95). Do not assume response-time shows on the dashboard; adding it is a net-new metric type and a separate effort.
+
 ### `.claude/`, `CLAUDE.md`, and `.gitignore`
 
 Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore` may be committed and pushed on **any branch**, regardless of the branch topic. Always include these changes alongside other work — never exclude them for being "unrelated."

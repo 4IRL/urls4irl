@@ -8,7 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 from backend import csrf, limiter, metrics_writer
 from backend.api_common.auth_decorators import admin_required
-from backend.api_common.parse_request import api_route
+from backend.api_common.parse_request import api_route, parse_query_args
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions.metrics.buckets import previous_window, resolve_query_window
@@ -76,42 +76,6 @@ def _bucket_batch_size(event_count: int) -> Literal["1", "2-5", "6-25", "26-100"
     return "26-100"
 
 
-def _parse_query_args(
-    schema_cls: type[BaseModel],
-    multi_value_keys: frozenset[str] | None = None,
-) -> BaseModel | FlaskResponse:
-    """Validate `request.args` against a Pydantic query schema.
-
-    Returns the validated model on success or a 400 field-error response on
-    `ValidationError`. Callers check `isinstance(result, BaseModel)` to
-    short-circuit on the error branch.
-
-    Why a module-private helper: every query route runs the same
-    args-to-dict + model_validate + error-envelope dance; centralizing it
-    keeps the route bodies focused on parse_window + service call + envelope.
-
-    `multi_value_keys` names query-string keys that should be promoted from a
-    single flat string to a list (via `request.args.getlist(key)`) before
-    Pydantic validation. Callers that pass `None` get the default empty
-    frozenset and the original flat behaviour. The `None` default mirrors
-    the project's non-mutable-default-arg convention even though `frozenset`
-    is immutable.
-    """
-    multi_value_keys = multi_value_keys or frozenset()
-    args_dict = request.args.to_dict(flat=True)
-    for multi_value_key in multi_value_keys:
-        args_dict[multi_value_key] = request.args.getlist(multi_value_key)
-    try:
-        return schema_cls.model_validate(args_dict)
-    except ValidationError as validation_error:
-        return build_field_error_response(
-            message=MetricsFailureMessages.INVALID_QUERY,
-            errors=pydantic_errors_to_dict(validation_error),
-            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
-            status_code=400,
-        )
-
-
 @metrics.route("/api/metrics", methods=["POST"])
 @csrf.exempt
 @api_route(
@@ -127,7 +91,11 @@ def _parse_query_args(
 )
 @limiter.limit(_METRICS_RATE_LIMIT, methods=["POST"])
 def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
-    parsed_query = _parse_query_args(TransportQuerySchema)
+    parsed_query = parse_query_args(
+        TransportQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
     if not isinstance(parsed_query, BaseModel):
         return parsed_query
 
@@ -187,7 +155,11 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
     },
 )
 def query_top() -> FlaskResponse:
-    parsed = _parse_query_args(TopEventsQuerySchema)
+    parsed = parse_query_args(
+        TopEventsQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
     if not isinstance(parsed, BaseModel):
         return parsed
 
@@ -254,7 +226,11 @@ def query_top() -> FlaskResponse:
     },
 )
 def query_timeseries() -> FlaskResponse:
-    parsed = _parse_query_args(TimeseriesQuerySchema)
+    parsed = parse_query_args(
+        TimeseriesQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
     if not isinstance(parsed, BaseModel):
         return parsed
 
@@ -309,7 +285,11 @@ def query_timeseries() -> FlaskResponse:
     },
 )
 def query_summary() -> FlaskResponse:
-    parsed = _parse_query_args(SummaryQuerySchema)
+    parsed = parse_query_args(
+        SummaryQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
     if not isinstance(parsed, BaseModel):
         return parsed
 
@@ -369,8 +349,10 @@ def query_summary() -> FlaskResponse:
     },
 )
 def query_grouped_timeseries() -> FlaskResponse:
-    parsed = _parse_query_args(
+    parsed = parse_query_args(
         GroupedTimeseriesQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
         multi_value_keys=frozenset({"group_by"}),
     )
     if not isinstance(parsed, BaseModel):
@@ -497,7 +479,11 @@ def query_flow() -> FlaskResponse:
     # window. Per-step `filter`/`group_by` slicing is configured server-side in
     # the FLOWS registry, never sent by the caller, so promoting a `filter`
     # query key would inject an empty list that `extra="forbid"` rejects.
-    parsed = _parse_query_args(FlowQuerySchema)
+    parsed = parse_query_args(
+        FlowQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
     if not isinstance(parsed, BaseModel):
         return parsed
 
@@ -572,7 +558,11 @@ def query_flow() -> FlaskResponse:
     },
 )
 def query_gauges_timeseries() -> FlaskResponse:
-    parsed = _parse_query_args(GaugesTimeseriesQuerySchema)
+    parsed = parse_query_args(
+        GaugesTimeseriesQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
     if not isinstance(parsed, BaseModel):
         return parsed
 
