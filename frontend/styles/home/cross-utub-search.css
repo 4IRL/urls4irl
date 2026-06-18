@@ -106,6 +106,160 @@
     margin-bottom: 0.5rem;
 }
 
+/* Overlay container. Overlays both panels from within <main>. z-index sits
+   BELOW Bootstrap's modal (1050) so a modal always wins ESC/stacking. */
+#crossUtubSearchMode {
+    position: absolute;
+    inset: 0;
+    z-index: 1040;
+    overflow-y: auto;
+    padding: 1rem;
+    background-color: var(--background, #fff);
+}
+
+#crossUtubSearchHeader {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    max-width: 880px;
+    margin-inline: auto;
+    margin-bottom: 1rem;
+}
+
+#crossUtubSearchInput {
+    flex: 1;
+    min-width: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+}
+
+#crossUtubSearchClose {
+    flex: 0 0 auto;
+    font-size: 1.5rem;
+    line-height: 1;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+#crossUtubSearchInput:focus-visible,
+#crossUtubSearchClose:focus-visible {
+    outline: 2px solid var(--accent, #1b6ec2);
+    outline-offset: 2px;
+}
+
+/* Hidden/visible transition states. Using opacity + visibility (not display)
+   so the transition runs; visibility:hidden also drops it from the tab order. */
+.cross-search-hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
+}
+
+.cross-search-visible {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transition:
+        opacity 0.3s ease,
+        visibility 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cross-search-hidden,
+    .cross-search-visible {
+        transition: none;
+    }
+}
+
+/* Recent-searches history list. */
+#crossUtubSearchHistoryList {
+    max-width: 880px;
+    margin-inline: auto;
+    margin-bottom: 1.5rem;
+}
+
+#crossUtubSearchHistoryHeading {
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+#crossUtubSearchHistoryClear {
+    background: none;
+    border: 1px solid var(--border, #ccc);
+    border-radius: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    margin-bottom: 0.5rem;
+}
+
+#crossUtubSearchHistoryClear:focus-visible {
+    outline: 2px solid var(--accent, #1b6ec2);
+    outline-offset: 2px;
+}
+
+.crossSearchHistoryItems {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.crossSearchHistoryRow {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.crossSearchHistoryRow:hover {
+    background-color: var(--cardBackground, #f1f3f5);
+}
+
+.crossSearchHistoryRow:focus-visible {
+    outline: 2px solid var(--accent, #1b6ec2);
+    outline-offset: 2px;
+}
+
+.crossSearchHistoryRow .crossSearchHistoryQuery {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+.crossSearchHistoryField {
+    flex: 0 0 auto;
+    padding: 0.1rem 0.4rem;
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    background-color: var(--tagBackground, #e9ecef);
+}
+
+.crossSearchHistoryTime {
+    flex: 0 0 auto;
+    font-size: 0.8rem;
+    color: var(--mutedText, #6c757d);
+}
+
+.crossSearchHistoryStale {
+    flex: 0 0 auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--warningText, #856404);
+}
+
 /* Mobile: ≥44px touch targets for interactive elements. Inline anchors default
    to inline display and can be smaller than 44px, so flex them. */
 @media (max-width: 991.98px) {
@@ -116,6 +270,12 @@
     }
 
     .crossSearchHitCard {
+        min-height: 2.75rem;
+    }
+
+    .crossSearchHistoryRow,
+    #crossUtubSearchHistoryClear,
+    #crossUtubSearchClose {
         min-height: 2.75rem;
     }
 }

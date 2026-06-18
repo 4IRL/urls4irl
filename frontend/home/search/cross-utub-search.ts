@@ -1,0 +1,386 @@
+import { $, getInputValue } from "../../lib/globals.js";
+import { KEYS, TABLET_WIDTH } from "../../lib/constants.js";
+import { APP_CONFIG } from "../../lib/config.js";
+import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { emit as recordUIEvent } from "../../lib/metrics-client.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
+import { CROSS_UTUB_SEARCH_OPEN_TARGET } from "../../types/metrics-dim-values.js";
+import { getState } from "../../store/app-store.js";
+import {
+  isMobile,
+  setMobileUIWhenUTubSelectedOrURLNavSelected,
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted,
+} from "../mobile.js";
+import { resetUTubSearch } from "../utubs/search.js";
+import { renderSearchResults } from "./render.js";
+import {
+  clearSearchHistory,
+  formatTimeAgo,
+  getSearchHistory,
+  pushSearchHistory,
+} from "./search-history.js";
+
+import type { SuccessResponse } from "../../types/api-helpers.d.ts";
+import type { MatchedField } from "../../types/search.js";
+import type { SearchHistoryEntry } from "./search-history.js";
+
+type SearchResponse = SuccessResponse<"searchAcrossUtubs">;
+
+const MAX_SEARCH_LENGTH = 500;
+const SEARCH_DEBOUNCE_MS = 200;
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
+// Default field order; when the user's selection equals this, `&fields=` is
+// omitted from the request URL (backend defaults to url>title>tag).
+const DEFAULT_FIELD_ORDER: MatchedField[] = ["url", "title", "tag"];
+
+let _searchModeActive = false;
+let _searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+let _breakpointQuery: MediaQueryList | null = null;
+let _onBreakpointChange: (() => void) | null = null;
+
+export function isCrossUtubSearchActive(): boolean {
+  return _searchModeActive;
+}
+
+function clearResultStates(): void {
+  $("#crossUtubSearchResults").empty();
+  $("#crossUtubSearchNoResults").addClass("hidden").text("");
+  $("#crossUtubSearchShortQuery").addClass("hidden").text("");
+}
+
+function showShortQueryState(): void {
+  $("#crossUtubSearchResults").empty();
+  $("#crossUtubSearchNoResults").addClass("hidden");
+  $("#crossUtubSearchShortQuery")
+    .text(APP_CONFIG.strings.CROSS_SEARCH_SHORT_QUERY)
+    .removeClass("hidden");
+}
+
+function showNoResultsState(): void {
+  $("#crossUtubSearchNoResults")
+    .text(APP_CONFIG.strings.CROSS_SEARCH_NO_RESULTS)
+    .removeClass("hidden");
+}
+
+function announceResultCount({
+  count,
+  utubs,
+}: {
+  count: number;
+  utubs: number;
+}): void {
+  const text = APP_CONFIG.strings.CROSS_SEARCH_COUNT_TEMPLATE.replace(
+    "{{ count }}",
+    String(count),
+  ).replace("{{ utubs }}", String(utubs));
+  $("#crossUtubSearchAnnouncement").text(text);
+}
+
+function isDefaultFieldOrder(fields: MatchedField[]): boolean {
+  return (
+    fields.length === DEFAULT_FIELD_ORDER.length &&
+    fields.every((field, index) => field === DEFAULT_FIELD_ORDER[index])
+  );
+}
+
+export function performCrossUtubSearch({
+  query,
+  fields,
+}: {
+  query: string;
+  fields: MatchedField[];
+}): void {
+  const trimmed = query.trim();
+  if (trimmed.length === 0) {
+    showShortQueryState();
+    return;
+  }
+
+  let url = `${APP_CONFIG.routes.crossUtubSearch}?q=${encodeURIComponent(trimmed)}`;
+  // Single comma-delimited ordered param (NOT repeated keys); omit when default.
+  if (!isDefaultFieldOrder(fields)) {
+    url += "&fields=" + fields.join(",");
+  }
+
+  ajaxCall("GET", url, null)
+    .done((data: SearchResponse) => {
+      $("#crossUtubSearchShortQuery").addClass("hidden");
+      renderSearchResults({ results: data.results });
+      if (data.results.length === 0) {
+        showNoResultsState();
+      } else {
+        $("#crossUtubSearchNoResults").addClass("hidden");
+      }
+      const totalHits = data.results.reduce(
+        (sum, group) => sum + group.urls.length,
+        0,
+      );
+      announceResultCount({ count: totalHits, utubs: data.results.length });
+      pushSearchHistory({ query: trimmed, fields });
+    })
+    .fail((xhr: JQuery.jqXHR) => {
+      if (is429Handled(xhr)) return;
+      // A same-origin 302 to the login page is followed by the browser and
+      // surfaces in jqXHR as status 0 with an empty body; the HTML-body check
+      // is unreliable for browser-followed redirects, so gate on status alone.
+      if (xhr.status === 0) return;
+      if (xhr.status === 400) {
+        showNoResultsState();
+      }
+    });
+}
+
+function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
+  const row = $(document.createElement("button"))
+    .addClass("crossSearchHistoryRow")
+    .attr("type", "button")
+    .attr("aria-label", "Re-run search for " + entry.query);
+
+  $(document.createElement("span"))
+    .addClass("crossSearchHistoryQuery")
+    .attr("title", entry.query)
+    .text(entry.query)
+    .appendTo(row);
+
+  entry.fields.forEach((field) => {
+    const fieldLabel =
+      field === "url"
+        ? APP_CONFIG.strings.CROSS_SEARCH_FIELD_URL
+        : field === "title"
+          ? APP_CONFIG.strings.CROSS_SEARCH_FIELD_TITLE
+          : APP_CONFIG.strings.CROSS_SEARCH_FIELD_TAG;
+    $(document.createElement("span"))
+      .addClass("crossSearchHistoryField")
+      .text(fieldLabel)
+      .appendTo(row);
+  });
+
+  $(document.createElement("span"))
+    .addClass("crossSearchHistoryTime")
+    .text(formatTimeAgo(entry.ts))
+    .appendTo(row);
+
+  if (Date.now() - entry.ts > STALE_THRESHOLD_MS) {
+    $(document.createElement("span"))
+      .addClass("crossSearchHistoryStale")
+      .attr("aria-hidden", "true")
+      .text(APP_CONFIG.strings.CROSS_SEARCH_HISTORY_STALE_LABEL)
+      .appendTo(row);
+  }
+
+  row.on("click", () => {
+    $("#crossUtubSearchInput").val(entry.query);
+    $("#crossUtubSearchHistoryList").remove();
+    performCrossUtubSearch({ query: entry.query, fields: entry.fields });
+  });
+
+  return row;
+}
+
+function renderSearchHistory(): void {
+  const history = getSearchHistory();
+  const inputValue = getInputValue($("#crossUtubSearchInput")).trim();
+  if (history.length === 0 || inputValue.length > 0) return;
+
+  const section = $(document.createElement("section"))
+    .attr("id", "crossUtubSearchHistoryList")
+    .attr("aria-labelledby", "crossUtubSearchHistoryHeading");
+
+  $(document.createElement("h3"))
+    .attr("id", "crossUtubSearchHistoryHeading")
+    .text(APP_CONFIG.strings.CROSS_SEARCH_HISTORY_HEADING)
+    .appendTo(section);
+
+  $(document.createElement("button"))
+    .attr("id", "crossUtubSearchHistoryClear")
+    .attr("type", "button")
+    .attr("aria-label", "Clear search history")
+    .text(APP_CONFIG.strings.CROSS_SEARCH_HISTORY_CLEAR)
+    .on("click", () => {
+      clearSearchHistory();
+      $("#crossUtubSearchHistoryList").remove();
+    })
+    .appendTo(section);
+
+  const list = $(document.createElement("ul")).addClass(
+    "crossSearchHistoryItems",
+  );
+  history.forEach((entry) => {
+    $(document.createElement("li"))
+      .append(buildHistoryRow(entry))
+      .appendTo(list);
+  });
+  list.appendTo(section);
+
+  $("#crossUtubSearchResults").prepend(section);
+}
+
+export function enterCrossUtubSearchMode(): void {
+  if (_searchModeActive) return;
+  _searchModeActive = true;
+
+  recordUIEvent({
+    event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_OPEN,
+    target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
+  });
+
+  // Hide the left panel (UTub/Member/Tag decks) and clear any stale in-deck
+  // filter. Mobile: hide the four deck-switcher buttons.
+  $("#leftPanel").addClass("hidden");
+  resetUTubSearch();
+  if (isMobile()) {
+    $("#toUTubs").addClass("hidden");
+    $("#toURLs").addClass("hidden");
+    $("#toMembers").addClass("hidden");
+    $("#toTags").addClass("hidden");
+  }
+
+  $("#crossUtubSearchMode")
+    .removeClass("cross-search-hidden")
+    .addClass("cross-search-visible");
+
+  clearResultStates();
+  renderSearchHistory();
+  $("#crossUtubSearchInput").trigger("focus");
+}
+
+export function exitCrossUtubSearchMode(): void {
+  $("#crossUtubSearchInput").off("keydown.crossSearchInputEsc");
+  if (!_searchModeActive) {
+    $("#crossUtubSearchMode")
+      .removeClass("cross-search-visible")
+      .addClass("cross-search-hidden");
+    return;
+  }
+  _searchModeActive = false;
+
+  if (_searchDebounceTimer !== null) {
+    clearTimeout(_searchDebounceTimer);
+    _searchDebounceTimer = null;
+  }
+
+  recordUIEvent({
+    event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
+    target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
+  });
+
+  $("#crossUtubSearchMode")
+    .removeClass("cross-search-visible")
+    .addClass("cross-search-hidden");
+
+  // Restore the LHS via the existing layout helpers. Do NOT clear
+  // activeUTubID/selectedURLCardID — clearing flips downstream selection state.
+  if (isMobile()) {
+    if (getState().activeUTubID !== null) {
+      setMobileUIWhenUTubSelectedOrURLNavSelected();
+    } else {
+      setMobileUIWhenUTubNotSelectedOrUTubDeleted();
+    }
+  } else {
+    $("#leftPanel").removeClass("hidden");
+  }
+
+  $("#toCrossUtubSearch").trigger("focus");
+}
+
+function handleSearchInput(): void {
+  if (_searchDebounceTimer !== null) {
+    clearTimeout(_searchDebounceTimer);
+    _searchDebounceTimer = null;
+  }
+
+  const input = $("#crossUtubSearchInput");
+  const rawValue = getInputValue(input);
+  if (rawValue.length > MAX_SEARCH_LENGTH) {
+    input.val(rawValue.slice(0, MAX_SEARCH_LENGTH));
+    return;
+  }
+
+  const query = rawValue.trim();
+  if (query === "") {
+    clearResultStates();
+    renderSearchHistory();
+    return;
+  }
+
+  // History only shows for an empty input; a typed query supersedes it.
+  $("#crossUtubSearchHistoryList").remove();
+
+  _searchDebounceTimer = setTimeout(() => {
+    _searchDebounceTimer = null;
+    performCrossUtubSearch({ query, fields: [...DEFAULT_FIELD_ORDER] });
+  }, SEARCH_DEBOUNCE_MS);
+}
+
+export function initCrossUtubSearch(): void {
+  $("#toCrossUtubSearch").offAndOnExact("click.crossSearch", () =>
+    enterCrossUtubSearchMode(),
+  );
+  $("#crossUtubSearchClose").offAndOnExact("click.crossSearch", () =>
+    exitCrossUtubSearchMode(),
+  );
+
+  $("#crossUtubSearchInput").offAndOn("input.crossSearch", handleSearchInput);
+
+  // Cmd/Ctrl+K opens — only when not typing in a field, no modal is open, and
+  // search mode is not already active.
+  $(document).offAndOn(
+    "keydown.crossSearchOpen",
+    (event: JQuery.TriggeredEvent) => {
+      if (!(event.metaKey || event.ctrlKey)) return;
+      if (typeof event.key !== "string" || event.key.toLowerCase() !== KEYS.K) {
+        return;
+      }
+      const active = document.activeElement;
+      const tag = active?.tagName;
+      if (
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        (active as HTMLElement | null)?.isContentEditable
+      ) {
+        return;
+      }
+      if ($(".modal.show").length > 0) return;
+      if (_searchModeActive) return;
+      event.preventDefault();
+      enterCrossUtubSearchMode();
+    },
+  );
+
+  // ESC closes — only while active and no Bootstrap modal owns ESC.
+  $(document).offAndOn(
+    "keydown.crossSearchEsc",
+    (event: JQuery.TriggeredEvent) => {
+      if (event.key !== KEYS.ESCAPE) return;
+      if (!_searchModeActive) return;
+      if ($(".modal.show").length > 0) return;
+      exitCrossUtubSearchMode();
+    },
+  );
+
+  // Crossing the mobile/desktop breakpoint while open: cancel any pending
+  // fetch, drop search-mode state, hide the overlay, and restore focus to the
+  // trigger. mobile.ts owns ALL panel layout, so do NOT call
+  // exitCrossUtubSearchMode() here (avoids listener registration-order coupling).
+  if (_breakpointQuery !== null && _onBreakpointChange !== null) {
+    _breakpointQuery.removeEventListener("change", _onBreakpointChange);
+  }
+  _breakpointQuery = matchMedia("(max-width: " + TABLET_WIDTH + "px)");
+  _onBreakpointChange = () => {
+    if (!_searchModeActive) return;
+    if (_searchDebounceTimer !== null) {
+      clearTimeout(_searchDebounceTimer);
+      _searchDebounceTimer = null;
+    }
+    _searchModeActive = false;
+    $("#crossUtubSearchMode")
+      .removeClass("cross-search-visible")
+      .addClass("cross-search-hidden");
+    $("#toCrossUtubSearch").trigger("focus");
+  };
+  _breakpointQuery.addEventListener("change", _onBreakpointChange);
+
+  if (getState().utubs.length > 0) {
+    $("#toCrossUtubSearch").removeClass("hidden");
+  }
+}

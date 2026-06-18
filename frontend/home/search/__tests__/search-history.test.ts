@@ -1,0 +1,290 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { MatchedField } from "../../../types/search.js";
+import type { SearchHistoryEntry } from "../search-history.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
+
+vi.mock("../../../lib/ajax.js", () => ({
+  ajaxCall: vi.fn(),
+  is429Handled: vi.fn(() => false),
+}));
+
+vi.mock("../render.js", () => ({
+  renderSearchResults: vi.fn(),
+}));
+
+vi.mock("../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ utubs: [{ id: 1 }], activeUTubID: null })),
+  setState: vi.fn(),
+}));
+
+vi.mock("../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+  setMobileUIWhenUTubSelectedOrURLNavSelected: vi.fn(),
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted: vi.fn(),
+}));
+
+vi.mock("../../utubs/search.js", () => ({
+  resetUTubSearch: vi.fn(),
+}));
+
+const STORAGE_KEY = "u4i:crossSearchHistory";
+const DEFAULT_FIELDS: MatchedField[] = ["url", "title", "tag"];
+const KNOWN_NOW = 1_700_000_000_000;
+
+const $ = window.jQuery;
+
+const SEARCH_MODE_HTML = `
+  <button id="toCrossUtubSearch" class="hidden"></button>
+  <div id="leftPanel" class="panel"></div>
+  <div id="crossUtubSearchMode" class="cross-search-hidden">
+    <input id="crossUtubSearchInput" type="search" />
+    <div id="crossUtubSearchFieldControls"></div>
+    <button id="crossUtubSearchClose"></button>
+    <span id="crossUtubSearchAnnouncement"></span>
+    <div id="crossUtubSearchResults"></div>
+    <p id="crossUtubSearchNoResults" class="hidden"></p>
+    <p id="crossUtubSearchShortQuery" class="hidden"></p>
+  </div>
+`;
+
+function installStorageStub(): void {
+  const data = new Map<string, string>();
+  vi.stubGlobal("localStorage", {
+    getItem: (key: string): string | null => data.get(key) ?? null,
+    setItem: (key: string, value: string): void => {
+      data.set(key, String(value));
+    },
+    removeItem: (key: string): void => {
+      data.delete(key);
+    },
+    clear: (): void => {
+      data.clear();
+    },
+    key: (index: number): string | null =>
+      Array.from(data.keys())[index] ?? null,
+    get length(): number {
+      return data.size;
+    },
+  });
+}
+
+function seedHistory(entries: SearchHistoryEntry[]): void {
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
+}
+
+describe("search-history — persistence helpers", () => {
+  beforeEach(() => {
+    installStorageStub();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+  });
+
+  it("(a) pushSearchHistory persists an entry that getSearchHistory returns", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+
+    expect(getSearchHistory()).toHaveLength(0);
+
+    pushSearchHistory({ query: "alpha", fields: DEFAULT_FIELDS });
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0].query).toBe("alpha");
+    expect(history[0].fields).toEqual(DEFAULT_FIELDS);
+    expect(typeof history[0].ts).toBe("number");
+  });
+
+  it("(b) re-pushing the same query+fields dedupes (length stays 1, ts refreshed)", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+    const nowSpy = vi.spyOn(Date, "now");
+
+    nowSpy.mockReturnValue(1000);
+    pushSearchHistory({ query: "alpha", fields: DEFAULT_FIELDS });
+    nowSpy.mockReturnValue(5000);
+    pushSearchHistory({ query: "alpha", fields: DEFAULT_FIELDS });
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0].ts).toBe(5000);
+
+    nowSpy.mockRestore();
+  });
+
+  it("(c) pushing 9 distinct entries prunes to the cap of 8", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+
+    for (let index = 0; index < 9; index += 1) {
+      pushSearchHistory({ query: `q${index}`, fields: DEFAULT_FIELDS });
+    }
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(8);
+    expect(history[0].query).toBe("q8");
+    expect(history.some((entry) => entry.query === "q0")).toBe(false);
+  });
+
+  it("(h) pushSearchHistory does not throw when setItem throws QuotaExceededError", async () => {
+    const { pushSearchHistory } = await import("../search-history.js");
+    vi.stubGlobal("localStorage", {
+      getItem: () => null,
+      setItem: () => {
+        throw new DOMException("quota", "QuotaExceededError");
+      },
+      removeItem: () => {},
+    });
+
+    expect(() =>
+      pushSearchHistory({ query: "alpha", fields: DEFAULT_FIELDS }),
+    ).not.toThrow();
+  });
+
+  it("(i) getSearchHistory returns [] for parse-valid but structurally invalid JSON", async () => {
+    const { getSearchHistory } = await import("../search-history.js");
+
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify("not-an-array"));
+    expect(getSearchHistory()).toEqual([]);
+
+    window.localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ ts: "not-a-number" }]),
+    );
+    expect(getSearchHistory()).toEqual([]);
+  });
+});
+
+describe("search-history — render + re-run inside the overlay", () => {
+  beforeEach(async () => {
+    installStorageStub();
+    document.body.innerHTML = SEARCH_MODE_HTML;
+    // The module keeps search-mode state at module scope; reset it between
+    // tests so enterCrossUtubSearchMode() does not early-return as already-open.
+    const { exitCrossUtubSearchMode } = await import("../cross-utub-search.js");
+    exitCrossUtubSearchMode();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.clearAllMocks();
+    document.body.innerHTML = "";
+  });
+
+  it("(d) enterCrossUtubSearchMode renders the history list with rows, badges and staleness", async () => {
+    const nowSpy = vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
+    seedHistory([
+      {
+        query: "recent",
+        fields: ["url"],
+        ts: KNOWN_NOW - 60_000,
+      },
+      {
+        query: "stale",
+        fields: ["title", "tag"],
+        ts: KNOWN_NOW - 2 * 24 * 60 * 60 * 1000,
+      },
+    ]);
+
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const historyList = $("#crossUtubSearchHistoryList");
+    expect(historyList.length).toBe(1);
+    expect(historyList.find(".crossSearchHistoryRow").length).toBe(2);
+    expect(historyList.find(".crossSearchHistoryStale").length).toBe(1);
+    expect(historyList.find(".crossSearchHistoryRow").first().text()).toContain(
+      "recent",
+    );
+
+    nowSpy.mockRestore();
+  });
+
+  it("(e) clicking a history row fills the input and re-runs the saved search", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
+    seedHistory([
+      { query: "myquery", fields: ["title"], ts: KNOWN_NOW - 1000 },
+    ]);
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      done: vi.fn().mockReturnThis(),
+      fail: vi.fn().mockReturnThis(),
+    });
+
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const row = $(".crossSearchHistoryRow").first();
+    expect(row.attr("aria-label")).toContain("myquery");
+    row.trigger("click");
+
+    expect($("#crossUtubSearchInput").val()).toBe("myquery");
+    expect(ajaxCall).toHaveBeenCalled();
+    const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0][1] as string;
+    expect(calledUrl).toContain("q=myquery");
+  });
+
+  it("(f) clicking the clear button clears history and removes the list", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
+    seedHistory([{ query: "alpha", fields: ["url"], ts: KNOWN_NOW - 1000 }]);
+
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    const { getSearchHistory } = await import("../search-history.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    expect($("#crossUtubSearchHistoryList").length).toBe(1);
+    $("#crossUtubSearchHistoryClear").trigger("click");
+
+    expect($("#crossUtubSearchHistoryList").length).toBe(0);
+    expect(getSearchHistory()).toHaveLength(0);
+  });
+
+  it("(g) clearing the input after a search re-renders the history list", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
+    seedHistory([{ query: "alpha", fields: ["url"], ts: KNOWN_NOW - 1000 }]);
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      done: vi.fn().mockReturnThis(),
+      fail: vi.fn().mockReturnThis(),
+    });
+
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const input = $("#crossUtubSearchInput");
+    input.val("zzz").trigger("input");
+    vi.advanceTimersByTime(300);
+
+    expect($("#crossUtubSearchHistoryList").length).toBe(0);
+
+    input.val("").trigger("input");
+    expect($("#crossUtubSearchHistoryList").length).toBe(1);
+
+    vi.useRealTimers();
+  });
+});

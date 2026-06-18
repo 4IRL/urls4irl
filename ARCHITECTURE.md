@@ -83,6 +83,10 @@ TypeScript ES6 modules in `frontend/` built by Vite. jQuery (3.7.1) and Bootstra
 
 - **app-store.ts** — Module-level state object with `getState()` / `setState()` / `resetStore()`. Fields: `utubs`, `activeUTubID`, `urls`, `tags` (UtubTag[]), `members` (MemberItem[]), `selectedTagIDs`, `utubOwnerID`, `isCurrentUserOwner`, `currentUserID`
 
+#### localStorage
+
+All app-owned `localStorage` keys are prefixed `u4i:` to avoid collisions with third-party scripts or browser extensions. New persisted keys must follow this convention (e.g. `u4i:crossSearchHistory`). Always read/write via the `window.localStorage.*` form wrapped in `try { ... } catch { }` (private mode / quota can throw), mirroring `frontend/admin/pane-resizer.ts`.
+
 ### frontend/types/ — Type Definitions
 
 - **api-helpers.d.ts** — `Schema<Name>` maps to OpenAPI schema components; `SuccessResponse<Op, Status>` maps operation+status to typed response body
