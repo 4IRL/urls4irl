@@ -33,6 +33,12 @@ vi.mock("../../utubs/search.js", () => ({
   resetUTubSearch: vi.fn(),
 }));
 
+vi.mock("../field-controls.js", () => ({
+  initFieldControls: vi.fn(),
+  setFieldControls: vi.fn(),
+  getSelectedFields: vi.fn(() => ["url", "title", "tag"]),
+}));
+
 const STORAGE_KEY = "u4i:crossSearchHistory";
 const DEFAULT_FIELDS: MatchedField[] = ["url", "title", "tag"];
 const KNOWN_NOW = 1_700_000_000_000;
@@ -231,11 +237,14 @@ describe("search-history — render + re-run inside the overlay", () => {
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
+    const { setFieldControls } = await import("../field-controls.js");
+
     const row = $(".crossSearchHistoryRow").first();
     expect(row.attr("aria-label")).toContain("myquery");
     row.trigger("click");
 
     expect($("#crossUtubSearchInput").val()).toBe("myquery");
+    expect(setFieldControls).toHaveBeenCalledWith({ fields: ["title"] });
     expect(ajaxCall).toHaveBeenCalled();
     const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0][1] as string;

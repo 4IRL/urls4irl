@@ -175,6 +175,52 @@
     }
 }
 
+/* Inline field-select + ordering controls (one row per searchable field). */
+#crossUtubSearchFieldControls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    max-width: 880px;
+    margin-inline: auto;
+    margin-bottom: 1rem;
+}
+
+.crossSearchFieldRow {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.25rem 0.5rem;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 0.25rem;
+}
+
+.crossSearchFieldLabel {
+    margin: 0;
+}
+
+.crossSearchFieldUp,
+.crossSearchFieldDown {
+    background: none;
+    border: 1px solid var(--border, #ccc);
+    border-radius: 0.25rem;
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.15rem 0.4rem;
+}
+
+.crossSearchFieldUp[disabled],
+.crossSearchFieldDown[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.crossSearchFieldInclude:focus-visible,
+.crossSearchFieldUp:focus-visible,
+.crossSearchFieldDown:focus-visible {
+    outline: 2px solid var(--accent, #1b6ec2);
+    outline-offset: 2px;
+}
+
 /* Recent-searches history list. */
 #crossUtubSearchHistoryList {
     max-width: 880px;
@@ -276,6 +322,13 @@
     .crossSearchHistoryRow,
     #crossUtubSearchHistoryClear,
     #crossUtubSearchClose {
+        min-height: 2.75rem;
+    }
+
+    .crossSearchFieldInclude,
+    .crossSearchFieldUp,
+    .crossSearchFieldDown {
+        min-width: 2.75rem;
         min-height: 2.75rem;
     }
 }

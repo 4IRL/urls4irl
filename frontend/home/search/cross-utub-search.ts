@@ -14,6 +14,11 @@ import {
 import { resetUTubSearch } from "../utubs/search.js";
 import { renderSearchResults } from "./render.js";
 import {
+  getSelectedFields,
+  initFieldControls,
+  setFieldControls,
+} from "./field-controls.js";
+import {
   clearSearchHistory,
   formatTimeAgo,
   getSearchHistory,
@@ -171,6 +176,10 @@ function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
   row.on("click", () => {
     $("#crossUtubSearchInput").val(entry.query);
     $("#crossUtubSearchHistoryList").remove();
+    // Reflect the saved field order/selection in the controls UI; this also
+    // re-triggers the search via the controls' onChange, so we still call
+    // performCrossUtubSearch explicitly to honor the saved fields directly.
+    setFieldControls({ fields: entry.fields });
     performCrossUtubSearch({ query: entry.query, fields: entry.fields });
   });
 
@@ -308,7 +317,7 @@ function handleSearchInput(): void {
 
   _searchDebounceTimer = setTimeout(() => {
     _searchDebounceTimer = null;
-    performCrossUtubSearch({ query, fields: [...DEFAULT_FIELD_ORDER] });
+    performCrossUtubSearch({ query, fields: getSelectedFields() });
   }, SEARCH_DEBOUNCE_MS);
 }
 
@@ -321,6 +330,17 @@ export function initCrossUtubSearch(): void {
   );
 
   $("#crossUtubSearchInput").offAndOn("input.crossSearch", handleSearchInput);
+
+  // Field-select + ordering controls. A change re-runs the search against the
+  // current input value with the new field selection/order; the empty-query
+  // guard inside performCrossUtubSearch short-circuits when nothing is typed.
+  initFieldControls({
+    onChange: (fields: MatchedField[]) => {
+      const query = getInputValue($("#crossUtubSearchInput")).trim();
+      if (query === "") return;
+      performCrossUtubSearch({ query, fields });
+    },
+  });
 
   // Cmd/Ctrl+K opens — only when not typing in a field, no modal is open, and
   // search mode is not already active.
