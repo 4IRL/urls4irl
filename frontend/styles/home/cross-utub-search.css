@@ -1,2 +1,121 @@
 /* Cross-UTub search mode overlay.
-   Real rules (layout, transitions, result cards, field controls) land in Steps 4-5. */
+   Overlay/transition rules (.cross-search-hidden / .cross-search-visible) and
+   field-control styling land in Step 5/6. This file currently styles the
+   grouped read-only result cards rendered by render.ts (Step 4). */
+
+/* Centered, max-width results column — never edge-to-edge. */
+#crossUtubSearchResults {
+    max-width: 880px;
+    margin-inline: auto;
+    width: 100%;
+}
+
+/* Group section: one per source UTub. */
+.crossSearchGroup {
+    margin-bottom: 1.5rem;
+}
+
+.crossSearchGroupHeading {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    padding-bottom: 0.25rem;
+    border-bottom: 1px solid var(--border, #ccc);
+}
+
+/* Read-only result card. */
+.crossSearchHitCard {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border, #ddd);
+    border-radius: 0.5rem;
+    cursor: pointer;
+    background-color: var(--cardBackground, #fff);
+}
+
+.crossSearchHitCard:hover {
+    border-color: var(--accent, #1b6ec2);
+}
+
+.crossSearchHitCard:focus-visible {
+    outline: 2px solid var(--accent, #1b6ec2);
+    outline-offset: 2px;
+}
+
+.crossSearchTitle {
+    font-weight: 600;
+}
+
+.crossSearchUrl {
+    color: var(--accent, #1b6ec2);
+    word-break: break-all;
+    text-decoration: none;
+}
+
+.crossSearchUrl:focus-visible {
+    outline: 2px solid var(--accent, #1b6ec2);
+    outline-offset: 2px;
+}
+
+.crossSearchTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.crossSearchTag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.5rem;
+    border-radius: 1rem;
+    font-size: 0.8rem;
+    background-color: var(--tagBackground, #e9ecef);
+}
+
+/* Field-level match emphasis — the API gives no character offsets, so the
+   whole matched element is emphasized. */
+.crossSearchMatched {
+    background-color: var(--searchHighlight, #fff3cd);
+    font-weight: 700;
+    border-radius: 0.2rem;
+}
+
+/* Distinct empty-state styling so the two states read differently at a glance. */
+#crossUtubSearchShortQuery {
+    color: var(--mutedText, #6c757d);
+    font-style: italic;
+    text-align: center;
+    margin-top: 1rem;
+}
+
+#crossUtubSearchNoResults {
+    color: var(--text, #212529);
+    font-weight: 600;
+    text-align: center;
+    margin-top: 1.5rem;
+    padding: 1rem;
+}
+
+#crossUtubSearchNoResults::before {
+    content: "🔍";
+    display: block;
+    font-size: 1.75rem;
+    margin-bottom: 0.5rem;
+}
+
+/* Mobile: ≥44px touch targets for interactive elements. Inline anchors default
+   to inline display and can be smaller than 44px, so flex them. */
+@media (max-width: 991.98px) {
+    a.crossSearchUrl {
+        min-height: 2.75rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .crossSearchHitCard {
+        min-height: 2.75rem;
+    }
+}
