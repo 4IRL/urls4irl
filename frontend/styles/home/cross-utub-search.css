@@ -539,6 +539,11 @@
     gap: var(--space-1);
 }
 
+/* Divider between adjacent recent searches; none below the last row. */
+.crossSearchHistoryItem:not(:last-child) {
+    border-bottom: 1px solid var(--borderColor);
+}
+
 .crossSearchHistoryRow {
     display: flex;
     align-items: center;
