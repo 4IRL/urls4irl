@@ -123,7 +123,6 @@ const appConfig = {
     CROSS_SEARCH_FIELD_TITLE: "Title",
     CROSS_SEARCH_FIELD_TAG: "Tag",
     CROSS_SEARCH_HISTORY_HEADING: "Recent searches",
-    CROSS_SEARCH_HISTORY_STALE_LABEL: "Old",
     CROSS_SEARCH_HISTORY_CLEAR: "Clear",
     VALIDATE_MY_EMAIL: "Validate My Email",
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",

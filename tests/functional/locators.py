@@ -104,6 +104,7 @@ class HomePageLocators(GenericPageLocator):
     CROSS_SEARCH_SETTINGS_MODAL = "#crossUtubSearchSettingsModal"
     CROSS_SEARCH_HISTORY_LIST = "#crossUtubSearchHistoryList"
     CROSS_SEARCH_HISTORY_ROW = ".crossSearchHistoryRow"
+    CROSS_SEARCH_HISTORY_DELETE = ".crossSearchHistoryDelete"
     CROSS_SEARCH_HISTORY_CLEAR = "#crossUtubSearchHistoryClear"
 
     # Tag Deck

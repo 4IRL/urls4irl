@@ -485,11 +485,18 @@
     padding: 0;
 }
 
+.crossSearchHistoryItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
 .crossSearchHistoryRow {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    width: 100%;
+    flex: 1;
+    min-width: 0;
     text-align: left;
     color: whitesmoke;
     padding: var(--space-2) var(--space-3);
@@ -519,28 +526,39 @@
     min-width: 0;
 }
 
-.crossSearchHistoryField {
+/* Per-row delete button: a small trash icon with a generous (40px) tap target,
+   transparent until hovered (gated to fine pointers, matching this file). */
+.crossSearchHistoryDelete {
     flex: 0 0 auto;
-    padding: 1px 8px;
-    border-radius: 12px;
-    font-size: var(--fs-xs);
-    color: var(--darkSplashGreen);
-    background: var(--cardBackgroundColor);
-    border: 1px solid var(--borderColor);
-}
-
-.crossSearchHistoryTime {
-    flex: 0 0 auto;
-    font-size: var(--fs-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
     color: var(--cardURLTextColor);
+    transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-.crossSearchHistoryStale {
-    flex: 0 0 auto;
-    font-size: var(--fs-xs);
-    font-weight: var(--fw-bold);
-    text-transform: uppercase;
-    color: var(--editURLColor);
+.crossSearchHistoryDelete svg {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.crossSearchHistoryDelete:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchHistoryDelete:hover {
+        color: var(--removeIconColor);
+        background-color: var(--cardBackgroundColor);
+    }
 }
 
 /* Mobile: ≥44px touch targets for interactive elements. Inline anchors default

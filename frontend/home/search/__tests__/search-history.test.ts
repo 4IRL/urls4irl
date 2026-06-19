@@ -252,7 +252,7 @@ describe("search-history — render + re-run inside the overlay", () => {
     document.body.innerHTML = "";
   });
 
-  it("(d) enterCrossUtubSearchMode renders the history list with rows, badges and staleness", async () => {
+  it("(d) enterCrossUtubSearchMode renders one item per entry with a re-run row and a delete button", async () => {
     const nowSpy = vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
     seedHistory([
       {
@@ -261,7 +261,7 @@ describe("search-history — render + re-run inside the overlay", () => {
         ts: KNOWN_NOW - 60_000,
       },
       {
-        query: "stale",
+        query: "older",
         fields: ["title", "tag"],
         ts: KNOWN_NOW - 2 * 24 * 60 * 60 * 1000,
       },
@@ -275,13 +275,58 @@ describe("search-history — render + re-run inside the overlay", () => {
 
     const historyList = $("#crossUtubSearchHistoryList");
     expect(historyList.length).toBe(1);
+    // One item per seeded entry, each with a re-run row and a delete button.
+    expect(historyList.find(".crossSearchHistoryItem").length).toBe(2);
     expect(historyList.find(".crossSearchHistoryRow").length).toBe(2);
-    expect(historyList.find(".crossSearchHistoryStale").length).toBe(1);
+    expect(historyList.find(".crossSearchHistoryDelete").length).toBe(2);
     expect(historyList.find(".crossSearchHistoryRow").first().text()).toContain(
       "recent",
     );
+    // The badges / time / stale markers were removed from each row.
+    expect(historyList.find(".crossSearchHistoryStale").length).toBe(0);
+    expect(historyList.find(".crossSearchHistoryTime").length).toBe(0);
+    expect(historyList.find(".crossSearchHistoryField").length).toBe(0);
 
     nowSpy.mockRestore();
+  });
+
+  it("(d2) clicking a row's delete button removes just that entry; deleting the last removes the list", async () => {
+    vi.spyOn(Date, "now").mockReturnValue(KNOWN_NOW);
+    seedHistory([
+      { query: "first", fields: ["url"], ts: KNOWN_NOW - 1000 },
+      { query: "second", fields: ["title"], ts: KNOWN_NOW - 2000 },
+    ]);
+
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    const { getSearchHistory } = await import("../search-history.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    expect($(".crossSearchHistoryItem").length).toBe(2);
+
+    // Delete the first row's entry — only "second" survives in storage + DOM.
+    $(".crossSearchHistoryItem")
+      .first()
+      .find(".crossSearchHistoryDelete")
+      .trigger("click");
+
+    expect($(".crossSearchHistoryItem").length).toBe(1);
+    const afterFirstDelete = getSearchHistory();
+    expect(afterFirstDelete).toHaveLength(1);
+    expect(afterFirstDelete[0].query).toBe("second");
+    expect($("#crossUtubSearchHistoryList").length).toBe(1);
+
+    // Delete the last remaining entry — storage empties and the list is removed.
+    $(".crossSearchHistoryItem")
+      .first()
+      .find(".crossSearchHistoryDelete")
+      .trigger("click");
+
+    expect(getSearchHistory()).toHaveLength(0);
+    expect($(".crossSearchHistoryItem").length).toBe(0);
+    expect($("#crossUtubSearchHistoryList").length).toBe(0);
   });
 
   it("(e) clicking a history row fills the input and re-runs the saved search", async () => {

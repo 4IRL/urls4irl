@@ -408,3 +408,38 @@ def test_recent_search_history_renders_reruns_and_clears(
     assert (
         len(browser.find_elements(By.CSS_SELECTOR, HPL.CROSS_SEARCH_HISTORY_LIST)) == 0
     )
+
+
+def test_deleting_a_recent_search_removes_it(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN the user performs a search then closes and re-opens search mode
+    WHEN they click the per-row trash button for the only recent search
+    THEN that entry is removed and, being the last one, the history list is gone
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    # Perform a search so an entry lands in history.
+    open_cross_search_via_trigger(browser)
+    type_cross_search_query(browser, QUERY_TERM)
+    wait_for_cross_search_results(browser)
+
+    # Close and re-open with an empty input to surface the history list.
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+
+    open_cross_search_via_trigger(browser)
+    wait_for_cross_search_history(browser)
+
+    history_row = wait_then_get_element(browser, HPL.CROSS_SEARCH_HISTORY_ROW, time=10)
+    assert history_row is not None
+
+    # Click the per-row trash button for the only row.
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_HISTORY_DELETE, time=10)
+
+    # It was the last entry, so the whole history list is removed from the DOM.
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, HPL.CROSS_SEARCH_HISTORY_LIST)) == 0
+    )

@@ -16,5 +16,4 @@ CROSS_SEARCH_FIELD_TAG = "Tag"
 
 # Recent-search history strings.
 CROSS_SEARCH_HISTORY_HEADING = "Recent searches"
-CROSS_SEARCH_HISTORY_STALE_LABEL = "Old"
 CROSS_SEARCH_HISTORY_CLEAR = "Clear"

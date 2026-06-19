@@ -16,8 +16,6 @@ export interface SearchHistoryEntry {
 const STORAGE_KEY = "u4i:crossSearchHistory";
 const MAX_HISTORY = 8;
 const MINUTE_MS = 60 * 1000;
-const HOUR_MS = 60 * MINUTE_MS;
-const DAY_MS = 24 * HOUR_MS;
 // Window during which a prefix-extension of the most-recent entry is treated as
 // the same in-progress typing session and collapses into one entry rather than
 // appending. Generous enough to span a typing burst with reading pauses, but far
@@ -134,23 +132,24 @@ export function clearSearchHistory(): void {
   }
 }
 
-// Human-readable relative time from a `Date.now()` timestamp. Pure computation;
-// the output is user-facing but interpolated, so it is not bridged via
-// APP_CONFIG (the string bridge does not support interpolation).
-export function formatTimeAgo(ts: number): string {
-  const deltaMs = Date.now() - ts;
-  if (deltaMs < MINUTE_MS) return "just now";
+// Removes a single history entry matching the given query+fields (by dedupeKey)
+// and writes the remainder back. Silently no-ops if localStorage is unavailable
+// (private mode / quota), matching pushSearchHistory.
+export function removeSearchHistoryEntry({
+  query,
+  fields,
+}: {
+  query: string;
+  fields: MatchedField[];
+}): void {
+  const key = dedupeKey({ query, fields });
+  const remainder = getSearchHistory().filter(
+    (entry) => dedupeKey({ query: entry.query, fields: entry.fields }) !== key,
+  );
 
-  if (deltaMs < HOUR_MS) {
-    const minutes = Math.floor(deltaMs / MINUTE_MS);
-    return minutes === 1 ? "1 minute ago" : `${minutes} minutes ago`;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remainder));
+  } catch {
+    // localStorage may be disabled (private mode, quota) — silently ignore.
   }
-
-  if (deltaMs < DAY_MS) {
-    const hours = Math.floor(deltaMs / HOUR_MS);
-    return hours === 1 ? "1 hour ago" : `${hours} hours ago`;
-  }
-
-  const days = Math.floor(deltaMs / DAY_MS);
-  return days === 1 ? "1 day ago" : `${days} days ago`;
 }

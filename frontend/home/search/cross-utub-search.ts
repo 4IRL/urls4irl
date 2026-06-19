@@ -25,9 +25,9 @@ import {
 } from "./field-controls.js";
 import {
   clearSearchHistory,
-  formatTimeAgo,
   getSearchHistory,
   pushSearchHistory,
+  removeSearchHistoryEntry,
 } from "./search-history.js";
 
 import type { SuccessResponse } from "../../types/api-helpers.d.ts";
@@ -38,7 +38,6 @@ type SearchResponse = SuccessResponse<"searchAcrossUtubs">;
 
 const MAX_SEARCH_LENGTH = 500;
 const SEARCH_DEBOUNCE_MS = 200;
-const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000;
 // Matches the 0.3s opacity/visibility transition in cross-utub-search.css; the
 // overlay's computed `visibility` stays `hidden` until the transition completes,
 // so a focus attempt before then is a no-op. Used as the fallback delay when no
@@ -145,7 +144,14 @@ export function performCrossUtubSearch({
     });
 }
 
+// One history entry as an <li> holding two sibling buttons: a re-run button (the
+// query text) and a small trash button to delete just that entry. The buttons
+// are siblings (not nested — a button cannot contain a button).
 function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
+  const item = $(document.createElement("li")).addClass(
+    "crossSearchHistoryItem",
+  );
+
   const row = $(document.createElement("button"))
     .addClass("crossSearchHistoryRow")
     .attr("type", "button")
@@ -156,32 +162,6 @@ function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
     .attr("title", entry.query)
     .text(entry.query)
     .appendTo(row);
-
-  entry.fields.forEach((field) => {
-    const fieldLabel =
-      field === "url"
-        ? APP_CONFIG.strings.CROSS_SEARCH_FIELD_URL
-        : field === "title"
-          ? APP_CONFIG.strings.CROSS_SEARCH_FIELD_TITLE
-          : APP_CONFIG.strings.CROSS_SEARCH_FIELD_TAG;
-    $(document.createElement("span"))
-      .addClass("crossSearchHistoryField")
-      .text(fieldLabel)
-      .appendTo(row);
-  });
-
-  $(document.createElement("span"))
-    .addClass("crossSearchHistoryTime")
-    .text(formatTimeAgo(entry.ts))
-    .appendTo(row);
-
-  if (Date.now() - entry.ts > STALE_THRESHOLD_MS) {
-    $(document.createElement("span"))
-      .addClass("crossSearchHistoryStale")
-      .attr("aria-hidden", "true")
-      .text(APP_CONFIG.strings.CROSS_SEARCH_HISTORY_STALE_LABEL)
-      .appendTo(row);
-  }
 
   row.on("click", () => {
     $("#crossUtubSearchInput").val(entry.query);
@@ -195,7 +175,26 @@ function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
     performCrossUtubSearch({ query: entry.query, fields: entry.fields });
   });
 
-  return row;
+  const deleteButton = $(document.createElement("button"))
+    .addClass("crossSearchHistoryDelete")
+    .attr("type", "button")
+    .attr("aria-label", "Remove " + entry.query + " from recent searches")
+    .html(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16"><path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/></svg>',
+    );
+
+  deleteButton.on("click", () => {
+    removeSearchHistoryEntry({ query: entry.query, fields: entry.fields });
+    item.remove();
+    if ($(".crossSearchHistoryItem").length === 0) {
+      $("#crossUtubSearchHistoryList").remove();
+    }
+  });
+
+  row.appendTo(item);
+  deleteButton.appendTo(item);
+
+  return item;
 }
 
 function renderSearchHistory(): void {
@@ -234,9 +233,7 @@ function renderSearchHistory(): void {
     "crossSearchHistoryItems",
   );
   history.forEach((entry) => {
-    $(document.createElement("li"))
-      .append(buildHistoryRow(entry))
-      .appendTo(list);
+    buildHistoryRow(entry).appendTo(list);
   });
   list.appendTo(section);
 
