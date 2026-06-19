@@ -58,18 +58,23 @@ describe("createOwnerBadge", () => {
     expect($(el).attr("memberid")).toBe("99");
   });
 
-  it("has member, full-width, flex-row, flex-start, align-center classes", () => {
+  it("has member, full-width, flex-row, jc-sb, align-center classes", () => {
     const $el = $(createOwnerBadge(1, "Alice"));
     expect($el.hasClass("member")).toBe(true);
     expect($el.hasClass("full-width")).toBe(true);
     expect($el.hasClass("flex-row")).toBe(true);
-    expect($el.hasClass("flex-start")).toBe(true);
+    expect($el.hasClass("jc-sb")).toBe(true);
     expect($el.hasClass("align-center")).toBe(true);
   });
 
   it("renders the username inside a bold element", () => {
     const el = createOwnerBadge(1, "Alice");
     expect($(el).find("b").text()).toBe("Alice");
+  });
+
+  it("renders the owner diamond marker icon", () => {
+    const $el = $(createOwnerBadge(1, "Alice"));
+    expect($el.find("svg.bi-diamond-fill.memberRole").length).toBe(1);
   });
 });
 

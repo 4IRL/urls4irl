@@ -1,9 +1,8 @@
 .deck {
     width: 100%;
-    margin-top: 5px;
     background: var(--panelBackgroundColor);
-    border: 2px solid var(--borderColor);
-    border-radius: 15px;
+    border: none;
+    border-radius: 0;
     color: var(--deckSelectionGreen);
     overflow: hidden;
     padding-top: 0.25rem;
@@ -15,6 +14,11 @@
 .deck#TagDeck {
     flex: 1 1 0;
     transition: flex 0.3s ease;
+}
+
+/* Slim horizontal rule between consecutive LHS decks. */
+.deck + .deck {
+    border-top: 1px solid var(--borderColor);
 }
 
 .deck#UTubDeck.collapsed,

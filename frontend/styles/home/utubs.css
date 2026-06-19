@@ -1,13 +1,26 @@
 /* UTubs */
 
+/* Rows run full-bleed to the panel edges (like the URL list) — drop the list
+   wrapper's inline padding; row text inset comes from the row's own padding. */
+#listUTubs {
+    padding-inline: 0;
+}
+
 .UTubSelector {
     color: var(--grayBadgeSelection);
     border-color: var(--grayBadgeSelection);
-    border-radius: 25px;
-    border: 2px solid var(--tagBorderColor);
+    border-radius: 0;
+    /* Horizontal-only borders (like the URL card) — no vertical edge lines on
+       hover/selection. State rules recolor these top/bottom borders. */
+    border-block: 1px solid var(--tagBorderColor);
     background-color: var(--cardBackgroundColor);
-    margin-top: 5px;
     transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
+}
+
+/* Zebra-stripe odd/even rows (mirrors the URL list) so rows don't blend into one
+   mass. Excludes selected/hover rows so their highlight wins. */
+.UTubSelector:nth-child(even):not(.active):not(:hover) {
+    background-color: var(--panelBackgroundColor);
 }
 
 .active:active,
@@ -18,7 +31,7 @@
 
 .UTubSelector:focus {
     outline: none;
-    border: 2px solid var(--deckSelectionGreenHover);
+    border-block: 2px solid var(--deckSelectionGreenHover);
 }
 
 .active {

@@ -4,6 +4,10 @@ main {
     display: flex;
     flex-direction: row;
     background-color: var(--defaultPageBackgroundColor);
+    /* Slim horizontal rules separating the panel area from the navbar (top)
+       and the footer (bottom). */
+    border-top: 1px solid var(--borderColor);
+    border-bottom: 1px solid var(--borderColor);
 }
 
 button {
@@ -28,7 +32,9 @@ button {
 .panel {
     display: flex;
     flex-direction: column;
-    padding-inline: 5px;
+    /* Decks run edge-to-edge: flush against the window borders and the seam
+       divider, with no inter-panel or outer gutter. */
+    padding-inline: 0;
 }
 
 .panel#leftPanel {
@@ -58,13 +64,51 @@ button {
     outline-offset: 2px;
 }
 
+/* The seam handle IS the divider between the panels — a full-height, flush
+   splitter bar (IDE/GitHub pattern). Desktop-only and mouse-driven, so it
+   forgoes the 44px touch target. Resting: a thin border-colored line; hover/
+   focus highlights it green and brightens the chevron. */
+.lhs-toggle--seam {
+    align-self: stretch;
+    min-width: 0;
+    width: 0.5rem;
+    padding: 0;
+    background-color: var(--borderColor);
+    color: var(--cardURLTextColor);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.lhs-toggle--seam:hover,
+.lhs-toggle--seam:focus-visible {
+    background-color: var(--deckHeaderGreen);
+    color: white;
+}
+
 .lhs-toggle--seam .bi {
+    width: 0.5rem;
+    height: 0.5rem;
     transition: transform 0.15s ease;
     transform-origin: center;
 }
 
 .lhs-toggle--seam .bi.lhs-chevron--closed {
     transform: rotate(180deg);
+}
+
+/* Header mirror button: hover feedback + a state cue. aria-expanded is flipped by
+   applyLeftPanelVisibility(), so the collapsed state recolors the icon to the accent
+   green — distinct from the neutral hover pill — to signal the deck is hidden. */
+.lhs-toggle--header {
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.lhs-toggle--header:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.lhs-toggle--header[aria-expanded="false"] {
+    color: var(--deckHeaderGreen);
 }
 
 #HomeModalAlertBanner {
@@ -293,7 +337,9 @@ button {
 .member,
 .UTubSelector,
 .tagFilter {
-    padding: 3px 10px;
+    /* 15px horizontal padding aligns row text with the deck headers and the
+       center URL rows, now that the rows themselves run full-bleed. */
+    padding: 3px 15px;
     height: 2.2rem;
 }
 
@@ -432,7 +478,9 @@ button {
     .panel#centerPanel,
     #mainPanel.lhs-collapsed .panel#leftPanel,
     #mainPanel.lhs-collapsed .panel#centerPanel,
-    .lhs-toggle--seam .bi {
+    .lhs-toggle--seam,
+    .lhs-toggle--seam .bi,
+    .lhs-toggle--header {
         transition: none;
     }
 }

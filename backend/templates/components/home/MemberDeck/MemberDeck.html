@@ -7,11 +7,11 @@
 		<!-- Create Member Form -->
 		{% include 'components/home/MemberDeck/CreateMemberForm.html' %}
 
-		<!-- Member Deck Content -->
-		<div id="displayMemberWrap" class="flex-column pad-in-15p hidden">
-			<h5><u><b>Owner</b></u></h5>
+		<!-- Member Deck Content. The owner sits at the top (#UTubOwner) marked with
+		     a diamond icon; remaining members follow in #listMembers. No section
+		     labels — the icon conveys who the owner is. -->
+		<div id="displayMemberWrap" class="flex-column hidden">
 			<div id="UTubOwner"></div>
-			<h5 id="MembersHeader"><u><b>Members</b></u></h5>
 			<div class="flex-column flex-start" id="listMembers">
 				<!-- Members -->
 			</div>
