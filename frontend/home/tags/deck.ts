@@ -63,10 +63,6 @@ export function setTagDeckOnUTubSelected(
   );
 
   $("#utubTagBtnCreate").showClassNormal();
-
-  $("#TagDeck > .dynamic-subheader")
-    .addClass("height-2p5rem")
-    .removeHideClass();
 }
 
 export function resetTagDeck(): void {
@@ -115,16 +111,13 @@ export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
 }
 
 export function setTagDeckSubheaderWhenNoUTubSelected(): void {
-  $("#TagDeckSubheader").text("");
-  $("#TagDeck > .dynamic-subheader").removeClass("height-2p5rem").hideClass();
+  $("#TagDeckCount").text("");
 }
 
 export function updateCountOfTagFiltersApplied(selectedTagCount: number): void {
-  $("#TagDeckSubheader").text(
-    selectedTagCount +
-      " of " +
-      APP_CONFIG.constants.TAGS_MAX_ON_URLS +
-      " tag filters applied",
+  // Inline "(applied/max-applicable)" total next to the deck title.
+  $("#TagDeckCount").text(
+    "(" + selectedTagCount + "/" + APP_CONFIG.constants.TAGS_MAX_ON_URLS + ")",
   );
 }
 

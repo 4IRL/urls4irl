@@ -71,7 +71,7 @@ button {
 .lhs-toggle--seam {
     align-self: stretch;
     min-width: 0;
-    width: 0.5rem;
+    width: 0.65rem;
     padding: 0;
     background-color: var(--borderColor);
     color: var(--cardURLTextColor);

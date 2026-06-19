@@ -21,6 +21,16 @@
     border-top: 1px solid var(--borderColor);
 }
 
+/* Small muted total rendered inline INSIDE the deck title, e.g. "Members (5)".
+   Being inline text in the <h2>, it sits on the title's baseline automatically
+   (inline vertical-align: baseline), so their text bottoms line up. */
+.deck-title-count {
+    font-size: 1rem;
+    font-weight: var(--fw-regular);
+    color: var(--cardURLTextColor);
+    margin-left: 0.3rem;
+}
+
 .deck#UTubDeck.collapsed,
 .deck#MemberDeck.collapsed,
 .deck#TagDeck.collapsed {
@@ -80,8 +90,29 @@
     color: var(--deckHeaderGreen);
     transition: transform 0.15s ease;
     transform-origin: center;
+    /* Never let the caret squish when the title row is space-constrained
+       (e.g. an inline count next to the title). */
+    flex-shrink: 0;
 }
 
 .title-caret.closed {
     transform: rotate(-90deg);
+}
+
+/* Darken the caret + title on hover of a collapsible deck header so it reads as
+   interactable. Gated to the desktop breakpoint where the decks are actually
+   collapsible (>=992px) and to hover-capable pointers so it never sticks on
+   touch. Anchored to the three header IDs, not the shared .clickable utility. */
+#UTubDeckHeaderAndCaret,
+#MemberDeckHeaderAndCaret,
+#TagDeckHeaderAndCaret {
+    transition: filter 0.15s ease;
+}
+
+@media (min-width: 992px) and (hover: hover) {
+    #UTubDeckHeaderAndCaret:hover,
+    #MemberDeckHeaderAndCaret:hover,
+    #TagDeckHeaderAndCaret:hover {
+        filter: brightness(0.8);
+    }
 }

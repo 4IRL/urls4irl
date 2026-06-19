@@ -32,9 +32,7 @@ export function disableUnselectAllButtonAfterTagFilterRemoved(): void {
 }
 
 export function resetCountOfTagFiltersApplied(): void {
-  $("#TagDeckSubheader").text(
-    "0 of " + APP_CONFIG.constants.TAGS_MAX_ON_URLS + " tag filters applied",
-  );
+  $("#TagDeckCount").text("(0/" + APP_CONFIG.constants.TAGS_MAX_ON_URLS + ")");
 }
 
 function unselectAllTags(): void {

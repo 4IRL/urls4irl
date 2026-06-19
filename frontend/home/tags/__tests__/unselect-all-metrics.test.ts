@@ -26,7 +26,7 @@ const $ = window.jQuery;
 
 const UNSELECT_HTML = `
   <button id="unselectAllTagFilters"></button>
-  <div id="TagDeckSubheader"></div>
+  <span id="TagDeckCount"></span>
   <div class="tagFilter" data-utub-tag-id="1"></div>
   <div class="tagFilter" data-utub-tag-id="2"></div>
   <div class="tagFilter" data-utub-tag-id="3"></div>

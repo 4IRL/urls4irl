@@ -90,38 +90,27 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   $("#memberBtnCreate").hideClass();
   $("#memberSelfBtnDelete").hideClass();
 
-  // Hide the Owner/Members labels until a UTub is selected
+  // Hide the member list until a UTub is selected
   $("#displayMemberWrap").hideClass();
 
-  // Collapse the subheader band so it takes no vertical space when empty
-  $("#MemberDeckSubheader")
-    .text("")
-    .closest(".titleElement")
-    .removeClass("height-2rem")
-    .hideClass();
+  // Clear the inline member count next to the deck title
+  $("#MemberDeckCount").text("");
 }
 
 export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
-  const memberDeckSubheader = $("#MemberDeckSubheader");
-  memberDeckSubheader.parent().addClass("height-2rem");
+
   // Ability to add members is restricted to UTub owner
   if (isCurrentUserOwner) {
     $("#memberSelfBtnDelete").hideClass();
     $("#memberBtnCreate").showClassNormal();
-    if (numOfMembers === 1) {
-      memberDeckSubheader.text("Add a member");
-    } else {
-      memberDeckSubheader.text(numOfMembers + " members");
-    }
   } else {
     $("#memberBtnCreate").hideClass();
     $("#memberSelfBtnDelete").showClassNormal();
-    memberDeckSubheader.text(numOfMembers + " members");
   }
 
-  // Subheader prompt shown
-  memberDeckSubheader.closest(".titleElement").removeHideClass();
+  // Inline member total next to the deck title (replaces the subheader band)
+  $("#MemberDeckCount").text("(" + numOfMembers + ")");
 }
 
 on(
