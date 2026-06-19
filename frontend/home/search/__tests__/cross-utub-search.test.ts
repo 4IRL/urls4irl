@@ -61,7 +61,7 @@ const SEARCH_MODE_HTML = `
   <button id="toMembers"></button>
   <button id="toTags"></button>
   <div id="crossUtubSearchMode" class="cross-search-hidden">
-    <input id="crossUtubSearchInput" type="search" />
+    <div id="crossUtubSearchInputWrap"><input id="crossUtubSearchInput" type="search" /><button id="crossUtubSearchClear" class="hidden"></button></div>
     <div id="crossUtubSearchFieldControls"></div>
     <button id="crossUtubSearchClose"></button>
     <span id="crossUtubSearchAnnouncement"></span>
@@ -258,6 +258,25 @@ describe("cross-utub-search — mode mechanics", () => {
       event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
       target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
     });
+  });
+
+  it("(i) typing shows the clear button; clicking it clears the input and re-hides the button", async () => {
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const clearButton = $("#crossUtubSearchClear");
+    expect(clearButton.hasClass("hidden")).toBe(true);
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    expect(clearButton.hasClass("hidden")).toBe(false);
+
+    clearButton.trigger("click");
+
+    expect($("#crossUtubSearchInput").val()).toBe("");
+    expect($("#crossUtubSearchClear").hasClass("hidden")).toBe(true);
   });
 
   it("(g) clicking a result card exits mode, selects the UTub, and selects the URL card after UTUB_SELECTED", async () => {

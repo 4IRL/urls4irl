@@ -93,6 +93,7 @@ class HomePageLocators(GenericPageLocator):
     CROSS_SEARCH_TRIGGER = "#toCrossUtubSearch"
     CROSS_SEARCH_MODE = "#crossUtubSearchMode"
     CROSS_SEARCH_INPUT = "#crossUtubSearchInput"
+    CROSS_SEARCH_CLEAR_INPUT = "#crossUtubSearchClear"
     CROSS_SEARCH_CLOSE = "#crossUtubSearchClose"
     CROSS_SEARCH_RESULTS = "#crossUtubSearchResults"
     CROSS_SEARCH_GROUP = ".crossSearchGroup"

@@ -296,6 +296,33 @@ def test_close_button_closes_cross_search(
     assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
 
 
+def test_clear_button_clears_input_text(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open with a typed query showing results
+    WHEN the user clicks the in-input clear (circle-×) button
+    THEN the input text is cleared and the clear button hides again
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    type_cross_search_query(browser, QUERY_TERM)
+    wait_for_cross_search_results(browser)
+
+    # The clear button is visible once the input has text.
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_CLEAR_INPUT, time=10)
+
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLEAR_INPUT, time=10)
+
+    # The input is now empty and the clear button is hidden again.
+    cleared_input = wait_then_get_element(browser, HPL.CROSS_SEARCH_INPUT, time=10)
+    assert cleared_input is not None
+    assert cleared_input.get_attribute("value") == ""
+    assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_CLEAR_INPUT, time=10)
+
+
 def test_trigger_toggles_search_closed(
     browser: WebDriver, logged_in_with_cross_search_data
 ):

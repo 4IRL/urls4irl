@@ -343,9 +343,22 @@ export function exitCrossUtubSearchMode(): void {
   // Reset the input and result states so the next open starts fresh — an empty
   // input lets renderSearchHistory() surface the recent-searches list.
   $("#crossUtubSearchInput").val("");
+  $("#crossUtubSearchClear").addClass("hidden");
   clearResultStates();
 
   $("#toCrossUtubSearch").trigger("focus");
+}
+
+function clearSearchInput(): void {
+  if (_searchDebounceTimer !== null) {
+    clearTimeout(_searchDebounceTimer);
+    _searchDebounceTimer = null;
+  }
+  $("#crossUtubSearchInput").val("");
+  $("#crossUtubSearchClear").addClass("hidden");
+  clearResultStates();
+  renderSearchHistory();
+  $("#crossUtubSearchInput").trigger("focus");
 }
 
 function handleSearchInput(): void {
@@ -356,6 +369,7 @@ function handleSearchInput(): void {
 
   const input = $("#crossUtubSearchInput");
   const rawValue = getInputValue(input);
+  $("#crossUtubSearchClear").toggleClass("hidden", rawValue.length === 0);
   if (rawValue.length > MAX_SEARCH_LENGTH) {
     input.val(rawValue.slice(0, MAX_SEARCH_LENGTH));
     return;
@@ -458,6 +472,9 @@ export function initCrossUtubSearch(): void {
   );
   $("#crossUtubSearchClose").offAndOnExact("click.crossSearch", () =>
     exitCrossUtubSearchMode(),
+  );
+  $("#crossUtubSearchClear").offAndOnExact("click.crossSearch", () =>
+    clearSearchInput(),
   );
 
   $("#crossUtubSearchInput").offAndOn("input.crossSearch", handleSearchInput);

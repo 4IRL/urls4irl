@@ -49,7 +49,7 @@ const SEARCH_MODE_HTML = `
   <button id="toCrossUtubSearch" class="hidden"></button>
   <div id="leftPanel" class="panel"></div>
   <div id="crossUtubSearchMode" class="cross-search-hidden">
-    <input id="crossUtubSearchInput" type="search" />
+    <div id="crossUtubSearchInputWrap"><input id="crossUtubSearchInput" type="search" /><button id="crossUtubSearchClear" class="hidden"></button></div>
     <div id="crossUtubSearchFieldControls"></div>
     <button id="crossUtubSearchClose"></button>
     <span id="crossUtubSearchAnnouncement"></span>
