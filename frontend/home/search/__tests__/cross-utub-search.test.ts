@@ -385,6 +385,45 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
   });
 
+  it("(g2) clicking a result card whose UTub is already active selects the URL card synchronously without selecting the UTub", async () => {
+    const { getState } = await import("../../../store/app-store.js");
+    const { selectUTub } = await import("../../utubs/selectors.js");
+    const { selectURLCard } = await import("../../urls/cards/selection.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    // The deck is already built for the hit card's UTub: activeUTubID matches.
+    const targetUtubID = 7;
+    const targetUrlID = 42;
+    (getState as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      utubs: [{ id: targetUtubID }],
+      activeUTubID: targetUtubID,
+    });
+
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="${targetUtubID}" data-utub-url-id="${targetUrlID}"></div>`,
+    );
+    $(document.body).append(
+      `<div class="urlRow" utuburlid="${targetUrlID}"></div>`,
+    );
+
+    $(`.crossSearchHitCard[data-utub-id="${targetUtubID}"]`).trigger("click");
+
+    // Mode exits and the URL card is selected synchronously — no UTUB_SELECTED
+    // emission is awaited and the already-active UTub is not re-selected.
+    expect($("#crossUtubSearchMode").hasClass("cross-search-hidden")).toBe(
+      true,
+    );
+    expect(selectUTub).not.toHaveBeenCalled();
+    expect(selectURLCard).toHaveBeenCalledTimes(1);
+    const selectedCard = (selectURLCard as unknown as ReturnType<typeof vi.fn>)
+      .mock.calls[0][0] as JQuery;
+    expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
+  });
+
   // render.js is mocked, so each result-access test builds the card DOM by
   // hand: a live URL text link (.crossSearchUrl) and the corner go-to icon
   // (.crossSearchGoTo), both http hrefs, nested inside a result card.
