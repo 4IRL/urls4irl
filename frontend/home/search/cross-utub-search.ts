@@ -185,6 +185,8 @@ function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
 
   row.on("click", () => {
     $("#crossUtubSearchInput").val(entry.query);
+    // The input now has text — surface the clear (×) button to match.
+    syncClearButtonVisibility();
     $("#crossUtubSearchHistoryList").remove();
     // Reflect the saved field order/selection in the controls UI; this also
     // re-triggers the search via the controls' onChange, so we still call
@@ -361,6 +363,14 @@ function clearSearchInput(): void {
   $("#crossUtubSearchInput").trigger("focus");
 }
 
+// Show the clear (×) button whenever the input has text, hide it when empty.
+// Called from the input handler and from any path that sets the input value
+// programmatically (e.g. re-running a recent search).
+function syncClearButtonVisibility(): void {
+  const hasText = getInputValue($("#crossUtubSearchInput")).length > 0;
+  $("#crossUtubSearchClear").toggleClass("hidden", !hasText);
+}
+
 function handleSearchInput(): void {
   if (_searchDebounceTimer !== null) {
     clearTimeout(_searchDebounceTimer);
@@ -369,7 +379,7 @@ function handleSearchInput(): void {
 
   const input = $("#crossUtubSearchInput");
   const rawValue = getInputValue(input);
-  $("#crossUtubSearchClear").toggleClass("hidden", rawValue.length === 0);
+  syncClearButtonVisibility();
   if (rawValue.length > MAX_SEARCH_LENGTH) {
     input.val(rawValue.slice(0, MAX_SEARCH_LENGTH));
     return;

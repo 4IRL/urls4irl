@@ -308,6 +308,8 @@ describe("search-history — render + re-run inside the overlay", () => {
     row.trigger("click");
 
     expect($("#crossUtubSearchInput").val()).toBe("myquery");
+    // The re-run fills the input, so the clear (×) button must reappear.
+    expect($("#crossUtubSearchClear").hasClass("hidden")).toBe(false);
     expect(setFieldControls).toHaveBeenCalledWith({ fields: ["title"] });
     expect(ajaxCall).toHaveBeenCalled();
     const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
