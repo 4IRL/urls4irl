@@ -162,6 +162,29 @@ describe("cross-utub-search — mode mechanics", () => {
     });
   });
 
+  it("(b2) a non-default field selection appends the &fields= query param", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      buildDoneXhr([{ utubID: 1, utubName: "A", urls: [] }]),
+    );
+    const {
+      initCrossUtubSearch,
+      enterCrossUtubSearchMode,
+      performCrossUtubSearch,
+    } = await import("../cross-utub-search.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    performCrossUtubSearch({ query: "alpha", fields: ["title"] });
+
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0][1] as string;
+    expect(calledUrl).toBe(
+      `${APP_CONFIG.routes.crossUtubSearch}?q=alpha&fields=title`,
+    );
+  });
+
   it("(c) empty result set shows the no-results state", async () => {
     vi.useFakeTimers();
     const { ajaxCall } = await import("../../../lib/ajax.js");
