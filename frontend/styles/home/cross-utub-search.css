@@ -39,9 +39,14 @@
     transition: background-color 0.15s ease, border-color 0.15s ease;
 }
 
-.crossSearchHitCard:hover {
-    background-color: var(--oddUrlCardsBackgroundColor);
-    border-color: var(--deckSelectionGreenHover);
+/* Hover effects are gated to fine-pointer devices: on touch screens `:hover`
+   sticks after a tap (no pointer-leave), leaving controls highlighted until the
+   user taps elsewhere. */
+@media not all and (any-pointer: coarse) {
+    .crossSearchHitCard:hover {
+        background-color: var(--oddUrlCardsBackgroundColor);
+        border-color: var(--deckSelectionGreenHover);
+    }
 }
 
 .crossSearchHitCard:focus-visible {
@@ -63,8 +68,10 @@
     text-decoration: none;
 }
 
-.crossSearchUrl:hover {
-    text-decoration: underline;
+@media not all and (any-pointer: coarse) {
+    .crossSearchUrl:hover {
+        text-decoration: underline;
+    }
 }
 
 .crossSearchUrl:focus-visible {
@@ -176,8 +183,10 @@
     color: rgba(255, 255, 255, 0.7);
 }
 
-#crossUtubSearchInput:hover {
-    border-color: var(--deckSelectionGreenHover);
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchInput:hover {
+        border-color: var(--deckSelectionGreenHover);
+    }
 }
 
 #crossUtubSearchInput:focus,
@@ -203,9 +212,11 @@
     transition: color 0.15s ease, background-color 0.15s ease;
 }
 
-#crossUtubSearchClose:hover {
-    color: whitesmoke;
-    background-color: var(--cardBackgroundColor);
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchClose:hover {
+        color: whitesmoke;
+        background-color: var(--cardBackgroundColor);
+    }
 }
 
 #crossUtubSearchClose:focus-visible {
@@ -238,9 +249,11 @@
     height: 20px;
 }
 
-#crossUtubSearchSettingsBtn:hover {
-    color: whitesmoke;
-    background-color: var(--cardBackgroundColor);
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchSettingsBtn:hover {
+        color: whitesmoke;
+        background-color: var(--cardBackgroundColor);
+    }
 }
 
 #crossUtubSearchSettingsBtn:focus-visible {
@@ -348,10 +361,12 @@
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-.crossSearchFieldUp:hover:not([disabled]),
-.crossSearchFieldDown:hover:not([disabled]) {
-    border-color: var(--deckSelectionGreen);
-    color: var(--deckSelectionGreen);
+@media not all and (any-pointer: coarse) {
+    .crossSearchFieldUp:hover:not([disabled]),
+    .crossSearchFieldDown:hover:not([disabled]) {
+        border-color: var(--deckSelectionGreen);
+        color: var(--deckSelectionGreen);
+    }
 }
 
 .crossSearchFieldUp[disabled],
@@ -392,9 +407,11 @@
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 
-#crossUtubSearchHistoryClear:hover {
-    border-color: var(--deckSelectionGreen);
-    color: var(--deckSelectionGreen);
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchHistoryClear:hover {
+        border-color: var(--deckSelectionGreen);
+        color: var(--deckSelectionGreen);
+    }
 }
 
 #crossUtubSearchHistoryClear:focus-visible {
@@ -423,8 +440,10 @@
     transition: background-color 0.15s ease;
 }
 
-.crossSearchHistoryRow:hover {
-    background-color: var(--cardBackgroundColor);
+@media not all and (any-pointer: coarse) {
+    .crossSearchHistoryRow:hover {
+        background-color: var(--cardBackgroundColor);
+    }
 }
 
 .crossSearchHistoryRow:focus-visible {

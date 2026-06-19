@@ -119,9 +119,14 @@ a {
     display: none;
 }
 
-.navbar-cross-search:hover {
-    background-color: var(--navbarBackgroundHover);
-    color: whitesmoke;
+/* Hover only on devices with a real (fine) pointer — on touch screens `:hover`
+   sticks after a tap (no pointer-leave), leaving the trigger highlighted until
+   the user taps elsewhere. */
+@media not all and (any-pointer: coarse) {
+    .navbar-cross-search:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: whitesmoke;
+    }
 }
 
 .navbar-cross-search:focus-visible {
