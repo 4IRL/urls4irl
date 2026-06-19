@@ -239,6 +239,11 @@ class HomePageLocators(GenericPageLocator):
 
     # Panels
     MAIN_PANEL = "main#mainPanel"
+    LEFT_PANEL = ".panel#leftPanel"
+
+    # Toggles
+    LHS_TOGGLE_SEAM_BTN = "#lhsToggleSeam"
+    LHS_TOGGLE_HEADER_BTN = "#lhsToggleHeader"
 
 
 class SplashPageLocators(GenericPageLocator):

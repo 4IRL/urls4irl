@@ -9,10 +9,15 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.metrics.events import DeviceType, EventName
+from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_on_429_page
+from tests.functional.home_ui.selenium_utils import toggle_lhs_panels
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_to_home_page
+from tests.functional.login_utils import (
+    login_user_and_select_utub_by_utubid,
+    login_user_to_home_page,
+)
 from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
@@ -102,6 +107,67 @@ def test_deck_collapse_emits_to_anonymous_metrics(
     )
     assert matched_row["count"] == 1
     assert matched_row["bucket_start"] is not None
+
+
+def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
+    browser: WebDriver,
+    create_test_tags: Any,
+    provide_app: Flask,
+    metrics_redis_client: Redis,
+    pg_conn_for_metrics: Any,
+):
+    """
+    GIVEN a logged-in user on the desktop home page with a UTub selected and
+        the metrics pipeline activated end-to-end
+    WHEN the user collapses/expands the LHS via the seam toggle, then again
+        via the URL-deck-header mirror toggle
+    THEN four `AnonymousMetrics` rows exist — `ui_lhs_collapse` and
+        `ui_lhs_expand` for each `source` (`"seam"` and `"url_header"`) — each
+        with `device_type = 2` and count == 1, proving both affordances
+        forward their distinct `source` dim end-to-end.
+    """
+    user_id_for_test = 1
+    with provide_app.app_context():
+        utub = Utubs.query.first()
+        utub_id = utub.id
+    login_user_and_select_utub_by_utubid(
+        provide_app, browser, user_id=user_id_for_test, utub_id=utub_id
+    )
+
+    def assert_toggle_emits(source: str):
+        # Default state is expanded, so the first click collapses (emits
+        # UI_LHS_COLLAPSE) and the second click expands (emits UI_LHS_EXPAND),
+        # both carrying the affordance's `source` dim.
+        toggle_lhs_panels(browser, via=source)
+        collapse_row = wait_for_metrics_row(
+            browser=browser,
+            redis_client=metrics_redis_client,
+            pg_conn=pg_conn_for_metrics,
+            event_name=EventName.UI_LHS_COLLAPSE,
+            expected_dimensions={
+                "device_type": _EXPECTED_DEVICE_TYPE,
+                "source": source,
+            },
+        )
+        assert collapse_row["count"] == 1
+        assert collapse_row["bucket_start"] is not None
+
+        toggle_lhs_panels(browser, via=source)
+        expand_row = wait_for_metrics_row(
+            browser=browser,
+            redis_client=metrics_redis_client,
+            pg_conn=pg_conn_for_metrics,
+            event_name=EventName.UI_LHS_EXPAND,
+            expected_dimensions={
+                "device_type": _EXPECTED_DEVICE_TYPE,
+                "source": source,
+            },
+        )
+        assert expand_row["count"] == 1
+        assert expand_row["bucket_start"] is not None
+
+    assert_toggle_emits(source="seam")
+    assert_toggle_emits(source="url_header")
 
 
 def test_rate_limit_hit_emits_to_anonymous_metrics(

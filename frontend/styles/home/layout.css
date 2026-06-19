@@ -391,8 +391,13 @@ button {
     }
 
     /* The mobile single-screen nav governs panels below 992px — hide both
-       LHS-collapse affordances so they never appear on mobile. */
-    .lhs-toggle {
+       LHS-collapse affordances so they never appear on mobile. The
+       `.button-container .lhs-toggle` selector is required to out-specify the
+       `.button-container button { display: inline-flex }` coarse-pointer rule
+       in buttons.css, which would otherwise re-show the URL-header toggle on
+       touch devices. */
+    .lhs-toggle,
+    .button-container .lhs-toggle {
         display: none;
     }
 }
