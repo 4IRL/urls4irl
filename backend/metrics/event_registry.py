@@ -304,6 +304,21 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UI_CROSS_UTUB_SEARCH_CLOSE: EventRegistryEntry(
         description="Cross-UTub search mode closed",
         category=EventCategory.UI,
+        dimensions={
+            "target": ("cross_utub",),
+            "trigger": (
+                "trigger_icon",
+                "escape_key",
+                "return_home",
+                "deck_switch",
+                "result_nav",
+                "history_nav",
+            ),
+        },
+    ),
+    EventName.UI_CROSS_UTUB_SEARCH_REFRESH: EventRegistryEntry(
+        description="Cross-UTub search results refreshed",
+        category=EventCategory.UI,
         dimensions={"target": ("cross_utub",)},
     ),
     EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: EventRegistryEntry(

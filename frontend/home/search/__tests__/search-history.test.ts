@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../../types/metrics-dim-values.js";
+
 import type { MatchedField } from "../../../types/search.js";
 import type { SearchHistoryEntry } from "../search-history.js";
 
@@ -46,12 +48,16 @@ const KNOWN_NOW = 1_700_000_000_000;
 const $ = window.jQuery;
 
 const SEARCH_MODE_HTML = `
-  <button id="toCrossUtubSearch" class="hidden"></button>
+  <button id="toCrossUtubSearch" class="hidden">
+    <span id="crossSearchTriggerOpenIcon"></span>
+    <span id="crossSearchTriggerCloseIcon" class="hidden"></span>
+  </button>
+  <button id="navReturnHome" class="hidden"></button>
   <div id="leftPanel" class="panel"></div>
   <div id="crossUtubSearchMode" class="cross-search-hidden">
     <div id="crossUtubSearchInputWrap"><input id="crossUtubSearchInput" type="search" /><button id="crossUtubSearchClear" class="hidden"></button></div>
+    <button id="crossUtubSearchSubmit" disabled><span class="crossSearchSubmitIcon"></span><span class="crossSearchRefreshIcon hidden"></span></button>
     <div id="crossUtubSearchFieldControls"></div>
-    <button id="crossUtubSearchClose"></button>
     <span id="crossUtubSearchAnnouncement"></span>
     <div id="crossUtubSearchResults"></div>
     <p id="crossUtubSearchNoResults" class="hidden"></p>
@@ -286,7 +292,9 @@ describe("search-history — render + re-run inside the overlay", () => {
     // The module keeps search-mode state at module scope; reset it between
     // tests so enterCrossUtubSearchMode() does not early-return as already-open.
     const { exitCrossUtubSearchMode } = await import("../cross-utub-search.js");
-    exitCrossUtubSearchMode();
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
+    });
   });
 
   afterEach(() => {

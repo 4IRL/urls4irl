@@ -87,6 +87,22 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     ),
     (
         EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+        {
+            "target": "cross_utub",
+            "trigger": "escape_key",
+            "device_type": DeviceType.DESKTOP,
+        },
+    ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+        {
+            "target": "cross_utub",
+            "trigger": "return_home",
+            "device_type": DeviceType.MOBILE,
+        },
+    ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_REFRESH,
         {"target": "cross_utub", "device_type": DeviceType.DESKTOP},
     ),
     (

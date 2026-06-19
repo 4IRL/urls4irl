@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
+  CROSS_UTUB_SEARCH_CLOSE_TARGET,
+  CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
   CROSS_UTUB_SEARCH_OPEN_TARGET,
+  CROSS_UTUB_SEARCH_REFRESH_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER,
 } from "../../../types/metrics-dim-values.js";
@@ -59,7 +62,11 @@ vi.mock("../../utubs/deck.js", () => ({
 const $ = window.jQuery;
 
 const SEARCH_MODE_HTML = `
-  <button id="toCrossUtubSearch" class="hidden"></button>
+  <button id="toCrossUtubSearch" class="hidden">
+    <span id="crossSearchTriggerOpenIcon"></span>
+    <span id="crossSearchTriggerCloseIcon" class="hidden"></span>
+  </button>
+  <button id="navReturnHome" class="hidden"></button>
   <div id="leftPanel" class="panel"></div>
   <button id="toUTubs"></button>
   <button id="toURLs"></button>
@@ -67,8 +74,8 @@ const SEARCH_MODE_HTML = `
   <button id="toTags"></button>
   <div id="crossUtubSearchMode" class="cross-search-hidden">
     <div id="crossUtubSearchInputWrap"><input id="crossUtubSearchInput" type="search" /><button id="crossUtubSearchClear" class="hidden"></button></div>
+    <button id="crossUtubSearchSubmit" disabled><span class="crossSearchSubmitIcon"></span><span class="crossSearchRefreshIcon hidden"></span></button>
     <div id="crossUtubSearchFieldControls"></div>
-    <button id="crossUtubSearchClose"></button>
     <span id="crossUtubSearchAnnouncement"></span>
     <div id="crossUtubSearchResults"></div>
     <p id="crossUtubSearchNoResults" class="hidden"></p>
@@ -108,7 +115,9 @@ describe("cross-utub-search — mode mechanics", () => {
     vi.clearAllMocks();
     // Reset module-scoped search-mode state between tests.
     const { exitCrossUtubSearchMode } = await import("../cross-utub-search.js");
-    exitCrossUtubSearchMode();
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
+    });
   });
 
   afterEach(() => {
@@ -136,8 +145,7 @@ describe("cross-utub-search — mode mechanics", () => {
     });
   });
 
-  it("(b) debounced input fetches once with the right URL and renders results", async () => {
-    vi.useFakeTimers();
+  it("(b) typing does NOT fetch; clicking submit fetches once with the right URL and renders results", async () => {
     const { ajaxCall } = await import("../../../lib/ajax.js");
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       buildDoneXhr([{ utubID: 1, utubName: "A", urls: [] }]),
@@ -149,9 +157,11 @@ describe("cross-utub-search — mode mechanics", () => {
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
 
-    const input = $("#crossUtubSearchInput");
-    input.val("alpha").trigger("input");
-    vi.advanceTimersByTime(250);
+    // Typing alone never fires a request (the per-keystroke debounce is gone).
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    expect(ajaxCall).not.toHaveBeenCalled();
+
+    $("#crossUtubSearchSubmit").trigger("click");
 
     expect(ajaxCall).toHaveBeenCalledTimes(1);
     const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
@@ -161,6 +171,27 @@ describe("cross-utub-search — mode mechanics", () => {
       results: [{ utubID: 1, utubName: "A", urls: [] }],
       query: "alpha",
     });
+  });
+
+  it("(b1) pressing Enter in the input fetches once", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      buildDoneXhr([]),
+    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0][1] as string;
+    expect(calledUrl).toBe(`${APP_CONFIG.routes.crossUtubSearch}?q=alpha`);
   });
 
   it("(b2) a non-default field selection appends the &fields= query param", async () => {
@@ -187,7 +218,6 @@ describe("cross-utub-search — mode mechanics", () => {
   });
 
   it("(c) empty result set shows the no-results state", async () => {
-    vi.useFakeTimers();
     const { ajaxCall } = await import("../../../lib/ajax.js");
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       buildDoneXhr([]),
@@ -199,7 +229,7 @@ describe("cross-utub-search — mode mechanics", () => {
     enterCrossUtubSearchMode();
 
     $("#crossUtubSearchInput").val("zzz").trigger("input");
-    vi.advanceTimersByTime(250);
+    $("#crossUtubSearchSubmit").trigger("click");
 
     expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(false);
   });
@@ -221,14 +251,13 @@ describe("cross-utub-search — mode mechanics", () => {
     enterCrossUtubSearchMode();
 
     $("#crossUtubSearchInput").val("alpha").trigger("input");
-    vi.advanceTimersByTime(250);
+    $("#crossUtubSearchSubmit").trigger("click");
 
     expect(renderSearchResults).not.toHaveBeenCalled();
     expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(true);
   });
 
   it("(d2) a 400 error response shows the no-results state", async () => {
-    vi.useFakeTimers();
     const ajaxModule = await import("../../../lib/ajax.js");
     (
       ajaxModule.is429Handled as unknown as ReturnType<typeof vi.fn>
@@ -243,7 +272,7 @@ describe("cross-utub-search — mode mechanics", () => {
     enterCrossUtubSearchMode();
 
     $("#crossUtubSearchInput").val("alpha").trigger("input");
-    vi.advanceTimersByTime(250);
+    $("#crossUtubSearchSubmit").trigger("click");
 
     expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(false);
   });
@@ -265,31 +294,109 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(mode.hasClass("cross-search-visible")).toBe(false);
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
-      target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
+      target: CROSS_UTUB_SEARCH_CLOSE_TARGET.CROSS_UTUB,
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
     });
   });
 
-  it("(f) clicking the ✕ button closes the mode and emits CLOSE", async () => {
-    const { emit } = await import("../../../lib/metrics-client.js");
+  it("(f) the navbar trigger morphs to its close glyph on open and back on close", async () => {
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+
+    // Closed: open glyph shown, close glyph hidden, open aria-label.
+    const openIcon = $("#crossSearchTriggerOpenIcon");
+    const closeIcon = $("#crossSearchTriggerCloseIcon");
+    expect(openIcon.hasClass("hidden")).toBe(false);
+    expect(closeIcon.hasClass("hidden")).toBe(true);
+
+    enterCrossUtubSearchMode();
+    expect(openIcon.hasClass("hidden")).toBe(true);
+    expect(closeIcon.hasClass("hidden")).toBe(false);
+    expect($("#toCrossUtubSearch").attr("aria-label")).toBe(
+      APP_CONFIG.strings.CROSS_SEARCH_TRIGGER_CLOSE_LABEL,
+    );
+    // The bordered "called-out" styling applies only while open (Close state).
+    expect(
+      $("#toCrossUtubSearch").hasClass("navbar-cross-search--active"),
+    ).toBe(true);
+
+    const event = $.Event("keydown.crossSearchEsc", { key: "Escape" });
+    $(document).trigger(event);
+    expect(openIcon.hasClass("hidden")).toBe(false);
+    expect(closeIcon.hasClass("hidden")).toBe(true);
+    expect($("#toCrossUtubSearch").attr("aria-label")).toBe(
+      APP_CONFIG.strings.CROSS_SEARCH_TRIGGER_OPEN_LABEL,
+    );
+    expect(
+      $("#toCrossUtubSearch").hasClass("navbar-cross-search--active"),
+    ).toBe(false);
+  });
+
+  it("(f2) the submit button is disabled when empty and enabled once text is typed", async () => {
     const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
       "../cross-utub-search.js"
     );
     initCrossUtubSearch();
     enterCrossUtubSearchMode();
-    (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
 
-    $("#crossUtubSearchClose").trigger("click");
+    const submit = $("#crossUtubSearchSubmit");
+    expect(submit.prop("disabled")).toBe(true);
 
-    const mode = $("#crossUtubSearchMode");
-    expect(mode.hasClass("cross-search-hidden")).toBe(true);
-    expect(mode.hasClass("cross-search-visible")).toBe(false);
-    expect(emit).toHaveBeenCalledWith({
-      event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
-      target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
-    });
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    expect(submit.prop("disabled")).toBe(false);
+
+    $("#crossUtubSearchInput").val("").trigger("input");
+    expect(submit.prop("disabled")).toBe(true);
   });
 
-  it("(h) clicking the navbar trigger while open toggles the mode closed", async () => {
+  it("(f3) after a search the submit button morphs to Refresh; re-submitting re-runs the query and emits REFRESH; editing flips back to Search", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      buildDoneXhr([]),
+    );
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    $("#crossUtubSearchSubmit").trigger("click");
+
+    // Now in Refresh state: refresh glyph shown, search glyph hidden.
+    const submit = $("#crossUtubSearchSubmit");
+    expect(submit.find(".crossSearchRefreshIcon").hasClass("hidden")).toBe(
+      false,
+    );
+    expect(submit.find(".crossSearchSubmitIcon").hasClass("hidden")).toBe(true);
+    expect(submit.attr("aria-label")).toBe(
+      APP_CONFIG.strings.CROSS_SEARCH_REFRESH_LABEL,
+    );
+
+    (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
+    submit.trigger("click");
+
+    // Re-running the identical query fires a second request and records REFRESH.
+    expect(ajaxCall).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_REFRESH,
+      target: CROSS_UTUB_SEARCH_REFRESH_TARGET.CROSS_UTUB,
+    });
+
+    // Editing the query away from the last-submitted value flips back to Search.
+    $("#crossUtubSearchInput").val("alphab").trigger("input");
+    expect(submit.find(".crossSearchSubmitIcon").hasClass("hidden")).toBe(
+      false,
+    );
+    expect(submit.find(".crossSearchRefreshIcon").hasClass("hidden")).toBe(
+      true,
+    );
+  });
+
+  it("(h) clicking the navbar trigger while open toggles the mode closed and emits CLOSE with the trigger_icon trigger", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
       "../cross-utub-search.js"
@@ -305,8 +412,24 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(mode.hasClass("cross-search-visible")).toBe(false);
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
-      target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
+      target: CROSS_UTUB_SEARCH_CLOSE_TARGET.CROSS_UTUB,
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.TRIGGER_ICON,
     });
+  });
+
+  it("(h2) opening search reveals the hamburger Return Home item; closing hides it", async () => {
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+
+    expect($("#navReturnHome").hasClass("hidden")).toBe(true);
+    enterCrossUtubSearchMode();
+    expect($("#navReturnHome").hasClass("hidden")).toBe(false);
+
+    const event = $.Event("keydown.crossSearchEsc", { key: "Escape" });
+    $(document).trigger(event);
+    expect($("#navReturnHome").hasClass("hidden")).toBe(true);
   });
 
   it("(i) typing shows the clear button; clicking it clears the input and re-hides the button", async () => {

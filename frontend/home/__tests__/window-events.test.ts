@@ -13,7 +13,7 @@ const mockIsUtubIdValidFromStateAccess = vi.fn();
 const mockSetMemberDeckWhenNoUTubSelected = vi.fn();
 const mockSetTagDeckSubheaderWhenNoUTubSelected = vi.fn();
 const mockExitCrossUtubSearchMode = vi.fn();
-const mockIsCrossUtubSearchActive = vi.fn(() => false);
+const mockIsCrossUtubSearchActive = vi.fn((..._args: unknown[]) => false);
 const mockRestoreCrossUtubSearchFromHistory = vi.fn();
 
 vi.mock("../../lib/config.js", () => ({

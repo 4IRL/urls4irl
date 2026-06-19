@@ -21,6 +21,7 @@ import {
   isCrossUtubSearchActive,
   restoreCrossUtubSearchFromHistory,
 } from "./search/cross-utub-search.js";
+import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../types/metrics-dim-values.js";
 
 import type { MatchedField } from "../types/search.js";
 
@@ -48,7 +49,9 @@ function handlePopState(event: PopStateEvent): void {
   // Any non-search entry (a UTub or /home) leaves search mode if it is open —
   // e.g. Forward out of restored results, or Back past them to a UTub.
   if (isCrossUtubSearchActive()) {
-    exitCrossUtubSearchMode();
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.HISTORY_NAV,
+    });
   }
 
   if (state !== null && "UTubID" in state) {

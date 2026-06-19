@@ -87,7 +87,18 @@ export const CROSS_UTUB_SEARCH_CLOSE_TARGET = {
   CROSS_UTUB: "cross_utub",
 } as const;
 
+export const CROSS_UTUB_SEARCH_CLOSE_TRIGGER = {
+  TRIGGER_ICON: "trigger_icon",
+  ESCAPE_KEY: "escape_key",
+  RETURN_HOME: "return_home",
+  DECK_SWITCH: "deck_switch",
+  RESULT_NAV: "result_nav",
+  HISTORY_NAV: "history_nav",
+} as const;
+
 export const CROSS_UTUB_SEARCH_OPEN_TARGET = CROSS_UTUB_SEARCH_CLOSE_TARGET;
+
+export const CROSS_UTUB_SEARCH_REFRESH_TARGET = CROSS_UTUB_SEARCH_CLOSE_TARGET;
 
 export const CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET =
   CROSS_UTUB_SEARCH_CLOSE_TARGET;
