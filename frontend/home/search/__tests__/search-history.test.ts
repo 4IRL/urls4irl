@@ -143,6 +143,70 @@ describe("search-history — persistence helpers", () => {
     expect(history.some((entry) => entry.query === "q0")).toBe(false);
   });
 
+  it("(j) an incremental typing chain collapses into a single entry", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+    const nowSpy = vi.spyOn(Date, "now");
+
+    // Each debounced keystroke pushes; the chain must leave only the final query.
+    ["reh", "rehr", "rehre", "rehreh"].forEach((query, index) => {
+      nowSpy.mockReturnValue(1000 + index * 300);
+      pushSearchHistory({ query, fields: DEFAULT_FIELDS });
+    });
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0].query).toBe("rehreh");
+
+    nowSpy.mockRestore();
+  });
+
+  it("(k) backspacing collapses, and a non-prefix query starts a new entry", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+    const nowSpy = vi.spyOn(Date, "now");
+
+    nowSpy.mockReturnValue(1000);
+    pushSearchHistory({ query: "rehreh", fields: DEFAULT_FIELDS });
+    nowSpy.mockReturnValue(1300);
+    pushSearchHistory({ query: "rehre", fields: DEFAULT_FIELDS });
+    // Still one entry (backspacing is a prefix relation).
+    expect(getSearchHistory()).toHaveLength(1);
+    expect(getSearchHistory()[0].query).toBe("rehre");
+
+    // A fresh, unrelated query appends a second entry.
+    nowSpy.mockReturnValue(1600);
+    pushSearchHistory({ query: "apple", fields: DEFAULT_FIELDS });
+    const history = getSearchHistory();
+    expect(history).toHaveLength(2);
+    expect(history[0].query).toBe("apple");
+    expect(history[1].query).toBe("rehre");
+
+    nowSpy.mockRestore();
+  });
+
+  it("(l) a prefix-extension after the collapse window is a separate entry", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+    const nowSpy = vi.spyOn(Date, "now");
+
+    nowSpy.mockReturnValue(1000);
+    pushSearchHistory({ query: "cat", fields: DEFAULT_FIELDS });
+    // Same prefix relation, but ~6 minutes later — a separate search session.
+    nowSpy.mockReturnValue(1000 + 6 * 60 * 1000);
+    pushSearchHistory({ query: "category", fields: DEFAULT_FIELDS });
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(2);
+    expect(history[0].query).toBe("category");
+    expect(history[1].query).toBe("cat");
+
+    nowSpy.mockRestore();
+  });
+
   it("(h) pushSearchHistory does not throw when setItem throws QuotaExceededError", async () => {
     const { pushSearchHistory } = await import("../search-history.js");
     vi.stubGlobal("localStorage", {
