@@ -12,6 +12,9 @@ const mockIsUtubIdValidOnPageLoad = vi.fn();
 const mockIsUtubIdValidFromStateAccess = vi.fn();
 const mockSetMemberDeckWhenNoUTubSelected = vi.fn();
 const mockSetTagDeckSubheaderWhenNoUTubSelected = vi.fn();
+const mockExitCrossUtubSearchMode = vi.fn();
+const mockIsCrossUtubSearchActive = vi.fn(() => false);
+const mockRestoreCrossUtubSearchFromHistory = vi.fn();
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
@@ -59,6 +62,14 @@ vi.mock("../tags/deck.js", () => ({
   setTagDeckSubheaderWhenNoUTubSelected: (...args: unknown[]) =>
     mockSetTagDeckSubheaderWhenNoUTubSelected(...args),
 }));
+vi.mock("../search/cross-utub-search.js", () => ({
+  exitCrossUtubSearchMode: (...args: unknown[]) =>
+    mockExitCrossUtubSearchMode(...args),
+  isCrossUtubSearchActive: (...args: unknown[]) =>
+    mockIsCrossUtubSearchActive(...args),
+  restoreCrossUtubSearchFromHistory: (...args: unknown[]) =>
+    mockRestoreCrossUtubSearchFromHistory(...args),
+}));
 
 const $ = window.jQuery;
 
@@ -69,6 +80,9 @@ describe("window-events", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // clearAllMocks does not reset implementations set via vi.fn(impl), but it
+    // also does not reset a later .mockReturnValue — pin the default each test.
+    mockIsCrossUtubSearchActive.mockReturnValue(false);
     popstateHandler = undefined;
     pageshowHandler = undefined;
 
@@ -154,6 +168,47 @@ describe("window-events", () => {
       expect(mockResetHomePageToInitialState).toHaveBeenCalled();
 
       replaceStateSpy.mockRestore();
+    });
+
+    it("restores cross-UTub search when state carries a crossSearch payload", () => {
+      const crossSearch = { query: "cats", fields: ["url", "title", "tag"] };
+      const event = new PopStateEvent("popstate", { state: { crossSearch } });
+      popstateHandler!(event);
+
+      expect(mockRestoreCrossUtubSearchFromHistory).toHaveBeenCalledWith(
+        crossSearch,
+      );
+      // The crossSearch branch returns early — no UTub rebuild or home reset.
+      expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
+      expect(mockIsUtubIdValidFromStateAccess).not.toHaveBeenCalled();
+    });
+
+    it("exits search mode when popping to a UTub entry while search is open", async () => {
+      mockIsCrossUtubSearchActive.mockReturnValue(true);
+      mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+      mockGetUTubInfo.mockResolvedValue({ id: 5, name: "Test UTub" });
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+      const event = new PopStateEvent("popstate", { state: { UTubID: 5 } });
+      popstateHandler!(event);
+
+      expect(mockExitCrossUtubSearchMode).toHaveBeenCalled();
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalled();
+      });
+
+      widthSpy.mockRestore();
+    });
+
+    it("does not exit search mode when popping to a UTub entry and search is closed", () => {
+      mockIsCrossUtubSearchActive.mockReturnValue(false);
+      mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+      mockGetUTubInfo.mockResolvedValue({ id: 5, name: "Test UTub" });
+
+      const event = new PopStateEvent("popstate", { state: { UTubID: 5 } });
+      popstateHandler!(event);
+
+      expect(mockExitCrossUtubSearchMode).not.toHaveBeenCalled();
     });
 
     it("resets to initial state when state has no UTubID property (non-UTub state)", () => {

@@ -22,23 +22,6 @@ const MINUTE_MS = 60 * 1000;
 // shorter than the gap between genuinely separate search sessions.
 const HISTORY_COLLAPSE_WINDOW_MS = 5 * MINUTE_MS;
 
-function dedupeKey({
-  query,
-  fields,
-}: {
-  query: string;
-  fields: MatchedField[];
-}): string {
-  return query + "|" + fields.join(",");
-}
-
-function sameFields(left: MatchedField[], right: MatchedField[]): boolean {
-  return (
-    left.length === right.length &&
-    left.every((field, index) => field === right[index])
-  );
-}
-
 // True when one query is a prefix of the other (case-insensitive), i.e. they
 // belong to the same forward-typing or backspacing chain (e.g. "reh" -> "rehre"
 // or "rehre" -> "reh").
@@ -79,14 +62,17 @@ export function getSearchHistory(): SearchHistoryEntry[] {
 }
 
 // Adds (or refreshes) a history entry. The list is most-recent-first and capped
-// at MAX_HISTORY. An identical query+fields combo has its `ts` bumped to now and
-// is moved to the front. Crucially, an in-progress typing chain collapses into a
-// single entry: because the search fetch (and thus this push) fires on every
-// debounced keystroke, typing "rehrehreh" would otherwise leave eight partial
-// entries — so when the most-recent entry uses the same fields, was added within
-// HISTORY_COLLAPSE_WINDOW_MS, and one query is a prefix of the other, it is
-// replaced rather than appended. Silently no-ops if localStorage is unavailable
-// (private mode / quota), matching pane-resizer.ts.
+// at MAX_HISTORY. Entries are identified by their query text alone — the search
+// fields (url/title/tag) are NOT part of the identity, so re-searching the same
+// query with a different field selection refreshes the single existing entry
+// (bumping its `ts` to now, moving it to the front, and recording the latest
+// fields) rather than adding a near-duplicate row. Crucially, an in-progress
+// typing chain collapses into a single entry: because the search fetch (and thus
+// this push) fires on every debounced keystroke, typing "rehrehreh" would
+// otherwise leave eight partial entries — so when the most-recent entry was
+// added within HISTORY_COLLAPSE_WINDOW_MS and one query is a prefix of the other,
+// it is replaced rather than appended. Silently no-ops if localStorage is
+// unavailable (private mode / quota), matching pane-resizer.ts.
 export function pushSearchHistory({
   query,
   fields,
@@ -101,17 +87,13 @@ export function pushSearchHistory({
   const collapsesIntoMostRecent =
     mostRecent !== undefined &&
     now - mostRecent.ts < HISTORY_COLLAPSE_WINDOW_MS &&
-    sameFields(mostRecent.fields, fields) &&
     isPrefixChain(mostRecent.query, query);
 
   // When collapsing the active typing chain, drop the prior (prefix) entry so
   // the chain leaves only its final query; otherwise keep all prior entries.
   const remainder = collapsesIntoMostRecent ? history.slice(1) : history;
 
-  const key = dedupeKey({ query, fields });
-  const deduped = remainder.filter(
-    (entry) => dedupeKey({ query: entry.query, fields: entry.fields }) !== key,
-  );
+  const deduped = remainder.filter((entry) => entry.query !== query);
   const next: SearchHistoryEntry[] = [
     { query, fields, ts: now },
     ...deduped,
@@ -132,20 +114,11 @@ export function clearSearchHistory(): void {
   }
 }
 
-// Removes a single history entry matching the given query+fields (by dedupeKey)
-// and writes the remainder back. Silently no-ops if localStorage is unavailable
-// (private mode / quota), matching pushSearchHistory.
-export function removeSearchHistoryEntry({
-  query,
-  fields,
-}: {
-  query: string;
-  fields: MatchedField[];
-}): void {
-  const key = dedupeKey({ query, fields });
-  const remainder = getSearchHistory().filter(
-    (entry) => dedupeKey({ query: entry.query, fields: entry.fields }) !== key,
-  );
+// Removes the history entry for the given query (identity is the query text
+// alone, matching pushSearchHistory) and writes the remainder back. Silently
+// no-ops if localStorage is unavailable (private mode / quota).
+export function removeSearchHistoryEntry({ query }: { query: string }): void {
+  const remainder = getSearchHistory().filter((entry) => entry.query !== query);
 
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(remainder));

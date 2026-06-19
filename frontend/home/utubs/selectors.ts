@@ -53,6 +53,18 @@ export function getUTubInfo(
   return deferred.promise();
 }
 
+// Pushes a browser-history entry for a UTub selection so the back/forward
+// buttons move between selected UTubs. Mirrors the `/home?<param>=<id>` URL the
+// rest of the app keys popstate handling on.
+export function pushUTubHistoryState(selectedUTubID: number): void {
+  const utubid_key = APP_CONFIG.strings.UTUB_QUERY_PARAM;
+  window.history.pushState(
+    { UTubID: selectedUTubID },
+    "",
+    `/home?${utubid_key}=${selectedUTubID}`,
+  );
+}
+
 export function buildSelectedUTub(selectedUTub: UtubDetail): void {
   const utubDescription = selectedUTub.description;
   const isCurrentUserOwner = selectedUTub.isCreator;
@@ -80,13 +92,7 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
       JSON.stringify(selectedUTub.id)
   ) {
     // Push UTub state to browser history if no history, or if previous UTub history is different
-    const utubid_key = APP_CONFIG.strings.UTUB_QUERY_PARAM;
-    window.history.pushState(
-      { UTubID: selectedUTub.id },
-      "",
-      `/home?${utubid_key}=${selectedUTub.id}`,
-    );
-
+    pushUTubHistoryState(selectedUTub.id);
     sessionStorage.setItem("fullyLoaded", "true");
   }
 

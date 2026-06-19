@@ -41,6 +41,7 @@ vi.mock("../../utubs/search.js", () => ({
 vi.mock("../../utubs/selectors.js", () => ({
   selectUTub: vi.fn(),
   getSelectedUTubInfo: vi.fn(),
+  pushUTubHistoryState: vi.fn(),
 }));
 
 vi.mock("../../urls/cards/selection.js", () => ({
@@ -422,6 +423,98 @@ describe("cross-utub-search — mode mechanics", () => {
     const selectedCard = (selectURLCard as unknown as ReturnType<typeof vi.fn>)
       .mock.calls[0][0] as JQuery;
     expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
+  });
+
+  it("(g3) clicking a result card records the search in browser history before navigating", async () => {
+    const pushStateSpy = vi.spyOn(window.history, "pushState");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const targetUtubID = 7;
+    const targetUrlID = 42;
+    $("#crossUtubSearchInput").val("cats");
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="${targetUtubID}" data-utub-url-id="${targetUrlID}"></div>`,
+    );
+    $(document.body).append(
+      `<div class="UTubSelector" utubid="${targetUtubID}"></div>` +
+        `<div class="urlRow" utuburlid="${targetUrlID}"></div>`,
+    );
+
+    $(`.crossSearchHitCard[data-utub-id="${targetUtubID}"]`).trigger("click");
+
+    // A crossSearch entry is pushed carrying the query + current field order so
+    // popstate can re-run it on Back.
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      { crossSearch: { query: "cats", fields: ["url", "title", "tag"] } },
+      "",
+      "/home",
+    );
+
+    pushStateSpy.mockRestore();
+  });
+
+  it("(g4) the already-active fast-path also pushes a UTub entry so Back lands on the search entry", async () => {
+    const pushStateSpy = vi.spyOn(window.history, "pushState");
+    const { getState } = await import("../../../store/app-store.js");
+    const { pushUTubHistoryState } = await import("../../utubs/selectors.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const targetUtubID = 7;
+    const targetUrlID = 42;
+    (getState as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+      utubs: [{ id: targetUtubID }],
+      activeUTubID: targetUtubID,
+    });
+    $("#crossUtubSearchInput").val("cats");
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="${targetUtubID}" data-utub-url-id="${targetUrlID}"></div>`,
+    );
+    $(document.body).append(
+      `<div class="urlRow" utuburlid="${targetUrlID}"></div>`,
+    );
+
+    $(`.crossSearchHitCard[data-utub-id="${targetUtubID}"]`).trigger("click");
+
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      { crossSearch: { query: "cats", fields: ["url", "title", "tag"] } },
+      "",
+      "/home",
+    );
+    expect(pushUTubHistoryState).toHaveBeenCalledWith(targetUtubID);
+
+    pushStateSpy.mockRestore();
+  });
+
+  it("(g5) restoreCrossUtubSearchFromHistory re-opens the mode and re-runs the saved query with its fields", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      buildDoneXhr([]),
+    );
+    const { initCrossUtubSearch, restoreCrossUtubSearchFromHistory } =
+      await import("../cross-utub-search.js");
+    initCrossUtubSearch();
+
+    restoreCrossUtubSearchFromHistory({ query: "dogs", fields: ["title"] });
+
+    // Mode is visible, the input carries the restored query, and the query is
+    // re-fetched immediately with the saved (non-default) field order applied.
+    expect($("#crossUtubSearchMode").hasClass("cross-search-visible")).toBe(
+      true,
+    );
+    expect($("#crossUtubSearchInput").val()).toBe("dogs");
+    expect(ajaxCall).toHaveBeenCalledTimes(1);
+    const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
+      .calls[0][1] as string;
+    expect(calledUrl).toContain("q=dogs");
+    expect(calledUrl).toContain("fields=title");
   });
 
   // render.js is mocked, so each result-access test builds the card DOM by

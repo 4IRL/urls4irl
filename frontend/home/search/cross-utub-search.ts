@@ -19,7 +19,7 @@ import {
 import { selectURLCard } from "../urls/cards/selection.js";
 import { buildUTubDeck } from "../utubs/deck.js";
 import { resetUTubSearch } from "../utubs/search.js";
-import { selectUTub } from "../utubs/selectors.js";
+import { pushUTubHistoryState, selectUTub } from "../utubs/selectors.js";
 import { getAllUTubs } from "../utubs/utils.js";
 import { renderSearchResults } from "./render.js";
 import {
@@ -189,7 +189,7 @@ function buildHistoryRow(entry: SearchHistoryEntry): JQuery<HTMLElement> {
     );
 
   deleteButton.on("click", () => {
-    removeSearchHistoryEntry({ query: entry.query, fields: entry.fields });
+    removeSearchHistoryEntry({ query: entry.query });
     item.remove();
     if ($(".crossSearchHistoryItem").length === 0) {
       $("#crossUtubSearchHistoryList").remove();
@@ -304,6 +304,30 @@ export function enterCrossUtubSearchMode(): void {
   focusSearchInputAfterReveal();
 }
 
+// Re-opens cross-UTub search mode from a browser-history entry (see
+// pushCrossUtubSearchHistoryState) and re-runs the saved query so the browser
+// Back button returns the user to their previous search results.
+export function restoreCrossUtubSearchFromHistory({
+  query,
+  fields,
+}: {
+  query: string;
+  fields: MatchedField[];
+}): void {
+  enterCrossUtubSearchMode();
+  // Apply the saved field order BEFORE filling the input: setFieldControls fires
+  // the controls' onChange, which would re-run the search — harmless but wasteful
+  // on every Back. With the input still empty, that onChange short-circuits, so
+  // the single explicit performCrossUtubSearch below is the only fetch.
+  setFieldControls({ fields });
+  $("#crossUtubSearchInput").val(query);
+  syncClearButtonVisibility();
+  // The recent-search list only shows for an empty input; a restored query
+  // supersedes it.
+  $("#crossUtubSearchHistoryList").remove();
+  performCrossUtubSearch({ query, fields });
+}
+
 export function exitCrossUtubSearchMode(): void {
   $("#crossUtubSearchInput").off("keydown.crossSearchInputEsc");
   if (!_searchModeActive) {
@@ -411,6 +435,21 @@ function handleSearchInput(): void {
 // the target .urlRow does not exist until AppEvents.UTUB_SELECTED fires — defer
 // selectURLCard until that event (one-shot), never synchronously after
 // selectUTub.
+// Records the current cross-UTub search (query + field selection) as a browser
+// history entry so that, after navigating into a result's source UTub, the Back
+// button returns to these results (re-running the query). Pushes nothing and
+// returns false when there is no query to restore.
+function pushCrossUtubSearchHistoryState(): boolean {
+  const query = getInputValue($("#crossUtubSearchInput")).trim();
+  if (query.length === 0) return false;
+  window.history.pushState(
+    { crossSearch: { query, fields: getSelectedFields() } },
+    "",
+    "/home",
+  );
+  return true;
+}
+
 function navigateToHit({
   utubID,
   utubUrlID,
@@ -418,10 +457,17 @@ function navigateToHit({
   utubID: number;
   utubUrlID: number;
 }): void {
+  // Record the search results in browser history (beneath the UTub entry pushed
+  // below) so the Back button returns to them.
+  const recordedSearch = pushCrossUtubSearchHistoryState();
+
   exitCrossUtubSearchMode();
 
   // Deck already built for this UTub: select the card directly.
   if (getState().activeUTubID === utubID) {
+    // selectURLCard pushes no history of its own, so add the UTub entry
+    // explicitly — otherwise Back would skip the search entry just recorded.
+    if (recordedSearch) pushUTubHistoryState(utubID);
     selectURLCard($(`.urlRow[utuburlid=${utubUrlID}]`));
     return;
   }

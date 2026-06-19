@@ -128,6 +128,49 @@ describe("search-history — persistence helpers", () => {
     nowSpy.mockRestore();
   });
 
+  it("(b2) re-pushing the same query with different fields dedupes to one entry, keeping the latest fields", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+    const nowSpy = vi.spyOn(Date, "now");
+
+    nowSpy.mockReturnValue(1000);
+    pushSearchHistory({ query: "alpha", fields: ["title"] });
+    // Same query text, different field selection — must refresh the single
+    // existing entry rather than add a near-duplicate row.
+    nowSpy.mockReturnValue(5000);
+    pushSearchHistory({ query: "alpha", fields: ["url"] });
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0].query).toBe("alpha");
+    expect(history[0].ts).toBe(5000);
+    expect(history[0].fields).toEqual(["url"]);
+
+    nowSpy.mockRestore();
+  });
+
+  it("(b3) a typing chain whose fields change mid-stream still collapses to one entry", async () => {
+    const { pushSearchHistory, getSearchHistory } = await import(
+      "../search-history.js"
+    );
+    const nowSpy = vi.spyOn(Date, "now");
+
+    nowSpy.mockReturnValue(1000);
+    pushSearchHistory({ query: "reh", fields: ["title"] });
+    // Prefix extension within the collapse window but with a different field
+    // selection — fields are not part of identity, so it still collapses.
+    nowSpy.mockReturnValue(1300);
+    pushSearchHistory({ query: "rehre", fields: ["url"] });
+
+    const history = getSearchHistory();
+    expect(history).toHaveLength(1);
+    expect(history[0].query).toBe("rehre");
+    expect(history[0].fields).toEqual(["url"]);
+
+    nowSpy.mockRestore();
+  });
+
   it("(c) pushing 9 distinct entries prunes to the cap of 8", async () => {
     const { pushSearchHistory, getSearchHistory } = await import(
       "../search-history.js"

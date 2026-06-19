@@ -155,6 +155,46 @@ def test_clicking_result_navigates_to_source_utub_and_highlights_card(
     assert selected_card is not None
 
 
+def test_browser_back_after_result_click_restores_search_results(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN the user searched, then clicked a result card and landed in the source
+        UTub
+    WHEN they press the browser Back button
+    THEN cross-UTub search mode re-opens with the prior query and the grouped
+        results render again; pressing Back once more leaves search for /home
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    type_cross_search_query(browser, QUERY_TERM)
+    wait_for_cross_search_results(browser)
+
+    first_card = wait_then_get_element(browser, HPL.CROSS_SEARCH_HIT_CARD, time=10)
+    assert first_card is not None
+    first_card.click()
+
+    # Landed in the source UTub: search closed, the UTub deck (LHS) restored.
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+    wait_until_visible_css_selector(browser, HPL.UTUB_DECK, timeout=10)
+
+    # Browser Back returns to the search results (re-running the query).
+    browser.back()
+    wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+    restored_input = wait_then_get_element(browser, HPL.CROSS_SEARCH_INPUT, time=10)
+    assert restored_input is not None
+    assert restored_input.get_attribute("value") == QUERY_TERM
+    wait_for_cross_search_results(browser)
+
+    # Backing past the search entry leaves search mode (a non-search history
+    # entry exits the overlay rather than stranding it open).
+    browser.back()
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+    assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+
 def test_no_results_shows_distinct_message(
     browser: WebDriver, logged_in_with_cross_search_data
 ):
