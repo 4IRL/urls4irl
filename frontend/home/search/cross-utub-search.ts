@@ -444,9 +444,13 @@ function navigateToHit({
   getAllUTubs().then((utubData) => {
     buildUTubDeck(utubData.utubs);
     const rebuiltSelector = $(`.UTubSelector[utubid=${utubID}]`);
-    if (rebuiltSelector.length > 0) {
-      selectUTub(utubID, rebuiltSelector);
+    if (rebuiltSelector.length === 0) {
+      // UTub vanished between search and click; selectUTub will never fire the
+      // one-shot UTUB_SELECTED listener, so unsubscribe it explicitly here.
+      unsubscribe();
+      return;
     }
+    selectUTub(utubID, rebuiltSelector);
   });
 }
 
