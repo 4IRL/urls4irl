@@ -6,6 +6,7 @@ from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
+from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.tag_strs import TAG_FILTER_NO_RESULTS
 from backend.utils.strings.url_strs import (
     ADD_URL_BUTTON,
@@ -14,7 +15,6 @@ from backend.utils.strings.url_strs import (
 )
 from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
 from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
-from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
 
