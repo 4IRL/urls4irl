@@ -122,6 +122,7 @@ TEST_SPLIT = (
     "mobile_ui",
     "metrics_ui",
     "settings_ui",
+    "search_ui",
 )
 
 
