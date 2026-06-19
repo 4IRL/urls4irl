@@ -25,8 +25,10 @@
     border-bottom: 1px solid var(--borderColor);
 }
 
-/* Read-only result card — same surface/border/radius language as URL cards. */
+/* Read-only result card — same surface/border/radius language as URL cards.
+   `position: relative` anchors the absolutely-positioned top-right go-to icon. */
 .crossSearchHitCard {
+    position: relative;
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
@@ -54,11 +56,45 @@
     outline-offset: 2px;
 }
 
-/* Title mirrors .urlTitle (bold, light text). */
+/* Title mirrors .urlTitle (bold, light text). `padding-right` reserves room so
+   a long title never runs under the top-right go-to icon. */
 .crossSearchTitle {
     margin: 0;
+    padding-right: 2.25rem;
     font-weight: var(--fw-bold);
     color: whitesmoke;
+}
+
+/* Top-right go-to (open-URL) icon, always visible (cards are read-only — no
+   hover/selection gating). The card is `position: relative`, so this anchors to
+   its top-right corner. Comfortable icon-only tap target. */
+.crossSearchGoTo {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--deckSelectionGreenHover);
+    text-decoration: none;
+}
+
+.crossSearchGoTo svg {
+    width: 20px;
+    height: 20px;
+}
+
+.crossSearchGoTo:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchGoTo:hover {
+        color: var(--deckSelectionGreen);
+    }
 }
 
 /* URL mirrors .urlString (muted blue-gray, no underline). `align-self:
@@ -68,6 +104,7 @@
 .crossSearchUrl {
     align-self: flex-start;
     max-width: 100%;
+    padding-right: 2.25rem;
     color: var(--cardURLTextColor);
     word-break: break-all;
     text-decoration: none;
@@ -591,6 +628,12 @@
 
     .crossSearchHitCard {
         min-height: 2.75rem;
+    }
+
+    /* ≥44px touch target for the icon-only go-to affordance on mobile. */
+    .crossSearchGoTo {
+        width: 2.75rem;
+        height: 2.75rem;
     }
 
     .crossSearchHistoryRow,

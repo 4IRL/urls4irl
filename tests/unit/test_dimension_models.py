@@ -91,7 +91,19 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     ),
     (
         EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
-        {"target": "cross_utub", "device_type": DeviceType.MOBILE},
+        {
+            "target": "cross_utub",
+            "trigger": "url_text",
+            "device_type": DeviceType.MOBILE,
+        },
+    ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
+        {
+            "target": "cross_utub",
+            "trigger": "corner_button",
+            "device_type": DeviceType.DESKTOP,
+        },
     ),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": DeviceType.DESKTOP}),
@@ -423,6 +435,23 @@ def test_cross_utub_search_models_reject_non_cross_utub_target():
             DIMENSION_MODELS[event_name].model_validate(
                 {"target": "urls", "device_type": DeviceType.MOBILE}
             )
+
+
+def test_cross_utub_search_result_access_rejects_unknown_trigger():
+    """`_DimCrossUtubSearchResultAccess` restricts `trigger` to its two values.
+
+    A payload with a valid `target` but a `trigger` outside
+    `Literal["url_text", "corner_button"]` (e.g. the regular deck's
+    `main_button`) must be rejected at validation time.
+    """
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS].model_validate(
+            {
+                "target": "cross_utub",
+                "trigger": "main_button",
+                "device_type": DeviceType.MOBILE,
+            }
+        )
 
 
 def test_api_hit_model_validates_endpoint_method_status_code():

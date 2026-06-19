@@ -133,4 +133,40 @@ describe("renderSearchResults", () => {
     expect(link.attr("target")).toBe("_blank");
     expect(link.attr("rel")).toContain("noopener");
   });
+
+  it("renders a top-right go-to icon that opens the same URL in a new tab", () => {
+    renderSearchResults({ results: buildFixture(), query: "pasta" });
+
+    const card = $("#crossUtubSearchResults").find(".crossSearchHitCard").eq(0);
+    const goTo = card.find(".crossSearchGoTo");
+    expect(goTo.length).toBe(1);
+    expect(goTo.attr("href")).toBe("https://example.com/pasta");
+    expect(goTo.attr("target")).toBe("_blank");
+    expect(goTo.attr("rel")).toContain("noopener");
+    expect(goTo.attr("aria-label")).toBe("Open this URL in a new tab");
+  });
+
+  it("does not render a go-to icon for a non-http(s) URL", () => {
+    const results: SearchUtubGroup[] = [
+      {
+        utubID: 3,
+        utubName: "Misc",
+        urls: [
+          {
+            utubUrlID: 30,
+            urlString: "javascript:alert(1)",
+            urlTitle: "Sketchy",
+            urlTags: [],
+            matchedFields: ["title"],
+          },
+        ],
+      },
+    ];
+    renderSearchResults({ results, query: "sketchy" });
+
+    const card = $("#crossUtubSearchResults").find(".crossSearchHitCard").eq(0);
+    expect(card.find(".crossSearchGoTo").length).toBe(0);
+    // The url text also gets no live href (same http(s) gate).
+    expect(card.find(".crossSearchUrl").attr("href")).toBeUndefined();
+  });
 });

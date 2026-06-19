@@ -170,6 +170,7 @@ class _DimCrossUtubSearchClose(UIBaseDimensions):
 
 class _DimCrossUtubSearchResultAccess(UIBaseDimensions):
     target: Literal["cross_utub"]
+    trigger: Literal["url_text", "corner_button"]
 
 
 class _DimTagCreateOpen(UIBaseDimensions):

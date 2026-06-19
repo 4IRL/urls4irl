@@ -309,7 +309,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: EventRegistryEntry(
         description="URL opened from cross-UTub search results",
         category=EventCategory.UI,
-        dimensions={"target": ("cross_utub",)},
+        dimensions={
+            "target": ("cross_utub",),
+            "trigger": ("url_text", "corner_button"),
+        },
     ),
     EventName.UI_TAG_APPLY: EventRegistryEntry(
         description="Tag applied from picker",

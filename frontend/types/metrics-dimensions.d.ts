@@ -87,6 +87,7 @@ export type DimCrossUtubSearchClose = {
 export type DimCrossUtubSearchResultAccess = {
   device_type: DeviceType;
   target: "cross_utub";
+  trigger: "url_text" | "corner_button";
 };
 
 export type DimTagCreateOpen = {

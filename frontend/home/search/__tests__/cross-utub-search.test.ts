@@ -5,6 +5,7 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   CROSS_UTUB_SEARCH_OPEN_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
+  CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER,
 } from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -340,7 +341,19 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
   });
 
-  it("(j) clicking a live result URL emits RESULT_ACCESS and does not navigate to the source UTub", async () => {
+  // render.js is mocked, so each result-access test builds the card DOM by
+  // hand: a live URL text link (.crossSearchUrl) and the corner go-to icon
+  // (.crossSearchGoTo), both http hrefs, nested inside a result card.
+  function buildResultCardWithLinks(): void {
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="7" data-utub-url-id="42">` +
+        `<a class="crossSearchUrl" href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>` +
+        `<a class="crossSearchGoTo" href="https://example.com" target="_blank" rel="noopener noreferrer" aria-label="Open this URL in a new tab"></a>` +
+        `</div>`,
+    );
+  }
+
+  it("(j) clicking the result URL text emits RESULT_ACCESS with the url_text trigger and does not navigate", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     const { selectUTub } = await import("../../utubs/selectors.js");
     const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
@@ -350,22 +363,39 @@ describe("cross-utub-search — mode mechanics", () => {
     enterCrossUtubSearchMode();
     (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
 
-    // render.js is mocked, so build the card DOM by hand: a live URL link
-    // (http href present) nested inside a result card.
-    $("#crossUtubSearchResults").html(
-      `<div class="crossSearchHitCard" data-utub-id="7" data-utub-url-id="42">` +
-        `<a class="crossSearchUrl" href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>` +
-        `</div>`,
-    );
-
+    buildResultCardWithLinks();
     $(".crossSearchUrl").trigger("click");
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
       target: CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET.CROSS_UTUB,
+      trigger: CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER.URL_TEXT,
     });
     // The URL handler stops propagation, so the card's navigate handler never
     // runs and the source UTub is not selected.
+    expect(selectUTub).not.toHaveBeenCalled();
+  });
+
+  it("(k) clicking the corner go-to icon emits RESULT_ACCESS with the corner_button trigger and does not navigate", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const { selectUTub } = await import("../../utubs/selectors.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+    (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    buildResultCardWithLinks();
+    $(".crossSearchGoTo").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
+      target: CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET.CROSS_UTUB,
+      trigger: CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER.CORNER_BUTTON,
+    });
+    // The corner-icon handler stops propagation, so the card's navigate handler
+    // never runs and the source UTub is not selected.
     expect(selectUTub).not.toHaveBeenCalled();
   });
 });

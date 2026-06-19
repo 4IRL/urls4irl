@@ -7,6 +7,7 @@ import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
   CROSS_UTUB_SEARCH_OPEN_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
+  CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER,
 } from "../../types/metrics-dim-values.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 import { getState } from "../../store/app-store.js";
@@ -449,6 +450,27 @@ function navigateToHit({
   });
 }
 
+// Shared handler for both result-access anchors (.crossSearchUrl text and
+// .crossSearchGoTo corner icon). Only live (http/https) anchors carry an href;
+// a non-openable URL falls through to the card's navigate handler. For an
+// openable link, stop propagation (so the card's navigate-to-source-UTub
+// handler never runs) and record the access with the supplied trigger.
+function recordResultAccess({
+  event,
+  trigger,
+}: {
+  event: JQuery.TriggeredEvent;
+  trigger: (typeof CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER)[keyof typeof CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER];
+}): void {
+  if (!$(event.currentTarget).attr("href")) return;
+  event.stopPropagation();
+  recordUIEvent({
+    event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
+    target: CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET.CROSS_UTUB,
+    trigger,
+  });
+}
+
 export function initCrossUtubSearch(): void {
   $("#crossUtubSearchInput").attr(
     "placeholder",
@@ -480,24 +502,34 @@ export function initCrossUtubSearch(): void {
         navigateToHit({ utubID, utubUrlID });
       },
     );
+  // Both the URL text (.crossSearchUrl) and the top-right corner icon
+  // (.crossSearchGoTo) open the same link in a new tab; they differ only by the
+  // `trigger` dimension on the access metric. Only live (http/https) anchors
+  // carry an href — a non-openable URL has neither, so the click falls through
+  // to the card's navigate-to-source-UTub handler. Tapping an openable link
+  // opens it (target=_blank) natively; we stop propagation so the card's
+  // navigate handler never runs, then record the access with its trigger.
   $("#crossUtubSearchResults")
     .off("click.crossSearchUrl")
     .on(
       "click.crossSearchUrl",
       ".crossSearchUrl",
-      (event: JQuery.TriggeredEvent) => {
-        const link = $(event.currentTarget);
-        // Only live (http/https) links have an href; a non-openable URL falls
-        // through to the card's navigate-to-source-UTub handler.
-        if (!link.attr("href")) return;
-        // Tapping the URL opens it (target=_blank) — keep it from bubbling to
-        // the card's navigate handler, and record the access.
-        event.stopPropagation();
-        recordUIEvent({
-          event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
-          target: CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET.CROSS_UTUB,
-        });
-      },
+      (event: JQuery.TriggeredEvent) =>
+        recordResultAccess({
+          event,
+          trigger: CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER.URL_TEXT,
+        }),
+    );
+  $("#crossUtubSearchResults")
+    .off("click.crossSearchGoTo")
+    .on(
+      "click.crossSearchGoTo",
+      ".crossSearchGoTo",
+      (event: JQuery.TriggeredEvent) =>
+        recordResultAccess({
+          event,
+          trigger: CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER.CORNER_BUTTON,
+        }),
     );
   $("#crossUtubSearchSettingsBtn").offAndOnExact("click.crossSearch", () =>
     $("#crossUtubSearchSettingsModal").modal("show"),
