@@ -110,6 +110,15 @@ a {
         color 0.15s ease;
 }
 
+/* While search is OPEN the trigger becomes the Close control — give it a visible
+   border + subtle fill so the "leave search" affordance is called out. The resting
+   (search-entry) icon stays a plain, unobtrusive glyph. */
+.navbar-cross-search.navbar-cross-search--active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.4);
+    color: whitesmoke;
+}
+
 .navbar-cross-search svg {
     width: 22px;
     height: 22px;
@@ -126,6 +135,10 @@ a {
     .navbar-cross-search:hover {
         background-color: var(--navbarBackgroundHover);
         color: whitesmoke;
+    }
+
+    .navbar-cross-search.navbar-cross-search--active:hover {
+        border-color: rgba(255, 255, 255, 0.7);
     }
 }
 

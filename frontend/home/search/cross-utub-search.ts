@@ -5,7 +5,10 @@ import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import {
+  CROSS_UTUB_SEARCH_CLOSE_TARGET,
+  CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
   CROSS_UTUB_SEARCH_OPEN_TARGET,
+  CROSS_UTUB_SEARCH_REFRESH_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER,
 } from "../../types/metrics-dim-values.js";
@@ -41,20 +44,36 @@ import type { SearchHistoryEntry } from "./search-history.js";
 type SearchResponse = SuccessResponse<"searchAcrossUtubs">;
 
 const MAX_SEARCH_LENGTH = 500;
-const SEARCH_DEBOUNCE_MS = 200;
-// Matches the 0.3s opacity/visibility transition in cross-utub-search.css; the
-// overlay's computed `visibility` stays `hidden` until the transition completes,
-// so a focus attempt before then is a no-op. Used as the fallback delay when no
-// transitionend fires (e.g. prefers-reduced-motion, or a missing transition).
-const OVERLAY_TRANSITION_MS = 300;
 // Default field order; when the user's selection equals this, `&fields=` is
 // omitted from the request URL (backend defaults to url>title>tag).
 const DEFAULT_FIELD_ORDER: MatchedField[] = ["url", "title", "tag"];
 
+type CrossSearchCloseTrigger =
+  (typeof CROSS_UTUB_SEARCH_CLOSE_TRIGGER)[keyof typeof CROSS_UTUB_SEARCH_CLOSE_TRIGGER];
+
 let _searchModeActive = false;
-let _searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+// Signature (query + field order) of the last query actually submitted this open.
+// Drives the submit button's Search<->Refresh morph: when the current input
+// equals this, the next submit is a Refresh (re-run for fresh results); when it
+// differs (or nothing has been submitted), it is a Search. `null` means nothing
+// submitted yet this open.
+let _lastSubmitted: string | null = null;
 let _breakpointQuery: MediaQueryList | null = null;
 let _onBreakpointChange: (() => void) | null = null;
+
+// Stable identity for a submitted search. The leading query length makes the
+// query/fields boundary unambiguous, so distinct (query, fields) pairs can never
+// collapse to the same signature even when the query itself contains a colon.
+function submissionSignature({
+  query,
+  fields,
+}: {
+  query: string;
+  fields: MatchedField[];
+}): string {
+  const trimmed = query.trim();
+  return `${trimmed.length}:${trimmed}:${fields.join(",")}`;
+}
 
 export function isCrossUtubSearchActive(): boolean {
   return _searchModeActive;
@@ -101,6 +120,41 @@ function isDefaultFieldOrder(fields: MatchedField[]): boolean {
   );
 }
 
+// Reflect the submit button's two states. Empty input -> disabled (a fixed,
+// discoverable slot rather than a layout-shifting hide). Non-empty: Refresh when
+// the current query+fields match the last submitted search (re-run for fresh
+// results), otherwise Search. Single source of truth — every path that changes
+// the input or `_lastSubmitted` calls this.
+function updateSubmitButtonState(): void {
+  const button = $("#crossUtubSearchSubmit");
+  const query = getInputValue($("#crossUtubSearchInput")).trim();
+
+  if (query === "") {
+    button
+      .prop("disabled", true)
+      .attr("aria-label", APP_CONFIG.strings.CROSS_SEARCH_SUBMIT_LABEL);
+    button.find(".crossSearchSubmitIcon").removeClass("hidden");
+    button.find(".crossSearchRefreshIcon").addClass("hidden");
+    return;
+  }
+
+  const isRefresh =
+    _lastSubmitted !== null &&
+    submissionSignature({ query, fields: getSelectedFields() }) ===
+      _lastSubmitted;
+
+  button
+    .prop("disabled", false)
+    .attr(
+      "aria-label",
+      isRefresh
+        ? APP_CONFIG.strings.CROSS_SEARCH_REFRESH_LABEL
+        : APP_CONFIG.strings.CROSS_SEARCH_SUBMIT_LABEL,
+    );
+  button.find(".crossSearchSubmitIcon").toggleClass("hidden", isRefresh);
+  button.find(".crossSearchRefreshIcon").toggleClass("hidden", !isRefresh);
+}
+
 export function performCrossUtubSearch({
   query,
   fields,
@@ -113,6 +167,12 @@ export function performCrossUtubSearch({
     showShortQueryState();
     return;
   }
+
+  // Record the submitted identity synchronously so the button morphs to Refresh
+  // immediately (not gated on the network); this is the single place the morph
+  // flips, so the restore / recent-rerun / field-change paths stay truthful too.
+  _lastSubmitted = submissionSignature({ query: trimmed, fields });
+  updateSubmitButtonState();
 
   let url = `${APP_CONFIG.routes.crossUtubSearch}?q=${encodeURIComponent(trimmed)}`;
   // Single comma-delimited ordered param (NOT repeated keys); omit when default.
@@ -146,6 +206,27 @@ export function performCrossUtubSearch({
         showNoResultsState();
       }
     });
+}
+
+// Run the current query. Shared by the submit button and the Enter key. A Refresh
+// (current query+fields unchanged since the last submit) records its own metric
+// before re-running; a first/changed Search just runs.
+function submitCurrentSearch(): void {
+  const query = getInputValue($("#crossUtubSearchInput")).trim();
+  if (query === "") return;
+  const fields = getSelectedFields();
+
+  const isRefresh =
+    _lastSubmitted !== null &&
+    submissionSignature({ query, fields }) === _lastSubmitted;
+  if (isRefresh) {
+    recordUIEvent({
+      event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_REFRESH,
+      target: CROSS_UTUB_SEARCH_REFRESH_TARGET.CROSS_UTUB,
+    });
+  }
+
+  performCrossUtubSearch({ query, fields });
 }
 
 // One history entry as an <li> holding two sibling buttons: a re-run button (the
@@ -245,34 +326,24 @@ function renderSearchHistory(): void {
   $("#crossUtubSearchResults").prepend(section);
 }
 
-// The overlay reveals via a `visibility` transition, whose computed value stays
-// `hidden` until the transition finishes — focusing the input before then is a
-// no-op. Wait for the overlay's transitionend (with a timeout fallback so the
-// focus still lands under prefers-reduced-motion or if no transition runs), then
-// focus the input.
-function focusSearchInputAfterReveal(): void {
-  const overlay = $("#crossUtubSearchMode");
-  const input = document.getElementById("crossUtubSearchInput");
-  if (input === null) return;
+// Swap the navbar trigger between its open (magnifying glass / "Search") and
+// close (glass-with-X / "Close") states and update its aria-label. The header ✕
+// was removed; the trigger itself is now the in-overlay close affordance.
+function setTriggerToOpenState(): void {
+  $("#crossSearchTriggerOpenIcon").removeClass("hidden");
+  $("#crossSearchTriggerCloseIcon").addClass("hidden");
+  $("#toCrossUtubSearch")
+    .removeClass("navbar-cross-search--active")
+    .attr("aria-label", APP_CONFIG.strings.CROSS_SEARCH_TRIGGER_OPEN_LABEL);
+}
 
-  let focused = false;
-  const focusInput = (): void => {
-    if (focused) return;
-    focused = true;
-    overlay.off("transitionend.crossSearchFocus");
-    input.focus();
-  };
-
-  overlay
-    .off("transitionend.crossSearchFocus")
-    .on("transitionend.crossSearchFocus", (event: JQuery.TriggeredEvent) => {
-      const nativeEvent = event.originalEvent as TransitionEvent | undefined;
-      if (nativeEvent?.propertyName === "visibility") {
-        focusInput();
-      }
-    });
-  // Fallback: no transitionend (reduced motion / no transition) — focus anyway.
-  setTimeout(focusInput, OVERLAY_TRANSITION_MS);
+function setTriggerToCloseState(): void {
+  $("#crossSearchTriggerOpenIcon").addClass("hidden");
+  $("#crossSearchTriggerCloseIcon").removeClass("hidden");
+  // The bordered "--active" styling calls out the Close affordance while open.
+  $("#toCrossUtubSearch")
+    .addClass("navbar-cross-search--active")
+    .attr("aria-label", APP_CONFIG.strings.CROSS_SEARCH_TRIGGER_CLOSE_LABEL);
 }
 
 export function enterCrossUtubSearchMode(): void {
@@ -299,9 +370,21 @@ export function enterCrossUtubSearchMode(): void {
     .removeClass("cross-search-hidden")
     .addClass("cross-search-visible");
 
+  setTriggerToCloseState();
+  // Surface the hamburger "Return Home" exit (the labeled way out while search
+  // is open — the only one reachable on mobile, where the deck-switchers above
+  // are hidden during search).
+  $("#navReturnHome").removeClass("hidden");
+
   clearResultStates();
   renderSearchHistory();
-  focusSearchInputAfterReveal();
+  updateSubmitButtonState();
+  // Focus synchronously inside the opening gesture so the mobile soft keyboard
+  // rises. The reveal CSS flips `visibility` to visible immediately (only the
+  // opacity/transform animate), so the input is focusable in this same frame;
+  // iOS only raises the keyboard from a gesture-synchronous focus, never a
+  // deferred one.
+  document.getElementById("crossUtubSearchInput")?.focus();
 }
 
 // Re-opens cross-UTub search mode from a browser-history entry (see
@@ -328,29 +411,33 @@ export function restoreCrossUtubSearchFromHistory({
   performCrossUtubSearch({ query, fields });
 }
 
-export function exitCrossUtubSearchMode(): void {
+export function exitCrossUtubSearchMode({
+  trigger,
+}: {
+  trigger: CrossSearchCloseTrigger;
+}): void {
   $("#crossUtubSearchInput").off("keydown.crossSearchInputEsc");
   if (!_searchModeActive) {
     $("#crossUtubSearchMode")
       .removeClass("cross-search-visible")
       .addClass("cross-search-hidden");
+    setTriggerToOpenState();
+    $("#navReturnHome").addClass("hidden");
     return;
   }
   _searchModeActive = false;
 
-  if (_searchDebounceTimer !== null) {
-    clearTimeout(_searchDebounceTimer);
-    _searchDebounceTimer = null;
-  }
-
   recordUIEvent({
     event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
-    target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
+    target: CROSS_UTUB_SEARCH_CLOSE_TARGET.CROSS_UTUB,
+    trigger,
   });
 
   $("#crossUtubSearchMode")
     .removeClass("cross-search-visible")
     .addClass("cross-search-hidden");
+  setTriggerToOpenState();
+  $("#navReturnHome").addClass("hidden");
 
   // Restore the LHS via the existing layout helpers. Do NOT clear
   // activeUTubID/selectedURLCardID — clearing flips downstream selection state.
@@ -373,19 +460,18 @@ export function exitCrossUtubSearchMode(): void {
   $("#crossUtubSearchInput").val("");
   $("#crossUtubSearchClear").addClass("hidden");
   clearResultStates();
+  _lastSubmitted = null;
+  updateSubmitButtonState();
 
   $("#toCrossUtubSearch").trigger("focus");
 }
 
 function clearSearchInput(): void {
-  if (_searchDebounceTimer !== null) {
-    clearTimeout(_searchDebounceTimer);
-    _searchDebounceTimer = null;
-  }
   $("#crossUtubSearchInput").val("");
   $("#crossUtubSearchClear").addClass("hidden");
   clearResultStates();
   renderSearchHistory();
+  updateSubmitButtonState();
   $("#crossUtubSearchInput").trigger("focus");
 }
 
@@ -400,17 +486,16 @@ function syncClearButtonVisibility(): void {
   $("#crossUtubSearchInput").toggleClass("crossSearchHasText", hasText);
 }
 
+// Input changes no longer fetch — search fires only on an explicit submit (the
+// button or Enter). This handler keeps the clear button, history list, and submit
+// button state in sync with what's typed; the length cap is enforced here too.
 function handleSearchInput(): void {
-  if (_searchDebounceTimer !== null) {
-    clearTimeout(_searchDebounceTimer);
-    _searchDebounceTimer = null;
-  }
-
   const input = $("#crossUtubSearchInput");
   const rawValue = getInputValue(input);
   syncClearButtonVisibility();
   if (rawValue.length > MAX_SEARCH_LENGTH) {
     input.val(rawValue.slice(0, MAX_SEARCH_LENGTH));
+    updateSubmitButtonState();
     return;
   }
 
@@ -418,16 +503,13 @@ function handleSearchInput(): void {
   if (query === "") {
     clearResultStates();
     renderSearchHistory();
+    updateSubmitButtonState();
     return;
   }
 
   // History only shows for an empty input; a typed query supersedes it.
   $("#crossUtubSearchHistoryList").remove();
-
-  _searchDebounceTimer = setTimeout(() => {
-    _searchDebounceTimer = null;
-    performCrossUtubSearch({ query, fields: getSelectedFields() });
-  }, SEARCH_DEBOUNCE_MS);
+  updateSubmitButtonState();
 }
 
 // Navigate from a search result card to its source UTub and highlight the
@@ -461,7 +543,9 @@ function navigateToHit({
   // below) so the Back button returns to them.
   const recordedSearch = pushCrossUtubSearchHistoryState();
 
-  exitCrossUtubSearchMode();
+  exitCrossUtubSearchMode({
+    trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.RESULT_NAV,
+  });
 
   // Deck already built for this UTub: select the card directly.
   if (getState().activeUTubID === utubID) {
@@ -528,11 +612,13 @@ export function initCrossUtubSearch(): void {
     APP_CONFIG.strings.CROSS_SEARCH_PLACEHOLDER,
   );
 
-  // The navbar trigger toggles search mode: tapping the magnifying glass again
-  // while search is open closes it (mirrors the ✕/ESC close).
+  // The navbar trigger toggles search mode: tapping the (now morphed) close
+  // glyph while search is open closes it (mirrors the ESC close).
   $("#toCrossUtubSearch").offAndOnExact("click.crossSearch", () => {
     if (_searchModeActive) {
-      exitCrossUtubSearchMode();
+      exitCrossUtubSearchMode({
+        trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.TRIGGER_ICON,
+      });
     } else {
       enterCrossUtubSearchMode();
     }
@@ -585,14 +671,24 @@ export function initCrossUtubSearch(): void {
   $("#crossUtubSearchSettingsBtn").offAndOnExact("click.crossSearch", () =>
     $("#crossUtubSearchSettingsModal").modal("show"),
   );
-  $("#crossUtubSearchClose").offAndOnExact("click.crossSearch", () =>
-    exitCrossUtubSearchMode(),
+  $("#crossUtubSearchSubmit").offAndOnExact("click.crossSearch", () =>
+    submitCurrentSearch(),
   );
   $("#crossUtubSearchClear").offAndOnExact("click.crossSearch", () =>
     clearSearchInput(),
   );
 
   $("#crossUtubSearchInput").offAndOn("input.crossSearch", handleSearchInput);
+  // Enter submits the current query (the keyboard equivalent of the submit
+  // button). preventDefault stops any implicit form submission / native search.
+  $("#crossUtubSearchInput").offAndOn(
+    "keydown.crossSearchSubmit",
+    (event: JQuery.TriggeredEvent) => {
+      if (event.key !== KEYS.ENTER) return;
+      event.preventDefault();
+      submitCurrentSearch();
+    },
+  );
 
   // Field-select + ordering controls. A change re-runs the search against the
   // current input value with the new field selection/order; the empty-query
@@ -637,13 +733,15 @@ export function initCrossUtubSearch(): void {
       if (event.key !== KEYS.ESCAPE) return;
       if (!_searchModeActive) return;
       if ($(".modal.show").length > 0) return;
-      exitCrossUtubSearchMode();
+      exitCrossUtubSearchMode({
+        trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
+      });
     },
   );
 
-  // Crossing the mobile/desktop breakpoint while open: cancel any pending
-  // fetch, drop search-mode state, hide the overlay, and restore focus to the
-  // trigger. mobile.ts owns ALL panel layout, so do NOT call
+  // Crossing the mobile/desktop breakpoint while open: drop search-mode state,
+  // hide the overlay, normalize the trigger + Return Home, and restore focus to
+  // the trigger. mobile.ts owns ALL panel layout, so do NOT call
   // exitCrossUtubSearchMode() here (avoids listener registration-order coupling).
   if (_breakpointQuery !== null && _onBreakpointChange !== null) {
     _breakpointQuery.removeEventListener("change", _onBreakpointChange);
@@ -651,14 +749,14 @@ export function initCrossUtubSearch(): void {
   _breakpointQuery = matchMedia("(max-width: " + TABLET_WIDTH + "px)");
   _onBreakpointChange = () => {
     if (!_searchModeActive) return;
-    if (_searchDebounceTimer !== null) {
-      clearTimeout(_searchDebounceTimer);
-      _searchDebounceTimer = null;
-    }
     _searchModeActive = false;
     $("#crossUtubSearchMode")
       .removeClass("cross-search-visible")
       .addClass("cross-search-hidden");
+    setTriggerToOpenState();
+    $("#navReturnHome").addClass("hidden");
+    _lastSubmitted = null;
+    updateSubmitButtonState();
     $("#toCrossUtubSearch").trigger("focus");
   };
   _breakpointQuery.addEventListener("change", _onBreakpointChange);

@@ -8,7 +8,14 @@ import {
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenTagDeckSelected,
 } from "./mobile.js";
-import { MOBILE_NAV_TARGET } from "../types/metrics-dim-values.js";
+import {
+  exitCrossUtubSearchMode,
+  isCrossUtubSearchActive,
+} from "./search/cross-utub-search.js";
+import {
+  CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
+  MOBILE_NAV_TARGET,
+} from "../types/metrics-dim-values.js";
 
 export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
   toggler: null,
@@ -16,29 +23,54 @@ export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
 
 let _suppressNextNavbarCloseEmit: boolean = false;
 
+// Selecting a deck from the hamburger while cross-UTub search is open should also
+// leave search (otherwise the user navigates "under" the open overlay). Exit
+// first; the caller's setMobileUIWhen* runs after as the authoritative layout.
+function closeCrossUtubSearchIfOpen(): void {
+  if (isCrossUtubSearchActive()) {
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.DECK_SWITCH,
+    });
+  }
+}
+
 /**
  * Initialize navbar and mobile navigation buttons
  */
 export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
+    closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.MEMBERS });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
+    closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.URLS });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
+    closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.UTUBS });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
+    closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
     setMobileUIWhenTagDeckSelected();
+  });
+
+  // "Return Home" inside the hamburger — only visible while cross-UTub search is
+  // open (the labeled exit, and the only reachable one on mobile). Closes the
+  // overlay and the dropdown; the deck layout is restored by exit itself.
+  $("button#navReturnHome").on("click", () => {
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.RETURN_HOME,
+    });
+    NAVBAR_TOGGLER.toggler?.hide();
   });
 
   // Initialize data-route buttons (shared functionality)

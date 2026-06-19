@@ -25,6 +25,12 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenUTubDeckSelected: vi.fn(),
   setMobileUIWhenTagDeckSelected: vi.fn(),
 }));
+// navbar.ts imports the cross-search module; mock it so the real module (and its
+// heavy transitive imports) don't load into this metrics-focused suite.
+vi.mock("../search/cross-utub-search.js", () => ({
+  isCrossUtubSearchActive: vi.fn(() => false),
+  exitCrossUtubSearchMode: vi.fn(),
+}));
 
 const $ = window.jQuery;
 

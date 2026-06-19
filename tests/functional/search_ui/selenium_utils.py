@@ -51,19 +51,26 @@ def open_cross_search_settings(browser: WebDriver):
 
 
 def type_cross_search_query(browser: WebDriver, term: str):
-    """Focuses the cross-search input and types the given query term."""
+    """
+    Focuses the cross-search input, types the query, and submits it with Enter.
+
+    Search no longer fires per keystroke — it runs only on an explicit submit
+    (the button or Enter), so the Enter press here is what triggers the request
+    every caller then waits on.
+    """
     wait_until_in_focus(browser, HPL.CROSS_SEARCH_INPUT)
     search_input = wait_then_get_element(browser, HPL.CROSS_SEARCH_INPUT, time=10)
     assert search_input is not None
     clear_then_send_keys(search_input, term)
+    search_input.send_keys(Keys.RETURN)
 
 
 def wait_for_cross_search_results(browser: WebDriver, timeout: float = 10):
     """
     Blocks until at least one result card is present in the DOM.
 
-    The debounced fetch makes a bare send-keys-then-assert flake; gate on the
-    live count of ``.crossSearchHitCard`` settling to >=1 before asserting.
+    The request is async; gate on the live count of ``.crossSearchHitCard``
+    settling to >=1 before asserting rather than a bare send-keys-then-assert.
     """
     cards = wait_then_get_at_least_n_elements(
         browser, HPL.CROSS_SEARCH_HIT_CARD, 1, time=timeout

@@ -63,6 +63,7 @@ For `design_decision` findings, `fix_description` must describe the decision nee
 - Any change to error handling behavior or user-facing messaging
 
 Rules:
+- **Never write a bare absolute line number as a navigation anchor** in plan text or in a mechanical-fix correction. Always use a symbol anchor (search for `SymbolName`) as the primary locator. If a line number is included, mark it explicitly approximate (e.g., 'around line N') and pair it with a grep/search instruction. This prevents a prior-pass line-number correction from becoming the next-pass stale finding.
 - `FAIL` if any `critical` or `major` finding exists
 - `PASS` if only `minor` findings or none
 - Every finding must cite a specific step number and file path where applicable

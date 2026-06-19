@@ -149,8 +149,9 @@ finished: false
 - **Ground to-dos in research findings.** Every file path, function signature, constant name, or data shape referenced in a to-do must come from a research subagent's findings. If a subagent didn't cover it, read the file before writing the to-do.
 - **Specify exact data structures.** When a to-do item constructs or populates a dict, list, or object, name the exact keys and value types — e.g., `errors["email"] = [USER_FAILURE.EMAIL_TAKEN]`, not "add `EMAIL_TAKEN` to the errors dict." Vague structure descriptions produce silent runtime failures when the implementer guesses the wrong key.
 - **No forward references within a step.** If a step's to-do item calls or imports a function, that function must either already exist in the codebase or have been created earlier in the same step. If a function is first defined in step N, no to-do in steps 1–(N-1) may reference it. Check this before finalising step order.
+- **Mock every UI change.** If the plan adds or modifies any user-visible UI, you MUST follow the **UI Mockup Protocol** below — produce styled HTML mockup(s) as the visual base *before* finalizing the plan, and link them from the plan. Skipping mockups on a UI plan is not allowed.
 
-**Cleanup:** After the plan file is written, delete all files matching `plans/<topic>/tmp/research-*.md`.
+**Cleanup:** After the plan file is written, delete all files matching `plans/<topic>/tmp/research-*.md`. **Never delete anything under `plans/<topic>/mocks/`** — mockups are permanent plan artifacts.
 
 **Sub-plan cross-link** (sub-plan mode only): after writing the sub-plan file, perform two cross-link operations:
 
@@ -270,6 +271,46 @@ When a plan touches form submission, authentication, or CSRF:
 1. **Token rendering**: Read the template. Note any `{% if ... %}` guards. Explicitly state whether the condition is satisfied for all relevant user states (authenticated, unauthenticated, unvalidated). If not, add a to-do to fix the guard.
 2. **Test token acquisition**: Read the fixture. State exactly which HTML element the fixture parses to get the CSRF token, and verify that element will exist in the response after the template changes.
 3. **Frontend token consumption**: Read the JS. Confirm the DOM element it targets (`meta[name=csrf-token]`, hidden input, etc.) is present in the rendered page for all user states the form is shown to.
+
+## UI Mockup Protocol (Visual Base)
+
+**If the plan adds or modifies any user-visible UI** — a new page, panel, modal, dropdown, button, layout shift, color/spacing change, or on-screen copy — you MUST produce one or more HTML mockups of the proposed result **before finalizing the plan**. The mockup is the visual base the plan is built on; reviewers and the user judge the design from the rendered mock, not from prose. A UI plan with no mockup is incomplete.
+
+If the plan has no user-visible UI change (pure backend, refactor, infra, tests), skip this protocol entirely.
+
+### Where mockups live
+
+- Write each mockup to `plans/<topic>/mocks/<descriptive-name>.html` using the **`Write` tool** (create `plans/<topic>/mocks/` first). Never use a Bash heredoc/redirect for HTML.
+- Mockups are **permanent plan artifacts** — they live alongside the plan, are referenced by it, and are **never** placed in `plans/<topic>/tmp/` and **never** deleted during cleanup.
+
+### Fidelity — match the real app, not a generic wireframe
+
+The mock must look like URLS4IRL, with the **correct colors and styling**:
+
+1. **Pull real values from the codebase.** Use Subagent #6's findings, or grep the project styles (CSS custom properties / theme variables, `frontend/**/*.css`, Bootstrap utility classes already in use, existing template markup) for the actual hex colors, font families, spacing, border-radius, and class names. **Do NOT invent colors** — every color in the mock must trace to a real value used by the app.
+2. **Reuse existing class names and DOM structure** where practical so the mock reads like the real rendered page and the implementer can map it directly to templates.
+3. **Make each mock self-contained and standalone-renderable** — inline `<style>` (or a `<link>` to the app stylesheet) so the file opens and screenshots on its own with no dev server.
+
+### Coverage — show the full picture
+
+One static screenshot rarely conveys a design. Produce **multiple mocks (separate files, or multiple labeled states stacked in one file), or a single interactive mock**, whichever communicates the design best:
+
+- Distinct **states** that look different: default, populated/with-data, empty/zero-results, error, loading.
+- Distinct **viewports** when layout differs: desktop and mobile (<992px).
+- An **interactive mock** (inline `<script>` toggling states, opening the modal, filtering a list) when interaction — not a static frame — is the point of the feature.
+
+State in the plan which mocks cover which states/viewports so nothing is silently unshown.
+
+### Reference from the plan
+
+In the plan's `## Summary` (or the relevant phase), link every mock — `Mockup: [<name>](mocks/<name>.html)` — and ground each UI to-do (colors, class names, layout, copy) in what the mock shows. The mock and the to-dos must agree.
+
+### Render to images for review
+
+After writing the mock files, render each to a PNG so it can be shown to the user (HTML source alone is not "showing pictures"):
+
+1. For each mock file, use the Playwright MCP: `browser_navigate` to `file://<absolute-path-to-mock>.html`, then `browser_take_screenshot` saving to `plans/<topic>/mocks/<name>.png`. For interactive mocks, capture each meaningful state (click/toggle, then screenshot) so every state has an image. For responsive mocks, `browser_resize` to a mobile width (e.g. 390px) and capture that too.
+2. The generated PNGs are surfaced to the user in the Handoff Message (see below) via `SendUserFile`.
 
 ## Package Pinning
 
@@ -426,5 +467,6 @@ If `gh issue create` fails (rate limit, transient API error), DO NOT block the p
 ## Handoff Message
 
 After the plan file is written, cross-linked, the `tmp/research-*.md` files are cleaned up, and the GitHub issue is created, the final user-facing message must:
+- **Show the mockups (UI plans only).** If the UI Mockup Protocol produced any mocks, send every rendered PNG to the user with `SendUserFile` (`status: "proactive"`), one call listing all the mock images, with a caption naming which state/viewport each shows. The user judges the design from these images before review. Also note the source HTML path (`plans/<topic>/mocks/<name>.html`) in case they want to open it interactively.
 - Mention the issue: `Created issue #<N>: <url>` (or `Linked to existing issue #<N>: <url>` if 4a reused one)
 - Suggest `/plan-reviewer` as the next step — never `/next-step-taker`. A freshly-written plan must be reviewed before execution begins. Use phrasing like: "Ready for review with `/plan-reviewer <plan-name>`."

@@ -105,7 +105,7 @@ Prompt template:
 >
 > 1. Read the review file at `plans/<topic>/reviews/<plan-name>-review.md`.
 > 2. Extract every `[x]` item from prior passes' Mechanical Fixes checklists AND every filled `**Chosen:**` field from prior DDs.
-> 3. For each item, re-read the current plan (`plans/<topic>/<plan-name>.md`) and confirm the fix is present and correctly addresses the root cause described in the original finding.
+> 3. For each item, re-read the current plan (`plans/<topic>/<plan-name>.md`) and confirm the fix is present and correctly addresses the root cause described in the original finding. For any prior fix that updated a line-number reference, re-read the source file and verify the new number is still accurate before marking the fix resolved.
 > 4. Write a JSON response to `plans/<topic>/tmp/prior-fix-regressions.md` listing ANY regressions as critical findings. Each regression has: `{ id, prior_pass, fix_type (mechanical|dd), title, expected, actual, severity: "critical" }`. Empty array if none.
 >
 > Use the Write tool — NEVER cat <<EOF, python3 << 'EOF', cat >, tee, printf >, echo >, or any Bash heredoc/redirect.
@@ -191,7 +191,11 @@ Present each design decision using `AskUserQuestion`:
 
 **Fragility-pattern sweep (required for every DD that resolves a class of fragility):** When a DD resolves a fragility pattern — a readiness race (flat sleep vs. poll loop), an unquoted variable, a missing error guard, a stale assertion — the DD-application subagent MUST scan the same file/code-block area for all other occurrences of that identical fragility before marking the DD resolved. If sibling occurrences exist, apply the same fix to all of them in the same step and list each sibling in the DD resolution summary. Never mark a DD complete if the same fragility remains in a sibling block of the same file.
 
+**Source-function verification (required for every DD that creates a new plan step describing modifications to an existing source function):** When a DD resolution adds a new step (or new sub-bullets within a step) that instructs 'replace X with Y' or 'remove X' in a named source function, the DD-application subagent MUST read that function before writing the step text. Do NOT describe the function's current contents from plan prose or DD option text alone — verify the described content actually exists in the function. If the described content (e.g., a DOM selector to replace) does not exist, rewrite the step as a net-new addition rather than a replacement instruction. A step that says 'replace X' when X does not exist will mislead the implementer.
+
 **Use-site trace (required for every DD that introduces or widens a variable used in a guard or branch):** When a DD's chosen option introduces a new variable, widens a variable's type, or changes a condition (e.g., `=== 'flows'`, `=== 'pipeline_health'`, `!== null`), the DD-application subagent MUST trace that variable to every write site in the same code area and verify: (a) the write site actually assigns the gating value (e.g., if the gate is `x === 'flows'`, some code path must write `x = 'flows'`), and (b) the type width at the write site is not narrower than the gate requires. If no write site assigns the gating value, the DD resolution is internally inconsistent — flag it as a critical regression before marking the DD resolved. (This catches the dead-code-gate class: a variable widened in type but never assigned the gating value at its write site.)
+
+After applying all DD resolutions, flag to the orchestrator any newly written step text (entirely new steps, not merely edited text). The orchestrator should brief Pass 2+ subagents: 'The following steps were entirely new as of the prior pass's DD resolution — treat them as first-pass steps for their content even if their surrounding context was reviewed before.' This ensures DD-authored steps get the same scrutiny as original plan steps.
 
 The subagent reads the files, makes all edits, and returns a summary of what was changed. The orchestrator only needs the summary to continue.
 

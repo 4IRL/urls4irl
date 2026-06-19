@@ -221,7 +221,7 @@ def test_deselecting_tag_field_still_yields_results(
     """
     GIVEN results are showing for a term matching via title AND url
     WHEN the user deselects the 'tag' field
-    THEN the debounced fetch re-runs and >=1 result still renders
+    THEN the search re-runs and >=1 result still renders
     """
     app, _ = logged_in_with_cross_search_data
     _login(app, browser)
@@ -238,7 +238,7 @@ def test_deselecting_tag_field_still_yields_results(
     )
     wait_then_click_element(browser, tag_checkbox_selector, time=10)
 
-    # Field change re-triggers the debounced fetch; gate on results settling.
+    # Field change re-runs the search; gate on results settling.
     wait_for_cross_search_results(browser)
     groups = wait_for_cross_search_group_count(browser, 2)
     assert len(groups) >= 2
@@ -250,7 +250,7 @@ def test_reordering_fields_keeps_results(
     """
     GIVEN results are showing
     WHEN the user reorders fields (title-first)
-    THEN the debounced fetch re-runs and results still render
+    THEN the search re-runs and results still render
     """
     app, _ = logged_in_with_cross_search_data
     _login(app, browser)
@@ -318,22 +318,91 @@ def test_cross_search_input_is_usable_width_on_mobile(
     assert search_input.size["height"] >= MOBILE_TOUCH_TARGET_MIN_PX
 
 
-def test_close_button_closes_cross_search(
+def test_trigger_morphs_to_close_glyph_while_open(
     browser: WebDriver, logged_in_with_cross_search_data
 ):
     """
-    GIVEN search mode is open
-    WHEN the user clicks the close (X) button
-    THEN search mode closes
+    GIVEN the navbar search trigger shows the magnifying glass when closed
+    WHEN search mode opens
+    THEN the trigger swaps to the close (glass-with-X) glyph, and reverts to the
+        search glyph once search closes
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    # Closed: open glyph visible, close glyph hidden.
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_TRIGGER_OPEN_ICON, time=10)
+    assert_not_visible_css_selector(
+        browser, HPL.CROSS_SEARCH_TRIGGER_CLOSE_ICON, time=10
+    )
+
+    open_cross_search_via_trigger(browser)
+
+    # Open: morphed to the close glyph.
+    wait_until_visible_css_selector(
+        browser, HPL.CROSS_SEARCH_TRIGGER_CLOSE_ICON, timeout=10
+    )
+    assert_not_visible_css_selector(
+        browser, HPL.CROSS_SEARCH_TRIGGER_OPEN_ICON, time=10
+    )
+
+    # Close via Escape and confirm the glyph reverts.
+    wait_until_in_focus(browser, HPL.CROSS_SEARCH_INPUT)
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+    wait_until_visible_css_selector(
+        browser, HPL.CROSS_SEARCH_TRIGGER_OPEN_ICON, timeout=10
+    )
+    assert_not_visible_css_selector(
+        browser, HPL.CROSS_SEARCH_TRIGGER_CLOSE_ICON, time=10
+    )
+
+
+def test_submit_button_runs_search(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open with a typed query
+    WHEN the user clicks the submit button (rather than pressing Enter)
+    THEN the search runs and grouped results render
     """
     app, _ = logged_in_with_cross_search_data
     _login(app, browser)
 
     open_cross_search_via_trigger(browser)
-    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
 
-    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
-    assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+    search_input = wait_then_get_element(browser, HPL.CROSS_SEARCH_INPUT, time=10)
+    assert search_input is not None
+    search_input.clear()
+    search_input.send_keys(QUERY_TERM)
+
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_SUBMIT, time=10)
+    wait_for_cross_search_results(browser)
+
+
+def test_submit_button_morphs_to_refresh_and_re_runs(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open and a query has been submitted, returning results
+    WHEN the submit button morphs to the Refresh glyph
+    THEN clicking it re-runs the unchanged query and results still render
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    type_cross_search_query(browser, QUERY_TERM)
+    wait_for_cross_search_results(browser)
+
+    # With the query unchanged since submit, the button shows the Refresh glyph
+    # (the search glyph is hidden via the `.hidden` display:none class).
+    wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_REFRESH_ICON, timeout=10)
+    assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_SUBMIT_ICON, time=10)
+
+    # Clicking Refresh re-runs the same query; results still render.
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_SUBMIT, time=10)
+    wait_for_cross_search_results(browser)
 
 
 def test_clear_button_clears_input_text(
@@ -387,7 +456,7 @@ def test_closing_search_on_mobile_restores_left_panel(
 ):
     """
     GIVEN search mode is open on a mobile viewport with no UTub selected
-    WHEN the user closes search via the X button
+    WHEN the user closes search via the navbar trigger
     THEN the left panel (UTub deck) is shown again rather than an empty screen
     """
     browser = browser_mobile_portrait
@@ -397,9 +466,33 @@ def test_closing_search_on_mobile_restores_left_panel(
     open_cross_search_via_trigger(browser)
     assert_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
 
-    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER, time=10)
     wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
 
+    assert_visible_css_selector(browser, HPL.HEADER_UTUB_DECK, time=10)
+
+
+def test_return_home_in_hamburger_closes_search(
+    browser_mobile_portrait: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open on a mobile viewport
+    WHEN the user opens the hamburger dropdown and taps "Return Home"
+    THEN search mode closes and the left panel (UTub deck) is restored
+    """
+    browser = browser_mobile_portrait
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+    # The Return Home item only surfaces while search is open; open the hamburger
+    # and click it.
+    wait_then_click_element(browser, HPL.NAVBAR_TOGGLER, time=10)
+    wait_then_click_element(browser, HPL.NAV_RETURN_HOME, time=10)
+
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
     assert_visible_css_selector(browser, HPL.HEADER_UTUB_DECK, time=10)
 
 
@@ -422,7 +515,7 @@ def test_recent_search_history_renders_reruns_and_clears(
     wait_for_cross_search_results(browser)
 
     # Close and re-open with an empty input.
-    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER, time=10)
     wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
 
     open_cross_search_via_trigger(browser)
@@ -437,7 +530,7 @@ def test_recent_search_history_renders_reruns_and_clears(
     wait_for_cross_search_results(browser)
 
     # Re-open empty again and clear the history.
-    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER, time=10)
     wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
 
     open_cross_search_via_trigger(browser)
@@ -467,7 +560,7 @@ def test_deleting_a_recent_search_removes_it(
     wait_for_cross_search_results(browser)
 
     # Close and re-open with an empty input to surface the history list.
-    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER, time=10)
     wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
 
     open_cross_search_via_trigger(browser)

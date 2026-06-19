@@ -134,7 +134,7 @@ const EDIT_ICON_HTML = `
     <div id="SearchURLWrap" class="input-text-holder flex-column hidden">
       <div class="text-input-container">
         <div class="text-input-inner-container">
-          <input placeholder="Search URLs" class="text-input search-input" type="text"
+          <input placeholder="Filter URLs" class="text-input search-input" type="text"
                  id="URLContentSearch" name="urlSearch" />
         </div>
       </div>

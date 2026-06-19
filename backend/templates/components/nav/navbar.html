@@ -21,13 +21,25 @@
        JS that reveals it does not initialize on settings/privacy/terms/contact, so it
        stays hidden there. #}
     {% if current_user.is_authenticated and current_user.email_validated and not is_privacy_or_terms and not is_contact_form and not is_settings %}
-    <button class="navbar-cross-search hidden" id="toCrossUtubSearch" aria-label="Search across all your UTubs">
-        <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-search"
-            viewBox="0 0 16 16">
-            <path
-                d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
-        </svg>
-        <b>Search</b>
+    <button class="navbar-cross-search hidden" id="toCrossUtubSearch" aria-label="Search across your UTubs">
+        <span id="crossSearchTriggerOpenIcon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-search"
+                viewBox="0 0 16 16">
+                <path
+                    d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0" />
+            </svg>
+            <b>Search</b>
+        </span>
+        <span id="crossSearchTriggerCloseIcon" class="hidden">
+            <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
+                viewBox="0 0 512 512">
+                <path
+                    d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+                <line x1="158" y1="158" x2="258" y2="258" stroke="currentColor" stroke-width="20" stroke-linecap="round" />
+                <line x1="258" y1="158" x2="158" y2="258" stroke="currentColor" stroke-width="20" stroke-linecap="round" />
+            </svg>
+            <b>Close</b>
+        </span>
     </button>
     {% endif %}
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#NavbarNavDropdown"

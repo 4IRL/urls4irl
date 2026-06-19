@@ -323,6 +323,7 @@
 
 /* Gear button mirrors the close button: a 2.75rem centered square with a light
    icon and a hover wash. Opens the search-options modal. */
+#crossUtubSearchSubmit,
 #crossUtubSearchSettingsBtn {
     flex: 0 0 auto;
     display: flex;
@@ -332,16 +333,30 @@
     height: 2.75rem;
     padding: 0;
     line-height: 1;
-    background: none;
-    border: none;
+    /* Subtle outline + fill so each reads as its own tappable button next to the
+       input, without competing with the input itself. */
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: var(--radius-sm);
     cursor: pointer;
     color: var(--cardURLTextColor);
-    transition: color 0.15s ease, background-color 0.15s ease;
+    transition: color 0.15s ease, background-color 0.15s ease,
+        border-color 0.15s ease;
 }
 
-#crossUtubSearchSettingsBtn svg,
-#crossUtubSearchClose svg {
+/* Ready (a query is typed) — vivid brand green so "press to search/refresh"
+   reads clearly as actionable, distinct from the faint disabled state. */
+#crossUtubSearchSubmit:not(:disabled) {
+    color: var(--deckHeaderGreen);
+}
+
+#crossUtubSearchSubmit:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+#crossUtubSearchSubmit svg,
+#crossUtubSearchSettingsBtn svg {
     width: 20px;
     height: 20px;
 }
@@ -350,9 +365,17 @@
     #crossUtubSearchSettingsBtn:hover {
         color: whitesmoke;
         background-color: var(--cardBackgroundColor);
+        border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    #crossUtubSearchSubmit:not(:disabled):hover {
+        color: var(--deckSelectionGreen);
+        background-color: var(--cardBackgroundColor);
+        border-color: rgba(255, 255, 255, 0.3);
     }
 }
 
+#crossUtubSearchSubmit:focus-visible,
 #crossUtubSearchSettingsBtn:focus-visible {
     outline: 2px solid var(--deckSelectionGreen);
     outline-offset: 2px;
@@ -362,7 +385,11 @@
    so the transition runs; visibility:hidden also drops it from the tab order.
    The transform makes the open/close a deliberate "zoom into one place" motion
    (the overlay scales up slightly out of the page on close) rather than an
-   instant snap — closing on a result click reads as collapsing back to the UTub. */
+   instant snap — closing on a result click reads as collapsing back to the UTub.
+   `visibility` flips DISCRETELY (0s): visible immediately on show so the input is
+   focusable in the same frame as the opening tap (lets the mobile soft keyboard
+   rise from the synchronous focus inside the gesture); hidden only after the 0.3s
+   fade on close so the overlay stays in the page while it animates out. */
 .cross-search-hidden {
     opacity: 0;
     pointer-events: none;
@@ -371,7 +398,7 @@
     transition:
         opacity 0.3s ease,
         transform 0.3s ease,
-        visibility 0.3s ease;
+        visibility 0s ease 0.3s;
 }
 
 .cross-search-visible {
@@ -382,7 +409,7 @@
     transition:
         opacity 0.3s ease,
         transform 0.3s ease,
-        visibility 0.3s ease;
+        visibility 0s ease 0s;
 }
 
 @media (prefers-reduced-motion: reduce) {

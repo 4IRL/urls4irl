@@ -82,6 +82,18 @@ export type DimCrossUtubSearchOpen = {
 export type DimCrossUtubSearchClose = {
   device_type: DeviceType;
   target: "cross_utub";
+  trigger:
+    | "trigger_icon"
+    | "escape_key"
+    | "return_home"
+    | "deck_switch"
+    | "result_nav"
+    | "history_nav";
+};
+
+export type DimCrossUtubSearchRefresh = {
+  device_type: DeviceType;
+  target: "cross_utub";
 };
 
 export type DimCrossUtubSearchResultAccess = {
@@ -188,6 +200,7 @@ export type UIEventDimensions = {
   ui_url_search_close: DimUrlSearchClose;
   ui_cross_utub_search_open: DimCrossUtubSearchOpen;
   ui_cross_utub_search_close: DimCrossUtubSearchClose;
+  ui_cross_utub_search_refresh: DimCrossUtubSearchRefresh;
   ui_cross_utub_search_result_access: DimCrossUtubSearchResultAccess;
   ui_tag_apply: DimDeviceOnly;
   ui_tag_remove: DimDeviceOnly;

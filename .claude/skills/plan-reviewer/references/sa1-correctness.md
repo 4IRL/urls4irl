@@ -18,6 +18,8 @@
 - **Alias completeness**: if any field in a schema uses `Field(alias=...)`, ALL fields must have explicit alias declarations. Partial alias specs cause silent `model_validate` failures.
 - **Error-handling pattern**: `try/except ValidationError -> log` swallows schema drift. Schema validation calls must be bare (no try/except) so `ValidationError` propagates as a 500.
 
+**Stale line number detection and symbol-anchor preference (required):** When the plan references a specific line number in a source file, read that file and verify the referenced symbol is actually at that line. If it is not, flag as **Minor** and write the correction using a symbol anchor as the primary navigation aid (e.g., 'search for `EventName.UI_DECK_EXPAND` to locate the insertion point') rather than a replacement absolute line number. Absolute line numbers become stale as the source file evolves; symbol anchors are stable. If a line number is included alongside a symbol anchor, mark it explicitly approximate (e.g., 'around line N — verify via grep'). This rule also applies when writing any mechanical fix that cites a line number: do NOT introduce a new bare absolute line number into plan text even when correcting an old one.
+
 **Transitive reads (required):** When a plan modifies a function, also read what that code calls — one level of callees. Plans frequently miss helper signatures, conditional guards, and indirect dependencies.
 
 - **Config inheritance chains**: When a plan modifies a parent config (tsconfig, eslint, etc.), trace `extends` references to child configs and verify the change doesn't silently break inherited behavior.

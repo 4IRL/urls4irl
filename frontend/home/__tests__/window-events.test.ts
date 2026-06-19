@@ -1,3 +1,4 @@
+import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { initWindowEvents } from "../window-events.js";
 
 const mockResetHomePageToInitialState = vi.fn();
@@ -192,7 +193,9 @@ describe("window-events", () => {
       const event = new PopStateEvent("popstate", { state: { UTubID: 5 } });
       popstateHandler!(event);
 
-      expect(mockExitCrossUtubSearchMode).toHaveBeenCalled();
+      expect(mockExitCrossUtubSearchMode).toHaveBeenCalledWith({
+        trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.HISTORY_NAV,
+      });
       await vi.waitFor(() => {
         expect(mockBuildSelectedUTub).toHaveBeenCalled();
       });

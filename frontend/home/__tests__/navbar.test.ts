@@ -4,6 +4,11 @@ import {
   onMobileNavbarClosed,
   NAVBAR_TOGGLER,
 } from "../navbar.js";
+import {
+  exitCrossUtubSearchMode,
+  isCrossUtubSearchActive,
+} from "../search/cross-utub-search.js";
+import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../types/metrics-dim-values.js";
 
 vi.mock("../../lib/globals.js", () => ({
   $: window.jQuery,
@@ -18,6 +23,12 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenUTubDeckSelected: vi.fn(),
   setMobileUIWhenTagDeckSelected: vi.fn(),
 }));
+// navbar.ts imports the cross-search module to close search on deck-nav and the
+// Return Home item; mock it so the real (heavy) module doesn't load here.
+vi.mock("../search/cross-utub-search.js", () => ({
+  isCrossUtubSearchActive: vi.fn(() => false),
+  exitCrossUtubSearchMode: vi.fn(),
+}));
 
 const $ = window.jQuery;
 
@@ -31,11 +42,16 @@ const NAVBAR_HTML = `
   <button id="toURLs"></button>
   <button id="toUTubs"></button>
   <button id="toTags"></button>
+  <button id="navReturnHome" class="hidden"></button>
 `;
 
 describe("navbar", () => {
   beforeEach(() => {
     document.body.innerHTML = NAVBAR_HTML;
+    vi.clearAllMocks();
+    (
+      isCrossUtubSearchActive as unknown as ReturnType<typeof vi.fn>
+    ).mockReturnValue(false);
   });
 
   describe("initNavbar", () => {
@@ -44,6 +60,35 @@ describe("navbar", () => {
 
       expect(NAVBAR_TOGGLER.toggler).toBeDefined();
       expect(NAVBAR_TOGGLER.toggler).not.toBeNull();
+    });
+
+    it("clicking Return Home closes cross-UTub search and hides the dropdown", () => {
+      initNavbar();
+      const hideSpy = vi.spyOn(NAVBAR_TOGGLER.toggler!, "hide");
+
+      $("button#navReturnHome").trigger("click");
+
+      expect(exitCrossUtubSearchMode).toHaveBeenCalledWith({
+        trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.RETURN_HOME,
+      });
+      expect(hideSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("a deck-switcher closes cross-UTub search only when it is open", () => {
+      initNavbar();
+
+      // Not open: deck-switcher click does not close search.
+      $("button#toUTubs").trigger("click");
+      expect(exitCrossUtubSearchMode).not.toHaveBeenCalled();
+
+      // Open: deck-switcher click closes search with the deck_switch trigger.
+      (
+        isCrossUtubSearchActive as unknown as ReturnType<typeof vi.fn>
+      ).mockReturnValue(true);
+      $("button#toTags").trigger("click");
+      expect(exitCrossUtubSearchMode).toHaveBeenCalledWith({
+        trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.DECK_SWITCH,
+      });
     });
 
     it("registers collapse event listeners on NavbarNavDropdown", () => {

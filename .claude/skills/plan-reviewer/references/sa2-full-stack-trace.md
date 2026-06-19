@@ -30,6 +30,8 @@ Flag any dropped guard or side-effect as **Critical** — these are behavioral r
 
 5. **Established defensive patterns (required):** When a plan adds an attribute read (`obj.attr`, `dict[key]`) to an existing function, read the full body of that function to identify whether similar reads already use defensive patterns (e.g., `getattr(obj, 'attr', None)`, `dict.get(key)`). If the established pattern in that function is defensive and the plan uses direct access, flag as **Major** — inconsistency invites `AttributeError`/`KeyError` on edge cases.
 
+**CSS class effect verification (required when JS toggles a CSS class for visibility):** When a plan step instructs JS code to add/remove a CSS class to show or hide an element, read the CSS rule for that class and verify it applies on ALL relevant viewports. If the rule is inside a `@media` block, identify viewport sizes where the rule is inert. If the plan's feature is required to work on those excluded viewports and no alternative mechanism exists, flag as **Major**. This applies to both original plan steps and steps added by DD resolution.
+
 **Review checklist — Response path (check each link):**
 
 6. **Status codes after migration**: List every status code the endpoint can return after migration. Compare to before.

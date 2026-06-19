@@ -87,6 +87,22 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     ),
     (
         EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+        {
+            "target": "cross_utub",
+            "trigger": "escape_key",
+            "device_type": DeviceType.DESKTOP,
+        },
+    ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+        {
+            "target": "cross_utub",
+            "trigger": "return_home",
+            "device_type": DeviceType.MOBILE,
+        },
+    ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_REFRESH,
         {"target": "cross_utub", "device_type": DeviceType.DESKTOP},
     ),
     (
@@ -426,15 +442,25 @@ def test_cross_utub_search_models_reject_non_cross_utub_target():
     search target) must be rejected at validation time, not silently
     accepted.
     """
-    for event_name in (
-        EventName.UI_CROSS_UTUB_SEARCH_OPEN,
-        EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
-        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
-    ):
+    payloads_by_event = {
+        EventName.UI_CROSS_UTUB_SEARCH_OPEN: {
+            "target": "urls",
+            "device_type": DeviceType.MOBILE,
+        },
+        EventName.UI_CROSS_UTUB_SEARCH_CLOSE: {
+            "target": "urls",
+            "trigger": "escape_key",
+            "device_type": DeviceType.MOBILE,
+        },
+        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: {
+            "target": "urls",
+            "trigger": "url_text",
+            "device_type": DeviceType.MOBILE,
+        },
+    }
+    for event_name, payload in payloads_by_event.items():
         with pytest.raises(ValidationError):
-            DIMENSION_MODELS[event_name].model_validate(
-                {"target": "urls", "device_type": DeviceType.MOBILE}
-            )
+            DIMENSION_MODELS[event_name].model_validate(payload)
 
 
 def test_cross_utub_search_result_access_rejects_unknown_trigger():
@@ -446,6 +472,24 @@ def test_cross_utub_search_result_access_rejects_unknown_trigger():
     """
     with pytest.raises(ValidationError):
         DIMENSION_MODELS[EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS].model_validate(
+            {
+                "target": "cross_utub",
+                "trigger": "main_button",
+                "device_type": DeviceType.MOBILE,
+            }
+        )
+
+
+def test_cross_utub_search_close_rejects_unknown_trigger():
+    """`_DimCrossUtubSearchClose` restricts `trigger` to its six values.
+
+    A payload with a valid `target` but a `trigger` outside
+    `Literal["trigger_icon", "escape_key", "return_home", "deck_switch",
+    "result_nav", "history_nav"]` (e.g. the regular deck's `main_button`)
+    must be rejected at validation time.
+    """
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_CROSS_UTUB_SEARCH_CLOSE].model_validate(
             {
                 "target": "cross_utub",
                 "trigger": "main_button",

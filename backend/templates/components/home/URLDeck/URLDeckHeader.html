@@ -19,23 +19,18 @@
 
 	<!-- Create URL button -->
 	<div class="d-flex flex-row button-container">
-		<button id="URLSearchFilterIcon" class="hidden" tabindex="0">
-			<svg xmlns="http://www.w3.org/2000/svg" fill="white"
-				height="26" width="26"
-				viewBox="0 0 512 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+		{# Funnel (not a magnifying glass) so this reads as "filter the URLs in this
+		   UTub" and stays distinct from the navbar's cross-UTub search glass. #}
+		<button id="URLSearchFilterIcon" class="hidden" tabindex="0" aria-label="Filter URLs in this UTub">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="white" height="24" width="24" viewBox="0 0 16 16">
 				<path
-					d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+					d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
 			</svg>
 		</button>
-		<button id="URLSearchFilterIconClose" class="hidden" tabindex="0">
-			<svg xmlns="http://www.w3.org/2000/svg" fill="white"
-					height="26" width="26" viewBox="0 0 512 512">
-					<path
-						d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
-
-				  <!-- X Shape Inside the Magnifying Glass -->
-					  <line x1="158" y1="158" x2="258" y2="258" stroke="white" stroke-width="20" stroke-linecap="round"/>
-						<line x1="258" y1="158" x2="158" y2="258" stroke="white" stroke-width="20" stroke-linecap="round"/>
+		<button id="URLSearchFilterIconClose" class="hidden" tabindex="0" aria-label="Close URL filter">
+			<svg xmlns="http://www.w3.org/2000/svg" fill="white" height="24" width="24" viewBox="0 0 16 16">
+				<path
+					d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
 			</svg>
 		</button>
 		<button id="urlBtnCreate" class="green-clickable hidden" tabindex="0">

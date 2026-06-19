@@ -166,6 +166,18 @@ class _DimCrossUtubSearchOpen(UIBaseDimensions):
 
 class _DimCrossUtubSearchClose(UIBaseDimensions):
     target: Literal["cross_utub"]
+    trigger: Literal[
+        "trigger_icon",
+        "escape_key",
+        "return_home",
+        "deck_switch",
+        "result_nav",
+        "history_nav",
+    ]
+
+
+class _DimCrossUtubSearchRefresh(UIBaseDimensions):
+    target: Literal["cross_utub"]
 
 
 class _DimCrossUtubSearchResultAccess(UIBaseDimensions):
@@ -377,6 +389,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_URL_SEARCH_CLOSE: _DimUrlSearchClose,
     EventName.UI_CROSS_UTUB_SEARCH_OPEN: _DimCrossUtubSearchOpen,
     EventName.UI_CROSS_UTUB_SEARCH_CLOSE: _DimCrossUtubSearchClose,
+    EventName.UI_CROSS_UTUB_SEARCH_REFRESH: _DimCrossUtubSearchRefresh,
     EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: _DimCrossUtubSearchResultAccess,
     # UI — Tags
     EventName.UI_TAG_APPLY: _DimDeviceOnly,
