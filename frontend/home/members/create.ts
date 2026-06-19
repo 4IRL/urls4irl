@@ -148,7 +148,15 @@ function createMemberShowInput(utubID: number): void {
 export function createMemberHideInput(): void {
   $("#createMemberWrap").hideClass();
   $("#displayMemberWrap").showClassFlex();
-  $("#memberBtnCreate").showClassNormal();
+  // Only the UTub owner may add members — restore the correct control for the
+  // current user's role rather than always re-showing the add-member button.
+  if (getState().isCurrentUserOwner) {
+    $("#memberSelfBtnDelete").hideClass();
+    $("#memberBtnCreate").showClassNormal();
+  } else {
+    $("#memberBtnCreate").hideClass();
+    $("#memberSelfBtnDelete").showClassNormal();
+  }
   removeCreateMemberEventListeners();
   resetCreateMemberFailErrors();
   resetNewMemberForm();

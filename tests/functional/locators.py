@@ -208,6 +208,7 @@ class HomePageLocators(GenericPageLocator):
 
     # Members Deck
     HEADER_MEMBER_DECK = "#MemberDeckHeader"
+    HEADER_AND_CARET_MEMBER_DECK = "#MemberDeckHeaderAndCaret"
     BUTTON_MEMBER_CREATE = "#memberBtnCreate"
     INPUT_MEMBER_CREATE = "#memberCreate"
     BUTTON_MEMBER_CANCEL_CREATE = "#memberCancelBtnCreate"
