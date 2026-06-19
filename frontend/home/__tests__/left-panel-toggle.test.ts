@@ -100,6 +100,28 @@ describe("Left Panel Toggle", () => {
 
       expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(true);
     });
+
+    it("expanded state survives a search-mode open/close cycle", () => {
+      setUserCollapsedLHS({
+        collapsed: false,
+        source: LHS_COLLAPSE_SOURCE.SEAM,
+      });
+      expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(false);
+
+      setSearchModeActive({ active: true });
+      setSearchModeActive({ active: false });
+
+      expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(false);
+    });
+
+    it("setSearchModeActive emits no metric — search mode owns its own metric", async () => {
+      const { emit } = await import("../../lib/metrics-client.js");
+
+      setSearchModeActive({ active: true });
+      setSearchModeActive({ active: false });
+
+      expect(emit).not.toHaveBeenCalled();
+    });
   });
 
   describe("mobile guard", () => {
@@ -161,15 +183,6 @@ describe("Left Panel Toggle", () => {
         event: UI_EVENTS.UI_LHS_COLLAPSE,
         source: LHS_COLLAPSE_SOURCE.URL_HEADER,
       });
-    });
-
-    it("a search-mode-driven visibility change emits nothing", async () => {
-      const { emit } = await import("../../lib/metrics-client.js");
-
-      setSearchModeActive({ active: true });
-      setSearchModeActive({ active: false });
-
-      expect(emit).not.toHaveBeenCalled();
     });
   });
 });

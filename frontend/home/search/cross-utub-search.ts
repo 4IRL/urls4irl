@@ -14,6 +14,7 @@ import {
 } from "../../types/metrics-dim-values.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 import { getState } from "../../store/app-store.js";
+import { setSearchModeActive } from "../left-panel-toggle.js";
 import {
   isMobile,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
@@ -355,9 +356,10 @@ export function enterCrossUtubSearchMode(): void {
     target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
   });
 
-  // Hide the left panel (UTub/Member/Tag decks) and clear any stale in-deck
-  // filter. Mobile: hide the four deck-switcher buttons.
-  $("#leftPanel").addClass("hidden");
+  // Hide the left panel (UTub/Member/Tag decks) via the shared resolver so a
+  // manual collapse is preserved, and clear any stale in-deck filter. Mobile:
+  // hide the four deck-switcher buttons.
+  setSearchModeActive({ active: true });
   resetUTubSearch();
   if (isMobile()) {
     $("#toUTubs").addClass("hidden");
@@ -439,14 +441,16 @@ export function exitCrossUtubSearchMode({
   setTriggerToOpenState();
   $("#navReturnHome").addClass("hidden");
 
-  // Restore the LHS via the existing layout helpers. Do NOT clear
+  // Restore the LHS via the shared resolver. Do NOT clear
   // activeUTubID/selectedURLCardID — clearing flips downstream selection state.
-  // Un-hide #leftPanel first: enterCrossUtubSearchMode() added `.hidden` to it,
-  // but the mobile no-UTub helper (setMobileUIWhenUTubNotSelectedOrUTubDeleted)
-  // only toggles the decks, not the panel, so without this the panel stays
-  // hidden and the user lands on an empty screen. The with-UTub mobile helper
-  // re-hides #leftPanel itself to surface the URL deck, so this is safe.
-  $("#leftPanel").removeClass("hidden");
+  // Releasing search mode lets the resolver re-derive visibility: it restores
+  // the LHS unless the user had manually collapsed it (userCollapsedLHS), so a
+  // manual collapse is no longer clobbered. On mobile this also removes the
+  // `.hidden` class enterCrossUtubSearchMode() added, since the mobile no-UTub
+  // helper (setMobileUIWhenUTubNotSelectedOrUTubDeleted) only toggles the decks,
+  // not the panel; the with-UTub mobile helper re-hides #leftPanel itself to
+  // surface the URL deck, so this is safe.
+  setSearchModeActive({ active: false });
   if (isMobile()) {
     if (getState().activeUTubID !== null) {
       setMobileUIWhenUTubSelectedOrURLNavSelected();
@@ -750,6 +754,11 @@ export function initCrossUtubSearch(): void {
   _onBreakpointChange = () => {
     if (!_searchModeActive) return;
     _searchModeActive = false;
+    // Sync the shared resolver: enterCrossUtubSearchMode() set search mode
+    // active via setSearchModeActive, so release it here too. This clears the
+    // search-mode intent and lets the resolver reconcile; mobile.ts's own
+    // breakpoint listener owns the final panel layout.
+    setSearchModeActive({ active: false });
     $("#crossUtubSearchMode")
       .removeClass("cross-search-visible")
       .addClass("cross-search-hidden");
