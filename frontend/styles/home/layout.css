@@ -34,10 +34,37 @@ button {
 .panel#leftPanel {
     width: 25%;
     min-width: 350px;
+    transition: width 0.3s ease, min-width 0.3s ease, visibility 0s linear;
 }
 
 .panel#centerPanel {
     width: 75%;
+    transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+/* LHS collapse/expand toggle affordances (seam + URL-deck-header mirror) */
+.lhs-toggle {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lhs-toggle:focus-visible {
+    outline: 2px solid var(--deckHeaderGreen);
+    outline-offset: 2px;
+}
+
+.lhs-toggle--seam .bi {
+    transition: transform 0.15s ease;
+    transform-origin: center;
+}
+
+.lhs-toggle--seam .bi.lhs-chevron--closed {
+    transform: rotate(180deg);
 }
 
 #HomeModalAlertBanner {
@@ -301,6 +328,23 @@ button {
     .navbar-backdrop {
         display: none;
     }
+
+    /* Manual LHS collapse (desktop only) — slide the left panel away and let the
+       URL deck reclaim the 350px gutter. visibility (not display:none) so the
+       slide can animate and focusable children leave the tab order. */
+    #mainPanel.lhs-collapsed .panel#leftPanel {
+        width: 0;
+        min-width: 0;
+        overflow: hidden;
+        visibility: hidden;
+        transition: width 0.3s ease, min-width 0.3s ease, visibility 0s linear 0.3s;
+    }
+
+    #mainPanel.lhs-collapsed .panel#centerPanel {
+        width: 100%;
+        max-width: 100%;
+        transition: width 0.3s ease, max-width 0.3s ease;
+    }
 }
 
 @media (max-width: 991.98px) {
@@ -345,6 +389,12 @@ button {
     #UTubNameOuterUpdateWrap ~ .button-container {
         display: none;
     }
+
+    /* The mobile single-screen nav governs panels below 992px — hide both
+       LHS-collapse affordances so they never appear on mobile. */
+    .lhs-toggle {
+        display: none;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -369,3 +419,15 @@ button {
 @media (min-width: 465px) {}
 
 @media (max-width: 464.98px) {}
+
+/* Respect reduced-motion preferences for the LHS collapse/expand animation. */
+@media (prefers-reduced-motion: reduce) {
+
+    .panel#leftPanel,
+    .panel#centerPanel,
+    #mainPanel.lhs-collapsed .panel#leftPanel,
+    #mainPanel.lhs-collapsed .panel#centerPanel,
+    .lhs-toggle--seam .bi {
+        transition: none;
+    }
+}
