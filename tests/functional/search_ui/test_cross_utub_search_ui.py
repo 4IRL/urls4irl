@@ -296,6 +296,46 @@ def test_close_button_closes_cross_search(
     assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
 
 
+def test_trigger_toggles_search_closed(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open
+    WHEN the user taps the navbar search trigger again
+    THEN search mode closes (the trigger toggles open/closed)
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER, time=10)
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+    assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+
+def test_closing_search_on_mobile_restores_left_panel(
+    browser_mobile_portrait: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open on a mobile viewport with no UTub selected
+    WHEN the user closes search via the X button
+    THEN the left panel (UTub deck) is shown again rather than an empty screen
+    """
+    browser = browser_mobile_portrait
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_CLOSE, time=10)
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+
+    assert_visible_css_selector(browser, HPL.HEADER_UTUB_DECK, time=10)
+
+
 def test_recent_search_history_renders_reruns_and_clears(
     browser: WebDriver, logged_in_with_cross_search_data
 ):

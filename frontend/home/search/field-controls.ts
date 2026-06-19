@@ -85,9 +85,11 @@ function buildRow(field: MatchedField, position: number): JQuery<HTMLElement> {
     .attr("data-field", field)
     .attr("data-included", String(_included[field]));
 
+  const includeId = "crossSearchInclude_" + field;
   const include = $(document.createElement("input"))
     .addClass("crossSearchFieldInclude")
     .attr("type", "checkbox")
+    .attr("id", includeId)
     .attr("aria-label", "Include " + field + " in search");
   include.prop("checked", _included[field]);
   include.on("change", () => {
@@ -97,8 +99,11 @@ function buildRow(field: MatchedField, position: number): JQuery<HTMLElement> {
   });
   include.appendTo(row);
 
+  // Associate the visible label with the checkbox so tapping the (large) label
+  // toggles it — a comfortable touch target without an oversized checkbox.
   $(document.createElement("label"))
     .addClass("crossSearchFieldLabel")
+    .attr("for", includeId)
     .text(displayName)
     .appendTo(row);
 

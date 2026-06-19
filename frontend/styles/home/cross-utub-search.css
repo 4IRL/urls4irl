@@ -314,8 +314,8 @@
 
 .crossSearchFieldInclude {
     accent-color: var(--splashGreen);
-    width: 1.1rem;
-    height: 1.1rem;
+    width: 1.25rem;
+    height: 1.25rem;
     flex: 0 0 auto;
     cursor: pointer;
 }
@@ -323,9 +323,10 @@
 .crossSearchFieldLabel {
     margin: 0;
     /* Take the free space so the priority ordinal + reorder arrows are pushed
-       to the right edge of the row. */
+       to the right edge of the row. The label toggles its checkbox (for=), so a
+       pointer cursor signals it's interactive and the whole label is the target. */
     flex: 1;
-    cursor: default;
+    cursor: pointer;
 }
 
 /* Compact priority ordinal (1st / 2nd / 3rd), sitting just left of the arrows. */
@@ -490,11 +491,18 @@
         min-height: 2.75rem;
     }
 
-    .crossSearchFieldInclude,
+    /* The reorder buttons get full touch targets; the checkbox stays compact
+       (its label is the large tap target via the for= association). */
     .crossSearchFieldUp,
     .crossSearchFieldDown {
         min-width: 2.75rem;
         min-height: 2.75rem;
+    }
+
+    .crossSearchFieldLabel {
+        min-height: 2.75rem;
+        display: flex;
+        align-items: center;
     }
 
     #crossUtubSearchSettingsBtn {

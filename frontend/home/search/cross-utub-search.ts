@@ -319,14 +319,18 @@ export function exitCrossUtubSearchMode(): void {
 
   // Restore the LHS via the existing layout helpers. Do NOT clear
   // activeUTubID/selectedURLCardID — clearing flips downstream selection state.
+  // Un-hide #leftPanel first: enterCrossUtubSearchMode() added `.hidden` to it,
+  // but the mobile no-UTub helper (setMobileUIWhenUTubNotSelectedOrUTubDeleted)
+  // only toggles the decks, not the panel, so without this the panel stays
+  // hidden and the user lands on an empty screen. The with-UTub mobile helper
+  // re-hides #leftPanel itself to surface the URL deck, so this is safe.
+  $("#leftPanel").removeClass("hidden");
   if (isMobile()) {
     if (getState().activeUTubID !== null) {
       setMobileUIWhenUTubSelectedOrURLNavSelected();
     } else {
       setMobileUIWhenUTubNotSelectedOrUTubDeleted();
     }
-  } else {
-    $("#leftPanel").removeClass("hidden");
   }
 
   // Reset the input and result states so the next open starts fresh — an empty
@@ -417,9 +421,15 @@ export function initCrossUtubSearch(): void {
     APP_CONFIG.strings.CROSS_SEARCH_PLACEHOLDER,
   );
 
-  $("#toCrossUtubSearch").offAndOnExact("click.crossSearch", () =>
-    enterCrossUtubSearchMode(),
-  );
+  // The navbar trigger toggles search mode: tapping the magnifying glass again
+  // while search is open closes it (mirrors the ✕/ESC close).
+  $("#toCrossUtubSearch").offAndOnExact("click.crossSearch", () => {
+    if (_searchModeActive) {
+      exitCrossUtubSearchMode();
+    } else {
+      enterCrossUtubSearchMode();
+    }
+  });
 
   // Delegated result-card clicks: leave search mode and navigate to the source
   // UTub with the matched URL card highlighted. offAndOn does not support the

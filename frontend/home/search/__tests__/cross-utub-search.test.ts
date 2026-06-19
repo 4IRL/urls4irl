@@ -239,6 +239,26 @@ describe("cross-utub-search — mode mechanics", () => {
     });
   });
 
+  it("(h) clicking the navbar trigger while open toggles the mode closed", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+    (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    $("#toCrossUtubSearch").trigger("click");
+
+    const mode = $("#crossUtubSearchMode");
+    expect(mode.hasClass("cross-search-hidden")).toBe(true);
+    expect(mode.hasClass("cross-search-visible")).toBe(false);
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_CLOSE,
+      target: CROSS_UTUB_SEARCH_OPEN_TARGET.CROSS_UTUB,
+    });
+  });
+
   it("(g) clicking a result card exits mode, selects the UTub, and selects the URL card after UTUB_SELECTED", async () => {
     // Partial-mock the event bus: keep the real on/emit so the one-shot
     // subscription wired by the click handler actually fires, but the rest of
