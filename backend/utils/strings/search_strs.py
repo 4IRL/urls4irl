@@ -6,7 +6,7 @@
 
 CROSS_SEARCH_NO_RESULTS = "No results found across your UTubs"
 CROSS_SEARCH_SHORT_QUERY = "Keep typing to search across your UTubs"
-CROSS_SEARCH_PLACEHOLDER = "Search across all your UTubs"
+CROSS_SEARCH_PLACEHOLDER = "Search all your UTubs"
 CROSS_SEARCH_COUNT_TEMPLATE = "{{ count }} results across {{ utubs }} UTubs"
 
 # Field display names for the three MatchedField values.

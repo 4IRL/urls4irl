@@ -366,6 +366,9 @@ function clearSearchInput(): void {
 function syncClearButtonVisibility(): void {
   const hasText = getInputValue($("#crossUtubSearchInput")).length > 0;
   $("#crossUtubSearchClear").toggleClass("hidden", !hasText);
+  // Only reserve the input's right padding for the clear button when text is
+  // present, so the placeholder isn't clipped while empty.
+  $("#crossUtubSearchInput").toggleClass("crossSearchHasText", hasText);
 }
 
 function handleSearchInput(): void {
