@@ -480,6 +480,24 @@ def test_cross_utub_search_result_access_rejects_unknown_trigger():
         )
 
 
+def test_cross_utub_search_close_rejects_unknown_trigger():
+    """`_DimCrossUtubSearchClose` restricts `trigger` to its six values.
+
+    A payload with a valid `target` but a `trigger` outside
+    `Literal["trigger_icon", "escape_key", "return_home", "deck_switch",
+    "result_nav", "history_nav"]` (e.g. the regular deck's `main_button`)
+    must be rejected at validation time.
+    """
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_CROSS_UTUB_SEARCH_CLOSE].model_validate(
+            {
+                "target": "cross_utub",
+                "trigger": "main_button",
+                "device_type": DeviceType.MOBILE,
+            }
+        )
+
+
 def test_api_hit_model_validates_endpoint_method_status_code():
     """`_DimApiHit` validates endpoint/method/status_code with strict typing."""
     api_hit_model = DIMENSION_MODELS[EventName.API_HIT]

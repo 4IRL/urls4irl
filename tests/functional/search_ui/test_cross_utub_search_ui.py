@@ -380,6 +380,31 @@ def test_submit_button_runs_search(
     wait_for_cross_search_results(browser)
 
 
+def test_submit_button_morphs_to_refresh_and_re_runs(
+    browser: WebDriver, logged_in_with_cross_search_data
+):
+    """
+    GIVEN search mode is open and a query has been submitted, returning results
+    WHEN the submit button morphs to the Refresh glyph
+    THEN clicking it re-runs the unchanged query and results still render
+    """
+    app, _ = logged_in_with_cross_search_data
+    _login(app, browser)
+
+    open_cross_search_via_trigger(browser)
+    type_cross_search_query(browser, QUERY_TERM)
+    wait_for_cross_search_results(browser)
+
+    # With the query unchanged since submit, the button shows the Refresh glyph
+    # (the search glyph is hidden via the `.hidden` display:none class).
+    wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_REFRESH_ICON, timeout=10)
+    assert_not_visible_css_selector(browser, HPL.CROSS_SEARCH_SUBMIT_ICON, time=10)
+
+    # Clicking Refresh re-runs the same query; results still render.
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_SUBMIT, time=10)
+    wait_for_cross_search_results(browser)
+
+
 def test_clear_button_clears_input_text(
     browser: WebDriver, logged_in_with_cross_search_data
 ):
