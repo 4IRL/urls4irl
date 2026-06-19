@@ -133,6 +133,13 @@ export const FORM_SUBMIT_TRIGGER = {
   BUTTON_CLICK: "button_click",
 } as const;
 
+export const LHS_COLLAPSE_SOURCE = {
+  SEAM: "seam",
+  URL_HEADER: "url_header",
+} as const;
+
+export const LHS_EXPAND_SOURCE = LHS_COLLAPSE_SOURCE;
+
 export const MOBILE_NAV_TARGET = {
   UTUBS: "utubs",
   URLS: "urls",
