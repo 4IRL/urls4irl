@@ -389,21 +389,32 @@
     margin-bottom: var(--space-6);
 }
 
+/* Title with the Clear button right beside it on one row. */
+.crossSearchHistoryHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
 #crossUtubSearchHistoryHeading {
     font-size: var(--fs-md);
     font-weight: var(--fw-bold);
     color: var(--deckHeaderGreen);
-    margin-bottom: var(--space-2);
+    margin: 0;
 }
 
+/* Compact, short clear button. */
 #crossUtubSearchHistoryClear {
+    flex: 0 0 auto;
     background: none;
     color: whitesmoke;
     border: 1px solid var(--borderColor);
     border-radius: var(--radius-sm);
-    padding: var(--space-1) var(--space-2);
+    padding: 1px var(--space-2);
+    font-size: var(--fs-sm);
+    line-height: 1.35;
     cursor: pointer;
-    margin-bottom: var(--space-2);
     transition: border-color 0.15s ease, color 0.15s ease;
 }
 
@@ -505,7 +516,6 @@
     }
 
     .crossSearchHistoryRow,
-    #crossUtubSearchHistoryClear,
     #crossUtubSearchClose {
         min-height: 2.75rem;
     }

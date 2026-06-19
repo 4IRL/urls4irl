@@ -205,10 +205,15 @@ function renderSearchHistory(): void {
     .attr("id", "crossUtubSearchHistoryList")
     .attr("aria-labelledby", "crossUtubSearchHistoryHeading");
 
+  // Heading + Clear share a single header row (title left, Clear right).
+  const header = $(document.createElement("div")).addClass(
+    "crossSearchHistoryHeader",
+  );
+
   $(document.createElement("h3"))
     .attr("id", "crossUtubSearchHistoryHeading")
     .text(APP_CONFIG.strings.CROSS_SEARCH_HISTORY_HEADING)
-    .appendTo(section);
+    .appendTo(header);
 
   $(document.createElement("button"))
     .attr("id", "crossUtubSearchHistoryClear")
@@ -219,7 +224,9 @@ function renderSearchHistory(): void {
       clearSearchHistory();
       $("#crossUtubSearchHistoryList").remove();
     })
-    .appendTo(section);
+    .appendTo(header);
+
+  header.appendTo(section);
 
   const list = $(document.createElement("ul")).addClass(
     "crossSearchHistoryItems",
