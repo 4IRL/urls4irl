@@ -50,7 +50,7 @@ describe("renderSearchResults", () => {
   });
 
   it("renders one group section per result entry, in array order, with the utubName heading", () => {
-    renderSearchResults({ results: buildFixture() });
+    renderSearchResults({ results: buildFixture(), query: "trip" });
 
     const groups = $("#crossUtubSearchResults").find(".crossSearchGroup");
     expect(groups.length).toBe(2);
@@ -63,7 +63,7 @@ describe("renderSearchResults", () => {
   });
 
   it("renders one card per hit within each group, in array order", () => {
-    renderSearchResults({ results: buildFixture() });
+    renderSearchResults({ results: buildFixture(), query: "trip" });
 
     const firstGroupCards = $("#crossUtubSearchResults")
       .find(".crossSearchGroup")
@@ -74,8 +74,10 @@ describe("renderSearchResults", () => {
     expect(firstGroupCards.eq(1).attr("data-utub-url-id")).toBe("21");
   });
 
-  it("applies the match-highlight class only to the fields named in matchedFields", () => {
-    renderSearchResults({ results: buildFixture() });
+  it("highlights the matched substring (preserving case) only within matched fields", () => {
+    // Title "Pasta Night" and url ".../pasta" both match "pasta"; the tag
+    // "dinner" is not in matchedFields, so it stays unhighlighted.
+    renderSearchResults({ results: buildFixture(), query: "pasta" });
 
     const firstCard = $("#crossUtubSearchResults")
       .find(".crossSearchGroup")
@@ -83,15 +85,32 @@ describe("renderSearchResults", () => {
       .find(".crossSearchHitCard")
       .eq(0);
 
-    expect(
-      firstCard.find(".crossSearchTitle").hasClass("crossSearchMatched"),
-    ).toBe(true);
-    expect(
-      firstCard.find(".crossSearchUrl").hasClass("crossSearchMatched"),
-    ).toBe(true);
-    expect(
-      firstCard.find(".crossSearchTag").hasClass("crossSearchMatched"),
-    ).toBe(false);
+    const titleMark = firstCard.find(".crossSearchTitle .crossSearchMatch");
+    expect(titleMark.length).toBe(1);
+    expect(titleMark.text()).toBe("Pasta");
+    // The surrounding text is preserved, not just the matched fragment.
+    expect(firstCard.find(".crossSearchTitle").text()).toBe("Pasta Night");
+
+    const urlMark = firstCard.find(".crossSearchUrl .crossSearchMatch");
+    expect(urlMark.length).toBe(1);
+    expect(urlMark.text()).toBe("pasta");
+
+    expect(firstCard.find(".crossSearchTag .crossSearchMatch").length).toBe(0);
+  });
+
+  it("highlights the matching substring within a tag when the tag field matched", () => {
+    renderSearchResults({ results: buildFixture(), query: "ital" });
+
+    const romeCard = $("#crossUtubSearchResults")
+      .find(".crossSearchGroup")
+      .eq(1)
+      .find(".crossSearchHitCard")
+      .eq(0);
+
+    const tagMark = romeCard.find(".crossSearchTag .crossSearchMatch");
+    expect(tagMark.length).toBe(1);
+    expect(tagMark.text()).toBe("ital");
+    expect(romeCard.find(".crossSearchTag").text()).toBe("italy");
   });
 
   it("removes a pre-existing #crossUtubSearchHistoryList before rendering groups", () => {
@@ -100,7 +119,7 @@ describe("renderSearchResults", () => {
     );
     expect($("#crossUtubSearchHistoryList").length).toBe(1);
 
-    renderSearchResults({ results: buildFixture() });
+    renderSearchResults({ results: buildFixture(), query: "trip" });
 
     expect($("#crossUtubSearchHistoryList").length).toBe(0);
   });

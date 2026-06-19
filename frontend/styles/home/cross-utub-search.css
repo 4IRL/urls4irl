@@ -98,21 +98,15 @@
     border: 1px solid var(--borderColor);
 }
 
-/* Field-level match emphasis — the API gives no character offsets, so the
-   whole matched element is emphasized with a subtle brand-green wash rather
-   than an off-theme yellow. */
-.crossSearchMatched {
-    background-color: rgba(var(--color-brand-green-rgb), 0.28);
-    border-radius: var(--radius-sm);
-    padding: 0 4px;
-}
-
-/* A matched tag adopts the app's selected-tag look (filled green pill). */
-.crossSearchTag.crossSearchMatched {
-    padding: 1px 8px;
-    color: var(--tagSelectedTextColor);
-    background: var(--tagBackgroundColorSelected);
-    border-color: var(--deckSelectionGreen);
+/* The exact substring within a field that matched the query. Uses the app's
+   amber accent (not green) so the highlight stays distinct from the green UTub
+   group heading directly above each card; black text for high contrast. */
+.crossSearchMatch {
+    background-color: var(--editURLColor);
+    color: black;
+    font-weight: var(--fw-bold);
+    border-radius: 3px;
+    padding: 0 1px;
 }
 
 /* Empty states mirror #URLSearchNoResults (muted, centered, italic). The two

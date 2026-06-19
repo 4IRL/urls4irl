@@ -154,6 +154,7 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(calledUrl).toBe(`${APP_CONFIG.routes.crossUtubSearch}?q=alpha`);
     expect(renderSearchResults).toHaveBeenCalledWith({
       results: [{ utubID: 1, utubName: "A", urls: [] }],
+      query: "alpha",
     });
   });
 

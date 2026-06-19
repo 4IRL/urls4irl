@@ -120,7 +120,7 @@ export function performCrossUtubSearch({
   ajaxCall("GET", url, null)
     .done((data: SearchResponse) => {
       $("#crossUtubSearchShortQuery").addClass("hidden");
-      renderSearchResults({ results: data.results });
+      renderSearchResults({ results: data.results, query: trimmed });
       if (data.results.length === 0) {
         showNoResultsState();
       } else {
