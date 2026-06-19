@@ -226,6 +226,27 @@ describe("cross-utub-search — mode mechanics", () => {
     expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(true);
   });
 
+  it("(d2) a 400 error response shows the no-results state", async () => {
+    vi.useFakeTimers();
+    const ajaxModule = await import("../../../lib/ajax.js");
+    (
+      ajaxModule.is429Handled as unknown as ReturnType<typeof vi.fn>
+    ).mockReturnValue(false);
+    (
+      ajaxModule.ajaxCall as unknown as ReturnType<typeof vi.fn>
+    ).mockReturnValue(buildFailXhr(400));
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    vi.advanceTimersByTime(250);
+
+    expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(false);
+  });
+
   it("(e) ESC closes the mode and emits CLOSE", async () => {
     const { emit } = await import("../../../lib/metrics-client.js");
     const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
