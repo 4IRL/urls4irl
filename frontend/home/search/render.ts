@@ -64,22 +64,24 @@ function appendHighlighted({
     return;
   }
 
-  let cursor = 0;
-  let matchIndex = lowerText.indexOf(lowerQuery, cursor);
+  let sliceStart = 0;
+  let matchIndex = lowerText.indexOf(lowerQuery, sliceStart);
   while (matchIndex !== -1) {
-    if (matchIndex > cursor) {
-      element.append(document.createTextNode(text.slice(cursor, matchIndex)));
+    if (matchIndex > sliceStart) {
+      element.append(
+        document.createTextNode(text.slice(sliceStart, matchIndex)),
+      );
     }
     const matchEnd = matchIndex + query.length;
     $(document.createElement("mark"))
       .addClass("crossSearchMatch")
       .text(text.slice(matchIndex, matchEnd))
       .appendTo(element);
-    cursor = matchEnd;
-    matchIndex = lowerText.indexOf(lowerQuery, cursor);
+    sliceStart = matchEnd;
+    matchIndex = lowerText.indexOf(lowerQuery, sliceStart);
   }
-  if (cursor < text.length) {
-    element.append(document.createTextNode(text.slice(cursor)));
+  if (sliceStart < text.length) {
+    element.append(document.createTextNode(text.slice(sliceStart)));
   }
 }
 
