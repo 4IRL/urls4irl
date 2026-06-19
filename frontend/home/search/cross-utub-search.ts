@@ -755,6 +755,8 @@ export function initCrossUtubSearch(): void {
       .addClass("cross-search-hidden");
     setTriggerToOpenState();
     $("#navReturnHome").addClass("hidden");
+    _lastSubmitted = null;
+    updateSubmitButtonState();
     $("#toCrossUtubSearch").trigger("focus");
   };
   _breakpointQuery.addEventListener("change", _onBreakpointChange);

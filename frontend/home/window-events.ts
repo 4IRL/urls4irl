@@ -22,7 +22,6 @@ import {
   restoreCrossUtubSearchFromHistory,
 } from "./search/cross-utub-search.js";
 import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../types/metrics-dim-values.js";
-
 import type { MatchedField } from "../types/search.js";
 
 /**

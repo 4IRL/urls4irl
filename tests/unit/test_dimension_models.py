@@ -442,15 +442,25 @@ def test_cross_utub_search_models_reject_non_cross_utub_target():
     search target) must be rejected at validation time, not silently
     accepted.
     """
-    for event_name in (
-        EventName.UI_CROSS_UTUB_SEARCH_OPEN,
-        EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
-        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
-    ):
+    payloads_by_event = {
+        EventName.UI_CROSS_UTUB_SEARCH_OPEN: {
+            "target": "urls",
+            "device_type": DeviceType.MOBILE,
+        },
+        EventName.UI_CROSS_UTUB_SEARCH_CLOSE: {
+            "target": "urls",
+            "trigger": "escape_key",
+            "device_type": DeviceType.MOBILE,
+        },
+        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: {
+            "target": "urls",
+            "trigger": "url_text",
+            "device_type": DeviceType.MOBILE,
+        },
+    }
+    for event_name, payload in payloads_by_event.items():
         with pytest.raises(ValidationError):
-            DIMENSION_MODELS[event_name].model_validate(
-                {"target": "urls", "device_type": DeviceType.MOBILE}
-            )
+            DIMENSION_MODELS[event_name].model_validate(payload)
 
 
 def test_cross_utub_search_result_access_rejects_unknown_trigger():

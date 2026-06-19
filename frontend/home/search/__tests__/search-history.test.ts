@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../../types/metrics-dim-values.js";
-
 import type { MatchedField } from "../../../types/search.js";
 import type { SearchHistoryEntry } from "../search-history.js";
 

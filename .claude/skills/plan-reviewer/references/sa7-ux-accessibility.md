@@ -47,6 +47,11 @@ For each interactive element the plan adds:
 - **Hidden interactivity**: If the plan makes an element interactive without a visible affordance (e.g., clickable header without icon or cursor change), does it add a visual cue? Flag as **Major** — users won't discover the feature.
 - **Device-specific affordances**: Do hover-dependent affordances (pencil icon on hover) have mobile equivalents (persistent icon)? Flag as **Minor** if mobile not addressed.
 
+## 5b. CSS Media-Query Scope Verification (required when any step delegates visibility to a CSS class)
+
+- **Viewport coverage of visibility CSS (required):** When any plan step (including steps added by DD resolution) makes an element visible or hidden by toggling a CSS class, read the CSS rule for that class and verify it fires on ALL viewports the step targets. If the rule is scoped inside a `@media` block, identify which viewport sizes fall outside the breakpoint and flag as **Major** if the step's feature is expected to work on those excluded viewports but the plan provides no alternative mechanism.
+- **DD-introduced steps inherit CSS tracing (required):** When a design decision creates a new plan step that borrows a CSS mechanism defined in a later step (e.g., Step 2b uses `.lhs-collapsed` defined in Step 3), the reviewer must read the CSS from that later step and verify it is compatible with all conditions of the earlier new step — especially viewport breakpoints.
+
 ## 6. Mobile & Touch Concerns
 
 - **Touch targets**: Are interactive elements at least 44px on mobile? The plan should specify `min-height`/`min-width` with responsive media queries if default sizes are smaller. Flag as **Minor** if not addressed.
