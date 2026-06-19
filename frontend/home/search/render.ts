@@ -118,9 +118,15 @@ function buildSearchHitCard({
   // Only attach a live href for http(s) — mirrors the trust gate in
   // urls/cards/access.ts (accessLink) so a non-http(s) value (e.g. javascript:)
   // can never become a one-click navigation vector. The url text is always
-  // shown via .text()/text nodes (escaped) regardless.
+  // shown via .text()/text nodes (escaped) regardless. The click handling that
+  // opens the link, stops propagation to the card's navigate handler, and
+  // records the access metric lives in cross-utub-search.ts (delegated on
+  // .crossSearchUrl), keeping this renderer pure.
   if (/^https?:\/\//i.test(hit.urlString)) {
-    urlLink.attr("href", hit.urlString);
+    urlLink
+      .attr("href", hit.urlString)
+      .attr("target", "_blank")
+      .attr("rel", "noopener noreferrer");
   }
   urlLink.appendTo(card);
 

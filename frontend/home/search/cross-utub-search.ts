@@ -4,7 +4,10 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
-import { CROSS_UTUB_SEARCH_OPEN_TARGET } from "../../types/metrics-dim-values.js";
+import {
+  CROSS_UTUB_SEARCH_OPEN_TARGET,
+  CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
+} from "../../types/metrics-dim-values.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 import { getState } from "../../store/app-store.js";
 import {
@@ -475,6 +478,25 @@ export function initCrossUtubSearch(): void {
         const utubID = parseInt(card.attr("data-utub-id")!, 10);
         const utubUrlID = parseInt(card.attr("data-utub-url-id")!, 10);
         navigateToHit({ utubID, utubUrlID });
+      },
+    );
+  $("#crossUtubSearchResults")
+    .off("click.crossSearchUrl")
+    .on(
+      "click.crossSearchUrl",
+      ".crossSearchUrl",
+      (event: JQuery.TriggeredEvent) => {
+        const link = $(event.currentTarget);
+        // Only live (http/https) links have an href; a non-openable URL falls
+        // through to the card's navigate-to-source-UTub handler.
+        if (!link.attr("href")) return;
+        // Tapping the URL opens it (target=_blank) — keep it from bubbling to
+        // the card's navigate handler, and record the access.
+        event.stopPropagation();
+        recordUIEvent({
+          event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
+          target: CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET.CROSS_UTUB,
+        });
       },
     );
   $("#crossUtubSearchSettingsBtn").offAndOnExact("click.crossSearch", () =>

@@ -84,6 +84,11 @@ export type DimCrossUtubSearchClose = {
   target: "cross_utub";
 };
 
+export type DimCrossUtubSearchResultAccess = {
+  device_type: DeviceType;
+  target: "cross_utub";
+};
+
 export type DimTagCreateOpen = {
   device_type: DeviceType;
   scope: TagScope;
@@ -182,6 +187,7 @@ export type UIEventDimensions = {
   ui_url_search_close: DimUrlSearchClose;
   ui_cross_utub_search_open: DimCrossUtubSearchOpen;
   ui_cross_utub_search_close: DimCrossUtubSearchClose;
+  ui_cross_utub_search_result_access: DimCrossUtubSearchResultAccess;
   ui_tag_apply: DimDeviceOnly;
   ui_tag_remove: DimDeviceOnly;
   ui_tag_create_open: DimTagCreateOpen;

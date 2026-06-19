@@ -61,8 +61,13 @@
     color: whitesmoke;
 }
 
-/* URL mirrors .urlString (muted blue-gray, no underline). */
+/* URL mirrors .urlString (muted blue-gray, no underline). `align-self:
+   flex-start` keeps the link only as wide as its text within the flex-column
+   card, so its tap target is the URL itself — not the full card width (the rest
+   of the card navigates to the source UTub). */
 .crossSearchUrl {
+    align-self: flex-start;
+    max-width: 100%;
     color: var(--cardURLTextColor);
     word-break: break-all;
     text-decoration: none;

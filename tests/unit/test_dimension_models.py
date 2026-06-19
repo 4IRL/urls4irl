@@ -89,6 +89,10 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
         {"target": "cross_utub", "device_type": DeviceType.DESKTOP},
     ),
+    (
+        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
+        {"target": "cross_utub", "device_type": DeviceType.MOBILE},
+    ),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": DeviceType.DESKTOP}),
     (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
@@ -413,6 +417,7 @@ def test_cross_utub_search_models_reject_non_cross_utub_target():
     for event_name in (
         EventName.UI_CROSS_UTUB_SEARCH_OPEN,
         EventName.UI_CROSS_UTUB_SEARCH_CLOSE,
+        EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
     ):
         with pytest.raises(ValidationError):
             DIMENSION_MODELS[event_name].model_validate(

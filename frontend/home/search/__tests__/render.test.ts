@@ -123,4 +123,14 @@ describe("renderSearchResults", () => {
 
     expect($("#crossUtubSearchHistoryList").length).toBe(0);
   });
+
+  it("the URL link opens in a new tab", () => {
+    renderSearchResults({ results: buildFixture(), query: "pasta" });
+
+    const card = $("#crossUtubSearchResults").find(".crossSearchHitCard").eq(0);
+    const link = card.find(".crossSearchUrl");
+    expect(link.attr("href")).toBe("https://example.com/pasta");
+    expect(link.attr("target")).toBe("_blank");
+    expect(link.attr("rel")).toContain("noopener");
+  });
 });

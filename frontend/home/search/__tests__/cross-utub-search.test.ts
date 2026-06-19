@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { APP_CONFIG } from "../../../lib/config.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import { CROSS_UTUB_SEARCH_OPEN_TARGET } from "../../../types/metrics-dim-values.js";
+import {
+  CROSS_UTUB_SEARCH_OPEN_TARGET,
+  CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
+} from "../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -335,5 +338,34 @@ describe("cross-utub-search — mode mechanics", () => {
     const selectedCard = (selectURLCard as unknown as ReturnType<typeof vi.fn>)
       .mock.calls[0][0] as JQuery;
     expect(selectedCard.attr("utuburlid")).toBe(String(targetUrlID));
+  });
+
+  it("(j) clicking a live result URL emits RESULT_ACCESS and does not navigate to the source UTub", async () => {
+    const { emit } = await import("../../../lib/metrics-client.js");
+    const { selectUTub } = await import("../../utubs/selectors.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+    (emit as unknown as ReturnType<typeof vi.fn>).mockClear();
+
+    // render.js is mocked, so build the card DOM by hand: a live URL link
+    // (http href present) nested inside a result card.
+    $("#crossUtubSearchResults").html(
+      `<div class="crossSearchHitCard" data-utub-id="7" data-utub-url-id="42">` +
+        `<a class="crossSearchUrl" href="https://example.com" target="_blank" rel="noopener noreferrer">https://example.com</a>` +
+        `</div>`,
+    );
+
+    $(".crossSearchUrl").trigger("click");
+
+    expect(emit).toHaveBeenCalledWith({
+      event: UI_EVENTS.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS,
+      target: CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET.CROSS_UTUB,
+    });
+    // The URL handler stops propagation, so the card's navigate handler never
+    // runs and the source UTub is not selected.
+    expect(selectUTub).not.toHaveBeenCalled();
   });
 });
