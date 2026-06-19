@@ -568,10 +568,10 @@ export function initCrossUtubSearch(): void {
         return;
       }
       const active = document.activeElement;
-      const tag = active?.tagName;
+      const activeTagName = active?.tagName;
       if (
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
+        activeTagName === "INPUT" ||
+        activeTagName === "TEXTAREA" ||
         (active as HTMLElement | null)?.isContentEditable
       ) {
         return;
