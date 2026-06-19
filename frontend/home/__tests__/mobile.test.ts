@@ -1,5 +1,7 @@
+import { TABLET_WIDTH } from "../../lib/constants.js";
 import {
   isMobile,
+  initMobileLayout,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
   setMobileUIWhenUTubDeckSelected,
@@ -28,6 +30,27 @@ vi.mock("../../store/app-store.js", () => ({
 vi.mock("../utubs/selectors.js", () => ({
   makeUTubSelectableAgainIfMobile: (...args: unknown[]) =>
     mockMakeUTubSelectableAgainIfMobile(...args),
+}));
+
+// Simulated manual-collapse intent, controlled per-test, that the mocked
+// reapply function reads to mirror the real resolver's viewport behavior:
+// mobile clears `.lhs-collapsed`; desktop re-applies it when intent is set.
+const mockLeftPanelToggleState = { userCollapsedLHS: false };
+const mockReapplyLeftPanelVisibilityForViewport = vi.fn(() => {
+  const mainPanel = window.jQuery("#mainPanel");
+  if ((window.jQuery(window).width() ?? 0) < TABLET_WIDTH) {
+    mainPanel.removeClass("lhs-collapsed");
+    return;
+  }
+  mainPanel.toggleClass(
+    "lhs-collapsed",
+    mockLeftPanelToggleState.userCollapsedLHS,
+  );
+});
+
+vi.mock("../left-panel-toggle.js", () => ({
+  reapplyLeftPanelVisibilityForViewport: () =>
+    mockReapplyLeftPanelVisibilityForViewport(),
 }));
 
 const $ = window.jQuery;
@@ -203,5 +226,77 @@ describe("revertMobileUIToFullScreenUI", () => {
 
     // Nav buttons should still be hidden
     expect($("button#toUTubs").hasClass("hidden")).toBe(true);
+  });
+});
+
+describe("initMobileLayout viewport-crossing reconciliation", () => {
+  let breakpointChangeHandler: () => void;
+  let matchMediaSpy: ReturnType<typeof vi.spyOn>;
+  let widthSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockLeftPanelToggleState.userCollapsedLHS = false;
+    document.body.innerHTML = `
+      <main id="mainPanel">
+        <div class="panel" id="leftPanel"></div>
+        <div class="panel" id="centerPanel"></div>
+      </main>
+      <div class="deck" id="UTubDeck"></div>
+      <div class="deck" id="MemberDeck"></div>
+      <div class="deck" id="TagDeck"></div>
+      <button id="toUTubs" class="hidden"></button>
+      <button id="toMembers" class="hidden"></button>
+      <button id="toTags" class="hidden"></button>
+      <button id="toURLs" class="hidden"></button>
+    `;
+
+    matchMediaSpy = vi.spyOn(window, "matchMedia").mockReturnValue({
+      addEventListener: (
+        _event: string,
+        listener: EventListenerOrEventListenerObject,
+      ) => {
+        breakpointChangeHandler = listener as () => void;
+      },
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList);
+
+    initMobileLayout();
+  });
+
+  afterEach(() => {
+    matchMediaSpy.mockRestore();
+    widthSpy?.mockRestore();
+  });
+
+  it("removes lhs-collapsed from mainPanel when crossing into mobile", () => {
+    $("#mainPanel").addClass("lhs-collapsed");
+    widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+    breakpointChangeHandler();
+
+    expect(mockReapplyLeftPanelVisibilityForViewport).toHaveBeenCalled();
+    expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(false);
+  });
+
+  it("re-applies lhs-collapsed on desktop re-entry while collapse intent is retained", () => {
+    mockLeftPanelToggleState.userCollapsedLHS = true;
+    $("#mainPanel").removeClass("lhs-collapsed");
+    widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+    breakpointChangeHandler();
+
+    expect(mockReapplyLeftPanelVisibilityForViewport).toHaveBeenCalled();
+    expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(true);
+  });
+
+  it("leaves mainPanel expanded on desktop re-entry when no collapse intent", () => {
+    mockLeftPanelToggleState.userCollapsedLHS = false;
+    $("#mainPanel").addClass("lhs-collapsed");
+    widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+    breakpointChangeHandler();
+
+    expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(false);
   });
 });
