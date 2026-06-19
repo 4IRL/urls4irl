@@ -1,0 +1,714 @@
+/* Cross-UTub search mode overlay.
+   Styling mirrors the app's existing dark theme: panel/card surfaces from
+   tokens.css, URL-card text conventions (.urlTitle / .urlString), tag pills
+   (.tagBadge), green deck headers, and the rounded green-focus search input.
+   All colors come from the shared design tokens in styles/tokens.css. */
+
+/* Centered, max-width results column — never edge-to-edge. */
+#crossUtubSearchResults {
+    max-width: 880px;
+    margin-inline: auto;
+    width: 100%;
+}
+
+/* Group section: one per source UTub. Heading mirrors the green deck headers. */
+.crossSearchGroup {
+    margin-bottom: var(--space-6);
+}
+
+.crossSearchGroupHeading {
+    font-size: var(--fs-lg);
+    font-weight: var(--fw-bold);
+    color: var(--deckHeaderGreen);
+    margin-bottom: var(--space-2);
+    padding-bottom: var(--space-1);
+    border-bottom: 1px solid var(--borderColor);
+}
+
+/* Read-only result card — same surface/border/radius language as URL cards.
+   `position: relative` anchors the absolutely-positioned top-right go-to icon. */
+.crossSearchHitCard {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-3);
+    margin-bottom: var(--space-2);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    background-color: var(--cardBackgroundColor);
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+/* Hover effects are gated to fine-pointer devices: on touch screens `:hover`
+   sticks after a tap (no pointer-leave), leaving controls highlighted until the
+   user taps elsewhere. */
+@media not all and (any-pointer: coarse) {
+    .crossSearchHitCard:hover {
+        background-color: var(--oddUrlCardsBackgroundColor);
+        border-color: var(--deckSelectionGreenHover);
+    }
+}
+
+.crossSearchHitCard:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Title mirrors .urlTitle (bold, light text). `padding-right` reserves room so
+   a long title never runs under the top-right go-to icon. */
+.crossSearchTitle {
+    margin: 0;
+    padding-right: 2.25rem;
+    font-weight: var(--fw-bold);
+    color: whitesmoke;
+}
+
+/* Top-right go-to (open-URL) icon, always visible (cards are read-only — no
+   hover/selection gating). The card is `position: relative`, so this anchors to
+   its top-right corner. Comfortable icon-only tap target. */
+.crossSearchGoTo {
+    position: absolute;
+    top: var(--space-2);
+    right: var(--space-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    color: var(--deckSelectionGreenHover);
+    text-decoration: none;
+}
+
+.crossSearchGoTo svg {
+    width: 20px;
+    height: 20px;
+}
+
+.crossSearchGoTo:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchGoTo:hover {
+        color: var(--deckSelectionGreen);
+    }
+}
+
+/* URL mirrors .urlString (muted blue-gray, no underline). `align-self:
+   flex-start` keeps the link only as wide as its text within the flex-column
+   card, so its tap target is the URL itself — not the full card width (the rest
+   of the card navigates to the source UTub). */
+.crossSearchUrl {
+    align-self: flex-start;
+    max-width: 100%;
+    padding-right: 2.25rem;
+    color: var(--cardURLTextColor);
+    word-break: break-all;
+    text-decoration: none;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchUrl:hover {
+        text-decoration: underline;
+    }
+}
+
+.crossSearchUrl:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.crossSearchTags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1);
+}
+
+/* Tag badge mirrors .tagBadge — green text on the dark page surface. */
+.crossSearchTag {
+    display: inline-flex;
+    align-items: center;
+    padding: 1px 8px;
+    border-radius: 12px;
+    font-size: var(--fs-sm);
+    white-space: nowrap;
+    color: var(--darkSplashGreen);
+    background: var(--pageBackgroundColor);
+    border: 1px solid var(--borderColor);
+}
+
+/* The exact substring within a field that matched the query. Uses the app's
+   amber accent (not green) so the highlight stays distinct from the green UTub
+   group heading directly above each card; black text for high contrast. */
+.crossSearchMatch {
+    background-color: var(--editURLColor);
+    color: black;
+    font-weight: var(--fw-bold);
+    border-radius: 3px;
+    padding: 0 1px;
+}
+
+/* Empty states mirror #URLSearchNoResults (muted, centered, italic). The two
+   states read differently: short-query is quieter; no-results is a touch more
+   prominent and carries the magnifier glyph. */
+#crossUtubSearchShortQuery {
+    color: rgba(255, 255, 255, 0.5);
+    font-style: italic;
+    text-align: center;
+    margin-top: var(--space-4);
+    font-size: var(--fs-lg);
+    letter-spacing: 0.025em;
+}
+
+#crossUtubSearchNoResults {
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    margin-top: var(--space-6);
+    padding: var(--space-4);
+    font-size: var(--fs-lg);
+    letter-spacing: 0.025em;
+}
+
+#crossUtubSearchNoResults::before {
+    content: "🔍";
+    display: block;
+    font-size: var(--fs-2xl);
+    margin-bottom: var(--space-2);
+}
+
+/* Overlay container. Overlays both panels from within <main>. z-index sits
+   BELOW Bootstrap's modal (1050) so a modal always wins ESC/stacking. The
+   solid dark panel surface matches the home decks. */
+#crossUtubSearchMode {
+    position: absolute;
+    inset: 0;
+    z-index: 1040;
+    overflow-y: auto;
+    padding: var(--space-4);
+    color: whitesmoke;
+    background-color: var(--panelBackgroundColor);
+}
+
+#crossUtubSearchHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    max-width: 880px;
+    margin-inline: auto;
+    margin-bottom: var(--space-4);
+}
+
+/* Wraps the input so the clear button can sit inside its right edge. */
+#crossUtubSearchInputWrap {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+}
+
+/* Input mirrors the rounded, green-focus .search-input convention. The extra
+   right padding keeps typed text from running under the clear button. */
+#crossUtubSearchInput {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2) var(--space-4);
+    font-size: var(--fs-md);
+    color: whitesmoke;
+    background: var(--searchInputBackgroundColor);
+    border: 1px solid transparent;
+    border-radius: var(--radius-pill);
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+/* Reserve room for the clear (×) button only when there is text — when empty the
+   button is hidden, so the placeholder gets the full width and isn't clipped. */
+#crossUtubSearchInput.crossSearchHasText {
+    padding-right: 3rem;
+}
+
+#crossUtubSearchInput::placeholder {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Hide the browser-native search cancel control so only the custom clear shows
+   (consistent cross-browser and deterministic under Selenium). */
+#crossUtubSearchInput::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+/* Custom clear-text affordance: a filled circle-× inside the input's right edge,
+   shown only while the input has text (the .hidden class otherwise hides it). */
+#crossUtubSearchClear {
+    position: absolute;
+    right: var(--space-1);
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Generous (40px) hit area for easy tapping; the icon itself stays small and
+       the background is transparent, so the larger target is invisible. */
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.55);
+    transition: color 0.15s ease;
+}
+
+#crossUtubSearchClear svg {
+    width: 1.15rem;
+    height: 1.15rem;
+}
+
+#crossUtubSearchClear:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchClear:hover {
+        color: whitesmoke;
+    }
+}
+
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchInput:hover {
+        border-color: var(--deckSelectionGreenHover);
+    }
+}
+
+#crossUtubSearchInput:focus,
+#crossUtubSearchInput:focus-visible {
+    border-color: var(--deckSelectionGreen);
+}
+
+#crossUtubSearchClose {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    font-size: var(--fs-2xl);
+    line-height: 1;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--cardURLTextColor);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchClose:hover {
+        color: whitesmoke;
+        background-color: var(--cardBackgroundColor);
+    }
+}
+
+#crossUtubSearchClose:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Gear button mirrors the close button: a 2.75rem centered square with a light
+   icon and a hover wash. Opens the search-options modal. */
+#crossUtubSearchSettingsBtn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    line-height: 1;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--cardURLTextColor);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+#crossUtubSearchSettingsBtn svg,
+#crossUtubSearchClose svg {
+    width: 20px;
+    height: 20px;
+}
+
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchSettingsBtn:hover {
+        color: whitesmoke;
+        background-color: var(--cardBackgroundColor);
+    }
+}
+
+#crossUtubSearchSettingsBtn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Hidden/visible transition states. Using opacity + visibility (not display)
+   so the transition runs; visibility:hidden also drops it from the tab order.
+   The transform makes the open/close a deliberate "zoom into one place" motion
+   (the overlay scales up slightly out of the page on close) rather than an
+   instant snap — closing on a result click reads as collapsing back to the UTub. */
+.cross-search-hidden {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transform: scale(1.02);
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease,
+        visibility 0.3s ease;
+}
+
+.cross-search-visible {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: scale(1);
+    transition:
+        opacity 0.3s ease,
+        transform 0.3s ease,
+        visibility 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cross-search-hidden,
+    .cross-search-visible {
+        transform: none;
+        transition: none;
+    }
+}
+
+/* Field-select + ordering controls now live inside the search-options modal
+   (#crossUtubSearchSettingsModal). The rules below style the controls wherever
+   they render; the modal-scoped rules further down lay them out as a vertical
+   list within the modal body. */
+/* One pill chip per searchable field. */
+#crossUtubSearchFieldControls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+.crossSearchFieldRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: var(--space-2) var(--space-3);
+    color: whitesmoke;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-pill);
+    transition: opacity 0.15s ease, border-color 0.15s ease;
+}
+
+/* Excluded fields read as "off" — dimmed with a muted border. */
+.crossSearchFieldRow[data-included="false"] {
+    opacity: 0.55;
+    border-style: dashed;
+}
+
+.crossSearchFieldInclude {
+    accent-color: var(--splashGreen);
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: 0 0 auto;
+    cursor: pointer;
+}
+
+.crossSearchFieldLabel {
+    margin: 0;
+    /* Take the free space so the priority ordinal + reorder arrows are pushed
+       to the right edge of the row. The label toggles its checkbox (for=), so a
+       pointer cursor signals it's interactive and the whole label is the target. */
+    flex: 1;
+    cursor: pointer;
+}
+
+/* Compact priority ordinal (1st / 2nd / 3rd), sitting just left of the arrows. */
+.crossSearchFieldPriority {
+    flex: 0 0 auto;
+    font-size: var(--fs-sm);
+    color: var(--cardURLTextColor);
+}
+
+.crossSearchFieldUp,
+.crossSearchFieldDown {
+    background: none;
+    color: whitesmoke;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    line-height: 1;
+    padding: 0.15rem 0.4rem;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchFieldUp:hover:not([disabled]),
+    .crossSearchFieldDown:hover:not([disabled]) {
+        border-color: var(--deckSelectionGreen);
+        color: var(--deckSelectionGreen);
+    }
+}
+
+.crossSearchFieldUp[disabled],
+.crossSearchFieldDown[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.crossSearchFieldInclude:focus-visible,
+.crossSearchFieldUp:focus-visible,
+.crossSearchFieldDown:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* Recent-searches history list. */
+#crossUtubSearchHistoryList {
+    max-width: 880px;
+    margin-inline: auto;
+    margin-bottom: var(--space-6);
+}
+
+/* Title with the Clear button right beside it on one row. */
+.crossSearchHistoryHeader {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+}
+
+#crossUtubSearchHistoryHeading {
+    font-size: var(--fs-md);
+    font-weight: var(--fw-bold);
+    color: var(--deckHeaderGreen);
+    margin: 0;
+}
+
+/* Compact, short clear button. */
+#crossUtubSearchHistoryClear {
+    flex: 0 0 auto;
+    background: none;
+    color: whitesmoke;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    padding: 1px var(--space-2);
+    font-size: var(--fs-sm);
+    line-height: 1.35;
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+@media not all and (any-pointer: coarse) {
+    #crossUtubSearchHistoryClear:hover {
+        border-color: var(--deckSelectionGreen);
+        color: var(--deckSelectionGreen);
+    }
+}
+
+#crossUtubSearchHistoryClear:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.crossSearchHistoryItems {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.crossSearchHistoryItem {
+    display: flex;
+    align-items: center;
+    gap: var(--space-1);
+}
+
+/* Divider between adjacent recent searches; none below the last row. */
+.crossSearchHistoryItem:not(:last-child) {
+    border-bottom: 1px solid var(--borderColor);
+}
+
+.crossSearchHistoryRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    color: whitesmoke;
+    padding: var(--space-2) var(--space-3);
+    background: none;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: background-color 0.15s ease;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchHistoryRow:hover {
+        background-color: var(--cardBackgroundColor);
+    }
+}
+
+.crossSearchHistoryRow:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.crossSearchHistoryRow .crossSearchHistoryQuery {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Per-row delete button: a small trash icon with a generous (40px) tap target,
+   transparent until hovered (gated to fine pointers, matching this file). */
+.crossSearchHistoryDelete {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    background: none;
+    border: none;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    color: var(--cardURLTextColor);
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.crossSearchHistoryDelete svg {
+    width: 1.05rem;
+    height: 1.05rem;
+}
+
+.crossSearchHistoryDelete:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+@media not all and (any-pointer: coarse) {
+    .crossSearchHistoryDelete:hover {
+        color: var(--removeIconColor);
+        background-color: var(--cardBackgroundColor);
+    }
+}
+
+/* Mobile: ≥44px touch targets for interactive elements. Inline anchors default
+   to inline display and can be smaller than 44px, so flex them. The header is a
+   simple input + close flex row (field controls live in their own section
+   below), so the input keeps full width and the close button stays vertically
+   centered by the header's `align-items: center` — no stacking or absolute
+   positioning needed. */
+@media (max-width: 991.98px) {
+    #crossUtubSearchInput {
+        min-height: 2.75rem;
+    }
+
+    a.crossSearchUrl {
+        min-height: 2.75rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .crossSearchHitCard {
+        min-height: 2.75rem;
+    }
+
+    /* ≥44px touch target for the icon-only go-to affordance on mobile. */
+    .crossSearchGoTo {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    .crossSearchHistoryRow,
+    #crossUtubSearchClose {
+        min-height: 2.75rem;
+    }
+
+    /* The reorder buttons get full touch targets; the checkbox stays compact
+       (its label is the large tap target via the for= association). */
+    .crossSearchFieldUp,
+    .crossSearchFieldDown {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+
+    .crossSearchFieldLabel {
+        min-height: 2.75rem;
+        display: flex;
+        align-items: center;
+    }
+
+    #crossUtubSearchSettingsBtn {
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+    }
+}
+
+/* Dark theming for the search-options modal, scoped to its own id so other
+   Bootstrap modals keep their default light surface. */
+#crossUtubSearchSettingsModal .modal-content {
+    background: var(--panelBackgroundColor);
+    color: whitesmoke;
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-lg);
+}
+
+#crossUtubSearchSettingsModal .modal-header,
+#crossUtubSearchSettingsModal .modal-footer {
+    border-color: var(--borderColor);
+}
+
+#crossUtubSearchSettingsModal .modal-title {
+    color: var(--deckHeaderGreen);
+}
+
+/* Bootstrap's close glyph is a dark SVG, invisible on the dark surface — invert
+   it to a light icon. */
+#crossUtubSearchSettingsModal .btn-close {
+    filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+#crossUtubSearchSettingsModal .crossSearchSettingsIntro {
+    color: whitesmoke;
+    margin-bottom: var(--space-2);
+}
+
+#crossUtubSearchSettingsModal .crossSearchSettingsHelp {
+    color: var(--cardURLTextColor);
+    font-size: var(--fs-sm);
+    padding-left: 1.25rem;
+    margin-bottom: var(--space-4);
+}
+
+#crossUtubSearchSettingsModal .crossSearchSettingsHelp li {
+    margin-bottom: var(--space-1);
+}
+
+/* Inside the modal the field controls lay out as a clear vertical list (one chip
+   per row spanning the modal width) rather than wrapping horizontally. */
+#crossUtubSearchSettingsModal #crossUtubSearchFieldControls {
+    flex-direction: column;
+    align-items: stretch;
+}

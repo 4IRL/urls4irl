@@ -1,0 +1,22 @@
+<div class="modal fade" id="crossUtubSearchSettingsModal" tabindex="-1" role="dialog"
+     aria-labelledby="crossUtubSearchSettingsTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="crossUtubSearchSettingsTitle">Search options</h4>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="crossSearchSettingsIntro">Choose which fields to search and the order they're matched in.</p>
+                <ul class="crossSearchSettingsHelp">
+                    <li><b>Fields</b> — uncheck a field to leave it out of the search (URL, title, or tags).</li>
+                    <li><b>Priority</b> — use the ▲▼ arrows to set which field is matched first; matches in higher-priority fields rank above the rest.</li>
+                </ul>
+                <div id="crossUtubSearchFieldControls"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-success" id="crossUtubSearchSettingsDone" data-bs-dismiss="modal">Done</button>
+            </div>
+        </div>
+    </div>
+</div>

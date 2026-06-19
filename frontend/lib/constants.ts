@@ -12,6 +12,7 @@ export const KEYS = {
   ARROW_UP: "ArrowUp",
   ARROW_DOWN: "ArrowDown",
   SPACE: " ",
+  K: "k",
 } as const;
 
 /**

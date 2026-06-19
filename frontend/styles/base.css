@@ -85,6 +85,61 @@ a {
     border-color: var(--deckHeaderGreen);
 }
 
+/* Standalone cross-UTub search trigger that sits inline next to the hamburger
+   on every viewport. `margin-inline-start: auto` clusters it with the trailing
+   toggler at the right edge on mobile (where the desktop username is hidden);
+   at >=992px the username's own `ms-auto` already does the clustering, so the
+   search button's auto margin is reset to avoid splitting the right-hand group.
+   Icon-only — the <b> label is dropped visually but kept in the DOM for the
+   aria-label / no-CSS fallback. */
+.navbar-cross-search {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-inline-start: auto;
+    margin-inline-end: 6px;
+    padding: 6px 8px;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    color: rgba(255, 255, 255, 0.85);
+    cursor: pointer;
+    transition:
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        color 0.15s ease;
+}
+
+.navbar-cross-search svg {
+    width: 22px;
+    height: 22px;
+}
+
+.navbar-cross-search b {
+    display: none;
+}
+
+/* Hover only on devices with a real (fine) pointer — on touch screens `:hover`
+   sticks after a tap (no pointer-leave), leaving the trigger highlighted until
+   the user taps elsewhere. */
+@media not all and (any-pointer: coarse) {
+    .navbar-cross-search:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: whitesmoke;
+    }
+}
+
+.navbar-cross-search:focus-visible {
+    outline: 2px solid var(--deckHeaderGreen);
+    outline-offset: 2px;
+}
+
+@media (min-width: 992px) {
+    .navbar-cross-search {
+        margin-inline-start: 0;
+    }
+}
+
 .nav-item {
     display: flex;
     flex-direction: row;

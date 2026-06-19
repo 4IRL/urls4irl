@@ -16,6 +16,13 @@ import {
 } from "./utubs/utils.js";
 import { setMemberDeckWhenNoUTubSelected } from "./members/deck.js";
 import { setTagDeckSubheaderWhenNoUTubSelected } from "./tags/deck.js";
+import {
+  exitCrossUtubSearchMode,
+  isCrossUtubSearchActive,
+  restoreCrossUtubSearchFromHistory,
+} from "./search/cross-utub-search.js";
+
+import type { MatchedField } from "../types/search.js";
 
 /**
  * Initialize browser history (popstate) and page load (pageshow) event handlers
@@ -26,7 +33,23 @@ export function initWindowEvents(): void {
 }
 
 function handlePopState(event: PopStateEvent): void {
-  const state = event.state as { UTubID: number } | null;
+  const state = event.state as
+    | { UTubID: number }
+    | { crossSearch: { query: string; fields: MatchedField[] } }
+    | null;
+
+  // Returning to a recorded cross-UTub search: re-open search mode and re-run
+  // the saved query (see pushCrossUtubSearchHistoryState in cross-utub-search).
+  if (state !== null && "crossSearch" in state) {
+    restoreCrossUtubSearchFromHistory(state.crossSearch);
+    return;
+  }
+
+  // Any non-search entry (a UTub or /home) leaves search mode if it is open —
+  // e.g. Forward out of restored results, or Back past them to a UTub.
+  if (isCrossUtubSearchActive()) {
+    exitCrossUtubSearchMode();
+  }
 
   if (state !== null && "UTubID" in state) {
     if (!isUtubIdValidFromStateAccess(state.UTubID)) {

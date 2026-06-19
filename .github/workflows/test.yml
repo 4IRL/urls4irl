@@ -82,6 +82,7 @@ jobs:
           - [17, 'UI Mobile Functional Tests', 2]
           - [18, 'UI Metrics Dashboard Functional Tests', 2]
           - [19, 'UI Settings Functional Tests', 2]
+          - [20, 'UI Cross-UTub Search Functional Tests', 2]
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 

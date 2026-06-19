@@ -296,6 +296,24 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.UI,
         dimensions={"target": ("urls",)},
     ),
+    EventName.UI_CROSS_UTUB_SEARCH_OPEN: EventRegistryEntry(
+        description="Cross-UTub search mode opened",
+        category=EventCategory.UI,
+        dimensions={"target": ("cross_utub",)},
+    ),
+    EventName.UI_CROSS_UTUB_SEARCH_CLOSE: EventRegistryEntry(
+        description="Cross-UTub search mode closed",
+        category=EventCategory.UI,
+        dimensions={"target": ("cross_utub",)},
+    ),
+    EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: EventRegistryEntry(
+        description="URL opened from cross-UTub search results",
+        category=EventCategory.UI,
+        dimensions={
+            "target": ("cross_utub",),
+            "trigger": ("url_text", "corner_button"),
+        },
+    ),
     EventName.UI_TAG_APPLY: EventRegistryEntry(
         description="Tag applied from picker",
         category=EventCategory.UI,

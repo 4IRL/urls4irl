@@ -17,6 +17,7 @@ import { initMobileLayout } from "./home/mobile.js";
 import { initWindowEvents } from "./home/window-events.js";
 import { initCollapsibleDecks } from "./home/collapsible-decks.js";
 import { setUTubEventListenersOnInitialPageLoad } from "./home/utubs/deck.js";
+import { initCrossUtubSearch } from "./home/search/cross-utub-search.js";
 import { setCreateUTubEventListeners } from "./home/utubs/create.js";
 import { initUnselectAllTags } from "./home/tags/unselect-all.js";
 import { initUpdateAllTags } from "./home/tags/update-all.js";
@@ -40,6 +41,7 @@ $(document).ready(() => {
   initCollapsibleDecks();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();
+  initCrossUtubSearch();
   initUnselectAllTags();
   initUpdateAllTags();
   initURLDeck();

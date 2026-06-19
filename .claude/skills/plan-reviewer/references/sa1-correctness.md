@@ -10,6 +10,7 @@
 - Does the plan delete or modify things that other modules depend on? Grep for usages of any deleted/renamed symbol.
 - Are type annotations correct per the codebase's actual types?
 - **Function name existence check (required for every code block):** For every function call that appears in a plan's code block or snippet — especially success/failure handler bodies — grep the codebase to confirm the function exists. A fabricated or misremembered name (e.g., `showSplashFlashBanner` instead of `showSplashModalAlertBanner`) produces a runtime `ReferenceError` that no TypeScript check catches. Flag as **Critical** if grep returns zero matches.
+- **Named-symbol presence/absence requires a file read (required):** Any claim that a named symbol — constant, union member, function, class, attribute, or route identifier — exists, is absent, or lives at a specific location MUST be backed by an actual Read or Grep of that file. Never assert presence or absence from plan prose, from another reviewer's claim, or from inference. If you have not read the file, do not make the claim — open the file first.
 
 **Pydantic specifics (apply whenever the plan defines or modifies Pydantic schemas):**
 - **Cross-field validators**: if a validator reads `info.data.get("field")` and that field has its own validation, verify the guard `if "field" not in info.data: return value` is present. Pydantic v2 omits failed fields from `info.data`, so without the guard a spurious second error fires.
