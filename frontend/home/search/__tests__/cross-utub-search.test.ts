@@ -270,6 +270,55 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(xhr.abort).toHaveBeenCalledTimes(1);
   });
 
+  it("(b1d) a completed request clears _inFlight via .always, so the next submit does NOT abort it", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    // jQuery fires .always AFTER the request settles, not during chaining, so
+    // capture the production callback and invoke it once the first submit has
+    // assigned _inFlight — mirroring a real async completion. (buildDoneXhr's
+    // .always only returns this and never nulls _inFlight.)
+    let firstAlwaysCallback: (() => void) | null = null;
+    function buildSettlingXhr(
+      onAlways: (cb: () => void) => void,
+    ): JQuery.jqXHR {
+      return {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockReturnThis(),
+        always: vi.fn(function (this: JQuery.jqXHR, cb: () => void) {
+          onAlways(cb);
+          return this;
+        }),
+        abort: vi.fn(),
+      } as unknown as JQuery.jqXHR;
+    }
+    const xhr1 = buildSettlingXhr((cb) => {
+      firstAlwaysCallback = cb;
+    });
+    const xhr2 = buildSettlingXhr(() => {});
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce(xhr1)
+      .mockReturnValueOnce(xhr2);
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    // The first request settles (its .always runs, nulling _inFlight) before
+    // the second submit fires.
+    firstAlwaysCallback!();
+    $("#crossUtubSearchInput").trigger(enter);
+
+    // _inFlight was already null when the second submit ran, so the first
+    // request's abort was never called.
+    expect(ajaxCall).toHaveBeenCalledTimes(2);
+    expect(xhr1.abort).not.toHaveBeenCalled();
+    expect(xhr2.abort).not.toHaveBeenCalled();
+  });
+
   it("(b2) a non-default field selection appends the &fields= query param", async () => {
     const { ajaxCall } = await import("../../../lib/ajax.js");
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
