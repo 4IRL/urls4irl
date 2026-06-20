@@ -1,4 +1,6 @@
-import { isValidUTubID } from "../utils.js";
+import { isValidUTubID, updateUTubDeckCount } from "../utils.js";
+
+const $ = window.jQuery;
 
 describe("isValidUTubID", () => {
   describe("returns true for valid positive integer strings", () => {
@@ -55,5 +57,33 @@ describe("isValidUTubID", () => {
     it("rejects null", () => {
       expect(isValidUTubID(null)).toBe(false);
     });
+  });
+});
+
+describe("updateUTubDeckCount", () => {
+  it("renders the inline total of UTubs, including filter-hidden ones", () => {
+    document.body.innerHTML = `
+      <span id="UTubDeckCount"></span>
+      <div id="listUTubs">
+        <div class="UTubSelector" utubid="1"></div>
+        <div class="UTubSelector" utubid="2"></div>
+        <div class="UTubSelector hidden" utubid="3"></div>
+      </div>
+    `;
+
+    updateUTubDeckCount();
+
+    expect($("#UTubDeckCount").text()).toBe("(3)");
+  });
+
+  it("renders (0) when there are no UTubs", () => {
+    document.body.innerHTML = `
+      <span id="UTubDeckCount"></span>
+      <div id="listUTubs"></div>
+    `;
+
+    updateUTubDeckCount();
+
+    expect($("#UTubDeckCount").text()).toBe("(0)");
   });
 });

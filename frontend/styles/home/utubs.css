@@ -151,9 +151,38 @@
     order: 1;
 }
 
+/* Vertical breathing room around the revealed UTub search input, matching the
+   room the URL filter band's min-height gives its input. Lives on the wrap (not
+   the band) so it only takes space when open — the wrap is display:none while
+   collapsed — and so it never animates the band open. */
+#SearchUTubWrap {
+    padding-block: 4px;
+}
+
 @media (max-width: 991.98px) {
     #SearchURLWrap.search-ready:not(.visible-flex) {
         display: none !important;
+    }
+
+    /* UTub name filter is desktop-only: on mobile the search stays always
+       visible (handled by the base markup) and the toggle buttons are hidden. */
+    #utubNameFilterBtn,
+    #utubNameFilterBtnClose {
+        display: none;
+    }
+}
+
+@media (min-width: 992px) {
+    /* Desktop: the UTub name search hides behind the funnel toggle. Until opened,
+       hide the input so the (content-driven) subheader band reclaims the space. */
+    #UTubDeck:not(.utub-search-open) #SearchUTubWrap {
+        display: none;
+    }
+
+    /* Content-driven height (no min-height) so the band sizes instantly to the
+       search input on open — avoids animating min-height 0 -> 2.25rem. */
+    #UTubDeck .dynamic-subheader {
+        min-height: 0;
     }
 }
 

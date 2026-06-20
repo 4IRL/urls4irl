@@ -229,6 +229,35 @@ def test_leave_utub(
         browser.find_element(By.CSS_SELECTOR, HPL.SELECTOR_SELECTED_UTUB)
 
 
+def test_leave_button_hidden_after_leaving_utub(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user is a member of a UTub (with other UTubs remaining)
+    WHEN they leave the UTub, after which no UTub is selected
+    THEN the leave-UTub button (memberSelfBtnDelete) must not be displayed
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_member_of.name
+    )
+
+    # Before-state: the leave button is visible while the member's UTub is selected
+    leave_btn = wait_then_get_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+    assert leave_btn is not None
+    assert leave_btn.is_displayed()
+
+    leave_utub_as_member(browser, utub_user_member_of)
+
+    # After leaving, no UTub is selected, so the leave button must be hidden again
+    leave_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_UTUB_LEAVE)
+    assert not leave_btn.is_displayed()
+
+
 def test_leave_utub_rate_limits(
     browser: WebDriver,
     create_test_utubmembers,

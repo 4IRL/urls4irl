@@ -147,15 +147,20 @@ function createMemberShowInput(utubID: number): void {
 // Hides new Member input fields
 export function createMemberHideInput(): void {
   $("#createMemberWrap").hideClass();
-  $("#displayMemberWrap").showClassFlex();
-  // Only the UTub owner may add members — restore the correct control for the
-  // current user's role rather than always re-showing the add-member button.
-  if (getState().isCurrentUserOwner) {
-    $("#memberSelfBtnDelete").hideClass();
-    $("#memberBtnCreate").showClassNormal();
-  } else {
-    $("#memberBtnCreate").hideClass();
-    $("#memberSelfBtnDelete").showClassNormal();
+  // Only restore the member display + a role-appropriate control when a UTub is
+  // actually selected. Without this guard, the post-leave/delete cleanup path
+  // (hideInputs) would re-show the leave/add button after the deck was reset.
+  if (getState().activeUTubID !== null) {
+    $("#displayMemberWrap").showClassFlex();
+    // Only the UTub owner may add members — restore the correct control for the
+    // current user's role rather than always re-showing the add-member button.
+    if (getState().isCurrentUserOwner) {
+      $("#memberSelfBtnDelete").hideClass();
+      $("#memberBtnCreate").showClassNormal();
+    } else {
+      $("#memberBtnCreate").hideClass();
+      $("#memberSelfBtnDelete").showClassNormal();
+    }
   }
   removeCreateMemberEventListeners();
   resetCreateMemberFailErrors();

@@ -56,6 +56,9 @@
 #UTubNameSearch.search-input.text-input[type="search"] {
     width: 100%;
     opacity: 1;
+    /* Always full-width (no expand animation like the URL filter), so it appears
+       in place instantly rather than animating width/opacity on reveal. */
+    transition: none;
 }
 
 #UTubNameSearch+.text-input-label {

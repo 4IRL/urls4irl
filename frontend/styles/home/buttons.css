@@ -39,12 +39,16 @@
     margin-right: 4px;
 }
 
-#URLSearchFilterIcon>svg {
+#URLSearchFilterIcon>svg,
+#utubNameFilterBtn>svg {
     fill: var(--grayBadgeSelection);
+    transition: fill 0.15s ease;
 }
 
-#URLSearchFilterIconClose>svg {
+#URLSearchFilterIconClose>svg,
+#utubNameFilterBtnClose>svg {
     fill: var(--spanRemoveColor);
+    transition: fill 0.15s ease;
 }
 
 .button-container {
@@ -81,11 +85,13 @@
         background: var(--removeIconColorHover);
     }
 
-    #URLSearchFilterIcon:hover>svg {
+    #URLSearchFilterIcon:hover>svg,
+    #utubNameFilterBtn:hover>svg {
         fill: var(--deckSelectionGreenHover);
     }
 
-    #URLSearchFilterIconClose:hover>svg {
+    #URLSearchFilterIconClose:hover>svg,
+    #utubNameFilterBtnClose:hover>svg {
         fill: var(--spanRemoveColorHover);
     }
 

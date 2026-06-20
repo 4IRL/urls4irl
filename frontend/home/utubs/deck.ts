@@ -10,10 +10,12 @@ import {
 } from "./selectors.js";
 import {
   hideUTubSearchBar,
+  setUTubNameFilterToggleListeners,
   setUTubSelectorSearchEventListener,
   showUTubSearchBar,
 } from "./search.js";
 import { setDeleteEventListeners } from "./delete.js";
+import { updateUTubDeckCount } from "./utils.js";
 
 // Utility function to show a loading icon when loading UTubs
 export function showUTubLoadingIconAndSetTimeout(): number {
@@ -75,6 +77,8 @@ export function setUTubEventListenersOnInitialPageLoad(): void {
     setUTubSelectorEventListeners(utubs[index]);
   }
   setUTubSelectorSearchEventListener();
+  setUTubNameFilterToggleListeners();
+  updateUTubDeckCount();
 }
 
 export function resetUTubDeckIfNoUTubs(): void {

@@ -1,7 +1,10 @@
 import {
+  closeUTubNameFilter,
   hideUTubSearchBar,
   isUTubSearchActive,
+  openUTubNameFilter,
   resetUTubSearch,
+  setUTubNameFilterToggleListeners,
   setUTubSelectorSearchEventListener,
   showUTubSearchBar,
 } from "../search.js";
@@ -17,21 +20,25 @@ vi.mock("../../../logic/utub-search.js", () => ({
 const $ = window.jQuery;
 
 const SEARCH_HTML = `
-  <div id="UTubDeckSubheader" class="hidden">Create a UTub</div>
-  <div id="SearchUTubWrap">
-    <div class="text-input-inner-container">
-      <span class="utub-search-prefix-icon" aria-hidden="true"></span>
-      <input id="UTubNameSearch" type="search" value="" />
-      <label class="text-input-label" for="UTubNameSearch">Search UTub Names</label>
+  <div id="UTubDeck">
+    <button id="utubNameFilterBtn"></button>
+    <button id="utubNameFilterBtnClose" class="hidden"></button>
+    <div id="UTubDeckSubheader" class="hidden">Create a UTub</div>
+    <div id="SearchUTubWrap">
+      <div class="text-input-inner-container">
+        <span class="utub-search-prefix-icon" aria-hidden="true"></span>
+        <input id="UTubNameSearch" type="search" value="" />
+        <label class="text-input-label" for="UTubNameSearch">Search UTub Names</label>
+      </div>
     </div>
-  </div>
-  <p id="UTubSearchNoResults" class="hidden"></p>
-  <span id="UTubSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
-  <button id="memberBtnCreate"></button>
-  <div id="listUTubs">
-    <div class="UTubSelector" utubid="1"><span class="UTubName">Alpha</span></div>
-    <div class="UTubSelector" utubid="2"><span class="UTubName">Beta</span></div>
-    <div class="UTubSelector" utubid="3"><span class="UTubName">Gamma</span></div>
+    <p id="UTubSearchNoResults" class="hidden"></p>
+    <span id="UTubSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
+    <button id="memberBtnCreate"></button>
+    <div id="listUTubs">
+      <div class="UTubSelector" utubid="1"><span class="UTubName">Alpha</span></div>
+      <div class="UTubSelector" utubid="2"><span class="UTubName">Beta</span></div>
+      <div class="UTubSelector" utubid="3"><span class="UTubName">Gamma</span></div>
+    </div>
   </div>
 `;
 
@@ -235,6 +242,43 @@ describe("UTub Search", () => {
         expect($(this).hasClass("hidden")).toBe(false);
       });
       expect($("#UTubSearchNoResults").hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("UTub name filter toggle", () => {
+    it("openUTubNameFilter opens the filter and swaps the toggle buttons", () => {
+      openUTubNameFilter();
+
+      expect($("#UTubDeck").hasClass("utub-search-open")).toBe(true);
+      expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(true);
+      expect($("#utubNameFilterBtnClose").hasClass("hidden")).toBe(false);
+    });
+
+    it("closeUTubNameFilter collapses the filter and resets the search", () => {
+      vi.mocked(filterUTubsByName).mockReturnValue([2]);
+      openUTubNameFilter();
+      $("#UTubNameSearch").val("alpha").trigger("input");
+      expect($('.UTubSelector[utubid="2"]').hasClass("hidden")).toBe(true);
+
+      closeUTubNameFilter();
+
+      expect($("#UTubDeck").hasClass("utub-search-open")).toBe(false);
+      expect($("#utubNameFilterBtnClose").hasClass("hidden")).toBe(true);
+      expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(false);
+      expect($("#UTubNameSearch").val()).toBe("");
+      $(".UTubSelector").each(function () {
+        expect($(this).hasClass("hidden")).toBe(false);
+      });
+    });
+
+    it("setUTubNameFilterToggleListeners wires the funnel and close buttons", () => {
+      setUTubNameFilterToggleListeners();
+
+      $("#utubNameFilterBtn").trigger("click");
+      expect($("#UTubDeck").hasClass("utub-search-open")).toBe(true);
+
+      $("#utubNameFilterBtnClose").trigger("click");
+      expect($("#UTubDeck").hasClass("utub-search-open")).toBe(false);
     });
   });
 });
