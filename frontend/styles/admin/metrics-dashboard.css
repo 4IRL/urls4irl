@@ -925,22 +925,55 @@
     gap: 1rem;
 }
 
+/* The percentile table renders as responsive cards at EVERY width — the column
+ * table truncated endpoint names on any narrow-ish screen. The header row is
+ * hidden (its labels move into each cell via data-label) and each endpoint is a
+ * card: full (wrapping) name as a heading, then one labeled "label  value" line
+ * per metric. tbody is an auto-fill grid so cards flow into multiple columns on
+ * wide screens and collapse to a single column on phones. */
 .latency-table {
+    display: block;
     width: 100%;
 }
 
-.latency-table th.metric,
-.latency-table td.metric,
-.latency-table th.samples,
-.latency-table td.samples {
-    text-align: right;
+.latency-table thead {
+    /* Labels live in each cell's data-label; keep the header in the a11y tree
+     * (table aria-label + per-row aria) but remove it visually. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
     white-space: nowrap;
+}
+
+.latency-table tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+
+.latency-table tr {
+    display: block;
+}
+
+.latency-table td {
+    display: block;
+    width: 100%;
+}
+
+/* The empty-state / no-match row spans the full grid width. */
+.MetricsLatencyEmptyRow {
+    grid-column: 1 / -1;
 }
 
 .latency-row {
     cursor: pointer;
     /* 44px min touch target for the clickable row (the row IS the widget). */
     min-height: 44px;
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
 }
 
 .latency-row:hover,
@@ -951,17 +984,34 @@
 
 .latency-row--selected {
     background-color: var(--panelHoverBackgroundColor, rgba(0, 0, 0, 0.06));
-}
-
-.latency-row--selected td:first-child {
-    box-shadow: inset 3px 0 0 0 var(--splashGreen);
+    border-color: var(--splashGreen);
+    box-shadow: inset 0 0 0 1px var(--splashGreen);
 }
 
 .latency-table td.endpoint {
-    max-width: 22rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    word-break: break-word;
+    font-weight: 600;
+    padding-bottom: 0.25rem;
+    margin-bottom: 0.25rem;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+.latency-table td.metric,
+.latency-table td.samples {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
     white-space: nowrap;
+    padding: 0.15rem 0;
+}
+
+.latency-table td.metric::before,
+.latency-table td.samples::before {
+    content: attr(data-label);
+    color: var(--cardURLTextColor);
+    font-size: 0.8rem;
+    text-align: left;
 }
 
 .latency-detail {
@@ -993,79 +1043,6 @@
 .MetricsLatencyLegendLabel {
     font-size: 0.7rem;
     fill: var(--cardURLTextColor);
-}
-
-/* Mobile: the 5-column percentile table truncates endpoint names to
- * uselessness on a phone. Below 576px each row collapses into a stacked card —
- * the full (wrapping) endpoint name as a heading, then one labeled line per
- * metric (label + unit via `data-label`, value right-aligned). The detail
- * chart still renders beneath, unchanged. */
-@media (max-width: 575.98px) {
-    .latency-table thead {
-        /* Header labels move into each cell's data-label; hide the row but keep
-         * it for screen readers via the table's aria-label + per-row aria. */
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip: rect(0 0 0 0);
-        white-space: nowrap;
-    }
-
-    .latency-table,
-    .latency-table tbody,
-    .latency-table tr,
-    .latency-table td {
-        display: block;
-        width: 100%;
-    }
-
-    .latency-row {
-        border: 1px solid var(--borderColor);
-        border-radius: 8px;
-        padding: 0.5rem 0.75rem;
-        margin-bottom: 0.5rem;
-    }
-
-    .latency-row--selected td:first-child {
-        /* The whole card is the selected widget on mobile — drop the
-         * desktop inset bar in favor of a full-card accent border. */
-        box-shadow: none;
-    }
-
-    .latency-row--selected {
-        border-color: var(--splashGreen);
-        box-shadow: inset 0 0 0 1px var(--splashGreen);
-    }
-
-    .latency-table td.endpoint {
-        max-width: none;
-        white-space: normal;
-        overflow: visible;
-        text-overflow: clip;
-        word-break: break-word;
-        font-weight: 600;
-        padding-bottom: 0.25rem;
-        margin-bottom: 0.25rem;
-        border-bottom: 1px solid var(--borderColor);
-    }
-
-    .latency-table td.metric,
-    .latency-table td.samples {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        text-align: right;
-        padding: 0.15rem 0;
-    }
-
-    .latency-table td.metric::before,
-    .latency-table td.samples::before {
-        content: attr(data-label);
-        color: var(--cardURLTextColor);
-        font-size: 0.8rem;
-        text-align: left;
-    }
 }
 
 .flow-header {

@@ -611,7 +611,7 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
     ), "The prompt must be replaced by the chart once a row is selected."
 
 
-def test_latency_tab_endpoint_names_not_truncated_on_mobile(
+def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
     browser: WebDriver,
     create_test_users,
     provide_app: Flask,
@@ -620,17 +620,19 @@ def test_latency_tab_endpoint_names_not_truncated_on_mobile(
 ):
     """
     GIVEN the autouse `seeded_metrics` fixture has seeded AnonymousLatencySamples
-        rows and the browser viewport is a phone width (below the 576px card
-        breakpoint)
-    WHEN an admin opens `/admin/metrics` and activates the Backend Performance
-        (Latency) tab
-    THEN the percentile table collapses to the stacked-card layout: the column
-        header row is hidden, each endpoint name renders in full (no horizontal
-        overflow / ellipsis), and every percentile value carries its column
-        label + `ms` unit via the `data-label` `::before`.
+        rows
+    WHEN an admin opens `/admin/metrics`, activates the Backend Performance
+        (Latency) tab, and views it at BOTH a wide desktop and a phone width
+    THEN at every width the percentile table renders as cards (no column table):
+        the header row is hidden, value cells lay out as flex "label value"
+        rows carrying the `ms` unit via `data-label`, and each endpoint name
+        renders in full with no horizontal overflow / ellipsis.
     """
-    # Phone-width viewport, set before navigation so the page lays out as cards.
-    browser.set_window_size(390, 844)
+    # Wide desktop first — the originally-reported truncation happened here, not
+    # only on phones — then a phone width. Cards must hold at both.
+    desktop_width = (1280, 900)
+    phone_width = (390, 844)
+    browser.set_window_size(*desktop_width)
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
@@ -644,52 +646,60 @@ def test_latency_tab_endpoint_names_not_truncated_on_mobile(
         browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
     )
 
-    latency_rows = wait_then_get_at_least_n_elements(
+    wait_then_get_at_least_n_elements(
         browser,
         MDL.LATENCY_ROW,
         minimum_count=EXPECTED_LATENCY_ROW_COUNT,
         time=LATENCY_RENDER_TIMEOUT,
     )
 
-    # Card mode is active: value cells lay out as flex rows (label + value)
-    # rather than table cells. (The header row is visually hidden via clip for
-    # screen readers, so geometry — not is_displayed — is the reliable signal.)
-    sample_metric_cell = latency_rows[0].find_element(By.CSS_SELECTOR, "td.metric")
-    metric_display = browser.execute_script(
-        "return window.getComputedStyle(arguments[0]).display;", sample_metric_cell
-    )
-    assert (
-        metric_display == "flex"
-    ), f"Mobile metric cells must render as flex card rows; got '{metric_display}'."
+    for width, height in (desktop_width, phone_width):
+        browser.set_window_size(width, height)
+        latency_rows = browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)
+        assert len(latency_rows) == EXPECTED_LATENCY_ROW_COUNT
 
-    for row in latency_rows:
-        endpoint_cell = row.find_element(By.CSS_SELECTOR, "td.endpoint")
-        # The full endpoint label is present (method + path), not an ellipsis.
-        expected_endpoint = row.get_attribute("data-endpoint")
-        assert expected_endpoint in endpoint_cell.text, (
-            f"Endpoint cell '{endpoint_cell.text}' must contain the full "
-            f"endpoint '{expected_endpoint}'."
+        # Card mode is active: value cells lay out as flex rows (label + value)
+        # rather than table cells. (The header row is visually hidden via clip
+        # for screen readers, so geometry — not is_displayed — is the signal.)
+        sample_metric_cell = latency_rows[0].find_element(By.CSS_SELECTOR, "td.metric")
+        metric_display = browser.execute_script(
+            "return window.getComputedStyle(arguments[0]).display;",
+            sample_metric_cell,
         )
-        assert (
-            "…" not in endpoint_cell.text and "..." not in endpoint_cell.text
-        ), "Endpoint name must not be truncated on mobile."
-        # The wrapping cell must not overflow its box (truncation produces
-        # scrollWidth > clientWidth; a wrapping cell stays within its box).
-        overflowed = browser.execute_script(
-            "return arguments[0].scrollWidth > arguments[0].clientWidth + 1;",
-            endpoint_cell,
+        assert metric_display == "flex", (
+            f"At {width}px metric cells must render as flex card rows; "
+            f"got '{metric_display}'."
         )
-        assert not overflowed, "Endpoint cell overflows (truncated) on mobile."
 
-        # Each percentile value surfaces its column label + unit via ::before.
-        p50_cell = row.find_elements(By.CSS_SELECTOR, "td.metric")[0]
-        before_content = browser.execute_script(
-            "return window.getComputedStyle(arguments[0], '::before').content;",
-            p50_cell,
-        )
-        assert (
-            "ms" in before_content
-        ), f"Mobile metric label must include the 'ms' unit; got {before_content}."
+        for row in latency_rows:
+            endpoint_cell = row.find_element(By.CSS_SELECTOR, "td.endpoint")
+            # The full endpoint label is present (method + path), not an ellipsis.
+            expected_endpoint = row.get_attribute("data-endpoint")
+            assert expected_endpoint in endpoint_cell.text, (
+                f"Endpoint cell '{endpoint_cell.text}' must contain the full "
+                f"endpoint '{expected_endpoint}' at {width}px."
+            )
+            assert (
+                "…" not in endpoint_cell.text and "..." not in endpoint_cell.text
+            ), f"Endpoint name must not be truncated at {width}px."
+            # The wrapping cell must not overflow its box (truncation produces
+            # scrollWidth > clientWidth; a wrapping cell stays within its box).
+            overflowed = browser.execute_script(
+                "return arguments[0].scrollWidth > arguments[0].clientWidth + 1;",
+                endpoint_cell,
+            )
+            assert not overflowed, f"Endpoint cell overflows (truncated) at {width}px."
+
+            # Each percentile value surfaces its column label + unit via ::before.
+            p50_cell = row.find_elements(By.CSS_SELECTOR, "td.metric")[0]
+            before_content = browser.execute_script(
+                "return window.getComputedStyle(arguments[0], '::before').content;",
+                p50_cell,
+            )
+            assert "ms" in before_content, (
+                f"Metric label must include the 'ms' unit at {width}px; "
+                f"got {before_content}."
+            )
 
 
 def test_latency_tab_renders_empty_state_with_no_samples(
