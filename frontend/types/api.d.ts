@@ -174,6 +174,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/metrics/query/latency": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return per-(endpoint, method) p50/p95/p99 request-latency percentiles for an admin time window. */
+    get: operations["queryLatency"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/metrics/query/latency/timeseries": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Return zero-filled per-bucket p50/p95/p99 request-latency percentiles for one endpoint over an admin time window. */
+    get: operations["queryLatencyTimeseries"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/search": {
     parameters: {
       query?: never;
@@ -1001,6 +1035,124 @@ export interface components {
       window_end: string;
       /** @description One series per gauge that has samples in the window */
       gauges: components["schemas"]["GaugeSeries"][];
+    };
+    /**
+     * @description One row of the `latency` query response — per-(endpoint, method) percentiles.
+     *
+     *     `p50`/`p95`/`p99` are exact percentiles computed via Postgres
+     *     `percentile_cont` over the raw `durationMs` samples in the window. They are
+     *     null only for a degenerate empty group (no samples), which the query never
+     *     returns — so in practice each row carries three floats plus a count.
+     */
+    LatencyPercentileRow: {
+      /**
+       * @description Flask endpoint name the samples were attributed to (e.g. utubs.get_utub).
+       * @default null
+       */
+      endpoint: string | null;
+      /**
+       * @description HTTP method (GET, POST, etc.).
+       * @default null
+       */
+      method: string | null;
+      /**
+       * @description Median request duration in ms; null when no samples.
+       * @default null
+       */
+      p50: number | null;
+      /**
+       * @description 95th-percentile request duration in ms; null when no samples.
+       * @default null
+       */
+      p95: number | null;
+      /**
+       * @description 99th-percentile request duration in ms; null when no samples.
+       * @default null
+       */
+      p99: number | null;
+      /** @description Number of raw samples aggregated into this row's percentiles. */
+      sample_count: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/latency`. */
+    LatencyPercentilesResponseSchema: {
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /** @description Per-(endpoint, method) percentile rows ordered by p95 descending. */
+      rows: components["schemas"]["LatencyPercentileRow"][];
+    };
+    /**
+     * @description One bucket of the `latency/timeseries` query response.
+     *
+     *     A zero-fill bucket (no samples in that interval) carries
+     *     `p50 = p95 = p99 = None` and `sample_count = 0`; the renderer breaks the
+     *     polyline at null buckets rather than charting a zero-latency point.
+     */
+    LatencyTimeseriesBucket: {
+      /**
+       * Format: date-time
+       * @description Bucket start (UTC, date_trunc'd to resolution).
+       */
+      bucket: string;
+      /**
+       * @description Median duration in ms for this bucket; null when empty.
+       * @default null
+       */
+      p50: number | null;
+      /**
+       * @description 95th-percentile duration in ms for this bucket; null when empty.
+       * @default null
+       */
+      p95: number | null;
+      /**
+       * @description 99th-percentile duration in ms for this bucket; null when empty.
+       * @default null
+       */
+      p99: number | null;
+      /** @description Number of samples in this bucket. */
+      sample_count: number;
+    };
+    /** @description Envelope returned by `GET /api/metrics/query/latency/timeseries`. */
+    LatencyTimeseriesResponseSchema: {
+      /**
+       * @description Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead.
+       * @default null
+       */
+      window: string | null;
+      /**
+       * Format: date-time
+       * @description Inclusive UTC start of the window
+       */
+      window_start: string;
+      /**
+       * Format: date-time
+       * @description Exclusive UTC end of the window
+       */
+      window_end: string;
+      /**
+       * @description Flask endpoint name the series is filtered to.
+       * @default null
+       */
+      endpoint: string | null;
+      /**
+       * @description HTTP method the series is filtered to, if any.
+       * @default null
+       */
+      method: string | null;
+      /** @description Zero-filled per-bucket percentile series in chronological order. */
+      buckets: components["schemas"]["LatencyTimeseriesBucket"][];
     };
     /** @enum {string} */
     MatchedField: "url" | "title" | "tag";
@@ -2140,6 +2292,136 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["GaugesTimeseriesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryLatency: {
+    parameters: {
+      query?: {
+        /** @description Latency metric to query; defaults to api_request_duration. */
+        metric_name?: "api_request_duration";
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+        /** @description Optional Flask endpoint name to narrow the percentile rows to. */
+        endpoint?: string;
+        /** @description Optional HTTP method (GET, POST, etc.) to narrow the rows to. */
+        method?: string;
+        /** @description Optional device-type filter (1=mobile, 2=desktop). */
+        device_type?: components["schemas"]["DeviceType"];
+        /** @description Maximum number of percentile rows to return (1-200). */
+        limit?: number;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/latency`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["LatencyPercentilesResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  queryLatencyTimeseries: {
+    parameters: {
+      query: {
+        /** @description Latency metric to query; defaults to api_request_duration. */
+        metric_name?: "api_request_duration";
+        /** @description Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`. */
+        window?: string;
+        /** @description Inclusive start of an absolute range (ISO-8601 with timezone — e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`. */
+        start?: string;
+        /** @description Exclusive end of an absolute range (ISO-8601 with timezone — same format as `start`). Must be paired with `start` and is mutually exclusive with `window`. */
+        end?: string;
+        /** @description Flask endpoint name the latency series is charted for (required). */
+        endpoint: string;
+        /** @description Optional HTTP method (GET, POST, etc.) to narrow the series to. */
+        method?: string;
+        /** @description date_trunc resolution: hour (default) or day. */
+        resolution?: "hour" | "day";
+        /** @description Optional device-type filter (1=mobile, 2=desktop). */
+        device_type?: components["schemas"]["DeviceType"];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Envelope returned by `GET /api/metrics/query/latency/timeseries`. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["LatencyTimeseriesResponseSchema"];
         };
       };
       /** @description Bad request */

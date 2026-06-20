@@ -21,8 +21,10 @@ from backend.metrics.gauges import (
     GAUGE_REGISTRY,
     GaugeName,
 )
+from backend.metrics.latency import LatencyMetricName
 from backend.metrics.resources import Resource, resource_filter_clause
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
@@ -31,6 +33,8 @@ from backend.schemas.metrics import (
     GaugesTimeseriesResponseSchema,
     GroupedTimeseriesBucket,
     GroupedTimeseriesResponseSchema,
+    LatencyPercentileRow,
+    LatencyTimeseriesBucket,
     SummaryCategoryCount,
     TimeseriesBucketSchema,
     TopEventRow,
@@ -920,3 +924,177 @@ def gauge_timeseries_one(
         .all()
     )
     return [_gauge_sample_from_row(row) for row in rows]
+
+
+def _latency_device_type_filter(query: Query, device_type: DeviceType | None) -> Query:
+    """Apply the `device_type` JSONB filter to a latency `query`, or pass through.
+
+    Mirrors `_device_type_filter` but targets `Anonymous_Latency_Samples` —
+    latency stores `device_type` in its own JSONB `dimensions` column, so the
+    cast must reference the latency model rather than `Anonymous_Metrics`.
+    """
+    if device_type is None:
+        return query
+    return query.filter(
+        Anonymous_Latency_Samples.dimensions[DEVICE_TYPE_DIM_KEY].as_integer()
+        == device_type
+    )
+
+
+def _to_float_or_none(value: object) -> float | None:
+    """Cast a Postgres `Numeric` percentile output to `float`, preserving null.
+
+    `percentile_cont` returns a `Decimal` for a non-empty group and `None` for
+    an empty one (zero-fill bucket). Mirrors the `_gauge_sample_from_row`
+    float-cast so the response serializes as a JSON number, never a string.
+    """
+    return None if value is None else float(value)
+
+
+def latency_percentiles(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    metric_name: LatencyMetricName,
+    endpoint: str | None = None,
+    method: str | None = None,
+    device_type: DeviceType | None = None,
+    limit: int,
+) -> list[LatencyPercentileRow]:
+    """Return exact per-(endpoint, method) latency percentiles over the window.
+
+    Computes p50/p95/p99 via Postgres `percentile_cont` over the raw
+    `durationMs` samples in the half-open window `[window_start, window_end)`,
+    grouped by the flat `(endpoint, method)` columns. Rows are ordered by p95
+    descending (slowest endpoints first) and capped at `limit`.
+
+    Optional `endpoint`/`method`/`device_type` narrow the result set the same
+    way the other query helpers do; `metric_name` is compared by `.value` to the
+    stored string column, matching the convention used for `event_name`.
+    """
+    p50 = func.percentile_cont(0.5).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p95 = func.percentile_cont(0.95).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p99 = func.percentile_cont(0.99).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    query = db.session.query(
+        Anonymous_Latency_Samples.endpoint,
+        Anonymous_Latency_Samples.method,
+        p50.label("p50"),
+        p95.label("p95"),
+        p99.label("p99"),
+        func.count().label("sample_count"),
+    ).filter(
+        Anonymous_Latency_Samples.metric_name == metric_name.value,
+        Anonymous_Latency_Samples.observed_at >= window_start,
+        Anonymous_Latency_Samples.observed_at < window_end,
+    )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Latency_Samples.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Latency_Samples.method == method)
+    query = _latency_device_type_filter(query, device_type)
+
+    rows = (
+        query.group_by(
+            Anonymous_Latency_Samples.endpoint, Anonymous_Latency_Samples.method
+        )
+        .order_by(p95.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        LatencyPercentileRow(
+            endpoint=row.endpoint,
+            method=row.method,
+            p50=_to_float_or_none(row.p50),
+            p95=_to_float_or_none(row.p95),
+            p99=_to_float_or_none(row.p99),
+            sample_count=int(row.sample_count),
+        )
+        for row in rows
+    ]
+
+
+def latency_timeseries(
+    *,
+    metric_name: LatencyMetricName,
+    window_start: datetime,
+    window_end: datetime,
+    resolution: Literal["hour", "day"],
+    endpoint: str | None = None,
+    method: str | None = None,
+    device_type: DeviceType | None = None,
+) -> list[LatencyTimeseriesBucket]:
+    """Return zero-filled per-bucket latency percentiles inside the window.
+
+    Buckets the half-open window `[window_start, window_end)` by
+    `date_trunc(resolution, observedAt)` and computes p50/p95/p99 per bucket via
+    `percentile_cont`. Every resolution-aligned bucket inside the window appears
+    in the result — empty buckets carry `p50 = p95 = p99 = None` and
+    `sample_count = 0` so the chart x-axis stays continuous and the renderer can
+    break the polyline at no-data buckets (null, never zero).
+
+    `metric_name` is compared by `.value`; optional `endpoint`/`method`/
+    `device_type` narrow the series. Uses `_truncate_to_resolution` +
+    `_RESOLUTION_STEP` (shared with `timeseries`) to walk the full bucket range.
+    """
+    bucket = func.date_trunc(resolution, Anonymous_Latency_Samples.observed_at).label(
+        "bucket"
+    )
+    p50 = func.percentile_cont(0.5).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p95 = func.percentile_cont(0.95).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p99 = func.percentile_cont(0.99).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    query = db.session.query(
+        bucket,
+        p50.label("p50"),
+        p95.label("p95"),
+        p99.label("p99"),
+        func.count().label("sample_count"),
+    ).filter(
+        Anonymous_Latency_Samples.metric_name == metric_name.value,
+        Anonymous_Latency_Samples.observed_at >= window_start,
+        Anonymous_Latency_Samples.observed_at < window_end,
+    )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Latency_Samples.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Latency_Samples.method == method)
+    query = _latency_device_type_filter(query, device_type)
+
+    rows = query.group_by(bucket).order_by(bucket).all()
+    samples_by_bucket: dict[datetime, LatencyTimeseriesBucket] = {
+        row.bucket: LatencyTimeseriesBucket(
+            bucket=row.bucket,
+            p50=_to_float_or_none(row.p50),
+            p95=_to_float_or_none(row.p95),
+            p99=_to_float_or_none(row.p99),
+            sample_count=int(row.sample_count),
+        )
+        for row in rows
+    }
+
+    step = _RESOLUTION_STEP[resolution]
+    cursor = _truncate_to_resolution(window_start, resolution)
+    filled_buckets: list[LatencyTimeseriesBucket] = []
+    while cursor < window_end:
+        filled_buckets.append(
+            samples_by_bucket.get(
+                cursor,
+                LatencyTimeseriesBucket(
+                    bucket=cursor, p50=None, p95=None, p99=None, sample_count=0
+                ),
+            )
+        )
+        cursor = cursor + step
+    return filled_buckets

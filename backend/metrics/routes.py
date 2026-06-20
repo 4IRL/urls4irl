@@ -19,6 +19,7 @@ from backend.metrics.constants import MetricsErrorCodes, MetricsFailureMessages
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventCategory, EventName
 from backend.metrics.flows import FLOWS, FlowId, FlowStep
+from backend.metrics.latency import LatencyMetricName
 from backend.metrics.query_service import grouped_count_by, grouped_count_scalar
 from backend.metrics.resources import Resource
 from backend.schemas.errors import (
@@ -31,6 +32,8 @@ from backend.schemas.metrics import (
     FlowStepSchema,
     GaugesTimeseriesResponseSchema,
     GroupedTimeseriesResponseSchema,
+    LatencyPercentilesResponseSchema,
+    LatencyTimeseriesResponseSchema,
     MetricsIngestResponseSchema,
     SummaryResponseSchema,
     TimeseriesResponseSchema,
@@ -40,6 +43,8 @@ from backend.schemas.requests.metrics import (
     FlowQuerySchema,
     GaugesTimeseriesQuerySchema,
     GroupedTimeseriesQuerySchema,
+    LatencyQuerySchema,
+    LatencyTimeseriesQuerySchema,
     MetricsIngestRequest,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
@@ -585,5 +590,138 @@ def query_gauges_timeseries() -> FlaskResponse:
         window=parsed.window,
         window_start=window_start,
         window_end=window_end,
+    )
+    return APIResponse(data=response_schema, status_code=200).to_response()
+
+
+@metrics.route("/api/metrics/query/latency", methods=["GET"])
+@admin_required
+@api_route(
+    query_schema=LatencyQuerySchema,
+    response_schema=LatencyPercentilesResponseSchema,
+    ajax_required=True,
+    tags=[OPEN_API.METRICS],
+    description=(
+        "Return per-(endpoint, method) p50/p95/p99 request-latency percentiles "
+        "for an admin time window."
+    ),
+    status_codes={
+        200: LatencyPercentilesResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def query_latency() -> FlaskResponse:
+    parsed = parse_query_args(
+        LatencyQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
+    if not isinstance(parsed, BaseModel):
+        return parsed
+
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_WINDOW,
+            errors={"window": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    # `metric_name` defaults to None; map it to the sole latency metric.
+    metric_name = (
+        LatencyMetricName(parsed.metric_name)
+        if parsed.metric_name is not None
+        else LatencyMetricName.API_REQUEST_DURATION
+    )
+    rows = query_service.latency_percentiles(
+        window_start=window_start,
+        window_end=window_end,
+        metric_name=metric_name,
+        endpoint=parsed.endpoint,
+        method=parsed.method,
+        device_type=parsed.device_type,
+        limit=parsed.limit,
+    )
+    response_schema = LatencyPercentilesResponseSchema(
+        window=parsed.window,
+        window_start=window_start,
+        window_end=window_end,
+        rows=rows,
+    )
+    return APIResponse(data=response_schema, status_code=200).to_response()
+
+
+@metrics.route("/api/metrics/query/latency/timeseries", methods=["GET"])
+@admin_required
+@api_route(
+    query_schema=LatencyTimeseriesQuerySchema,
+    response_schema=LatencyTimeseriesResponseSchema,
+    ajax_required=True,
+    tags=[OPEN_API.METRICS],
+    description=(
+        "Return zero-filled per-bucket p50/p95/p99 request-latency percentiles "
+        "for one endpoint over an admin time window."
+    ),
+    status_codes={
+        200: LatencyTimeseriesResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def query_latency_timeseries() -> FlaskResponse:
+    parsed = parse_query_args(
+        LatencyTimeseriesQuerySchema,
+        message=MetricsFailureMessages.INVALID_QUERY,
+        error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+    )
+    if not isinstance(parsed, BaseModel):
+        return parsed
+
+    try:
+        window_start, window_end = resolve_query_window(
+            window=parsed.window,
+            start=parsed.start,
+            end=parsed.end,
+            now=utc_now(),
+        )
+    except ValueError as validation_error:
+        return build_field_error_response(
+            message=MetricsFailureMessages.INVALID_WINDOW,
+            errors={"window": [str(validation_error)]},
+            error_code=MetricsErrorCodes.INVALID_QUERY_PARAM,
+            status_code=400,
+        )
+
+    metric_name = (
+        LatencyMetricName(parsed.metric_name)
+        if parsed.metric_name is not None
+        else LatencyMetricName.API_REQUEST_DURATION
+    )
+    buckets = query_service.latency_timeseries(
+        metric_name=metric_name,
+        window_start=window_start,
+        window_end=window_end,
+        resolution=parsed.resolution,
+        endpoint=parsed.endpoint,
+        method=parsed.method,
+        device_type=parsed.device_type,
+    )
+    response_schema = LatencyTimeseriesResponseSchema(
+        window=parsed.window,
+        window_start=window_start,
+        window_end=window_end,
+        endpoint=parsed.endpoint,
+        method=parsed.method,
+        buckets=buckets,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()

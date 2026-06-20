@@ -23,6 +23,7 @@ from pathlib import Path
 ALLOW_VARS: tuple[str, ...] = (
     "ACCESS_KEY",
     "DEV_SERVER",
+    "METRICS_BUCKET_SECONDS",
     "METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS",
     "METRICS_REDIS_URI",
     "NOTIFICATION_URL",
