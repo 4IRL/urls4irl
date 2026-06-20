@@ -319,6 +319,43 @@ describe("cross-utub-search — mode mechanics", () => {
     expect(xhr2.abort).not.toHaveBeenCalled();
   });
 
+  it("(b1e) the initCrossUtubSearch viewport-reset closure aborts the in-flight request", async () => {
+    // initCrossUtubSearch binds a breakpoint `change` listener that resets
+    // search-mode state directly (it does NOT call exitCrossUtubSearchMode, to
+    // avoid listener registration-order coupling with mobile.ts). Capture that
+    // reset closure off matchMedia, fire a request via Enter, then invoke the
+    // closure and assert it aborts the in-flight request exactly once.
+    let resetClosure: (() => void) | null = null;
+    const matchMediaSpy = vi.spyOn(window, "matchMedia").mockReturnValue({
+      addEventListener: (
+        _event: string,
+        listener: EventListenerOrEventListenerObject,
+      ) => {
+        resetClosure = listener as () => void;
+      },
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList);
+
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    const xhr = buildDoneXhr([]);
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(xhr);
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    resetClosure!();
+
+    expect(xhr.abort).toHaveBeenCalledTimes(1);
+
+    matchMediaSpy.mockRestore();
+  });
+
   it("(b2) a non-default field selection appends the &fields= query param", async () => {
     const { ajaxCall } = await import("../../../lib/ajax.js");
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
