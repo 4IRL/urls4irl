@@ -19,7 +19,9 @@ from backend.cli.mock_data.utubs import generate_mock_utubs
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics.events import DeviceType, EventName
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeKind
+from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.users import Users
 from backend.utils.datetime_utils import utc_now
@@ -35,6 +37,39 @@ SEED_GAUGE_HOUR_OFFSETS: tuple[int, ...] = (0, 1)
 # write an integer (valueInt); DISTRIBUTION_AVG writes a float (valueFloat).
 SEED_GAUGE_INT_VALUES: dict[int, int] = {0: 42, 1: 40}
 SEED_GAUGE_FLOAT_VALUES: dict[int, float] = {0: 4.5, 1: 4.0}
+
+# Two endpoints (each with a method) the latency seeder writes a percentile
+# distribution for, so the dashboard's Backend Performance tab renders a
+# multi-row table during the Selenium smoke test. Endpoint strings mirror the
+# Flask dot-notation route names the flush worker promotes to flat columns.
+SEED_LATENCY_ENDPOINTS: tuple[tuple[str, str], ...] = (
+    ("utubs.get_utub", "GET"),
+    ("urls.add_url", "POST"),
+)
+
+# Device types each seeded endpoint gets a sample distribution for, so the
+# JSONB `device_type` dimension is populated for both classes.
+SEED_LATENCY_DEVICE_TYPES: tuple[DeviceType, ...] = (
+    DeviceType.MOBILE,
+    DeviceType.DESKTOP,
+)
+
+# Ten fixed durationMs values per (endpoint, observed_at, device_type) tuple.
+# Chosen so the percentiles are deterministic and easy to assert: linear
+# interpolation by `percentile_cont` over a sorted 10-point sample gives
+# p50 = 55.0, p95 = 95.5, p99 = 99.1.
+SEED_LATENCY_DURATIONS_MS: tuple[float, ...] = (
+    10.0,
+    20.0,
+    30.0,
+    40.0,
+    50.0,
+    60.0,
+    70.0,
+    80.0,
+    90.0,
+    100.0,
+)
 
 HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""
 
@@ -306,11 +341,12 @@ def _seed_uniform_test_data() -> int:
         Writes nine rows across three hour buckets ending at the current
         hour, one row per bucket for each of: api_hit (API),
         ui_login_submit (UI), utub_created (DOMAIN). Also calls
-        `_seed_uniform_gauges()` at the end so AnonymousGauges is seeded for
-        every consumer of `seed-uniform-test-data` (e.g. the Selenium
+        `_seed_uniform_gauges()` and `_seed_uniform_latency()` at the end so
+        AnonymousGauges and AnonymousLatencySamples are seeded for every
+        consumer of `seed-uniform-test-data` (e.g. the Selenium
         `seeded_metrics` autouse fixture). Returns the combined count of
-        AnonymousMetrics + AnonymousGauges rows actually inserted (zero on a
-        re-run with all rows present).
+        AnonymousMetrics + AnonymousGauges + AnonymousLatencySamples rows
+        actually inserted (zero on a re-run with all rows present).
     """
     sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
 
@@ -401,7 +437,8 @@ def _seed_uniform_test_data() -> int:
             rows_written += 1
     db.session.commit()
     gauge_rows_written = _seed_uniform_gauges()
-    return rows_written + gauge_rows_written
+    latency_rows_written = _seed_uniform_latency()
+    return rows_written + gauge_rows_written + latency_rows_written
 
 
 def _seed_uniform_gauges() -> int:
@@ -471,6 +508,78 @@ def _seed_uniform_gauges() -> int:
     return rows_written
 
 
+def _seed_uniform_latency() -> int:
+    """Insert a deterministic set of AnonymousLatencySamples rows for UI tests.
+
+    Writes a fixed 10-point `durationMs` distribution per
+    (endpoint, observed_at, device_type) tuple across the same hour offsets
+    the other seeders use, so the admin dashboard's Backend Performance tab
+    renders a non-empty per-endpoint percentile table and a latency-over-time
+    chart during the Selenium smoke test. The distribution is chosen so the
+    exact `percentile_cont` outputs are stable and assertable (p50 = 55.0,
+    p95 = 95.5, p99 = 99.1 for the 10-point linear set). `device_type` is kept
+    in the JSONB `dimensions` column, mirroring the flush worker's write shape;
+    `endpoint`/`method` are promoted to flat columns. Idempotent on
+    `(endpoint, observed_at)` via a `first()` existence skip — each pair writes
+    a multi-row (device_type x duration) distribution, so a single-row
+    `one_or_none()` would raise `MultipleResultsFound` on the re-run; `first()`
+    only probes existence. Repeated runs insert nothing new. Requires an active
+    Flask app context.
+
+    The INSERT/commit body is wrapped in `try/except ProgrammingError`: if the
+    `AnonymousLatencySamples` table does not exist yet (e.g. a
+    migration-downgrade state before the table was added), the exception is
+    logged as a warning and the function returns 0, so `flask addmock all`
+    stays safe at any migration revision (mirroring `_seed_uniform_gauges`).
+
+    Examples:
+        With three hour offsets, two endpoints, two device types, and a
+        10-point distribution, writes 3 * 2 * 2 * 10 = 120 rows on a fresh DB
+        and returns 120; a re-run with all rows already present returns 0.
+    """
+    now = utc_now()
+    current_hour_aligned = now.replace(minute=0, second=0, microsecond=0)
+    rows_written = 0
+    metric_name_value = LatencyMetricName.API_REQUEST_DURATION.value
+    try:
+        for hour_offset in SEED_TEST_DATA_HOUR_OFFSETS:
+            observed_at = current_hour_aligned - timedelta(hours=hour_offset)
+
+            for endpoint_value, method_value in SEED_LATENCY_ENDPOINTS:
+                # Idempotency: one existence probe per (endpoint, observed_at)
+                # bucket. A present row for this pair means a prior seed run
+                # already wrote the full distribution for it, so skip the whole
+                # (device_type x duration) inner loop.
+                existing_row = Anonymous_Latency_Samples.query.filter_by(
+                    endpoint=endpoint_value,
+                    observed_at=observed_at,
+                ).first()
+                if existing_row is not None:
+                    continue
+
+                for device_type in SEED_LATENCY_DEVICE_TYPES:
+                    for duration_ms in SEED_LATENCY_DURATIONS_MS:
+                        db.session.add(
+                            Anonymous_Latency_Samples(
+                                metric_name=metric_name_value,
+                                endpoint=endpoint_value,
+                                method=method_value,
+                                observed_at=observed_at,
+                                duration_ms=duration_ms,
+                                dimensions={"device_type": device_type.value},
+                            )
+                        )
+                        rows_written += 1
+        db.session.commit()
+    except ProgrammingError:
+        db.session.rollback()
+        current_app.logger.warning(
+            "addmock: AnonymousLatencySamples table missing; " "skipped latency seeding"
+        )
+        return 0
+    return rows_written
+
+
 @mocks_cli.command(
     "seed-uniform-test-data",
     help="Seed a small fixed set of AnonymousMetrics rows for Selenium tests.",
@@ -489,6 +598,18 @@ def seed_uniform_test_data_command() -> None:
 def seed_uniform_gauges_command() -> None:
     rows_written = _seed_uniform_gauges()
     click.echo(f"metrics: seeded {rows_written} AnonymousGauges rows for UI tests.")
+
+
+@mocks_cli.command(
+    "seed-uniform-latency",
+    help="Seed a small fixed set of AnonymousLatencySamples rows for Selenium tests.",
+)
+@with_appcontext
+def seed_uniform_latency_command() -> None:
+    rows_written = _seed_uniform_latency()
+    click.echo(
+        f"metrics: seeded {rows_written} AnonymousLatencySamples rows for UI tests."
+    )
 
 
 def register_mocks_db_cli(app: Flask):

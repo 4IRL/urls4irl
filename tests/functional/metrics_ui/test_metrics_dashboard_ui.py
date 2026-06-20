@@ -8,9 +8,11 @@ from selenium.webdriver.support.ui import Select
 
 from backend.config import ConfigTestUI
 from backend.db import db
+from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.metrics.events import DeviceType
 from backend.metrics.gauges import GaugeName
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -35,6 +37,10 @@ PIPELINE_HEALTH_RENDER_TIMEOUT: int = 15
 FLOWS_RENDER_TIMEOUT: int = 15
 EXPECTED_FLOW_CARD_COUNT: int = 4
 GAUGES_RENDER_TIMEOUT: int = 15
+LATENCY_RENDER_TIMEOUT: int = 15
+# The seeder writes the same two endpoints for every device type, so the
+# per-endpoint percentile table groups down to exactly these two rows.
+EXPECTED_LATENCY_ROW_COUNT: int = len(SEED_LATENCY_ENDPOINTS)
 ALL_PIPELINE_HEALTH_BAR_SELECTORS: tuple[str, ...] = (
     MDL.PIPELINE_HEALTH_BAR_FETCH_DESKTOP,
     MDL.PIPELINE_HEALTH_BAR_FETCH_MOBILE,
@@ -509,3 +515,138 @@ def test_gauges_tab_renders_empty_state_with_no_data(
     assert (
         len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_ROW)) == 0
     ), "No gauge rows should render when the batched response is empty."
+
+
+def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded
+        AnonymousLatencySamples rows (a fixed durationMs distribution per
+        seeded endpoint × device type via `_seed_uniform_latency`)
+    WHEN an admin opens `/admin/metrics` and activates the Backend
+        Performance (Latency) tab
+    THEN the per-endpoint percentile table renders one row per seeded
+        endpoint with non-empty p50/p95/p99 values, the global summary is
+        hidden, only the select-an-endpoint prompt is shown (no chart), and
+        clicking a row replaces the prompt with that endpoint's
+        latency-over-time chart containing a plotted polyline.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # Latency is not the default tab — activate it explicitly so the
+    # "open dashboard, click Backend Performance, see table + chart" user
+    # journey is what gets validated.
+    latency_tab = wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+    assert latency_tab is not None
+    assert latency_tab.get_attribute("aria-selected") == "true"
+
+    latency_rows = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    assert len(latency_rows) == EXPECTED_LATENCY_ROW_COUNT, (
+        f"Expected exactly {EXPECTED_LATENCY_ROW_COUNT} per-endpoint latency "
+        f"rows, got {len(latency_rows)}."
+    )
+
+    # Every seeded endpoint string is present as a row, and each row's
+    # percentile cells carry a real value (not the en-dash null placeholder).
+    rendered_endpoints = {row.get_attribute("data-endpoint") for row in latency_rows}
+    seeded_endpoints = {endpoint for endpoint, _method in SEED_LATENCY_ENDPOINTS}
+    assert seeded_endpoints.issubset(rendered_endpoints), (
+        f"Seeded endpoints {seeded_endpoints} not all rendered; "
+        f"table shows {rendered_endpoints}."
+    )
+    for row in latency_rows:
+        metric_cells = row.find_elements(By.CSS_SELECTOR, "td.metric")
+        assert len(metric_cells) == 3, "Each row must have p50/p95/p99 cells."
+        for metric_cell in metric_cells:
+            assert metric_cell.text.strip(), "Percentile cell must not be empty."
+
+    # The global event-totals summary is hidden on the Latency tab.
+    summary = browser.find_element(By.CSS_SELECTOR, MDL.SUMMARY_SECTION)
+    assert not summary.is_displayed(), "Summary must be hidden on the Latency tab."
+
+    # No chart until a row is clicked — only the prompt is shown.
+    prompt = wait_for_element_presence(
+        browser, MDL.LATENCY_DETAIL_PROMPT, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert prompt is not None
+    assert prompt.text == ADMIN_METRICS_STRINGS.METRICS_LATENCY_SELECT_PROMPT
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_CHART)) == 0
+    ), "No latency chart should render before a row is clicked."
+
+    # Click the first seeded endpoint row; its timeseries chart must render
+    # with at least one plotted polyline segment.
+    first_endpoint = SEED_LATENCY_ENDPOINTS[0][0]
+    wait_then_click_element(
+        browser,
+        f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    chart_polyline = wait_for_element_presence(
+        browser, MDL.LATENCY_DETAIL_CHART_LINE, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert chart_polyline is not None
+    detail_charts = browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_CHART)
+    assert len(detail_charts) == 1, "Only the selected endpoint's chart should render."
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_PROMPT)) == 0
+    ), "The prompt must be replaced by the chart once a row is selected."
+
+
+def test_latency_tab_renders_empty_state_with_no_samples(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the AnonymousLatencySamples table has been emptied AFTER the autouse
+        seed fixture (so the query window contains no samples)
+    WHEN an admin opens `/admin/metrics` and activates the Backend
+        Performance (Latency) tab
+    THEN the percentile table renders its empty-state row with the bridged
+        no-samples message and no per-endpoint rows are present.
+    """
+    with provide_app.app_context():
+        Anonymous_Latency_Samples.query.delete()
+        db.session.commit()
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    empty_row = wait_for_element_presence(
+        browser, MDL.LATENCY_EMPTY_ROW, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert empty_row is not None
+    assert empty_row.text.strip() == ADMIN_METRICS_STRINGS.METRICS_LATENCY_EMPTY
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)) == 0
+    ), "No per-endpoint latency rows should render when no samples exist."
