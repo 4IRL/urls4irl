@@ -151,12 +151,25 @@ export function openUTubNameFilter(): void {
   $("#UTubNameSearch").trigger("focus");
 }
 
-// Collapse the filter back to the funnel-only state and clear any active filter
-// (resetUTubSearch emits UI_UTUB_SEARCH_CLOSE if it was open).
+// Collapse the filter back to the funnel-only state and clear any active filter.
+// Emits UI_UTUB_SEARCH_CLOSE for the funnel hide. The open state is read from the
+// DOM (`utub-search-open`), not the focus flag, because clicking the X button
+// blurs the input first — which clears _utubSearchOpen before this handler runs —
+// so a flag-only check would silently drop the close on the X-button path.
 export function closeUTubNameFilter(): void {
+  const wasOpen = $("#UTubDeck").hasClass("utub-search-open");
   $("#UTubDeck").removeClass("utub-search-open");
   $("#utubNameFilterBtnClose").addClass("hidden");
   $("#utubNameFilterBtn").removeClass("hidden");
+  if (wasOpen) {
+    emit({
+      event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,
+      target: UTUB_SEARCH_CLOSE_TARGET.UTUBS,
+    });
+    // Suppress resetUTubSearch's own CLOSE emit so the hide is recorded once
+    // (the Escape path reaches here with the input still focused / flag set).
+    _utubSearchOpen = false;
+  }
   resetUTubSearch();
 }
 

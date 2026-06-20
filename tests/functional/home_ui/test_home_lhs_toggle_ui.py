@@ -3,8 +3,13 @@ from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.ui import WebDriverWait
 
 from backend.models.utubs import Utubs
+from tests.functional.db_utils import (
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
+)
 from tests.functional.home_ui.selenium_utils import (
     assert_lhs_panels_hidden,
     assert_lhs_panels_visible,
@@ -12,13 +17,17 @@ from tests.functional.home_ui.selenium_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import (
+    login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
     login_user_and_select_utub_by_utubid_mobile,
+    login_user_to_home_page,
 )
+from tests.functional.members_ui.selenium_utils import leave_utub_as_member
 from tests.functional.selenium_utils import (
     wait_then_get_element,
     wait_until_in_focus,
 )
+from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 
 pytestmark = pytest.mark.home_ui
 
@@ -32,6 +41,12 @@ def _login_and_select_first_utub(provide_app: Flask, browser: WebDriver):
     login_user_and_select_utub_by_utubid(
         provide_app, browser, user_id=_USER_ID_FOR_TEST, utub_id=utub_id
     )
+
+
+def _header_toggle_displayed(browser: WebDriver) -> bool:
+    return browser.find_element(
+        By.CSS_SELECTOR, HPL.LHS_TOGGLE_HEADER_BTN
+    ).is_displayed()
 
 
 def test_seam_toggle_hides_and_restores_lhs(
@@ -110,6 +125,87 @@ def test_seam_toggle_keyboard_activation_collapses_and_keeps_focus(
     seam_button.send_keys(Keys.SPACE)
     assert_lhs_panels_visible(browser)
     wait_until_in_focus(browser, HPL.LHS_TOGGLE_SEAM_BTN)
+
+
+def test_url_header_toggle_hidden_on_initial_load_with_no_utub(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a logged-in user on the desktop home page with no UTub selected
+    WHEN the page initializes
+    THEN the URL-header LHS minify toggle is hidden (it is only meaningful once
+        a UTub is open).
+    """
+    login_user_to_home_page(provide_app, browser, user_id=_USER_ID_FOR_TEST)
+
+    wait_then_get_element(browser, HPL.URL_DECK, time=3)
+    assert not _header_toggle_displayed(browser)
+
+
+def test_url_header_toggle_visible_when_utub_selected(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a logged-in user on the desktop home page with no UTub selected
+        (header toggle hidden)
+    WHEN the user selects a UTub
+    THEN the URL-header LHS minify toggle becomes visible.
+    """
+    login_user_to_home_page(provide_app, browser, user_id=_USER_ID_FOR_TEST)
+    assert not _header_toggle_displayed(browser)
+
+    _login_and_select_first_utub(provide_app, browser)
+
+    WebDriverWait(browser, 10).until(lambda driver: _header_toggle_displayed(driver))
+    assert _header_toggle_displayed(browser)
+
+
+def test_url_header_toggle_hidden_after_leaving_utub(
+    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN a member has a UTub selected (header toggle visible)
+    WHEN they leave the UTub, after which no UTub is selected (others remain)
+    THEN the URL-header LHS minify toggle is hidden again.
+    """
+    utub_user_member_of = get_utub_this_user_did_not_create(
+        provide_app, _USER_ID_FOR_TEST
+    )
+    login_user_and_select_utub_by_name(
+        provide_app, browser, _USER_ID_FOR_TEST, utub_user_member_of.name
+    )
+
+    assert _header_toggle_displayed(browser)
+
+    leave_utub_as_member(browser, utub_user_member_of)
+
+    WebDriverWait(browser, 10).until(
+        lambda driver: not _header_toggle_displayed(driver)
+    )
+    assert not _header_toggle_displayed(browser)
+
+
+def test_url_header_toggle_hidden_after_deleting_utub(
+    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+):
+    """
+    GIVEN an owner has a UTub selected (header toggle visible)
+    WHEN they delete the UTub, after which no UTub is selected (others remain)
+    THEN the URL-header LHS minify toggle is hidden again.
+    """
+    utub_user_created = get_utub_this_user_created(provide_app, _USER_ID_FOR_TEST)
+    login_user_and_select_utub_by_name(
+        provide_app, browser, _USER_ID_FOR_TEST, utub_user_created.name
+    )
+
+    assert _header_toggle_displayed(browser)
+
+    delete_utub_as_creator(browser, utub_user_created)
+
+    WebDriverWait(browser, 10).until(
+        lambda driver: not _header_toggle_displayed(driver)
+    )
+    assert not _header_toggle_displayed(browser)
 
 
 @pytest.mark.mobile_ui
