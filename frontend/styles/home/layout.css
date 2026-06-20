@@ -231,10 +231,6 @@ button {
     height: 2rem !important;
 }
 
-.height-2p5rem {
-    height: 2.5rem;
-}
-
 .pad-top-bot-5p {
     padding-top: 5px;
     padding-bottom: 5px;
@@ -347,9 +343,7 @@ button {
 #TagDeckHeader,
 #UTubDeckHeader,
 #UTubDeckSubheader,
-#MemberDeckSubheader,
 #UTubDescriptionDeckHeader,
-#TagDeckSubheader,
 #URLDeckHeader {
     margin-bottom: 0px;
 }
@@ -399,6 +393,14 @@ button {
     .deck#MemberDeck,
     .deck#TagDeck {
         display: none;
+    }
+
+    /* Roomier tap targets for the LHS rows on mobile (2.2rem ~= 35px is under
+       the ~44px touch-target minimum). */
+    .member,
+    .UTubSelector,
+    .tagFilter {
+        height: 2.75rem;
     }
 
     .deck#UTubDeck,

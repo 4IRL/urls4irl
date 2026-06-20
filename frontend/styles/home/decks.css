@@ -9,6 +9,13 @@
     padding-bottom: 8px;
 }
 
+/* Member/Tag decks only (NOT the UTub deck — it has the always-visible search
+   subheader): drop the top inset so the header band centers symmetrically. */
+#MemberDeck,
+#TagDeck {
+    padding-top: 0;
+}
+
 .deck#UTubDeck,
 .deck#MemberDeck,
 .deck#TagDeck {
@@ -80,6 +87,16 @@
 
 .deck .titleElement:first-child {
     height: 38px;
+}
+
+/* Member/Tag header bands only (UTub deck excluded — its search subheader keeps
+   the original sizing). Taller band + symmetric vertical padding (overrides the
+   bottom-only pad-b-0-25rem) gives the centered title + buttons breathing room
+   above and below. */
+#MemberDeck .titleElement:first-child,
+#TagDeck .titleElement:first-child {
+    height: 44px;
+    padding-block: 0;
 }
 
 .titleElement.dynamic-subheader {

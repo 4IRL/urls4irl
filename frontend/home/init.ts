@@ -22,7 +22,6 @@ export function setUIWhenNoUTubSelected(): void {
   setURLDeckWhenNoUTubSelected();
   setMemberDeckWhenNoUTubSelected();
   resetMemberDeck();
-  $(".dynamic-subheader").removeClass("height-2p5rem");
   $(".sidePanelTitle").addClass("pad-b-0-25rem");
 
   // Remove active state from all UTub selectors
