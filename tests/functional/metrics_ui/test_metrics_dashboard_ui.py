@@ -702,6 +702,94 @@ def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
             )
 
 
+def test_latency_cards_have_consistent_dividers_and_selected_ring(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded AnonymousLatencySamples
+        rows rendered as latency cards
+    WHEN an admin opens the Backend Performance (Latency) tab
+    THEN every card shares one identical surface colour (the inherited
+        `.top-table` zebra striping is neutralised — no "darker" alternating
+        cards), each metric row carries a visible ruled divider with none after
+        the final row, and selecting a card changes only its border (a green
+        ring), not its background.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    latency_rows = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    # Read before any hover/selection (mouse rests on the tab button, not a card)
+    # so the only background variation that could exist is the zebra striping.
+    card_backgrounds = {
+        browser.execute_script(
+            "return window.getComputedStyle(arguments[0]).backgroundColor;", row
+        )
+        for row in latency_rows
+    }
+    assert len(card_backgrounds) == 1, (
+        f"All latency cards must share one surface colour (no zebra striping); "
+        f"got {card_backgrounds}."
+    )
+
+    # Ruled rows: each metric line has a visible bottom divider; the last line
+    # (Samples) has none, so the divider never collides with the card border.
+    first_row = latency_rows[0]
+    metric_cell = first_row.find_element(By.CSS_SELECTOR, "td.metric")
+    samples_cell = first_row.find_element(By.CSS_SELECTOR, "td.samples")
+    metric_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderBottomWidth;",
+        metric_cell,
+    )
+    samples_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderBottomWidth;",
+        samples_cell,
+    )
+    assert metric_border != "0px", "Metric rows must show a ruled divider."
+    assert samples_border == "0px", "The last (Samples) row must have no divider."
+
+    # Selecting a card changes only its border (green ring) — not its surface.
+    unselected_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderTopColor;",
+        latency_rows[1],
+    )
+    wait_then_click_element(
+        browser,
+        f'{MDL.LATENCY_ROW}[data-endpoint="{SEED_LATENCY_ENDPOINTS[0][0]}"]',
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    selected_row = wait_for_element_presence(
+        browser, MDL.LATENCY_ROW_SELECTED, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert selected_row is not None
+    selected_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderTopColor;", selected_row
+    )
+    assert selected_border != unselected_border, (
+        "The selected card must show a distinct (green) border ring; "
+        f"selected={selected_border}, unselected={unselected_border}."
+    )
+
+
 def test_latency_tab_renders_empty_state_with_no_samples(
     browser: WebDriver,
     create_test_users,
