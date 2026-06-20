@@ -9,11 +9,13 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    field_validator,
     model_validator,
 )
 
 from backend.metrics.events import EVENT_CATEGORY, DeviceType, EventCategory, EventName
 from backend.metrics.flows import ALL_FLOW_IDS
+from backend.metrics.latency import LatencyMetricName
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 _BOTH_WINDOW_AND_RANGE_ERROR: str = (
@@ -477,8 +479,8 @@ class LatencyQuerySchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    metric_name: LatencyMetricNameLiteral | None = Field(
-        default=None,
+    metric_name: LatencyMetricNameLiteral = Field(
+        default=LatencyMetricName.API_REQUEST_DURATION.value,
         description="Latency metric to query; defaults to api_request_duration.",
     )
     window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
@@ -507,6 +509,15 @@ class LatencyQuerySchema(BaseModel):
         description="Maximum number of percentile rows to return (1-200).",
     )
 
+    @field_validator("metric_name", mode="before")
+    @classmethod
+    def _default_metric_name(cls, raw_metric_name: object) -> object:
+        # An absent or explicit-null `metric_name` resolves to the sole latency
+        # metric, so the route layer can consume the field unconditionally.
+        if raw_metric_name is None:
+            return LatencyMetricName.API_REQUEST_DURATION.value
+        return raw_metric_name
+
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:
         _validate_window_xor_range(self.window, self.start, self.end)
@@ -523,8 +534,8 @@ class LatencyTimeseriesQuerySchema(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    metric_name: LatencyMetricNameLiteral | None = Field(
-        default=None,
+    metric_name: LatencyMetricNameLiteral = Field(
+        default=LatencyMetricName.API_REQUEST_DURATION.value,
         description="Latency metric to query; defaults to api_request_duration.",
     )
     window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
@@ -549,6 +560,15 @@ class LatencyTimeseriesQuerySchema(BaseModel):
         default=None,
         description="Optional device-type filter (1=mobile, 2=desktop).",
     )
+
+    @field_validator("metric_name", mode="before")
+    @classmethod
+    def _default_metric_name(cls, raw_metric_name: object) -> object:
+        # An absent or explicit-null `metric_name` resolves to the sole latency
+        # metric, so the route layer can consume the field unconditionally.
+        if raw_metric_name is None:
+            return LatencyMetricName.API_REQUEST_DURATION.value
+        return raw_metric_name
 
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:

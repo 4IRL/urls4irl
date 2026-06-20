@@ -716,6 +716,90 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(renderLatencyDetailChartSpy).toHaveBeenCalledTimes(1);
   });
 
+  it.each([["Enter"], [" "]])(
+    "pressing %s on a latency row fetches the timeseries and renders the chart",
+    (key) => {
+      fetchLatencySpy.mockImplementation(() =>
+        createDoneLatencyJqXHR(buildLatencyResponse()),
+      );
+      fetchLatencyTimeseriesSpy.mockImplementation(() =>
+        createMockJqXHRChainable({
+          done: (callback: unknown) => {
+            (
+              callback as (value: {
+                window: string | null;
+                window_start: string;
+                window_end: string;
+                endpoint: string | null;
+                method: string | null;
+                buckets: unknown[];
+              }) => void
+            )({
+              window: "day",
+              window_start: "2026-06-01T00:00:00+00:00",
+              window_end: "2026-06-02T00:00:00+00:00",
+              endpoint: "utubs.get_utub",
+              method: "GET",
+              buckets: [],
+            });
+          },
+          always: (callback: unknown) => {
+            (callback as () => void)();
+          },
+        }),
+      );
+
+      getTab("MetricsTabLatency").click();
+
+      // renderLatencyPanel is mocked (no-op), so inject a row the delegated
+      // keydown handler can resolve — the keydown bubbles to the table binding
+      // wired at init, mirroring the gauge-row keydown activation path.
+      const table = document.getElementById(
+        "MetricsLatencyTable",
+      ) as HTMLElement;
+      const tbody = table.querySelector("tbody")!;
+      const row = document.createElement("tr");
+      row.className = "latency-row";
+      row.dataset.endpoint = "utubs.get_utub";
+      row.dataset.method = "GET";
+      tbody.appendChild(row);
+
+      $(row).trigger($.Event("keydown", { key }));
+
+      expect(fetchLatencyTimeseriesSpy).toHaveBeenCalledTimes(1);
+      expect(fetchLatencyTimeseriesSpy.mock.calls[0][0]).toEqual({
+        window: "day",
+        endpoint: "utubs.get_utub",
+        method: "GET",
+        resolution: "hour",
+      });
+      expect(renderLatencyDetailChartSpy).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it("ignores non-activation keys (e.g. Tab) on a latency row", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+
+    getTab("MetricsTabLatency").click();
+    fetchLatencyTimeseriesSpy.mockClear();
+    renderLatencyDetailChartSpy.mockClear();
+
+    const table = document.getElementById("MetricsLatencyTable") as HTMLElement;
+    const tbody = table.querySelector("tbody")!;
+    const row = document.createElement("tr");
+    row.className = "latency-row";
+    row.dataset.endpoint = "utubs.get_utub";
+    row.dataset.method = "GET";
+    tbody.appendChild(row);
+
+    $(row).trigger($.Event("keydown", { key: "Tab" }));
+
+    expect(fetchLatencyTimeseriesSpy).not.toHaveBeenCalled();
+    expect(renderLatencyDetailChartSpy).not.toHaveBeenCalled();
+  });
+
   it("switching back to the Latency tab re-renders from cache without a new fetch", () => {
     fetchLatencySpy.mockImplementation(() =>
       createDoneLatencyJqXHR(buildLatencyResponse()),

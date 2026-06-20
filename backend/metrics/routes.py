@@ -636,16 +636,10 @@ def query_latency() -> FlaskResponse:
             status_code=400,
         )
 
-    # `metric_name` defaults to None; map it to the sole latency metric.
-    metric_name = (
-        LatencyMetricName(parsed.metric_name)
-        if parsed.metric_name is not None
-        else LatencyMetricName.API_REQUEST_DURATION
-    )
     rows = query_service.latency_percentiles(
         window_start=window_start,
         window_end=window_end,
-        metric_name=metric_name,
+        metric_name=LatencyMetricName(parsed.metric_name),
         endpoint=parsed.endpoint,
         method=parsed.method,
         device_type=parsed.device_type,
@@ -702,13 +696,8 @@ def query_latency_timeseries() -> FlaskResponse:
             status_code=400,
         )
 
-    metric_name = (
-        LatencyMetricName(parsed.metric_name)
-        if parsed.metric_name is not None
-        else LatencyMetricName.API_REQUEST_DURATION
-    )
     buckets = query_service.latency_timeseries(
-        metric_name=metric_name,
+        metric_name=LatencyMetricName(parsed.metric_name),
         window_start=window_start,
         window_end=window_end,
         resolution=parsed.resolution,

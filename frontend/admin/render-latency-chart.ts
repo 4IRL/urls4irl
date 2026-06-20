@@ -218,6 +218,17 @@ export function renderLatencyChart({
     return;
   }
 
+  // Single-bucket guard: a one-bucket response has `stepX === 0`, so every point
+  // collapses onto a single x position, producing a degenerate (invisible)
+  // polyline. Render the shared empty state instead, mirroring the all-null guard.
+  if (response.buckets.length < 2) {
+    appendEmptyState({
+      svg,
+      message: APP_CONFIG.strings.METRICS_EMPTY_STATE,
+    });
+    return;
+  }
+
   // y-domain: max across every non-null percentile in every series.
   let maxValue = 0;
   for (const bucket of response.buckets) {

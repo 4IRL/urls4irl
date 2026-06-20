@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from backend.metrics.events import EventCategory, EventName
 from backend.metrics.flows import _parse_flow_filter_condition
+from backend.metrics.latency import LatencyMetricName
 from backend.schemas.metrics import (
     SummaryCategoryCount,
     SummaryResponseSchema,
@@ -710,14 +711,26 @@ def test_parse_flow_filter_condition_rejects_non_str_non_tuple():
 
 
 def test_latency_query_happy_path_with_window_only():
-    """`{"window": "day"}` parses; metric_name/endpoint default None, limit=25."""
+    """`{"window": "day"}` parses; metric_name defaults to the sole metric, limit=25."""
     parsed = LatencyQuerySchema.model_validate({"window": "day"})
     assert parsed.window == "day"
-    assert parsed.metric_name is None
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
     assert parsed.endpoint is None
     assert parsed.method is None
     assert parsed.device_type is None
     assert parsed.limit == 25
+
+
+def test_latency_query_omitted_metric_name_defaults_to_sole_metric():
+    """An absent `metric_name` resolves to `api_request_duration` via the validator."""
+    parsed = LatencyQuerySchema.model_validate({"window": "day"})
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_query_explicit_null_metric_name_defaults_to_sole_metric():
+    """An explicit `metric_name=None` is mapped to the default by the before-validator."""
+    parsed = LatencyQuerySchema.model_validate({"window": "day", "metric_name": None})
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
 
 
 def test_latency_query_accepts_absolute_range():
@@ -823,6 +836,23 @@ def test_latency_timeseries_query_happy_path():
     assert parsed.endpoint == "utubs.get_utub"
     assert parsed.resolution == "hour"
     assert parsed.method is None
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_timeseries_query_omitted_metric_name_defaults_to_sole_metric():
+    """An absent `metric_name` resolves to `api_request_duration` via the validator."""
+    parsed = LatencyTimeseriesQuerySchema.model_validate(
+        {"window": "day", "endpoint": "utubs.get_utub"}
+    )
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_timeseries_query_explicit_null_metric_name_defaults_to_sole_metric():
+    """An explicit `metric_name=None` is mapped to the default by the before-validator."""
+    parsed = LatencyTimeseriesQuerySchema.model_validate(
+        {"window": "day", "endpoint": "utubs.get_utub", "metric_name": None}
+    )
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
 
 
 def test_latency_timeseries_query_requires_endpoint():

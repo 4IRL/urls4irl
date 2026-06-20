@@ -1,6 +1,12 @@
 import pytest
 
-from backend.cli.mock_options import SEED_TEST_DATA_HOUR_OFFSETS
+from backend.cli.mock_options import (
+    SEED_LATENCY_DEVICE_TYPES,
+    SEED_LATENCY_DURATIONS_MS,
+    SEED_LATENCY_ENDPOINTS,
+    SEED_TEST_DATA_HOUR_OFFSETS,
+)
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from tests.integration.cli.utils import (
     verify_custom_url_added_to_all_utubs,
@@ -24,6 +30,16 @@ DUPLICATE_COUNT = 2
 SEEDED_EVENT_COUNT_PER_BUCKET = 7
 EXPECTED_SEEDED_ROW_COUNT = (
     len(SEED_TEST_DATA_HOUR_OFFSETS) * SEEDED_EVENT_COUNT_PER_BUCKET
+)
+# The latency seeder writes one row per
+# (hour-offset × endpoint × device-type × duration) tuple (3 × 2 × 2 × 10 = 120
+# on a fresh DB). Deriving from the seed constants keeps this in lockstep if the
+# distribution changes.
+EXPECTED_SEEDED_LATENCY_ROW_COUNT = (
+    len(SEED_TEST_DATA_HOUR_OFFSETS)
+    * len(SEED_LATENCY_ENDPOINTS)
+    * len(SEED_LATENCY_DEVICE_TYPES)
+    * len(SEED_LATENCY_DURATIONS_MS)
 )
 
 
@@ -394,6 +410,11 @@ def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
             "that the row-count assertion measures only the rows this command "
             "wrote."
         )
+        assert Anonymous_Latency_Samples.query.count() == 0, (
+            "AnonymousLatencySamples table must be empty before the seed CLI "
+            "runs so the latency row-count assertion measures only this "
+            "command's writes."
+        )
 
     first_result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
     assert first_result.exit_code == 0, (
@@ -406,6 +427,11 @@ def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
         assert rows_after_first_run == EXPECTED_SEEDED_ROW_COUNT, (
             f"Expected {EXPECTED_SEEDED_ROW_COUNT} seeded rows after first run, "
             f"got {rows_after_first_run}"
+        )
+        latency_rows_after_first_run = Anonymous_Latency_Samples.query.count()
+        assert latency_rows_after_first_run == EXPECTED_SEEDED_LATENCY_ROW_COUNT, (
+            f"Expected {EXPECTED_SEEDED_LATENCY_ROW_COUNT} seeded latency rows "
+            f"after first run, got {latency_rows_after_first_run}"
         )
 
     second_result = cli_runner.invoke(args=["addmock", "seed-uniform-test-data"])
@@ -420,6 +446,13 @@ def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):
             "Seed CLI must be idempotent: second invocation must not add or "
             f"remove rows. Expected {EXPECTED_SEEDED_ROW_COUNT}, got "
             f"{rows_after_second_run}."
+        )
+        latency_rows_after_second_run = Anonymous_Latency_Samples.query.count()
+        assert latency_rows_after_second_run == EXPECTED_SEEDED_LATENCY_ROW_COUNT, (
+            "Seed CLI latency seeding must be idempotent: second invocation "
+            "must not add or remove latency rows. Expected "
+            f"{EXPECTED_SEEDED_LATENCY_ROW_COUNT}, got "
+            f"{latency_rows_after_second_run}."
         )
 
 
@@ -441,6 +474,7 @@ def test_add_all_mock_data_also_seeds_anonymous_metrics(runner):
 
     with app.app_context():
         assert Anonymous_Metrics.query.count() == 0
+        assert Anonymous_Latency_Samples.query.count() == 0
 
     first_result = cli_runner.invoke(args=["addmock", "all"])
     assert first_result.exit_code == 0, (
@@ -453,6 +487,12 @@ def test_add_all_mock_data_also_seeds_anonymous_metrics(runner):
         assert rows_after_first_run == EXPECTED_SEEDED_ROW_COUNT, (
             f"Expected {EXPECTED_SEEDED_ROW_COUNT} AnonymousMetrics rows "
             f"after `addmock all`, got {rows_after_first_run}"
+        )
+        latency_rows_after_first_run = Anonymous_Latency_Samples.query.count()
+        assert latency_rows_after_first_run == EXPECTED_SEEDED_LATENCY_ROW_COUNT, (
+            f"Expected {EXPECTED_SEEDED_LATENCY_ROW_COUNT} "
+            f"AnonymousLatencySamples rows after `addmock all`, got "
+            f"{latency_rows_after_first_run}"
         )
 
     second_result = cli_runner.invoke(args=["addmock", "all"])
@@ -467,4 +507,62 @@ def test_add_all_mock_data_also_seeds_anonymous_metrics(runner):
             "`addmock all` metrics seeding must be idempotent: second "
             f"invocation must not add rows. Expected {EXPECTED_SEEDED_ROW_COUNT}, "
             f"got {rows_after_second_run}."
+        )
+        latency_rows_after_second_run = Anonymous_Latency_Samples.query.count()
+        assert latency_rows_after_second_run == EXPECTED_SEEDED_LATENCY_ROW_COUNT, (
+            "`addmock all` latency seeding must be idempotent: second "
+            "invocation must not add latency rows. Expected "
+            f"{EXPECTED_SEEDED_LATENCY_ROW_COUNT}, got "
+            f"{latency_rows_after_second_run}."
+        )
+
+
+def test_seed_uniform_latency_writes_expected_rows_and_is_idempotent(runner):
+    """
+    GIVEN a developer wanting to seed deterministic AnonymousLatencySamples rows
+        for the admin dashboard's Backend Performance tab
+    WHEN the developer provides the following CLI command:
+        `flask addmock seed-uniform-latency`
+    THEN verify the command exits successfully, writes the expected number of
+        latency rows (one per (hour-offset × endpoint × device-type × duration)
+        tuple), and is idempotent across repeat invocations (the seeder skips
+        any (endpoint, observed_at) bucket that already has rows).
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        assert Anonymous_Latency_Samples.query.count() == 0, (
+            "AnonymousLatencySamples table must be empty before the seed CLI "
+            "runs so the row-count assertion measures only this command's "
+            "writes."
+        )
+
+    first_result = cli_runner.invoke(args=["addmock", "seed-uniform-latency"])
+    assert first_result.exit_code == 0, (
+        f"First latency seed CLI invocation failed: exit={first_result.exit_code} "
+        f"output={first_result.output}"
+    )
+
+    with app.app_context():
+        latency_rows_after_first_run = Anonymous_Latency_Samples.query.count()
+        assert latency_rows_after_first_run == EXPECTED_SEEDED_LATENCY_ROW_COUNT, (
+            f"Expected {EXPECTED_SEEDED_LATENCY_ROW_COUNT} seeded latency rows "
+            f"after first run, got {latency_rows_after_first_run}"
+        )
+
+    second_result = cli_runner.invoke(args=["addmock", "seed-uniform-latency"])
+    assert second_result.exit_code == 0, (
+        f"Second latency seed CLI invocation failed: "
+        f"exit={second_result.exit_code} output={second_result.output}"
+    )
+
+    with app.app_context():
+        latency_rows_after_second_run = Anonymous_Latency_Samples.query.count()
+        assert latency_rows_after_second_run == EXPECTED_SEEDED_LATENCY_ROW_COUNT, (
+            "Latency seed CLI must be idempotent: second invocation must not "
+            f"add or remove rows. Expected {EXPECTED_SEEDED_LATENCY_ROW_COUNT}, "
+            f"got {latency_rows_after_second_run}."
         )

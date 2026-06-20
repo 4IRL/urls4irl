@@ -92,7 +92,13 @@ describe("renderLatencyChart (happy path)", () => {
 
   it("renders a color-coded legend with dash-pattern swatches", () => {
     const svg = buildSvg();
-    renderLatencyChart({ svg, response: buildResponse([buildBucket()]) });
+    renderLatencyChart({
+      svg,
+      response: buildResponse([
+        buildBucket({ bucket: "2026-06-01T00:00:00+00:00" }),
+        buildBucket({ bucket: "2026-06-01T01:00:00+00:00" }),
+      ]),
+    });
 
     const legend = svg.querySelector(".MetricsLatencyLegend")!;
     expect(legend).not.toBeNull();
@@ -113,7 +119,13 @@ describe("renderLatencyChart (happy path)", () => {
 
   it("renders the ms y-axis label and per-series aria-labels", () => {
     const svg = buildSvg();
-    renderLatencyChart({ svg, response: buildResponse([buildBucket()]) });
+    renderLatencyChart({
+      svg,
+      response: buildResponse([
+        buildBucket({ bucket: "2026-06-01T00:00:00+00:00" }),
+        buildBucket({ bucket: "2026-06-01T01:00:00+00:00" }),
+      ]),
+    });
 
     const axisTitle = svg.querySelector(".MetricsAxisTitle")!;
     expect(axisTitle.textContent).toBe(
@@ -139,7 +151,13 @@ describe("renderLatencyChart (happy path)", () => {
 
   it("fills the SVG <title> and <desc> with non-empty text", () => {
     const svg = buildSvg();
-    renderLatencyChart({ svg, response: buildResponse([buildBucket()]) });
+    renderLatencyChart({
+      svg,
+      response: buildResponse([
+        buildBucket({ bucket: "2026-06-01T00:00:00+00:00" }),
+        buildBucket({ bucket: "2026-06-01T01:00:00+00:00" }),
+      ]),
+    });
 
     expect(svg.querySelector("title")!.textContent!.length).toBeGreaterThan(0);
     expect(svg.querySelector("desc")!.textContent!.length).toBeGreaterThan(0);
@@ -175,6 +193,18 @@ describe("renderLatencyChart (sad path: all-null)", () => {
 
     expect(svg.querySelectorAll("polyline").length).toBe(0);
     expect(svg.querySelector("text.MetricsEmptyState")).not.toBeNull();
+  });
+});
+
+describe("renderLatencyChart (sad path: single bucket)", () => {
+  it("renders the empty state instead of a degenerate one-point polyline", () => {
+    const svg = buildSvg();
+    renderLatencyChart({ svg, response: buildResponse([buildBucket()]) });
+
+    expect(svg.querySelectorAll("polyline").length).toBe(0);
+    const emptyState = svg.querySelector("text.MetricsEmptyState")!;
+    expect(emptyState).not.toBeNull();
+    expect(emptyState.textContent).toBe(APP_CONFIG.strings.METRICS_EMPTY_STATE);
   });
 });
 
