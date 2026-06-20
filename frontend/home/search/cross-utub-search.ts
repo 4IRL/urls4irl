@@ -59,6 +59,12 @@ let _searchModeActive = false;
 // differs (or nothing has been submitted), it is a Search. `null` means nothing
 // submitted yet this open.
 let _lastSubmitted: string | null = null;
+// The in-flight search request, if any. Each new submit aborts its predecessor
+// before firing (abort-and-replace), collapsing spammed submits into one
+// effective server hit and guaranteeing the latest query's response is the one
+// that renders. An aborted jqXHR surfaces in `.fail` as status 0, which the
+// existing handler already ignores.
+let _inFlight: JQuery.jqXHR | null = null;
 let _breakpointQuery: MediaQueryList | null = null;
 let _onBreakpointChange: (() => void) | null = null;
 
@@ -181,7 +187,8 @@ export function performCrossUtubSearch({
     url += "&fields=" + fields.join(",");
   }
 
-  ajaxCall("GET", url, null)
+  _inFlight?.abort();
+  _inFlight = ajaxCall("GET", url, null)
     .done((data: SearchResponse) => {
       $("#crossUtubSearchShortQuery").addClass("hidden");
       renderSearchResults({ results: data.results, query: trimmed });
@@ -206,6 +213,9 @@ export function performCrossUtubSearch({
       if (xhr.status === 400) {
         showNoResultsState();
       }
+    })
+    .always(() => {
+      _inFlight = null;
     });
 }
 
@@ -465,6 +475,10 @@ export function exitCrossUtubSearchMode({
   $("#crossUtubSearchClear").addClass("hidden");
   clearResultStates();
   _lastSubmitted = null;
+  // Abort any pending search so a late response can't render into a DOM the
+  // user has already left.
+  _inFlight?.abort();
+  _inFlight = null;
   updateSubmitButtonState();
 
   $("#toCrossUtubSearch").trigger("focus");
@@ -765,6 +779,8 @@ export function initCrossUtubSearch(): void {
     setTriggerToOpenState();
     $("#navReturnHome").addClass("hidden");
     _lastSubmitted = null;
+    _inFlight?.abort();
+    _inFlight = null;
     updateSubmitButtonState();
     $("#toCrossUtubSearch").trigger("focus");
   };

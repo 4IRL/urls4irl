@@ -93,6 +93,8 @@ function buildDoneXhr(results: unknown[]): JQuery.jqXHR {
       return this;
     }),
     fail: vi.fn().mockReturnThis(),
+    always: vi.fn().mockReturnThis(),
+    abort: vi.fn(),
   } as unknown as JQuery.jqXHR;
 }
 
@@ -106,6 +108,8 @@ function buildFailXhr(status: number): JQuery.jqXHR {
       cb({ status });
       return this;
     }),
+    always: vi.fn().mockReturnThis(),
+    abort: vi.fn(),
   } as unknown as JQuery.jqXHR;
 }
 
@@ -192,6 +196,78 @@ describe("cross-utub-search — mode mechanics", () => {
     const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0][1] as string;
     expect(calledUrl).toBe(`${APP_CONFIG.routes.crossUtubSearch}?q=alpha`);
+  });
+
+  it("(b1a) spamming Enter aborts each in-flight request so only the last survives", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    const xhr1 = buildDoneXhr([]);
+    const xhr2 = buildDoneXhr([]);
+    const xhr3 = buildDoneXhr([]);
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce(xhr1)
+      .mockReturnValueOnce(xhr2)
+      .mockReturnValueOnce(xhr3);
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+    $("#crossUtubSearchInput").trigger(enter);
+    $("#crossUtubSearchInput").trigger(enter);
+
+    // Each press starts a request, but every predecessor is aborted; only the
+    // final request is left running.
+    expect(ajaxCall).toHaveBeenCalledTimes(3);
+    expect(xhr1.abort).toHaveBeenCalledTimes(1);
+    expect(xhr2.abort).toHaveBeenCalledTimes(1);
+    expect(xhr3.abort).not.toHaveBeenCalled();
+  });
+
+  it("(b1b) an aborted request (status 0) renders nothing and shows no error", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      buildFailXhr(0),
+    );
+    const { renderSearchResults } = await import("../render.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    expect(renderSearchResults).not.toHaveBeenCalled();
+    expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(true);
+  });
+
+  it("(b1c) exiting search mode aborts the in-flight request", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    const xhr = buildDoneXhr([]);
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(xhr);
+    const {
+      initCrossUtubSearch,
+      enterCrossUtubSearchMode,
+      exitCrossUtubSearchMode,
+    } = await import("../cross-utub-search.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
+    });
+
+    expect(xhr.abort).toHaveBeenCalledTimes(1);
   });
 
   it("(b2) a non-default field selection appends the &fields= query param", async () => {
