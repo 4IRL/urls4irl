@@ -24,6 +24,7 @@ from backend.extensions.email_sender.email_sender import EmailSender
 from backend.extensions.metrics.middleware import init_metrics_middleware
 from backend.extensions.metrics.writer import MetricsWriter
 from backend.extensions.notifications.notifications import NotificationSender
+from backend.extensions.request_timing import init_app as init_request_timing
 from backend.extensions.url_validation.url_validator import UrlValidator
 from backend.cli.metrics import register_metrics_cli
 from backend.cli.mock_options import register_mocks_db_cli
@@ -107,6 +108,11 @@ def create_app(
     # Handle None objects to prevent Flask-SQLAlchemy 3 from crashing
     if app.config.get("SQLALCHEMY_ENGINE_OPTIONS") is None:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
+
+    # Must stay FIRST: stamps the monotonic request clock before any other
+    # before_request hook (notably the rate limiter, which can abort with a 429)
+    # can short-circuit the request. app_logger and the metrics hook both read it.
+    init_request_timing(app)
 
     app_logger.init_app(app, show_test_logs)
 

@@ -4,8 +4,10 @@ from flask import Flask, request
 from werkzeug.wrappers import Response
 
 from backend.extensions.metrics.ua_classifier import classify_user_agent
-from backend.extensions.metrics.writer import record_event
+from backend.extensions.metrics.writer import record_duration, record_event
+from backend.extensions.request_timing import request_elapsed_ms
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventName
+from backend.metrics.latency import LatencyMetricName
 from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -52,6 +54,15 @@ def init_metrics_middleware(app: Flask) -> None:
             endpoint=request.endpoint,
             method=request.method,
             status_code=response.status_code,
-            dimensions={DEVICE_TYPE_DIM_KEY: int(device_type)},
+            dimensions={DEVICE_TYPE_DIM_KEY: device_type},
         )
+        elapsed_ms = request_elapsed_ms()
+        if elapsed_ms is not None:
+            record_duration(
+                metric=LatencyMetricName.API_REQUEST_DURATION,
+                duration_ms=elapsed_ms,
+                endpoint=request.endpoint,
+                method=request.method,
+                dimensions={DEVICE_TYPE_DIM_KEY: device_type},
+            )
         return response

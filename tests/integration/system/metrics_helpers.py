@@ -7,7 +7,8 @@ import psycopg2
 from flask import Flask
 from redis import Redis
 
-from backend.metrics.events import EventName
+from backend.extensions.metrics.dimensions import canonicalize_dimensions
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
 IPHONE_UA = (
@@ -101,3 +102,36 @@ def parse_dims(counter_key: bytes) -> dict:
 def build_counter_key(bucket_epoch: int, event_value: str, dims: dict) -> str:
     canonical = json.dumps(dims, sort_keys=True, separators=(",", ":"))
     return f"{METRICS_REDIS.COUNTER_KEY_PREFIX}{bucket_epoch}:{event_value}:{canonical}"
+
+
+def truncate_latency_tables(pg_conn: Any) -> None:
+    with pg_conn.cursor() as cursor:
+        cursor.execute(
+            'TRUNCATE TABLE "AnonymousLatencySamples" RESTART IDENTITY CASCADE'
+        )
+    pg_conn.commit()
+
+
+def find_latency_keys(metrics_redis: Redis, metric_value: str) -> list[bytes]:
+    pattern = f"{METRICS_REDIS.LATENCY_KEY_PREFIX}*:{metric_value}:*"
+    return list(metrics_redis.scan_iter(match=pattern))
+
+
+def build_latency_key(
+    bucket_epoch: int,
+    metric_value: str,
+    endpoint: str,
+    method: str,
+    device_type: DeviceType,
+) -> str:
+    """Build a 7-segment latency Redis key.
+
+    Format: ``metrics:latency:<bucket_epoch>:<metric_value>:<endpoint>:<method>:<canonical_device_dims_json>``
+    where ``canonical_device_dims_json`` holds only ``device_type`` (endpoint and
+    method are separate key segments, not embedded in the JSON dims).
+    """
+    canonical_device_dims = canonicalize_dimensions({DEVICE_TYPE_DIM_KEY: device_type})
+    return (
+        f"{METRICS_REDIS.LATENCY_KEY_PREFIX}{bucket_epoch}:{metric_value}:"
+        f"{endpoint}:{method}:{canonical_device_dims}"
+    )
