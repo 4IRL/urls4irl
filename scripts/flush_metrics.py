@@ -23,13 +23,13 @@ keys into Postgres.
 
 from __future__ import annotations
 
+from collections import namedtuple
 import importlib.util
 import json
 import logging
 import os
 import sys
 import time
-from collections import namedtuple
 from pathlib import Path
 from types import ModuleType
 
@@ -355,10 +355,6 @@ def run_latency_flush(
         # Orphaned draining key from a previous worker crash — self-healing via
         # EXPIRE, never re-drained here.
         if raw_key.endswith(b":draining"):
-            continue
-        # Belt-and-suspenders: the prune sentinel lives under metrics:prune:* and
-        # cannot match LATENCY_GLOB, but skip it explicitly if it ever appears.
-        if raw_key.decode("utf-8", "ignore") == METRICS_REDIS.LATENCY_LAST_PRUNE_KEY:
             continue
         parsed = parse_latency_key(raw_key)
         if parsed is None:

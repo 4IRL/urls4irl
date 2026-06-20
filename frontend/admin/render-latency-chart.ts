@@ -119,13 +119,6 @@ function formatBucketLabel(bucketIso: string): string {
   }).format(parsed);
 }
 
-function valueForSeries(
-  bucket: LatencyTimeseriesBucket,
-  key: "p50" | "p95" | "p99",
-): number | null {
-  return bucket[key];
-}
-
 function formatMs(value: number | null): string {
   return value === null ? "—" : `${Math.round(value)}ms`;
 }
@@ -145,7 +138,7 @@ function buildSummaryText(response: LatencyTimeseriesResponse): {
 
   const lastValue = (key: "p50" | "p95" | "p99"): number | null => {
     for (let index = response.buckets.length - 1; index >= 0; index -= 1) {
-      const value = valueForSeries(response.buckets[index]!, key);
+      const value = response.buckets[index]![key];
       if (value !== null) {
         return value;
       }
@@ -180,7 +173,7 @@ function buildSeriesSegments({
   const segments: string[] = [];
   let current: string[] = [];
   buckets.forEach((bucket, index) => {
-    const value = valueForSeries(bucket, key);
+    const value = bucket[key];
     if (value === null) {
       if (current.length > 0) {
         segments.push(current.join(" "));
@@ -229,7 +222,7 @@ export function renderLatencyChart({
   let maxValue = 0;
   for (const bucket of response.buckets) {
     for (const series of SERIES) {
-      const value = valueForSeries(bucket, series.key);
+      const value = bucket[series.key];
       if (value !== null && value > maxValue) {
         maxValue = value;
       }
