@@ -108,6 +108,13 @@ describe("Collapsible Decks", () => {
   });
 
   describe("two-deck maximum enforcement", () => {
+    // Collapsing the Member/Tag decks requires a selected UTub (otherwise they
+    // are locked minimized and their headers are inert).
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
     it("auto-expands the most-recently collapsed deck when a third is collapsed", () => {
       // 1st collapse: UTub (data-last-collapsed=true)
       $("#UTubDeckHeaderAndCaret").trigger("click");

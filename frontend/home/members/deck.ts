@@ -88,7 +88,8 @@ export function setMemberDeckWhenNoUTubSelected(): void {
   resetMemberDeck();
 
   $("#memberBtnCreate").hideClass();
-  $("#memberSelfBtnDelete").hideClass();
+  // The leave button lives in the UTub deck now; it is hidden via
+  // setUTubDeckWhenNoUTubSelected() on the no-UTub path.
 
   // Hide the member list until a UTub is selected
   $("#displayMemberWrap").hideClass();
@@ -100,13 +101,12 @@ export function setMemberDeckWhenNoUTubSelected(): void {
 export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
 
-  // Ability to add members is restricted to UTub owner
+  // Ability to add members is restricted to UTub owner. The leave/delete actions
+  // live in the UTub deck (setUTubDeckOnUTubSelected) and are not managed here.
   if (isCurrentUserOwner) {
-    $("#memberSelfBtnDelete").hideClass();
     $("#memberBtnCreate").showClassNormal();
   } else {
     $("#memberBtnCreate").hideClass();
-    $("#memberSelfBtnDelete").showClassNormal();
   }
 
   // Inline member total next to the deck title (replaces the subheader band)

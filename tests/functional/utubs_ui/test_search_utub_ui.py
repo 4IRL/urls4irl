@@ -26,7 +26,10 @@ from tests.functional.selenium_utils import (
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.selenium_utils import create_utub
+from tests.functional.utubs_ui.selenium_utils import (
+    create_utub,
+    open_utub_name_filter,
+)
 
 pytestmark = pytest.mark.utubs_ui
 
@@ -45,7 +48,7 @@ def test_utub_search_with_no_match(
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
     login_user_to_home_page(app, browser, user_id_for_test)
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
 
     input_elem.send_keys("Z")
@@ -78,7 +81,7 @@ def test_utub_search_with_one_match(
 
     original_names_and_ids = utub_names_and_ids.copy()
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
 
     utub_name_to_show, utub_id_to_show = utub_names_and_ids.popitem()
@@ -110,7 +113,7 @@ def test_utub_search_with_all_match(
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
     login_user_to_home_page(app, browser, user_id_for_test)
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
 
     input_elem.send_keys("1")
@@ -136,7 +139,7 @@ def test_utub_search_resets_on_create_utub(
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
     login_user_to_home_page(app, browser, user_id_for_test)
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
 
     # All UTubs missing 'Z'
@@ -183,7 +186,7 @@ def test_utub_search_resets_on_delete_utub(
         app, browser, utub_id=first_id, user_id=user_id_for_test
     )
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
 
     # All UTubs missing 'Z'
@@ -218,18 +221,25 @@ def test_search_bar_visible_when_utubs_exist(
 ):
     """
     GIVEN a user with one or more UTubs logs in
-    WHEN they navigate to the home page
-    THEN the search bar (#SearchUTubWrap, #UTubNameSearch) is visible and the
-         "Create a UTub" subheader is hidden.
+    WHEN they navigate to the home page (desktop)
+    THEN the funnel toggle (#utubNameFilterBtn) is visible, the search input
+         stays hidden until the funnel is opened, and the "Create a UTub"
+         subheader is hidden. Opening the funnel reveals the search input.
     """
     app = provide_app
     user_id_for_test = 1
     create_test_searchable_utubs(app, user_id_for_test)
     login_user_to_home_page(app, browser, user_id_for_test)
 
+    # Desktop: the search hides behind the funnel toggle until opened.
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
+    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
+    assert_not_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
+
+    # Opening the funnel reveals the search input.
+    open_utub_name_filter(browser)
     assert_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
     assert_visible_css_selector(browser, HPL.UTUB_SEARCH_INPUT, time=3)
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
 
 
 def test_search_bar_hidden_when_no_utubs(
@@ -255,14 +265,17 @@ def test_search_bar_appears_after_creating_first_utub(
     browser: WebDriver, create_test_users, provide_app: Flask
 ):
     """
-    GIVEN a user with zero UTubs is on the home page (search bar hidden)
+    GIVEN a user with zero UTubs is on the home page (no funnel, no search bar)
     WHEN they create their first UTub via the UI
-    THEN the search bar becomes visible and the "Create a UTub" subheader is hidden.
+    THEN the funnel toggle appears, the "Create a UTub" subheader is hidden, and
+         opening the funnel reveals the search input.
     """
     app = provide_app
     user_id_for_test = 1
     login_user_to_home_page(app, browser, user_id_for_test)
 
+    # Zero UTubs: neither the search nor its funnel toggle is shown.
+    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
     assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
 
     utub_name = UTS.TEST_UTUB_NAME_1
@@ -275,18 +288,22 @@ def test_search_bar_appears_after_creating_first_utub(
     assert not create_utub_name_input.is_displayed()
     assert_active_utub(browser, utub_name)
 
+    # First UTub created: the funnel toggle appears and reveals the search.
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
+    assert_not_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
+    open_utub_name_filter(browser)
     assert_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
     assert_visible_css_selector(browser, HPL.UTUB_SEARCH_INPUT, time=3)
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
 
 
 def test_search_bar_disappears_after_deleting_last_utub(
     browser: WebDriver, create_test_users, provide_app: Flask
 ):
     """
-    GIVEN a user with exactly one UTub (search bar visible)
+    GIVEN a user with exactly one UTub (funnel toggle visible)
     WHEN they delete that last UTub
-    THEN the search bar becomes hidden and the "Create a UTub" subheader is shown.
+    THEN the funnel toggle and search bar become hidden and the "Create a UTub"
+         subheader is shown.
     """
     app = provide_app
     user_id_for_test = 1
@@ -305,7 +322,8 @@ def test_search_bar_disappears_after_deleting_last_utub(
         app, browser, utub_id=keep_id, user_id=user_id_for_test
     )
 
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
+    # One UTub: the funnel toggle is available (search hidden until opened).
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
 
     deleted_utub_selector = f'{HPL.SELECTORS_UTUB}[utubid="{keep_id}"]'
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
@@ -313,6 +331,8 @@ def test_search_bar_disappears_after_deleting_last_utub(
     wait_until_hidden(browser, HPL.HOME_MODAL)
     wait_for_selector_to_be_removed(browser, deleted_utub_selector, timeout=10)
 
+    # Last UTub deleted: the funnel toggle and search disappear.
+    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
     assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
     assert_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
     subheader_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK)
@@ -333,7 +353,7 @@ def test_no_results_message_shown_when_search_matches_nothing(
     create_test_searchable_utubs(app, user_id_for_test)
     login_user_to_home_page(app, browser, user_id_for_test)
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
     input_elem.send_keys("ZZZZZZ")
 
@@ -355,7 +375,7 @@ def test_no_results_message_hidden_when_search_has_matches(
     create_test_searchable_utubs(app, user_id_for_test)
     login_user_to_home_page(app, browser, user_id_for_test)
 
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem = open_utub_name_filter(browser)
     assert input_elem is not None
 
     input_elem.send_keys("ZZZZZZ")

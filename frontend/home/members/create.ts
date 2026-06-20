@@ -152,14 +152,12 @@ export function createMemberHideInput(): void {
   // (hideInputs) would re-show the leave/add button after the deck was reset.
   if (getState().activeUTubID !== null) {
     $("#displayMemberWrap").showClassFlex();
-    // Only the UTub owner may add members — restore the correct control for the
-    // current user's role rather than always re-showing the add-member button.
+    // Only the UTub owner may add members — restore the add-member button for an
+    // owner. The leave action lives in the UTub deck and is not managed here.
     if (getState().isCurrentUserOwner) {
-      $("#memberSelfBtnDelete").hideClass();
       $("#memberBtnCreate").showClassNormal();
     } else {
       $("#memberBtnCreate").hideClass();
-      $("#memberSelfBtnDelete").showClassNormal();
     }
   }
   removeCreateMemberEventListeners();

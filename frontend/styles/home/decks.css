@@ -72,10 +72,39 @@
     overflow: hidden;
 }
 
+/* Suppress the collapse/expand animation for programmatic (auto) minimize and
+   restore on UTub selection — the deck and its header buttons settle instantly,
+   so animating rows never intercept clicks. User caret-collapse still animates. */
+.deck-snap,
+.deck-snap .content,
+.deck-snap .titleElement,
+.deck-snap .button-container,
+.deck-snap .title-caret {
+    transition: none !important;
+}
+
 .deck.collapsed .button-container {
     transition: opacity 0.3s ease;
     opacity: 0;
     pointer-events: none;
+}
+
+/* Locked-minimized state (desktop, no UTub selected): the Member/Tag decks can't
+   be expanded, so the header reads as non-interactable — caret hidden, title
+   dimmed, no hover affordance or pointer cursor. Applied only by JS when no UTub
+   is selected and removed on UTub selection. */
+.deck.deck-locked .title-caret {
+    visibility: hidden;
+}
+
+.deck.deck-locked .titleElement:first-child {
+    opacity: 0.5;
+}
+
+.deck.deck-locked #MemberDeckHeaderAndCaret,
+.deck.deck-locked #TagDeckHeaderAndCaret {
+    pointer-events: none;
+    cursor: default;
 }
 
 .titleElement {

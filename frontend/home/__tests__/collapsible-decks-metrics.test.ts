@@ -95,6 +95,14 @@ describe("collapsible-decks metrics emitters", () => {
   });
 
   describe("Member deck", () => {
+    // The Member deck is only collapsible while a UTub is selected (otherwise it
+    // is locked minimized), so the collapse/expand handler guards on
+    // isUTubSelected(). Simulate an open UTub for these gestures.
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
     it("emits ui_deck_collapse with deck=members on first click", async () => {
       const { emit } = await import("../../lib/metrics-client.js");
       initCollapsibleDecks();
@@ -134,6 +142,13 @@ describe("collapsible-decks metrics emitters", () => {
   });
 
   describe("Tag deck", () => {
+    // The Tag deck is only collapsible while a UTub is selected (otherwise it is
+    // locked minimized), so the handler guards on isUTubSelected().
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+    });
+
     it("emits ui_deck_collapse with deck=tags on first click", async () => {
       const { emit } = await import("../../lib/metrics-client.js");
       initCollapsibleDecks();

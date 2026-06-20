@@ -1,5 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { hideInputs } from "./btns-forms.js";
+import { minimizeMemberAndTagDecksWhenNoUTub } from "./collapsible-decks.js";
 import {
   setTagDeckSubheaderWhenNoUTubSelected,
   resetTagDeckIfNoUTubSelected,
@@ -10,7 +11,7 @@ import {
   resetMemberDeck,
 } from "./members/deck.js";
 import { getAllUTubs } from "./utubs/utils.js";
-import { buildUTubDeck } from "./utubs/deck.js";
+import { buildUTubDeck, setUTubDeckWhenNoUTubSelected } from "./utubs/deck.js";
 
 /**
  * Sets UI state when no UTub is selected
@@ -21,8 +22,12 @@ export function setUIWhenNoUTubSelected(): void {
   resetTagDeckIfNoUTubSelected();
   setURLDeckWhenNoUTubSelected();
   setMemberDeckWhenNoUTubSelected();
+  setUTubDeckWhenNoUTubSelected();
   resetMemberDeck();
   $(".sidePanelTitle").addClass("pad-b-0-25rem");
+
+  // Minimize the (empty) Member + Tag decks so the UTubs list gets the room
+  minimizeMemberAndTagDecksWhenNoUTub();
 
   // Remove active state from all UTub selectors
   $(".UTubSelector.active").removeClass("active").removeClass("focus");

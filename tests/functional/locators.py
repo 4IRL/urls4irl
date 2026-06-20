@@ -80,6 +80,9 @@ class HomePageLocators(GenericPageLocator):
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
     UTUB_SEARCH_WRAP = "#SearchUTubWrap"
     UTUB_SEARCH_NO_RESULTS = "#UTubSearchNoResults"
+    # Desktop-only funnel toggle that reveals/hides the UTub name search input.
+    BUTTON_UTUB_NAME_FILTER = "#utubNameFilterBtn"
+    BUTTON_UTUB_NAME_FILTER_CLOSE = "#utubNameFilterBtnClose"
 
     URL_OPEN_SEARCH_ICON = "#URLSearchFilterIcon"
     URL_CLOSE_SEARCH_ICON = "#URLSearchFilterIconClose"
@@ -114,7 +117,8 @@ class HomePageLocators(GenericPageLocator):
 
     # Tag Deck
     HEADER_TAG_DECK = "#TagDeckHeader"
-    SUBHEADER_TAG_DECK = "#TagDeckSubheader"
+    HEADER_AND_CARET_TAG_DECK = "#TagDeckHeaderAndCaret"
+    TAG_DECK_COUNT = "#TagDeckCount"
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
     TAG_COUNT = ".tagAppliedToUrlsCount"

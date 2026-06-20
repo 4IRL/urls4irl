@@ -66,14 +66,15 @@ $(document).ajaxComplete(function (event, xhr) {
 
 def test_deck_collapse_emits_to_anonymous_metrics(
     browser: WebDriver,
-    create_test_users: Any,
+    create_test_tags: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
     pg_conn_for_metrics: Any,
 ):
     """
-    GIVEN a logged-in user on the home page (no UTub selected) and the
-        metrics pipeline activated end-to-end
+    GIVEN a logged-in user on the home page with a UTub selected (so the
+        Member deck is expanded and unlocked) and the metrics pipeline
+        activated end-to-end
     WHEN the user clicks the Member deck header (the desktop deck-collapse
         gesture), then the test dispatches a `pagehide` event to fire the
         metrics-client's real flush path
@@ -81,17 +82,20 @@ def test_deck_collapse_emits_to_anonymous_metrics(
         `AnonymousMetrics` row exists for `ui_deck_collapse` with
         `dimensions = {"device_type": 2, "deck": "members"}` and count == 1.
 
-    The Member deck is chosen over UTubs/Tags because it has no selection-
-    state preconditions — the click handler in
-    `frontend/home/collapsible-decks.ts::setupMemberHeaderForMaximizeMinimize`
-    fires the emit on any header click while the Member deck is expanded
-    (the default state on home page load).
+    A UTub must be selected first: with no selection the Member/Tag decks are
+    locked minimized (see
+    `frontend/home/collapsible-decks.ts::minimizeMemberAndTagDecksWhenNoUTub`),
+    so the collapse gesture is only available once a UTub is open.
     """
     user_id_for_test = 1
-    login_user_to_home_page(provide_app, browser, user_id_for_test)
+    with provide_app.app_context():
+        utub_id = Utubs.query.first().id
+    login_user_and_select_utub_by_utubid(
+        provide_app, browser, user_id=user_id_for_test, utub_id=utub_id
+    )
 
-    # First click collapses the Member deck (default state is expanded), so
-    # the emit fires UI_DECK_COLLAPSE.
+    # With the UTub selected the Member deck is expanded; the first click
+    # collapses it, so the emit fires UI_DECK_COLLAPSE.
     wait_then_click_element(browser, _MEMBER_DECK_HEADER_AND_CARET, time=10)
 
     expected_dimensions: dict[str, Any] = {

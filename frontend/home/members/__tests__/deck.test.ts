@@ -75,15 +75,14 @@ describe("Member deck visibility on UTub selection", () => {
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(3)");
   });
 
-  it("shows the leave button and inline count for a non-owner UTub", () => {
+  it("hides the add-member button and shows the inline count for a non-owner UTub", () => {
     window.jQuery("#listMembers").append(`<span class="member">a</span>`);
+    window.jQuery("#memberBtnCreate").removeClass("hidden");
 
     setMemberDeckForUTub(false);
 
     expect(window.jQuery("#MemberDeckCount").text()).toBe("(2)");
-    expect(window.jQuery("#memberSelfBtnDelete").hasClass("hidden")).toBe(
-      false,
-    );
+    // The leave button lives in the UTub deck now and is not managed here.
     expect(window.jQuery("#memberBtnCreate").hasClass("hidden")).toBe(true);
   });
 });

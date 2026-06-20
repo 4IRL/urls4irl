@@ -13,6 +13,21 @@ from tests.functional.selenium_utils import (
 )
 
 
+def open_utub_name_filter(browser: WebDriver):
+    """
+    On desktop the UTub name search input is hidden behind the funnel toggle.
+    Click the funnel to reveal the input and return the now-visible element.
+
+    Args:
+        WebDriver open to the U4I Home Page (desktop viewport) with UTubs present
+
+    Returns:
+        The visible #UTubNameSearch input element
+    """
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
+    return wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT, time=3)
+
+
 def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     """
     Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.

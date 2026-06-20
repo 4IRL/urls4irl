@@ -326,11 +326,11 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
         browser, int(tag_id)
     )
 
-    tag_deck_subheader = wait_then_get_element(browser, HPL.SUBHEADER_TAG_DECK, time=3)
-    assert tag_deck_subheader
+    tag_deck_count = wait_then_get_element(browser, HPL.TAG_DECK_COUNT, time=3)
+    assert tag_deck_count
 
-    tag_deck_subheader_txt = tag_deck_subheader.text
-    assert "1 of 5" in tag_deck_subheader_txt
+    tag_deck_count_txt = tag_deck_count.text
+    assert "(1/5)" in tag_deck_count_txt
 
     delete_utub_tag_elem(browser, tag_id, app)
 
@@ -339,11 +339,11 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
 
     assert len(visible_urls) > len(displayed_urls_with_tag)
 
-    tag_deck_subheader = wait_then_get_element(browser, HPL.SUBHEADER_TAG_DECK, time=3)
-    assert tag_deck_subheader
+    tag_deck_count = wait_then_get_element(browser, HPL.TAG_DECK_COUNT, time=3)
+    assert tag_deck_count
 
-    tag_deck_subheader_txt = tag_deck_subheader.text
-    assert "0 of 5" in tag_deck_subheader_txt
+    tag_deck_count_txt = tag_deck_count.text
+    assert "(0/5)" in tag_deck_count_txt
 
 
 def test_delete_utub_tag_rate_limits(
