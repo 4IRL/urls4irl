@@ -18,11 +18,15 @@ const {
   fetchGroupedTimeseriesSpy,
   fetchFlowSpy,
   fetchGaugesTimeseriesSpy,
+  fetchLatencySpy,
+  fetchLatencyTimeseriesSpy,
   renderSummarySpy,
   renderTopTableSpy,
   renderTimeseriesChartSpy,
   renderFlowGridSpy,
   renderGaugeGridSpy,
+  renderLatencyPanelSpy,
+  renderLatencyDetailChartSpy,
 } = vi.hoisted(() => ({
   fetchSummarySpy: vi.fn(),
   fetchTopEventsSpy: vi.fn(),
@@ -30,11 +34,15 @@ const {
   fetchGroupedTimeseriesSpy: vi.fn(),
   fetchFlowSpy: vi.fn(),
   fetchGaugesTimeseriesSpy: vi.fn(),
+  fetchLatencySpy: vi.fn(),
+  fetchLatencyTimeseriesSpy: vi.fn(),
   renderSummarySpy: vi.fn(),
   renderTopTableSpy: vi.fn(),
   renderTimeseriesChartSpy: vi.fn(),
   renderFlowGridSpy: vi.fn(),
   renderGaugeGridSpy: vi.fn(),
+  renderLatencyPanelSpy: vi.fn(),
+  renderLatencyDetailChartSpy: vi.fn(),
 }));
 
 vi.mock("../metrics-query-client.js", () => ({
@@ -44,6 +52,8 @@ vi.mock("../metrics-query-client.js", () => ({
   fetchGroupedTimeseries: fetchGroupedTimeseriesSpy,
   fetchFlow: fetchFlowSpy,
   fetchGaugesTimeseries: fetchGaugesTimeseriesSpy,
+  fetchLatency: fetchLatencySpy,
+  fetchLatencyTimeseries: fetchLatencyTimeseriesSpy,
 }));
 
 vi.mock("../render-summary.js", () => ({
@@ -66,6 +76,11 @@ vi.mock("../gauge-card.js", () => ({
   renderGaugeGrid: renderGaugeGridSpy,
 }));
 
+vi.mock("../latency-card.js", () => ({
+  renderLatencyPanel: renderLatencyPanelSpy,
+  renderLatencyDetailChart: renderLatencyDetailChartSpy,
+}));
+
 import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
 import { $ } from "../../lib/globals.js";
 import {
@@ -79,14 +94,16 @@ type TabId =
   | "MetricsTabDomain"
   | "MetricsTabPipelineHealth"
   | "MetricsTabFlows"
-  | "MetricsTabGauges";
+  | "MetricsTabGauges"
+  | "MetricsTabLatency";
 type PanelId =
   | "MetricsPanelApi"
   | "MetricsPanelUi"
   | "MetricsPanelDomain"
   | "MetricsPanelPipelineHealth"
   | "MetricsPanelFlows"
-  | "MetricsPanelGauges";
+  | "MetricsPanelGauges"
+  | "MetricsPanelLatency";
 
 const DASHBOARD_HTML = `
   <main id="MetricsDashboard" aria-busy="false">
@@ -101,6 +118,7 @@ const DASHBOARD_HTML = `
       <button id="MetricsTabUi"             role="tab" aria-selected="false" aria-controls="MetricsPanelUi"             tabindex="-1" data-tab="ui"></button>
       <button id="MetricsTabDomain"         role="tab" aria-selected="false" aria-controls="MetricsPanelDomain"         tabindex="-1" data-tab="domain"></button>
       <button id="MetricsTabFlows"          role="tab" aria-selected="false" aria-controls="MetricsPanelFlows"          tabindex="-1" data-tab="flows"></button>
+      <button id="MetricsTabLatency"        role="tab" aria-selected="false" aria-controls="MetricsPanelLatency"        tabindex="-1" data-tab="latency"></button>
       <button id="MetricsTabPipelineHealth" role="tab" aria-selected="false" aria-controls="MetricsPanelPipelineHealth" tabindex="-1" data-tab="pipeline_health"></button>
     </div>
     <section id="MetricsSummary" hidden><div id="MetricsSummaryGrid"></div></section>
@@ -125,6 +143,14 @@ const DASHBOARD_HTML = `
       <span class="gauges-loading-spinner" aria-hidden="true"></span>
       <span id="MetricsPanelGaugesAnnouncement" class="visually-hidden" aria-live="polite"></span>
       <div id="MetricsGaugeGrid" class="gauge-grid"></div>
+    </section>
+    <section id="MetricsPanelLatency" role="tabpanel" tabindex="0" hidden>
+      <span class="latency-loading-spinner" aria-hidden="true"></span>
+      <span id="MetricsPanelLatencyAnnouncement" class="visually-hidden" aria-live="polite"></span>
+      <div id="MetricsLatencyGrid" class="latency-grid">
+        <table id="MetricsLatencyTable" class="top-table latency-table"><thead></thead><tbody></tbody></table>
+        <div id="MetricsLatencyChartContainer" class="latency-detail"></div>
+      </div>
     </section>
     <section id="MetricsPanelPipelineHealth" role="tabpanel" tabindex="0" hidden></section>
     <div id="MetricsErrorBanner" class="hidden"></div>
@@ -194,6 +220,49 @@ function createDoneJqXHR(response: MockGaugesResponse): JQuery.jqXHR {
   });
 }
 
+interface MockLatencyResponse {
+  window: string | null;
+  window_start: string;
+  window_end: string;
+  rows: Array<{
+    endpoint: string | null;
+    method: string | null;
+    p50: number | null;
+    p95: number | null;
+    p99: number | null;
+    sample_count: number;
+  }>;
+}
+
+function buildLatencyResponse(): MockLatencyResponse {
+  return {
+    window: "day",
+    window_start: "2026-06-01T00:00:00+00:00",
+    window_end: "2026-06-02T00:00:00+00:00",
+    rows: [
+      {
+        endpoint: "utubs.get_utub",
+        method: "GET",
+        p50: 12,
+        p95: 48,
+        p99: 95,
+        sample_count: 42,
+      },
+    ],
+  };
+}
+
+function createDoneLatencyJqXHR(response: MockLatencyResponse): JQuery.jqXHR {
+  return createMockJqXHRChainable({
+    done: (callback: unknown) => {
+      (callback as (value: MockLatencyResponse) => void)(response);
+    },
+    always: (callback: unknown) => {
+      (callback as () => void)();
+    },
+  });
+}
+
 describe("metrics-dashboard tablist a11y", () => {
   beforeEach(() => {
     document.body.innerHTML = DASHBOARD_HTML;
@@ -208,11 +277,15 @@ describe("metrics-dashboard tablist a11y", () => {
     fetchGroupedTimeseriesSpy.mockReset();
     fetchFlowSpy.mockReset();
     fetchGaugesTimeseriesSpy.mockReset();
+    fetchLatencySpy.mockReset();
+    fetchLatencyTimeseriesSpy.mockReset();
     renderSummarySpy.mockReset();
     renderTopTableSpy.mockReset();
     renderTimeseriesChartSpy.mockReset();
     renderFlowGridSpy.mockReset();
     renderGaugeGridSpy.mockReset();
+    renderLatencyPanelSpy.mockReset();
+    renderLatencyDetailChartSpy.mockReset();
 
     fetchSummarySpy.mockImplementation(() => createMockJqXHRChainable());
     fetchTopEventsSpy.mockImplementation(() => createMockJqXHRChainable());
@@ -222,6 +295,10 @@ describe("metrics-dashboard tablist a11y", () => {
     );
     fetchFlowSpy.mockImplementation(() => createMockJqXHRChainable());
     fetchGaugesTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable(),
+    );
+    fetchLatencySpy.mockImplementation(() => createMockJqXHRChainable());
+    fetchLatencyTimeseriesSpy.mockImplementation(() =>
       createMockJqXHRChainable(),
     );
 
@@ -279,10 +356,22 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(document.activeElement).toBe(getTab("MetricsTabPipelineHealth"));
   });
 
-  it("ArrowRight from Flows moves to Pipeline Health", () => {
+  it("ArrowRight from Flows moves to Latency", () => {
     getTab("MetricsTabFlows").click();
     getTab("MetricsTabFlows").focus();
     $("#MetricsTabFlows").trigger($.Event("keydown", { key: "ArrowRight" }));
+
+    expect(getTab("MetricsTabLatency").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(getTab("MetricsTabLatency").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(getTab("MetricsTabLatency"));
+  });
+
+  it("ArrowRight from Latency moves to Pipeline Health (Latency precedes it)", () => {
+    getTab("MetricsTabLatency").click();
+    getTab("MetricsTabLatency").focus();
+    $("#MetricsTabLatency").trigger($.Event("keydown", { key: "ArrowRight" }));
 
     expect(
       getTab("MetricsTabPipelineHealth").getAttribute("aria-selected"),
@@ -394,6 +483,9 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(summary.hasAttribute("hidden")).toBe(true);
 
     getTab("MetricsTabGauges").click();
+    expect(summary.hasAttribute("hidden")).toBe(true);
+
+    getTab("MetricsTabLatency").click();
     expect(summary.hasAttribute("hidden")).toBe(true);
 
     // Switching back to a category tab restores the summary.
@@ -535,6 +627,129 @@ describe("metrics-dashboard tablist a11y", () => {
     expect(fetchGaugesTimeseriesSpy.mock.calls[0][0]).toEqual({
       window: "week",
     });
+  });
+
+  it("activating the Latency tab fires the batched latency request and renders the table", () => {
+    expect(fetchLatencySpy).not.toHaveBeenCalled();
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+
+    getTab("MetricsTabLatency").click();
+
+    expect(fetchLatencySpy).toHaveBeenCalledTimes(1);
+    expect(renderLatencyPanelSpy).toHaveBeenCalled();
+    expect(renderLatencyPanelSpy.mock.calls[0][0].response).toEqual(
+      buildLatencyResponse(),
+    );
+  });
+
+  it("selecting the Latency tab shows MetricsPanelLatency and hides the summary", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+
+    getTab("MetricsTabLatency").click();
+
+    expect(getPanel("MetricsPanelLatency").hasAttribute("hidden")).toBe(false);
+    expect(getPanel("MetricsPanelGauges").hasAttribute("hidden")).toBe(true);
+    expect(getTab("MetricsTabLatency").getAttribute("aria-selected")).toBe(
+      "true",
+    );
+    expect(
+      document.getElementById("MetricsSummary")!.hasAttribute("hidden"),
+    ).toBe(true);
+  });
+
+  it("clicking a latency row fetches the endpoint's timeseries and renders the chart", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+    fetchLatencyTimeseriesSpy.mockImplementation(() =>
+      createMockJqXHRChainable({
+        done: (callback: unknown) => {
+          (
+            callback as (value: {
+              window: string | null;
+              window_start: string;
+              window_end: string;
+              endpoint: string | null;
+              method: string | null;
+              buckets: unknown[];
+            }) => void
+          )({
+            window: "day",
+            window_start: "2026-06-01T00:00:00+00:00",
+            window_end: "2026-06-02T00:00:00+00:00",
+            endpoint: "utubs.get_utub",
+            method: "GET",
+            buckets: [],
+          });
+        },
+        always: (callback: unknown) => {
+          (callback as () => void)();
+        },
+      }),
+    );
+
+    getTab("MetricsTabLatency").click();
+
+    // renderLatencyPanel is mocked (no-op), so inject a row the delegated handler
+    // can resolve — the click bubbles to the table binding wired at init.
+    const table = document.getElementById("MetricsLatencyTable") as HTMLElement;
+    const tbody = table.querySelector("tbody")!;
+    const row = document.createElement("tr");
+    row.className = "latency-row";
+    row.dataset.endpoint = "utubs.get_utub";
+    row.dataset.method = "GET";
+    tbody.appendChild(row);
+
+    row.click();
+
+    expect(fetchLatencyTimeseriesSpy).toHaveBeenCalledTimes(1);
+    expect(fetchLatencyTimeseriesSpy.mock.calls[0][0]).toEqual({
+      window: "day",
+      endpoint: "utubs.get_utub",
+      method: "GET",
+      resolution: "hour",
+    });
+    expect(renderLatencyDetailChartSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("switching back to the Latency tab re-renders from cache without a new fetch", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+
+    getTab("MetricsTabLatency").click();
+    expect(fetchLatencySpy).toHaveBeenCalledTimes(1);
+
+    getTab("MetricsTabApi").click();
+    renderLatencyPanelSpy.mockClear();
+    fetchLatencySpy.mockClear();
+
+    getTab("MetricsTabLatency").click();
+
+    // Warm cache → re-render from cache, no second fetch.
+    expect(fetchLatencySpy).not.toHaveBeenCalled();
+    expect(renderLatencyPanelSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("changing the window while Latency is active refetches exactly once", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+
+    getTab("MetricsTabLatency").click();
+    fetchLatencySpy.mockClear();
+
+    const monthButton = document.querySelector(
+      '.MetricsWindowButton[data-window="month"]',
+    ) as HTMLButtonElement;
+    monthButton.click();
+
+    expect(fetchLatencySpy).toHaveBeenCalledTimes(1);
+    expect(fetchLatencySpy.mock.calls[0][0]).toEqual({ window: "month" });
   });
 
   it("changing the per-panel select fires fetchTimeseries with the chosen event", () => {

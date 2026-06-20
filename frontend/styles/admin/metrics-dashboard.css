@@ -898,6 +898,109 @@
     min-height: 120px;
 }
 
+/* Backend Performance (Latency) tab. Reveal the panel-scoped spinner only while
+ * the Latency panel itself is loading — NOT for any root #MetricsDashboard
+ * fetch (mirrors the gauges spinner). */
+.latency-loading-spinner {
+    display: none;
+}
+
+#MetricsPanelLatency[aria-busy="true"] .latency-loading-spinner {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 0.5rem auto;
+    border: 2px solid var(--borderColor);
+    border-top-color: var(--splashGreen);
+    border-radius: 50%;
+    animation: metricsGaugeSpin 0.8s linear infinite;
+}
+
+/* Stacked layout: the percentile table on top, the selected endpoint's latency
+ * trend (or a select-an-endpoint prompt) beneath it — mirrors .gauge-grid so the
+ * layout collapses gracefully under 992px without a fixed multi-column grid. */
+.latency-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.latency-table {
+    width: 100%;
+}
+
+.latency-table th.metric,
+.latency-table td.metric,
+.latency-table th.samples,
+.latency-table td.samples {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.latency-row {
+    cursor: pointer;
+    /* 44px min touch target for the clickable row (the row IS the widget). */
+    min-height: 44px;
+}
+
+.latency-row:hover,
+.latency-row:focus-visible {
+    background-color: var(--panelHoverBackgroundColor, rgba(0, 0, 0, 0.04));
+    outline: none;
+}
+
+.latency-row--selected {
+    background-color: var(--panelHoverBackgroundColor, rgba(0, 0, 0, 0.06));
+}
+
+.latency-row--selected td:first-child {
+    box-shadow: inset 3px 0 0 0 var(--splashGreen);
+}
+
+.latency-table td.endpoint {
+    max-width: 22rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.latency-detail {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.latency-detail-prompt {
+    margin: 0;
+    color: var(--cardURLTextColor);
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.latency-chart {
+    width: 100%;
+    height: auto;
+    /* read-only chart — min-height keeps SVG labels legible at narrow widths */
+    min-height: 120px;
+}
+
+.MetricsLatencyLine {
+    fill: none;
+    stroke-width: 2;
+}
+
+.MetricsLatencyLegendLabel {
+    font-size: 0.7rem;
+    fill: var(--cardURLTextColor);
+}
+
+@media (max-width: 575.98px) {
+    .latency-table td.endpoint {
+        max-width: 12rem;
+    }
+}
+
 .flow-header {
     display: flex;
     flex-wrap: wrap;

@@ -33,6 +33,8 @@ const GROUPED_TIMESERIES_ENDPOINT = "/api/metrics/query/grouped-timeseries";
 const SUMMARY_ENDPOINT = "/api/metrics/query/summary";
 const FLOW_ENDPOINT = "/api/metrics/query/flow";
 const GAUGES_TIMESERIES_ENDPOINT = "/api/metrics/query/gauges/timeseries";
+const LATENCY_ENDPOINT = "/api/metrics/query/latency";
+const LATENCY_TIMESERIES_ENDPOINT = "/api/metrics/query/latency/timeseries";
 
 /**
  * Fetch the top-N events for a window, optionally scoped to a single category.
@@ -248,5 +250,60 @@ export function fetchGaugesTimeseries({
   const url = `${GAUGES_TIMESERIES_ENDPOINT}?${params.toString()}`;
   return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
     SuccessResponse<"queryGaugesTimeseries">
+  >;
+}
+
+/**
+ * Fetch the per-endpoint latency percentile rows (p50/p95/p99 + sample count)
+ * for a window. The endpoint is batched — one request returns every endpoint's
+ * percentiles ordered by p95 descending. The Backend Performance tab renders
+ * these as a percentile table; a row-select then fans out a single
+ * `fetchLatencyTimeseries` call for the chosen endpoint's trend.
+ *
+ * Example: `fetchLatency({ window: "day" })`
+ * issues `GET /api/metrics/query/latency?window=day`.
+ */
+export function fetchLatency({
+  window,
+}: {
+  window: string;
+}): JQuery.jqXHR<SuccessResponse<"queryLatency">> {
+  const queryString = new URLSearchParams({ window }).toString();
+  const url = `${LATENCY_ENDPOINT}?${queryString}`;
+  return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"queryLatency">
+  >;
+}
+
+/**
+ * Fetch the per-bucket latency timeseries (p50/p95/p99 per bucket) for a single
+ * endpoint over a window. `endpoint` is required by the server schema; `method`
+ * and `resolution` are optional narrowers. Drives the multi-series latency chart
+ * in the Backend Performance tab's detail area.
+ *
+ * Example: `fetchLatencyTimeseries({ window: "day", endpoint: "utubs.get_utub", method: "GET", resolution: "hour" })`
+ * issues `GET /api/metrics/query/latency/timeseries?window=day&endpoint=utubs.get_utub&method=GET&resolution=hour`.
+ */
+export function fetchLatencyTimeseries({
+  window,
+  endpoint,
+  method,
+  resolution,
+}: {
+  window: string;
+  endpoint: string;
+  method?: string | null;
+  resolution?: TimeseriesResolution;
+}): JQuery.jqXHR<SuccessResponse<"queryLatencyTimeseries">> {
+  const params = new URLSearchParams({ window, endpoint });
+  if (method !== undefined && method !== null) {
+    params.set("method", method);
+  }
+  if (resolution !== undefined) {
+    params.set("resolution", resolution);
+  }
+  const url = `${LATENCY_TIMESERIES_ENDPOINT}?${params.toString()}`;
+  return ajaxCall("GET", url, null, QUERY_TIMEOUT_MS) as JQuery.jqXHR<
+    SuccessResponse<"queryLatencyTimeseries">
   >;
 }
