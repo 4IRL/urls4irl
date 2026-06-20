@@ -29,6 +29,7 @@ import logging
 import os
 import sys
 import time
+from collections import namedtuple
 from pathlib import Path
 from types import ModuleType
 
@@ -50,9 +51,15 @@ def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleTy
     The workflow venv ships only ``redis`` and ``psycopg2`` — no Flask — so a
     normal ``from backend.extensions.metrics.buckets import ...`` would execute
     ``backend/__init__.py`` (which imports Flask) and raise. Side-loading the
-    two leaf files by absolute path bypasses package import entirely. Probes
+    leaf files by absolute path bypasses package import entirely. Probes
     ``/app/<rel>`` first (workflow container layout) then
     ``<project_root>/<rel>`` (pytest layout).
+
+    Registers the module in ``sys.modules`` *before* ``exec_module`` so a frozen
+    dataclass defined under ``from __future__ import annotations`` (as in
+    ``latency.py``) can resolve its own module during class creation — without
+    this, ``dataclasses._is_type`` raises ``AttributeError`` for the
+    side-loaded module.
     """
     candidate_paths = [
         Path("/app") / file_relative_to_app,
@@ -64,6 +71,7 @@ def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleTy
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not load spec for {module_path}")
             module = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = module
             spec.loader.exec_module(module)
             return module
     raise ImportError(
@@ -77,11 +85,17 @@ _buckets_module = _load_module_direct(
 _metrics_strs_module = _load_module_direct(
     "_metrics_strs", "backend/utils/strings/metrics_strs.py"
 )
+_latency_module = _load_module_direct("_metrics_latency", "backend/metrics/latency.py")
 epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
+LATENCY_SAMPLE_CAP_PER_BUCKET = _latency_module.LATENCY_SAMPLE_CAP_PER_BUCKET
+LATENCY_RETENTION_DAYS = _latency_module.LATENCY_RETENTION_DAYS
+LATENCY_PRUNE_INTERVAL_SECONDS = _latency_module.LATENCY_PRUNE_INTERVAL_SECONDS
 
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
+DEFAULT_BUCKET_SECONDS: int = 3600
 EXECUTE_VALUES_PAGE_SIZE: int = 200
+LATENCY_GLOB: str = f"{METRICS_REDIS.LATENCY_KEY_PREFIX}*"
 REDIS_COUNTER_GLOB: str = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
 SCAN_BATCH_SIZE: int = 500
 
@@ -102,6 +116,13 @@ FLUSH_LOCK_TTL_SECONDS: int = 55
 # accurately even during low-traffic stretches.
 FLUSH_LAST_SUCCESS_KEY: str = METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY
 
+# Parsed latency-key fields. endpoint/method are flat key segments promoted to
+# flat columns at flush; dimensions_dict holds the device-only JSONB blob.
+LatencyKey = namedtuple(
+    "LatencyKey",
+    ["bucket_epoch", "metric_name", "endpoint", "method", "dimensions_dict"],
+)
+
 UPSERT_SQL: str = """
     INSERT INTO "AnonymousMetrics"
         ("eventName", "endpoint", "method", "statusCode",
@@ -109,6 +130,24 @@ UPSERT_SQL: str = """
     VALUES %s
     ON CONFLICT ("bucketStart", "eventName", "dimensions")
     DO UPDATE SET "count" = "AnonymousMetrics"."count" + EXCLUDED."count"
+"""
+
+# Append-only: latency samples are immutable raw observations, so there is no
+# ON CONFLICT clause (mirrors the gauge INSERT_SQL shape, not the counter UPSERT).
+LATENCY_INSERT_SQL: str = """
+    INSERT INTO "AnonymousLatencySamples"
+        ("metricName", "endpoint", "method", "observedAt",
+         "durationMs", "dimensions")
+    VALUES %s
+"""
+
+# Retention prune: delete samples older than the retention window. The integer
+# day count is bound as a parameter and multiplied by INTERVAL '1 day' — the
+# psycopg2-safe form (never `INTERVAL %s` with a string parameter, which raises
+# ProgrammingError at runtime).
+LATENCY_PRUNE_SQL: str = """
+    DELETE FROM "AnonymousLatencySamples"
+    WHERE "observedAt" < NOW() - (%s * INTERVAL '1 day')
 """
 
 
@@ -139,6 +178,48 @@ def parse_counter_key(key: bytes) -> tuple[int, str, dict] | None:
     if not isinstance(dims, dict):
         return None
     return (bucket_epoch, event_name, dims)
+
+
+def parse_latency_key(key: bytes) -> LatencyKey | None:
+    """Parse a 7-segment latency list key into its flat fields.
+
+    Key shape:
+    ``metrics:latency:<bucket_epoch>:<metric_name>:<endpoint>:<method>:<canonical_device_dims_json>``
+
+    Returns a ``LatencyKey`` on success, or ``None`` if the key shape is
+    unexpected (logged and skipped by the caller). Returns ``None`` immediately
+    for an orphaned ``:draining`` key — those are self-healing via EXPIRE and
+    must never be parsed as fresh sample keys.
+
+    Uses ``split(":", 6)`` (maxsplit=6) so the trailing canonical-dims JSON —
+    which itself contains a colon (``{"device_type":2}``) — is captured intact
+    in ``parts[6]`` rather than split apart.
+    """
+    try:
+        decoded = key.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if decoded.endswith(":draining"):
+        return None
+    parts = decoded.split(":", 6)
+    if len(parts) != 7:
+        return None
+    if parts[0] != "metrics" or parts[1] != "latency":
+        return None
+    try:
+        bucket_epoch = int(parts[2])
+    except ValueError:
+        return None
+    metric_name = parts[3]
+    endpoint = parts[4]
+    method = parts[5]
+    try:
+        dimensions_dict = json.loads(parts[6])
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(dimensions_dict, dict):
+        return None
+    return LatencyKey(bucket_epoch, metric_name, endpoint, method, dimensions_dict)
 
 
 def run_flush(
@@ -203,6 +284,10 @@ def run_flush(
             )
 
         if not rows:
+            # Latency drain + prune still run on an empty counter namespace —
+            # latency lists accumulate independently of counters.
+            run_latency_flush(redis_client=redis_client, pg_conn=pg_conn)
+            prune_latency_samples(redis_client=redis_client, pg_conn=pg_conn)
             _record_flush_success(redis_client)
             return 0
 
@@ -214,13 +299,160 @@ def run_flush(
                 template=None,
                 page_size=EXECUTE_VALUES_PAGE_SIZE,
             )
+        # Counter drain commits first (preserving existing behavior) so a later
+        # latency INSERT failure cannot roll back already-committed counter rows.
         pg_conn.commit()
+
+        # Latency drain + prune run inside the same lock hold but with their own
+        # commits, AFTER the counter commit. _record_flush_success moves to AFTER
+        # both so the sentinel only advances on a fully-successful flush cycle.
+        run_latency_flush(redis_client=redis_client, pg_conn=pg_conn)
+        prune_latency_samples(redis_client=redis_client, pg_conn=pg_conn)
 
         _record_flush_success(redis_client)
         return len(rows)
     except Exception:
         pg_conn.rollback()
         raise
+
+
+def _resolve_bucket_seconds() -> int:
+    """Read METRICS_BUCKET_SECONDS from the worker env, defaulting to one hour.
+
+    The Flask-less worker has no app.config; it reads the same env var the
+    writer's bucket math uses so the draining-key EXPIRE TTL grace matches the
+    sample keys' bucket granularity.
+    """
+    try:
+        return int(os.environ.get("METRICS_BUCKET_SECONDS", DEFAULT_BUCKET_SECONDS))
+    except (TypeError, ValueError):
+        return DEFAULT_BUCKET_SECONDS
+
+
+def run_latency_flush(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+) -> int:
+    """Drain the latency-sample lists from Redis into AnonymousLatencySamples.
+
+    Called from ``run_flush`` AFTER the counter drain commits, inside the same
+    ``metrics:flush:lock`` hold. Issues its own ``pg_conn.commit()`` so a latency
+    INSERT failure cannot roll back already-committed counter rows.
+
+    Atomic drain that does not lose concurrent LPUSHes: each key is parsed first,
+    then RENAMEd to ``<key>:draining`` and EXPIREd in a single atomic pipeline.
+    Because RENAME + EXPIRE are pipelined atomically, the crash window where a key
+    is renamed but has no TTL does not exist — both apply or neither does. New
+    LPUSHes after the RENAME recreate the original key for the next flush cycle.
+
+    Returns the number of inserted sample rows.
+    """
+    bucket_seconds = _resolve_bucket_seconds()
+    draining_ttl = bucket_seconds + 60
+    rows: list[tuple[object, ...]] = []
+    for raw_key in redis_client.scan_iter(match=LATENCY_GLOB, count=SCAN_BATCH_SIZE):
+        # Orphaned draining key from a previous worker crash — self-healing via
+        # EXPIRE, never re-drained here.
+        if raw_key.endswith(b":draining"):
+            continue
+        # Belt-and-suspenders: the prune sentinel lives under metrics:prune:* and
+        # cannot match LATENCY_GLOB, but skip it explicitly if it ever appears.
+        if raw_key.decode("utf-8", "ignore") == METRICS_REDIS.LATENCY_LAST_PRUNE_KEY:
+            continue
+        parsed = parse_latency_key(raw_key)
+        if parsed is None:
+            continue
+        draining_key = raw_key + b":draining"
+        try:
+            pipe = redis_client.pipeline()
+            pipe.rename(raw_key, draining_key)
+            pipe.expire(draining_key, draining_ttl)
+            pipe.execute()
+        except redis.ResponseError:
+            # Source key expired between scan and rename — RENAME raises
+            # ResponseError when the source does not exist; nothing to drain.
+            continue
+        drained_values = redis_client.lrange(draining_key, 0, -1)
+        if len(drained_values) == LATENCY_SAMPLE_CAP_PER_BUCKET:
+            logger.warning(
+                "latency_sample_cap_hit: key=%s — drained exactly cap (%d) samples;"
+                " older samples discarded",
+                raw_key,
+                LATENCY_SAMPLE_CAP_PER_BUCKET,
+            )
+        # observedAt is the bucket start, not the exact request instant — bucket
+        # granularity is sufficient for percentile aggregation on the time axis.
+        observed_at = epoch_to_aware_datetime(parsed.bucket_epoch)
+        dimensions_json = psycopg2.extras.Json(parsed.dimensions_dict)
+        for raw_duration in drained_values:
+            try:
+                duration_value = float(raw_duration)
+            except (TypeError, ValueError):
+                continue
+            rows.append(
+                (
+                    parsed.metric_name,
+                    parsed.endpoint,
+                    parsed.method,
+                    observed_at,
+                    duration_value,
+                    dimensions_json,
+                )
+            )
+        redis_client.delete(draining_key)
+
+    if not rows:
+        return 0
+
+    with pg_conn.cursor() as cursor:
+        psycopg2.extras.execute_values(
+            cursor,
+            LATENCY_INSERT_SQL,
+            rows,
+            template=None,
+            page_size=EXECUTE_VALUES_PAGE_SIZE,
+        )
+    pg_conn.commit()
+    return len(rows)
+
+
+def prune_latency_samples(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+) -> None:
+    """Delete latency samples older than the retention window, at most once/day.
+
+    Sentinel-guarded by ``metrics:prune:latency_last_epoch`` (a key under the
+    ``metrics:prune:`` prefix so it can never match the ``metrics:latency:*`` drain
+    glob). Runs the DELETE only if the sentinel is absent or older than
+    ``LATENCY_PRUNE_INTERVAL_SECONDS``. Best-effort on the Redis sentinel reads/
+    writes: a Redis hiccup is swallowed-and-logged so the prune still runs but
+    won't spam, while the Postgres DELETE+commit remains the authoritative work.
+    """
+    now_epoch = int(time.time())
+    try:
+        raw_last_prune = redis_client.get(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY)
+    except Exception:
+        logger.exception("failed to read latency prune sentinel")
+        raw_last_prune = None
+    if raw_last_prune is not None:
+        try:
+            last_prune_epoch = int(raw_last_prune)
+        except (TypeError, ValueError):
+            last_prune_epoch = 0
+        if now_epoch - last_prune_epoch < LATENCY_PRUNE_INTERVAL_SECONDS:
+            return
+
+    with pg_conn.cursor() as cursor:
+        cursor.execute(LATENCY_PRUNE_SQL, (LATENCY_RETENTION_DAYS,))
+    pg_conn.commit()
+
+    try:
+        redis_client.set(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY, str(now_epoch))
+    except Exception:
+        logger.exception("failed to stamp latency prune sentinel")
 
 
 def _record_flush_success(redis_client: redis.Redis) -> None:
