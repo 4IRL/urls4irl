@@ -388,6 +388,8 @@ describe("search-history — render + re-run inside the overlay", () => {
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       done: vi.fn().mockReturnThis(),
       fail: vi.fn().mockReturnThis(),
+      always: vi.fn().mockReturnThis(),
+      abort: vi.fn(),
     });
 
     const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
@@ -438,6 +440,8 @@ describe("search-history — render + re-run inside the overlay", () => {
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       done: vi.fn().mockReturnThis(),
       fail: vi.fn().mockReturnThis(),
+      always: vi.fn().mockReturnThis(),
+      abort: vi.fn(),
     });
 
     const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(

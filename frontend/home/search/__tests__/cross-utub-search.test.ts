@@ -93,6 +93,8 @@ function buildDoneXhr(results: unknown[]): JQuery.jqXHR {
       return this;
     }),
     fail: vi.fn().mockReturnThis(),
+    always: vi.fn().mockReturnThis(),
+    abort: vi.fn(),
   } as unknown as JQuery.jqXHR;
 }
 
@@ -106,6 +108,8 @@ function buildFailXhr(status: number): JQuery.jqXHR {
       cb({ status });
       return this;
     }),
+    always: vi.fn().mockReturnThis(),
+    abort: vi.fn(),
   } as unknown as JQuery.jqXHR;
 }
 
@@ -192,6 +196,164 @@ describe("cross-utub-search — mode mechanics", () => {
     const calledUrl = (ajaxCall as unknown as ReturnType<typeof vi.fn>).mock
       .calls[0][1] as string;
     expect(calledUrl).toBe(`${APP_CONFIG.routes.crossUtubSearch}?q=alpha`);
+  });
+
+  it("(b1a) spamming Enter aborts each in-flight request so only the last survives", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    const xhr1 = buildDoneXhr([]);
+    const xhr2 = buildDoneXhr([]);
+    const xhr3 = buildDoneXhr([]);
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce(xhr1)
+      .mockReturnValueOnce(xhr2)
+      .mockReturnValueOnce(xhr3);
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+    $("#crossUtubSearchInput").trigger(enter);
+    $("#crossUtubSearchInput").trigger(enter);
+
+    // Each press starts a request, but every predecessor is aborted; only the
+    // final request is left running.
+    expect(ajaxCall).toHaveBeenCalledTimes(3);
+    expect(xhr1.abort).toHaveBeenCalledTimes(1);
+    expect(xhr2.abort).toHaveBeenCalledTimes(1);
+    expect(xhr3.abort).not.toHaveBeenCalled();
+  });
+
+  it("(b1b) an aborted request (status 0) renders nothing and shows no error", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
+      buildFailXhr(0),
+    );
+    const { renderSearchResults } = await import("../render.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    expect(renderSearchResults).not.toHaveBeenCalled();
+    expect($("#crossUtubSearchNoResults").hasClass("hidden")).toBe(true);
+  });
+
+  it("(b1c) exiting search mode aborts the in-flight request", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    const xhr = buildDoneXhr([]);
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(xhr);
+    const {
+      initCrossUtubSearch,
+      enterCrossUtubSearchMode,
+      exitCrossUtubSearchMode,
+    } = await import("../cross-utub-search.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
+    });
+
+    expect(xhr.abort).toHaveBeenCalledTimes(1);
+  });
+
+  it("(b1d) a completed request clears _inFlight via .always, so the next submit does NOT abort it", async () => {
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    // jQuery fires .always AFTER the request settles, not during chaining, so
+    // capture the production callback and invoke it once the first submit has
+    // assigned _inFlight — mirroring a real async completion. (buildDoneXhr's
+    // .always only returns this and never nulls _inFlight.)
+    let firstAlwaysCallback: (() => void) | null = null;
+    function buildSettlingXhr(
+      onAlways: (cb: () => void) => void,
+    ): JQuery.jqXHR {
+      return {
+        done: vi.fn().mockReturnThis(),
+        fail: vi.fn().mockReturnThis(),
+        always: vi.fn(function (this: JQuery.jqXHR, cb: () => void) {
+          onAlways(cb);
+          return this;
+        }),
+        abort: vi.fn(),
+      } as unknown as JQuery.jqXHR;
+    }
+    const xhr1 = buildSettlingXhr((cb) => {
+      firstAlwaysCallback = cb;
+    });
+    const xhr2 = buildSettlingXhr(() => {});
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>)
+      .mockReturnValueOnce(xhr1)
+      .mockReturnValueOnce(xhr2);
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    // The first request settles (its .always runs, nulling _inFlight) before
+    // the second submit fires.
+    firstAlwaysCallback!();
+    $("#crossUtubSearchInput").trigger(enter);
+
+    // _inFlight was already null when the second submit ran, so the first
+    // request's abort was never called.
+    expect(ajaxCall).toHaveBeenCalledTimes(2);
+    expect(xhr1.abort).not.toHaveBeenCalled();
+    expect(xhr2.abort).not.toHaveBeenCalled();
+  });
+
+  it("(b1e) the initCrossUtubSearch viewport-reset closure aborts the in-flight request", async () => {
+    // initCrossUtubSearch binds a breakpoint `change` listener that resets
+    // search-mode state directly (it does NOT call exitCrossUtubSearchMode, to
+    // avoid listener registration-order coupling with mobile.ts). Capture that
+    // reset closure off matchMedia, fire a request via Enter, then invoke the
+    // closure and assert it aborts the in-flight request exactly once.
+    let resetClosure: (() => void) | null = null;
+    const matchMediaSpy = vi.spyOn(window, "matchMedia").mockReturnValue({
+      addEventListener: (
+        _event: string,
+        listener: EventListenerOrEventListenerObject,
+      ) => {
+        resetClosure = listener as () => void;
+      },
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList);
+
+    const { ajaxCall } = await import("../../../lib/ajax.js");
+    const xhr = buildDoneXhr([]);
+    (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(xhr);
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    $("#crossUtubSearchInput").val("alpha").trigger("input");
+    const enter = $.Event("keydown.crossSearchSubmit", { key: "Enter" });
+    $("#crossUtubSearchInput").trigger(enter);
+
+    resetClosure!();
+
+    expect(xhr.abort).toHaveBeenCalledTimes(1);
+
+    matchMediaSpy.mockRestore();
   });
 
   it("(b2) a non-default field selection appends the &fields= query param", async () => {
