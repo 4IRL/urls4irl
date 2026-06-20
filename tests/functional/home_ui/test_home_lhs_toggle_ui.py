@@ -6,7 +6,9 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 
 from backend.models.utubs import Utubs
+from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.db_utils import (
+    create_test_cross_utub_searchable_data,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
@@ -23,8 +25,10 @@ from tests.functional.login_utils import (
     login_user_to_home_page,
 )
 from tests.functional.members_ui.selenium_utils import leave_utub_as_member
+from tests.functional.search_ui.selenium_utils import open_cross_search_via_trigger
 from tests.functional.selenium_utils import (
     wait_then_get_element,
+    wait_until_hidden,
     wait_until_in_focus,
 )
 from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
@@ -32,6 +36,25 @@ from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 pytestmark = pytest.mark.home_ui
 
 _USER_ID_FOR_TEST = 1
+
+# Viewport widths straddling the 992px desktop/mobile (TABLET_WIDTH) breakpoint
+# that governs `isMobile()` and the matchMedia handler reconciling LHS state.
+_DESKTOP_VIEWPORT_WIDTH_PX = 1920
+_DESKTOP_VIEWPORT_HEIGHT_PX = 1080
+_MOBILE_VIEWPORT_WIDTH_PX = 420
+_MOBILE_VIEWPORT_HEIGHT_PX = 900
+_MAIN_PANEL_COLLAPSED_CLASS = "lhs-collapsed"
+
+
+def _main_panel_has_collapsed_class(browser: WebDriver) -> bool:
+    return bool(
+        browser.execute_script(
+            "return document.querySelector(arguments[0])"
+            ".classList.contains(arguments[1]);",
+            HPL.MAIN_PANEL,
+            _MAIN_PANEL_COLLAPSED_CLASS,
+        )
+    )
 
 
 def _login_and_select_first_utub(provide_app: Flask, browser: WebDriver):
@@ -232,3 +255,105 @@ def test_lhs_toggle_not_visible_on_mobile(
     assert not browser_mobile_portrait.find_element(
         By.CSS_SELECTOR, HPL.LHS_TOGGLE_HEADER_BTN
     ).is_displayed()
+
+
+def _enter_cross_search_then_exit_via_escape(browser: WebDriver):
+    """Open cross-UTub search via the navbar trigger, then close it with Escape.
+
+    The trigger and the Escape close both route through the same
+    `setSearchModeActive(...)` writer the LHS resolver composes with the manual
+    collapse intent, so this exercises the real entry/exit path the resolver
+    must survive.
+    """
+    open_cross_search_via_trigger(browser)
+    assert_visible_css_selector(browser, HPL.CROSS_SEARCH_MODE, time=10)
+
+    # Escape is delivered to the focused search input (the trigger focuses it on
+    # open); waiting for focus first guarantees the keystroke lands.
+    wait_until_in_focus(browser, HPL.CROSS_SEARCH_INPUT)
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    wait_until_hidden(browser, HPL.CROSS_SEARCH_MODE, timeout=10)
+
+
+def test_cross_search_round_trip_preserves_manual_lhs_collapse(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN a desktop user who has manually collapsed the LHS via the seam toggle
+    WHEN they enter cross-UTub search mode and then exit it
+    THEN the LHS stays collapsed afterward — search exit does not clobber the
+        retained manual-collapse intent (resolver OR of userCollapsedLHS and
+        searchModeActive).
+    """
+    seeded = create_test_cross_utub_searchable_data(provide_app, _USER_ID_FOR_TEST)
+    login_user_and_select_utub_by_utubid(
+        provide_app, browser, user_id=_USER_ID_FOR_TEST, utub_id=seeded[0]["utub_id"]
+    )
+
+    # Manually collapse the LHS, then prove it is collapsed before search opens.
+    assert_lhs_panels_visible(browser)
+    toggle_lhs_panels(browser, via="seam")
+    assert_lhs_panels_hidden(browser)
+
+    _enter_cross_search_then_exit_via_escape(browser)
+
+    # The manual collapse survives the search round-trip.
+    assert_lhs_panels_hidden(browser)
+
+
+def test_cross_search_round_trip_restores_uncollapsed_lhs(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    GIVEN a desktop user who has NOT collapsed the LHS
+    WHEN they enter cross-UTub search mode (which hides the LHS) and then exit
+    THEN the LHS is restored to visible — search exit releases its own hide
+        intent without leaving the panel stuck collapsed.
+    """
+    seeded = create_test_cross_utub_searchable_data(provide_app, _USER_ID_FOR_TEST)
+    login_user_and_select_utub_by_utubid(
+        provide_app, browser, user_id=_USER_ID_FOR_TEST, utub_id=seeded[0]["utub_id"]
+    )
+
+    # Before-state: LHS visible and no manual collapse recorded.
+    assert_lhs_panels_visible(browser)
+
+    _enter_cross_search_then_exit_via_escape(browser)
+
+    # Search exit restores the LHS rather than stranding it collapsed.
+    assert_lhs_panels_visible(browser)
+
+
+def test_viewport_crossing_drops_then_reapplies_lhs_collapse(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a desktop user who has manually collapsed the LHS
+    WHEN the viewport shrinks below the 992px breakpoint and then grows back
+    THEN the `lhs-collapsed` desktop class is dropped on mobile (the mobile
+        single-screen nav governs panels there) and re-applied on the return to
+        desktop (the retained manual intent is re-asserted by the matchMedia
+        reconciler).
+    """
+    _login_and_select_first_utub(provide_app, browser)
+
+    # Collapse on desktop and confirm the collapsed state class is present.
+    assert_lhs_panels_visible(browser)
+    toggle_lhs_panels(browser, via="seam")
+    assert_lhs_panels_hidden(browser)
+
+    # Cross below the breakpoint -> mobile: the desktop collapse class is dropped.
+    browser.set_window_size(
+        width=_MOBILE_VIEWPORT_WIDTH_PX, height=_MOBILE_VIEWPORT_HEIGHT_PX
+    )
+    WebDriverWait(browser, 10).until(
+        lambda driver: not _main_panel_has_collapsed_class(driver)
+    )
+    assert not _main_panel_has_collapsed_class(browser)
+
+    # Cross back above the breakpoint -> desktop: the retained intent re-applies.
+    browser.set_window_size(
+        width=_DESKTOP_VIEWPORT_WIDTH_PX, height=_DESKTOP_VIEWPORT_HEIGHT_PX
+    )
+    WebDriverWait(browser, 10).until(_main_panel_has_collapsed_class)
+    assert _main_panel_has_collapsed_class(browser)

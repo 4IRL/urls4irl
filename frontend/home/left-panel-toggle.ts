@@ -3,7 +3,7 @@ import { emit } from "../lib/metrics-client.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { LHS_COLLAPSE_SOURCE } from "../types/metrics-dim-values.js";
 import { isMobile } from "./mobile.js";
-import { resetUTubSearch } from "./utubs/search.js";
+import { closeUTubNameFilter } from "./utubs/search.js";
 
 type LhsToggleSource =
   (typeof LHS_COLLAPSE_SOURCE)[keyof typeof LHS_COLLAPSE_SOURCE];
@@ -47,7 +47,7 @@ export function setUserCollapsedLHS({
   if (isMobile()) return;
   userCollapsedLHS = collapsed;
   applyLeftPanelVisibility();
-  if (collapsed) resetUTubSearch();
+  if (collapsed) closeUTubNameFilter();
   emit({
     event: collapsed ? UI_EVENTS.UI_LHS_COLLAPSE : UI_EVENTS.UI_LHS_EXPAND,
     source,
@@ -81,19 +81,12 @@ export function reapplyLeftPanelVisibilityForViewport(): void {
   applyLeftPanelVisibility();
 }
 
-export function isLeftPanelHidden(): boolean {
-  return userCollapsedLHS || searchModeActive;
-}
-
 /**
  * Bind both LHS toggle affordances. Handlers are bound unconditionally — the
  * mobile CSS hides both buttons, so they are unreachable on mobile without a
  * JS guard. Native `<button>` elements provide Enter/Space activation.
  */
 export function initLeftPanelToggle(): void {
-  $(SEAM_TOGGLE_SELECTOR).attr("aria-expanded", "true");
-  $(HEADER_TOGGLE_SELECTOR).attr("aria-expanded", "true");
-
   $(SEAM_TOGGLE_SELECTOR).offAndOn("click.lhsToggleSeam", () =>
     setUserCollapsedLHS({
       collapsed: !userCollapsedLHS,
@@ -106,4 +99,5 @@ export function initLeftPanelToggle(): void {
       source: LHS_COLLAPSE_SOURCE.URL_HEADER,
     }),
   );
+  applyLeftPanelVisibility();
 }

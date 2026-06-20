@@ -2,7 +2,10 @@ import {
   resetUTubDeck,
   setUTubDeckOnUTubSelected,
   setUTubDeckWhenNoUTubSelected,
+  setUTubEventListenersOnInitialPageLoad,
 } from "../deck.js";
+import { setUTubNameFilterToggleListeners } from "../search.js";
+import { updateUTubDeckCount } from "../utils.js";
 
 vi.mock("../selectors.js", () => ({
   createUTubSelector: vi.fn(),
@@ -68,5 +71,19 @@ describe("UTub deck role-dependent action buttons", () => {
 
     expect($("#utubBtnDelete").hasClass("hidden")).toBe(true);
     expect($("#memberSelfBtnDelete").hasClass("hidden")).toBe(true);
+  });
+});
+
+describe("UTub deck initial page-load wiring", () => {
+  beforeEach(() => {
+    document.body.innerHTML = UTUB_DECK_HTML;
+    vi.clearAllMocks();
+  });
+
+  it("wires the name-filter toggle and refreshes the deck count", () => {
+    setUTubEventListenersOnInitialPageLoad();
+
+    expect(setUTubNameFilterToggleListeners).toHaveBeenCalledTimes(1);
+    expect(updateUTubDeckCount).toHaveBeenCalledTimes(1);
   });
 });

@@ -50,10 +50,8 @@ def assert_lhs_panels_hidden(browser: WebDriver):
     `visibility: hidden` is the load-bearing signal: it only resolves after
     the 0.3s width slide completes (the collapsed-state rule delays the
     `visibility` transition by 0.3s), so observing `hidden` confirms the
-    collapse animation finished. The panel's computed `width` settles at
-    `10px` (not `0px`) because `box-sizing: border-box` includes the
-    `.panel` 5px inline padding on each side — so width is verified via the
-    `lhs-collapsed` state class on `#mainPanel`, not an exact pixel value.
+    collapse animation finished. Width is verified via the `lhs-collapsed`
+    state class on `#mainPanel`, not an exact pixel value.
     """
 
     def main_panel_collapsed(driver: WebDriver) -> bool:

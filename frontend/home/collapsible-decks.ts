@@ -236,8 +236,8 @@ function setDeckMinimized(deckSelector: string, minimized: boolean): void {
   $(deckSelector + " .title-caret")
     .first()
     .toggleClass("closed", minimized);
-  const element = deck.get(0);
-  if (element) void element.offsetHeight;
+  const deckElement = deck.get(0);
+  if (deckElement) void deckElement.offsetHeight;
   deck.removeClass("deck-snap");
 }
 

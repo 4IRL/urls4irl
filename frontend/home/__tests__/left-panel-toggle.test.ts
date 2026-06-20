@@ -13,7 +13,7 @@ const { mockMetricsClient } = await vi.hoisted(
 vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
-vi.mock("../utubs/search.js", () => ({ resetUTubSearch: vi.fn() }));
+vi.mock("../utubs/search.js", () => ({ closeUTubNameFilter: vi.fn() }));
 
 const $ = window.jQuery;
 
