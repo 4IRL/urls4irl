@@ -1,5 +1,7 @@
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
+  closeUTubNameFilter,
+  openUTubNameFilter,
   resetUTubSearch,
   setUTubSelectorSearchEventListener,
 } from "../search.js";
@@ -21,16 +23,20 @@ vi.mock("../../../logic/utub-search.js", () => ({
 const $ = window.jQuery;
 
 const SEARCH_HTML = `
-  <div id="UTubDeckSubheader" class="hidden">Create a UTub</div>
-  <div id="SearchUTubWrap">
-    <input id="UTubNameSearch" type="search" value="" />
-  </div>
-  <p id="UTubSearchNoResults" class="hidden"></p>
-  <span id="UTubSearchAnnouncement"></span>
-  <button id="memberBtnCreate"></button>
-  <div id="listUTubs">
-    <div class="UTubSelector" utubid="1"><span class="UTubName">Alpha</span></div>
-    <div class="UTubSelector" utubid="2"><span class="UTubName">Beta</span></div>
+  <div id="UTubDeck">
+    <button id="utubNameFilterBtn"></button>
+    <button id="utubNameFilterBtnClose" class="hidden"></button>
+    <div id="UTubDeckSubheader" class="hidden">Create a UTub</div>
+    <div id="SearchUTubWrap">
+      <input id="UTubNameSearch" type="search" value="" />
+    </div>
+    <p id="UTubSearchNoResults" class="hidden"></p>
+    <span id="UTubSearchAnnouncement"></span>
+    <button id="memberBtnCreate"></button>
+    <div id="listUTubs">
+      <div class="UTubSelector" utubid="1"><span class="UTubName">Alpha</span></div>
+      <div class="UTubSelector" utubid="2"><span class="UTubName">Beta</span></div>
+    </div>
   </div>
 `;
 
@@ -120,5 +126,60 @@ describe("UTub search metrics — UI_UTUB_SEARCH_OPEN / UI_UTUB_SEARCH_CLOSE", (
 
     // beforeEach already attached the listener and blurred to reset state.
     expect(emit).not.toHaveBeenCalled();
+  });
+
+  describe("funnel toggle show/hide", () => {
+    it("emits ui_utub_search_open when the funnel is opened (focus is triggered)", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      openUTubNameFilter();
+
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SEARCH_OPEN,
+        target: UTUB_SEARCH_OPEN_TARGET.UTUBS,
+      });
+      expect(emit).toHaveBeenCalledTimes(1);
+    });
+
+    it("emits ui_utub_search_close when the funnel is closed", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      openUTubNameFilter();
+      vi.mocked(emit).mockClear();
+
+      closeUTubNameFilter();
+
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,
+        target: UTUB_SEARCH_CLOSE_TARGET.UTUBS,
+      });
+      expect(emit).toHaveBeenCalledTimes(1);
+    });
+
+    it("still emits ui_utub_search_close when the input blurred first (X-button race)", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      openUTubNameFilter();
+      // Clicking the X button blurs the input before the click handler runs,
+      // clearing the focus flag — the DOM-state guard must still record the close.
+      $("#UTubNameSearch").trigger("blur.searchInputEsc");
+      vi.mocked(emit).mockClear();
+
+      closeUTubNameFilter();
+
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,
+        target: UTUB_SEARCH_CLOSE_TARGET.UTUBS,
+      });
+      expect(emit).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not emit close when the funnel was not open", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      closeUTubNameFilter();
+
+      expect(emit).not.toHaveBeenCalled();
+    });
   });
 });

@@ -75,7 +75,7 @@ export function setUTubSelectorSearchEventListener(): void {
         "keydown.searchInputEsc",
         function (event: JQuery.TriggeredEvent) {
           if (event.key === KEYS.ESCAPE) {
-            resetUTubSearch();
+            closeUTubNameFilter();
             searchInput.blur();
             const firstVisibleSelector = $(".UTubSelector")
               .not(".hidden")
@@ -141,9 +141,56 @@ export function resetUTubSearch(): void {
   hideUTubSearchNoResults();
 }
 
+// Reveal the UTub-name filter input (desktop). On mobile the input is always
+// visible (CSS) and the toggle buttons are hidden, so this is desktop-only in
+// practice. Focus emits UI_UTUB_SEARCH_OPEN via the input's focus handler.
+export function openUTubNameFilter(): void {
+  $("#UTubDeck").addClass("utub-search-open");
+  $("#utubNameFilterBtn").addClass("hidden");
+  $("#utubNameFilterBtnClose").removeClass("hidden");
+  $("#UTubNameSearch").trigger("focus");
+}
+
+// Collapse the filter back to the funnel-only state and clear any active filter.
+// Emits UI_UTUB_SEARCH_CLOSE for the funnel hide. The open state is read from the
+// DOM (`utub-search-open`), not the focus flag, because clicking the X button
+// blurs the input first — which clears _utubSearchOpen before this handler runs —
+// so a flag-only check would silently drop the close on the X-button path.
+export function closeUTubNameFilter(): void {
+  const wasOpen = $("#UTubDeck").hasClass("utub-search-open");
+  $("#UTubDeck").removeClass("utub-search-open");
+  $("#utubNameFilterBtnClose").addClass("hidden");
+  $("#utubNameFilterBtn").removeClass("hidden");
+  if (wasOpen) {
+    emit({
+      event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,
+      target: UTUB_SEARCH_CLOSE_TARGET.UTUBS,
+    });
+    // Suppress resetUTubSearch's own CLOSE emit so the hide is recorded once
+    // (the Escape path reaches here with the input still focused / flag set).
+    _utubSearchOpen = false;
+  }
+  resetUTubSearch();
+}
+
+export function setUTubNameFilterToggleListeners(): void {
+  $("#utubNameFilterBtn").offAndOnExact(
+    "click.utubNameFilterShow",
+    openUTubNameFilter,
+  );
+  $("#utubNameFilterBtnClose").offAndOnExact(
+    "click.utubNameFilterClose",
+    closeUTubNameFilter,
+  );
+}
+
 export function showUTubSearchBar(): void {
   $("#SearchUTubWrap").removeClass("hidden");
   $("#UTubDeckSubheader").addClass("hidden");
+  // Reveal the funnel toggle and start collapsed (the desktop CSS keeps the
+  // input hidden until the toggle opens it; mobile shows it regardless).
+  $("#utubNameFilterBtn").removeClass("hidden");
+  closeUTubNameFilter();
 }
 
 export function hideUTubSearchBar(): void {
@@ -151,5 +198,8 @@ export function hideUTubSearchBar(): void {
   $("#UTubDeckSubheader")
     .removeClass("hidden")
     .text(APP_CONFIG.strings.UTUB_CREATE_MSG);
+  $("#utubNameFilterBtn").addClass("hidden");
+  $("#utubNameFilterBtnClose").addClass("hidden");
+  $("#UTubDeck").removeClass("utub-search-open");
   resetUTubSearch();
 }

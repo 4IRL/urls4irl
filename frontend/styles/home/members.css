@@ -1,10 +1,22 @@
 /* Members */
 
+/* Member rows run full-bleed to the panel edges (like the URL list). */
+#displayMemberWrap {
+    padding-inline: 0;
+}
+
+/* Owner row's diamond marker — mirrors the UTub creator icon color. */
+.member .memberRole {
+    flex-shrink: 0;
+    color: var(--memberRoleIconColor);
+}
+
 .member {
     color: var(--grayBadgeSelection);
     border-color: var(--grayBadgeSelection);
-    border-radius: 25px;
-    border: 2px solid var(--tagBorderColor);
+    border-radius: 0;
+    /* Horizontal-only borders (like the URL card) — no vertical edge lines. */
+    border-block: 1px solid var(--tagBorderColor);
     background-color: var(--cardBackgroundColor);
 }
 
@@ -29,11 +41,14 @@
 }
 
 #listMembers {
-    gap: 3px;
+    gap: 0;
 }
 
-#MembersHeader {
-    margin-top: 0.75rem;
+/* Zebra-stripe members (mirrors the URL list). The owner row (#UTubOwner) keeps
+   the base card shade, so #listMembers odd rows take the panel shade to continue
+   the alternation unbroken across the owner→members boundary. */
+#listMembers .member:nth-child(odd) {
+    background-color: var(--panelBackgroundColor);
 }
 
 #MemberDeck .button-container {

@@ -192,9 +192,11 @@ function leaveUTubSuccess(utubID: number): void {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  // Members Deck display updates
-  $("#memberSelfBtnDelete").hideClass();
-  $("#confirmModal").modal("hide");
+  // No UTub is selected after leaving — clear the active selection so deck
+  // resets (and the member-button cleanup) treat it as the no-UTub state.
+  setState({ activeUTubID: null });
+
+  // No UTub selected -> UTub deck hides the leave button (and delete) here.
   setUIWhenNoUTubSelected();
 
   // UTub Deck display updates

@@ -51,6 +51,8 @@ export const UI_EVENTS = {
   UI_VALIDATION_ERROR: "ui_validation_error",
   UI_DECK_COLLAPSE: "ui_deck_collapse",
   UI_DECK_EXPAND: "ui_deck_expand",
+  UI_LHS_COLLAPSE: "ui_lhs_collapse",
+  UI_LHS_EXPAND: "ui_lhs_expand",
   UI_NAVBAR_DROPDOWN_OPEN: "ui_navbar_dropdown_open",
   UI_NAVBAR_DROPDOWN_CLOSE: "ui_navbar_dropdown_close",
   UI_MOBILE_NAV: "ui_mobile_nav",

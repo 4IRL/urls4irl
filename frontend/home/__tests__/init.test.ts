@@ -11,6 +11,7 @@ const mockSetMemberDeckWhenNoUTubSelected = vi.fn();
 const mockResetMemberDeck = vi.fn();
 const mockGetAllUTubs = vi.fn();
 const mockBuildUTubDeck = vi.fn();
+const mockSetUTubDeckWhenNoUTubSelected = vi.fn();
 
 vi.mock("../btns-forms.js", () => ({
   hideInputs: (...args: unknown[]) => mockHideInputs(...args),
@@ -35,12 +36,13 @@ vi.mock("../utubs/utils.js", () => ({
 }));
 vi.mock("../utubs/deck.js", () => ({
   buildUTubDeck: (...args: unknown[]) => mockBuildUTubDeck(...args),
+  setUTubDeckWhenNoUTubSelected: (...args: unknown[]) =>
+    mockSetUTubDeckWhenNoUTubSelected(...args),
 }));
 
 const $ = window.jQuery;
 
 const INIT_HTML = `
-  <div class="dynamic-subheader height-2p5rem"></div>
   <div class="sidePanelTitle"></div>
   <div class="UTubSelector active focus" tabindex="0"></div>
   <div class="UTubSelector" tabindex="0"></div>
@@ -61,8 +63,8 @@ describe("init", () => {
       expect(mockResetTagDeckIfNoUTubSelected).toHaveBeenCalled();
       expect(mockSetURLDeckWhenNoUTubSelected).toHaveBeenCalled();
       expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetUTubDeckWhenNoUTubSelected).toHaveBeenCalled();
       expect(mockResetMemberDeck).toHaveBeenCalled();
-      expect($(".dynamic-subheader").hasClass("height-2p5rem")).toBe(false);
       expect($(".sidePanelTitle").hasClass("pad-b-0-25rem")).toBe(true);
       expect($(".UTubSelector.active").length).toBe(0);
     });

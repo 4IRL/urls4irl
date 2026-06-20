@@ -29,6 +29,7 @@ vi.mock("../utils.js", () => ({
   getAllAccessibleUTubNames: vi.fn(() => []),
   getNumOfUTubs: vi.fn(() => 1),
   sameNameWarningHideModal: vi.fn(),
+  updateUTubDeckCount: vi.fn(),
 }));
 vi.mock("../search.js", () => ({
   resetUTubSearch: vi.fn(),

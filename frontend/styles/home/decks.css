@@ -1,13 +1,19 @@
 .deck {
     width: 100%;
-    margin-top: 5px;
     background: var(--panelBackgroundColor);
-    border: 2px solid var(--borderColor);
-    border-radius: 15px;
+    border: none;
+    border-radius: 0;
     color: var(--deckSelectionGreen);
     overflow: hidden;
     padding-top: 0.25rem;
     padding-bottom: 8px;
+}
+
+/* Member/Tag decks only (NOT the UTub deck — it has the always-visible search
+   subheader): drop the top inset so the header band centers symmetrically. */
+#MemberDeck,
+#TagDeck {
+    padding-top: 0;
 }
 
 .deck#UTubDeck,
@@ -15,6 +21,21 @@
 .deck#TagDeck {
     flex: 1 1 0;
     transition: flex 0.3s ease;
+}
+
+/* Slim horizontal rule between consecutive LHS decks. */
+.deck + .deck {
+    border-top: 1px solid var(--borderColor);
+}
+
+/* Small muted total rendered inline INSIDE the deck title, e.g. "Members (5)".
+   Being inline text in the <h2>, it sits on the title's baseline automatically
+   (inline vertical-align: baseline), so their text bottoms line up. */
+.deck-title-count {
+    font-size: 1rem;
+    font-weight: var(--fw-regular);
+    color: var(--cardURLTextColor);
+    margin-left: 0.3rem;
 }
 
 .deck#UTubDeck.collapsed,
@@ -51,10 +72,39 @@
     overflow: hidden;
 }
 
+/* Suppress the collapse/expand animation for programmatic (auto) minimize and
+   restore on UTub selection — the deck and its header buttons settle instantly,
+   so animating rows never intercept clicks. User caret-collapse still animates. */
+.deck-snap,
+.deck-snap .content,
+.deck-snap .titleElement,
+.deck-snap .button-container,
+.deck-snap .title-caret {
+    transition: none !important;
+}
+
 .deck.collapsed .button-container {
     transition: opacity 0.3s ease;
     opacity: 0;
     pointer-events: none;
+}
+
+/* Locked-minimized state (desktop, no UTub selected): the Member/Tag decks can't
+   be expanded, so the header reads as non-interactable — caret hidden, title
+   dimmed, no hover affordance or pointer cursor. Applied only by JS when no UTub
+   is selected and removed on UTub selection. */
+.deck.deck-locked .title-caret {
+    visibility: hidden;
+}
+
+.deck.deck-locked .titleElement:first-child {
+    opacity: 0.5;
+}
+
+.deck.deck-locked #MemberDeckHeaderAndCaret,
+.deck.deck-locked #TagDeckHeaderAndCaret {
+    pointer-events: none;
+    cursor: default;
 }
 
 .titleElement {
@@ -68,6 +118,16 @@
     height: 38px;
 }
 
+/* Member/Tag header bands only (UTub deck excluded — its search subheader keeps
+   the original sizing). Taller band + symmetric vertical padding (overrides the
+   bottom-only pad-b-0-25rem) gives the centered title + buttons breathing room
+   above and below. */
+#MemberDeck .titleElement:first-child,
+#TagDeck .titleElement:first-child {
+    height: 44px;
+    padding-block: 0;
+}
+
 .titleElement.dynamic-subheader {
     min-height: var(--deckSubheaderMinHeight);
 }
@@ -76,8 +136,29 @@
     color: var(--deckHeaderGreen);
     transition: transform 0.15s ease;
     transform-origin: center;
+    /* Never let the caret squish when the title row is space-constrained
+       (e.g. an inline count next to the title). */
+    flex-shrink: 0;
 }
 
 .title-caret.closed {
     transform: rotate(-90deg);
+}
+
+/* Darken the caret + title on hover of a collapsible deck header so it reads as
+   interactable. Gated to the desktop breakpoint where the decks are actually
+   collapsible (>=992px) and to hover-capable pointers so it never sticks on
+   touch. Anchored to the three header IDs, not the shared .clickable utility. */
+#UTubDeckHeaderAndCaret,
+#MemberDeckHeaderAndCaret,
+#TagDeckHeaderAndCaret {
+    transition: filter 0.15s ease;
+}
+
+@media (min-width: 992px) and (hover: hover) {
+    #UTubDeckHeaderAndCaret:hover,
+    #MemberDeckHeaderAndCaret:hover,
+    #TagDeckHeaderAndCaret:hover {
+        filter: brightness(0.8);
+    }
 }

@@ -34,6 +34,12 @@ export function getNumOfUTubs(): number {
   return $("#listUTubs > .UTubSelector").length;
 }
 
+// Render the inline total next to the UTub deck title, e.g. "UTubs (5)".
+// Counts every UTub (the name filter only hides selectors, never removes them).
+export function updateUTubDeckCount(): void {
+  $("#UTubDeckCount").text("(" + getNumOfUTubs() + ")");
+}
+
 // Streamline extraction of UTub ID
 export function getActiveUTubID(): number | null {
   return getState().activeUTubID;

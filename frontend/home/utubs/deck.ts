@@ -10,10 +10,12 @@ import {
 } from "./selectors.js";
 import {
   hideUTubSearchBar,
+  setUTubNameFilterToggleListeners,
   setUTubSelectorSearchEventListener,
   showUTubSearchBar,
 } from "./search.js";
 import { setDeleteEventListeners } from "./delete.js";
+import { updateUTubDeckCount } from "./utils.js";
 
 // Utility function to show a loading icon when loading UTubs
 export function showUTubLoadingIconAndSetTimeout(): number {
@@ -36,6 +38,15 @@ export function removeCreateUTubEventListeners(): void {
 export function resetUTubDeck(): void {
   $("#listUTubs").empty();
   $("#utubBtnDelete").hideClass();
+  $("#memberSelfBtnDelete").hideClass();
+}
+
+// Hide both role-dependent UTub actions (delete for owner, leave for member)
+// when no UTub is selected. The UTub deck owns these buttons regardless of which
+// deck triggered the reset.
+export function setUTubDeckWhenNoUTubSelected(): void {
+  $("#utubBtnDelete").hideClass();
+  $("#memberSelfBtnDelete").hideClass();
 }
 
 // Assembles components of the UTubDeck (top left panel)
@@ -75,11 +86,14 @@ export function setUTubEventListenersOnInitialPageLoad(): void {
     setUTubSelectorEventListeners(utubs[index]);
   }
   setUTubSelectorSearchEventListener();
+  setUTubNameFilterToggleListeners();
+  updateUTubDeckCount();
 }
 
 export function resetUTubDeckIfNoUTubs(): void {
-  // Hide delete UTub button
+  // Hide the role-dependent UTub actions (delete for owner, leave for member)
   $("#utubBtnDelete").hideClass();
+  $("#memberSelfBtnDelete").hideClass();
 
   // Hide the search bar and reveal the "Create a UTub" subheader
   hideUTubSearchBar();
@@ -96,10 +110,17 @@ export function setUTubDeckOnUTubSelected(
 ): void {
   hideInputsAndUpdateUTubDeck();
 
+  // Owner sees Delete, member sees Leave — mutually exclusive, both in the
+  // UTub deck header. The member-leave click binding lives in the members
+  // domain (createLeaveUTubAsMemberIcon, fired on UTUB_SELECTED).
   if (isCurrentUserOwner) {
     $("#utubBtnDelete").showClassNormal();
+    $("#memberSelfBtnDelete").hideClass();
     setDeleteEventListeners(selectedUTubID);
-  } else $("#utubBtnDelete").hideClass();
+  } else {
+    $("#utubBtnDelete").hideClass();
+    $("#memberSelfBtnDelete").showClassNormal();
+  }
 
   const utubSelector = $(`.UTubSelector[utubid="${selectedUTubID}"]`);
 

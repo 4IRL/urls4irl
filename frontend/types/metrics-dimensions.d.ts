@@ -149,6 +149,16 @@ export type DimDeckExpand = {
   deck: "members" | "tags" | "utubs";
 };
 
+export type DimLhsCollapse = {
+  device_type: DeviceType;
+  source: "seam" | "url_header";
+};
+
+export type DimLhsExpand = {
+  device_type: DeviceType;
+  source: "seam" | "url_header";
+};
+
 export type DimMobileNav = {
   device_type: DeviceType;
   target: "utubs" | "urls" | "members" | "tags";
@@ -221,6 +231,8 @@ export type UIEventDimensions = {
   ui_validation_error: DimValidationError;
   ui_deck_collapse: DimDeckCollapse;
   ui_deck_expand: DimDeckExpand;
+  ui_lhs_collapse: DimLhsCollapse;
+  ui_lhs_expand: DimLhsExpand;
   ui_navbar_dropdown_open: DimDeviceOnly;
   ui_navbar_dropdown_close: DimDeviceOnly;
   ui_mobile_nav: DimMobileNav;

@@ -19,6 +19,18 @@
 
 	<!-- Create URL button -->
 	<div class="d-flex flex-row button-container">
+		{# Mirror of the seam toggle. The icon's fill is driven by CSS `color` so the
+		   collapsed/expanded state (aria-expanded) can recolor it; hover gets its own
+		   feedback. applyLeftPanelVisibility() flips aria-expanded, which the CSS reads. #}
+		<button id="lhsToggleHeader" type="button" class="lhs-toggle lhs-toggle--header hidden"
+			aria-expanded="true" aria-controls="leftPanel"
+			aria-label="Collapse or expand the left panel">
+			<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
+				class="bi bi-layout-sidebar" viewBox="0 0 16 16">
+				<path
+					d="M0 3a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm5-1v12h9a1 1 0 0 0 1-1V3a1 1 0 0 0-1-1zM4 2H2a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h2z" />
+			</svg>
+		</button>
 		{# Funnel (not a magnifying glass) so this reads as "filter the URLs in this
 		   UTub" and stays distinct from the navbar's cross-UTub search glass. #}
 		<button id="URLSearchFilterIcon" class="hidden" tabindex="0" aria-label="Filter URLs in this UTub">

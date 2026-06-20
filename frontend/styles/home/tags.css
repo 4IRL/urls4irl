@@ -57,6 +57,11 @@
     border-radius: 4px;
 }
 
+/* Rows run full-bleed to the panel edges (like the URL list). */
+#listTags {
+    padding-inline: 0;
+}
+
 .tagFilter {
     display: flex;
     justify-content: space-between;
@@ -65,11 +70,12 @@
     color: var(--deckSelectionGreen);
     font-weight: bold;
 
-    margin-top: 5px;
-    border-radius: 25px;
+    border-radius: 0;
     transition: background-color 0.3s ease-in-out,
         border-color 0.3s ease-in-out, color 0.3s ease-in-out;
-    border: 2px solid var(--tagBorderColor);
+    /* Selected (base, no .unselected): green horizontal borders matching the
+       selected UTub. Unselected/disabled override to the gray border below. */
+    border-block: 1px solid var(--deckSelectionGreenHover);
     background-color: var(--tagBackgroundColorSelected);
 }
 
@@ -82,14 +88,32 @@
 .tagFilter.unselected {
     color: var(--grayBadgeSelection);
     background-color: var(--tagBackgroundColor);
-    border: 2px solid var(--tagBorderColor);
-    border-radius: 25px;
+    border-block: 1px solid var(--tagBorderColor);
+    border-radius: 0;
+}
+
+/* Zebra-stripe the unselected (default) tag rows like the UTub/member lists.
+   Selected tags keep their uniform highlight so the filter state still reads —
+   the stripe rides underneath the state, never replaces it. */
+#listTags .tagFilter.unselected:nth-child(even) {
+    background-color: var(--panelBackgroundColor);
+}
+
+/* Lift the background and recolor the horizontal borders green on hover (both
+   zebra shades) for clear interaction feedback, matching the UTub row hover.
+   Placed after the stripe rule so it wins on hover. */
+@media not all and (any-pointer: coarse) {
+    #listTags .tagFilter.unselected:hover {
+        background-color: var(--oddUrlCardsBackgroundColor);
+        border-color: var(--deckSelectionGreenHover);
+        cursor: pointer;
+    }
 }
 
 .tagFilter.disabled {
     color: var(--grayBadgeSelection) !important;
     background-color: var(--tagBackgroundColor) !important;
-    border: 2px solid var(--tagBorderColor) !important;
+    border-block: 1px solid var(--tagBorderColor) !important;
     cursor: default;
     pointer-events: none;
 }

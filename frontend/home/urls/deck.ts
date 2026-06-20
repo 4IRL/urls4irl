@@ -44,6 +44,7 @@ export function resetURLDeck(): void {
 
 export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
+  $("#lhsToggleHeader").hideClass();
   hideURLsEmptyState();
   disableURLSearch();
 }
@@ -122,6 +123,10 @@ export function setURLDeckOnUTubSelected(
   }
 
   $("#urlBtnCreate").showClassNormal();
+  // The LHS minify toggle is only meaningful with a UTub open. Remove the hidden
+  // class (don't add visible-flex) so the mobile rule that hides .lhs-toggle is
+  // not overridden by an !important display.
+  $("#lhsToggleHeader").removeHideClass();
   setUTubNameAndDescription(utubName);
 
   setURLSearchEventListener();
@@ -138,6 +143,8 @@ export function setURLDeckWhenNoUTubSelected(): void {
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hideClass();
   $("#urlBtnCreate").hideClass();
+  // No UTub open -> hide the LHS minify toggle (initial load, leave, delete).
+  $("#lhsToggleHeader").hideClass();
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 
   const urlDeckSubheader = $("#URLDeckSubheader");

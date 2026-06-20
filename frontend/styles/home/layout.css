@@ -4,6 +4,10 @@ main {
     display: flex;
     flex-direction: row;
     background-color: var(--defaultPageBackgroundColor);
+    /* Slim horizontal rules separating the panel area from the navbar (top)
+       and the footer (bottom). */
+    border-top: 1px solid var(--borderColor);
+    border-bottom: 1px solid var(--borderColor);
 }
 
 button {
@@ -28,16 +32,83 @@ button {
 .panel {
     display: flex;
     flex-direction: column;
-    padding-inline: 5px;
+    /* Decks run edge-to-edge: flush against the window borders and the seam
+       divider, with no inter-panel or outer gutter. */
+    padding-inline: 0;
 }
 
 .panel#leftPanel {
     width: 25%;
     min-width: 350px;
+    transition: width 0.3s ease, min-width 0.3s ease, visibility 0s linear;
 }
 
 .panel#centerPanel {
     width: 75%;
+    transition: width 0.3s ease, max-width 0.3s ease;
+}
+
+/* LHS collapse/expand toggle affordances (seam + URL-deck-header mirror) */
+.lhs-toggle {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+    cursor: pointer;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.lhs-toggle:focus-visible {
+    outline: 2px solid var(--deckHeaderGreen);
+    outline-offset: 2px;
+}
+
+/* The seam handle IS the divider between the panels — a full-height, flush
+   splitter bar (IDE/GitHub pattern). Desktop-only and mouse-driven, so it
+   forgoes the 44px touch target. Resting: a thin border-colored line; hover/
+   focus highlights it green and brightens the chevron. */
+.lhs-toggle--seam {
+    align-self: stretch;
+    min-width: 0;
+    width: 0.65rem;
+    padding: 0;
+    background-color: var(--borderColor);
+    color: var(--cardURLTextColor);
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.lhs-toggle--seam:hover,
+.lhs-toggle--seam:focus-visible {
+    background-color: var(--deckHeaderGreen);
+    color: white;
+}
+
+.lhs-toggle--seam .bi {
+    width: 0.5rem;
+    height: 0.5rem;
+    transition: transform 0.15s ease;
+    transform-origin: center;
+}
+
+.lhs-toggle--seam .bi.lhs-chevron--closed {
+    transform: rotate(180deg);
+}
+
+/* Header mirror button: hover feedback + a state cue. aria-expanded is flipped by
+   applyLeftPanelVisibility(), so the collapsed state recolors the icon to the accent
+   green — distinct from the neutral hover pill — to signal the deck is hidden. */
+.lhs-toggle--header {
+    border-radius: 4px;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.lhs-toggle--header:hover {
+    background-color: rgba(255, 255, 255, 0.12);
+}
+
+.lhs-toggle--header[aria-expanded="false"] {
+    color: var(--deckHeaderGreen);
 }
 
 #HomeModalAlertBanner {
@@ -160,10 +231,6 @@ button {
     height: 2rem !important;
 }
 
-.height-2p5rem {
-    height: 2.5rem;
-}
-
 .pad-top-bot-5p {
     padding-top: 5px;
     padding-bottom: 5px;
@@ -266,7 +333,9 @@ button {
 .member,
 .UTubSelector,
 .tagFilter {
-    padding: 3px 10px;
+    /* 15px horizontal padding aligns row text with the deck headers and the
+       center URL rows, now that the rows themselves run full-bleed. */
+    padding: 3px 15px;
     height: 2.2rem;
 }
 
@@ -274,9 +343,7 @@ button {
 #TagDeckHeader,
 #UTubDeckHeader,
 #UTubDeckSubheader,
-#MemberDeckSubheader,
 #UTubDescriptionDeckHeader,
-#TagDeckSubheader,
 #URLDeckHeader {
     margin-bottom: 0px;
 }
@@ -301,6 +368,23 @@ button {
     .navbar-backdrop {
         display: none;
     }
+
+    /* Manual LHS collapse (desktop only) — slide the left panel away and let the
+       URL deck reclaim the 350px gutter. visibility (not display:none) so the
+       slide can animate and focusable children leave the tab order. */
+    #mainPanel.lhs-collapsed .panel#leftPanel {
+        width: 0;
+        min-width: 0;
+        overflow: hidden;
+        visibility: hidden;
+        transition: width 0.3s ease, min-width 0.3s ease, visibility 0s linear 0.3s;
+    }
+
+    #mainPanel.lhs-collapsed .panel#centerPanel {
+        width: 100%;
+        max-width: 100%;
+        transition: width 0.3s ease, max-width 0.3s ease;
+    }
 }
 
 @media (max-width: 991.98px) {
@@ -309,6 +393,14 @@ button {
     .deck#MemberDeck,
     .deck#TagDeck {
         display: none;
+    }
+
+    /* Roomier tap targets for the LHS rows on mobile (2.2rem ~= 35px is under
+       the ~44px touch-target minimum). */
+    .member,
+    .UTubSelector,
+    .tagFilter {
+        height: 2.75rem;
     }
 
     .deck#UTubDeck,
@@ -345,6 +437,17 @@ button {
     #UTubNameOuterUpdateWrap ~ .button-container {
         display: none;
     }
+
+    /* The mobile single-screen nav governs panels below 992px — hide both
+       LHS-collapse affordances so they never appear on mobile. The
+       `.button-container .lhs-toggle` selector is required to out-specify the
+       `.button-container button { display: inline-flex }` coarse-pointer rule
+       in buttons.css, which would otherwise re-show the URL-header toggle on
+       touch devices. */
+    .lhs-toggle,
+    .button-container .lhs-toggle {
+        display: none;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -369,3 +472,17 @@ button {
 @media (min-width: 465px) {}
 
 @media (max-width: 464.98px) {}
+
+/* Respect reduced-motion preferences for the LHS collapse/expand animation. */
+@media (prefers-reduced-motion: reduce) {
+
+    .panel#leftPanel,
+    .panel#centerPanel,
+    #mainPanel.lhs-collapsed .panel#leftPanel,
+    #mainPanel.lhs-collapsed .panel#centerPanel,
+    .lhs-toggle--seam,
+    .lhs-toggle--seam .bi,
+    .lhs-toggle--header {
+        transition: none;
+    }
+}

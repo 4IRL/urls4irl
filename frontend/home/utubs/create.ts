@@ -13,6 +13,7 @@ import {
   getAllAccessibleUTubNames,
   getNumOfUTubs,
   sameNameWarningHideModal,
+  updateUTubDeckCount,
 } from "./utils.js";
 import { createUTubSelector, selectUTub } from "./selectors.js";
 import { resetUTubSearch, showUTubSearchBar } from "./search.js";
@@ -274,6 +275,7 @@ function createUTubSuccess(response: CreateUtubResponse): void {
     index - 1,
   );
   $("#listUTubs").prepend(newUTubSelector);
+  updateUTubDeckCount();
 
   if (getNumOfUTubs() === 1) showUTubSearchBar();
 

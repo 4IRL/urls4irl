@@ -227,6 +227,17 @@ class _DimDeckExpand(UIBaseDimensions):
     deck: Literal["members", "tags", "utubs"]
 
 
+# `_DimLhsCollapse` and `_DimLhsExpand` share the same field shape today,
+# but are deliberately defined as separate classes (one per `EventName`) so
+# each event has a 1:1 grep-able dim model.
+class _DimLhsCollapse(UIBaseDimensions):
+    source: Literal["seam", "url_header"]
+
+
+class _DimLhsExpand(UIBaseDimensions):
+    source: Literal["seam", "url_header"]
+
+
 class _DimMobileNav(UIBaseDimensions):
     target: Literal["utubs", "urls", "members", "tags"]
 
@@ -414,6 +425,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     # UI — Layout & Navigation
     EventName.UI_DECK_COLLAPSE: _DimDeckCollapse,
     EventName.UI_DECK_EXPAND: _DimDeckExpand,
+    EventName.UI_LHS_COLLAPSE: _DimLhsCollapse,
+    EventName.UI_LHS_EXPAND: _DimLhsExpand,
     EventName.UI_NAVBAR_DROPDOWN_OPEN: _DimDeviceOnly,
     EventName.UI_NAVBAR_DROPDOWN_CLOSE: _DimDeviceOnly,
     EventName.UI_MOBILE_NAV: _DimMobileNav,

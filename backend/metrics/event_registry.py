@@ -454,6 +454,16 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.UI,
         dimensions={"deck": ("members", "tags", "utubs")},
     ),
+    EventName.UI_LHS_COLLAPSE: EventRegistryEntry(
+        description="Left panel collapsed",
+        category=EventCategory.UI,
+        dimensions={"source": ("seam", "url_header")},
+    ),
+    EventName.UI_LHS_EXPAND: EventRegistryEntry(
+        description="Left panel expanded",
+        category=EventCategory.UI,
+        dimensions={"source": ("seam", "url_header")},
+    ),
     EventName.UI_NAVBAR_DROPDOWN_OPEN: EventRegistryEntry(
         description="Navbar dropdown menu opened",
         category=EventCategory.UI,

@@ -221,6 +221,41 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
     assert_elems_hidden_after_utub_deleted(browser)
 
 
+def test_member_buttons_hidden_after_deleting_utub_with_others_remaining(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN an owner deletes a UTub they created while other UTubs remain (so the
+        deck updates rather than resetting to the empty state)
+    WHEN the delete completes and no UTub is selected
+    THEN the member action buttons (add-member and leave) must both be hidden
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
+    )
+
+    # Before-state: add-member button visible while the owner's UTub is selected
+    add_member_btn = wait_then_get_element(browser, HPL.BUTTON_MEMBER_CREATE, time=3)
+    assert add_member_btn is not None
+    assert add_member_btn.is_displayed()
+
+    delete_utub_as_creator(browser, utub_user_created)
+
+    # Other UTubs remain, so the UTub deck updates but no UTub is selected — the
+    # member action buttons must stay hidden.
+    assert not browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_MEMBER_CREATE
+    ).is_displayed()
+    assert not browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UTUB_LEAVE
+    ).is_displayed()
+
+
 def test_delete_utub_rate_limits(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):

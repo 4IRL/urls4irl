@@ -1,8 +1,9 @@
 import {
-  setTagDeckOnUTubSelected,
   setTagDeckSubheaderWhenNoUTubSelected,
+  updateCountOfTagFiltersApplied,
   updateTagDeck,
 } from "../deck.js";
+import { APP_CONFIG } from "../../../lib/config.js";
 import { resetStore, setState } from "../../../store/app-store.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 
@@ -79,11 +80,11 @@ describe("updateTagDeck - applyDeckDiff config", () => {
   });
 });
 
-describe("Tag deck subheader visibility on UTub selection", () => {
+describe("Tag deck inline count", () => {
   const TAG_DECK_HTML = `
     <div id="TagDeck">
-      <div class="titleElement dynamic-subheader hidden">
-        <h5 id="TagDeckSubheader"></h5>
+      <div class="titleElement">
+        <h2 id="TagDeckHeader">Tags<span id="TagDeckCount" class="deck-title-count"></span></h2>
       </div>
       <div id="listTags"></div>
       <button id="utubTagBtnCreate" class="hidden"></button>
@@ -97,24 +98,19 @@ describe("Tag deck subheader visibility on UTub selection", () => {
     document.body.innerHTML = TAG_DECK_HTML;
   });
 
-  it("reveals the subheader when a UTub is selected", () => {
-    const subheader = window.jQuery("#TagDeck > .dynamic-subheader");
-    expect(subheader.hasClass("hidden")).toBe(true);
+  it("renders the applied/max count inline next to the title", () => {
+    updateCountOfTagFiltersApplied(2);
 
-    setTagDeckOnUTubSelected([], 42);
-
-    expect(subheader.hasClass("hidden")).toBe(false);
-    expect(subheader.hasClass("height-2p5rem")).toBe(true);
+    expect(window.jQuery("#TagDeckCount").text()).toBe(
+      `(2/${APP_CONFIG.constants.TAGS_MAX_ON_URLS})`,
+    );
   });
 
-  it("collapses the subheader and clears its text when no UTub is selected", () => {
-    const subheader = window.jQuery("#TagDeck > .dynamic-subheader");
-    subheader.removeClass("hidden");
-    window.jQuery("#TagDeckSubheader").text("2 of 5 tag filters applied");
+  it("clears the inline count when no UTub is selected", () => {
+    window.jQuery("#TagDeckCount").text("(2/3)");
 
     setTagDeckSubheaderWhenNoUTubSelected();
 
-    expect(subheader.hasClass("hidden")).toBe(true);
-    expect(window.jQuery("#TagDeckSubheader").text()).toBe("");
+    expect(window.jQuery("#TagDeckCount").text()).toBe("");
   });
 });

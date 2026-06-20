@@ -8,6 +8,7 @@ import {
   addCollapsibleClickableHeaderClass,
 } from "./collapsible-decks.js";
 import { getState } from "../store/app-store.js";
+import { reapplyLeftPanelVisibilityForViewport } from "./left-panel-toggle.js";
 import { makeUTubSelectableAgainIfMobile } from "./utubs/selectors.js";
 
 /**
@@ -44,11 +45,13 @@ export function initMobileLayout(): void {
         setMobileUIWhenUTubNotSelectedOrUTubDeleted();
       }
       removeCollapsibleClickableHeaderClass();
+      reapplyLeftPanelVisibilityForViewport();
     } else {
       // Set full screen navbar
       // Show all panels and decks
       revertMobileUIToFullScreenUI();
       addCollapsibleClickableHeaderClass();
+      reapplyLeftPanelVisibilityForViewport();
     }
   });
 }
@@ -89,6 +92,9 @@ export function setMobileUIWhenUTubDeckSelected(): void {
   $("button#toURLs").removeClass("hidden");
 
   $(".panel#leftPanel").removeClass("hidden");
+  // Desktop LHS-collapse state is re-asserted by the matchMedia resize handler
+  // (initMobileLayout) on viewport change — not here, since this function only
+  // runs while isMobile().
 
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#MemberDeck").removeClass("visible-flex");
@@ -107,6 +113,9 @@ export function setMobileUIWhenMemberDeckSelected(): void {
   $(".deck#MemberDeck").addClass("visible-flex").removeClass("hidden");
 
   $(".panel#leftPanel").removeClass("hidden");
+  // Desktop LHS-collapse state is re-asserted by the matchMedia resize handler
+  // (initMobileLayout) on viewport change — not here, since this function only
+  // runs while isMobile().
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#UTubDeck").addClass("hidden");
   $(".deck#TagDeck").removeClass("visible-flex").addClass("hidden");
@@ -123,6 +132,9 @@ export function setMobileUIWhenTagDeckSelected(): void {
   $(".deck#TagDeck").addClass("visible-flex").removeClass("hidden");
 
   $(".panel#leftPanel").removeClass("hidden");
+  // Desktop LHS-collapse state is re-asserted by the matchMedia resize handler
+  // (initMobileLayout) on viewport change — not here, since this function only
+  // runs while isMobile().
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#UTubDeck").addClass("hidden");
   $(".deck#MemberDeck").removeClass("visible-flex").addClass("hidden");

@@ -1,4 +1,5 @@
 import { $ } from "../lib/globals.js";
+import { AppEvents, on } from "../lib/event-bus.js";
 import { emit } from "../lib/metrics-client.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { isMobile } from "./mobile.js";
@@ -118,6 +119,9 @@ function setupMemberHeaderForMaximizeMinimize() {
 
   headerAndCaret.offAndOn("click.collapsibleMemberDeck", () => {
     if (isMobile()) return;
+    // No UTub selected -> the deck is locked minimized (nothing to show); the
+    // header is visually marked non-interactable and clicks are inert.
+    if (!isUTubSelected()) return;
     const caret = $("#MemberDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
     emit({
@@ -154,6 +158,9 @@ function setupTagHeaderForMaximizeMinimize() {
 
   headerAndCaret.offAndOn("click.collapsibleUTubTagDeck", () => {
     if (isMobile()) return;
+    // No UTub selected -> the deck is locked minimized (nothing to show); the
+    // header is visually marked non-interactable and clicks are inert.
+    if (!isUTubSelected()) return;
     const caret = $("#TagDeckHeaderAndCaret .title-caret");
     const willExpand = caret.hasClass("closed");
     emit({
@@ -217,3 +224,42 @@ function setLastCollapsed(collapsingDeck: string): void {
     }
   }
 }
+
+function setDeckMinimized(deckSelector: string, minimized: boolean): void {
+  const deck = $(deckSelector);
+  // Toggle WITHOUT animation: an animating expand briefly slides member/tag rows
+  // over the header buttons, intercepting clicks (and it is jarring on every UTub
+  // switch). .deck-snap suppresses the transition; the forced reflow commits the
+  // change before transitions are re-enabled for user-initiated caret collapse.
+  deck.addClass("deck-snap");
+  deck.toggleClass("collapsed", minimized);
+  $(deckSelector + " .title-caret")
+    .first()
+    .toggleClass("closed", minimized);
+  const deckElement = deck.get(0);
+  if (deckElement) void deckElement.offsetHeight;
+  deck.removeClass("deck-snap");
+}
+
+// Minimize the Member + Tag decks when no UTub is selected (they have nothing to
+// show) so the UTubs list gets the room. Desktop only — the decks are not
+// collapsible on mobile (single-deck nav).
+export function minimizeMemberAndTagDecksWhenNoUTub(): void {
+  if (isMobile()) return;
+  setDeckMinimized(MEMBER_DECK_CSS_SELECTOR, true);
+  setDeckMinimized(UTUB_TAG_DECK_CSS_SELECTOR, true);
+  // Lock them: the header reads as non-interactable (hidden caret, dimmed title,
+  // no hover/cursor) so it's clear they can't be expanded with no UTub selected.
+  $(MEMBER_DECK_CSS_SELECTOR).addClass("deck-locked");
+  $(UTUB_TAG_DECK_CSS_SELECTOR).addClass("deck-locked");
+}
+
+// Restore the Member + Tag decks when a UTub is selected.
+function restoreMemberAndTagDecksForUTub(): void {
+  $(MEMBER_DECK_CSS_SELECTOR).removeClass("deck-locked");
+  $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("deck-locked");
+  setDeckMinimized(MEMBER_DECK_CSS_SELECTOR, false);
+  setDeckMinimized(UTUB_TAG_DECK_CSS_SELECTOR, false);
+}
+
+on(AppEvents.UTUB_SELECTED, restoreMemberAndTagDecksForUTub);

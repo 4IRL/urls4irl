@@ -1,6 +1,10 @@
 import { APP_CONFIG } from "../../../lib/config.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../empty-state.js";
-import { setURLDeckOnUTubSelected, resetURLDeckOnDeleteUTub } from "../deck.js";
+import {
+  resetURLDeckOnDeleteUTub,
+  setURLDeckOnUTubSelected,
+  setURLDeckWhenNoUTubSelected,
+} from "../deck.js";
 
 vi.mock("../create-btns.js", () => ({
   createURLShowInputEventListeners: vi.fn(),
@@ -47,6 +51,7 @@ const EMPTY_STATE_HTML = `
       <h2 id="URLDeckHeader">URLs</h2>
       <div id="URLDeckSubheader"></div>
       <div id="UTubDescriptionSubheaderWrap"></div>
+      <button id="lhsToggleHeader" class="lhs-toggle lhs-toggle--header hidden"></button>
     </div>
     <div class="flex-column content">
       <div id="noURLsEmptyState" class="hidden">
@@ -139,6 +144,34 @@ describe("UTub empty state", () => {
 
       expect($("#noURLsEmptyState").hasClass("hidden")).toBe(true);
       expect($("#noURLsSubheader").text()).toBe("");
+    });
+  });
+
+  describe("LHS minify toggle visibility (URL deck header)", () => {
+    it("reveals the toggle when a UTub is selected", () => {
+      expect($("#lhsToggleHeader").hasClass("hidden")).toBe(true);
+
+      setURLDeckOnUTubSelected(1, "Test UTub", [], []);
+
+      // Shown by removing `hidden` (not adding visible-flex), so the mobile
+      // rule that hides .lhs-toggle is never overridden.
+      expect($("#lhsToggleHeader").hasClass("hidden")).toBe(false);
+    });
+
+    it("hides the toggle when no UTub is selected", () => {
+      $("#lhsToggleHeader").removeClass("hidden");
+
+      setURLDeckWhenNoUTubSelected();
+
+      expect($("#lhsToggleHeader").hasClass("hidden")).toBe(true);
+    });
+
+    it("hides the toggle when the current UTub is deleted", () => {
+      $("#lhsToggleHeader").removeClass("hidden");
+
+      resetURLDeckOnDeleteUTub();
+
+      expect($("#lhsToggleHeader").hasClass("hidden")).toBe(true);
     });
   });
 });
