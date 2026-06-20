@@ -995,9 +995,76 @@
     fill: var(--cardURLTextColor);
 }
 
+/* Mobile: the 5-column percentile table truncates endpoint names to
+ * uselessness on a phone. Below 576px each row collapses into a stacked card —
+ * the full (wrapping) endpoint name as a heading, then one labeled line per
+ * metric (label + unit via `data-label`, value right-aligned). The detail
+ * chart still renders beneath, unchanged. */
 @media (max-width: 575.98px) {
+    .latency-table thead {
+        /* Header labels move into each cell's data-label; hide the row but keep
+         * it for screen readers via the table's aria-label + per-row aria. */
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .latency-table,
+    .latency-table tbody,
+    .latency-table tr,
+    .latency-table td {
+        display: block;
+        width: 100%;
+    }
+
+    .latency-row {
+        border: 1px solid var(--borderColor);
+        border-radius: 8px;
+        padding: 0.5rem 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .latency-row--selected td:first-child {
+        /* The whole card is the selected widget on mobile — drop the
+         * desktop inset bar in favor of a full-card accent border. */
+        box-shadow: none;
+    }
+
+    .latency-row--selected {
+        border-color: var(--splashGreen);
+        box-shadow: inset 0 0 0 1px var(--splashGreen);
+    }
+
     .latency-table td.endpoint {
-        max-width: 12rem;
+        max-width: none;
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+        word-break: break-word;
+        font-weight: 600;
+        padding-bottom: 0.25rem;
+        margin-bottom: 0.25rem;
+        border-bottom: 1px solid var(--borderColor);
+    }
+
+    .latency-table td.metric,
+    .latency-table td.samples {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        text-align: right;
+        padding: 0.15rem 0;
+    }
+
+    .latency-table td.metric::before,
+    .latency-table td.samples::before {
+        content: attr(data-label);
+        color: var(--cardURLTextColor);
+        font-size: 0.8rem;
+        text-align: left;
     }
 }
 

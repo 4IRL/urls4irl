@@ -90,9 +90,9 @@ class ADMIN_METRICS_STRINGS:
     METRICS_LATENCY_EMPTY: str = "No latency samples recorded in the selected window."
     METRICS_LATENCY_SELECT_PROMPT: str = "Select an endpoint to view its latency trend"
     METRICS_LATENCY_COL_ENDPOINT: str = "Endpoint"
-    METRICS_LATENCY_COL_P50: str = "p50"
-    METRICS_LATENCY_COL_P95: str = "p95"
-    METRICS_LATENCY_COL_P99: str = "p99"
+    METRICS_LATENCY_COL_P50: str = "p50 (ms)"
+    METRICS_LATENCY_COL_P95: str = "p95 (ms)"
+    METRICS_LATENCY_COL_P99: str = "p99 (ms)"
     METRICS_LATENCY_COL_SAMPLES: str = "Samples"
     METRICS_LATENCY_Y_AXIS_LABEL: str = "Latency (ms)"
     METRICS_LATENCY_ROW_ARIA: str = (

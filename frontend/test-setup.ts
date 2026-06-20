@@ -219,9 +219,9 @@ const appConfig = {
     METRICS_LATENCY_SELECT_PROMPT:
       "Select an endpoint to view its latency trend",
     METRICS_LATENCY_COL_ENDPOINT: "Endpoint",
-    METRICS_LATENCY_COL_P50: "p50",
-    METRICS_LATENCY_COL_P95: "p95",
-    METRICS_LATENCY_COL_P99: "p99",
+    METRICS_LATENCY_COL_P50: "p50 (ms)",
+    METRICS_LATENCY_COL_P95: "p95 (ms)",
+    METRICS_LATENCY_COL_P99: "p99 (ms)",
     METRICS_LATENCY_COL_SAMPLES: "Samples",
     METRICS_LATENCY_Y_AXIS_LABEL: "Latency (ms)",
     METRICS_LATENCY_ROW_ARIA:

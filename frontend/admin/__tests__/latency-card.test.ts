@@ -108,7 +108,13 @@ describe("renderLatencyPanel (happy path)", () => {
     const headers = Array.from(
       table.querySelectorAll<HTMLElement>("thead th"),
     ).map((th) => th.textContent);
-    expect(headers).toEqual(["Endpoint", "p50", "p95", "p99", "Samples"]);
+    expect(headers).toEqual([
+      "Endpoint",
+      "p50 (ms)",
+      "p95 (ms)",
+      "p99 (ms)",
+      "Samples",
+    ]);
 
     const rows = table.querySelectorAll<HTMLElement>(".latency-row");
     expect(rows.length).toBe(2);
@@ -120,6 +126,30 @@ describe("renderLatencyPanel (happy path)", () => {
     expect(firstCells[2]!.textContent).toBe("49");
     expect(firstCells[3]!.textContent).toBe("95");
     expect(firstCells[4]!.textContent).toBe("42");
+  });
+
+  it("labels each value cell with its column header + unit via data-label (mobile card layout)", () => {
+    const { table, detail } = buildRoots();
+    renderLatencyPanel({
+      tableRoot: table,
+      detailRoot: detail,
+      response: buildResponse([buildRow()]),
+    });
+
+    const row = table.querySelector<HTMLElement>(".latency-row")!;
+    const metricCells = row.querySelectorAll<HTMLElement>("td.metric");
+    expect(Array.from(metricCells).map((cell) => cell.dataset.label)).toEqual([
+      "p50 (ms)",
+      "p95 (ms)",
+      "p99 (ms)",
+    ]);
+
+    const samplesCell = row.querySelector<HTMLElement>("td.samples")!;
+    expect(samplesCell.dataset.label).toBe("Samples");
+
+    // The endpoint cell is the card heading on mobile — no inline data-label.
+    const endpointCell = row.querySelector<HTMLElement>("td.endpoint")!;
+    expect(endpointCell.dataset.label).toBeUndefined();
   });
 
   it("makes each row a focusable button widget with a summary aria-label", () => {
