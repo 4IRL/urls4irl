@@ -243,7 +243,7 @@ function buildLatencyResponse({
     window: "day",
     window_start: "2026-06-01T00:00:00+00:00",
     window_end: "2026-06-02T00:00:00+00:00",
-    ...(approximate !== undefined ? { approximate } : {}),
+    approximate,
     rows: [
       {
         endpoint: "utubs.get_utub",
