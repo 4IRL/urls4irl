@@ -21,6 +21,7 @@ from backend.metrics.events import DeviceType, EventName
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeKind
 from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.users import Users
@@ -70,6 +71,21 @@ SEED_LATENCY_DURATIONS_MS: tuple[float, ...] = (
     90.0,
     100.0,
 )
+
+# Completed-day offsets (days back from today, UTC) the rollup seeder writes a
+# precomputed daily percentile row for, per endpoint. All three are inside the
+# 35-day raw retention horizon but exercise the rollup table directly so the
+# rollup-backed long-window dashboard path renders during the Selenium smoke
+# test. One row per (offset × endpoint) — no device-type multiplier, because the
+# rollup aggregates across all device types (no device dimension is stored).
+SEED_LATENCY_ROLLUP_DAY_OFFSETS: tuple[int, ...] = (1, 2, 3)
+
+# Fixed precomputed percentile/count values every seeded rollup row carries, so
+# the row count and the stored values are deterministic and assertable.
+SEED_LATENCY_ROLLUP_P50_MS: float = 55.0
+SEED_LATENCY_ROLLUP_P95_MS: float = 95.5
+SEED_LATENCY_ROLLUP_P99_MS: float = 99.1
+SEED_LATENCY_ROLLUP_SAMPLE_COUNT: int = 10
 
 HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""
 
@@ -179,7 +195,8 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     generate_mock_tags(db)
     rows_written = _seed_uniform_test_data()
     print(
-        f"\n--- Seeded {rows_written} AnonymousMetrics + AnonymousGauges rows for UI tests ---"
+        f"\n--- Seeded {rows_written} AnonymousMetrics + AnonymousGauges + "
+        "AnonymousLatencySamples + AnonymousLatencyDailyRollups rows for UI tests ---"
     )
     print(
         "\n--- Finished adding all mock users, UTubs, members, urls, tags, and metrics ---\n\n"
@@ -341,12 +358,14 @@ def _seed_uniform_test_data() -> int:
         Writes nine rows across three hour buckets ending at the current
         hour, one row per bucket for each of: api_hit (API),
         ui_login_submit (UI), utub_created (DOMAIN). Also calls
-        `_seed_uniform_gauges()` and `_seed_uniform_latency()` at the end so
-        AnonymousGauges and AnonymousLatencySamples are seeded for every
-        consumer of `seed-uniform-test-data` (e.g. the Selenium
+        `_seed_uniform_gauges()`, `_seed_uniform_latency()`, and
+        `_seed_uniform_latency_rollups()` at the end so AnonymousGauges,
+        AnonymousLatencySamples, and AnonymousLatencyDailyRollups are seeded for
+        every consumer of `seed-uniform-test-data` (e.g. the Selenium
         `seeded_metrics` autouse fixture). Returns the combined count of
-        AnonymousMetrics + AnonymousGauges + AnonymousLatencySamples rows
-        actually inserted (zero on a re-run with all rows present).
+        AnonymousMetrics + AnonymousGauges + AnonymousLatencySamples +
+        AnonymousLatencyDailyRollups rows actually inserted (zero on a re-run
+        with all rows present).
     """
     sync_event_registry(current_app._get_current_object())  # type: ignore[attr-defined]
 
@@ -438,7 +457,10 @@ def _seed_uniform_test_data() -> int:
     db.session.commit()
     gauge_rows_written = _seed_uniform_gauges()
     latency_rows_written = _seed_uniform_latency()
-    return rows_written + gauge_rows_written + latency_rows_written
+    rollup_rows_written = _seed_uniform_latency_rollups()
+    return (
+        rows_written + gauge_rows_written + latency_rows_written + rollup_rows_written
+    )
 
 
 def _seed_uniform_gauges() -> int:
@@ -580,6 +602,72 @@ def _seed_uniform_latency() -> int:
     return rows_written
 
 
+def _seed_uniform_latency_rollups() -> int:
+    """Insert a deterministic set of AnonymousLatencyDailyRollups rows for tests.
+
+    Writes one precomputed daily percentile row per (rollup-day, endpoint)
+    tuple, so migrations and the admin dashboard's long-window (rollup-backed)
+    Backend Performance path run against non-empty rollup data. The rollup
+    aggregates across device_type (no device dimension is stored), so — unlike
+    `_seed_uniform_latency` — there is no device-type multiplier: exactly one
+    row per (day, endpoint). Stored percentile/count values are fixed constants
+    so the row count and values are deterministic and assertable. Idempotent on
+    `(metric_name, endpoint, method, rollup_date)` via a `one_or_none()`
+    existence skip — the rollup writes a single row per probe key, so repeated
+    runs insert nothing new. Requires an active Flask app context.
+
+    The INSERT/commit body is wrapped in `try/except ProgrammingError`: if the
+    `AnonymousLatencyDailyRollups` table does not exist yet (e.g. a
+    migration-downgrade state before the table was added), the exception is
+    logged as a warning and the function returns 0, so `flask addmock all` stays
+    safe at any migration revision (mirroring `_seed_uniform_latency`).
+
+    Examples:
+        With three day offsets and two endpoints, writes 3 * 2 = 6 rows on a
+        fresh DB and returns 6; a re-run with all rows already present returns 0.
+    """
+    today_utc = utc_now().date()
+    rows_written = 0
+    metric_name_value = LatencyMetricName.API_REQUEST_DURATION.value
+    try:
+        for day_offset in SEED_LATENCY_ROLLUP_DAY_OFFSETS:
+            rollup_date_value = today_utc - timedelta(days=day_offset)
+
+            for endpoint_value, method_value in SEED_LATENCY_ENDPOINTS:
+                existing_row = Anonymous_Latency_Daily_Rollups.query.filter_by(
+                    metric_name=metric_name_value,
+                    endpoint=endpoint_value,
+                    method=method_value,
+                    rollup_date=rollup_date_value,
+                ).one_or_none()
+                if existing_row is not None:
+                    continue
+
+                db.session.add(
+                    Anonymous_Latency_Daily_Rollups(
+                        metric_name=metric_name_value,
+                        endpoint=endpoint_value,
+                        method=method_value,
+                        rollup_date=rollup_date_value,
+                        p50_ms=SEED_LATENCY_ROLLUP_P50_MS,
+                        p95_ms=SEED_LATENCY_ROLLUP_P95_MS,
+                        p99_ms=SEED_LATENCY_ROLLUP_P99_MS,
+                        sample_count=SEED_LATENCY_ROLLUP_SAMPLE_COUNT,
+                        dimensions={},
+                    )
+                )
+                rows_written += 1
+        db.session.commit()
+    except ProgrammingError:
+        db.session.rollback()
+        current_app.logger.warning(
+            "addmock: AnonymousLatencyDailyRollups table missing; "
+            "skipped latency rollup seeding"
+        )
+        return 0
+    return rows_written
+
+
 @mocks_cli.command(
     "seed-uniform-test-data",
     help="Seed a small fixed set of AnonymousMetrics rows for Selenium tests.",
@@ -609,6 +697,19 @@ def seed_uniform_latency_command() -> None:
     rows_written = _seed_uniform_latency()
     click.echo(
         f"metrics: seeded {rows_written} AnonymousLatencySamples rows for UI tests."
+    )
+
+
+@mocks_cli.command(
+    "seed-uniform-latency-rollups",
+    help="Seed a fixed set of AnonymousLatencyDailyRollups rows for Selenium tests.",
+)
+@with_appcontext
+def seed_uniform_latency_rollups_command() -> None:
+    rows_written = _seed_uniform_latency_rollups()
+    click.echo(
+        f"metrics: seeded {rows_written} AnonymousLatencyDailyRollups rows for "
+        "UI tests."
     )
 
 
