@@ -3918,6 +3918,11 @@
               "$ref": "#/components/schemas/LatencyPercentileRow"
             },
             "type": "array"
+          },
+          "approximate": {
+            "default": false,
+            "description": "True when the window reaches beyond the raw-sample retention horizon and the summary percentiles are sample-count-weighted averages of daily rollups (approximate). False when served exactly from raw samples. The per-day timeseries stays exact regardless.",
+            "type": "boolean"
           }
         },
         "required": ["window_start", "window_end", "rows"],

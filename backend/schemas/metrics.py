@@ -427,6 +427,15 @@ class LatencyPercentilesResponseSchema(BaseSchema):
     rows: list[LatencyPercentileRow] = Field(
         description="Per-(endpoint, method) percentile rows ordered by p95 descending.",
     )
+    approximate: bool = Field(
+        default=False,
+        description=(
+            "True when the window reaches beyond the raw-sample retention "
+            "horizon and the summary percentiles are sample-count-weighted "
+            "averages of daily rollups (approximate). False when served exactly "
+            "from raw samples. The per-day timeseries stays exact regardless."
+        ),
+    )
 
 
 class LatencyTimeseriesBucket(BaseSchema):

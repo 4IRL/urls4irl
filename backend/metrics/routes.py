@@ -621,12 +621,13 @@ def query_latency() -> FlaskResponse:
     if not isinstance(parsed, BaseModel):
         return parsed
 
+    now = utc_now()
     try:
         window_start, window_end = resolve_query_window(
             window=parsed.window,
             start=parsed.start,
             end=parsed.end,
-            now=utc_now(),
+            now=now,
         )
     except ValueError as validation_error:
         return build_field_error_response(
@@ -636,20 +637,24 @@ def query_latency() -> FlaskResponse:
             status_code=400,
         )
 
-    rows = query_service.latency_percentiles(
+    result = query_service.latency_percentiles(
         window_start=window_start,
         window_end=window_end,
+        now=now,
         metric_name=LatencyMetricName(parsed.metric_name),
         endpoint=parsed.endpoint,
         method=parsed.method,
         device_type=parsed.device_type,
         limit=parsed.limit,
     )
+    rows = result.rows
+    approximate = result.approximate
     response_schema = LatencyPercentilesResponseSchema(
         window=parsed.window,
         window_start=window_start,
         window_end=window_end,
         rows=rows,
+        approximate=approximate,
     )
     return APIResponse(data=response_schema, status_code=200).to_response()
 
@@ -681,12 +686,13 @@ def query_latency_timeseries() -> FlaskResponse:
     if not isinstance(parsed, BaseModel):
         return parsed
 
+    now = utc_now()
     try:
         window_start, window_end = resolve_query_window(
             window=parsed.window,
             start=parsed.start,
             end=parsed.end,
-            now=utc_now(),
+            now=now,
         )
     except ValueError as validation_error:
         return build_field_error_response(
@@ -700,6 +706,7 @@ def query_latency_timeseries() -> FlaskResponse:
         metric_name=LatencyMetricName(parsed.metric_name),
         window_start=window_start,
         window_end=window_end,
+        now=now,
         resolution=parsed.resolution,
         endpoint=parsed.endpoint,
         method=parsed.method,

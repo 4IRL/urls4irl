@@ -1092,6 +1092,11 @@ export interface components {
       window_end: string;
       /** @description Per-(endpoint, method) percentile rows ordered by p95 descending. */
       rows: components["schemas"]["LatencyPercentileRow"][];
+      /**
+       * @description True when the window reaches beyond the raw-sample retention horizon and the summary percentiles are sample-count-weighted averages of daily rollups (approximate). False when served exactly from raw samples. The per-day timeseries stays exact regardless.
+       * @default false
+       */
+      approximate: boolean;
     };
     /**
      * @description One bucket of the `latency/timeseries` query response.

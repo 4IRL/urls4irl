@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Tuple
 
 import pytest
@@ -21,6 +21,7 @@ from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
 from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
@@ -1785,6 +1786,38 @@ def _seed_latency_row(
     db.session.commit()
 
 
+def _seed_latency_rollup_row(
+    rollup_date: date,
+    *,
+    p50_ms: float = 100.0,
+    p95_ms: float = 200.0,
+    p99_ms: float = 300.0,
+    sample_count: int = 10,
+    endpoint: str = "utubs.get_utub",
+    method: str = "GET",
+) -> None:
+    """Seed one AnonymousLatencyDailyRollups row through SQLAlchemy.
+
+    ORM (not raw psycopg2) for the same SAVEPOINT reason as `_seed_latency_row`.
+    Backs the long-window (beyond 35-day raw retention) endpoint tests where the
+    summary is served from the daily rollup and marked approximate.
+    """
+    db.session.add(
+        Anonymous_Latency_Daily_Rollups(
+            metric_name=LatencyMetricName.API_REQUEST_DURATION.value,
+            endpoint=endpoint,
+            method=method,
+            rollup_date=rollup_date,
+            p50_ms=p50_ms,
+            p95_ms=p95_ms,
+            p99_ms=p99_ms,
+            sample_count=sample_count,
+            dimensions={},
+        )
+    )
+    db.session.commit()
+
+
 @pytest.mark.parametrize(
     "url",
     [
@@ -2038,3 +2071,57 @@ def test_latency_timeseries_missing_endpoint_returns_400(
     assert response.status_code == 400
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_latency_year_window_returns_approximate_true_from_rollup(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a daily rollup row dated ~40 days ago (beyond the
+        35-day raw retention horizon but inside the year window)
+    WHEN GETing /api/metrics/query/latency?window=year
+    THEN the response is 200 with `approximate: true` and per-endpoint rows from
+        the rollup — Year crosses the raw retention boundary.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        rollup_day = (datetime.now(timezone.utc) - timedelta(days=40)).date()
+        _seed_latency_rollup_row(rollup_day)
+
+    response = logged_in_client.get(
+        _LATENCY_URL + "?window=year", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["approximate"] is True
+    assert len(body["rows"]) == 1
+    assert body["rows"][0]["endpoint"] == "utubs.get_utub"
+
+
+def test_latency_month_and_day_windows_return_approximate_false(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and raw samples inside the last hour
+    WHEN GETing /api/metrics/query/latency for window=month and window=day
+    THEN both return 200 with `approximate: false` — Month (~28-31 days) and Day
+        both sit inside the 35-day raw retention and are served exactly from raw.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        for duration in (10.0, 20.0, 30.0):
+            _seed_latency_row(observed_at, duration)
+
+    month_response = logged_in_client.get(
+        _LATENCY_URL + "?window=month", headers=_AJAX_HEADERS
+    )
+    day_response = logged_in_client.get(
+        _LATENCY_URL + "?window=day", headers=_AJAX_HEADERS
+    )
+
+    assert month_response.status_code == 200
+    assert month_response.get_json()["approximate"] is False
+    assert day_response.status_code == 200
+    assert day_response.get_json()["approximate"] is False
