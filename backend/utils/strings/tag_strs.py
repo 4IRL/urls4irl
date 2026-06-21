@@ -37,7 +37,7 @@ class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
 # Strings for tags failure
 UNABLE_TO_ADD_TAG_TO_URL = "Unable to add tag to URL."
 UNABLE_TO_ADD_TAG_TO_UTUB = "Unable to add tag to UTub."
-FIVE_TAGS_MAX = "URLs can only have up to 5 tags."
+MAX_URL_TAGS_REACHED = "URLs can only have up to {max_tags} tags."
 TAG_ALREADY_ON_URL = "URL already has this tag."
 TAG_ALREADY_IN_UTUB = "UTub already contains this tag."
 ONLY_UTUB_MEMBERS_DELETE_TAGS = "Only UTub members can delete tags."
@@ -48,7 +48,7 @@ TAG_EMPTY = "Tag must not be empty."
 class TAGS_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_ADD_TAG_TO_URL = UNABLE_TO_ADD_TAG_TO_URL
     UNABLE_TO_ADD_TAG_TO_UTUB = UNABLE_TO_ADD_TAG_TO_UTUB
-    FIVE_TAGS_MAX = FIVE_TAGS_MAX
+    MAX_URL_TAGS_REACHED = MAX_URL_TAGS_REACHED
     TAG_ALREADY_ON_URL = TAG_ALREADY_ON_URL
     ONLY_UTUB_MEMBERS_UPDATE_TAGS = ONLY_UTUB_MEMBERS_UPDATE_TAGS
     ONLY_UTUB_MEMBERS_DELETE_TAGS = ONLY_UTUB_MEMBERS_DELETE_TAGS

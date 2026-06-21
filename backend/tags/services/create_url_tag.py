@@ -112,7 +112,11 @@ def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
     warning_log(
         f"User={current_user.id} tried adding tag to UTubURL.id={utub_url.id} but tag limited"
     )
-    return build_message_error_response(message=TAGS_FAILURE.FIVE_TAGS_MAX)
+    return build_message_error_response(
+        message=TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(
+            max_tags=TAG_CONSTANTS.MAX_URL_TAGS
+        )
+    )
 
 
 def _get_or_create_utub_tag(tag: str, utub: Utubs) -> Utub_Tags:

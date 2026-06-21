@@ -47,7 +47,7 @@ def create_utub_url_tag(
     add_tag_request: AddTagRequest,
 ) -> FlaskResponse:
     """
-    User wants to add a tag to a URL. 5 tags per URL.
+    User wants to add a tag to a URL, up to the per-URL tag limit.
 
     Args:
         utub_id (int): The utub that this user is being added to
