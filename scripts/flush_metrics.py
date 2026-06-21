@@ -204,6 +204,20 @@ LATENCY_ROLLUP_PRUNE_SQL: str = """
 """
 
 
+def _start_of_today_utc() -> datetime:
+    """Return midnight (00:00:00.000000) of the current UTC day.
+
+    A single wall-clock read truncated to the start of the day, used as the
+    exclusive upper bound for the rollup window (today is still accumulating).
+    Pure stdlib so ``flush_metrics.py`` stays standalone (no Flask/SQLAlchemy).
+
+    Example:
+        called at 2026-06-21T14:37:09.512345+00:00
+        -> datetime(2026, 6, 21, 0, 0, 0, 0, tzinfo=timezone.utc)
+    """
+    return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+
+
 def parse_counter_key(key: bytes) -> tuple[int, str, dict] | None:
     """Parse a ``metrics:counter:<bucket>:<event>:<canonical_dims_json>`` key.
 
@@ -523,9 +537,7 @@ def run_latency_rollup(
         if now_epoch - last_rollup_epoch < LATENCY_ROLLUP_INTERVAL_SECONDS:
             return 0
 
-    today_utc = datetime.now(timezone.utc).replace(
-        hour=0, minute=0, second=0, microsecond=0
-    )
+    today_utc = _start_of_today_utc()
     window_end = today_utc
     window_start = today_utc - timedelta(days=LATENCY_ROLLUP_BACKFILL_DAYS)
 
