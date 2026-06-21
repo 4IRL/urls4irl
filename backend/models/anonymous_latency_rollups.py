@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import (
     BigInteger,
     Column,
@@ -63,7 +65,7 @@ class Anonymous_Latency_Daily_Rollups(db.Model):
     # matched endpoint/method so the unique constraint behaves predictably.
     endpoint: str = Column(String(255), nullable=False, name="endpoint")
     method: str = Column(String(10), nullable=False, name="method")
-    rollup_date = Column(Date, nullable=False, name="rollupDate")
+    rollup_date: date = Column(Date, nullable=False, name="rollupDate")
     p50_ms: float = Column(Numeric(20, 6), nullable=False, name="p50Ms")
     p95_ms: float = Column(Numeric(20, 6), nullable=False, name="p95Ms")
     p99_ms: float = Column(Numeric(20, 6), nullable=False, name="p99Ms")
