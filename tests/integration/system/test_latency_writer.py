@@ -21,13 +21,19 @@ pytestmark = pytest.mark.cli
 
 _METRIC_VALUE = LatencyMetricName.API_REQUEST_DURATION.value
 _ENDPOINT = "utubs.get_utub"
+_ENDPOINT_HOT = "urls.add_url"
 _METHOD = "GET"
+_OVERRIDE_CAP = 5
 
 
-def _expected_key(writer: MetricsWriter, device_type: DeviceType) -> str:
+def _expected_key(
+    writer: MetricsWriter,
+    device_type: DeviceType,
+    endpoint: str = _ENDPOINT,
+) -> str:
     bucket_start = compute_bucket_start_epoch(int(time.time()), writer._bucket_seconds)
     return build_latency_key(
-        bucket_start, _METRIC_VALUE, _ENDPOINT, _METHOD, device_type
+        bucket_start, _METRIC_VALUE, endpoint, _METHOD, device_type
     )
 
 
@@ -92,6 +98,52 @@ def test_record_duration_ltrims_to_cap(
 
     expected_key = _expected_key(writer_with_metrics_enabled, DeviceType.MOBILE)
     assert provide_metrics_redis.llen(expected_key) == LATENCY_SAMPLE_CAP_DEFAULT
+
+
+@pytest.mark.parametrize(
+    "endpoint, expected_cap",
+    [
+        (_ENDPOINT_HOT, _OVERRIDE_CAP),
+        (_ENDPOINT, LATENCY_SAMPLE_CAP_DEFAULT),
+    ],
+)
+def test_record_duration_respects_per_endpoint_cap_override(
+    app: Flask,
+    writer_with_metrics_enabled: MetricsWriter,
+    provide_metrics_redis: Redis,
+    monkeypatch: pytest.MonkeyPatch,
+    endpoint: str,
+    expected_cap: int,
+):
+    """
+    GIVEN LATENCY_SAMPLE_CAP_OVERRIDES maps one endpoint to a small cap
+    WHEN record_duration is called >cap times for that overridden endpoint
+        AND for a non-overridden endpoint
+    THEN each endpoint's latency list is LTRIM'd to its own resolved cap:
+        the override for the mapped endpoint, the default otherwise.
+    """
+    monkeypatch.setattr(
+        "backend.extensions.metrics.writer.LATENCY_SAMPLE_CAP_OVERRIDES",
+        {_ENDPOINT_HOT: _OVERRIDE_CAP},
+    )
+
+    assert find_latency_keys(provide_metrics_redis, _METRIC_VALUE) == []
+
+    over_cap = expected_cap + 10
+    with app.app_context():
+        for index in range(over_cap):
+            record_duration(
+                metric=LatencyMetricName.API_REQUEST_DURATION,
+                duration_ms=float(index),
+                endpoint=endpoint,
+                method=_METHOD,
+                dimensions={DEVICE_TYPE_DIM_KEY: DeviceType.DESKTOP},
+            )
+
+    expected_key = _expected_key(
+        writer_with_metrics_enabled, DeviceType.DESKTOP, endpoint
+    )
+    assert provide_metrics_redis.llen(expected_key) == expected_cap
 
 
 def test_record_duration_separate_keys_for_distinct_device_types(

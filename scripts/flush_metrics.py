@@ -374,12 +374,15 @@ def run_latency_flush(
             # ResponseError when the source does not exist; nothing to drain.
             continue
         drained_values = redis_client.lrange(draining_key, 0, -1)
-        if len(drained_values) == LATENCY_SAMPLE_CAP_DEFAULT:
+        cap = LATENCY_SAMPLE_CAP_OVERRIDES.get(
+            parsed.endpoint, LATENCY_SAMPLE_CAP_DEFAULT
+        )
+        if len(drained_values) == cap:
             logger.warning(
                 "latency_sample_cap_hit: key=%s — drained exactly cap (%d) samples;"
                 " older samples discarded",
                 raw_key,
-                LATENCY_SAMPLE_CAP_DEFAULT,
+                cap,
             )
         # observedAt is the bucket start, not the exact request instant — bucket
         # granularity is sufficient for percentile aggregation on the time axis.

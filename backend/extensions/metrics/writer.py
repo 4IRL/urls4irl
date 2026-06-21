@@ -10,7 +10,11 @@ from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
-from backend.metrics.latency import LATENCY_SAMPLE_CAP_DEFAULT, LatencyMetricName
+from backend.metrics.latency import (
+    LATENCY_SAMPLE_CAP_DEFAULT,
+    LATENCY_SAMPLE_CAP_OVERRIDES,
+    LatencyMetricName,
+)
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
@@ -188,9 +192,11 @@ class MetricsWriter:
                 self._bucket_seconds + _KEY_TTL_GRACE_SECONDS, _KEY_TTL_FLOOR_SECONDS
             )
 
+            cap = LATENCY_SAMPLE_CAP_OVERRIDES.get(endpoint, LATENCY_SAMPLE_CAP_DEFAULT)
+
             pipe = self._redis.pipeline()
             pipe.lpush(latency_key, f"{duration_ms:.3f}")
-            pipe.ltrim(latency_key, 0, LATENCY_SAMPLE_CAP_DEFAULT - 1)
+            pipe.ltrim(latency_key, 0, cap - 1)
             pipe.expire(latency_key, ttl_seconds)
             pipe.execute()
         except Exception:
@@ -259,3 +265,21 @@ def record_duration(
         method=method,
         dimensions=dimensions,
     )
+
+
+def validate_latency_cap_overrides(app: Flask) -> None:
+    """Warn for each LATENCY_SAMPLE_CAP_OVERRIDES key absent from the url_map.
+
+    A typo'd or stale override key silently has no effect (the endpoint never
+    resolves to that key at write time), so this surfaces it at app build. Must
+    be called AFTER all blueprints are registered — the url_map is empty during
+    `init_app`, before blueprint registration in `create_app`.
+    """
+    registered_endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
+    for override_endpoint in LATENCY_SAMPLE_CAP_OVERRIDES:
+        if override_endpoint not in registered_endpoints:
+            app.logger.warning(
+                "latency_sample_cap_override_unknown_endpoint: %s — not a registered"
+                " endpoint; this cap override will never take effect",
+                override_endpoint,
+            )
