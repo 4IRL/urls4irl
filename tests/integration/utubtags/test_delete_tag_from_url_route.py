@@ -11,6 +11,7 @@ from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.schemas.urls import UtubUrlSchema
 from backend.utils.all_routes import ROUTES
+from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
     FAILURE_GENERAL,
@@ -600,13 +601,13 @@ def test_delete_last_url_tag_in_utub(
     assert tag_id_to_delete in response_tags
 
 
-def test_delete_tag_from_url_with_five_tags(
+def test_delete_tag_from_url_with_max_tags(
     add_one_url_and_all_users_to_each_utub_no_tags,
     add_max_tags_to_utubs,
     login_first_user_without_register,
 ):
     """
-    GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 1 URL in each UTub, and each URL has 5 tag associated
+    GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 1 URL in each UTub, and each URL has the per-URL tag limit of tags associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub
         - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id> where:
             "utub_id" : An integer representing UTub ID,
@@ -630,7 +631,7 @@ def test_delete_tag_from_url_with_five_tags(
         TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by decrementing previous value by 1.
     }
     """
-    MAX_NUM_TAGS = 5
+    MAX_NUM_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -652,7 +653,7 @@ def test_delete_tag_from_url_with_five_tags(
         ).first()
         url_id_to_delete_tag_from = url_in_this_utub.id
 
-        # Add five tags to this URL
+        # Apply the per-URL tag limit of tags to this URL
         for idx in range(MAX_NUM_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()
@@ -722,7 +723,7 @@ def test_delete_tag_from_url_with_five_tags(
         # Ensure tag still exists
         assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
-        # Ensure 4 tags on this URL
+        # Ensure one fewer than the per-URL tag limit remains on this URL
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
