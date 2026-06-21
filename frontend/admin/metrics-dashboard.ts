@@ -178,6 +178,12 @@ const FILTERED_TOP_LIMIT = 100;
 // collapse to one re-render. Monotonic vs `Date.now()` so a system-clock step
 // cannot cause a debounced re-render to fire late or never.
 const SUBSTRING_DEBOUNCE_MS = 150;
+// Named windows that reach beyond the 35-day raw-sample retention horizon. Only
+// these serve the per-endpoint summary from the daily rollup (approximate) and
+// must request a daily-grain timeseries; Day/Week/Month stay on the exact raw
+// path. Shared by `fetchLatencyTimeseries` (resolution) and the
+// `renderLatencyDetailChart` call (daily flag).
+const LONG_WINDOWS: ReadonlySet<MetricsWindow> = new Set(["year"] as const);
 // Shared bucket thresholds: "just_now" until 5 s elapsed, "seconds" until 60 s,
 // then "minutes" until the badge-specific upper bound. After that, each badge
 // diverges — see FLUSH_STALE_AT_MS (worker liveness) and EVENT_HOURS_AT_MS
@@ -275,6 +281,7 @@ const LATENCY_TAB_ID: string = "MetricsTabLatency";
 const LATENCY_PANEL_ID: string = "MetricsPanelLatency";
 const LATENCY_TABLE_ID: string = "MetricsLatencyTable";
 const LATENCY_CHART_CONTAINER_ID: string = "MetricsLatencyChartContainer";
+const LATENCY_ANNOUNCEMENT_ID: string = "MetricsPanelLatencyAnnouncement";
 const GAUGES_GRID_ID: string = "MetricsGaugeGrid";
 const GAUGES_ANNOUNCEMENT_ID: string = "MetricsPanelGaugesAnnouncement";
 // The global per-window event-totals summary, shown above the event-category
@@ -420,6 +427,10 @@ let _lastFlushAtMs: number | null = null;
 let _lastAnnouncedFlushBucket: LastFlushBucket | null = null;
 let _lastEventAtMs: number | null = null;
 let _lastAnnouncedEventBucket: LastEventBucket | null = null;
+// Tracks the last-announced latency approximate-state so the screen-reader
+// announcement fires only on a true transition (null counts as the initial
+// state — null→true announces, null→false is a no-op clear).
+let _lastAnnouncedLatencyApproximate: boolean | null = null;
 
 function getElementByIdOrNull<ElementT extends HTMLElement>(
   elementId: string,
@@ -1364,6 +1375,7 @@ function renderLatencyPanelFromCache(): void {
     response: _latencyCache,
     selectedEndpoint: _selectedLatencyEndpoint,
     selectedMethod: _selectedLatencyMethod,
+    approximate: _latencyCache.approximate ?? false,
   });
 }
 
@@ -1388,14 +1400,18 @@ function fetchLatencyTimeseries(): void {
     window: _currentWindow,
     endpoint: _selectedLatencyEndpoint,
     method: _selectedLatencyMethod,
-    resolution: "hour",
+    resolution: LONG_WINDOWS.has(_currentWindow) ? "day" : "hour",
   });
   _inFlight.latencyTimeseries = request;
   request
     .done((response) => {
       setBannerVisible({ visible: false });
       if (detailRoot !== null) {
-        renderLatencyDetailChart({ container: detailRoot, response });
+        renderLatencyDetailChart({
+          container: detailRoot,
+          response,
+          daily: LONG_WINDOWS.has(_currentWindow),
+        });
       }
     })
     .fail((xhr) => {
@@ -1411,6 +1427,33 @@ function fetchLatencyTimeseries(): void {
       _inFlight.latencyTimeseries = null;
       _lastFetchPerf = performance.now();
     });
+}
+
+/**
+ * Drive the latency `aria-live` announcement off the approximate-state TRANSITION
+ * (mirrors the flush-bucket announce guard). Writes the bridged approximate note
+ * into `#MetricsPanelLatencyAnnouncement` on a false→true transition and clears it
+ * on a true→false transition. Acts only on an actual change of state; the initial
+ * `null` counts as a transition (null→true announces, null→false is a no-op clear).
+ */
+function announceLatencyApproximate({
+  approximate,
+}: {
+  approximate: boolean;
+}): void {
+  if (approximate === _lastAnnouncedLatencyApproximate) {
+    return;
+  }
+  _lastAnnouncedLatencyApproximate = approximate;
+  const announcement = getElementByIdOrNull<HTMLElement>(
+    LATENCY_ANNOUNCEMENT_ID,
+  );
+  if (announcement === null) {
+    return;
+  }
+  announcement.textContent = approximate
+    ? APP_CONFIG.strings.METRICS_LATENCY_APPROXIMATE_NOTE
+    : "";
 }
 
 /**
@@ -1431,6 +1474,9 @@ function fetchLatency(): void {
     .done((response) => {
       setBannerVisible({ visible: false });
       _latencyCache = response;
+      announceLatencyApproximate({
+        approximate: response.approximate ?? false,
+      });
       renderLatencyPanelFromCache();
       if (_selectedLatencyEndpoint !== null) {
         fetchLatencyTimeseries();
@@ -2236,6 +2282,7 @@ export function _resetMetricsDashboardForTests(): void {
   _lastAnnouncedFlushBucket = null;
   _lastEventAtMs = null;
   _lastAnnouncedEventBucket = null;
+  _lastAnnouncedLatencyApproximate = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);
   _resetPaneResizersForTests();
 }

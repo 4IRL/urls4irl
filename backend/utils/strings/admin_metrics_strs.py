@@ -101,3 +101,11 @@ class ADMIN_METRICS_STRINGS:
     METRICS_LATENCY_SERIES_ARIA_P50: str = "p50 latency series"
     METRICS_LATENCY_SERIES_ARIA_P95: str = "p95 latency series"
     METRICS_LATENCY_SERIES_ARIA_P99: str = "p99 latency series"
+    METRICS_LATENCY_APPROXIMATE_NOTE: str = (
+        "Summary percentiles for this window are approximate (daily rollup); "
+        "the per-day trend below is exact."
+    )
+    METRICS_LATENCY_DAILY_RESOLUTION_NOTE: str = (
+        "Showing daily trend for this long window; hourly detail is only "
+        "available within the last 35 days."
+    )

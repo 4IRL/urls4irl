@@ -82,6 +82,7 @@ vi.mock("../latency-card.js", () => ({
 }));
 
 import { createMockJqXHRChainable } from "../../__tests__/helpers/mock-jquery.js";
+import { APP_CONFIG } from "../../lib/config.js";
 import { $ } from "../../lib/globals.js";
 import {
   _resetMetricsDashboardForTests,
@@ -224,6 +225,7 @@ interface MockLatencyResponse {
   window: string | null;
   window_start: string;
   window_end: string;
+  approximate?: boolean;
   rows: Array<{
     endpoint: string | null;
     method: string | null;
@@ -234,11 +236,14 @@ interface MockLatencyResponse {
   }>;
 }
 
-function buildLatencyResponse(): MockLatencyResponse {
+function buildLatencyResponse({
+  approximate,
+}: { approximate?: boolean } = {}): MockLatencyResponse {
   return {
     window: "day",
     window_start: "2026-06-01T00:00:00+00:00",
     window_end: "2026-06-02T00:00:00+00:00",
+    ...(approximate !== undefined ? { approximate } : {}),
     rows: [
       {
         endpoint: "utubs.get_utub",
@@ -834,6 +839,142 @@ describe("metrics-dashboard tablist a11y", () => {
 
     expect(fetchLatencySpy).toHaveBeenCalledTimes(1);
     expect(fetchLatencySpy.mock.calls[0][0]).toEqual({ window: "month" });
+  });
+
+  it("threads the response's approximate flag into renderLatencyPanel", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse({ approximate: true })),
+    );
+
+    getTab("MetricsTabLatency").click();
+
+    expect(renderLatencyPanelSpy).toHaveBeenCalled();
+    expect(renderLatencyPanelSpy.mock.calls[0][0].approximate).toBe(true);
+  });
+
+  it("passes approximate: false to renderLatencyPanel when the flag is omitted", () => {
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse()),
+    );
+
+    getTab("MetricsTabLatency").click();
+
+    expect(renderLatencyPanelSpy).toHaveBeenCalled();
+    expect(renderLatencyPanelSpy.mock.calls[0][0].approximate).toBe(false);
+  });
+
+  it.each([
+    ["day", "hour", false],
+    ["week", "hour", false],
+    ["month", "hour", false],
+    ["year", "day", true],
+  ])(
+    "for the %s window the latency timeseries uses resolution=%s and daily=%s",
+    (windowName, expectedResolution, expectedDaily) => {
+      fetchLatencySpy.mockImplementation(() =>
+        createDoneLatencyJqXHR(buildLatencyResponse()),
+      );
+      fetchLatencyTimeseriesSpy.mockImplementation(() =>
+        createMockJqXHRChainable({
+          done: (callback: unknown) => {
+            (
+              callback as (value: {
+                window: string | null;
+                window_start: string;
+                window_end: string;
+                endpoint: string | null;
+                method: string | null;
+                buckets: unknown[];
+              }) => void
+            )({
+              window: windowName,
+              window_start: "2026-06-01T00:00:00+00:00",
+              window_end: "2026-06-02T00:00:00+00:00",
+              endpoint: "utubs.get_utub",
+              method: "GET",
+              buckets: [],
+            });
+          },
+          always: (callback: unknown) => {
+            (callback as () => void)();
+          },
+        }),
+      );
+
+      getTab("MetricsTabLatency").click();
+
+      const windowButton = document.querySelector(
+        `.MetricsWindowButton[data-window="${windowName}"]`,
+      ) as HTMLButtonElement;
+      windowButton.click();
+
+      fetchLatencyTimeseriesSpy.mockClear();
+      renderLatencyDetailChartSpy.mockClear();
+
+      const table = document.getElementById(
+        "MetricsLatencyTable",
+      ) as HTMLElement;
+      const tbody = table.querySelector("tbody")!;
+      const row = document.createElement("tr");
+      row.className = "latency-row";
+      row.dataset.endpoint = "utubs.get_utub";
+      row.dataset.method = "GET";
+      tbody.appendChild(row);
+
+      row.click();
+
+      expect(fetchLatencyTimeseriesSpy).toHaveBeenCalledTimes(1);
+      expect(fetchLatencyTimeseriesSpy.mock.calls[0][0].resolution).toBe(
+        expectedResolution,
+      );
+      expect(renderLatencyDetailChartSpy).toHaveBeenCalledTimes(1);
+      expect(renderLatencyDetailChartSpy.mock.calls[0][0].daily).toBe(
+        expectedDaily,
+      );
+    },
+  );
+
+  it("announces the approximate note on a null→true transition after a test reset", () => {
+    _resetMetricsDashboardForTests();
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse({ approximate: true })),
+    );
+
+    getTab("MetricsTabLatency").click();
+
+    const announcement = document.getElementById(
+      "MetricsPanelLatencyAnnouncement",
+    )!;
+    expect(announcement.textContent).toBe(
+      APP_CONFIG.strings.METRICS_LATENCY_APPROXIMATE_NOTE,
+    );
+  });
+
+  it("clears the announcement on a true→false transition", () => {
+    _resetMetricsDashboardForTests();
+    const announcement = document.getElementById(
+      "MetricsPanelLatencyAnnouncement",
+    )!;
+
+    // First settle approximate=true so the announcement is populated.
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse({ approximate: true })),
+    );
+    getTab("MetricsTabLatency").click();
+    expect(announcement.textContent).toBe(
+      APP_CONFIG.strings.METRICS_LATENCY_APPROXIMATE_NOTE,
+    );
+
+    // Re-fetch the same window with approximate=false → the span is cleared.
+    fetchLatencySpy.mockImplementation(() =>
+      createDoneLatencyJqXHR(buildLatencyResponse({ approximate: false })),
+    );
+    const weekButton = document.querySelector(
+      '.MetricsWindowButton[data-window="week"]',
+    ) as HTMLButtonElement;
+    weekButton.click();
+
+    expect(announcement.textContent).toBe("");
   });
 
   it("changing the per-panel select fires fetchTimeseries with the chosen event", () => {

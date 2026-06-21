@@ -86,6 +86,25 @@ function buildRoots(): { table: HTMLTableElement; detail: HTMLElement } {
   return { table, detail };
 }
 
+/**
+ * Build the table + detail container nested inside a `#MetricsLatencyGrid` flex
+ * parent, mirroring the real panel markup. Required for the approximate-note and
+ * daily-note specs, which inject siblings into the grid (the note helpers no-op
+ * when the table/container has no parent element).
+ */
+function buildGridRoots(): {
+  grid: HTMLElement;
+  table: HTMLTableElement;
+  detail: HTMLElement;
+} {
+  const { table, detail } = buildRoots();
+  const grid = document.createElement("div");
+  grid.id = "MetricsLatencyGrid";
+  grid.appendChild(table);
+  grid.appendChild(detail);
+  return { grid, table, detail };
+}
+
 describe("renderLatencyPanel (happy path)", () => {
   it("renders one row per endpoint with formatted percentiles + samples", () => {
     const { table, detail } = buildRoots();
@@ -275,5 +294,115 @@ describe("renderLatencyDetailChart on-select", () => {
     const svg = detail.querySelector("svg.latency-chart")!;
     expect(svg).not.toBeNull();
     expect(svg.querySelectorAll("polyline").length).toBe(3);
+  });
+});
+
+describe("renderLatencyPanel approximate note (DD-5 / DD-6)", () => {
+  it("injects the note as the immediately-preceding sibling of the table when approximate with rows", () => {
+    const { grid, table, detail } = buildGridRoots();
+    renderLatencyPanel({
+      tableRoot: table,
+      detailRoot: detail,
+      response: buildResponse([buildRow()]),
+      approximate: true,
+    });
+
+    // (1) NOT a table descendant.
+    expect(table.querySelector(".latency-approximate-note")).toBeNull();
+    // (2) Immediately-preceding sibling of the table.
+    const previous = table.previousElementSibling;
+    expect(previous?.classList.contains("latency-approximate-note")).toBe(true);
+    expect(previous?.getAttribute("role")).toBe("note");
+    expect(previous?.textContent).toBe(
+      APP_CONFIG.strings.METRICS_LATENCY_APPROXIMATE_NOTE,
+    );
+    expect(grid.querySelectorAll(".latency-approximate-note").length).toBe(1);
+  });
+
+  it("renders no note when approximate is false or omitted", () => {
+    const { grid, table, detail } = buildGridRoots();
+    renderLatencyPanel({
+      tableRoot: table,
+      detailRoot: detail,
+      response: buildResponse([buildRow()]),
+    });
+    expect(grid.querySelector(".latency-approximate-note")).toBeNull();
+  });
+
+  it("renders no note when approximate but the response has zero rows (DD-6)", () => {
+    const { grid, table, detail } = buildGridRoots();
+    renderLatencyPanel({
+      tableRoot: table,
+      detailRoot: detail,
+      response: buildResponse([]),
+      approximate: true,
+    });
+    expect(grid.querySelector(".latency-approximate-note")).toBeNull();
+  });
+
+  it("removes a previously-injected note when a later render is not approximate", () => {
+    const { grid, table, detail } = buildGridRoots();
+    renderLatencyPanel({
+      tableRoot: table,
+      detailRoot: detail,
+      response: buildResponse([buildRow()]),
+      approximate: true,
+    });
+    expect(grid.querySelector(".latency-approximate-note")).not.toBeNull();
+
+    renderLatencyPanel({
+      tableRoot: table,
+      detailRoot: detail,
+      response: buildResponse([buildRow()]),
+      approximate: false,
+    });
+    expect(grid.querySelector(".latency-approximate-note")).toBeNull();
+    expect(grid.querySelectorAll(".latency-approximate-note").length).toBe(0);
+  });
+});
+
+describe("renderLatencyDetailChart daily-resolution note (DD-4)", () => {
+  it("injects the daily note before the chart container when daily is true", () => {
+    const { grid, detail } = buildGridRoots();
+    renderLatencyDetailChart({
+      container: detail,
+      response: buildTimeseries(),
+      daily: true,
+    });
+
+    const note = grid.querySelector<HTMLElement>(".latency-daily-note");
+    expect(note).not.toBeNull();
+    expect(note?.getAttribute("role")).toBe("note");
+    expect(note?.textContent).toBe(
+      APP_CONFIG.strings.METRICS_LATENCY_DAILY_RESOLUTION_NOTE,
+    );
+    // Immediately-preceding sibling of the chart container.
+    expect(detail.previousElementSibling).toBe(note);
+  });
+
+  it("renders no daily note when the daily flag is absent", () => {
+    const { grid, detail } = buildGridRoots();
+    renderLatencyDetailChart({
+      container: detail,
+      response: buildTimeseries(),
+    });
+    expect(grid.querySelector(".latency-daily-note")).toBeNull();
+  });
+
+  it("removes a previously-injected daily note when a later render is not daily", () => {
+    const { grid, detail } = buildGridRoots();
+    renderLatencyDetailChart({
+      container: detail,
+      response: buildTimeseries(),
+      daily: true,
+    });
+    expect(grid.querySelector(".latency-daily-note")).not.toBeNull();
+
+    renderLatencyDetailChart({
+      container: detail,
+      response: buildTimeseries(),
+      daily: false,
+    });
+    expect(grid.querySelector(".latency-daily-note")).toBeNull();
   });
 });

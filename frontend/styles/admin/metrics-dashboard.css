@@ -925,6 +925,43 @@
     gap: 1rem;
 }
 
+/* "Approximate summary" caution badge, injected before the percentile table for
+ * windows beyond the 35-day raw retention. Amber caution accent (mirrors the
+ * .flush-badge/.cause-pill pill shape) but wraps on mobile (white-space: normal)
+ * and stays compact (align-self: flex-start) inside the flex-column grid. */
+.latency-approximate-note {
+    border: 1px solid var(--editURLColor);
+    color: var(--editURLColor);
+    background: var(--panelBackgroundColor);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: normal;
+    align-self: flex-start;
+}
+
+.latency-approximate-note .dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background-color: var(--editURLColor);
+    box-shadow: 0 0 8px var(--editURLColor);
+}
+
+/* Daily-resolution caption, injected before the chart container for long windows
+ * whose trend is served at daily grain. */
+.latency-daily-note {
+    color: var(--cardURLTextColor);
+    font-size: 0.82rem;
+    font-style: italic;
+    margin: 0;
+    align-self: flex-start;
+}
+
 /* The percentile table renders as responsive cards at EVERY width — the column
  * table truncated endpoint names on any narrow-ish screen. The header row is
  * hidden (its labels move into each cell via data-label) and each endpoint is a

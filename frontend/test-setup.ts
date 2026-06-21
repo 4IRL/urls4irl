@@ -229,6 +229,10 @@ const appConfig = {
     METRICS_LATENCY_SERIES_ARIA_P50: "p50 latency series",
     METRICS_LATENCY_SERIES_ARIA_P95: "p95 latency series",
     METRICS_LATENCY_SERIES_ARIA_P99: "p99 latency series",
+    METRICS_LATENCY_APPROXIMATE_NOTE:
+      "Summary percentiles for this window are approximate (daily rollup); the per-day trend below is exact.",
+    METRICS_LATENCY_DAILY_RESOLUTION_NOTE:
+      "Showing daily trend for this long window; hourly detail is only available within the last 35 days.",
   },
 };
 

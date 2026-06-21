@@ -498,6 +498,8 @@ class MetricsDashboardLocators(GenericPageLocator):
     LATENCY_DETAIL_CHART_EMPTY_STATE = (
         "#MetricsLatencyChartContainer svg.latency-chart .MetricsEmptyState"
     )
+    LATENCY_APPROXIMATE_NOTE = "#MetricsLatencyGrid .latency-approximate-note"
+    LATENCY_DAILY_RESOLUTION_NOTE = "#MetricsLatencyGrid .latency-daily-note"
 
 
 class SettingsPageLocators(GenericPageLocator):
