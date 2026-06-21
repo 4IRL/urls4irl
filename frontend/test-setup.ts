@@ -213,6 +213,26 @@ const appConfig = {
     METRICS_GAUGE_COL_NAME: "Gauge",
     METRICS_GAUGE_COL_VALUE: "Value",
     METRICS_GAUGES_EMPTY: "No gauge samples recorded in the selected window.",
+    METRICS_TAB_LATENCY: "Backend Performance",
+    METRICS_LATENCY_EMPTY:
+      "No latency samples recorded in the selected window.",
+    METRICS_LATENCY_SELECT_PROMPT:
+      "Select an endpoint to view its latency trend",
+    METRICS_LATENCY_COL_ENDPOINT: "Endpoint",
+    METRICS_LATENCY_COL_P50: "p50 (ms)",
+    METRICS_LATENCY_COL_P95: "p95 (ms)",
+    METRICS_LATENCY_COL_P99: "p99 (ms)",
+    METRICS_LATENCY_COL_SAMPLES: "Samples",
+    METRICS_LATENCY_Y_AXIS_LABEL: "Latency (ms)",
+    METRICS_LATENCY_ROW_ARIA:
+      "{{endpoint}}: p50 {{p50}} ms, p95 {{p95}} ms, p99 {{p99}} ms",
+    METRICS_LATENCY_SERIES_ARIA_P50: "p50 latency series",
+    METRICS_LATENCY_SERIES_ARIA_P95: "p95 latency series",
+    METRICS_LATENCY_SERIES_ARIA_P99: "p99 latency series",
+    METRICS_LATENCY_APPROXIMATE_NOTE:
+      "Summary percentiles for this window are approximate (daily rollup); the per-day trend below is exact.",
+    METRICS_LATENCY_DAILY_RESOLUTION_NOTE:
+      "Showing daily trend for this long window; hourly detail is only available within the last 35 days.",
   },
 };
 

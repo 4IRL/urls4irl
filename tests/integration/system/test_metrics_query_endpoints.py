@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Tuple
 
 import pytest
@@ -10,10 +10,19 @@ from flask.testing import FlaskClient
 
 from backend import db
 from backend.metrics.constants import MetricsErrorCodes
-from backend.metrics.events import EVENT_DESCRIPTIONS, EventCategory, EventName
+from backend.metrics.events import (
+    DEVICE_TYPE_DIM_KEY,
+    EVENT_DESCRIPTIONS,
+    DeviceType,
+    EventCategory,
+    EventName,
+)
 from backend.metrics.flows import FLOWS, FlowDefinition, FlowId, FlowStep
 from backend.metrics.gauges import GAUGE_REGISTRY, GaugeName
+from backend.metrics.latency import LatencyMetricName
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
@@ -1739,3 +1748,380 @@ def test_gauges_timeseries_stray_name_param_returns_400(
     assert response.status_code == 400
     body = response.get_json()
     assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+# ---------------------------------------------------------------------------
+# Latency query endpoints — percentiles + timeseries (auth + happy + filters)
+# ---------------------------------------------------------------------------
+
+
+_LATENCY_URL = "/api/metrics/query/latency"
+_LATENCY_TIMESERIES_URL = "/api/metrics/query/latency/timeseries"
+
+
+def _seed_latency_row(
+    observed_at: datetime,
+    duration_ms: float,
+    *,
+    endpoint: str = "utubs.get_utub",
+    method: str = "GET",
+    device_type: DeviceType = DeviceType.DESKTOP,
+) -> None:
+    """Seed one AnonymousLatencySamples row through SQLAlchemy.
+
+    ORM (not raw psycopg2) because `login_admin_user_with_register` is
+    SAVEPOINT-based — a raw psycopg2 write would land outside the savepoint and
+    roll back independently of the test transaction.
+    """
+    db.session.add(
+        Anonymous_Latency_Samples(
+            metric_name=LatencyMetricName.API_REQUEST_DURATION.value,
+            endpoint=endpoint,
+            method=method,
+            observed_at=observed_at,
+            duration_ms=duration_ms,
+            dimensions={DEVICE_TYPE_DIM_KEY: int(device_type)},
+        )
+    )
+    db.session.commit()
+
+
+def _seed_latency_rollup_row(
+    rollup_date: date,
+    *,
+    p50_ms: float = 100.0,
+    p95_ms: float = 200.0,
+    p99_ms: float = 300.0,
+    sample_count: int = 10,
+    endpoint: str = "utubs.get_utub",
+    method: str = "GET",
+) -> None:
+    """Seed one AnonymousLatencyDailyRollups row through SQLAlchemy.
+
+    ORM (not raw psycopg2) for the same SAVEPOINT reason as `_seed_latency_row`.
+    Backs the long-window (beyond 35-day raw retention) endpoint tests where the
+    summary is served from the daily rollup and marked approximate.
+    """
+    db.session.add(
+        Anonymous_Latency_Daily_Rollups(
+            metric_name=LatencyMetricName.API_REQUEST_DURATION.value,
+            endpoint=endpoint,
+            method=method,
+            rollup_date=rollup_date,
+            p50_ms=p50_ms,
+            p95_ms=p95_ms,
+            p99_ms=p99_ms,
+            sample_count=sample_count,
+            dimensions={},
+        )
+    )
+    db.session.commit()
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _LATENCY_URL + "?window=day",
+        _LATENCY_TIMESERIES_URL + "?window=day&endpoint=utubs.get_utub",
+    ],
+)
+def test_latency_endpoints_anonymous_return_401(
+    app: Flask, client: FlaskClient, url: str
+) -> None:
+    """
+    GIVEN an anonymous client (no session)
+    WHEN GETing either latency query endpoint
+    THEN the response is 401 with a JSON failure envelope (NOT a 302 redirect),
+        mirroring the other admin-only query endpoints.
+    """
+    response = client.get(url)
+
+    assert response.status_code == 401
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        _LATENCY_URL + "?window=day",
+        _LATENCY_TIMESERIES_URL + "?window=day&endpoint=utubs.get_utub",
+    ],
+)
+def test_latency_endpoints_non_admin_return_404(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask], url: str
+) -> None:
+    """
+    GIVEN a logged-in user with the default User_Role.USER
+    WHEN GETing either latency query endpoint
+    THEN the response is 404 with a JSON failure envelope (not advertised to
+        non-admins).
+    """
+    logged_in_client, _, _, _ = login_first_user_with_register
+
+    response = logged_in_client.get(url)
+
+    assert response.status_code == 404
+    assert response.is_json
+    assert response.get_json()[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_latency_admin_happy_path_returns_percentile_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and three latency samples for one (endpoint, method)
+        inside the window
+    WHEN GETing /api/metrics/query/latency?window=day
+    THEN the response is 200 with the envelope keys (`rows`, `window`,
+        `window_start`, `window_end`), one row carrying endpoint/method/p50/p95/
+        p99/sample_count, and the datetimes serialize as ISO-8601 UTC.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        for duration in (10.0, 20.0, 30.0):
+            _seed_latency_row(observed_at, duration)
+
+    response = logged_in_client.get(_LATENCY_URL + "?window=day", headers=_AJAX_HEADERS)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert "rows" in body
+    assert body["window"] == "day"
+    assert _ISO_8601_UTC_REGEX.match(body["window_start"])
+    assert _ISO_8601_UTC_REGEX.match(body["window_end"])
+
+    rows = body["rows"]
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["endpoint"] == "utubs.get_utub"
+    assert row["method"] == "GET"
+    assert row["sample_count"] == 3
+    # percentile_cont(0.5) over {10, 20, 30} == 20.0 (exact median, no interp).
+    assert row["p50"] == 20.0
+
+
+def test_latency_timeseries_admin_happy_path_returns_buckets(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and latency samples for one endpoint inside the window
+    WHEN GETing /api/metrics/query/latency/timeseries?window=day&endpoint=...
+    THEN the response is 200 with the envelope keys (`buckets`, `endpoint`,
+        `method`, `window`, `window_start`, `window_end`), the bucket carrying
+        the samples reports p50/p95/p99/sample_count, and buckets are zero-filled.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        for duration in (10.0, 20.0, 30.0):
+            _seed_latency_row(observed_at, duration)
+
+    response = logged_in_client.get(
+        _LATENCY_TIMESERIES_URL + "?window=day&endpoint=utubs.get_utub",
+        headers=_AJAX_HEADERS,
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["endpoint"] == "utubs.get_utub"
+    assert "buckets" in body
+    assert _ISO_8601_UTC_REGEX.match(body["window_start"])
+
+    non_empty = [b for b in body["buckets"] if b["sample_count"] > 0]
+    assert len(non_empty) == 1
+    assert non_empty[0]["p50"] == 20.0
+    # Zero-fill buckets carry null percentiles (never 0) so the chart breaks.
+    empty = [b for b in body["buckets"] if b["sample_count"] == 0]
+    assert empty
+    assert empty[0]["p50"] is None
+
+
+def test_latency_limit_caps_returned_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and samples for two distinct endpoints in the window
+    WHEN GETing /api/metrics/query/latency?window=day&limit=1
+    THEN exactly one percentile row is returned (the `limit` bound takes effect).
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        _seed_latency_row(observed_at, 100.0, endpoint="utubs.get_utub")
+        _seed_latency_row(observed_at, 5.0, endpoint="urls.add_url", method="POST")
+
+    response = logged_in_client.get(
+        _LATENCY_URL + "?window=day&limit=1", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    rows = response.get_json()["rows"]
+    assert len(rows) == 1
+    # Ordered by p95 desc — the slower endpoint (100ms) wins the single slot.
+    assert rows[0]["endpoint"] == "utubs.get_utub"
+
+
+def test_latency_endpoint_filter_narrows_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and samples for two endpoints in the window
+    WHEN GETing /api/metrics/query/latency with an `endpoint` filter
+    THEN only rows for the filtered endpoint are returned.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        _seed_latency_row(observed_at, 100.0, endpoint="utubs.get_utub")
+        _seed_latency_row(observed_at, 5.0, endpoint="urls.add_url", method="POST")
+
+    response = logged_in_client.get(
+        _LATENCY_URL + "?window=day&endpoint=urls.add_url", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    rows = response.get_json()["rows"]
+    assert len(rows) == 1
+    assert rows[0]["endpoint"] == "urls.add_url"
+
+
+def test_latency_device_type_filter_narrows_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and one mobile + one desktop sample for an endpoint
+    WHEN GETing /api/metrics/query/latency with device_type=1 (mobile)
+    THEN only the mobile sample is aggregated (sample_count == 1).
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        _seed_latency_row(observed_at, 10.0, device_type=DeviceType.MOBILE)
+        _seed_latency_row(observed_at, 20.0, device_type=DeviceType.DESKTOP)
+
+    response = logged_in_client.get(
+        _LATENCY_URL + "?window=day&device_type=1", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    rows = response.get_json()["rows"]
+    assert len(rows) == 1
+    assert rows[0]["sample_count"] == 1
+
+
+def test_latency_bad_window_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/latency?window=bogus
+    THEN the response is 400 with error_code=INVALID_QUERY_PARAM and a `window`
+        field error.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _LATENCY_URL + "?window=bogus", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.ERROR_CODE] == int(MetricsErrorCodes.INVALID_QUERY_PARAM)
+    assert "window" in body[STD_JSON.ERRORS]
+
+
+def test_latency_window_and_range_together_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/latency with BOTH window and start+end
+    THEN the response is 400 (window-XOR-range violation at the schema layer).
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _LATENCY_URL
+        + "?window=day&start=2026-01-01T00:00:00%2B00:00&end=2026-02-01T00:00:00%2B00:00",
+        headers=_AJAX_HEADERS,
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_latency_timeseries_missing_endpoint_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client
+    WHEN GETing /api/metrics/query/latency/timeseries?window=day (no endpoint)
+    THEN the response is 400 — `endpoint` is required on the timeseries schema.
+    """
+    logged_in_client, _, _, _ = login_admin_user_with_register
+
+    response = logged_in_client.get(
+        _LATENCY_TIMESERIES_URL + "?window=day", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 400
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_latency_year_window_returns_approximate_true_from_rollup(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and a daily rollup row dated ~40 days ago (beyond the
+        35-day raw retention horizon but inside the year window)
+    WHEN GETing /api/metrics/query/latency?window=year
+    THEN the response is 200 with `approximate: true` and per-endpoint rows from
+        the rollup — Year crosses the raw retention boundary.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        rollup_day = (datetime.now(timezone.utc) - timedelta(days=40)).date()
+        _seed_latency_rollup_row(rollup_day)
+
+    response = logged_in_client.get(
+        _LATENCY_URL + "?window=year", headers=_AJAX_HEADERS
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["approximate"] is True
+    assert len(body["rows"]) == 1
+    assert body["rows"][0]["endpoint"] == "utubs.get_utub"
+
+
+def test_latency_month_and_day_windows_return_approximate_false(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN an admin client and raw samples inside the last hour
+    WHEN GETing /api/metrics/query/latency for window=month and window=day
+    THEN both return 200 with `approximate: false` — Month (~28-31 days) and Day
+        both sit inside the 35-day raw retention and are served exactly from raw.
+    """
+    logged_in_client, _, _, app = login_admin_user_with_register
+    with app.app_context():
+        observed_at = _bucket_inside_window()
+        for duration in (10.0, 20.0, 30.0):
+            _seed_latency_row(observed_at, duration)
+
+    month_response = logged_in_client.get(
+        _LATENCY_URL + "?window=month", headers=_AJAX_HEADERS
+    )
+    day_response = logged_in_client.get(
+        _LATENCY_URL + "?window=day", headers=_AJAX_HEADERS
+    )
+
+    assert month_response.status_code == 200
+    assert month_response.get_json()["approximate"] is False
+    assert day_response.status_code == 200
+    assert day_response.get_json()["approximate"] is False

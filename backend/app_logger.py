@@ -4,13 +4,13 @@ import logging
 import os
 import re
 import sys
-import time
 from typing import Optional
 import uuid
 
 from flask import Flask, Request, Response, current_app, g, has_request_context, request
 from flask.logging import default_handler
 
+from backend.extensions.request_timing import request_elapsed_ms
 from backend.utils.all_routes import SYSTEM_ROUTES
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
@@ -250,7 +250,6 @@ def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = Fa
     def before_request():
         request_id = request.headers.get(CONFIG_ENVS.X_REQUEST_ID, None)
         g.request_id = sanitize_request_id(request_id)
-        g.request_start_time = time.time()
 
         g.http_method = request.method
         g.query_params = (
@@ -293,11 +292,8 @@ def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = Fa
             warning_log("Received no response object")
             return response
 
-        duration_ms = (
-            (time.time() - g.request_start_time) * 1000
-            if hasattr(g, "request_start_time")
-            else -1
-        )
+        duration_ms = request_elapsed_ms()
+        duration_ms = duration_ms if duration_ms is not None else -1
 
         g_request_id = g.request_id if hasattr(g, "request_id") else "-1"
         response.headers[CONFIG_ENVS.X_REQUEST_ID] = g_request_id

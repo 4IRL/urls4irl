@@ -378,3 +378,111 @@ class GaugesTimeseriesResponseSchema(BaseSchema):
     gauges: list[GaugeSeries] = Field(
         description="One series per gauge that has samples in the window",
     )
+
+
+class LatencyPercentileRow(BaseSchema):
+    """One row of the `latency` query response — per-(endpoint, method) percentiles.
+
+    `p50`/`p95`/`p99` are exact percentiles computed via Postgres
+    `percentile_cont` over the raw `durationMs` samples in the window. They are
+    null only for a degenerate empty group (no samples), which the query never
+    returns — so in practice each row carries three floats plus a count.
+    """
+
+    endpoint: str | None = Field(
+        default=None,
+        description="Flask endpoint name the samples were attributed to (e.g. utubs.get_utub).",
+    )
+    method: str | None = Field(
+        default=None, description="HTTP method (GET, POST, etc.)."
+    )
+    p50: float | None = Field(
+        default=None, description="Median request duration in ms; null when no samples."
+    )
+    p95: float | None = Field(
+        default=None,
+        description="95th-percentile request duration in ms; null when no samples.",
+    )
+    p99: float | None = Field(
+        default=None,
+        description="99th-percentile request duration in ms; null when no samples.",
+    )
+    sample_count: int = Field(
+        description="Number of raw samples aggregated into this row's percentiles."
+    )
+
+
+class LatencyPercentilesResponseSchema(BaseSchema):
+    """Envelope returned by `GET /api/metrics/query/latency`."""
+
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
+    window_start: datetime = Field(description="Inclusive UTC start of the window")
+    window_end: datetime = Field(description="Exclusive UTC end of the window")
+    rows: list[LatencyPercentileRow] = Field(
+        description="Per-(endpoint, method) percentile rows ordered by p95 descending.",
+    )
+    approximate: bool = Field(
+        default=False,
+        description=(
+            "True when the window reaches beyond the raw-sample retention "
+            "horizon and the summary percentiles are sample-count-weighted "
+            "averages of daily rollups (approximate). False when served exactly "
+            "from raw samples. The per-day timeseries stays exact regardless."
+        ),
+    )
+
+
+class LatencyTimeseriesBucket(BaseSchema):
+    """One bucket of the `latency/timeseries` query response.
+
+    A zero-fill bucket (no samples in that interval) carries
+    `p50 = p95 = p99 = None` and `sample_count = 0`; the renderer breaks the
+    polyline at null buckets rather than charting a zero-latency point.
+    """
+
+    bucket: datetime = Field(
+        description="Bucket start (UTC, date_trunc'd to resolution)."
+    )
+    p50: float | None = Field(
+        default=None,
+        description="Median duration in ms for this bucket; null when empty.",
+    )
+    p95: float | None = Field(
+        default=None,
+        description="95th-percentile duration in ms for this bucket; null when empty.",
+    )
+    p99: float | None = Field(
+        default=None,
+        description="99th-percentile duration in ms for this bucket; null when empty.",
+    )
+    sample_count: int = Field(description="Number of samples in this bucket.")
+
+
+class LatencyTimeseriesResponseSchema(BaseSchema):
+    """Envelope returned by `GET /api/metrics/query/latency/timeseries`."""
+
+    window: str | None = Field(
+        default=None,
+        description=(
+            "Window value as supplied by the client; null when the client "
+            "supplied an absolute `start`/`end` range instead."
+        ),
+    )
+    window_start: datetime = Field(description="Inclusive UTC start of the window")
+    window_end: datetime = Field(description="Exclusive UTC end of the window")
+    endpoint: str | None = Field(
+        default=None,
+        description="Flask endpoint name the series is filtered to.",
+    )
+    method: str | None = Field(
+        default=None, description="HTTP method the series is filtered to, if any."
+    )
+    buckets: list[LatencyTimeseriesBucket] = Field(
+        description="Zero-filled per-bucket percentile series in chronological order.",
+    )

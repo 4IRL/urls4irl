@@ -23,6 +23,8 @@ keys into Postgres.
 
 from __future__ import annotations
 
+from collections import namedtuple
+from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
 import logging
@@ -50,9 +52,15 @@ def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleTy
     The workflow venv ships only ``redis`` and ``psycopg2`` — no Flask — so a
     normal ``from backend.extensions.metrics.buckets import ...`` would execute
     ``backend/__init__.py`` (which imports Flask) and raise. Side-loading the
-    two leaf files by absolute path bypasses package import entirely. Probes
+    leaf files by absolute path bypasses package import entirely. Probes
     ``/app/<rel>`` first (workflow container layout) then
     ``<project_root>/<rel>`` (pytest layout).
+
+    Registers the module in ``sys.modules`` *before* ``exec_module`` so a frozen
+    dataclass defined under ``from __future__ import annotations`` (as in
+    ``latency.py``) can resolve its own module during class creation — without
+    this, ``dataclasses._is_type`` raises ``AttributeError`` for the
+    side-loaded module.
     """
     candidate_paths = [
         Path("/app") / file_relative_to_app,
@@ -64,6 +72,7 @@ def _load_module_direct(module_name: str, file_relative_to_app: str) -> ModuleTy
             if spec is None or spec.loader is None:
                 raise ImportError(f"Could not load spec for {module_path}")
             module = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = module
             spec.loader.exec_module(module)
             return module
     raise ImportError(
@@ -77,11 +86,21 @@ _buckets_module = _load_module_direct(
 _metrics_strs_module = _load_module_direct(
     "_metrics_strs", "backend/utils/strings/metrics_strs.py"
 )
+_latency_module = _load_module_direct("_metrics_latency", "backend/metrics/latency.py")
 epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
+LATENCY_SAMPLE_CAP_DEFAULT = _latency_module.LATENCY_SAMPLE_CAP_DEFAULT
+LATENCY_SAMPLE_CAP_OVERRIDES = _latency_module.LATENCY_SAMPLE_CAP_OVERRIDES
+LATENCY_RAW_RETENTION_DAYS = _latency_module.LATENCY_RAW_RETENTION_DAYS
+LATENCY_PRUNE_INTERVAL_SECONDS = _latency_module.LATENCY_PRUNE_INTERVAL_SECONDS
+LATENCY_ROLLUP_RETENTION_DAYS = _latency_module.LATENCY_ROLLUP_RETENTION_DAYS
+LATENCY_ROLLUP_INTERVAL_SECONDS = _latency_module.LATENCY_ROLLUP_INTERVAL_SECONDS
+LATENCY_ROLLUP_BACKFILL_DAYS = _latency_module.LATENCY_ROLLUP_BACKFILL_DAYS
 
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
+DEFAULT_BUCKET_SECONDS: int = 3600
 EXECUTE_VALUES_PAGE_SIZE: int = 200
+LATENCY_GLOB: str = f"{METRICS_REDIS.LATENCY_KEY_PREFIX}*"
 REDIS_COUNTER_GLOB: str = f"{METRICS_REDIS.COUNTER_KEY_PREFIX}*"
 SCAN_BATCH_SIZE: int = 500
 
@@ -102,6 +121,13 @@ FLUSH_LOCK_TTL_SECONDS: int = 55
 # accurately even during low-traffic stretches.
 FLUSH_LAST_SUCCESS_KEY: str = METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY
 
+# Parsed latency-key fields. endpoint/method are flat key segments promoted to
+# flat columns at flush; dimensions_dict holds the device-only JSONB blob.
+LatencyKey = namedtuple(
+    "LatencyKey",
+    ["bucket_epoch", "metric_name", "endpoint", "method", "dimensions_dict"],
+)
+
 UPSERT_SQL: str = """
     INSERT INTO "AnonymousMetrics"
         ("eventName", "endpoint", "method", "statusCode",
@@ -110,6 +136,86 @@ UPSERT_SQL: str = """
     ON CONFLICT ("bucketStart", "eventName", "dimensions")
     DO UPDATE SET "count" = "AnonymousMetrics"."count" + EXCLUDED."count"
 """
+
+# Append-only: latency samples are immutable raw observations, so there is no
+# ON CONFLICT clause (mirrors the gauge INSERT_SQL shape, not the counter UPSERT).
+LATENCY_INSERT_SQL: str = """
+    INSERT INTO "AnonymousLatencySamples"
+        ("metricName", "endpoint", "method", "observedAt",
+         "durationMs", "dimensions")
+    VALUES %s
+"""
+
+# Retention prune: delete samples older than the retention window. The integer
+# day count is bound as a parameter and multiplied by INTERVAL '1 day' — the
+# psycopg2-safe form (never `INTERVAL %s` with a string parameter, which raises
+# ProgrammingError at runtime).
+LATENCY_PRUNE_SQL: str = """
+    DELETE FROM "AnonymousLatencySamples"
+    WHERE "observedAt" < NOW() - (%s * INTERVAL '1 day')
+"""
+
+# Nightly rollup build: aggregate raw samples in the completed-day window into
+# one precomputed daily percentile row per (metric, endpoint, method, UTC day).
+# Both date_trunc occurrences (SELECT list and GROUP BY) pin the bucket to UTC
+# via AT TIME ZONE 'UTC' so midnight-boundary requests bucket into the correct
+# calendar day regardless of the psycopg2 session timezone. The endpoint/method
+# NOT NULL filter is defensive: the rollup table forbids NULLs while the raw
+# table allows them, so legacy samples lacking endpoint data are skipped rather
+# than failing the INSERT. ON CONFLICT makes the upsert idempotent so a re-run
+# (self-heal / late-arriving samples) merges into the existing day's row.
+LATENCY_ROLLUP_UPSERT_SQL: str = """
+    INSERT INTO "AnonymousLatencyDailyRollups"
+        ("metricName", "endpoint", "method", "rollupDate",
+         "p50Ms", "p95Ms", "p99Ms", "sampleCount")
+    SELECT
+        "metricName",
+        "endpoint",
+        "method",
+        date_trunc('day', "observedAt" AT TIME ZONE 'UTC')::date,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY "durationMs"),
+        percentile_cont(0.95) WITHIN GROUP (ORDER BY "durationMs"),
+        percentile_cont(0.99) WITHIN GROUP (ORDER BY "durationMs"),
+        count(*)
+    FROM "AnonymousLatencySamples"
+    WHERE "observedAt" >= %s
+      AND "observedAt" < %s
+      AND "endpoint" IS NOT NULL
+      AND "method" IS NOT NULL
+    GROUP BY
+        "metricName",
+        "endpoint",
+        "method",
+        date_trunc('day', "observedAt" AT TIME ZONE 'UTC')::date
+    ON CONFLICT ("metricName", "endpoint", "method", "rollupDate")
+    DO UPDATE SET
+        "p50Ms" = EXCLUDED."p50Ms",
+        "p95Ms" = EXCLUDED."p95Ms",
+        "p99Ms" = EXCLUDED."p99Ms",
+        "sampleCount" = EXCLUDED."sampleCount"
+"""
+
+# Rollup-table retention prune: delete rollup rows older than the rollup
+# retention window. Same psycopg2-safe `%s * INTERVAL '1 day'` form as the raw
+# prune (never `INTERVAL %s` with a string parameter).
+LATENCY_ROLLUP_PRUNE_SQL: str = """
+    DELETE FROM "AnonymousLatencyDailyRollups"
+    WHERE "rollupDate" < (NOW() - (%s * INTERVAL '1 day'))::date
+"""
+
+
+def _start_of_today_utc() -> datetime:
+    """Return midnight (00:00:00.000000) of the current UTC day.
+
+    A single wall-clock read truncated to the start of the day, used as the
+    exclusive upper bound for the rollup window (today is still accumulating).
+    Pure stdlib so ``flush_metrics.py`` stays standalone (no Flask/SQLAlchemy).
+
+    Example:
+        called at 2026-06-21T14:37:09.512345+00:00
+        -> datetime(2026, 6, 21, 0, 0, 0, 0, tzinfo=timezone.utc)
+    """
+    return datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 def parse_counter_key(key: bytes) -> tuple[int, str, dict] | None:
@@ -139,6 +245,48 @@ def parse_counter_key(key: bytes) -> tuple[int, str, dict] | None:
     if not isinstance(dims, dict):
         return None
     return (bucket_epoch, event_name, dims)
+
+
+def parse_latency_key(key: bytes) -> LatencyKey | None:
+    """Parse a 7-segment latency list key into its flat fields.
+
+    Key shape:
+    ``metrics:latency:<bucket_epoch>:<metric_name>:<endpoint>:<method>:<canonical_device_dims_json>``
+
+    Returns a ``LatencyKey`` on success, or ``None`` if the key shape is
+    unexpected (logged and skipped by the caller). Returns ``None`` immediately
+    for an orphaned ``:draining`` key — those are self-healing via EXPIRE and
+    must never be parsed as fresh sample keys.
+
+    Uses ``split(":", 6)`` (maxsplit=6) so the trailing canonical-dims JSON —
+    which itself contains a colon (``{"device_type":2}``) — is captured intact
+    in ``parts[6]`` rather than split apart.
+    """
+    try:
+        decoded = key.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    if decoded.endswith(":draining"):
+        return None
+    parts = decoded.split(":", 6)
+    if len(parts) != 7:
+        return None
+    if parts[0] != "metrics" or parts[1] != "latency":
+        return None
+    try:
+        bucket_epoch = int(parts[2])
+    except ValueError:
+        return None
+    metric_name = parts[3]
+    endpoint = parts[4]
+    method = parts[5]
+    try:
+        dimensions_dict = json.loads(parts[6])
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(dimensions_dict, dict):
+        return None
+    return LatencyKey(bucket_epoch, metric_name, endpoint, method, dimensions_dict)
 
 
 def run_flush(
@@ -203,6 +351,11 @@ def run_flush(
             )
 
         if not rows:
+            # Latency drain + prune still run on an empty counter namespace —
+            # latency lists accumulate independently of counters.
+            run_latency_flush(redis_client=redis_client, pg_conn=pg_conn)
+            run_latency_rollup(redis_client=redis_client, pg_conn=pg_conn)
+            prune_latency_samples(redis_client=redis_client, pg_conn=pg_conn)
             _record_flush_success(redis_client)
             return 0
 
@@ -214,13 +367,244 @@ def run_flush(
                 template=None,
                 page_size=EXECUTE_VALUES_PAGE_SIZE,
             )
+        # Counter drain commits first (preserving existing behavior) so a later
+        # latency INSERT failure cannot roll back already-committed counter rows.
         pg_conn.commit()
+
+        # Latency drain + prune run inside the same lock hold but with their own
+        # commits, AFTER the counter commit. _record_flush_success moves to AFTER
+        # both so the sentinel only advances on a fully-successful flush cycle.
+        run_latency_flush(redis_client=redis_client, pg_conn=pg_conn)
+        run_latency_rollup(redis_client=redis_client, pg_conn=pg_conn)
+        prune_latency_samples(redis_client=redis_client, pg_conn=pg_conn)
 
         _record_flush_success(redis_client)
         return len(rows)
     except Exception:
         pg_conn.rollback()
         raise
+
+
+def _resolve_bucket_seconds() -> int:
+    """Read METRICS_BUCKET_SECONDS from the worker env, defaulting to one hour.
+
+    The Flask-less worker has no app.config; it reads the same env var the
+    writer's bucket math uses so the draining-key EXPIRE TTL grace matches the
+    sample keys' bucket granularity.
+    """
+    try:
+        return int(os.environ.get("METRICS_BUCKET_SECONDS", DEFAULT_BUCKET_SECONDS))
+    except (TypeError, ValueError):
+        return DEFAULT_BUCKET_SECONDS
+
+
+def run_latency_flush(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+) -> int:
+    """Drain the latency-sample lists from Redis into AnonymousLatencySamples.
+
+    Called from ``run_flush`` AFTER the counter drain commits, inside the same
+    ``metrics:flush:lock`` hold. Issues its own ``pg_conn.commit()`` so a latency
+    INSERT failure cannot roll back already-committed counter rows.
+
+    Atomic drain that does not lose concurrent LPUSHes: each key is parsed first,
+    then RENAMEd to ``<key>:draining`` and EXPIREd in a single atomic pipeline.
+    Because RENAME + EXPIRE are pipelined atomically, the crash window where a key
+    is renamed but has no TTL does not exist — both apply or neither does. New
+    LPUSHes after the RENAME recreate the original key for the next flush cycle.
+
+    Returns the number of inserted sample rows.
+    """
+    bucket_seconds = _resolve_bucket_seconds()
+    draining_ttl = bucket_seconds + 60
+    rows: list[tuple[object, ...]] = []
+    for raw_key in redis_client.scan_iter(match=LATENCY_GLOB, count=SCAN_BATCH_SIZE):
+        # Orphaned draining key from a previous worker crash — self-healing via
+        # EXPIRE, never re-drained here.
+        if raw_key.endswith(b":draining"):
+            continue
+        parsed = parse_latency_key(raw_key)
+        if parsed is None:
+            continue
+        draining_key = raw_key + b":draining"
+        try:
+            pipe = redis_client.pipeline()
+            pipe.rename(raw_key, draining_key)
+            pipe.expire(draining_key, draining_ttl)
+            pipe.execute()
+        except redis.ResponseError:
+            # Source key expired between scan and rename — RENAME raises
+            # ResponseError when the source does not exist; nothing to drain.
+            continue
+        drained_values = redis_client.lrange(draining_key, 0, -1)
+        cap = LATENCY_SAMPLE_CAP_OVERRIDES.get(
+            parsed.endpoint, LATENCY_SAMPLE_CAP_DEFAULT
+        )
+        if len(drained_values) == cap:
+            logger.warning(
+                "latency_sample_cap_hit: key=%s — drained exactly cap (%d) samples;"
+                " older samples discarded",
+                raw_key,
+                cap,
+            )
+        # observedAt is the bucket start, not the exact request instant — bucket
+        # granularity is sufficient for percentile aggregation on the time axis.
+        observed_at = epoch_to_aware_datetime(parsed.bucket_epoch)
+        dimensions_json = psycopg2.extras.Json(parsed.dimensions_dict)
+        for raw_duration in drained_values:
+            try:
+                duration_value = float(raw_duration)
+            except (TypeError, ValueError):
+                continue
+            rows.append(
+                (
+                    parsed.metric_name,
+                    parsed.endpoint,
+                    parsed.method,
+                    observed_at,
+                    duration_value,
+                    dimensions_json,
+                )
+            )
+        redis_client.delete(draining_key)
+
+    if not rows:
+        return 0
+
+    with pg_conn.cursor() as cursor:
+        psycopg2.extras.execute_values(
+            cursor,
+            LATENCY_INSERT_SQL,
+            rows,
+            template=None,
+            page_size=EXECUTE_VALUES_PAGE_SIZE,
+        )
+    pg_conn.commit()
+    return len(rows)
+
+
+def run_latency_rollup(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+) -> int:
+    """Build the daily percentile rollup and prune the rollup table, at most once/day.
+
+    Called from ``run_flush`` AFTER ``run_latency_flush`` and BEFORE
+    ``prune_latency_samples`` so the rollup always leads the raw prune — a
+    completed UTC day is rolled up well before the 35-day raw prune reclaims it,
+    and history accrues from day one.
+
+    Sentinel-guarded by ``metrics:rollup:latency_last_epoch`` (a key under the
+    ``metrics:rollup:`` prefix so it can never match the ``metrics:latency:*``
+    drain glob). Runs the build only if the sentinel is absent or older than
+    ``LATENCY_ROLLUP_INTERVAL_SECONDS``. Best-effort on the Redis sentinel reads/
+    writes: a Redis hiccup is swallowed-and-logged so the rollup still runs but
+    won't spam, while the Postgres UPSERT/DELETE+commit remain the authoritative
+    work.
+
+    Re-rolls the last ``LATENCY_ROLLUP_BACKFILL_DAYS`` completed UTC days each
+    run (excluding today, still accumulating) so a missed night self-heals and
+    late-arriving samples merge via the idempotent ON CONFLICT upsert.
+
+    Best-effort, fail-isolated contract: the UPSERT and the rollup-prune DELETE
+    each run in their OWN ``try/except``. On failure, each block calls
+    ``pg_conn.rollback()`` FIRST — so the connection is returned to a clean idle
+    state for the subsequent ``prune_latency_samples`` and
+    ``_record_flush_success`` callers (without the rollback, a partially-executed
+    statement leaves psycopg2 in an aborted-transaction state and the very next
+    operation raises ``current transaction is aborted``) — then
+    ``logger.exception(...)`` and returns early. A failure in either block thus
+    NEVER prevents the subsequent raw prune or the success sentinel from
+    advancing. The sentinel is stamped only after both blocks complete.
+
+    Returns the number of rollup rows written (UPSERTed), or 0 if the sentinel
+    guard skips this run or an error short-circuits it.
+    """
+    now_epoch = int(time.time())
+    try:
+        raw_last_rollup = redis_client.get(METRICS_REDIS.LATENCY_LAST_ROLLUP_KEY)
+    except Exception:
+        logger.exception("failed to read latency rollup sentinel")
+        raw_last_rollup = None
+    if raw_last_rollup is not None:
+        try:
+            last_rollup_epoch = int(raw_last_rollup)
+        except (TypeError, ValueError):
+            last_rollup_epoch = 0
+        if now_epoch - last_rollup_epoch < LATENCY_ROLLUP_INTERVAL_SECONDS:
+            return 0
+
+    today_utc = _start_of_today_utc()
+    window_end = today_utc
+    window_start = today_utc - timedelta(days=LATENCY_ROLLUP_BACKFILL_DAYS)
+
+    rollup_rows_written = 0
+    try:
+        with pg_conn.cursor() as cursor:
+            cursor.execute(LATENCY_ROLLUP_UPSERT_SQL, (window_start, window_end))
+            rollup_rows_written = cursor.rowcount
+        pg_conn.commit()
+    except Exception:
+        pg_conn.rollback()
+        logger.exception("latency rollup upsert failed")
+        return 0
+
+    try:
+        with pg_conn.cursor() as cursor:
+            cursor.execute(LATENCY_ROLLUP_PRUNE_SQL, (LATENCY_ROLLUP_RETENTION_DAYS,))
+        pg_conn.commit()
+    except Exception:
+        pg_conn.rollback()
+        logger.exception("latency rollup prune failed")
+        return 0
+
+    try:
+        redis_client.set(METRICS_REDIS.LATENCY_LAST_ROLLUP_KEY, str(now_epoch))
+    except Exception:
+        logger.exception("failed to stamp latency rollup sentinel")
+
+    return rollup_rows_written
+
+
+def prune_latency_samples(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+) -> None:
+    """Delete latency samples older than the retention window, at most once/day.
+
+    Sentinel-guarded by ``metrics:prune:latency_last_epoch`` (a key under the
+    ``metrics:prune:`` prefix so it can never match the ``metrics:latency:*`` drain
+    glob). Runs the DELETE only if the sentinel is absent or older than
+    ``LATENCY_PRUNE_INTERVAL_SECONDS``. Best-effort on the Redis sentinel reads/
+    writes: a Redis hiccup is swallowed-and-logged so the prune still runs but
+    won't spam, while the Postgres DELETE+commit remains the authoritative work.
+    """
+    now_epoch = int(time.time())
+    try:
+        raw_last_prune = redis_client.get(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY)
+    except Exception:
+        logger.exception("failed to read latency prune sentinel")
+        raw_last_prune = None
+    if raw_last_prune is not None:
+        try:
+            last_prune_epoch = int(raw_last_prune)
+        except (TypeError, ValueError):
+            last_prune_epoch = 0
+        if now_epoch - last_prune_epoch < LATENCY_PRUNE_INTERVAL_SECONDS:
+            return
+
+    with pg_conn.cursor() as cursor:
+        cursor.execute(LATENCY_PRUNE_SQL, (LATENCY_RAW_RETENTION_DAYS,))
+    pg_conn.commit()
+
+    try:
+        redis_client.set(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY, str(now_epoch))
+    except Exception:
+        logger.exception("failed to stamp latency prune sentinel")
 
 
 def _record_flush_success(redis_client: redis.Redis) -> None:

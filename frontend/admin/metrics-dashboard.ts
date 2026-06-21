@@ -61,9 +61,15 @@ import { is429Handled } from "../lib/ajax.js";
 import { renderFlowGrid } from "./flow-card.js";
 import { renderGaugeGrid } from "./gauge-card.js";
 import {
+  renderLatencyDetailChart,
+  renderLatencyPanel,
+} from "./latency-card.js";
+import {
   fetchFlow,
   fetchGaugesTimeseries,
   fetchGroupedTimeseries,
+  fetchLatency as fetchLatencyClient,
+  fetchLatencyTimeseries as fetchLatencyTimeseriesClient,
   fetchSummary,
   fetchTimeseries,
   fetchTopEvents,
@@ -90,6 +96,7 @@ const TAB = {
   DOMAIN: "domain",
   FLOWS: "flows",
   GAUGES: "gauges",
+  LATENCY: "latency",
   PIPELINE_HEALTH: "pipeline_health",
 } as const;
 type MetricsCategory = typeof TAB.API | typeof TAB.UI | typeof TAB.DOMAIN;
@@ -97,10 +104,12 @@ type MetricsTabId =
   | MetricsCategory
   | typeof TAB.FLOWS
   | typeof TAB.GAUGES
+  | typeof TAB.LATENCY
   | typeof TAB.PIPELINE_HEALTH;
 type TopEventsResponseSchema = Schema<"TopEventsResponseSchema">;
 type FlowResponseSchema = Schema<"FlowResponseSchema">;
 type GaugesTimeseriesResponse = Schema<"GaugesTimeseriesResponseSchema">;
+type LatencyPercentilesResponse = Schema<"LatencyPercentilesResponseSchema">;
 type LastFlushBucket =
   | "just_now"
   | "seconds"
@@ -119,6 +128,8 @@ interface InFlightRequests {
   summary: JQuery.jqXHR | null;
   pipelineHealth: JQuery.jqXHR | null;
   gaugesTimeseries: JQuery.jqXHR | null;
+  latency: JQuery.jqXHR | null;
+  latencyTimeseries: JQuery.jqXHR | null;
   flowCreateUtub: JQuery.jqXHR | null;
   flowAddUrl: JQuery.jqXHR | null;
   flowRegister: JQuery.jqXHR | null;
@@ -167,6 +178,12 @@ const FILTERED_TOP_LIMIT = 100;
 // collapse to one re-render. Monotonic vs `Date.now()` so a system-clock step
 // cannot cause a debounced re-render to fire late or never.
 const SUBSTRING_DEBOUNCE_MS = 150;
+// Named windows that reach beyond the 35-day raw-sample retention horizon. Only
+// these serve the per-endpoint summary from the daily rollup (approximate) and
+// must request a daily-grain timeseries; Day/Week/Month stay on the exact raw
+// path. Shared by `fetchLatencyTimeseries` (resolution) and the
+// `renderLatencyDetailChart` call (daily flag).
+const LONG_WINDOWS: ReadonlySet<MetricsWindow> = new Set(["year"] as const);
 // Shared bucket thresholds: "just_now" until 5 s elapsed, "seconds" until 60 s,
 // then "minutes" until the badge-specific upper bound. After that, each badge
 // diverges — see FLUSH_STALE_AT_MS (worker liveness) and EVENT_HOURS_AT_MS
@@ -240,13 +257,15 @@ const CATEGORIES: readonly MetricsCategory[] = [TAB.API, TAB.UI, TAB.DOMAIN];
 // charts) every time a category iteration is needed. Pipeline Health is always
 // the last tab; Flows precedes it, matching the DOM order in
 // `pages/admin_metrics.html`.
-// Gauges is the default landing tab and sits leftmost; the remaining tabs keep
-// their relative order. This array is the source of truth for arrow-key /
-// Home / End tablist navigation, so it must match the template's button order.
+// Tab order: Gauges to API to UI to Domain to Flows to Latency to Pipeline
+// Health. Pipeline Health is always the last tab; Latency precedes it. This
+// array is the source of truth for arrow-key / Home / End tablist navigation —
+// it must match the template button order exactly.
 const TAB_IDS: readonly MetricsTabId[] = [
   TAB.GAUGES,
   ...CATEGORIES,
   TAB.FLOWS,
+  TAB.LATENCY,
   TAB.PIPELINE_HEALTH,
 ];
 
@@ -258,6 +277,11 @@ const FLOWS_GRID_ID: string = "MetricsFlowGrid";
 const FLOWS_ANNOUNCEMENT_ID: string = "MetricsPanelFlowsAnnouncement";
 const GAUGES_TAB_ID: string = "MetricsTabGauges";
 const GAUGES_PANEL_ID: string = "MetricsPanelGauges";
+const LATENCY_TAB_ID: string = "MetricsTabLatency";
+const LATENCY_PANEL_ID: string = "MetricsPanelLatency";
+const LATENCY_TABLE_ID: string = "MetricsLatencyTable";
+const LATENCY_CHART_CONTAINER_ID: string = "MetricsLatencyChartContainer";
+const LATENCY_ANNOUNCEMENT_ID: string = "MetricsPanelLatencyAnnouncement";
 const GAUGES_GRID_ID: string = "MetricsGaugeGrid";
 const GAUGES_ANNOUNCEMENT_ID: string = "MetricsPanelGaugesAnnouncement";
 // The global per-window event-totals summary, shown above the event-category
@@ -285,6 +309,9 @@ function getTabAndPanelIds(tabId: MetricsTabId): {
   }
   if (tabId === TAB.FLOWS) {
     return { tab: FLOWS_TAB_ID, panel: FLOWS_PANEL_ID };
+  }
+  if (tabId === TAB.LATENCY) {
+    return { tab: LATENCY_TAB_ID, panel: LATENCY_PANEL_ID };
   }
   if (tabId === TAB.GAUGES) {
     return { tab: GAUGES_TAB_ID, panel: GAUGES_PANEL_ID };
@@ -314,6 +341,8 @@ let _inFlight: InFlightRequests = {
   summary: null,
   pipelineHealth: null,
   gaugesTimeseries: null,
+  latency: null,
+  latencyTimeseries: null,
   flowCreateUtub: null,
   flowAddUrl: null,
   flowRegister: null,
@@ -331,6 +360,16 @@ let _gaugesCache: GaugesTimeseriesResponse | null = null;
 // prompt. Set by `handleGaugeRowClick`; survives polls so the chosen chart
 // re-renders with fresh samples each tick.
 let _selectedGaugeName: string | null = null;
+// Last successful batched `/latency` percentile response, so a tab switch back
+// to the Backend Performance tab renders instantly from cache. `null` until the
+// first request settles. Populated by `fetchLatency`.
+let _latencyCache: LatencyPercentilesResponse | null = null;
+// The endpoint+method of the percentile-table row whose latency timeseries is
+// shown in the detail area. `null` means no row is selected — the detail area
+// shows the select-an-endpoint prompt. Set by `handleLatencyRowClick`; survives
+// polls so the chosen chart re-fetches with fresh data each tick.
+let _selectedLatencyEndpoint: string | null = null;
+let _selectedLatencyMethod: string | null = null;
 
 const TOP_SLOT_BY_CATEGORY: Record<
   MetricsCategory,
@@ -388,6 +427,10 @@ let _lastFlushAtMs: number | null = null;
 let _lastAnnouncedFlushBucket: LastFlushBucket | null = null;
 let _lastEventAtMs: number | null = null;
 let _lastAnnouncedEventBucket: LastEventBucket | null = null;
+// Tracks the last-announced latency approximate-state so the screen-reader
+// announcement fires only on a true transition (null counts as the initial
+// state — null→true announces, null→false is a no-op clear).
+let _lastAnnouncedLatencyApproximate: boolean | null = null;
 
 function getElementByIdOrNull<ElementT extends HTMLElement>(
   elementId: string,
@@ -440,6 +483,23 @@ function setFlowsPanelBusy({ busy }: { busy: boolean }): void {
 // to the root dashboard fetch. Excluded from `onSettleAny`.
 function setGaugesPanelBusy({ busy }: { busy: boolean }): void {
   const panel = getElementByIdOrNull<HTMLElement>(GAUGES_PANEL_ID);
+  if (panel === null) {
+    return;
+  }
+  if (busy) {
+    panel.setAttribute("aria-busy", "true");
+  } else {
+    panel.removeAttribute("aria-busy");
+  }
+}
+
+// Latency XHR settle-state is tracked separately from the global dashboard busy
+// path (mirroring `setGaugesPanelBusy`): set/clear `aria-busy` on the Latency
+// panel only so the `.latency-loading-spinner` reveals without coupling to the
+// root dashboard fetch. Both latency in-flight slots are excluded from
+// `onSettleAny`.
+function setLatencyPanelBusy({ busy }: { busy: boolean }): void {
+  const panel = getElementByIdOrNull<HTMLElement>(LATENCY_PANEL_ID);
   if (panel === null) {
     return;
   }
@@ -722,6 +782,8 @@ function abortInFlightRequests(): void {
     "summary",
     "pipelineHealth",
     "gaugesTimeseries",
+    "latency",
+    "latencyTimeseries",
     "flowCreateUtub",
     "flowAddUrl",
     "flowRegister",
@@ -1293,6 +1355,193 @@ function fetchGauges(): void {
     });
 }
 
+/**
+ * Render the Latency percentile table from `_latencyCache`. The renderer owns the
+ * empty / no-match states (HTML `<tr><td colspan>` rows) and the no-selection
+ * prompt; when a row is selected the detail container is left for
+ * `fetchLatencyTimeseries`'s `.done` to fill with the chart.
+ */
+function renderLatencyPanelFromCache(): void {
+  const tableRoot = getElementByIdOrNull<HTMLTableElement>(LATENCY_TABLE_ID);
+  const detailRoot = getElementByIdOrNull<HTMLElement>(
+    LATENCY_CHART_CONTAINER_ID,
+  );
+  if (tableRoot === null || detailRoot === null || _latencyCache === null) {
+    return;
+  }
+  renderLatencyPanel({
+    tableRoot,
+    detailRoot,
+    response: _latencyCache,
+    selectedEndpoint: _selectedLatencyEndpoint,
+    selectedMethod: _selectedLatencyMethod,
+    approximate: _latencyCache.approximate ?? false,
+  });
+}
+
+/**
+ * Fetch the selected endpoint's latency timeseries and render the multi-series
+ * chart into the detail container. Reads `_selectedLatencyEndpoint` /
+ * `_selectedLatencyMethod` at invocation time. No-op when no row is selected.
+ * Excluded from the global busy path (its own `latencyTimeseries` slot).
+ */
+function fetchLatencyTimeseries(): void {
+  if (_selectedLatencyEndpoint === null) {
+    return;
+  }
+  if (_inFlight.latencyTimeseries !== null) {
+    _inFlight.latencyTimeseries.abort();
+    _inFlight.latencyTimeseries = null;
+  }
+  const detailRoot = getElementByIdOrNull<HTMLElement>(
+    LATENCY_CHART_CONTAINER_ID,
+  );
+  const request = fetchLatencyTimeseriesClient({
+    window: _currentWindow,
+    endpoint: _selectedLatencyEndpoint,
+    method: _selectedLatencyMethod,
+    resolution: LONG_WINDOWS.has(_currentWindow) ? "day" : "hour",
+  });
+  _inFlight.latencyTimeseries = request;
+  request
+    .done((response) => {
+      setBannerVisible({ visible: false });
+      if (detailRoot !== null) {
+        renderLatencyDetailChart({
+          container: detailRoot,
+          response,
+          daily: LONG_WINDOWS.has(_currentWindow),
+        });
+      }
+    })
+    .fail((xhr) => {
+      if (is429Handled(xhr)) {
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      setBannerVisible({ visible: true });
+    })
+    .always(() => {
+      _inFlight.latencyTimeseries = null;
+      _lastFetchPerf = performance.now();
+    });
+}
+
+/**
+ * Drive the latency `aria-live` announcement off the approximate-state TRANSITION
+ * (mirrors the flush-bucket announce guard). Writes the bridged approximate note
+ * into `#MetricsPanelLatencyAnnouncement` on a false→true transition and clears it
+ * on a true→false transition. Acts only on an actual change of state; the initial
+ * `null` counts as a transition (null→true announces, null→false is a no-op clear).
+ */
+function announceLatencyApproximate({
+  approximate,
+}: {
+  approximate: boolean;
+}): void {
+  if (approximate === _lastAnnouncedLatencyApproximate) {
+    return;
+  }
+  _lastAnnouncedLatencyApproximate = approximate;
+  const announcement = getElementByIdOrNull<HTMLElement>(
+    LATENCY_ANNOUNCEMENT_ID,
+  );
+  if (announcement === null) {
+    return;
+  }
+  announcement.textContent = approximate
+    ? APP_CONFIG.strings.METRICS_LATENCY_APPROXIMATE_NOTE
+    : "";
+}
+
+/**
+ * Fire the single batched `/latency` percentile request (mirrors `fetchGauges`).
+ * The batched response is cached and the table re-rendered on success. When a row
+ * is currently selected, the detail chart is also refreshed via
+ * `fetchLatencyTimeseries` so the trend stays current on each poll without a
+ * re-click. `_currentWindow` is read here, so each window change re-requests.
+ *
+ * Deliberately separate from `fetchAll`'s global busy / `onSettleAny` path:
+ * latency settle-state lives only on `#MetricsPanelLatency` aria-busy.
+ */
+function fetchLatency(): void {
+  setLatencyPanelBusy({ busy: true });
+  const request = fetchLatencyClient({ window: _currentWindow });
+  _inFlight.latency = request;
+  request
+    .done((response) => {
+      setBannerVisible({ visible: false });
+      _latencyCache = response;
+      announceLatencyApproximate({
+        approximate: response.approximate ?? false,
+      });
+      renderLatencyPanelFromCache();
+      if (_selectedLatencyEndpoint !== null) {
+        fetchLatencyTimeseries();
+      }
+    })
+    .fail((xhr) => {
+      if (is429Handled(xhr)) {
+        return;
+      }
+      if (xhr.readyState === 0) {
+        return;
+      }
+      setBannerVisible({ visible: true });
+    })
+    .always(() => {
+      _inFlight.latency = null;
+      _lastFetchPerf = performance.now();
+      setLatencyPanelBusy({ busy: false });
+    });
+}
+
+/**
+ * Resolve the clicked `.latency-row`, persist its endpoint+method as the
+ * selection, re-render the table (highlighting the row), then fetch + render the
+ * detail chart. Clicks outside a `.latency-row` are ignored. Mirrors
+ * `handleGaugeRowClick`.
+ */
+function handleLatencyRowClick(event: JQuery.TriggeredEvent): void {
+  const row = (event.target as HTMLElement).closest<HTMLTableRowElement>(
+    "tr.latency-row",
+  );
+  if (row === null) {
+    return;
+  }
+  const endpoint = row.dataset.endpoint;
+  if (endpoint === undefined || endpoint === "") {
+    return;
+  }
+  _selectedLatencyEndpoint = endpoint;
+  _selectedLatencyMethod =
+    row.dataset.method !== undefined && row.dataset.method !== ""
+      ? row.dataset.method
+      : null;
+  renderLatencyPanelFromCache();
+  fetchLatencyTimeseries();
+
+  const container = getElementByIdOrNull<HTMLElement>(
+    LATENCY_CHART_CONTAINER_ID,
+  );
+  container?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/**
+ * Keyboard activation for latency rows. Enter and Space both fire the same action
+ * as a mouse click (ARIA APG for a focusable non-button widget).
+ */
+function handleLatencyRowKeydown(event: JQuery.TriggeredEvent): void {
+  const key = event.key;
+  if (key !== "Enter" && key !== " ") {
+    return;
+  }
+  event.preventDefault();
+  handleLatencyRowClick(event);
+}
+
 function fetchAll(): void {
   abortInFlightRequests();
   setDashboardBusy({ busy: true });
@@ -1435,6 +1684,13 @@ function fetchAll(): void {
   // the Gauges tab for free (DD-10).
   if (_activeTab === TAB.GAUGES) {
     fetchGauges();
+  }
+
+  // Gate the batched latency request on the active tab (same pattern as the
+  // Gauges gate). `fetchLatency()` reads `_currentWindow`, so each window change
+  // re-requests — keeping the window selector live on the Latency tab.
+  if (_activeTab === TAB.LATENCY) {
+    fetchLatency();
   }
 }
 
@@ -1713,7 +1969,12 @@ function handleTabClick({
   // pipeline_health, flows). `_currentCategory` keeps only true category
   // values — guarded against ever receiving "pipeline_health" / "flows".
   _activeTab = tab;
-  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS && tab !== TAB.GAUGES) {
+  if (
+    tab !== TAB.PIPELINE_HEALTH &&
+    tab !== TAB.FLOWS &&
+    tab !== TAB.GAUGES &&
+    tab !== TAB.LATENCY
+  ) {
     _currentCategory = tab;
   }
 
@@ -1723,7 +1984,7 @@ function handleTabClick({
   // totals say nothing about. It stays visible on the event-category tabs.
   const summarySection = getElementByIdOrNull<HTMLElement>(SUMMARY_SECTION_ID);
   if (summarySection !== null) {
-    if (tab === TAB.FLOWS || tab === TAB.GAUGES) {
+    if (tab === TAB.FLOWS || tab === TAB.GAUGES || tab === TAB.LATENCY) {
       summarySection.setAttribute("hidden", "");
     } else {
       summarySection.removeAttribute("hidden");
@@ -1754,7 +2015,12 @@ function handleTabClick({
   // switch. Pipeline Health renders from the grouped-timeseries XHR fired by
   // `fetchAll`; Flows renders from `_flowCache` (its own XHRs), so neither
   // needs a category-cache re-render here.
-  if (tab !== TAB.PIPELINE_HEALTH && tab !== TAB.FLOWS && tab !== TAB.GAUGES) {
+  if (
+    tab !== TAB.PIPELINE_HEALTH &&
+    tab !== TAB.FLOWS &&
+    tab !== TAB.GAUGES &&
+    tab !== TAB.LATENCY
+  ) {
     renderCategoryPanelFromCache({ category: tab });
   }
 
@@ -1776,6 +2042,16 @@ function handleTabClick({
       fetchGauges();
     } else {
       renderGaugesPanel();
+    }
+  }
+
+  // First activation of the Latency tab fires the batched request immediately;
+  // subsequent switches re-render the table from the warm cache (no round-trip).
+  if (tab === TAB.LATENCY) {
+    if (_latencyCache === null) {
+      fetchLatency();
+    } else {
+      renderLatencyPanelFromCache();
     }
   }
 
@@ -1927,6 +2203,22 @@ export function initMetricsDashboard(): void {
     );
   }
 
+  // Delegate latency-row click + keydown on the stable percentile table. The
+  // table body is rebuilt on each render, but events bubble from the rows to the
+  // server-rendered table, so one binding at init covers every subsequent
+  // render — mirrors the gauge-grid binding.
+  const latencyTable = getElementByIdOrNull<HTMLElement>(LATENCY_TABLE_ID);
+  if (latencyTable !== null) {
+    $(latencyTable).offAndOnExact(
+      "click.metricsDashboardLatencyRow",
+      handleLatencyRowClick,
+    );
+    $(latencyTable).offAndOnExact(
+      "keydown.metricsDashboardLatencyRow",
+      handleLatencyRowKeydown,
+    );
+  }
+
   document.addEventListener("visibilitychange", handleVisibilityChange);
 
   initPaneResizers();
@@ -1961,6 +2253,8 @@ export function _resetMetricsDashboardForTests(): void {
     summary: null,
     pipelineHealth: null,
     gaugesTimeseries: null,
+    latency: null,
+    latencyTimeseries: null,
     flowCreateUtub: null,
     flowAddUrl: null,
     flowRegister: null,
@@ -1969,6 +2263,9 @@ export function _resetMetricsDashboardForTests(): void {
   _flowCache = {};
   _gaugesCache = null;
   _selectedGaugeName = null;
+  _latencyCache = null;
+  _selectedLatencyEndpoint = null;
+  _selectedLatencyMethod = null;
   _topCache.clear();
   _selectedEventByCategory.clear();
   _chartFetchedWindowByCategory.clear();
@@ -1985,6 +2282,7 @@ export function _resetMetricsDashboardForTests(): void {
   _lastAnnouncedFlushBucket = null;
   _lastEventAtMs = null;
   _lastAnnouncedEventBucket = null;
+  _lastAnnouncedLatencyApproximate = null;
   document.removeEventListener("visibilitychange", handleVisibilityChange);
   _resetPaneResizersForTests();
 }

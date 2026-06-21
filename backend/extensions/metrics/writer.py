@@ -9,7 +9,12 @@ from backend.extensions.metrics.buckets import compute_bucket_start_epoch
 from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.metrics.dimension_models import validate_dimensions
-from backend.metrics.events import DEVICE_TYPE_DIM_KEY, EventName
+from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
+from backend.metrics.latency import (
+    LATENCY_SAMPLE_CAP_DEFAULT,
+    LATENCY_SAMPLE_CAP_OVERRIDES,
+    LatencyMetricName,
+)
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
@@ -147,6 +152,56 @@ class MetricsWriter:
             current_app.logger.exception("metrics: reserve_batch failed")
         return True
 
+    def record_duration(
+        self,
+        *,
+        metric: LatencyMetricName,
+        duration_ms: float,
+        endpoint: str | None,
+        method: str | None,
+        dimensions: dict[str, DeviceType],
+    ) -> None:
+        """Buffer one raw request-duration sample in a capped Redis list.
+
+        Stores samples per (bucket, metric, endpoint, method, device) so the
+        flush worker can promote endpoint/method to flat columns and retain the
+        device dimension in JSONB. Log-and-drop on any failure so a Redis hiccup
+        never breaks a real request.
+        """
+        if not self._enabled or self._redis is None:
+            return None
+        # Latency for an unmatched route has no meaningful endpoint label and
+        # cannot be attributed to a specific handler, so it is not recorded.
+        if endpoint is None:
+            return None
+        try:
+            # device only — endpoint and method are separate colon-delimited
+            # key segments, not embedded in the JSON dims. canonicalize_dimensions
+            # serializes the DeviceType IntEnum to its integer value directly.
+            canonical_device_dims = canonicalize_dimensions(
+                {DEVICE_TYPE_DIM_KEY: dimensions[DEVICE_TYPE_DIM_KEY]}
+            )
+            bucket_start = compute_bucket_start_epoch(
+                int(time.time()), self._bucket_seconds
+            )
+            latency_key = (
+                f"{METRICS_REDIS.LATENCY_KEY_PREFIX}{bucket_start}:"
+                f"{metric.value}:{endpoint}:{method}:{canonical_device_dims}"
+            )
+            ttl_seconds = max(
+                self._bucket_seconds + _KEY_TTL_GRACE_SECONDS, _KEY_TTL_FLOOR_SECONDS
+            )
+
+            cap = LATENCY_SAMPLE_CAP_OVERRIDES.get(endpoint, LATENCY_SAMPLE_CAP_DEFAULT)
+
+            pipe = self._redis.pipeline()
+            pipe.lpush(latency_key, f"{duration_ms:.3f}")
+            pipe.ltrim(latency_key, 0, cap - 1)
+            pipe.expire(latency_key, ttl_seconds)
+            pipe.execute()
+        except Exception:
+            current_app.logger.exception("metrics: record_duration failed")
+
 
 def record_event(
     event: EventName,
@@ -178,3 +233,53 @@ def record_event(
         status_code=status_code,
         dimensions=dimensions,
     )
+
+
+def record_duration(
+    *,
+    metric: LatencyMetricName,
+    duration_ms: float,
+    endpoint: str | None,
+    method: str | None,
+    dimensions: dict[str, DeviceType],
+) -> None:
+    """Module-level entry point for recording a raw request-duration sample.
+
+    Looks up the registered `MetricsWriter` from `current_app.extensions` and
+    delegates to its `record_duration(...)` method. Wrapped in
+    `try/except RuntimeError` so callers in script/CLI contexts (no Flask
+    application context) silently no-op rather than raising.
+    """
+    # Werkzeug's LocalProxy raises RuntimeError when current_app is accessed
+    # outside an application context — silent no-op for CLI/script callers.
+    try:
+        writer = current_app.extensions.get("metrics_writer")
+    except RuntimeError:
+        return None
+    if writer is None:
+        return None
+    writer.record_duration(
+        metric=metric,
+        duration_ms=duration_ms,
+        endpoint=endpoint,
+        method=method,
+        dimensions=dimensions,
+    )
+
+
+def validate_latency_cap_overrides(app: Flask) -> None:
+    """Warn for each LATENCY_SAMPLE_CAP_OVERRIDES key absent from the url_map.
+
+    A typo'd or stale override key silently has no effect (the endpoint never
+    resolves to that key at write time), so this surfaces it at app build. Must
+    be called AFTER all blueprints are registered — the url_map is empty during
+    `init_app`, before blueprint registration in `create_app`.
+    """
+    registered_endpoints = {rule.endpoint for rule in app.url_map.iter_rules()}
+    for override_endpoint in LATENCY_SAMPLE_CAP_OVERRIDES:
+        if override_endpoint not in registered_endpoints:
+            app.logger.warning(
+                "latency_sample_cap_override_unknown_endpoint: %s — not a registered"
+                " endpoint; this cap override will never take effect",
+                override_endpoint,
+            )

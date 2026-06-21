@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
 from typing import Literal, NamedTuple
 
 from flask import current_app
@@ -21,8 +21,11 @@ from backend.metrics.gauges import (
     GAUGE_REGISTRY,
     GaugeName,
 )
+from backend.metrics.latency import LATENCY_RAW_RETENTION_DAYS, LatencyMetricName
 from backend.metrics.resources import Resource, resource_filter_clause
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.models.event_registry import Event_Registry
 from backend.schemas.metrics import (
@@ -31,6 +34,8 @@ from backend.schemas.metrics import (
     GaugesTimeseriesResponseSchema,
     GroupedTimeseriesBucket,
     GroupedTimeseriesResponseSchema,
+    LatencyPercentileRow,
+    LatencyTimeseriesBucket,
     SummaryCategoryCount,
     TimeseriesBucketSchema,
     TopEventRow,
@@ -46,6 +51,22 @@ class SummaryResult(NamedTuple):
 class _EndpointMetadata(NamedTuple):
     url_pattern: str
     description: str
+
+
+class LatencyPercentilesResult(NamedTuple):
+    """Return type of `latency_percentiles`.
+
+    Carries the per-(endpoint, method) percentile rows plus an `approximate`
+    flag. `approximate` is `True` only when the window reaches beyond the
+    raw-sample retention horizon and the summary is served from the daily
+    rollup table — daily percentiles cannot be re-aggregated into one exact
+    window-wide percentile, so the summary becomes a sample-count-weighted
+    average. For windows inside raw retention, `approximate` is `False` and the
+    rows are exact `percentile_cont` values over the raw samples.
+    """
+
+    rows: list[LatencyPercentileRow]
+    approximate: bool
 
 
 def _endpoint_metadata_map() -> dict[str, _EndpointMetadata]:
@@ -920,3 +941,424 @@ def gauge_timeseries_one(
         .all()
     )
     return [_gauge_sample_from_row(row) for row in rows]
+
+
+def _is_window_beyond_raw_retention(window_start: datetime, now: datetime) -> bool:
+    """Return whether `window_start` predates the raw-sample retention horizon.
+
+    Raw per-request samples are pruned after `LATENCY_RAW_RETENTION_DAYS`, so a
+    window whose start is older than that boundary can no longer be served
+    exactly from raw samples and must read the daily rollup instead.
+
+    Examples:
+        >>> now = datetime(2026, 6, 20, tzinfo=timezone.utc)
+        >>> _is_window_beyond_raw_retention(now - timedelta(days=10), now)
+        False
+        >>> _is_window_beyond_raw_retention(now - timedelta(days=40), now)
+        True
+    """
+    return window_start < now - timedelta(days=LATENCY_RAW_RETENTION_DAYS)
+
+
+def _latency_device_type_filter(query: Query, device_type: DeviceType | None) -> Query:
+    """Apply the `device_type` JSONB filter to a latency `query`, or pass through.
+
+    Mirrors `_device_type_filter` but targets `Anonymous_Latency_Samples` —
+    latency stores `device_type` in its own JSONB `dimensions` column, so the
+    cast must reference the latency model rather than `Anonymous_Metrics`.
+    """
+    if device_type is None:
+        return query
+    return query.filter(
+        Anonymous_Latency_Samples.dimensions[DEVICE_TYPE_DIM_KEY].as_integer()
+        == device_type
+    )
+
+
+def _to_float_or_none(value: object) -> float | None:
+    """Cast a Postgres `Numeric` percentile output to `float`, preserving null.
+
+    `percentile_cont` returns a `Decimal` for a non-empty group and `None` for
+    an empty one (zero-fill bucket). Mirrors the `_gauge_sample_from_row`
+    float-cast so the response serializes as a JSON number, never a string.
+    """
+    return None if value is None else float(value)
+
+
+def _latency_percentiles_from_raw(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    metric_name: LatencyMetricName,
+    endpoint: str | None,
+    method: str | None,
+    device_type: DeviceType | None,
+    limit: int,
+) -> list[LatencyPercentileRow]:
+    """Exact per-(endpoint, method) percentiles from the raw-sample table.
+
+    Computes p50/p95/p99 via Postgres `percentile_cont` over the raw
+    `durationMs` samples in the half-open window `[window_start, window_end)`,
+    grouped by the flat `(endpoint, method)` columns, ordered by p95 descending
+    and capped at `limit`. This is the exact path used for windows inside the
+    raw-sample retention horizon.
+    """
+    p50 = func.percentile_cont(0.5).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p95 = func.percentile_cont(0.95).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p99 = func.percentile_cont(0.99).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    query = db.session.query(
+        Anonymous_Latency_Samples.endpoint,
+        Anonymous_Latency_Samples.method,
+        p50.label("p50"),
+        p95.label("p95"),
+        p99.label("p99"),
+        func.count().label("sample_count"),
+    ).filter(
+        Anonymous_Latency_Samples.metric_name == metric_name.value,
+        Anonymous_Latency_Samples.observed_at >= window_start,
+        Anonymous_Latency_Samples.observed_at < window_end,
+    )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Latency_Samples.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Latency_Samples.method == method)
+    query = _latency_device_type_filter(query, device_type)
+
+    rows = (
+        query.group_by(
+            Anonymous_Latency_Samples.endpoint, Anonymous_Latency_Samples.method
+        )
+        .order_by(p95.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        LatencyPercentileRow(
+            endpoint=row.endpoint,
+            method=row.method,
+            p50=_to_float_or_none(row.p50),
+            p95=_to_float_or_none(row.p95),
+            p99=_to_float_or_none(row.p99),
+            sample_count=int(row.sample_count),
+        )
+        for row in rows
+    ]
+
+
+def _latency_percentiles_from_rollup(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    metric_name: LatencyMetricName,
+    endpoint: str | None,
+    method: str | None,
+    limit: int,
+) -> list[LatencyPercentileRow]:
+    """Approximate per-(endpoint, method) percentiles from the daily rollup.
+
+    For windows beyond the raw-sample retention horizon, daily rollup rows are
+    the only available source. Daily percentiles cannot be re-aggregated into a
+    single exact window-wide percentile, so each row's p50/p95/p99 is the
+    sample-count-weighted average of the daily stored values
+    (`SUM(p * sampleCount) / SUM(sampleCount)`), with `sample_count` the total
+    over the window. Rows are ordered by weighted p95 descending and capped at
+    `limit`. The rollup aggregates across device_type, so any `device_type`
+    filter is intentionally ignored on this path.
+    """
+    weighted_p50 = func.sum(
+        Anonymous_Latency_Daily_Rollups.p50_ms
+        * Anonymous_Latency_Daily_Rollups.sample_count
+    ) / func.sum(Anonymous_Latency_Daily_Rollups.sample_count)
+    weighted_p95 = func.sum(
+        Anonymous_Latency_Daily_Rollups.p95_ms
+        * Anonymous_Latency_Daily_Rollups.sample_count
+    ) / func.sum(Anonymous_Latency_Daily_Rollups.sample_count)
+    weighted_p99 = func.sum(
+        Anonymous_Latency_Daily_Rollups.p99_ms
+        * Anonymous_Latency_Daily_Rollups.sample_count
+    ) / func.sum(Anonymous_Latency_Daily_Rollups.sample_count)
+    total_count = func.sum(Anonymous_Latency_Daily_Rollups.sample_count)
+    query = db.session.query(
+        Anonymous_Latency_Daily_Rollups.endpoint,
+        Anonymous_Latency_Daily_Rollups.method,
+        weighted_p50.label("p50"),
+        weighted_p95.label("p95"),
+        weighted_p99.label("p99"),
+        total_count.label("sample_count"),
+    ).filter(
+        Anonymous_Latency_Daily_Rollups.metric_name == metric_name.value,
+        Anonymous_Latency_Daily_Rollups.rollup_date >= window_start.date(),
+        Anonymous_Latency_Daily_Rollups.rollup_date < window_end.date(),
+    )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Latency_Daily_Rollups.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Latency_Daily_Rollups.method == method)
+
+    rows = (
+        query.group_by(
+            Anonymous_Latency_Daily_Rollups.endpoint,
+            Anonymous_Latency_Daily_Rollups.method,
+        )
+        .order_by(weighted_p95.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        LatencyPercentileRow(
+            endpoint=row.endpoint,
+            method=row.method,
+            p50=_to_float_or_none(row.p50),
+            p95=_to_float_or_none(row.p95),
+            p99=_to_float_or_none(row.p99),
+            sample_count=int(row.sample_count),
+        )
+        for row in rows
+    ]
+
+
+def latency_percentiles(
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    now: datetime,
+    metric_name: LatencyMetricName,
+    endpoint: str | None = None,
+    method: str | None = None,
+    device_type: DeviceType | None = None,
+    limit: int,
+) -> LatencyPercentilesResult:
+    """Return per-(endpoint, method) latency percentiles, raw or rollup-sourced.
+
+    Routes by window age: windows inside the raw-sample retention horizon serve
+    exact `percentile_cont` values from `Anonymous_Latency_Samples`
+    (`approximate=False`); windows reaching beyond it serve sample-count-weighted
+    daily averages from `Anonymous_Latency_Daily_Rollups` (`approximate=True`)
+    because raw samples for those days have been pruned.
+
+    Optional `endpoint`/`method` narrow the result on both paths;
+    `device_type` narrows only the raw path — the rollup aggregates across
+    devices and silently ignores it. `metric_name` is compared by `.value` to
+    the stored string column, matching the convention used for `event_name`.
+    """
+    if _is_window_beyond_raw_retention(window_start, now):
+        rows = _latency_percentiles_from_rollup(
+            window_start=window_start,
+            window_end=window_end,
+            metric_name=metric_name,
+            endpoint=endpoint,
+            method=method,
+            limit=limit,
+        )
+        return LatencyPercentilesResult(rows=rows, approximate=True)
+
+    rows = _latency_percentiles_from_raw(
+        window_start=window_start,
+        window_end=window_end,
+        metric_name=metric_name,
+        endpoint=endpoint,
+        method=method,
+        device_type=device_type,
+        limit=limit,
+    )
+    return LatencyPercentilesResult(rows=rows, approximate=False)
+
+
+def _zero_fill_latency_buckets(
+    *,
+    samples_by_bucket: dict[datetime, LatencyTimeseriesBucket],
+    window_start: datetime,
+    window_end: datetime,
+    resolution: Literal["hour", "day"],
+) -> list[LatencyTimeseriesBucket]:
+    """Walk the full bucket range, emitting a null-filled bucket where missing.
+
+    Shared by the raw and rollup timeseries paths. Every resolution-aligned
+    bucket inside `[window_start, window_end)` appears — empty buckets carry
+    `p50 = p95 = p99 = None` and `sample_count = 0` so the chart x-axis stays
+    continuous and the renderer breaks the polyline at no-data buckets.
+    """
+    step = _RESOLUTION_STEP[resolution]
+    cursor = _truncate_to_resolution(window_start, resolution)
+    filled_buckets: list[LatencyTimeseriesBucket] = []
+    while cursor < window_end:
+        filled_buckets.append(
+            samples_by_bucket.get(
+                cursor,
+                LatencyTimeseriesBucket(
+                    bucket=cursor, p50=None, p95=None, p99=None, sample_count=0
+                ),
+            )
+        )
+        cursor = cursor + step
+    return filled_buckets
+
+
+def _latency_timeseries_from_raw(
+    *,
+    metric_name: LatencyMetricName,
+    window_start: datetime,
+    window_end: datetime,
+    resolution: Literal["hour", "day"],
+    endpoint: str | None,
+    method: str | None,
+    device_type: DeviceType | None,
+) -> list[LatencyTimeseriesBucket]:
+    """Per-bucket exact percentiles from the raw-sample table (zero-filled)."""
+    bucket = func.date_trunc(resolution, Anonymous_Latency_Samples.observed_at).label(
+        "bucket"
+    )
+    p50 = func.percentile_cont(0.5).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p95 = func.percentile_cont(0.95).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    p99 = func.percentile_cont(0.99).within_group(
+        Anonymous_Latency_Samples.duration_ms.asc()
+    )
+    query = db.session.query(
+        bucket,
+        p50.label("p50"),
+        p95.label("p95"),
+        p99.label("p99"),
+        func.count().label("sample_count"),
+    ).filter(
+        Anonymous_Latency_Samples.metric_name == metric_name.value,
+        Anonymous_Latency_Samples.observed_at >= window_start,
+        Anonymous_Latency_Samples.observed_at < window_end,
+    )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Latency_Samples.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Latency_Samples.method == method)
+    query = _latency_device_type_filter(query, device_type)
+
+    rows = query.group_by(bucket).order_by(bucket).all()
+    samples_by_bucket: dict[datetime, LatencyTimeseriesBucket] = {
+        row.bucket: LatencyTimeseriesBucket(
+            bucket=row.bucket,
+            p50=_to_float_or_none(row.p50),
+            p95=_to_float_or_none(row.p95),
+            p99=_to_float_or_none(row.p99),
+            sample_count=int(row.sample_count),
+        )
+        for row in rows
+    }
+    return _zero_fill_latency_buckets(
+        samples_by_bucket=samples_by_bucket,
+        window_start=window_start,
+        window_end=window_end,
+        resolution=resolution,
+    )
+
+
+def _latency_timeseries_from_rollup(
+    *,
+    metric_name: LatencyMetricName,
+    window_start: datetime,
+    window_end: datetime,
+    endpoint: str | None,
+    method: str | None,
+) -> list[LatencyTimeseriesBucket]:
+    """Per-day exact percentiles read straight from the daily rollup table.
+
+    The rollup is daily-grain only, so the series is always day-resolution.
+    Stored p50/p95/p99 are exact per day (no re-aggregation), and the day
+    zero-fill keeps the x-axis continuous. Rollup `rollup_date` is a `Date`
+    column yielding `datetime.date`, but the zero-fill cursor is a tz-aware
+    `datetime.datetime`; the bucket key is therefore built via
+    `datetime.combine(row.rollup_date, time.min, tzinfo=timezone.utc)` so the
+    keys align with `cursor` instead of silently never matching.
+    """
+    query = db.session.query(
+        Anonymous_Latency_Daily_Rollups.rollup_date,
+        Anonymous_Latency_Daily_Rollups.p50_ms,
+        Anonymous_Latency_Daily_Rollups.p95_ms,
+        Anonymous_Latency_Daily_Rollups.p99_ms,
+        Anonymous_Latency_Daily_Rollups.sample_count,
+    ).filter(
+        Anonymous_Latency_Daily_Rollups.metric_name == metric_name.value,
+        Anonymous_Latency_Daily_Rollups.rollup_date >= window_start.date(),
+        Anonymous_Latency_Daily_Rollups.rollup_date < window_end.date(),
+    )
+    if endpoint is not None:
+        query = query.filter(Anonymous_Latency_Daily_Rollups.endpoint == endpoint)
+    if method is not None:
+        query = query.filter(Anonymous_Latency_Daily_Rollups.method == method)
+    rows = query.order_by(Anonymous_Latency_Daily_Rollups.rollup_date).all()
+    samples_by_bucket: dict[datetime, LatencyTimeseriesBucket] = {}
+    for row in rows:
+        bucket_key = datetime.combine(row.rollup_date, time.min, tzinfo=timezone.utc)
+        samples_by_bucket[bucket_key] = LatencyTimeseriesBucket(
+            bucket=bucket_key,
+            p50=_to_float_or_none(row.p50_ms),
+            p95=_to_float_or_none(row.p95_ms),
+            p99=_to_float_or_none(row.p99_ms),
+            sample_count=int(row.sample_count),
+        )
+    return _zero_fill_latency_buckets(
+        samples_by_bucket=samples_by_bucket,
+        window_start=window_start,
+        window_end=window_end,
+        resolution="day",
+    )
+
+
+def latency_timeseries(
+    *,
+    metric_name: LatencyMetricName,
+    window_start: datetime,
+    window_end: datetime,
+    now: datetime,
+    resolution: Literal["hour", "day"],
+    endpoint: str | None = None,
+    method: str | None = None,
+    device_type: DeviceType | None = None,
+) -> list[LatencyTimeseriesBucket]:
+    """Return zero-filled per-bucket latency percentiles, raw or rollup-sourced.
+
+    Routes by window age. Windows inside raw retention read the raw-sample table
+    at the requested `resolution` (exact `percentile_cont` per bucket). Windows
+    beyond raw retention read the daily rollup table — which is daily-grain only
+    — so an `hour` request is coerced to `day` (with a server log) and the
+    stored daily p50/p95/p99 are returned exact per day.
+
+    Per-bucket values are always exact (rollup buckets are stored daily
+    percentiles, not re-aggregated), so the timeseries carries no approximate
+    flag — only the summary (`latency_percentiles`) does.
+
+    `metric_name` is compared by `.value`; optional `endpoint`/`method` narrow
+    the series on both paths; `device_type` narrows only the raw path (the
+    rollup aggregates across devices).
+    """
+    if _is_window_beyond_raw_retention(window_start, now):
+        if resolution == "hour":
+            current_app.logger.warning(
+                "latency_timeseries: hourly resolution requested for a window "
+                "beyond the %s-day raw retention; coercing to daily rollup grain",
+                LATENCY_RAW_RETENTION_DAYS,
+            )
+        return _latency_timeseries_from_rollup(
+            metric_name=metric_name,
+            window_start=window_start,
+            window_end=window_end,
+            endpoint=endpoint,
+            method=method,
+        )
+
+    return _latency_timeseries_from_raw(
+        metric_name=metric_name,
+        window_start=window_start,
+        window_end=window_end,
+        resolution=resolution,
+        endpoint=endpoint,
+        method=method,
+        device_type=device_type,
+    )

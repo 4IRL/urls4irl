@@ -1,0 +1,390 @@
+/**
+ * Render the Backend Performance (Latency) tab: a per-endpoint percentile table
+ * (Endpoint | p50 | p95 | p99 | Samples), one focusable `.latency-row` per
+ * endpoint, plus a detail area beneath it. Selecting a row drives a separate
+ * latency-timeseries fetch in `metrics-dashboard.ts`; that controller then calls
+ * `renderLatencyDetailChart` to draw the chosen endpoint's multi-series trend in
+ * the detail container. With no selection the detail area shows a prompt to pick
+ * an endpoint.
+ *
+ * The percentile table empty state is an HTML `<tr><td colspan="5">` row (NOT the
+ * SVG-only `appendEmptyState` helper, which appends `<text>` to an
+ * `SVGSVGElement` and is a type error / no-op on an HTML table). The detail chart
+ * is built by the dedicated `renderLatencyChart` primitive on an
+ * `SVGSVGElement` created dynamically here (mirroring `gauge-card.ts:renderGaugeDetail`).
+ *
+ * Pure DOM mutation; no fetching, no event binding (row clicks are wired in
+ * `metrics-dashboard.ts`, mirroring the gauge/top-table row-click pattern).
+ */
+
+import type { Schema } from "../types/api-helpers.d.ts";
+
+import { APP_CONFIG } from "../lib/config.js";
+
+import { renderLatencyChart } from "./render-latency-chart.js";
+
+type LatencyPercentilesResponse = Schema<"LatencyPercentilesResponseSchema">;
+type LatencyPercentileRow = Schema<"LatencyPercentileRow">;
+type LatencyTimeseriesResponse = Schema<"LatencyTimeseriesResponseSchema">;
+
+const SVG_NAMESPACE = "http://www.w3.org/2000/svg";
+const TOTAL_COLUMNS = 5;
+
+// Visible placeholder for a null (zero-sample) percentile. An en dash (U+2013),
+// rendered as a non-breaking value; the row's aria-label announces the suppressed
+// state via the bridged METRICS_GAUGE_SUPPRESSED_ARIA precedent.
+const NULL_PERCENTILE_PLACEHOLDER = "–";
+
+function clearChildren({ element }: { element: Element }): void {
+  while (element.firstChild !== null) {
+    element.removeChild(element.firstChild);
+  }
+}
+
+function formatPercentile(value: number | null): string {
+  return value === null
+    ? NULL_PERCENTILE_PLACEHOLDER
+    : Math.round(value).toLocaleString();
+}
+
+/** Stable identity for an endpoint+method pair used as the row's dataset key. */
+function rowKey(endpoint: string | null, method: string | null): string {
+  return `${endpoint ?? ""} ${method ?? ""}`;
+}
+
+function buildHeader(): HTMLTableSectionElement {
+  const thead = document.createElement("thead");
+  const row = document.createElement("tr");
+  const headers: ReadonlyArray<{ text: string; className: string }> = [
+    {
+      text: APP_CONFIG.strings.METRICS_LATENCY_COL_ENDPOINT,
+      className: "endpoint",
+    },
+    { text: APP_CONFIG.strings.METRICS_LATENCY_COL_P50, className: "metric" },
+    { text: APP_CONFIG.strings.METRICS_LATENCY_COL_P95, className: "metric" },
+    { text: APP_CONFIG.strings.METRICS_LATENCY_COL_P99, className: "metric" },
+    {
+      text: APP_CONFIG.strings.METRICS_LATENCY_COL_SAMPLES,
+      className: "samples",
+    },
+  ];
+  for (const { text, className } of headers) {
+    const cell = document.createElement("th");
+    cell.setAttribute("scope", "col");
+    cell.className = className;
+    cell.textContent = text;
+    row.appendChild(cell);
+  }
+  thead.appendChild(row);
+  return thead;
+}
+
+function buildEmptyRow({ message }: { message: string }): HTMLTableRowElement {
+  const row = document.createElement("tr");
+  row.className = "MetricsLatencyEmptyRow";
+  const cell = document.createElement("td");
+  cell.colSpan = TOTAL_COLUMNS;
+  cell.className = "MetricsEmptyState empty";
+  cell.textContent = message;
+  row.appendChild(cell);
+  return row;
+}
+
+function buildLatencyRow({
+  entry,
+  selected,
+}: {
+  entry: LatencyPercentileRow;
+  selected: boolean;
+}): HTMLTableRowElement {
+  const row = document.createElement("tr");
+  row.className = "latency-row";
+  row.dataset.endpoint = entry.endpoint ?? "";
+  row.dataset.method = entry.method ?? "";
+  row.setAttribute("role", "button");
+  row.tabIndex = 0;
+  if (selected) {
+    row.classList.add("latency-row--selected");
+    row.setAttribute("aria-current", "true");
+  }
+
+  const endpointLabel =
+    entry.method !== null
+      ? `${entry.method} ${entry.endpoint ?? ""}`.trim()
+      : (entry.endpoint ?? "");
+
+  // Per-row aria summary from the bridged template (filled via string replace,
+  // same pattern as the top-table `{{ name }}` aria string).
+  const ariaLabel = APP_CONFIG.strings.METRICS_LATENCY_ROW_ARIA.replace(
+    "{{endpoint}}",
+    endpointLabel,
+  )
+    .replace("{{p50}}", formatPercentile(entry.p50))
+    .replace("{{p95}}", formatPercentile(entry.p95))
+    .replace("{{p99}}", formatPercentile(entry.p99));
+  row.setAttribute("aria-label", ariaLabel);
+
+  const endpointCell = document.createElement("td");
+  endpointCell.className = "endpoint";
+  endpointCell.textContent = endpointLabel;
+  endpointCell.title = endpointLabel;
+  row.appendChild(endpointCell);
+
+  // `data-label` mirrors each column header so the responsive card layout (on
+  // narrow viewports, where `thead` is hidden) can surface the column name and
+  // its unit via a `td::before { content: attr(data-label) }` rule.
+  const metricColumns: ReadonlyArray<{ value: number | null; label: string }> =
+    [
+      { value: entry.p50, label: APP_CONFIG.strings.METRICS_LATENCY_COL_P50 },
+      { value: entry.p95, label: APP_CONFIG.strings.METRICS_LATENCY_COL_P95 },
+      { value: entry.p99, label: APP_CONFIG.strings.METRICS_LATENCY_COL_P99 },
+    ];
+  for (const { value, label } of metricColumns) {
+    const cell = document.createElement("td");
+    cell.className = "metric";
+    cell.dataset.label = label;
+    cell.textContent = formatPercentile(value);
+    if (value === null) {
+      // The bare en dash is meaningless read aloud — announce the suppressed
+      // state with the bridged aria label instead.
+      cell.setAttribute(
+        "aria-label",
+        APP_CONFIG.strings.METRICS_GAUGE_SUPPRESSED_ARIA,
+      );
+    }
+    row.appendChild(cell);
+  }
+
+  const samplesCell = document.createElement("td");
+  samplesCell.className = "samples";
+  samplesCell.dataset.label = APP_CONFIG.strings.METRICS_LATENCY_COL_SAMPLES;
+  samplesCell.textContent = entry.sample_count.toLocaleString();
+  row.appendChild(samplesCell);
+
+  return row;
+}
+
+function matchesFilter({
+  entry,
+  needle,
+}: {
+  entry: LatencyPercentileRow;
+  needle: string;
+}): boolean {
+  const endpoint = (entry.endpoint ?? "").toLowerCase();
+  const method = (entry.method ?? "").toLowerCase();
+  return endpoint.includes(needle) || method.includes(needle);
+}
+
+/**
+ * Render the no-selection prompt into the detail container. Mirrors the Gauges
+ * tab's select-an-endpoint prompt: a `<p class="latency-detail-prompt">` with the
+ * bridged prompt string, replaced by the SVG chart once a row is selected.
+ */
+function renderSelectPrompt({ container }: { container: HTMLElement }): void {
+  clearChildren({ element: container });
+  const prompt = document.createElement("p");
+  prompt.className = "latency-detail-prompt";
+  prompt.textContent = APP_CONFIG.strings.METRICS_LATENCY_SELECT_PROMPT;
+  container.appendChild(prompt);
+}
+
+const APPROXIMATE_NOTE_CLASS = "latency-approximate-note";
+const DAILY_NOTE_CLASS = "latency-daily-note";
+
+/**
+ * Inject (or remove) the "approximate summary" note as the immediately-preceding
+ * sibling of the percentile table (NOT a table descendant — see DD-5). It is only
+ * shown when the window is approximate AND there are rows to summarize (DD-6: it
+ * never pairs with the empty-state row). Remove-then-maybe-add guards against
+ * duplicate injection across re-renders; the removal query is scoped to the
+ * table's parent (`#MetricsLatencyGrid`) so unrelated notes are never touched.
+ */
+function syncApproximateNote({
+  tableRoot,
+  approximate,
+  hasRows,
+}: {
+  tableRoot: HTMLTableElement;
+  approximate: boolean;
+  hasRows: boolean;
+}): void {
+  const grid = tableRoot.parentElement;
+  if (grid === null) {
+    return;
+  }
+  const existing = grid.querySelector(`.${APPROXIMATE_NOTE_CLASS}`);
+  if (existing !== null) {
+    existing.remove();
+  }
+  if (!approximate || !hasRows) {
+    return;
+  }
+  const note = document.createElement("div");
+  note.className = APPROXIMATE_NOTE_CLASS;
+  note.setAttribute("role", "note");
+  const dot = document.createElement("span");
+  dot.className = "dot";
+  dot.setAttribute("aria-hidden", "true");
+  note.appendChild(dot);
+  note.appendChild(
+    document.createTextNode(
+      APP_CONFIG.strings.METRICS_LATENCY_APPROXIMATE_NOTE,
+    ),
+  );
+  grid.insertBefore(note, tableRoot);
+}
+
+/**
+ * Inject (or remove) the daily-resolution caption as the immediately-preceding
+ * sibling of the chart container, so the user sees that a long window's trend is
+ * rendered at daily grain. Remove-then-maybe-add guards against duplicates across
+ * re-renders. Scoped to the chart container's parent (`#MetricsLatencyGrid`).
+ */
+function syncDailyResolutionNote({
+  container,
+  daily,
+}: {
+  container: HTMLElement;
+  daily: boolean;
+}): void {
+  const grid = container.parentElement;
+  if (grid === null) {
+    return;
+  }
+  const existing = grid.querySelector(`.${DAILY_NOTE_CLASS}`);
+  if (existing !== null) {
+    existing.remove();
+  }
+  if (!daily) {
+    return;
+  }
+  const note = document.createElement("p");
+  note.className = DAILY_NOTE_CLASS;
+  note.setAttribute("role", "note");
+  note.textContent = APP_CONFIG.strings.METRICS_LATENCY_DAILY_RESOLUTION_NOTE;
+  grid.insertBefore(note, container);
+}
+
+/**
+ * Build the SVG chart for the selected endpoint's timeseries and swap it into the
+ * detail container in place of the prompt. The `<title>`/`<desc>` are created and
+ * wired to `aria-labelledby`/`aria-describedby` here so `renderLatencyChart` can
+ * fill their text content (mirrors `gauge-card.ts:renderGaugeDetail`).
+ */
+export function renderLatencyDetailChart({
+  container,
+  response,
+  daily = false,
+}: {
+  container: HTMLElement;
+  response: LatencyTimeseriesResponse;
+  daily?: boolean;
+}): void {
+  syncDailyResolutionNote({ container, daily });
+
+  clearChildren({ element: container });
+
+  const svg = document.createElementNS(SVG_NAMESPACE, "svg");
+  svg.setAttribute("class", "latency-chart");
+  svg.setAttribute("viewBox", "0 0 800 240");
+  svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+  const svgId = "MetricsLatencyChart";
+  svg.setAttribute("id", svgId);
+  svg.setAttribute("role", "img");
+  svg.setAttribute("aria-labelledby", `${svgId}-title`);
+  svg.setAttribute("aria-describedby", `${svgId}-desc`);
+
+  const title = document.createElementNS(SVG_NAMESPACE, "title");
+  title.setAttribute("id", `${svgId}-title`);
+  const desc = document.createElementNS(SVG_NAMESPACE, "desc");
+  desc.setAttribute("id", `${svgId}-desc`);
+  svg.appendChild(title);
+  svg.appendChild(desc);
+
+  renderLatencyChart({ svg: svg as SVGSVGElement, response });
+  container.appendChild(svg);
+}
+
+/**
+ * Render the full Latency panel: the percentile table (one `.latency-row` per
+ * endpoint, ordered by the response's p95-descending rows) and, in the detail
+ * container, the no-selection prompt when `selectedEndpoint` is null. When a
+ * selection exists the detail container is left intact for the controller to fill
+ * with `renderLatencyDetailChart` once the timeseries fetch resolves.
+ *
+ * `tableRoot` is the `<table>` element; `detailRoot` is the chart container div.
+ */
+export function renderLatencyPanel({
+  tableRoot,
+  detailRoot,
+  response,
+  selectedEndpoint = null,
+  selectedMethod = null,
+  filterQuery,
+  approximate = false,
+}: {
+  tableRoot: HTMLTableElement;
+  detailRoot: HTMLElement;
+  response: LatencyPercentilesResponse;
+  selectedEndpoint?: string | null;
+  selectedMethod?: string | null;
+  filterQuery?: string;
+  approximate?: boolean;
+}): void {
+  syncApproximateNote({
+    tableRoot,
+    approximate,
+    hasRows: response.rows.length > 0,
+  });
+
+  const thead = tableRoot.tHead ?? tableRoot.createTHead();
+  clearChildren({ element: thead });
+  thead.replaceWith(buildHeader());
+
+  const tbody = tableRoot.tBodies[0] ?? tableRoot.createTBody();
+  clearChildren({ element: tbody });
+
+  if (response.rows.length === 0) {
+    tbody.appendChild(
+      buildEmptyRow({ message: APP_CONFIG.strings.METRICS_LATENCY_EMPTY }),
+    );
+  } else {
+    const needle =
+      filterQuery !== undefined ? filterQuery.trim().toLowerCase() : "";
+    const visibleRows =
+      needle === ""
+        ? response.rows
+        : response.rows.filter((entry) => matchesFilter({ entry, needle }));
+
+    if (visibleRows.length === 0) {
+      tbody.appendChild(
+        buildEmptyRow({
+          message: APP_CONFIG.strings.METRICS_TOP_EMPTY_NO_MATCHES,
+        }),
+      );
+    } else {
+      const selectedKey =
+        selectedEndpoint === null
+          ? null
+          : rowKey(selectedEndpoint, selectedMethod);
+      for (const entry of visibleRows) {
+        tbody.appendChild(
+          buildLatencyRow({
+            entry,
+            selected:
+              selectedKey !== null &&
+              rowKey(entry.endpoint, entry.method) === selectedKey,
+          }),
+        );
+      }
+    }
+  }
+
+  // No selection → show the prompt. With a selection the controller owns the
+  // detail container (fills it with the timeseries chart on fetch resolution),
+  // so leave it untouched here to avoid clobbering an in-place chart on poll.
+  if (selectedEndpoint === null) {
+    renderSelectPrompt({ container: detailRoot });
+  }
+}

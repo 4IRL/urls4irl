@@ -11,6 +11,8 @@ vi.mock("../../lib/ajax.js", () => ({
 
 import {
   fetchGroupedTimeseries,
+  fetchLatency,
+  fetchLatencyTimeseries,
   fetchSummary,
   fetchTimeseries,
   fetchTopEvents,
@@ -223,6 +225,56 @@ describe("metrics-query-client", () => {
       expect(url).toBe(
         "/api/metrics/query/grouped-timeseries?event_name=api_metrics_ingest_batch&window=day&group_by=transport",
       );
+    });
+  });
+
+  describe("fetchLatency", () => {
+    it("forwards the window query parameter only", () => {
+      fetchLatency({ window: "day" });
+      expect(ajaxCallSpy).toHaveBeenCalledOnce();
+      const [method, url, data, timeout] = ajaxCallSpy.mock.calls[0];
+      expect(method).toBe("GET");
+      expect(url).toBe("/api/metrics/query/latency?window=day");
+      expect(data).toBeNull();
+      expect(timeout).toBe(5000);
+    });
+  });
+
+  describe("fetchLatencyTimeseries", () => {
+    it("forwards window, endpoint, method, and resolution", () => {
+      fetchLatencyTimeseries({
+        window: "week",
+        endpoint: "utubs.get_utub",
+        method: "GET",
+        resolution: "hour",
+      });
+      const [method, url, data, timeout] = ajaxCallSpy.mock.calls[0];
+      expect(method).toBe("GET");
+      expect(url).toBe(
+        "/api/metrics/query/latency/timeseries?window=week&endpoint=utubs.get_utub&method=GET&resolution=hour",
+      );
+      expect(data).toBeNull();
+      expect(timeout).toBe(5000);
+    });
+
+    it("omits method and resolution when not supplied", () => {
+      fetchLatencyTimeseries({ window: "day", endpoint: "utubs.get_utub" });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).toBe(
+        "/api/metrics/query/latency/timeseries?window=day&endpoint=utubs.get_utub",
+      );
+    });
+
+    it("omits method when null", () => {
+      fetchLatencyTimeseries({
+        window: "day",
+        endpoint: "utubs.get_utub",
+        method: null,
+        resolution: "day",
+      });
+      const [, url] = ajaxCallSpy.mock.calls[0];
+      expect(url).not.toContain("method=");
+      expect(url).toContain("resolution=day");
     });
   });
 });

@@ -7,6 +7,7 @@ from pydantic import ValidationError
 
 from backend.metrics.events import EventCategory, EventName
 from backend.metrics.flows import _parse_flow_filter_condition
+from backend.metrics.latency import LatencyMetricName
 from backend.schemas.metrics import (
     SummaryCategoryCount,
     SummaryResponseSchema,
@@ -21,6 +22,8 @@ from backend.schemas.requests.metrics import (
     _PARTIAL_RANGE_ERROR,
     _RANGE_ORDER_ERROR,
     GaugesTimeseriesQuerySchema,
+    LatencyQuerySchema,
+    LatencyTimeseriesQuerySchema,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,
@@ -702,3 +705,195 @@ def test_parse_flow_filter_condition_rejects_non_str_non_tuple():
     """
     with pytest.raises(ValueError):
         _parse_flow_filter_condition(42)
+
+
+# --------------------------- LatencyQuerySchema ----------------------------
+
+
+def test_latency_query_happy_path_with_window_only():
+    """`{"window": "day"}` parses; metric_name defaults to the sole metric, limit=25."""
+    parsed = LatencyQuerySchema.model_validate({"window": "day"})
+    assert parsed.window == "day"
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+    assert parsed.endpoint is None
+    assert parsed.method is None
+    assert parsed.device_type is None
+    assert parsed.limit == 25
+
+
+def test_latency_query_omitted_metric_name_defaults_to_sole_metric():
+    """An absent `metric_name` resolves to `api_request_duration` via the validator."""
+    parsed = LatencyQuerySchema.model_validate({"window": "day"})
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_query_explicit_null_metric_name_defaults_to_sole_metric():
+    """An explicit `metric_name=None` is mapped to the default by the before-validator."""
+    parsed = LatencyQuerySchema.model_validate({"window": "day", "metric_name": None})
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_query_accepts_absolute_range():
+    """`start`+`end` alone (no window) is accepted."""
+    parsed = LatencyQuerySchema.model_validate(
+        {"start": ABS_RANGE_START_ISO, "end": ABS_RANGE_END_ISO}
+    )
+    assert parsed.window is None
+    assert parsed.start == ABS_RANGE_START
+    assert parsed.end == ABS_RANGE_END
+
+
+def test_latency_query_accepts_known_metric_name():
+    """The sole `api_request_duration` metric name is accepted."""
+    parsed = LatencyQuerySchema.model_validate(
+        {"window": "day", "metric_name": "api_request_duration"}
+    )
+    assert parsed.metric_name == "api_request_duration"
+
+
+def test_latency_query_rejects_unknown_metric_name():
+    """An unknown metric name is rejected by the Literal."""
+    with pytest.raises(ValidationError):
+        LatencyQuerySchema.model_validate(
+            {"window": "day", "metric_name": "bogus_metric"}
+        )
+
+
+def test_latency_query_device_type_str_coerces_to_int():
+    """A digit-string `device_type` query param coerces to the int enum value."""
+    parsed = LatencyQuerySchema.model_validate({"window": "day", "device_type": "1"})
+    assert int(parsed.device_type) == 1
+
+
+def test_latency_query_device_type_invalid_rejected():
+    """A device_type outside {1, 2} is rejected."""
+    with pytest.raises(ValidationError):
+        LatencyQuerySchema.model_validate({"window": "day", "device_type": 3})
+
+
+def test_latency_query_limit_rejects_zero():
+    """`limit` has a `ge=1` bound; 0 is rejected."""
+    with pytest.raises(ValidationError):
+        LatencyQuerySchema.model_validate({"window": "day", "limit": 0})
+
+
+def test_latency_query_limit_rejects_over_max():
+    """`limit` has a `le=200` bound; 201 is rejected."""
+    with pytest.raises(ValidationError):
+        LatencyQuerySchema.model_validate({"window": "day", "limit": 201})
+
+
+def test_latency_query_limit_accepts_boundaries():
+    """`limit` accepts both 1 and 200 inclusive."""
+    assert LatencyQuerySchema.model_validate({"window": "day", "limit": 1}).limit == 1
+    assert (
+        LatencyQuerySchema.model_validate({"window": "day", "limit": 200}).limit == 200
+    )
+
+
+def test_latency_query_rejects_extra_keys():
+    """`extra="forbid"` rejects any unknown query param."""
+    with pytest.raises(ValidationError):
+        LatencyQuerySchema.model_validate({"window": "day", "foo": "bar"})
+
+
+def test_latency_query_rejects_window_and_range_together():
+    """Supplying both `window` and `start`+`end` is ambiguous → 400 via XOR validator."""
+    with pytest.raises(ValidationError) as exc_info:
+        LatencyQuerySchema.model_validate(
+            {
+                "window": "day",
+                "start": ABS_RANGE_START_ISO,
+                "end": ABS_RANGE_END_ISO,
+            }
+        )
+    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+
+
+def test_latency_query_rejects_missing_window_and_range():
+    """No window and no range → 400 via the missing-spec XOR branch."""
+    with pytest.raises(ValidationError) as exc_info:
+        LatencyQuerySchema.model_validate({})
+    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+
+
+def test_latency_query_rejects_partial_range():
+    """`start` without `end` is incomplete → 400 via the partial-range XOR branch."""
+    with pytest.raises(ValidationError) as exc_info:
+        LatencyQuerySchema.model_validate({"start": ABS_RANGE_START_ISO})
+    _assert_first_validation_message(exc_info.value, _PARTIAL_RANGE_ERROR)
+
+
+# ----------------------- LatencyTimeseriesQuerySchema ----------------------
+
+
+def test_latency_timeseries_query_happy_path():
+    """`{"window": "day", "endpoint": "..."}` parses; resolution defaults to hour."""
+    parsed = LatencyTimeseriesQuerySchema.model_validate(
+        {"window": "day", "endpoint": "utubs.get_utub"}
+    )
+    assert parsed.window == "day"
+    assert parsed.endpoint == "utubs.get_utub"
+    assert parsed.resolution == "hour"
+    assert parsed.method is None
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_timeseries_query_omitted_metric_name_defaults_to_sole_metric():
+    """An absent `metric_name` resolves to `api_request_duration` via the validator."""
+    parsed = LatencyTimeseriesQuerySchema.model_validate(
+        {"window": "day", "endpoint": "utubs.get_utub"}
+    )
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_timeseries_query_explicit_null_metric_name_defaults_to_sole_metric():
+    """An explicit `metric_name=None` is mapped to the default by the before-validator."""
+    parsed = LatencyTimeseriesQuerySchema.model_validate(
+        {"window": "day", "endpoint": "utubs.get_utub", "metric_name": None}
+    )
+    assert parsed.metric_name == LatencyMetricName.API_REQUEST_DURATION.value
+
+
+def test_latency_timeseries_query_requires_endpoint():
+    """`endpoint` is required — omitting it raises ValidationError."""
+    with pytest.raises(ValidationError):
+        LatencyTimeseriesQuerySchema.model_validate({"window": "day"})
+
+
+def test_latency_timeseries_query_accepts_resolution_day():
+    """`resolution=day` is accepted."""
+    parsed = LatencyTimeseriesQuerySchema.model_validate(
+        {"window": "day", "endpoint": "utubs.get_utub", "resolution": "day"}
+    )
+    assert parsed.resolution == "day"
+
+
+def test_latency_timeseries_query_rejects_bad_resolution():
+    """A resolution outside {hour, day} is rejected."""
+    with pytest.raises(ValidationError):
+        LatencyTimeseriesQuerySchema.model_validate(
+            {"window": "day", "endpoint": "utubs.get_utub", "resolution": "minute"}
+        )
+
+
+def test_latency_timeseries_query_rejects_extra_keys():
+    """`extra="forbid"` rejects any unknown query param."""
+    with pytest.raises(ValidationError):
+        LatencyTimeseriesQuerySchema.model_validate(
+            {"window": "day", "endpoint": "utubs.get_utub", "foo": "bar"}
+        )
+
+
+def test_latency_timeseries_query_rejects_window_and_range_together():
+    """Supplying both `window` and `start`+`end` is rejected by the XOR validator."""
+    with pytest.raises(ValidationError) as exc_info:
+        LatencyTimeseriesQuerySchema.model_validate(
+            {
+                "endpoint": "utubs.get_utub",
+                "window": "day",
+                "start": ABS_RANGE_START_ISO,
+                "end": ABS_RANGE_END_ISO,
+            }
+        )
+    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)

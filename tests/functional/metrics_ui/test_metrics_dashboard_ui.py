@@ -4,13 +4,15 @@ import pytest
 from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import Select, WebDriverWait
 
+from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.config import ConfigTestUI
 from backend.db import db
 from backend.metrics.events import DeviceType
 from backend.metrics.gauges import GaugeName
 from backend.models.anonymous_gauges import Anonymous_Gauges
+from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -35,6 +37,10 @@ PIPELINE_HEALTH_RENDER_TIMEOUT: int = 15
 FLOWS_RENDER_TIMEOUT: int = 15
 EXPECTED_FLOW_CARD_COUNT: int = 4
 GAUGES_RENDER_TIMEOUT: int = 15
+LATENCY_RENDER_TIMEOUT: int = 15
+# The seeder writes the same two endpoints for every device type, so the
+# per-endpoint percentile table groups down to exactly these two rows.
+EXPECTED_LATENCY_ROW_COUNT: int = len(SEED_LATENCY_ENDPOINTS)
 ALL_PIPELINE_HEALTH_BAR_SELECTORS: tuple[str, ...] = (
     MDL.PIPELINE_HEALTH_BAR_FETCH_DESKTOP,
     MDL.PIPELINE_HEALTH_BAR_FETCH_MOBILE,
@@ -509,3 +515,451 @@ def test_gauges_tab_renders_empty_state_with_no_data(
     assert (
         len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_ROW)) == 0
     ), "No gauge rows should render when the batched response is empty."
+
+
+def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded
+        AnonymousLatencySamples rows (a fixed durationMs distribution per
+        seeded endpoint × device type via `_seed_uniform_latency`)
+    WHEN an admin opens `/admin/metrics` and activates the Backend
+        Performance (Latency) tab
+    THEN the per-endpoint percentile table renders one row per seeded
+        endpoint with non-empty p50/p95/p99 values, the global summary is
+        hidden, only the select-an-endpoint prompt is shown (no chart), and
+        clicking a row replaces the prompt with that endpoint's
+        latency-over-time chart containing a plotted polyline.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # Latency is not the default tab — activate it explicitly so the
+    # "open dashboard, click Backend Performance, see table + chart" user
+    # journey is what gets validated.
+    latency_tab = wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+    assert latency_tab is not None
+    assert latency_tab.get_attribute("aria-selected") == "true"
+
+    latency_rows = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    assert len(latency_rows) == EXPECTED_LATENCY_ROW_COUNT, (
+        f"Expected exactly {EXPECTED_LATENCY_ROW_COUNT} per-endpoint latency "
+        f"rows, got {len(latency_rows)}."
+    )
+
+    # Every seeded endpoint string is present as a row, and each row's
+    # percentile cells carry a real value (not the en-dash null placeholder).
+    rendered_endpoints = {row.get_attribute("data-endpoint") for row in latency_rows}
+    seeded_endpoints = {endpoint for endpoint, _method in SEED_LATENCY_ENDPOINTS}
+    assert seeded_endpoints.issubset(rendered_endpoints), (
+        f"Seeded endpoints {seeded_endpoints} not all rendered; "
+        f"table shows {rendered_endpoints}."
+    )
+    for row in latency_rows:
+        metric_cells = row.find_elements(By.CSS_SELECTOR, "td.metric")
+        assert len(metric_cells) == 3, "Each row must have p50/p95/p99 cells."
+        for metric_cell in metric_cells:
+            assert metric_cell.text.strip(), "Percentile cell must not be empty."
+
+    # The global event-totals summary is hidden on the Latency tab.
+    summary = browser.find_element(By.CSS_SELECTOR, MDL.SUMMARY_SECTION)
+    assert not summary.is_displayed(), "Summary must be hidden on the Latency tab."
+
+    # No chart until a row is clicked — only the prompt is shown.
+    prompt = wait_for_element_presence(
+        browser, MDL.LATENCY_DETAIL_PROMPT, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert prompt is not None
+    assert prompt.text == ADMIN_METRICS_STRINGS.METRICS_LATENCY_SELECT_PROMPT
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_CHART)) == 0
+    ), "No latency chart should render before a row is clicked."
+
+    # Click the first seeded endpoint row; its timeseries chart must render
+    # with at least one plotted polyline segment.
+    first_endpoint = SEED_LATENCY_ENDPOINTS[0][0]
+    wait_then_click_element(
+        browser,
+        f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    chart_polyline = wait_for_element_presence(
+        browser, MDL.LATENCY_DETAIL_CHART_LINE, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert chart_polyline is not None
+    detail_charts = browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_CHART)
+    assert len(detail_charts) == 1, "Only the selected endpoint's chart should render."
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_PROMPT)) == 0
+    ), "The prompt must be replaced by the chart once a row is selected."
+
+
+def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded AnonymousLatencySamples
+        rows
+    WHEN an admin opens `/admin/metrics`, activates the Backend Performance
+        (Latency) tab, and views it at BOTH a wide desktop and a phone width
+    THEN at every width the percentile table renders as cards (no column table):
+        the header row is hidden, value cells lay out as flex "label value"
+        rows carrying the `ms` unit via `data-label`, and each endpoint name
+        renders in full with no horizontal overflow / ellipsis.
+    """
+    # Wide desktop first — the originally-reported truncation happened here, not
+    # only on phones — then a phone width. Cards must hold at both.
+    desktop_width = (1280, 900)
+    phone_width = (390, 844)
+    browser.set_window_size(*desktop_width)
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    for width, height in (desktop_width, phone_width):
+        browser.set_window_size(width, height)
+        latency_rows = browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)
+        assert len(latency_rows) == EXPECTED_LATENCY_ROW_COUNT
+
+        # Card mode is active: value cells lay out as flex rows (label + value)
+        # rather than table cells. (The header row is visually hidden via clip
+        # for screen readers, so geometry — not is_displayed — is the signal.)
+        sample_metric_cell = latency_rows[0].find_element(By.CSS_SELECTOR, "td.metric")
+        metric_display = browser.execute_script(
+            "return window.getComputedStyle(arguments[0]).display;",
+            sample_metric_cell,
+        )
+        assert metric_display == "flex", (
+            f"At {width}px metric cells must render as flex card rows; "
+            f"got '{metric_display}'."
+        )
+
+        for row in latency_rows:
+            endpoint_cell = row.find_element(By.CSS_SELECTOR, "td.endpoint")
+            # The full endpoint label is present (method + path), not an ellipsis.
+            expected_endpoint = row.get_attribute("data-endpoint")
+            assert expected_endpoint in endpoint_cell.text, (
+                f"Endpoint cell '{endpoint_cell.text}' must contain the full "
+                f"endpoint '{expected_endpoint}' at {width}px."
+            )
+            assert (
+                "…" not in endpoint_cell.text and "..." not in endpoint_cell.text
+            ), f"Endpoint name must not be truncated at {width}px."
+            # The wrapping cell must not overflow its box (truncation produces
+            # scrollWidth > clientWidth; a wrapping cell stays within its box).
+            overflowed = browser.execute_script(
+                "return arguments[0].scrollWidth > arguments[0].clientWidth + 1;",
+                endpoint_cell,
+            )
+            assert not overflowed, f"Endpoint cell overflows (truncated) at {width}px."
+
+            # Each percentile value surfaces its column label + unit via ::before.
+            p50_cell = row.find_elements(By.CSS_SELECTOR, "td.metric")[0]
+            before_content = browser.execute_script(
+                "return window.getComputedStyle(arguments[0], '::before').content;",
+                p50_cell,
+            )
+            assert "ms" in before_content, (
+                f"Metric label must include the 'ms' unit at {width}px; "
+                f"got {before_content}."
+            )
+
+
+def test_latency_cards_have_consistent_dividers_and_selected_ring(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded AnonymousLatencySamples
+        rows rendered as latency cards
+    WHEN an admin opens the Backend Performance (Latency) tab
+    THEN every card shares one identical surface colour (the inherited
+        `.top-table` zebra striping is neutralised — no "darker" alternating
+        cards), each metric row carries a visible ruled divider with none after
+        the final row, and selecting a card changes only its border (a green
+        ring), not its background.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    latency_rows = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    # Read before any hover/selection (mouse rests on the tab button, not a card)
+    # so the only background variation that could exist is the zebra striping.
+    card_backgrounds = {
+        browser.execute_script(
+            "return window.getComputedStyle(arguments[0]).backgroundColor;", row
+        )
+        for row in latency_rows
+    }
+    assert len(card_backgrounds) == 1, (
+        f"All latency cards must share one surface colour (no zebra striping); "
+        f"got {card_backgrounds}."
+    )
+
+    # Ruled rows: each metric line has a visible bottom divider; the last line
+    # (Samples) has none, so the divider never collides with the card border.
+    first_row = latency_rows[0]
+    metric_cell = first_row.find_element(By.CSS_SELECTOR, "td.metric")
+    samples_cell = first_row.find_element(By.CSS_SELECTOR, "td.samples")
+    metric_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderBottomWidth;",
+        metric_cell,
+    )
+    samples_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderBottomWidth;",
+        samples_cell,
+    )
+    assert metric_border != "0px", "Metric rows must show a ruled divider."
+    assert samples_border == "0px", "The last (Samples) row must have no divider."
+
+    # Selecting a card changes only its border (green ring) — not its surface.
+    unselected_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderTopColor;",
+        latency_rows[1],
+    )
+    wait_then_click_element(
+        browser,
+        f'{MDL.LATENCY_ROW}[data-endpoint="{SEED_LATENCY_ENDPOINTS[0][0]}"]',
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    selected_row = wait_for_element_presence(
+        browser, MDL.LATENCY_ROW_SELECTED, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert selected_row is not None
+    selected_border = browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderTopColor;", selected_row
+    )
+    assert selected_border != unselected_border, (
+        "The selected card must show a distinct (green) border ring; "
+        f"selected={selected_border}, unselected={unselected_border}."
+    )
+
+
+def test_latency_tab_renders_empty_state_with_no_samples(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the AnonymousLatencySamples table has been emptied AFTER the autouse
+        seed fixture (so the query window contains no samples)
+    WHEN an admin opens `/admin/metrics` and activates the Backend
+        Performance (Latency) tab
+    THEN the percentile table renders its empty-state row with the bridged
+        no-samples message and no per-endpoint rows are present.
+    """
+    with provide_app.app_context():
+        Anonymous_Latency_Samples.query.delete()
+        db.session.commit()
+
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    empty_row = wait_for_element_presence(
+        browser, MDL.LATENCY_EMPTY_ROW, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert empty_row is not None
+    assert empty_row.text.strip() == ADMIN_METRICS_STRINGS.METRICS_LATENCY_EMPTY
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)) == 0
+    ), "No per-endpoint latency rows should render when no samples exist."
+
+
+def test_latency_tab_shows_approximate_note_for_long_window(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded both raw
+        AnonymousLatencySamples and AnonymousLatencyDailyRollups rows
+    WHEN an admin opens the Backend Performance (Latency) tab on the
+        default "Day" window, then switches to the "Year" window, then to
+        the "Month" window
+    THEN with raw retention at 35 days the "Day" and "Month" windows stay
+        on the exact raw path (no approximate note), while only "Year"
+        crosses into the daily rollup tier — surfacing the
+        approximate-summary note on the table render and the
+        daily-resolution note once an endpoint's daily-grain trend chart
+        is rendered, while per-endpoint rows still render from the seeded
+        rollup data.
+
+    The approximate-summary note is injected by the percentile-table
+    render, so it appears as soon as the Year window's table lands. The
+    daily-resolution note is injected by the detail-chart renderer
+    (`renderLatencyDetailChart`), which only runs once an endpoint row is
+    selected and its timeseries fetch resolves — so the test clicks a row
+    on the Year window before asserting that note.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # Activate the Latency tab and wait for its initial (Day-window) render
+    # so the window-switch clicks below do not race the initial fetch.
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+    wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    # Day is inside the 35-day raw retention -> exact path, no notes.
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_APPROXIMATE_NOTE)) == 0
+    ), "The approximate note must be absent on the exact (Day) raw window."
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DAILY_RESOLUTION_NOTE))
+        == 0
+    ), "The daily-resolution note must be absent on the exact (Day) raw window."
+
+    # Year crosses the 35-day boundary -> rollup tier: approximate summary
+    # note + daily-resolution note appear, and per-endpoint rows still
+    # render from the seeded rollup data.
+    wait_then_click_element(
+        browser, MDL.WINDOW_YEAR_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    approximate_note = wait_for_element_presence(
+        browser, MDL.LATENCY_APPROXIMATE_NOTE, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert approximate_note is not None
+    assert (
+        approximate_note.text.strip()
+        == ADMIN_METRICS_STRINGS.METRICS_LATENCY_APPROXIMATE_NOTE
+    )
+
+    # The rollup still serves per-endpoint rows for the long window.
+    year_rows = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=1,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    assert (
+        len(year_rows) >= 1
+    ), "Year window must still render per-endpoint rollup rows."
+
+    # The daily-resolution note lives in the detail-chart container, which
+    # is only rendered once an endpoint row is selected. Click a seeded
+    # endpoint so the daily-grain trend chart (and its note) render.
+    first_endpoint = SEED_LATENCY_ENDPOINTS[0][0]
+    wait_then_click_element(
+        browser,
+        f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    daily_note = wait_for_element_presence(
+        browser, MDL.LATENCY_DAILY_RESOLUTION_NOTE, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert daily_note is not None
+    assert (
+        daily_note.text.strip()
+        == ADMIN_METRICS_STRINGS.METRICS_LATENCY_DAILY_RESOLUTION_NOTE
+    )
+
+    # Month (~28-31 days) is inside the 35-day raw retention -> exact path:
+    # both notes disappear again.
+    wait_then_click_element(
+        browser, MDL.WINDOW_MONTH_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    # The Month re-render replaces the table rows; wait for the exact-path
+    # render to land before asserting the notes were removed.
+    wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    def _both_notes_absent(driver: WebDriver) -> bool:
+        return (
+            len(driver.find_elements(By.CSS_SELECTOR, MDL.LATENCY_APPROXIMATE_NOTE))
+            == 0
+            and len(
+                driver.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DAILY_RESOLUTION_NOTE)
+            )
+            == 0
+        )
+
+    WebDriverWait(browser, LATENCY_RENDER_TIMEOUT).until(
+        _both_notes_absent,
+        "Both latency notes must be removed on the exact (Month) raw window.",
+    )

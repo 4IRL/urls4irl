@@ -84,32 +84,21 @@ Use exactly this structure:
 ### 2. <Phase title>
 ...
 
----
-
-### N. Verify All Tests Pass
-Final umbrella verification after every phase merges.
-
-**To-do:**
-- [ ] Run `make test-js` and confirm all JS/TS unit tests pass
-- [ ] Run `make test-integration-parallel` and confirm all integration tests pass
-- [ ] Run `make test-ui-parallel-built` and confirm all UI/functional tests pass
-- [ ] Investigate and fix any failures before marking the plan finished
-
 ## Status
 finished: false
 ```
 
 **Rules:**
-- Every non-verification step MUST have a `**Branch:**` line with a backtick-quoted branch name.
+- Every step MUST have a `**Branch:**` line with a backtick-quoted branch name.
 - To-dos are intentionally coarse — they name the work, not every file. Sub-plans elaborate.
 - Do NOT include TDD Enforcement, Package Pinning, Dead Import Elimination, Function Signature Change, or Frontend/Backend Colocation sections. Those belong in sub-plans (`/plan-creator` enforces them).
-- Do NOT include a Final Verification inside each phase — only the umbrella one as the last step.
+- Do NOT include any test-verification step (per-phase OR a final umbrella one). Each sub-plan already runs the full suites (`test-js`, `test-integration-parallel`, `test-ui-parallel-built`) as its last step, so the master needs no separate verification phase.
 - Separate steps with `---` horizontal rules for readability.
 
 ## Step 6: Validation
 
 Before reporting success, verify:
-1. Every non-verification step has a `**Branch:**` line matching the pattern `\*\*Branch:\*\* \`[^\`]+\``. Use Grep on the master plan file.
+1. Every step has a `**Branch:**` line matching the pattern `\*\*Branch:\*\* \`[^\`]+\``. Use Grep on the master plan file.
 2. The `## Status` block is present with `finished: false`.
 
 If any check fails, fix the plan file. Do not proceed to Step 7 until both pass.
@@ -136,13 +125,11 @@ Body structure:
 - Phase 1: <Phase title> — branch `<branch-name>`
 - Phase 2: <Phase title> — branch `<branch-name>`
 - ...
-- Verification
-
 ---
 Master plan: `plans/<parent-topic>/<name>-master.md`
 ```
 
-Pull phase titles and branch names directly from the master plan you just wrote. Exclude the final "Verify All Tests Pass" step — render it as `Verification` at the end.
+Pull phase titles and branch names directly from the master plan you just wrote.
 
 Infer labels using the same table in `.claude/skills/plan-creator/SKILL.md` § Step 4b, applied across ALL phases. Umbrella issues typically get more labels than a single sub-plan.
 

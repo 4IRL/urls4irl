@@ -1170,6 +1170,291 @@
         }
       }
     },
+    "/api/metrics/query/latency": {
+      "get": {
+        "operationId": "queryLatency",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return per-(endpoint, method) p50/p95/p99 request-latency percentiles for an admin time window.",
+        "parameters": [
+          {
+            "name": "metric_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "api_request_duration",
+              "type": "string"
+            },
+            "description": "Latency metric to query; defaults to api_request_duration."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "endpoint",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "description": "Optional Flask endpoint name to narrow the percentile rows to."
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 10,
+              "type": "string"
+            },
+            "description": "Optional HTTP method (GET, POST, etc.) to narrow the rows to."
+          },
+          {
+            "name": "device_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DeviceType"
+            },
+            "description": "Optional device-type filter (1=mobile, 2=desktop)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maximum": 200,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "description": "Maximum number of percentile rows to return (1-200)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/latency`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LatencyPercentilesResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/metrics/query/latency/timeseries": {
+      "get": {
+        "operationId": "queryLatencyTimeseries",
+        "tags": ["metrics"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": []
+          }
+        ],
+        "description": "Return zero-filled per-bucket p50/p95/p99 request-latency percentiles for one endpoint over an admin time window.",
+        "parameters": [
+          {
+            "name": "metric_name",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "api_request_duration",
+              "type": "string"
+            },
+            "description": "Latency metric to query; defaults to api_request_duration."
+          },
+          {
+            "name": "window",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Relative time window: day | week | month | year | Nh | Nd. Validated by parse_window() at the route layer. Mutually exclusive with `start`+`end`."
+          },
+          {
+            "name": "start",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Inclusive start of an absolute range (ISO-8601 with timezone \u2014 e.g., `2026-06-06T00:00:00Z` or `2026-06-06T00:00:00+05:00`). Naive datetimes are rejected at the schema layer via `AwareDatetime`. Must be paired with `end` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "end",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "format": "date-time",
+              "type": "string"
+            },
+            "description": "Exclusive end of an absolute range (ISO-8601 with timezone \u2014 same format as `start`). Must be paired with `start` and is mutually exclusive with `window`."
+          },
+          {
+            "name": "endpoint",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "type": "string"
+            },
+            "description": "Flask endpoint name the latency series is charted for (required)."
+          },
+          {
+            "name": "method",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "maxLength": 10,
+              "type": "string"
+            },
+            "description": "Optional HTTP method (GET, POST, etc.) to narrow the series to."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": ["hour", "day"],
+              "type": "string"
+            },
+            "description": "date_trunc resolution: hour (default) or day."
+          },
+          {
+            "name": "device_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DeviceType"
+            },
+            "description": "Optional device-type filter (1=mobile, 2=desktop)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Envelope returned by `GET /api/metrics/query/latency/timeseries`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/LatencyTimeseriesResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/search": {
       "get": {
         "operationId": "searchAcrossUtubs",
@@ -3529,6 +3814,230 @@
           }
         },
         "required": ["window_start", "window_end", "gauges"],
+        "type": "object"
+      },
+      "LatencyPercentileRow": {
+        "description": "One row of the `latency` query response \u2014 per-(endpoint, method) percentiles.\n\n`p50`/`p95`/`p99` are exact percentiles computed via Postgres\n`percentile_cont` over the raw `durationMs` samples in the window. They are\nnull only for a degenerate empty group (no samples), which the query never\nreturns \u2014 so in practice each row carries three floats plus a count.",
+        "properties": {
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Flask endpoint name the samples were attributed to (e.g. utubs.get_utub)."
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "HTTP method (GET, POST, etc.)."
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Median request duration in ms; null when no samples."
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "95th-percentile request duration in ms; null when no samples."
+          },
+          "p99": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "99th-percentile request duration in ms; null when no samples."
+          },
+          "sample_count": {
+            "description": "Number of raw samples aggregated into this row's percentiles.",
+            "type": "integer"
+          }
+        },
+        "required": ["sample_count"],
+        "type": "object"
+      },
+      "LatencyPercentilesResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/latency`.",
+        "properties": {
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "rows": {
+            "description": "Per-(endpoint, method) percentile rows ordered by p95 descending.",
+            "items": {
+              "$ref": "#/components/schemas/LatencyPercentileRow"
+            },
+            "type": "array"
+          },
+          "approximate": {
+            "default": false,
+            "description": "True when the window reaches beyond the raw-sample retention horizon and the summary percentiles are sample-count-weighted averages of daily rollups (approximate). False when served exactly from raw samples. The per-day timeseries stays exact regardless.",
+            "type": "boolean"
+          }
+        },
+        "required": ["window_start", "window_end", "rows"],
+        "type": "object"
+      },
+      "LatencyTimeseriesBucket": {
+        "description": "One bucket of the `latency/timeseries` query response.\n\nA zero-fill bucket (no samples in that interval) carries\n`p50 = p95 = p99 = None` and `sample_count = 0`; the renderer breaks the\npolyline at null buckets rather than charting a zero-latency point.",
+        "properties": {
+          "bucket": {
+            "description": "Bucket start (UTC, date_trunc'd to resolution).",
+            "format": "date-time",
+            "type": "string"
+          },
+          "p50": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Median duration in ms for this bucket; null when empty."
+          },
+          "p95": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "95th-percentile duration in ms for this bucket; null when empty."
+          },
+          "p99": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "99th-percentile duration in ms for this bucket; null when empty."
+          },
+          "sample_count": {
+            "description": "Number of samples in this bucket.",
+            "type": "integer"
+          }
+        },
+        "required": ["bucket", "sample_count"],
+        "type": "object"
+      },
+      "LatencyTimeseriesResponseSchema": {
+        "description": "Envelope returned by `GET /api/metrics/query/latency/timeseries`.",
+        "properties": {
+          "window": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Window value as supplied by the client; null when the client supplied an absolute `start`/`end` range instead."
+          },
+          "window_start": {
+            "description": "Inclusive UTC start of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "window_end": {
+            "description": "Exclusive UTC end of the window",
+            "format": "date-time",
+            "type": "string"
+          },
+          "endpoint": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Flask endpoint name the series is filtered to."
+          },
+          "method": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "HTTP method the series is filtered to, if any."
+          },
+          "buckets": {
+            "description": "Zero-filled per-bucket percentile series in chronological order.",
+            "items": {
+              "$ref": "#/components/schemas/LatencyTimeseriesBucket"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["window_start", "window_end", "buckets"],
         "type": "object"
       },
       "MatchedField": {

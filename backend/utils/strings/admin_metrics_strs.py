@@ -86,3 +86,26 @@ class ADMIN_METRICS_STRINGS:
     METRICS_GAUGE_COL_NAME: str = "Gauge"
     METRICS_GAUGE_COL_VALUE: str = "Value"
     METRICS_GAUGES_EMPTY: str = "No gauge samples recorded in the selected window."
+    METRICS_TAB_LATENCY: str = "Backend Performance"
+    METRICS_LATENCY_EMPTY: str = "No latency samples recorded in the selected window."
+    METRICS_LATENCY_SELECT_PROMPT: str = "Select an endpoint to view its latency trend"
+    METRICS_LATENCY_COL_ENDPOINT: str = "Endpoint"
+    METRICS_LATENCY_COL_P50: str = "p50 (ms)"
+    METRICS_LATENCY_COL_P95: str = "p95 (ms)"
+    METRICS_LATENCY_COL_P99: str = "p99 (ms)"
+    METRICS_LATENCY_COL_SAMPLES: str = "Samples"
+    METRICS_LATENCY_Y_AXIS_LABEL: str = "Latency (ms)"
+    METRICS_LATENCY_ROW_ARIA: str = (
+        "{{endpoint}}: p50 {{p50}} ms, p95 {{p95}} ms, p99 {{p99}} ms"
+    )
+    METRICS_LATENCY_SERIES_ARIA_P50: str = "p50 latency series"
+    METRICS_LATENCY_SERIES_ARIA_P95: str = "p95 latency series"
+    METRICS_LATENCY_SERIES_ARIA_P99: str = "p99 latency series"
+    METRICS_LATENCY_APPROXIMATE_NOTE: str = (
+        "Summary percentiles for this window are approximate (daily rollup); "
+        "the per-day trend below is exact."
+    )
+    METRICS_LATENCY_DAILY_RESOLUTION_NOTE: str = (
+        "Showing daily trend for this long window; hourly detail is only "
+        "available within the last 35 days."
+    )

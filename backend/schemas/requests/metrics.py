@@ -9,11 +9,13 @@ from pydantic import (
     BeforeValidator,
     ConfigDict,
     Field,
+    field_validator,
     model_validator,
 )
 
 from backend.metrics.events import EVENT_CATEGORY, DeviceType, EventCategory, EventName
 from backend.metrics.flows import ALL_FLOW_IDS
+from backend.metrics.latency import LatencyMetricName
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
 _BOTH_WINDOW_AND_RANGE_ERROR: str = (
@@ -453,6 +455,120 @@ class GaugesTimeseriesQuerySchema(BaseModel):
         default=None, description=_START_FIELD_DESCRIPTION
     )
     end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+
+# Latency `metric_name` filter. Only `api_request_duration` exists today; binding
+# to a Literal (rather than `str`) keeps the wire contract and OpenAPI surface in
+# lockstep with `LatencyMetricName` while rejecting unknown metric names at the
+# schema layer. `None` defaults to the sole metric at the route layer.
+LatencyMetricNameLiteral = Literal["api_request_duration"]
+
+
+class LatencyQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/latency`.
+
+    Returns per-(endpoint, method) p50/p95/p99 over an admin time window. Carries
+    the same window/range XOR as the other windowed query schemas plus optional
+    endpoint/method/device narrowing and a row `limit`.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric_name: LatencyMetricNameLiteral = Field(
+        default=LatencyMetricName.API_REQUEST_DURATION.value,
+        description="Latency metric to query; defaults to api_request_duration.",
+    )
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+    endpoint: str | None = Field(
+        default=None,
+        description="Optional Flask endpoint name to narrow the percentile rows to.",
+        max_length=255,
+    )
+    method: str | None = Field(
+        default=None,
+        description="Optional HTTP method (GET, POST, etc.) to narrow the rows to.",
+        max_length=10,
+    )
+    device_type: DeviceTypeFilter | None = Field(
+        default=None,
+        description="Optional device-type filter (1=mobile, 2=desktop).",
+    )
+    limit: int = Field(
+        default=25,
+        ge=1,
+        le=200,
+        description="Maximum number of percentile rows to return (1-200).",
+    )
+
+    @field_validator("metric_name", mode="before")
+    @classmethod
+    def _default_metric_name(cls, raw_metric_name: object) -> object:
+        # An absent or explicit-null `metric_name` resolves to the sole latency
+        # metric, so the route layer can consume the field unconditionally.
+        if raw_metric_name is None:
+            return LatencyMetricName.API_REQUEST_DURATION.value
+        return raw_metric_name
+
+    @model_validator(mode="after")
+    def _check_window_xor_range(self) -> Self:
+        _validate_window_xor_range(self.window, self.start, self.end)
+        return self
+
+
+class LatencyTimeseriesQuerySchema(BaseModel):
+    """Query params for `GET /api/metrics/query/latency/timeseries`.
+
+    Charts one endpoint's latency percentiles over time, so `endpoint` is
+    required (an unscoped percentile-over-time series would collapse every route
+    into one line). `resolution` reuses the shared hour/day `date_trunc` set.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric_name: LatencyMetricNameLiteral = Field(
+        default=LatencyMetricName.API_REQUEST_DURATION.value,
+        description="Latency metric to query; defaults to api_request_duration.",
+    )
+    window: str | None = Field(default=None, description=_WINDOW_FIELD_DESCRIPTION)
+    start: AwareDatetime | None = Field(
+        default=None, description=_START_FIELD_DESCRIPTION
+    )
+    end: AwareDatetime | None = Field(default=None, description=_END_FIELD_DESCRIPTION)
+    endpoint: str = Field(
+        description="Flask endpoint name the latency series is charted for (required).",
+        max_length=255,
+    )
+    method: str | None = Field(
+        default=None,
+        description="Optional HTTP method (GET, POST, etc.) to narrow the series to.",
+        max_length=10,
+    )
+    resolution: ResolutionLiteral = Field(
+        default="hour",
+        description="date_trunc resolution: hour (default) or day.",
+    )
+    device_type: DeviceTypeFilter | None = Field(
+        default=None,
+        description="Optional device-type filter (1=mobile, 2=desktop).",
+    )
+
+    @field_validator("metric_name", mode="before")
+    @classmethod
+    def _default_metric_name(cls, raw_metric_name: object) -> object:
+        # An absent or explicit-null `metric_name` resolves to the sole latency
+        # metric, so the route layer can consume the field unconditionally.
+        if raw_metric_name is None:
+            return LatencyMetricName.API_REQUEST_DURATION.value
+        return raw_metric_name
 
     @model_validator(mode="after")
     def _check_window_xor_range(self) -> Self:

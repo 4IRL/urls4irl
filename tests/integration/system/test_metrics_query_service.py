@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, time, timedelta, timezone
 from typing import Any, Generator
 
 import pytest
@@ -15,9 +15,12 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.latency import LatencyMetricName
 from backend.metrics.query_service import (
     grouped_count_by,
     grouped_count_scalar,
+    latency_percentiles,
+    latency_timeseries,
     summary,
     timeseries,
     top_events,
@@ -26,6 +29,8 @@ from backend.metrics.resources import Resource
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
+    truncate_latency_rollup_tables,
+    truncate_latency_tables,
     truncate_metrics_tables,
 )
 
@@ -37,6 +42,8 @@ _WINDOW_REFERENCE: datetime = datetime(2026, 1, 15, 12, 0, 0, tzinfo=timezone.ut
 
 def _truncate_metrics_and_registry(pg_conn: Any) -> None:
     truncate_metrics_tables(pg_conn)
+    truncate_latency_tables(pg_conn)
+    truncate_latency_rollup_tables(pg_conn)
     with pg_conn.cursor() as cur:
         cur.execute('DELETE FROM "EventRegistry"')
     pg_conn.commit()
@@ -101,6 +108,46 @@ def _insert_metric_row(
                 bucket_start,
                 json.dumps(dims),
                 count,
+            ),
+        )
+    pg_conn.commit()
+
+
+_LATENCY_METRIC = LatencyMetricName.API_REQUEST_DURATION
+
+
+def _insert_latency_row(
+    pg_conn: Any,
+    *,
+    observed_at: datetime,
+    duration_ms: float,
+    endpoint: str | None = None,
+    method: str | None = None,
+    dimensions: dict | None = None,
+    metric_name: LatencyMetricName = _LATENCY_METRIC,
+) -> None:
+    """Seed one AnonymousLatencySamples row via psycopg2.
+
+    Mirrors `_insert_metric_row` but targets the raw-sample latency table.
+    `AnonymousLatencySamples` has no FK to `EventRegistry`, so (unlike the
+    metrics helper) no registry row is required. The double-quoted identifiers
+    match the SQLAlchemy `__tablename__`/`name=` values exactly; PostgreSQL
+    folds unquoted identifiers to lowercase.
+    """
+    dims = dimensions if dimensions is not None else {}
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            'INSERT INTO "AnonymousLatencySamples"'
+            ' ("metricName", "endpoint", "method", "observedAt",'
+            ' "durationMs", "dimensions")'
+            " VALUES (%s, %s, %s, %s, %s, %s)",
+            (
+                metric_name.value,
+                endpoint,
+                method,
+                observed_at,
+                duration_ms,
+                json.dumps(dims),
             ),
         )
     pg_conn.commit()
@@ -2074,3 +2121,688 @@ def test_grouped_counts_device_type_nonnumeric_filter_value_raises_value_error(
             )
 
     assert "filter value for device_type must be an integer" in str(exc_info.value)
+
+
+# ----------------------------- latency ------------------------------------
+
+
+_LATENCY_ENDPOINT_FAST = "utubs.get_utub"
+_LATENCY_ENDPOINT_SLOW = "urls.add_url"
+
+
+def _count_latency_rows(pg_conn: Any) -> int:
+    """Return the raw COUNT(*) of AnonymousLatencySamples rows.
+
+    Used for assert-before-state checks proving the table starts empty before
+    the samples under test are seeded.
+    """
+    with pg_conn.cursor() as cur:
+        cur.execute('SELECT COUNT(*) FROM "AnonymousLatencySamples"')
+        return cur.fetchone()[0]
+
+
+def _count_latency_rollup_rows(pg_conn: Any) -> int:
+    """Return the COUNT(*) of AnonymousLatencyDailyRollups rows.
+
+    Used for assert-before-state checks proving the rollup table starts empty
+    before the rows under test are seeded.
+    """
+    with pg_conn.cursor() as cur:
+        cur.execute('SELECT COUNT(*) FROM "AnonymousLatencyDailyRollups"')
+        return cur.fetchone()[0]
+
+
+def _insert_latency_rollup_row(
+    pg_conn: Any,
+    *,
+    rollup_date: date,
+    p50_ms: float,
+    p95_ms: float,
+    p99_ms: float,
+    sample_count: int,
+    endpoint: str = _LATENCY_ENDPOINT_FAST,
+    method: str = "GET",
+    metric_name: LatencyMetricName = _LATENCY_METRIC,
+) -> None:
+    """Seed one AnonymousLatencyDailyRollups row via psycopg2.
+
+    Mirrors `_insert_latency_row` but targets the daily rollup table — the
+    source for windows beyond the raw-sample retention horizon. Stores the
+    precomputed daily percentiles plus the day's `sampleCount`.
+    """
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            'INSERT INTO "AnonymousLatencyDailyRollups"'
+            ' ("metricName", "endpoint", "method", "rollupDate",'
+            ' "p50Ms", "p95Ms", "p99Ms", "sampleCount", "dimensions")'
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            (
+                metric_name.value,
+                endpoint,
+                method,
+                rollup_date,
+                p50_ms,
+                p95_ms,
+                p99_ms,
+                sample_count,
+                json.dumps({}),
+            ),
+        )
+    pg_conn.commit()
+
+
+def test_latency_percentiles_empty_window_returns_empty_list(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN no AnonymousLatencySamples rows exist (assert-before-state)
+    WHEN latency_percentiles is called over the window
+    THEN the result is [] — the dashboard table renders its empty state.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.rows == [] and result.approximate is False
+
+
+def test_latency_percentiles_empty_rollup_window_returns_empty_approximate(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN no AnonymousLatencyDailyRollups rows exist (assert-before-state)
+    WHEN latency_percentiles is called over a window older than the 35-day raw
+        retention horizon, forcing the rollup (approximate) read path
+    THEN the result is [] and approximate=True — the dashboard renders its empty
+        state while still flagging the window as daily-resolution.
+    """
+    app = metrics_enabled_runner_app
+    now = _WINDOW_REFERENCE
+    window_start = now - timedelta(days=60)
+    window_end = now - timedelta(days=40)
+
+    assert _count_latency_rollup_rows(metrics_pg_conn) == 0
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=now,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.rows == []
+    assert result.approximate
+
+
+def test_latency_percentiles_exact_interpolated_values(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN ten samples [10,20,...,100] for one endpoint in the window
+    WHEN latency_percentiles is called
+    THEN p50/p95/p99 match the hand-computed `percentile_cont` interpolation
+        exactly (continuous, NOT discrete) and sample_count is 10.
+
+    `percentile_cont(p)` over n sorted values picks rank = p*(n-1) and linearly
+    interpolates between the floor and ceil ranks. For n=10:
+      p50 -> rank 4.5 -> (50 + 60) / 2          = 55.0
+      p95 -> rank 8.55 -> 90 + 0.55 * (100-90)  = 95.5
+      p99 -> rank 8.91 -> 90 + 0.91 * (100-90)  = 99.1
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+
+    for duration in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100):
+        _insert_latency_row(
+            metrics_pg_conn,
+            observed_at=inside,
+            duration_ms=float(duration),
+            endpoint=_LATENCY_ENDPOINT_FAST,
+            method="GET",
+        )
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.approximate is False
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row.endpoint == _LATENCY_ENDPOINT_FAST
+    assert row.method == "GET"
+    assert row.p50 == pytest.approx(55.0)
+    assert row.p95 == pytest.approx(95.5)
+    assert row.p99 == pytest.approx(99.1)
+    assert row.sample_count == 10
+
+
+def test_latency_percentiles_orders_by_p95_descending(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN two endpoints — a fast one ([10..100], p95=95.5) and a slow one
+        ([100..500], p95=480.0) — in the same window
+    WHEN latency_percentiles is called
+    THEN both rows are returned ordered by p95 descending (slowest first), so
+        the dashboard surfaces the worst-latency endpoint at the top.
+
+    Slow endpoint samples [100,200,300,400,500] (n=5):
+      p50 -> rank 2.0  -> 300.0
+      p95 -> rank 3.8  -> 400 + 0.8 * (500-400)  = 480.0
+      p99 -> rank 3.96 -> 400 + 0.96 * (500-400) = 496.0
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+
+    for duration in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100):
+        _insert_latency_row(
+            metrics_pg_conn,
+            observed_at=inside,
+            duration_ms=float(duration),
+            endpoint=_LATENCY_ENDPOINT_FAST,
+            method="GET",
+        )
+    for duration in (100, 200, 300, 400, 500):
+        _insert_latency_row(
+            metrics_pg_conn,
+            observed_at=inside,
+            duration_ms=float(duration),
+            endpoint=_LATENCY_ENDPOINT_SLOW,
+            method="POST",
+        )
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.approximate is False
+    assert [row.endpoint for row in result.rows] == [
+        _LATENCY_ENDPOINT_SLOW,
+        _LATENCY_ENDPOINT_FAST,
+    ]
+    slow_row = result.rows[0]
+    assert slow_row.p50 == pytest.approx(300.0)
+    assert slow_row.p95 == pytest.approx(480.0)
+    assert slow_row.p99 == pytest.approx(496.0)
+    assert slow_row.sample_count == 5
+
+
+def test_latency_percentiles_filters_by_endpoint_method_and_device(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN samples spread across two endpoints, two methods, and two device
+        types in the same window
+    WHEN latency_percentiles is called with endpoint+method+device_type filters
+    THEN only the samples matching all three narrow the result to a single row
+        whose sample_count reflects exactly the matching samples.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+
+    # Target: fast endpoint, GET, MOBILE (the two samples we want to keep).
+    for duration in (10.0, 30.0):
+        _insert_latency_row(
+            metrics_pg_conn,
+            observed_at=inside,
+            duration_ms=duration,
+            endpoint=_LATENCY_ENDPOINT_FAST,
+            method="GET",
+            dimensions={"device_type": int(DeviceType.MOBILE)},
+        )
+    # Same endpoint+method but DESKTOP — excluded by the device filter.
+    _insert_latency_row(
+        metrics_pg_conn,
+        observed_at=inside,
+        duration_ms=999.0,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+        dimensions={"device_type": int(DeviceType.DESKTOP)},
+    )
+    # Same endpoint+device but POST — excluded by the method filter.
+    _insert_latency_row(
+        metrics_pg_conn,
+        observed_at=inside,
+        duration_ms=888.0,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="POST",
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+    )
+    # Different endpoint — excluded by the endpoint filter.
+    _insert_latency_row(
+        metrics_pg_conn,
+        observed_at=inside,
+        duration_ms=777.0,
+        endpoint=_LATENCY_ENDPOINT_SLOW,
+        method="GET",
+        dimensions={"device_type": int(DeviceType.MOBILE)},
+    )
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            metric_name=_LATENCY_METRIC,
+            endpoint=_LATENCY_ENDPOINT_FAST,
+            method="GET",
+            device_type=DeviceType.MOBILE,
+            limit=25,
+        )
+
+    assert result.approximate is False
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row.endpoint == _LATENCY_ENDPOINT_FAST
+    assert row.method == "GET"
+    assert row.sample_count == 2
+    # Only [10, 30] remain: p50 -> rank 0.5 -> 10 + 0.5*(30-10) = 20.0
+    assert row.p50 == pytest.approx(20.0)
+
+
+def test_latency_timeseries_empty_window_zero_fills_with_none(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN no samples exist in a 3-hour window (assert-before-state)
+    WHEN latency_timeseries is called with resolution="hour"
+    THEN exactly 3 buckets are returned, each zero-filled with
+        p50 = p95 = p99 = None and sample_count = 0 across all three series.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(hours=3)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+
+    with app.app_context():
+        buckets = latency_timeseries(
+            metric_name=_LATENCY_METRIC,
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            resolution="hour",
+            endpoint=_LATENCY_ENDPOINT_FAST,
+        )
+
+    assert len(buckets) == 3
+    bucket_starts = [bucket.bucket for bucket in buckets]
+    assert bucket_starts == sorted(bucket_starts)
+    for bucket in buckets:
+        assert bucket.p50 is None
+        assert bucket.p95 is None
+        assert bucket.p99 is None
+        assert bucket.sample_count == 0
+
+
+def test_latency_timeseries_per_bucket_percentiles_and_zero_fill(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN samples [10,20,30,40,50] seeded into ONLY the middle of three
+        consecutive 1-hour buckets in the window
+    WHEN latency_timeseries is called with resolution="hour"
+    THEN exactly 3 buckets are returned: the seeded middle bucket carries the
+        hand-computed p50/p95/p99 for all three series and sample_count=5, while
+        the two empty buckets are zero-filled with None percentiles for all
+        three series and sample_count=0.
+
+    Middle-bucket samples [10,20,30,40,50] (n=5):
+      p50 -> rank 2.0  -> 30.0
+      p95 -> rank 3.8  -> 40 + 0.8 * (50-40)  = 48.0
+      p99 -> rank 3.96 -> 40 + 0.96 * (50-40) = 49.6
+    """
+    app = metrics_enabled_runner_app
+    # A 3-hour window aligned on the hour so each bucket is a clean hour.
+    window_start = _WINDOW_REFERENCE - timedelta(hours=3)
+    window_end = _WINDOW_REFERENCE
+    middle_bucket_start = window_start + timedelta(hours=1)
+    # Seed mid-bucket (offset into the hour) to prove the bucket is the
+    # truncated hour, not the exact sample instant.
+    inside_middle = middle_bucket_start + timedelta(minutes=20)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+
+    for duration in (10, 20, 30, 40, 50):
+        _insert_latency_row(
+            metrics_pg_conn,
+            observed_at=inside_middle,
+            duration_ms=float(duration),
+            endpoint=_LATENCY_ENDPOINT_FAST,
+            method="GET",
+        )
+
+    with app.app_context():
+        buckets = latency_timeseries(
+            metric_name=_LATENCY_METRIC,
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            resolution="hour",
+            endpoint=_LATENCY_ENDPOINT_FAST,
+        )
+
+    assert len(buckets) == 3
+    bucket_starts = [bucket.bucket for bucket in buckets]
+    assert bucket_starts == sorted(bucket_starts)
+
+    by_bucket = {bucket.bucket: bucket for bucket in buckets}
+    seeded = by_bucket[middle_bucket_start]
+    assert seeded.p50 == pytest.approx(30.0)
+    assert seeded.p95 == pytest.approx(48.0)
+    assert seeded.p99 == pytest.approx(49.6)
+    assert seeded.sample_count == 5
+
+    empty_buckets = [
+        bucket for bucket in buckets if bucket.bucket != middle_bucket_start
+    ]
+    assert len(empty_buckets) == 2
+    for bucket in empty_buckets:
+        assert bucket.p50 is None
+        assert bucket.p95 is None
+        assert bucket.p99 is None
+        assert bucket.sample_count == 0
+
+
+def test_latency_percentiles_recent_window_is_exact_and_not_approximate(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN raw samples [10..100] inside a 1-day window AND rollup rows that would
+        produce different values (assert-before-state: both tables empty first)
+    WHEN latency_percentiles is called with `now` such that the window is inside
+        the 35-day raw retention horizon
+    THEN the result is served from raw samples (exact percentiles) with
+        approximate=False — the rollup rows are ignored on the recent path.
+    """
+    app = metrics_enabled_runner_app
+    window_end = _WINDOW_REFERENCE
+    window_start = window_end - timedelta(days=1)
+    inside = window_start + timedelta(hours=1)
+
+    assert _count_latency_rows(metrics_pg_conn) == 0
+    assert _count_latency_rollup_rows(metrics_pg_conn) == 0
+
+    for duration in (10, 20, 30, 40, 50, 60, 70, 80, 90, 100):
+        _insert_latency_row(
+            metrics_pg_conn,
+            observed_at=inside,
+            duration_ms=float(duration),
+            endpoint=_LATENCY_ENDPOINT_FAST,
+            method="GET",
+        )
+    # A rollup row for the same day with deliberately different values, to prove
+    # the recent path never reads it.
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=window_start.date(),
+        p50_ms=999.0,
+        p95_ms=999.0,
+        p99_ms=999.0,
+        sample_count=42,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+    )
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=window_end,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.approximate is False
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row.p50 == pytest.approx(55.0)
+    assert row.p95 == pytest.approx(95.5)
+    assert row.p99 == pytest.approx(99.1)
+    assert row.sample_count == 10
+
+
+def test_latency_percentiles_old_window_is_weighted_average_and_approximate(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN two daily rollup rows for one endpoint inside a window older than the
+        35-day raw retention horizon (assert-before-state: rollup table empty)
+    WHEN latency_percentiles is called with `now` placing the window beyond raw
+        retention
+    THEN the result is approximate=True and each percentile is the
+        sample-count-weighted average of the daily values.
+
+    Hand-computed weighted p95 over two days:
+      day1: p95=100.0, count=10  -> contributes 100*10 = 1000
+      day2: p95=200.0, count=30  -> contributes 200*30 = 6000
+      weighted p95 = (1000 + 6000) / (10 + 30) = 7000 / 40 = 175.0
+    p50 weighted = (50*10 + 150*30) / 40 = (500 + 4500) / 40 = 125.0
+    p99 weighted = (110*10 + 210*30) / 40 = (1100 + 6300) / 40 = 185.0
+    sample_count = 40
+    """
+    app = metrics_enabled_runner_app
+    now = _WINDOW_REFERENCE
+    window_start = now - timedelta(days=60)
+    window_end = now - timedelta(days=40)
+    day_one = window_start.date() + timedelta(days=1)
+    day_two = window_start.date() + timedelta(days=2)
+
+    assert _count_latency_rollup_rows(metrics_pg_conn) == 0
+
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=day_one,
+        p50_ms=50.0,
+        p95_ms=100.0,
+        p99_ms=110.0,
+        sample_count=10,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+    )
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=day_two,
+        p50_ms=150.0,
+        p95_ms=200.0,
+        p99_ms=210.0,
+        sample_count=30,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+    )
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=now,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.approximate is True
+    assert len(result.rows) == 1
+    row = result.rows[0]
+    assert row.endpoint == _LATENCY_ENDPOINT_FAST
+    assert row.method == "GET"
+    assert row.p50 == pytest.approx(125.0)
+    assert row.p95 == pytest.approx(175.0)
+    assert row.p99 == pytest.approx(185.0)
+    assert row.sample_count == 40
+
+
+def test_latency_percentiles_old_window_orders_by_weighted_p95_descending(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN rollup rows for a fast endpoint (weighted p95=100) and a slow endpoint
+        (weighted p95=400) in a window older than raw retention
+    WHEN latency_percentiles is called on the rollup path
+    THEN rows are ordered by weighted p95 descending (slowest endpoint first).
+    """
+    app = metrics_enabled_runner_app
+    now = _WINDOW_REFERENCE
+    window_start = now - timedelta(days=60)
+    window_end = now - timedelta(days=40)
+    day_one = window_start.date() + timedelta(days=1)
+
+    assert _count_latency_rollup_rows(metrics_pg_conn) == 0
+
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=day_one,
+        p50_ms=50.0,
+        p95_ms=100.0,
+        p99_ms=110.0,
+        sample_count=10,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+    )
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=day_one,
+        p50_ms=300.0,
+        p95_ms=400.0,
+        p99_ms=410.0,
+        sample_count=10,
+        endpoint=_LATENCY_ENDPOINT_SLOW,
+        method="POST",
+    )
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=now,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.approximate is True
+    assert [row.endpoint for row in result.rows] == [
+        _LATENCY_ENDPOINT_SLOW,
+        _LATENCY_ENDPOINT_FAST,
+    ]
+
+
+def test_latency_timeseries_old_window_reads_daily_rollup_with_zero_fill(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN rollup rows seeded on two non-adjacent days inside a window older than
+        raw retention, with one gap day between them
+    WHEN latency_timeseries is called with resolution="hour" (which must coerce
+        to daily grain because the window is beyond raw retention)
+    THEN one bucket per UTC day is returned, the two seeded days carry their
+        exact stored percentiles, and the gap day zero-fills with None — proving
+        the date->datetime bucket-key conversion aligns with the day cursor.
+    """
+    app = metrics_enabled_runner_app
+    now = _WINDOW_REFERENCE
+    window_start = (now - timedelta(days=50)).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    window_end = window_start + timedelta(days=3)
+    day_zero = window_start.date()
+    day_two = window_start.date() + timedelta(days=2)
+
+    assert _count_latency_rollup_rows(metrics_pg_conn) == 0
+
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=day_zero,
+        p50_ms=11.0,
+        p95_ms=22.0,
+        p99_ms=33.0,
+        sample_count=5,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+    )
+    _insert_latency_rollup_row(
+        metrics_pg_conn,
+        rollup_date=day_two,
+        p50_ms=44.0,
+        p95_ms=55.0,
+        p99_ms=66.0,
+        sample_count=7,
+        endpoint=_LATENCY_ENDPOINT_FAST,
+        method="GET",
+    )
+
+    with app.app_context():
+        buckets = latency_timeseries(
+            metric_name=_LATENCY_METRIC,
+            window_start=window_start,
+            window_end=window_end,
+            now=now,
+            resolution="hour",
+            endpoint=_LATENCY_ENDPOINT_FAST,
+        )
+
+    assert len(buckets) == 3
+    by_bucket = {bucket.bucket: bucket for bucket in buckets}
+
+    seeded_zero = by_bucket[datetime.combine(day_zero, time.min, tzinfo=timezone.utc)]
+    assert seeded_zero.p50 == pytest.approx(11.0)
+    assert seeded_zero.p95 == pytest.approx(22.0)
+    assert seeded_zero.p99 == pytest.approx(33.0)
+    assert seeded_zero.sample_count == 5
+
+    seeded_two = by_bucket[datetime.combine(day_two, time.min, tzinfo=timezone.utc)]
+    assert seeded_two.p50 == pytest.approx(44.0)
+    assert seeded_two.p95 == pytest.approx(55.0)
+    assert seeded_two.p99 == pytest.approx(66.0)
+    assert seeded_two.sample_count == 7
+
+    gap_day = window_start.date() + timedelta(days=1)
+    gap_bucket = by_bucket[datetime.combine(gap_day, time.min, tzinfo=timezone.utc)]
+    assert gap_bucket.p50 is None
+    assert gap_bucket.p95 is None
+    assert gap_bucket.p99 is None
+    assert gap_bucket.sample_count == 0

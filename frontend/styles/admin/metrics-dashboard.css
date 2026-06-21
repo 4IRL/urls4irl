@@ -898,6 +898,216 @@
     min-height: 120px;
 }
 
+/* Backend Performance (Latency) tab. Reveal the panel-scoped spinner only while
+ * the Latency panel itself is loading — NOT for any root #MetricsDashboard
+ * fetch (mirrors the gauges spinner). */
+.latency-loading-spinner {
+    display: none;
+}
+
+#MetricsPanelLatency[aria-busy="true"] .latency-loading-spinner {
+    display: block;
+    width: 18px;
+    height: 18px;
+    margin: 0.5rem auto;
+    border: 2px solid var(--borderColor);
+    border-top-color: var(--splashGreen);
+    border-radius: 50%;
+    animation: metricsGaugeSpin 0.8s linear infinite;
+}
+
+/* Stacked layout: the percentile table on top, the selected endpoint's latency
+ * trend (or a select-an-endpoint prompt) beneath it — mirrors .gauge-grid so the
+ * layout collapses gracefully under 992px without a fixed multi-column grid. */
+.latency-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* "Approximate summary" caution badge, injected before the percentile table for
+ * windows beyond the 35-day raw retention. Amber caution accent (mirrors the
+ * .flush-badge/.cause-pill pill shape) but wraps on mobile (white-space: normal)
+ * and stays compact (align-self: flex-start) inside the flex-column grid. */
+.latency-approximate-note {
+    border: 1px solid var(--editURLColor);
+    color: var(--editURLColor);
+    background: var(--panelBackgroundColor);
+    border-radius: 999px;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    white-space: normal;
+    align-self: flex-start;
+}
+
+.latency-approximate-note .dot {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background-color: var(--editURLColor);
+    box-shadow: 0 0 8px var(--editURLColor);
+}
+
+/* Daily-resolution caption, injected before the chart container for long windows
+ * whose trend is served at daily grain. */
+.latency-daily-note {
+    color: var(--cardURLTextColor);
+    font-size: 0.82rem;
+    font-style: italic;
+    margin: 0;
+    align-self: flex-start;
+}
+
+/* The percentile table renders as responsive cards at EVERY width — the column
+ * table truncated endpoint names on any narrow-ish screen. The header row is
+ * hidden (its labels move into each cell via data-label) and each endpoint is a
+ * card: full (wrapping) name as a heading, then one labeled "label  value" line
+ * per metric. tbody is an auto-fill grid so cards flow into multiple columns on
+ * wide screens and collapse to a single column on phones. */
+.latency-table {
+    display: block;
+    width: 100%;
+}
+
+.latency-table thead {
+    /* Labels live in each cell's data-label; keep the header in the a11y tree
+     * (table aria-label + per-row aria) but remove it visually. */
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.latency-table tbody {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.75rem;
+}
+
+.latency-table tr {
+    display: block;
+}
+
+.latency-table td {
+    display: block;
+    width: 100%;
+}
+
+/* The empty-state / no-match row spans the full grid width. */
+.MetricsLatencyEmptyRow {
+    grid-column: 1 / -1;
+}
+
+.latency-row {
+    cursor: pointer;
+    /* 44px min touch target for the clickable row (the row IS the widget). */
+    min-height: 44px;
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem;
+}
+
+/* Every card owns ONE consistent surface on the row — explicitly override the
+ * inherited .top-table zebra striping (nth-child) and the per-td hover/aria
+ * backgrounds so cards never differ by position or selection, only by the green
+ * selected ring. Backgrounds live on the row; td's stay transparent. */
+.latency-table tbody tr.latency-row,
+.latency-table tbody tr.latency-row:nth-child(odd),
+.latency-table tbody tr.latency-row:nth-child(even) {
+    background-color: var(--cardBackgroundColor);
+}
+
+.latency-table tbody tr.latency-row td,
+.latency-table tbody tr.latency-row:hover td {
+    background-color: transparent;
+}
+
+.latency-table tbody tr.latency-row:hover {
+    background-color: var(--panelHoverBackgroundColor, rgba(0, 0, 0, 0.04));
+}
+
+.latency-row:focus-visible {
+    outline: 2px solid var(--splashGreen);
+    outline-offset: -2px;
+}
+
+/* Selected = green ring only; the surface stays identical to every other card. */
+.latency-row--selected {
+    border-color: var(--splashGreen);
+    box-shadow: inset 0 0 0 1px var(--splashGreen);
+}
+
+.latency-table td.endpoint {
+    white-space: normal;
+    word-break: break-word;
+    font-weight: 600;
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.1rem;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+/* Ruled rows: a uniform divider under the endpoint name and between every metric
+ * line, identical on all cards (the inherited .top-table per-td border is made
+ * explicit here for reliability); no trailing divider after the last row. */
+.latency-table td.metric,
+.latency-table td.samples {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    white-space: nowrap;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--borderColor);
+}
+
+.latency-table td.samples {
+    border-bottom: none;
+}
+
+.latency-table td.metric::before,
+.latency-table td.samples::before {
+    content: attr(data-label);
+    color: var(--cardURLTextColor);
+    font-size: 0.8rem;
+    text-align: left;
+}
+
+.latency-detail {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.latency-detail-prompt {
+    margin: 0;
+    color: var(--cardURLTextColor);
+    text-align: center;
+    padding: 2rem 1rem;
+}
+
+.latency-chart {
+    width: 100%;
+    height: auto;
+    /* read-only chart — min-height keeps SVG labels legible at narrow widths */
+    min-height: 120px;
+}
+
+.MetricsLatencyLine {
+    fill: none;
+    stroke-width: 2;
+}
+
+.MetricsLatencyLegendLabel {
+    font-size: 0.7rem;
+    fill: var(--cardURLTextColor);
+}
+
 .flow-header {
     display: flex;
     flex-wrap: wrap;

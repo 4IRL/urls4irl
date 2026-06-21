@@ -22,8 +22,12 @@ from backend.db import db
 from backend.config import Config, ConfigProd
 from backend.extensions.email_sender.email_sender import EmailSender
 from backend.extensions.metrics.middleware import init_metrics_middleware
-from backend.extensions.metrics.writer import MetricsWriter
+from backend.extensions.metrics.writer import (
+    MetricsWriter,
+    validate_latency_cap_overrides,
+)
 from backend.extensions.notifications.notifications import NotificationSender
+from backend.extensions.request_timing import init_app as init_request_timing
 from backend.extensions.url_validation.url_validator import UrlValidator
 from backend.cli.metrics import register_metrics_cli
 from backend.cli.mock_options import register_mocks_db_cli
@@ -108,6 +112,11 @@ def create_app(
     if app.config.get("SQLALCHEMY_ENGINE_OPTIONS") is None:
         app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
 
+    # Must stay FIRST: stamps the monotonic request clock before any other
+    # before_request hook (notably the rate limiter, which can abort with a 429)
+    # can short-circuit the request. app_logger and the metrics hook both read it.
+    init_request_timing(app)
+
     app_logger.init_app(app, show_test_logs)
 
     sess.init_app(app)
@@ -184,6 +193,10 @@ def create_app(
         from backend.debug.routes import debug as debug_routes
 
         app.register_blueprint(debug_routes)
+
+    # All blueprints are registered above, so the url_map is fully populated;
+    # validate cap-override keys here (not in init_app, where url_map is empty).
+    validate_latency_cap_overrides(app)
 
     register_metrics_cli(app)
     register_mocks_db_cli(app)

@@ -405,6 +405,7 @@ class MetricsDashboardLocators(GenericPageLocator):
     TAB_PIPELINE_HEALTH_BUTTON = "#MetricsTabPipelineHealth"
     TAB_FLOWS_BUTTON = "#MetricsTabFlows"
     TAB_GAUGES_BUTTON = "#MetricsTabGauges"
+    TAB_LATENCY_BUTTON = "#MetricsTabLatency"
 
     # Per-section table IDs
     TOP_TABLE_API = "#MetricsTopTableApi"
@@ -480,6 +481,25 @@ class MetricsDashboardLocators(GenericPageLocator):
     GAUGES_DETAIL_PROMPT = "#MetricsGaugeGrid .gauge-detail-prompt"
     GAUGES_DETAIL_CHART = "#MetricsGaugeGrid .gauge-detail svg.gauge-chart"
     GAUGES_PANEL_EMPTY_STATE = "#MetricsGaugeGrid .MetricsEmptyState"
+
+    # Backend Performance / Latency tab (per-endpoint percentile table; click a
+    # row to show that endpoint's multi-series latency-over-time chart).
+    LATENCY_PANEL = "#MetricsPanelLatency"
+    LATENCY_TABLE = "#MetricsLatencyTable"
+    LATENCY_ROW = "#MetricsLatencyTable tbody tr.latency-row"
+    LATENCY_ROW_SELECTED = "#MetricsLatencyTable tbody tr.latency-row--selected"
+    LATENCY_EMPTY_ROW = "#MetricsLatencyTable tbody tr.MetricsLatencyEmptyRow"
+    LATENCY_DETAIL_CONTAINER = "#MetricsLatencyChartContainer"
+    LATENCY_DETAIL_PROMPT = "#MetricsLatencyChartContainer .latency-detail-prompt"
+    LATENCY_DETAIL_CHART = "#MetricsLatencyChartContainer svg.latency-chart"
+    LATENCY_DETAIL_CHART_LINE = (
+        "#MetricsLatencyChartContainer svg.latency-chart polyline"
+    )
+    LATENCY_DETAIL_CHART_EMPTY_STATE = (
+        "#MetricsLatencyChartContainer svg.latency-chart .MetricsEmptyState"
+    )
+    LATENCY_APPROXIMATE_NOTE = "#MetricsLatencyGrid .latency-approximate-note"
+    LATENCY_DAILY_RESOLUTION_NOTE = "#MetricsLatencyGrid .latency-daily-note"
 
 
 class SettingsPageLocators(GenericPageLocator):
