@@ -48,16 +48,18 @@ _PRUNE_ROW_DURATION = 42.5
 
 @pytest.fixture(autouse=True)
 def _release_flush_lock(provide_metrics_redis: Redis):
-    """Release the flush lock, liveness sentinel, and prune sentinel between
-    tests so each test starts from a clean slate.
+    """Release the flush lock, liveness sentinel, prune sentinel, and rollup
+    sentinel between tests so each test starts from a clean slate.
     """
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
     provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
     provide_metrics_redis.delete(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY)
+    provide_metrics_redis.delete(METRICS_REDIS.LATENCY_LAST_ROLLUP_KEY)
     yield
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
     provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
     provide_metrics_redis.delete(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY)
+    provide_metrics_redis.delete(METRICS_REDIS.LATENCY_LAST_ROLLUP_KEY)
 
 
 def _select_latency_rows(pg_conn: Any) -> list[tuple]:
