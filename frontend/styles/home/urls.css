@@ -234,6 +234,10 @@ a.urlString {
     padding-bottom: 0;
 }
 
+.urlTagsContainer {
+    flex-wrap: wrap;
+}
+
 .urlTagsContainer span:first-child {
     margin-left: 0;
 }

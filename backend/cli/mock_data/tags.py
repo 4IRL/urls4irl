@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from backend.cli.mock_constants import MOCK_TAGS
+from backend.cli.mock_constants import MOCK_TAGS, TEST_USER_COUNT
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -25,7 +25,11 @@ def generate_mock_tags(db: SQLAlchemy):
             )
             if not tag_in_utub:
                 print(f"Adding {tag} as a tag to utub")
-                new_tag = Utub_Tags(utub_id=utub.id, tag_string=tag, created_by=idx + 1)
+                new_tag = Utub_Tags(
+                    utub_id=utub.id,
+                    tag_string=tag,
+                    created_by=(idx % TEST_USER_COUNT) + 1,
+                )
                 db.session.add(new_tag)
 
     db.session.commit()
@@ -38,7 +42,7 @@ def generate_mock_tags(db: SQLAlchemy):
         for url in urls_in_utub:
             if len(url.url_tags) == len(MOCK_TAGS):
                 print(
-                    f"{url.standalone_url.url_string} in {utub.name}, ID={utub.id} has 5 tags"
+                    f"{url.standalone_url.url_string} in {utub.name}, ID={utub.id} has {len(MOCK_TAGS)} tags"
                 )
                 continue
 
