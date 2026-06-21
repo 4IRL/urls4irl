@@ -18,8 +18,13 @@
 }
 
 /* Zebra-stripe odd/even rows (mirrors the URL list) so rows don't blend into one
-   mass. Excludes selected/hover rows so their highlight wins. */
-.UTubSelector:nth-child(even):not(.active):not(:hover) {
+   mass. Excludes selected/hover rows so their highlight wins. Uses JS-assigned
+   `.even`/`.odd` classes (recomputed over VISIBLE rows in
+   applyAlternatingUTubSelectorBackground) rather than `:nth-child`, because the
+   name filter hides rows with `.hidden` and `:nth-child` would still count them,
+   misaligning the stripes among the visible subset. Base `.UTubSelector` is the
+   card color (the even/first visible row); `.odd` elevates to the panel color. */
+.UTubSelector.odd:not(.active):not(:hover) {
     background-color: var(--panelBackgroundColor);
 }
 

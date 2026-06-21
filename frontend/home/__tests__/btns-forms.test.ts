@@ -261,7 +261,7 @@ describe("btns-forms", () => {
     it("does not run float-label logic for UTubNameSearch input", () => {
       document.body.innerHTML = `
         <input id="UTubNameSearch" type="search" value="" />
-        <label style="display:none;">Search UTub Names</label>
+        <label style="display:none;">Filter UTubs</label>
       `;
       const input = document.getElementById(
         "UTubNameSearch",

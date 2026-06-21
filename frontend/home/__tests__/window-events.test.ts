@@ -66,8 +66,7 @@ vi.mock("../tags/deck.js", () => ({
 vi.mock("../search/cross-utub-search.js", () => ({
   exitCrossUtubSearchMode: (...args: unknown[]) =>
     mockExitCrossUtubSearchMode(...args),
-  isCrossUtubSearchActive: (...args: unknown[]) =>
-    mockIsCrossUtubSearchActive(...args),
+  isCrossUtubSearchActive: () => mockIsCrossUtubSearchActive(),
   restoreCrossUtubSearchFromHistory: (...args: unknown[]) =>
     mockRestoreCrossUtubSearchFromHistory(...args),
 }));

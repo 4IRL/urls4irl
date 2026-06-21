@@ -32,6 +32,7 @@ vi.mock("../utils.js", () => ({
   updateUTubDeckCount: vi.fn(),
 }));
 vi.mock("../search.js", () => ({
+  applyAlternatingUTubSelectorBackground: vi.fn(),
   resetUTubSearch: vi.fn(),
   showUTubSearchBar: vi.fn(),
 }));

@@ -23,7 +23,10 @@ vi.mock("../utils.js", () => ({
   getNumOfUTubs: vi.fn(() => 0),
   updateUTubDeckCount: vi.fn(),
 }));
-vi.mock("../search.js", () => ({ resetUTubSearch: vi.fn() }));
+vi.mock("../search.js", () => ({
+  applyAlternatingUTubSelectorBackground: vi.fn(),
+  resetUTubSearch: vi.fn(),
+}));
 vi.mock("../../btns-forms.js", () => ({ hideInputs: vi.fn() }));
 vi.mock("../../init.js", () => ({ setUIWhenNoUTubSelected: vi.fn() }));
 vi.mock("../../mobile.js", () => ({

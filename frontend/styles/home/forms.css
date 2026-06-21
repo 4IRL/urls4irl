@@ -37,6 +37,17 @@
     transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
 }
 
+/* Suppress the browser's native search clear ("X") affordance on the local
+   filter inputs. It's UA-styled (e.g. blue on some platforms) and only appears
+   on focus+text, duplicating the app's own custom orange close buttons
+   (#utubNameFilterBtnClose / #URLSearchFilterIconClose). Mirrors the same
+   suppression already applied to #crossUtubSearchInput. */
+#UTubNameSearch::-webkit-search-cancel-button,
+#URLContentSearch::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+}
+
 .url-search-prefix-icon,
 .utub-search-prefix-icon {
     position: absolute;

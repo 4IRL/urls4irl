@@ -16,7 +16,11 @@ import {
   updateUTubDeckCount,
 } from "./utils.js";
 import { createUTubSelector, selectUTub } from "./selectors.js";
-import { resetUTubSearch, showUTubSearchBar } from "./search.js";
+import {
+  applyAlternatingUTubSelectorBackground,
+  resetUTubSearch,
+  showUTubSearchBar,
+} from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
 import { getState, setState } from "../../store/app-store.js";
 import {
@@ -276,6 +280,7 @@ function createUTubSuccess(response: CreateUtubResponse): void {
   );
   $("#listUTubs").prepend(newUTubSelector);
   updateUTubDeckCount();
+  applyAlternatingUTubSelectorBackground();
 
   if (getNumOfUTubs() === 1) showUTubSearchBar();
 
