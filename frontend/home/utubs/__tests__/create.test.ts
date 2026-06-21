@@ -7,7 +7,10 @@ import { createUTubSelector, selectUTub } from "../selectors.js";
 import { getNumOfUTubs } from "../utils.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { setCreateUTubEventListeners } from "../create.js";
-import { showUTubSearchBar } from "../search.js";
+import {
+  applyAlternatingUTubSelectorBackground,
+  showUTubSearchBar,
+} from "../search.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -115,6 +118,9 @@ describe("createUTubSuccess - first-create search-bar guard", () => {
     expect(vi.mocked(selectUTub)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(createUTubSelector)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(setState)).toHaveBeenCalled();
+    expect(
+      vi.mocked(applyAlternatingUTubSelectorBackground),
+    ).toHaveBeenCalled();
   });
 
   it("does not call showUTubSearchBar when more than one UTub already exists (count > 1)", () => {

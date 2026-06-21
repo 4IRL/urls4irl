@@ -9,6 +9,7 @@ import {
 } from "../deck.js";
 import { getNumOfUTubs } from "../utils.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { applyAlternatingUTubSelectorBackground } from "../search.js";
 import { setDeleteEventListeners } from "../delete.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
@@ -125,5 +126,8 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
 
     expect(vi.mocked(hideInputsAndUpdateUTubDeck)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(resetUTubDeckIfNoUTubs)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(applyAlternatingUTubSelectorBackground),
+    ).toHaveBeenCalled();
   });
 });

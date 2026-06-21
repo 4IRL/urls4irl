@@ -36,8 +36,8 @@ function readUTubsFromDOM(): UTubSelectorEntry[] {
 // after every structural change (build/create/delete) and every filter show/hide.
 export function applyAlternatingUTubSelectorBackground(): void {
   const visibleSelectors = $("#listUTubs > .UTubSelector").not(".hidden");
-  visibleSelectors.each((index, selector) => {
-    $(selector)
+  visibleSelectors.each((index, utubSelectorElem) => {
+    $(utubSelectorElem)
       .removeClass("odd even")
       .addClass(index % 2 === 0 ? "even" : "odd");
   });

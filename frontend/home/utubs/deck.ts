@@ -9,6 +9,7 @@ import {
   setUTubSelectorEventListeners,
 } from "./selectors.js";
 import {
+  applyAlternatingUTubSelectorBackground,
   hideUTubSearchBar,
   setUTubNameFilterToggleListeners,
   setUTubSelectorSearchEventListener,
@@ -73,6 +74,10 @@ export function buildUTubDeck(
     }
 
     hideInputsAndUpdateUTubDeck();
+    // Zebra-stripe the freshly-built rows. utubs.css keys striping off the
+    // JS-assigned `.even`/`.odd` classes (not `:nth-child`), so every path that
+    // materializes the row set must (re)apply them.
+    applyAlternatingUTubSelectorBackground();
   } else {
     resetUTubDeckIfNoUTubs();
   }
@@ -88,6 +93,10 @@ export function setUTubEventListenersOnInitialPageLoad(): void {
   setUTubSelectorSearchEventListener();
   setUTubNameFilterToggleListeners();
   updateUTubDeckCount();
+  // The initial deck is server-rendered (Jinja), so this listener-setup path —
+  // not buildUTubDeck — is what runs on a fresh page load. Stripe those rows
+  // here, since utubs.css now relies on the JS-assigned `.even`/`.odd` classes.
+  applyAlternatingUTubSelectorBackground();
 }
 
 export function resetUTubDeckIfNoUTubs(): void {

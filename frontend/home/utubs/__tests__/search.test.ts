@@ -103,6 +103,16 @@ describe("UTub Search", () => {
       expect($("#UTubSearchNoResults").hasClass("hidden")).toBe(true);
       expect($("#UTubSearchNoResults").text()).toBe("");
     });
+
+    it("re-applies alternating even/odd classes after un-hiding rows", () => {
+      $(".UTubSelector").addClass("hidden");
+
+      resetUTubSearch();
+
+      expect($('.UTubSelector[utubid="1"]').hasClass("even")).toBe(true);
+      expect($('.UTubSelector[utubid="2"]').hasClass("odd")).toBe(true);
+      expect($('.UTubSelector[utubid="3"]').hasClass("even")).toBe(true);
+    });
   });
 
   describe("typing into #UTubNameSearch", () => {
