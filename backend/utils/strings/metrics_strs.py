@@ -23,3 +23,10 @@ class METRICS_REDIS:
     # glob — a collision would make the flush worker parse this sentinel as a
     # sample key and silently discard it, breaking the prune guard.
     LATENCY_LAST_PRUNE_KEY: str = "metrics:prune:latency_last_epoch"
+    # Daily-rollup sentinel: the flush worker stamps this with the current Unix
+    # epoch after each successful nightly rollup build so the rollup runs at most
+    # once per LATENCY_ROLLUP_INTERVAL_SECONDS. Deliberately under the
+    # `metrics:rollup:` prefix (not `metrics:latency:`) so it can never match the
+    # `metrics:latency:*` drain glob — a collision would make the flush worker
+    # parse this sentinel as a sample key and silently discard it.
+    LATENCY_LAST_ROLLUP_KEY: str = "metrics:rollup:latency_last_epoch"

@@ -24,6 +24,7 @@ keys into Postgres.
 from __future__ import annotations
 
 from collections import namedtuple
+from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
 import logging
@@ -152,6 +153,54 @@ LATENCY_INSERT_SQL: str = """
 LATENCY_PRUNE_SQL: str = """
     DELETE FROM "AnonymousLatencySamples"
     WHERE "observedAt" < NOW() - (%s * INTERVAL '1 day')
+"""
+
+# Nightly rollup build: aggregate raw samples in the completed-day window into
+# one precomputed daily percentile row per (metric, endpoint, method, UTC day).
+# Both date_trunc occurrences (SELECT list and GROUP BY) pin the bucket to UTC
+# via AT TIME ZONE 'UTC' so midnight-boundary requests bucket into the correct
+# calendar day regardless of the psycopg2 session timezone. The endpoint/method
+# NOT NULL filter is defensive: the rollup table forbids NULLs while the raw
+# table allows them, so legacy samples lacking endpoint data are skipped rather
+# than failing the INSERT. ON CONFLICT makes the upsert idempotent so a re-run
+# (self-heal / late-arriving samples) merges into the existing day's row.
+LATENCY_ROLLUP_UPSERT_SQL: str = """
+    INSERT INTO "AnonymousLatencyDailyRollups"
+        ("metricName", "endpoint", "method", "rollupDate",
+         "p50Ms", "p95Ms", "p99Ms", "sampleCount")
+    SELECT
+        "metricName",
+        "endpoint",
+        "method",
+        date_trunc('day', "observedAt" AT TIME ZONE 'UTC')::date,
+        percentile_cont(0.5) WITHIN GROUP (ORDER BY "durationMs"),
+        percentile_cont(0.95) WITHIN GROUP (ORDER BY "durationMs"),
+        percentile_cont(0.99) WITHIN GROUP (ORDER BY "durationMs"),
+        count(*)
+    FROM "AnonymousLatencySamples"
+    WHERE "observedAt" >= %s
+      AND "observedAt" < %s
+      AND "endpoint" IS NOT NULL
+      AND "method" IS NOT NULL
+    GROUP BY
+        "metricName",
+        "endpoint",
+        "method",
+        date_trunc('day', "observedAt" AT TIME ZONE 'UTC')::date
+    ON CONFLICT ("metricName", "endpoint", "method", "rollupDate")
+    DO UPDATE SET
+        "p50Ms" = EXCLUDED."p50Ms",
+        "p95Ms" = EXCLUDED."p95Ms",
+        "p99Ms" = EXCLUDED."p99Ms",
+        "sampleCount" = EXCLUDED."sampleCount"
+"""
+
+# Rollup-table retention prune: delete rollup rows older than the rollup
+# retention window. Same psycopg2-safe `%s * INTERVAL '1 day'` form as the raw
+# prune (never `INTERVAL %s` with a string parameter).
+LATENCY_ROLLUP_PRUNE_SQL: str = """
+    DELETE FROM "AnonymousLatencyDailyRollups"
+    WHERE "rollupDate" < (NOW() - (%s * INTERVAL '1 day'))::date
 """
 
 
@@ -291,6 +340,7 @@ def run_flush(
             # Latency drain + prune still run on an empty counter namespace —
             # latency lists accumulate independently of counters.
             run_latency_flush(redis_client=redis_client, pg_conn=pg_conn)
+            run_latency_rollup(redis_client=redis_client, pg_conn=pg_conn)
             prune_latency_samples(redis_client=redis_client, pg_conn=pg_conn)
             _record_flush_success(redis_client)
             return 0
@@ -311,6 +361,7 @@ def run_flush(
         # commits, AFTER the counter commit. _record_flush_success moves to AFTER
         # both so the sentinel only advances on a fully-successful flush cycle.
         run_latency_flush(redis_client=redis_client, pg_conn=pg_conn)
+        run_latency_rollup(redis_client=redis_client, pg_conn=pg_conn)
         prune_latency_samples(redis_client=redis_client, pg_conn=pg_conn)
 
         _record_flush_success(redis_client)
@@ -418,6 +469,92 @@ def run_latency_flush(
         )
     pg_conn.commit()
     return len(rows)
+
+
+def run_latency_rollup(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+) -> int:
+    """Build the daily percentile rollup and prune the rollup table, at most once/day.
+
+    Called from ``run_flush`` AFTER ``run_latency_flush`` and BEFORE
+    ``prune_latency_samples`` so the rollup always leads the raw prune — a
+    completed UTC day is rolled up well before the 35-day raw prune reclaims it,
+    and history accrues from day one.
+
+    Sentinel-guarded by ``metrics:rollup:latency_last_epoch`` (a key under the
+    ``metrics:rollup:`` prefix so it can never match the ``metrics:latency:*``
+    drain glob). Runs the build only if the sentinel is absent or older than
+    ``LATENCY_ROLLUP_INTERVAL_SECONDS``. Best-effort on the Redis sentinel reads/
+    writes: a Redis hiccup is swallowed-and-logged so the rollup still runs but
+    won't spam, while the Postgres UPSERT/DELETE+commit remain the authoritative
+    work.
+
+    Re-rolls the last ``LATENCY_ROLLUP_BACKFILL_DAYS`` completed UTC days each
+    run (excluding today, still accumulating) so a missed night self-heals and
+    late-arriving samples merge via the idempotent ON CONFLICT upsert.
+
+    Best-effort, fail-isolated contract: the UPSERT and the rollup-prune DELETE
+    each run in their OWN ``try/except``. On failure, each block calls
+    ``pg_conn.rollback()`` FIRST — so the connection is returned to a clean idle
+    state for the subsequent ``prune_latency_samples`` and
+    ``_record_flush_success`` callers (without the rollback, a partially-executed
+    statement leaves psycopg2 in an aborted-transaction state and the very next
+    operation raises ``current transaction is aborted``) — then
+    ``logger.exception(...)`` and returns early. A failure in either block thus
+    NEVER prevents the subsequent raw prune or the success sentinel from
+    advancing. The sentinel is stamped only after both blocks complete.
+
+    Returns the number of rollup rows written (UPSERTed), or 0 if the sentinel
+    guard skips this run or an error short-circuits it.
+    """
+    now_epoch = int(time.time())
+    try:
+        raw_last_rollup = redis_client.get(METRICS_REDIS.LATENCY_LAST_ROLLUP_KEY)
+    except Exception:
+        logger.exception("failed to read latency rollup sentinel")
+        raw_last_rollup = None
+    if raw_last_rollup is not None:
+        try:
+            last_rollup_epoch = int(raw_last_rollup)
+        except (TypeError, ValueError):
+            last_rollup_epoch = 0
+        if now_epoch - last_rollup_epoch < LATENCY_ROLLUP_INTERVAL_SECONDS:
+            return 0
+
+    today_utc = datetime.now(timezone.utc).replace(
+        hour=0, minute=0, second=0, microsecond=0
+    )
+    window_end = today_utc
+    window_start = today_utc - timedelta(days=LATENCY_ROLLUP_BACKFILL_DAYS)
+
+    rollup_rows_written = 0
+    try:
+        with pg_conn.cursor() as cursor:
+            cursor.execute(LATENCY_ROLLUP_UPSERT_SQL, (window_start, window_end))
+            rollup_rows_written = cursor.rowcount
+        pg_conn.commit()
+    except Exception:
+        pg_conn.rollback()
+        logger.exception("latency rollup upsert failed")
+        return 0
+
+    try:
+        with pg_conn.cursor() as cursor:
+            cursor.execute(LATENCY_ROLLUP_PRUNE_SQL, (LATENCY_ROLLUP_RETENTION_DAYS,))
+        pg_conn.commit()
+    except Exception:
+        pg_conn.rollback()
+        logger.exception("latency rollup prune failed")
+        return 0
+
+    try:
+        redis_client.set(METRICS_REDIS.LATENCY_LAST_ROLLUP_KEY, str(now_epoch))
+    except Exception:
+        logger.exception("failed to stamp latency rollup sentinel")
+
+    return rollup_rows_written
 
 
 def prune_latency_samples(

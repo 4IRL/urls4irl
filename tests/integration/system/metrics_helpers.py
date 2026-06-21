@@ -112,6 +112,14 @@ def truncate_latency_tables(pg_conn: Any) -> None:
     pg_conn.commit()
 
 
+def truncate_latency_rollup_tables(pg_conn: Any) -> None:
+    with pg_conn.cursor() as cursor:
+        cursor.execute(
+            'TRUNCATE TABLE "AnonymousLatencyDailyRollups" RESTART IDENTITY CASCADE'
+        )
+    pg_conn.commit()
+
+
 def find_latency_keys(metrics_redis: Redis, metric_value: str) -> list[bytes]:
     pattern = f"{METRICS_REDIS.LATENCY_KEY_PREFIX}*:{metric_value}:*"
     return list(metrics_redis.scan_iter(match=pattern))
