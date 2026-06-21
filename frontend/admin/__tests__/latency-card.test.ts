@@ -49,6 +49,7 @@ function buildResponse(
     window_start: WINDOW_START,
     window_end: WINDOW_END,
     rows,
+    approximate: false,
   };
 }
 

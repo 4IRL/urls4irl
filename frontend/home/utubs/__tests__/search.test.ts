@@ -1,4 +1,5 @@
 import {
+  applyAlternatingUTubSelectorBackground,
   closeUTubNameFilter,
   hideUTubSearchBar,
   isUTubSearchActive,
@@ -28,7 +29,7 @@ const SEARCH_HTML = `
       <div class="text-input-inner-container">
         <span class="utub-search-prefix-icon" aria-hidden="true"></span>
         <input id="UTubNameSearch" type="search" value="" />
-        <label class="text-input-label" for="UTubNameSearch">Search UTub Names</label>
+        <label class="text-input-label" for="UTubNameSearch">Filter UTubs</label>
       </div>
     </div>
     <p id="UTubSearchNoResults" class="hidden"></p>
@@ -101,6 +102,16 @@ describe("UTub Search", () => {
 
       expect($("#UTubSearchNoResults").hasClass("hidden")).toBe(true);
       expect($("#UTubSearchNoResults").text()).toBe("");
+    });
+
+    it("re-applies alternating even/odd classes after un-hiding rows", () => {
+      $(".UTubSelector").addClass("hidden");
+
+      resetUTubSearch();
+
+      expect($('.UTubSelector[utubid="1"]').hasClass("even")).toBe(true);
+      expect($('.UTubSelector[utubid="2"]').hasClass("odd")).toBe(true);
+      expect($('.UTubSelector[utubid="3"]').hasClass("even")).toBe(true);
     });
   });
 
@@ -242,6 +253,43 @@ describe("UTub Search", () => {
         expect($(this).hasClass("hidden")).toBe(false);
       });
       expect($("#UTubSearchNoResults").hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("alternating background (zebra striping)", () => {
+    it("assigns alternating even/odd classes across all visible selectors", () => {
+      applyAlternatingUTubSelectorBackground();
+
+      expect($('.UTubSelector[utubid="1"]').hasClass("even")).toBe(true);
+      expect($('.UTubSelector[utubid="2"]').hasClass("odd")).toBe(true);
+      expect($('.UTubSelector[utubid="3"]').hasClass("even")).toBe(true);
+    });
+
+    it("excludes .hidden rows from the alternating index after filtering", () => {
+      // Filter out the middle row: the visible rows (1 and 3) must alternate as
+      // even/odd by VISIBLE order — not keep the even/even they'd get from a
+      // :nth-child rule that counts the hidden row.
+      vi.mocked(filterUTubsByName).mockReturnValue([2]);
+
+      $("#UTubNameSearch").val("a").trigger("input");
+
+      expect($('.UTubSelector[utubid="2"]').hasClass("hidden")).toBe(true);
+      expect($('.UTubSelector[utubid="1"]').hasClass("even")).toBe(true);
+      expect($('.UTubSelector[utubid="1"]').hasClass("odd")).toBe(false);
+      expect($('.UTubSelector[utubid="3"]').hasClass("odd")).toBe(true);
+      expect($('.UTubSelector[utubid="3"]').hasClass("even")).toBe(false);
+    });
+
+    it("restripes by full order again once the filter is cleared", () => {
+      vi.mocked(filterUTubsByName).mockReturnValue([2]);
+      $("#UTubNameSearch").val("a").trigger("input");
+      expect($('.UTubSelector[utubid="3"]').hasClass("odd")).toBe(true);
+
+      $("#UTubNameSearch").val("").trigger("input");
+
+      expect($('.UTubSelector[utubid="1"]').hasClass("even")).toBe(true);
+      expect($('.UTubSelector[utubid="2"]').hasClass("odd")).toBe(true);
+      expect($('.UTubSelector[utubid="3"]').hasClass("even")).toBe(true);
     });
   });
 

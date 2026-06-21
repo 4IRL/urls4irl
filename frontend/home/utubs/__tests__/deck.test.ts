@@ -4,7 +4,10 @@ import {
   setUTubDeckWhenNoUTubSelected,
   setUTubEventListenersOnInitialPageLoad,
 } from "../deck.js";
-import { setUTubNameFilterToggleListeners } from "../search.js";
+import {
+  applyAlternatingUTubSelectorBackground,
+  setUTubNameFilterToggleListeners,
+} from "../search.js";
 import { updateUTubDeckCount } from "../utils.js";
 
 vi.mock("../selectors.js", () => ({
@@ -12,6 +15,7 @@ vi.mock("../selectors.js", () => ({
   setUTubSelectorEventListeners: vi.fn(),
 }));
 vi.mock("../search.js", () => ({
+  applyAlternatingUTubSelectorBackground: vi.fn(),
   hideUTubSearchBar: vi.fn(),
   setUTubNameFilterToggleListeners: vi.fn(),
   setUTubSelectorSearchEventListener: vi.fn(),
@@ -85,5 +89,13 @@ describe("UTub deck initial page-load wiring", () => {
 
     expect(setUTubNameFilterToggleListeners).toHaveBeenCalledTimes(1);
     expect(updateUTubDeckCount).toHaveBeenCalledTimes(1);
+  });
+
+  it("zebra-stripes the server-rendered rows on initial page load", () => {
+    setUTubEventListenersOnInitialPageLoad();
+
+    expect(
+      vi.mocked(applyAlternatingUTubSelectorBackground),
+    ).toHaveBeenCalledTimes(1);
   });
 });

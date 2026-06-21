@@ -28,10 +28,26 @@ function readUTubsFromDOM(): UTubSelectorEntry[] {
   }));
 }
 
+// Re-stripe the VISIBLE UTub selectors with alternating `.even`/`.odd` classes.
+// The name filter hides non-matching rows via the `.hidden` class; a CSS
+// `:nth-child` rule would still count those hidden rows and misalign the stripes
+// among the visible subset, so the visible rows are re-indexed here instead.
+// Mirrors reapplyAlternatingURLCardBackgroundAfterFilter for the URL deck. Called
+// after every structural change (build/create/delete) and every filter show/hide.
+export function applyAlternatingUTubSelectorBackground(): void {
+  const visibleSelectors = $("#listUTubs > .UTubSelector").not(".hidden");
+  visibleSelectors.each((index, utubSelectorElem) => {
+    $(utubSelectorElem)
+      .removeClass("odd even")
+      .addClass(index % 2 === 0 ? "even" : "odd");
+  });
+}
+
 // Updates displayed UTub selectors based on the provided array
 function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
   if (filteredUTubIDsToHide.length === 0) {
     $(".UTubSelector").removeClass("hidden");
+    applyAlternatingUTubSelectorBackground();
     return;
   }
   const hideSet = new Set(filteredUTubIDsToHide);
@@ -45,6 +61,7 @@ function updatedUTubSelectorDisplay(filteredUTubIDsToHide: number[]): void {
       $(utubSelectors[index]).removeClass("hidden");
     }
   }
+  applyAlternatingUTubSelectorBackground();
 }
 
 function showUTubSearchNoResults(): void {
@@ -138,6 +155,7 @@ export function resetUTubSearch(): void {
   searchInput.val("");
   searchInput.off("keydown.searchInputEsc");
   $(".UTubSelector").removeClass("hidden");
+  applyAlternatingUTubSelectorBackground();
   hideUTubSearchNoResults();
 }
 

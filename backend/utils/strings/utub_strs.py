@@ -14,7 +14,7 @@ UTUB_DELETE_WARNING = "This action is irreversible!"
 UTUB_CREATE_MSG = "Create a UTub"
 UTUB_SELECT = "Select a UTub"
 UTUB_SEARCH_NO_RESULTS = "No UTubs found"
-UTUB_SEARCH_PLACEHOLDER = "Search UTub Names"
+UTUB_SEARCH_PLACEHOLDER = "Filter UTubs"
 UTUB_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} UTubs shown"
 
 

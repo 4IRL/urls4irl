@@ -16,7 +16,10 @@ import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getNumOfUTubs, updateUTubDeckCount } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
-import { resetUTubSearch } from "./search.js";
+import {
+  applyAlternatingUTubSelectorBackground,
+  resetUTubSearch,
+} from "./search.js";
 
 type DeleteUtubResponse = SuccessResponse<"deleteUtub">;
 
@@ -130,6 +133,7 @@ function deleteUTubSuccess(utubID: number): void {
   utubSelector.fadeOut("slow", () => {
     utubSelector.remove();
     updateUTubDeckCount();
+    applyAlternatingUTubSelectorBackground();
 
     setState({
       utubs: getState().utubs.filter((utub) => utub.id !== utubID),

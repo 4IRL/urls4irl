@@ -652,10 +652,14 @@
         min-height: 2.75rem;
     }
 
+    /* Keep the URL anchor in normal inline flow (NOT a flex container): the link
+       text is interleaved with <mark> highlight spans, and flexing the anchor
+       would make each run a flex item — combined with word-break:break-all the
+       <mark> shrinks to its 1-char min-content width and stacks vertically.
+       Reach the ≥44px touch target with block layout + vertical padding instead. */
     a.crossSearchUrl {
         min-height: 2.75rem;
-        display: flex;
-        align-items: center;
+        padding-block: 0.5rem;
     }
 
     .crossSearchHitCard {
