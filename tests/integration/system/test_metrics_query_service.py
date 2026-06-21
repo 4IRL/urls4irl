@@ -2218,6 +2218,37 @@ def test_latency_percentiles_empty_window_returns_empty_list(
     assert result.rows == [] and result.approximate is False
 
 
+def test_latency_percentiles_empty_rollup_window_returns_empty_approximate(
+    metrics_enabled_runner_app: Flask,
+    metrics_pg_conn: Any,
+) -> None:
+    """
+    GIVEN no AnonymousLatencyDailyRollups rows exist (assert-before-state)
+    WHEN latency_percentiles is called over a window older than the 35-day raw
+        retention horizon, forcing the rollup (approximate) read path
+    THEN the result is [] and approximate=True — the dashboard renders its empty
+        state while still flagging the window as daily-resolution.
+    """
+    app = metrics_enabled_runner_app
+    now = _WINDOW_REFERENCE
+    window_start = now - timedelta(days=60)
+    window_end = now - timedelta(days=40)
+
+    assert _count_latency_rollup_rows(metrics_pg_conn) == 0
+
+    with app.app_context():
+        result = latency_percentiles(
+            window_start=window_start,
+            window_end=window_end,
+            now=now,
+            metric_name=_LATENCY_METRIC,
+            limit=25,
+        )
+
+    assert result.rows == []
+    assert result.approximate
+
+
 def test_latency_percentiles_exact_interpolated_values(
     metrics_enabled_runner_app: Flask,
     metrics_pg_conn: Any,
