@@ -4,11 +4,11 @@ import pytest
 from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import Select, WebDriverWait
 
+from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.config import ConfigTestUI
 from backend.db import db
-from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.metrics.events import DeviceType
 from backend.metrics.gauges import GaugeName
 from backend.models.anonymous_gauges import Anonymous_Gauges
@@ -829,3 +829,137 @@ def test_latency_tab_renders_empty_state_with_no_samples(
     assert (
         len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)) == 0
     ), "No per-endpoint latency rows should render when no samples exist."
+
+
+def test_latency_tab_shows_approximate_note_for_long_window(
+    browser: WebDriver,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+):
+    """
+    GIVEN the autouse `seeded_metrics` fixture has seeded both raw
+        AnonymousLatencySamples and AnonymousLatencyDailyRollups rows
+    WHEN an admin opens the Backend Performance (Latency) tab on the
+        default "Day" window, then switches to the "Year" window, then to
+        the "Month" window
+    THEN with raw retention at 35 days the "Day" and "Month" windows stay
+        on the exact raw path (no approximate note), while only "Year"
+        crosses into the daily rollup tier — surfacing the
+        approximate-summary note on the table render and the
+        daily-resolution note once an endpoint's daily-grain trend chart
+        is rendered, while per-endpoint rows still render from the seeded
+        rollup data.
+
+    The approximate-summary note is injected by the percentile-table
+    render, so it appears as soon as the Year window's table lands. The
+    daily-resolution note is injected by the detail-chart renderer
+    (`renderLatencyDetailChart`), which only runs once an endpoint row is
+    selected and its timeseries fetch resolves — so the test clicks a row
+    on the Year window before asserting that note.
+    """
+    login_admin_and_open_metrics_dashboard(
+        app=provide_app,
+        browser=browser,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # Activate the Latency tab and wait for its initial (Day-window) render
+    # so the window-switch clicks below do not race the initial fetch.
+    wait_then_click_element(
+        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+    wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    # Day is inside the 35-day raw retention -> exact path, no notes.
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_APPROXIMATE_NOTE)) == 0
+    ), "The approximate note must be absent on the exact (Day) raw window."
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DAILY_RESOLUTION_NOTE))
+        == 0
+    ), "The daily-resolution note must be absent on the exact (Day) raw window."
+
+    # Year crosses the 35-day boundary -> rollup tier: approximate summary
+    # note + daily-resolution note appear, and per-endpoint rows still
+    # render from the seeded rollup data.
+    wait_then_click_element(
+        browser, MDL.WINDOW_YEAR_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    approximate_note = wait_for_element_presence(
+        browser, MDL.LATENCY_APPROXIMATE_NOTE, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert approximate_note is not None
+    assert (
+        approximate_note.text.strip()
+        == ADMIN_METRICS_STRINGS.METRICS_LATENCY_APPROXIMATE_NOTE
+    )
+
+    # The rollup still serves per-endpoint rows for the long window.
+    year_rows = wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=1,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+    assert (
+        len(year_rows) >= 1
+    ), "Year window must still render per-endpoint rollup rows."
+
+    # The daily-resolution note lives in the detail-chart container, which
+    # is only rendered once an endpoint row is selected. Click a seeded
+    # endpoint so the daily-grain trend chart (and its note) render.
+    first_endpoint = SEED_LATENCY_ENDPOINTS[0][0]
+    wait_then_click_element(
+        browser,
+        f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    daily_note = wait_for_element_presence(
+        browser, MDL.LATENCY_DAILY_RESOLUTION_NOTE, timeout=LATENCY_RENDER_TIMEOUT
+    )
+    assert daily_note is not None
+    assert (
+        daily_note.text.strip()
+        == ADMIN_METRICS_STRINGS.METRICS_LATENCY_DAILY_RESOLUTION_NOTE
+    )
+
+    # Month (~28-31 days) is inside the 35-day raw retention -> exact path:
+    # both notes disappear again.
+    wait_then_click_element(
+        browser, MDL.WINDOW_MONTH_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    )
+
+    # The Month re-render replaces the table rows; wait for the exact-path
+    # render to land before asserting the notes were removed.
+    wait_then_get_at_least_n_elements(
+        browser,
+        MDL.LATENCY_ROW,
+        minimum_count=EXPECTED_LATENCY_ROW_COUNT,
+        time=LATENCY_RENDER_TIMEOUT,
+    )
+
+    def _both_notes_absent(driver: WebDriver) -> bool:
+        return (
+            len(driver.find_elements(By.CSS_SELECTOR, MDL.LATENCY_APPROXIMATE_NOTE))
+            == 0
+            and len(
+                driver.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DAILY_RESOLUTION_NOTE)
+            )
+            == 0
+        )
+
+    WebDriverWait(browser, LATENCY_RENDER_TIMEOUT).until(
+        _both_notes_absent,
+        "Both latency notes must be removed on the exact (Month) raw window.",
+    )
