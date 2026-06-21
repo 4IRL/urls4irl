@@ -11,7 +11,7 @@ from redis import Redis
 from backend.extensions.metrics.buckets import compute_bucket_start_epoch
 from backend.extensions.metrics.writer import MetricsWriter, record_duration
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType
-from backend.metrics.latency import LATENCY_SAMPLE_CAP_PER_BUCKET, LatencyMetricName
+from backend.metrics.latency import LATENCY_SAMPLE_CAP_DEFAULT, LatencyMetricName
 from tests.integration.system.metrics_helpers import (
     build_latency_key,
     find_latency_keys,
@@ -73,13 +73,13 @@ def test_record_duration_ltrims_to_cap(
     provide_metrics_redis: Redis,
 ):
     """
-    GIVEN more than LATENCY_SAMPLE_CAP_PER_BUCKET samples for one bucket/dims
+    GIVEN more than LATENCY_SAMPLE_CAP_DEFAULT samples for one bucket/dims
     WHEN record_duration is called for each
     THEN the list is LTRIM'd to exactly the cap (oldest discarded).
     """
     assert find_latency_keys(provide_metrics_redis, _METRIC_VALUE) == []
 
-    over_cap = LATENCY_SAMPLE_CAP_PER_BUCKET + 25
+    over_cap = LATENCY_SAMPLE_CAP_DEFAULT + 25
     with app.app_context():
         for index in range(over_cap):
             record_duration(
@@ -91,7 +91,7 @@ def test_record_duration_ltrims_to_cap(
             )
 
     expected_key = _expected_key(writer_with_metrics_enabled, DeviceType.MOBILE)
-    assert provide_metrics_redis.llen(expected_key) == LATENCY_SAMPLE_CAP_PER_BUCKET
+    assert provide_metrics_redis.llen(expected_key) == LATENCY_SAMPLE_CAP_DEFAULT
 
 
 def test_record_duration_separate_keys_for_distinct_device_types(

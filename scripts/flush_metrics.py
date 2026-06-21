@@ -88,9 +88,13 @@ _metrics_strs_module = _load_module_direct(
 _latency_module = _load_module_direct("_metrics_latency", "backend/metrics/latency.py")
 epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
-LATENCY_SAMPLE_CAP_PER_BUCKET = _latency_module.LATENCY_SAMPLE_CAP_PER_BUCKET
-LATENCY_RETENTION_DAYS = _latency_module.LATENCY_RETENTION_DAYS
+LATENCY_SAMPLE_CAP_DEFAULT = _latency_module.LATENCY_SAMPLE_CAP_DEFAULT
+LATENCY_SAMPLE_CAP_OVERRIDES = _latency_module.LATENCY_SAMPLE_CAP_OVERRIDES
+LATENCY_RAW_RETENTION_DAYS = _latency_module.LATENCY_RAW_RETENTION_DAYS
 LATENCY_PRUNE_INTERVAL_SECONDS = _latency_module.LATENCY_PRUNE_INTERVAL_SECONDS
+LATENCY_ROLLUP_RETENTION_DAYS = _latency_module.LATENCY_ROLLUP_RETENTION_DAYS
+LATENCY_ROLLUP_INTERVAL_SECONDS = _latency_module.LATENCY_ROLLUP_INTERVAL_SECONDS
+LATENCY_ROLLUP_BACKFILL_DAYS = _latency_module.LATENCY_ROLLUP_BACKFILL_DAYS
 
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 DEFAULT_BUCKET_SECONDS: int = 3600
@@ -370,12 +374,12 @@ def run_latency_flush(
             # ResponseError when the source does not exist; nothing to drain.
             continue
         drained_values = redis_client.lrange(draining_key, 0, -1)
-        if len(drained_values) == LATENCY_SAMPLE_CAP_PER_BUCKET:
+        if len(drained_values) == LATENCY_SAMPLE_CAP_DEFAULT:
             logger.warning(
                 "latency_sample_cap_hit: key=%s — drained exactly cap (%d) samples;"
                 " older samples discarded",
                 raw_key,
-                LATENCY_SAMPLE_CAP_PER_BUCKET,
+                LATENCY_SAMPLE_CAP_DEFAULT,
             )
         # observedAt is the bucket start, not the exact request instant — bucket
         # granularity is sufficient for percentile aggregation on the time axis.
@@ -442,7 +446,7 @@ def prune_latency_samples(
             return
 
     with pg_conn.cursor() as cursor:
-        cursor.execute(LATENCY_PRUNE_SQL, (LATENCY_RETENTION_DAYS,))
+        cursor.execute(LATENCY_PRUNE_SQL, (LATENCY_RAW_RETENTION_DAYS,))
     pg_conn.commit()
 
     try:

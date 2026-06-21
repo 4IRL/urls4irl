@@ -10,7 +10,7 @@ from backend.extensions.metrics.dimensions import canonicalize_dimensions
 from backend.extensions.metrics.ua_classifier import classify_user_agent
 from backend.metrics.dimension_models import validate_dimensions
 from backend.metrics.events import DEVICE_TYPE_DIM_KEY, DeviceType, EventName
-from backend.metrics.latency import LATENCY_SAMPLE_CAP_PER_BUCKET, LatencyMetricName
+from backend.metrics.latency import LATENCY_SAMPLE_CAP_DEFAULT, LatencyMetricName
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 
@@ -190,7 +190,7 @@ class MetricsWriter:
 
             pipe = self._redis.pipeline()
             pipe.lpush(latency_key, f"{duration_ms:.3f}")
-            pipe.ltrim(latency_key, 0, LATENCY_SAMPLE_CAP_PER_BUCKET - 1)
+            pipe.ltrim(latency_key, 0, LATENCY_SAMPLE_CAP_DEFAULT - 1)
             pipe.expire(latency_key, ttl_seconds)
             pipe.execute()
         except Exception:

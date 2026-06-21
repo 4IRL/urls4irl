@@ -11,8 +11,8 @@ from redis import Redis
 
 from backend.metrics.events import DeviceType
 from backend.metrics.latency import (
-    LATENCY_RETENTION_DAYS,
-    LATENCY_SAMPLE_CAP_PER_BUCKET,
+    LATENCY_RAW_RETENTION_DAYS,
+    LATENCY_SAMPLE_CAP_DEFAULT,
     LatencyMetricName,
 )
 from backend.utils.strings.metrics_strs import METRICS_REDIS
@@ -174,7 +174,7 @@ def test_flush_latency_emits_cap_warning(
     caplog: pytest.LogCaptureFixture,
 ):
     """
-    GIVEN exactly LATENCY_SAMPLE_CAP_PER_BUCKET duration strings in a single
+    GIVEN exactly LATENCY_SAMPLE_CAP_DEFAULT duration strings in a single
         latency list key
     WHEN run_flush drains it
     THEN exactly cap rows are inserted (not more) AND a WARNING-level
@@ -192,13 +192,13 @@ def test_flush_latency_emits_cap_warning(
             _METHOD,
             DeviceType.DESKTOP,
         )
-        for index in range(LATENCY_SAMPLE_CAP_PER_BUCKET):
+        for index in range(LATENCY_SAMPLE_CAP_DEFAULT):
             provide_metrics_redis.lpush(key, f"{index}.000")
 
         with caplog.at_level(logging.WARNING, logger="metrics_flush"):
             run_flush(redis_client=provide_metrics_redis, pg_conn=pg_conn)
 
-        assert _count_latency_rows(pg_conn) == LATENCY_SAMPLE_CAP_PER_BUCKET
+        assert _count_latency_rows(pg_conn) == LATENCY_SAMPLE_CAP_DEFAULT
         assert is_string_in_logs("latency_sample_cap_hit", caplog.records)
         assert any(
             record.levelno == logging.WARNING
@@ -215,7 +215,7 @@ def test_flush_prunes_old_latency_rows(
     provide_metrics_redis: Redis,
 ):
     """
-    GIVEN one AnonymousLatencySamples row older than LATENCY_RETENTION_DAYS and
+    GIVEN one AnonymousLatencySamples row older than LATENCY_RAW_RETENTION_DAYS and
         one recent row, with the prune sentinel absent (stale)
     WHEN run_flush is invoked
     THEN the old row is deleted, the recent row is retained, and the prune
@@ -227,7 +227,7 @@ def test_flush_prunes_old_latency_rows(
         provide_metrics_redis.delete(METRICS_REDIS.LATENCY_LAST_PRUNE_KEY)
 
         now = datetime.now(timezone.utc)
-        old_observed = now - timedelta(days=LATENCY_RETENTION_DAYS + 1)
+        old_observed = now - timedelta(days=LATENCY_RAW_RETENTION_DAYS + 1)
         recent_observed = now - timedelta(days=1)
         _insert_latency_row(pg_conn, old_observed)
         _insert_latency_row(pg_conn, recent_observed)
