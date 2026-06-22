@@ -60,6 +60,12 @@ export function initNavbar(): void {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
+    // Collapse the hamburger before opening the sheet: openTagSheet() moves focus
+    // into the sheet and marks #mainPanel siblings inert, which leaves the still-
+    // open Bootstrap collapse in a desynced state that cannot be reopened. The
+    // deck-switch handlers close the dropdown via their setMobileUIWhen* routing;
+    // the sheet has no such routing, so close it explicitly here.
+    NAVBAR_TOGGLER.toggler?.hide();
     openTagSheet();
   });
 

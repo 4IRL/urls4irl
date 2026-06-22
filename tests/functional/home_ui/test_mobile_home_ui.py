@@ -181,24 +181,34 @@ def test_navbar_after_open_tag_deck_mobile(
         app=app, browser=browser, utub_id=utub.id, user_id=USER_ID
     )
 
-    # Open the tag sheet via the navbar Tags button
+    # Open the tag sheet via the navbar Tags button. #toTags collapses the
+    # hamburger (so its Bootstrap state stays clean while the sheet traps focus),
+    # so wait for the dropdown's `show` class to be fully removed before the next
+    # toggler click — waiting only for `collapsing` to clear can return mid-hide
+    # and desync the subsequent re-open (a deterministic Selenium-timing race, not
+    # a padded-timeout fix).
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_TAGS_DECK)
-    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
+    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="show")
 
     # The sheet overlays the URL deck — both are visible simultaneously
     wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
     assert_visible_css_selector(browser, HPL.TAG_SHEET)
     assert_visible_css_selector(browser, HPL.URL_DECK)
 
-    # Click on navbar and verify proper menus are still shown (URL-showing state)
+    # Click on navbar and verify proper menus are still shown (URL-showing state).
+    # The tag sheet overlays the URL deck without changing the underlying deck
+    # state, so the navbar stays in its URL-deck configuration: the "go to URLs"
+    # button stays hidden (you are already on URLs), matching the navbar state set
+    # by setMobileUIWhenUTubSelectedOrURLNavSelected().
     click_on_navbar(browser)
     assert_visible_css_selector(browser, HPL.LOGGED_IN_USERNAME_READ)
     assert_visible_css_selector(browser, HPL.NAVBAR_LOGOUT)
     assert_visible_css_selector(browser, HPL.NAVBAR_UTUB_DECK)
     assert_visible_css_selector(browser, HPL.NAVBAR_MEMBER_DECK)
-    assert_visible_css_selector(browser, HPL.NAVBAR_URLS_DECK)
     assert_visible_css_selector(browser, HPL.NAVBAR_TAGS_DECK)
+
+    assert_not_visible_css_selector(browser, HPL.NAVBAR_URLS_DECK)
 
 
 def test_nav_on_url_panel_after_open_member_deck_mobile(
@@ -365,12 +375,14 @@ def test_nav_from_utub_deck_to_other_deck_with_utub_selected_mobile(
             assert_visible_css_selector(browser, navbar_option)
 
 
+# The URL deck stays current while the tag sheet overlays it, so the navbar never
+# offers a "go to URLs" option from this state — only #toUTubs and #toMembers are
+# reachable. (NAVBAR_URLS_DECK is therefore intentionally excluded here.)
 @pytest.mark.parametrize(
     "selected_navbar_option,visible_deck",
     [
         (HPL.NAVBAR_UTUB_DECK, Decks.UTUBS),
         (HPL.NAVBAR_MEMBER_DECK, Decks.MEMBERS),
-        (HPL.NAVBAR_URLS_DECK, Decks.URLS),
     ],
 )
 def test_nav_from_tag_deck_to_other_deck_mobile(

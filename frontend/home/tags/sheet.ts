@@ -205,9 +205,12 @@ export function initTagSheet(): void {
       relocateTagDeckForViewport();
       return;
     }
-    if (target !== "url-deck") {
-      closeTagSheet({ returnFocus: false });
-    }
+    // Any explicit mobile deck navigation dismisses an open sheet — including
+    // navigating (back) to the URL deck via the navbar. closeTagSheet is a safe
+    // no-op when the sheet is already closed (the common UTub-select path), so
+    // the url-deck target is no longer special-cased: leaving it open would keep
+    // #mainPanel siblings inert and break navbar re-open over the URL deck.
+    closeTagSheet({ returnFocus: false });
     refreshTagSheetHandleVisibility();
   });
 

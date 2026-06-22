@@ -410,7 +410,7 @@ describe("Tag Sheet Controller", () => {
   });
 
   describe("mobile deck switched subscription", () => {
-    it("does not close the sheet for target url-deck", async () => {
+    it("closes the sheet for target url-deck (navbar navigation dismisses an open sheet)", async () => {
       await setIsMobile(true);
       initTagSheet();
       openTagSheet();
@@ -419,8 +419,10 @@ describe("Tag Sheet Controller", () => {
       const { emit } = await import("../../../lib/event-bus.js");
       emit(MOBILE_DECK_SWITCHED_EVENT, { target: "url-deck" });
 
-      // url-deck only refreshes handle visibility; the sheet stays open.
-      expect(isTagSheetOpen()).toBe(true);
+      // Navigating (back) to the URL deck while the sheet is open must dismiss it;
+      // otherwise #mainPanel siblings stay inert and the navbar cannot re-open over
+      // the URL deck. closeTagSheet is a no-op on the closed-sheet UTub-select path.
+      expect(isTagSheetOpen()).toBe(false);
     });
 
     it("closes the sheet for target member-deck (representative of member/utub/no-utub)", async () => {

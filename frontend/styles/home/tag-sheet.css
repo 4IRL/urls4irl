@@ -22,8 +22,12 @@
         position: relative;
     }
 
-    /* Peeking handle — shown via JS removing .hidden. */
-    .tag-sheet-handle {
+    /* Peeking handle — shown via JS removing .hidden. The ID is included so this
+       rule matches the desktop-default `#tagSheetHandle { display: none }`
+       specificity (1-0-0); a bare `.tag-sheet-handle` class (0-1-0) would lose
+       to the ID rule regardless of source order and the handle would stay
+       hidden on mobile. The `.hidden` toggle still gates visibility (see below). */
+    #tagSheetHandle.tag-sheet-handle {
         position: absolute;
         left: 0;
         right: 0;
@@ -66,8 +70,11 @@
         padding: 1px 9px;
     }
 
-    /* The sheet itself — slides up from the bottom of <main>. */
-    .tag-deck-sheet {
+    /* The sheet itself — slides up from the bottom of <main>. The ID is included
+       so this `display: flex` matches the desktop-default `#tagDeckSheet
+       { display: none }` specificity (1-0-0); otherwise the ID rule wins and the
+       sheet never renders on mobile. */
+    #tagDeckSheet.tag-deck-sheet {
         position: absolute;
         left: 0;
         right: 0;
@@ -88,8 +95,12 @@
     }
 
     /* Open state — slide in, flip visibility discretely so the sheet is visible
-       immediately on open and hidden only after the slide-down completes. */
-    .tag-deck-sheet.tag-sheet-open {
+       immediately on open and hidden only after the slide-down completes. The ID
+       is included so this rule (1-2-0) outranks the base `#tagDeckSheet
+       .tag-deck-sheet` rule (1-1-0); a bare `.tag-deck-sheet.tag-sheet-open`
+       (0-2-0) would lose to the ID-scoped base rule and the sheet would stay
+       hidden/translated when opened. */
+    #tagDeckSheet.tag-deck-sheet.tag-sheet-open {
         transform: translateY(0);
         visibility: visible;
         transition:
@@ -98,9 +109,13 @@
     }
 
     /* Backdrop — visibility governed entirely by opacity + the show class;
-       never carries a `hidden` attribute. */
-    .tag-sheet-backdrop {
+       never carries a `hidden` attribute. The ID is included so `display: block`
+       overrides the desktop-default `#tagSheetBackdrop { display: none }`
+       (specificity 1-0-0); the element stays in the DOM at opacity 0 when closed
+       (pointer-events: none) and fades in only via the show class. */
+    #tagSheetBackdrop.tag-sheet-backdrop {
         position: absolute;
+        display: block;
         inset: 0;
         background: #000;
         opacity: 0;
@@ -109,7 +124,10 @@
         z-index: 1039;
     }
 
-    .tag-sheet-backdrop.tag-sheet-backdrop-show {
+    /* The ID is included so this rule (1-2-0) outranks the base
+       `#tagSheetBackdrop.tag-sheet-backdrop` rule (1-1-0); a bare class pair
+       (0-2-0) would lose and the backdrop would never fade in. */
+    #tagSheetBackdrop.tag-sheet-backdrop.tag-sheet-backdrop-show {
         opacity: 0.5;
         pointer-events: auto;
     }
@@ -139,7 +157,14 @@
         flex-direction: column;
     }
 
+    /* On mobile, layout.css hides `.deck#TagDeck` with `display: none` and only
+       the `visible-flex` class (added by the old single-deck swapper) revealed
+       it. The relocated deck in the sheet never receives `visible-flex`, so it
+       must be re-shown here. `#tagSheetBody #TagDeck` (specificity 2-0-0) beats
+       `.deck#TagDeck` (0-2-0). Without this the deck and its `.tagFilter` rows
+       collapse to zero size and tag filters are unclickable. */
     #tagSheetBody #TagDeck {
+        display: flex;
         flex: 1 1 auto;
     }
 
@@ -152,8 +177,12 @@
 /* Reduced-motion: disable slide/fade transitions. Placed AFTER the mobile
    block so it wins the source-order tiebreak at equal specificity. */
 @media (prefers-reduced-motion: reduce) {
-    .tag-deck-sheet,
-    .tag-sheet-backdrop {
+    /* IDs included so these match the 1-1-0 specificity of the base
+       `#tagDeckSheet.tag-deck-sheet` / `#tagSheetBackdrop.tag-sheet-backdrop`
+       rules that define the transitions; a bare class selector (0-1-0) would
+       lose and the transitions would not actually be disabled. */
+    #tagDeckSheet.tag-deck-sheet,
+    #tagSheetBackdrop.tag-sheet-backdrop {
         transition: none;
     }
 }
