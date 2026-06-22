@@ -1,0 +1,159 @@
+/* Mobile tag-deck bottom sheet — a tap-to-toggle sheet hosting the Tag deck
+   overlaid on the URL deck, with a peeking handle and a dimming backdrop.
+   Desktop (>=992px) never shows any of these elements. */
+
+/* Desktop default — fully hidden regardless of JS state. */
+#tagDeckSheet,
+#tagSheetBackdrop,
+#tagSheetHandle {
+    display: none;
+}
+
+@media (max-width: 991.98px) {
+    /* Anchor the absolutely-positioned sheet + backdrop to <main>, mirroring
+       how #crossUtubSearchMode is scoped, so they never bleed into navbar/footer. */
+    #mainPanel {
+        position: relative;
+    }
+
+    /* The handle is positioned against #URLDeck, not <main>; without this it
+       would escape to #mainPanel and float at the wrong position. */
+    #URLDeck {
+        position: relative;
+    }
+
+    /* Peeking handle — shown via JS removing .hidden. */
+    .tag-sheet-handle {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 3rem;
+        background: var(--panelBackgroundColor);
+        border-top: 2px solid var(--contentTopBorder);
+        border-radius: 1.25rem 1.25rem 0 0;
+        box-shadow: var(--shadow-lg);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: var(--deckSelectionGreen);
+        font-weight: 700;
+        z-index: 30;
+    }
+
+    .tag-sheet-handle:focus-visible {
+        outline: 2px solid var(--deckHeaderGreen);
+        outline-offset: 2px;
+    }
+
+    /* Grabber pseudo-bar pinned top-center of the handle. */
+    .tag-sheet-handle-grabber {
+        position: absolute;
+        top: 6px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 38px;
+        height: 4px;
+        border-radius: 2px;
+        background: #5a6565;
+    }
+
+    .tag-sheet-handle-count {
+        background: var(--tagCountBackgroundSelectedColor);
+        color: #000;
+        border-radius: 5rem;
+        padding: 1px 9px;
+    }
+
+    /* The sheet itself — slides up from the bottom of <main>. */
+    .tag-deck-sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 62%;
+        background: var(--panelBackgroundColor);
+        border-top: 2px solid var(--contentTopBorder);
+        border-radius: 1.25rem 1.25rem 0 0;
+        box-shadow: var(--shadow-lg);
+        z-index: 1040;
+        display: flex;
+        flex-direction: column;
+        transform: translateY(100%);
+        transition:
+            transform 0.3s ease,
+            visibility 0s linear 0.3s;
+        visibility: hidden;
+    }
+
+    /* Open state — slide in, flip visibility discretely so the sheet is visible
+       immediately on open and hidden only after the slide-down completes. */
+    .tag-deck-sheet.tag-sheet-open {
+        transform: translateY(0);
+        visibility: visible;
+        transition:
+            transform 0.3s ease,
+            visibility 0s linear 0s;
+    }
+
+    /* Backdrop — visibility governed entirely by opacity + the show class;
+       never carries a `hidden` attribute. */
+    .tag-sheet-backdrop {
+        position: absolute;
+        inset: 0;
+        background: #000;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1039;
+    }
+
+    .tag-sheet-backdrop.tag-sheet-backdrop-show {
+        opacity: 0.5;
+        pointer-events: auto;
+    }
+
+    /* In-sheet close bar at the top of the sheet. */
+    .tag-sheet-grabber {
+        width: 38px;
+        height: 4px;
+        border-radius: 2px;
+        background: #5a6565;
+        margin: 9px auto 4px;
+        border: none;
+        flex: 0 0 auto;
+    }
+
+    .tag-sheet-grabber:focus-visible {
+        outline: 2px solid var(--deckHeaderGreen);
+        outline-offset: 2px;
+    }
+
+    /* Host the relocated #TagDeck so it fills the sheet body; its inner
+       .content already scrolls (decks.css). */
+    #tagSheetBody {
+        flex: 1 1 auto;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    #tagSheetBody #TagDeck {
+        flex: 1 1 auto;
+    }
+
+    /* Keep the last URL card clear of the 3rem handle bar when scrolled. */
+    #URLDeck .flex-column.content {
+        padding-bottom: 3rem;
+    }
+}
+
+/* Reduced-motion: disable slide/fade transitions. Placed AFTER the mobile
+   block so it wins the source-order tiebreak at equal specificity. */
+@media (prefers-reduced-motion: reduce) {
+    .tag-deck-sheet,
+    .tag-sheet-backdrop {
+        transition: none;
+    }
+}
