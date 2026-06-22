@@ -69,7 +69,7 @@ const ARIA_EXPANDED = "aria-expanded";
 const OPENER_ID = "fakeOpener";
 const TAG_FILTER_MARKUP = '<div class="tagFilter"></div>';
 
-// Mirrors the Step 1 template nesting: backdrop + sheet are siblings of
+// Mirrors the actual template nesting: backdrop + sheet are siblings of
 // #centerPanel inside #mainPanel; the handle is a direct child of #URLDeck.
 const SHEET_HTML = `
   <main id="mainPanel">
