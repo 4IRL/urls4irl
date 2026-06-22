@@ -23,6 +23,7 @@ import { setCreateUTubEventListeners } from "./home/utubs/create.js";
 import { initUnselectAllTags } from "./home/tags/unselect-all.js";
 import { initUpdateAllTags } from "./home/tags/update-all.js";
 import { initURLDeck } from "./home/urls/deck.js";
+import { initTagSheet } from "./home/tags/sheet.js";
 import "./home/members/deck.js";
 import "./home/tags/deck.js";
 import "./home/urls/cards/filtering.js";
@@ -40,6 +41,7 @@ $(document).ready(() => {
   initNavbar();
   initMobileLayout();
   initCollapsibleDecks();
+  initTagSheet();
   initLeftPanelToggle();
   setCreateUTubEventListeners();
   setUTubEventListenersOnInitialPageLoad();

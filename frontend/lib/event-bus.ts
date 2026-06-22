@@ -27,6 +27,10 @@ export interface AppEventMap {
   "stale-data:detected": StaleDataDetectedPayload;
   "url-search:visibility-changed": void;
   "url:tag-filter-applied": void;
+  "cross-utub-search:visibility-changed": { active: boolean };
+  "mobile:deck-switched": {
+    target: "desktop" | "url-deck" | "utub-deck" | "member-deck" | "no-utub";
+  };
 }
 
 export const AppEvents = Object.freeze({
@@ -37,6 +41,8 @@ export const AppEvents = Object.freeze({
   STALE_DATA_DETECTED: "stale-data:detected",
   URL_SEARCH_VISIBILITY_CHANGED: "url-search:visibility-changed",
   URL_TAG_FILTER_APPLIED: "url:tag-filter-applied",
+  CROSS_UTUB_SEARCH_VISIBILITY_CHANGED: "cross-utub-search:visibility-changed",
+  MOBILE_DECK_SWITCHED: "mobile:deck-switched",
 } as const);
 
 const _handlers = new Map<string, Set<(payload: unknown) => void>>();

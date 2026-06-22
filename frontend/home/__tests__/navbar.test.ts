@@ -8,6 +8,7 @@ import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
 } from "../search/cross-utub-search.js";
+import { openTagSheet } from "../tags/sheet.js";
 import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../types/metrics-dim-values.js";
 
 vi.mock("../../lib/globals.js", () => ({
@@ -21,7 +22,9 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenMemberDeckSelected: vi.fn(),
   setMobileUIWhenUTubSelectedOrURLNavSelected: vi.fn(),
   setMobileUIWhenUTubDeckSelected: vi.fn(),
-  setMobileUIWhenTagDeckSelected: vi.fn(),
+}));
+vi.mock("../tags/sheet.js", () => ({
+  openTagSheet: vi.fn(),
 }));
 // navbar.ts imports the cross-search module to close search on deck-nav and the
 // Return Home item; mock it so the real (heavy) module doesn't load here.
@@ -89,6 +92,12 @@ describe("navbar", () => {
       expect(exitCrossUtubSearchMode).toHaveBeenCalledWith({
         trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.DECK_SWITCH,
       });
+    });
+
+    it("clicking #toTags opens the tag sheet", () => {
+      initNavbar();
+      $("button#toTags").trigger("click");
+      expect(openTagSheet).toHaveBeenCalled();
     });
 
     it("registers collapse event listeners on NavbarNavDropdown", () => {

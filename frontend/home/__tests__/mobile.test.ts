@@ -1,4 +1,5 @@
 import { TABLET_WIDTH } from "../../lib/constants.js";
+import { emit, AppEvents } from "../../lib/event-bus.js";
 import {
   isMobile,
   isCoarsePointer,
@@ -7,15 +8,18 @@ import {
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenMemberDeckSelected,
-  setMobileUIWhenTagDeckSelected,
   revertMobileUIToFullScreenUI,
 } from "../mobile.js";
 
 const mockMakeUTubSelectableAgainIfMobile = vi.fn();
 
-vi.mock("../lib/event-bus.js", () => ({
+vi.mock("../../lib/event-bus.js", () => ({
   on: vi.fn(),
-  AppEvents: { UTUB_SELECTED: "utub-selected" },
+  emit: vi.fn(),
+  AppEvents: {
+    UTUB_SELECTED: "utub-selected",
+    MOBILE_DECK_SWITCHED: "mobile:deck-switched",
+  },
 }));
 vi.mock("../navbar.js", () => ({
   NAVBAR_TOGGLER: { toggler: { hide: vi.fn() } },
@@ -115,6 +119,7 @@ describe("isCoarsePointer", () => {
 describe("setMobileUIWhenUTubSelectedOrURLNavSelected", () => {
   beforeEach(() => {
     document.body.innerHTML = MOBILE_HTML;
+    vi.clearAllMocks();
   });
 
   it("hides left panel and shows center panel with nav buttons", () => {
@@ -128,20 +133,22 @@ describe("setMobileUIWhenUTubSelectedOrURLNavSelected", () => {
     expect($("button#toURLs").hasClass("hidden")).toBe(true);
   });
 
-  it("hides member and tag deck visible-flex states", () => {
+  it("hides member deck visible-flex state and emits the url-deck switch", () => {
     $(".deck#MemberDeck").addClass("visible-flex");
-    $(".deck#TagDeck").addClass("visible-flex");
 
     setMobileUIWhenUTubSelectedOrURLNavSelected();
 
     expect($(".deck#MemberDeck").hasClass("visible-flex")).toBe(false);
-    expect($(".deck#TagDeck").hasClass("visible-flex")).toBe(false);
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "url-deck",
+    });
   });
 });
 
 describe("setMobileUIWhenUTubNotSelectedOrUTubDeleted", () => {
   beforeEach(() => {
     document.body.innerHTML = MOBILE_HTML;
+    vi.clearAllMocks();
   });
 
   it("hides all navigation buttons and shows UTub deck", () => {
@@ -154,7 +161,7 @@ describe("setMobileUIWhenUTubNotSelectedOrUTubDeleted", () => {
     expect($(".deck#UTubDeck").hasClass("hidden")).toBe(false);
   });
 
-  it("removes visible-flex from center panel and side decks", () => {
+  it("removes visible-flex from center panel and member deck and emits the no-utub switch", () => {
     $(".panel#centerPanel").addClass("visible-flex");
     $(".deck#MemberDeck").addClass("visible-flex");
 
@@ -162,6 +169,9 @@ describe("setMobileUIWhenUTubNotSelectedOrUTubDeleted", () => {
 
     expect($(".panel#centerPanel").hasClass("visible-flex")).toBe(false);
     expect($(".deck#MemberDeck").hasClass("visible-flex")).toBe(false);
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "no-utub",
+    });
   });
 });
 
@@ -184,11 +194,20 @@ describe("setMobileUIWhenUTubDeckSelected", () => {
 
     expect(mockMakeUTubSelectableAgainIfMobile).toHaveBeenCalled();
   });
+
+  it("emits the utub-deck switch", () => {
+    setMobileUIWhenUTubDeckSelected();
+
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "utub-deck",
+    });
+  });
 });
 
 describe("setMobileUIWhenMemberDeckSelected", () => {
   beforeEach(() => {
     document.body.innerHTML = MOBILE_HTML;
+    vi.clearAllMocks();
   });
 
   it("shows member deck and hides UTub deck", () => {
@@ -198,28 +217,23 @@ describe("setMobileUIWhenMemberDeckSelected", () => {
     expect($(".deck#UTubDeck").hasClass("hidden")).toBe(true);
     expect($("button#toMembers").hasClass("hidden")).toBe(true);
   });
-});
 
-describe("setMobileUIWhenTagDeckSelected", () => {
-  beforeEach(() => {
-    document.body.innerHTML = MOBILE_HTML;
-  });
+  it("emits the member-deck switch", () => {
+    setMobileUIWhenMemberDeckSelected();
 
-  it("shows tag deck and hides UTub deck", () => {
-    setMobileUIWhenTagDeckSelected();
-
-    expect($(".deck#TagDeck").hasClass("visible-flex")).toBe(true);
-    expect($(".deck#UTubDeck").hasClass("hidden")).toBe(true);
-    expect($("button#toTags").hasClass("hidden")).toBe(true);
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "member-deck",
+    });
   });
 });
 
 describe("revertMobileUIToFullScreenUI", () => {
   beforeEach(() => {
     document.body.innerHTML = MOBILE_HTML;
+    vi.clearAllMocks();
   });
 
-  it("removes hidden from all panels and decks, hides nav buttons", () => {
+  it("removes hidden from panels and decks, hides nav buttons, and emits the desktop switch", () => {
     $(".panel#centerPanel").addClass("hidden");
     $(".deck#UTubDeck").addClass("hidden");
     $(".deck#MemberDeck").addClass("hidden");
@@ -230,11 +244,13 @@ describe("revertMobileUIToFullScreenUI", () => {
     expect($(".panel#leftPanel").hasClass("hidden")).toBe(false);
     expect($(".deck#UTubDeck").hasClass("hidden")).toBe(false);
     expect($(".deck#MemberDeck").hasClass("hidden")).toBe(false);
-    expect($(".deck#TagDeck").hasClass("hidden")).toBe(false);
     expect($("button#toUTubs").hasClass("hidden")).toBe(true);
     expect($("button#toMembers").hasClass("hidden")).toBe(true);
     expect($("button#toTags").hasClass("hidden")).toBe(true);
     expect($("button#toURLs").hasClass("hidden")).toBe(true);
+    expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
+      target: "desktop",
+    });
   });
 
   it("is a no-op when panels are already in full-screen state", () => {

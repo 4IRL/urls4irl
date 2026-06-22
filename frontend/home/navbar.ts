@@ -6,8 +6,8 @@ import {
   setMobileUIWhenMemberDeckSelected,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubDeckSelected,
-  setMobileUIWhenTagDeckSelected,
 } from "./mobile.js";
+import { openTagSheet } from "./tags/sheet.js";
 import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
@@ -60,7 +60,7 @@ export function initNavbar(): void {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
-    setMobileUIWhenTagDeckSelected();
+    openTagSheet();
   });
 
   // "Return Home" inside the hamburger — only visible while cross-UTub search is

@@ -1,6 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { TABLET_WIDTH } from "../lib/constants.js";
-import { on, AppEvents } from "../lib/event-bus.js";
+import { emit, on, AppEvents } from "../lib/event-bus.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import {
   resetAllDecksIfCollapsed,
@@ -74,9 +74,9 @@ export function setMobileUIWhenUTubSelectedOrURLNavSelected(): void {
   $("button#toURLs").addClass("hidden");
 
   $(".deck#MemberDeck").removeClass("visible-flex");
-  $(".deck#TagDeck").removeClass("visible-flex");
 
   NAVBAR_TOGGLER.toggler?.hide();
+  emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
 }
 
 export function setMobileUIWhenUTubNotSelectedOrUTubDeleted(): void {
@@ -87,11 +87,11 @@ export function setMobileUIWhenUTubNotSelectedOrUTubDeleted(): void {
 
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#MemberDeck").removeClass("visible-flex");
-  $(".deck#TagDeck").removeClass("visible-flex");
 
   $(".deck#UTubDeck").removeClass("hidden");
 
   NAVBAR_TOGGLER.toggler?.hide();
+  emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "no-utub" });
 }
 
 export function setMobileUIWhenUTubDeckSelected(): void {
@@ -107,7 +107,6 @@ export function setMobileUIWhenUTubDeckSelected(): void {
 
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#MemberDeck").removeClass("visible-flex");
-  $(".deck#TagDeck").removeClass("visible-flex");
 
   $(".deck#UTubDeck").removeClass("hidden");
 
@@ -115,6 +114,7 @@ export function setMobileUIWhenUTubDeckSelected(): void {
   if ($(".UTubSelector.active").length) {
     makeUTubSelectableAgainIfMobile($(".UTubSelector.active"));
   }
+  emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
 }
 
 export function setMobileUIWhenMemberDeckSelected(): void {
@@ -127,33 +127,13 @@ export function setMobileUIWhenMemberDeckSelected(): void {
   // runs while isMobile().
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#UTubDeck").addClass("hidden");
-  $(".deck#TagDeck").removeClass("visible-flex").addClass("hidden");
 
   $("button#toUTubs").removeClass("hidden");
   $("button#toTags").removeClass("hidden");
   $("button#toURLs").removeClass("hidden");
 
   NAVBAR_TOGGLER.toggler?.hide();
-}
-
-export function setMobileUIWhenTagDeckSelected(): void {
-  $("button#toTags").addClass("hidden");
-  $(".deck#TagDeck").addClass("visible-flex").removeClass("hidden");
-
-  $(".panel#leftPanel").removeClass("hidden");
-  // Desktop LHS-collapse state is re-asserted by the matchMedia resize handler
-  // (initMobileLayout) on viewport change — not here, since this function only
-  // runs while isMobile().
-  $(".panel#centerPanel").removeClass("visible-flex");
-  $(".deck#UTubDeck").addClass("hidden");
-  $(".deck#MemberDeck").removeClass("visible-flex").addClass("hidden");
-
-  $("button#toUTubs").removeClass("hidden");
-  $("button#toTags").addClass("hidden");
-  $("button#toURLs").removeClass("hidden");
-  $("button#toMembers").removeClass("hidden");
-
-  NAVBAR_TOGGLER.toggler?.hide();
+  emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "member-deck" });
 }
 
 export function revertMobileUIToFullScreenUI(): void {
@@ -169,5 +149,6 @@ export function revertMobileUIToFullScreenUI(): void {
 
   $(".deck#UTubDeck").removeClass("hidden");
   $(".deck#MemberDeck").removeClass("hidden");
-  $(".deck#TagDeck").removeClass("hidden");
+
+  emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "desktop" });
 }

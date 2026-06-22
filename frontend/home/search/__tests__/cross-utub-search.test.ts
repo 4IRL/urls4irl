@@ -356,6 +356,79 @@ describe("cross-utub-search — mode mechanics", () => {
     matchMediaSpy.mockRestore();
   });
 
+  it("(b1f) entering search mode emits CROSS_UTUB_SEARCH_VISIBILITY_CHANGED with active:true", async () => {
+    const { AppEvents, on } = await import("../../../lib/event-bus.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+
+    const handler = vi.fn();
+    const unsubscribe = on(
+      AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED,
+      handler,
+    );
+    enterCrossUtubSearchMode();
+    unsubscribe();
+
+    expect(handler).toHaveBeenCalledWith({ active: true });
+  });
+
+  it("(b1g) exiting search mode emits CROSS_UTUB_SEARCH_VISIBILITY_CHANGED with active:false", async () => {
+    const { AppEvents, on } = await import("../../../lib/event-bus.js");
+    const {
+      initCrossUtubSearch,
+      enterCrossUtubSearchMode,
+      exitCrossUtubSearchMode,
+    } = await import("../cross-utub-search.js");
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const handler = vi.fn();
+    const unsubscribe = on(
+      AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED,
+      handler,
+    );
+    exitCrossUtubSearchMode({
+      trigger: CROSS_UTUB_SEARCH_CLOSE_TRIGGER.ESCAPE_KEY,
+    });
+    unsubscribe();
+
+    expect(handler).toHaveBeenCalledWith({ active: false });
+  });
+
+  it("(b1h) the breakpoint-change closure emits CROSS_UTUB_SEARCH_VISIBILITY_CHANGED with active:false", async () => {
+    let resetClosure: (() => void) | null = null;
+    const matchMediaSpy = vi.spyOn(window, "matchMedia").mockReturnValue({
+      addEventListener: (
+        _event: string,
+        listener: EventListenerOrEventListenerObject,
+      ) => {
+        resetClosure = listener as () => void;
+      },
+      removeEventListener: vi.fn(),
+    } as unknown as MediaQueryList);
+
+    const { AppEvents, on } = await import("../../../lib/event-bus.js");
+    const { initCrossUtubSearch, enterCrossUtubSearchMode } = await import(
+      "../cross-utub-search.js"
+    );
+    initCrossUtubSearch();
+    enterCrossUtubSearchMode();
+
+    const handler = vi.fn();
+    const unsubscribe = on(
+      AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED,
+      handler,
+    );
+    resetClosure!();
+    unsubscribe();
+
+    expect(handler).toHaveBeenCalledWith({ active: false });
+
+    matchMediaSpy.mockRestore();
+  });
+
   it("(b2) a non-default field selection appends the &fields= query param", async () => {
     const { ajaxCall } = await import("../../../lib/ajax.js");
     (ajaxCall as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
