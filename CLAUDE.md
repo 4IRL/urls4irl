@@ -220,6 +220,16 @@ All `make test-*` invocations — integration, UI, single-marker, parallel, full
 
 After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
 
+## UI Verification Screenshot
+
+**At the end of any UI-affecting change — whether done manually or via `/run-plan` — capture and provide a Playwright screenshot of the actual built feature before reporting the work complete.** A green test suite proves behavior; a screenshot proves the rendered result looks right (and catches things tests miss, e.g. CSS that compiles and passes assertions but renders invisibly).
+
+- **Source matters:** the image must be of the **implemented** feature captured via Playwright MCP against the running app (`http://127.0.0.1:8659/`), NOT the upfront design mock. Reusing a pre-implementation mock does not satisfy this rule.
+- Use the `login-with-playright` skill to reach the home page; for mobile features, set the viewport to a mobile width (e.g. 420px) before capturing. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
+- Surface the image to the user with `SendUserFile` (not just a saved path). Save screenshots under `plans/<topic>/screenshots/` (gitignored, like the rest of `plans/`).
+- If the app cannot be brought up to capture the screenshot, say so explicitly rather than silently skipping this step.
+- **Design mocks and screenshots must NEVER be checked into source control.** Keep them under gitignored paths only (`plans/**`). Before committing, confirm no image artifact landed in a tracked location (e.g. project root, `backend/static/`); if one did, move it under `plans/<topic>/` rather than committing it.
+
 ## Generated Types Freshness
 
 After any backend change that alters the OpenAPI surface, run `make generate-types` and stage the regenerated `frontend/types/*` files in the **same commit** as the backend change. CI's `Generated Types Freshness / Generated Types Staleness Check` job runs `make generate-types` then `git diff --exit-code frontend/types/`; if the committed types lag the spec, the job fails with `##[error]Generated types are stale.` and blocks the PR even when every other test passes.

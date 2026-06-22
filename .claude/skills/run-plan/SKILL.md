@@ -138,9 +138,14 @@ When all steps are done or the plan is marked finished:
    - Main agent reads each result file to determine pass/fail.
    - **Investigate every failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
-3. **Clean up** all temp test output files.
-4. **Delete all files in `plans/<topic>/tmp/`** — this is the subagent communication directory created during the run; it is not needed after completion.
-5. Report final summary:
+3. **UI Verification Screenshot (mandatory when the plan touched any UI — JS, templates, or CSS).** Before the final report, capture and provide a Playwright screenshot of the **actual built feature** so the user sees the rendered result, not just a green suite. This catches what tests miss (e.g. CSS that compiles and passes assertions but renders invisibly).
+   - The `test-ui-parallel-built` run in Step 3.1 already rebuilt and brought up the stack with built assets, so the app is live at `http://127.0.0.1:8659/` — capture against that state.
+   - Use the `login-with-playright` skill to reach the home page. For a mobile feature, resize the viewport to a mobile width (e.g. 420px) first. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
+   - Save under `plans/<topic>/screenshots/` (gitignored) and surface the image to the user with `SendUserFile` — never just report a path.
+   - The image MUST be of the implemented feature, NOT the upfront design mock. If the app cannot be brought up, say so explicitly rather than silently skipping.
+4. **Clean up** all temp test output files.
+5. **Delete all files in `plans/<topic>/tmp/`** — this is the subagent communication directory created during the run; it is not needed after completion.
+6. Report final summary:
 
 ```
 Plan "<name>" — COMPLETE
