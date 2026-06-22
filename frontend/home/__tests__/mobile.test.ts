@@ -1,6 +1,7 @@
 import { TABLET_WIDTH } from "../../lib/constants.js";
 import {
   isMobile,
+  isCoarsePointer,
   initMobileLayout,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
@@ -89,6 +90,25 @@ describe("isMobile", () => {
     const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(992);
     expect(isMobile()).toBe(false);
     widthSpy.mockRestore();
+  });
+});
+
+describe("isCoarsePointer", () => {
+  it("returns true when a coarse pointer is present", () => {
+    const matchMediaSpy = vi
+      .spyOn(window, "matchMedia")
+      .mockReturnValue({ matches: true } as MediaQueryList);
+    expect(isCoarsePointer()).toBe(true);
+    expect(matchMediaSpy).toHaveBeenCalledWith("(any-pointer: coarse)");
+    matchMediaSpy.mockRestore();
+  });
+
+  it("returns false when no coarse pointer is present", () => {
+    const matchMediaSpy = vi
+      .spyOn(window, "matchMedia")
+      .mockReturnValue({ matches: false } as MediaQueryList);
+    expect(isCoarsePointer()).toBe(false);
+    matchMediaSpy.mockRestore();
   });
 });
 
