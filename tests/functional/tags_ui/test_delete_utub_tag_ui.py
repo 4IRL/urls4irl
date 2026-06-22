@@ -10,6 +10,7 @@ from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
+from backend.utils.constants import TAG_CONSTANTS
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,
@@ -330,7 +331,7 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
     assert tag_deck_count
 
     tag_deck_count_txt = tag_deck_count.text
-    assert "(1/5)" in tag_deck_count_txt
+    assert f"(1/{TAG_CONSTANTS.MAX_URL_TAGS})" in tag_deck_count_txt
 
     delete_utub_tag_elem(browser, tag_id, app)
 
@@ -343,7 +344,7 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
     assert tag_deck_count
 
     tag_deck_count_txt = tag_deck_count.text
-    assert "(0/5)" in tag_deck_count_txt
+    assert f"(0/{TAG_CONSTANTS.MAX_URL_TAGS})" in tag_deck_count_txt
 
 
 def test_delete_utub_tag_rate_limits(
