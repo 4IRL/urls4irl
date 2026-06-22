@@ -1,5 +1,17 @@
-import { hideAndResetCreateURLTagForm } from "../create.js";
+import {
+  createURLTagSuccess,
+  hideAndResetCreateURLTagForm,
+} from "../create.js";
 import { enableClickOnSelectedURLCardToHide } from "../../cards/selection.js";
+import { buildTagFilterInDeck } from "../../../tags/tags.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../../cards/selection.js", () => ({
   disableClickOnSelectedURLCardToHide: vi.fn(),
@@ -25,11 +37,11 @@ vi.mock("../../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));
 
-vi.mock("../../tags/utils.js", () => ({
+vi.mock("../../../tags/utils.js", () => ({
   isTagInUTubTagDeck: vi.fn(() => false),
 }));
 
-vi.mock("../../tags/tags.js", () => ({
+vi.mock("../../../tags/tags.js", () => ({
   buildTagFilterInDeck: vi.fn(),
 }));
 
@@ -47,7 +59,7 @@ vi.mock("../../cards/utils.js", () => ({
   enableEditingURLTitle: vi.fn(),
 }));
 
-vi.mock("../../btns-forms.js", () => ({
+vi.mock("../../../btns-forms.js", () => ({
   makeTextInput: vi.fn(() =>
     window.jQuery("<div><label></label><input /></div>"),
   ),
@@ -59,7 +71,7 @@ vi.mock("../../cards/options/tag-btn.js", () => ({
   createAddTagIcon: vi.fn(() => window.jQuery("<i></i>")),
 }));
 
-vi.mock("../cards/filtering.js", () => ({
+vi.mock("../../cards/filtering.js", () => ({
   updateTagFilterCount: vi.fn(),
   TagCountOperation: { INCREMENT: "increment" },
 }));
@@ -101,5 +113,47 @@ describe("hideAndResetCreateURLTagForm - selection guard", () => {
     hideAndResetCreateURLTagForm(urlCard);
 
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+  });
+});
+
+describe("createURLTagSuccess — at-cap branch", () => {
+  const response = {
+    status: "Success" as const,
+    utubTag: { utubTagID: 99, tagString: "test" },
+    utubUrlTagIDs: [99],
+    tagCountsInUtub: 1,
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does NOT disable the newly-built tag filter when below the cap", () => {
+    document.body.innerHTML = URL_CARD_HTML;
+    const newTag = $("<button class='tagFilter'></button>");
+    vi.mocked(buildTagFilterInDeck).mockReturnValue(
+      newTag as JQuery<HTMLDivElement>,
+    );
+
+    createURLTagSuccess(response, $(".urlRow"), 1);
+
+    expect(newTag.hasClass("disabled")).toBe(false);
+  });
+
+  it("disables the newly-built tag filter when the cap is reached", () => {
+    document.body.innerHTML = URL_CARD_HTML;
+    $(".urlRow").append(
+      Array(APP_CONFIG.constants.TAGS_MAX_ON_URLS)
+        .fill("<span class='tagFilter selected'></span>")
+        .join(""),
+    );
+    const capTag = $("<button class='tagFilter'></button>");
+    vi.mocked(buildTagFilterInDeck).mockReturnValue(
+      capTag as JQuery<HTMLDivElement>,
+    );
+
+    createURLTagSuccess(response, $(".urlRow"), 1);
+
+    expect(capTag.hasClass("disabled")).toBe(true);
   });
 });

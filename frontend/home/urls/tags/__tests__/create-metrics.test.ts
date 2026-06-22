@@ -40,11 +40,11 @@ vi.mock("../../cards/utils.js", () => ({
 
 vi.mock("../../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
 
-vi.mock("../../tags/utils.js", () => ({
+vi.mock("../../../tags/utils.js", () => ({
   isTagInUTubTagDeck: vi.fn(() => false),
 }));
 
-vi.mock("../../tags/tags.js", () => ({
+vi.mock("../../../tags/tags.js", () => ({
   buildTagFilterInDeck: vi.fn(() => window.jQuery("<div></div>")),
 }));
 

@@ -8,7 +8,7 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 
 - **UTubs** - Create, edit, and delete shared URL collections with names and descriptions
 - **URLs** - Add URLs with custom titles; automatic validation and canonicalization
-- **Tags** - Organize URLs with up to 5 tags per URL, scoped per UTub
+- **Tags** - Organize URLs with up to 20 tags per URL, scoped per UTub
 - **Members** - Invite users with role-based access (Creator, Co-Creator, Member)
 - **Accounts** - Register with email validation, login, and password reset
 

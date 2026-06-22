@@ -1956,7 +1956,7 @@ Required JSON body:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a tag to a URL to a UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | URL already contains five tags, or validation errors. |
+> | `400`         | `application/json`                | `See below.` | URL already at the per-URL tag limit, or validation errors. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub or given URL or tag in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
@@ -1981,7 +1981,7 @@ Required JSON body:
 > ```json
 > {
 >     "status": "Failure",
->     "message": "URLs can only have up to 5 tags.",
+>     "message": "URLs can only have up to 20 tags.",
 >     "errorCode": 2,
 > }
 > ```

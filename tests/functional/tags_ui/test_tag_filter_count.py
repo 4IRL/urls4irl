@@ -214,7 +214,7 @@ def test_tag_filter_count_display_on_utub_selection_change(
     Tests the tag filter count in the Tag Deck when a new UTub is selected.
 
     This test needs to have a starting point where the user has multiple UTubs with varied numbers (and possible values) for tags.
-    As is, create_test_tags will have 5 instances of each tag on all URLs in all UTubs. The tag filter count will be 5 for all tags.
+    As is, create_test_tags will have len(MOCK_TAGS) instances of each tag on all URLs in all UTubs. The tag filter count will equal len(MOCK_TAGS) for all tags.
 
     GIVEN a user has access to UTubs, and has one displayed
     WHEN the user selects another UTub
@@ -333,7 +333,7 @@ def test_delete_url_decrements_all_tag_counters(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
-    Tests U4I's ability to decrement the tag counters when deleting a URL with all 5 tags
+    Tests U4I's ability to decrement the tag counters when deleting a URL with all tags
     visible in the Tag Deck
 
     GIVEN a user, selected UTub and selected URL

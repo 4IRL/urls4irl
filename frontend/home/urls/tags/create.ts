@@ -292,7 +292,7 @@ export async function createURLTag(
 /**
  * Displays changes related to a successful addition of a new Tag
  */
-function createURLTagSuccess(
+export function createURLTagSuccess(
   response: UrlTagModifiedResponse,
   urlCard: JQuery,
   utubID: number,
@@ -340,7 +340,7 @@ function createURLTagSuccess(
     const newTag = buildTagFilterInDeck(utubID, utubTagID, tagString, tagCount);
     // If max number of tags already selected
     if (
-      $(".tagFilter.selected").length === APP_CONFIG.constants.TAGS_MAX_ON_URL
+      $(".tagFilter.selected").length === APP_CONFIG.constants.TAGS_MAX_ON_URLS
     ) {
       newTag.addClass("disabled").off(".tagFilterSelected");
     }

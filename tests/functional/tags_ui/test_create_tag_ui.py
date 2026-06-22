@@ -8,7 +8,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from backend.models.users import Users
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
-from backend.utils.constants import CONSTANTS, STRINGS
+from backend.utils.constants import CONSTANTS, STRINGS, TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
@@ -587,7 +587,9 @@ def test_create_existing_tag_with_whitespace(
     assert duplicate_url_tag_error.text == TAGS_FAILURE.TAG_ALREADY_ON_URL
 
 
-def test_create_sixth_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
+def test_create_tag_above_limit(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
     """
     Tests the site error response to a user's attempt to create an additional unique tag once a URL already has the maximum number of tags applied
 
@@ -616,7 +618,9 @@ def test_create_sixth_tag(browser: WebDriver, create_test_tags, provide_app: Fla
         browser, duplicate_url_tag_selector, time=3
     )
     assert duplicate_url_tag_error is not None
-    assert duplicate_url_tag_error.text == TAGS_FAILURE.FIVE_TAGS_MAX
+    assert duplicate_url_tag_error.text == TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(
+        max_tags=TAG_CONSTANTS.MAX_URL_TAGS
+    )
 
 
 def test_create_tag_text_length_exceeded(

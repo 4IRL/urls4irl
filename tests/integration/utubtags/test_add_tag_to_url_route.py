@@ -1306,14 +1306,14 @@ def test_add_tag_to_url_not_in_utub(
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
 
 
-def test_add_tag_to_url_with_five_tags_as_utub_creator(
+def test_add_tag_to_url_with_max_tags_as_utub_creator(
     add_one_url_and_all_users_to_each_utub_no_tags,
-    add_tags_to_utubs,
+    add_max_tags_to_utubs,
     login_first_user_without_register,
 ):
     """
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a creator of a UTub,
-        one URL exists in each UTub, 8 Tags exist, and max tags are applied to a single URL in a UTub
+        one URL exists in each UTub, the per-URL tag limit of unique tags exist, and max tags are applied to a single URL in a UTub
     WHEN the user tries to add a tag to the same URL with max tags in a UTub they are a creator of
         - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
@@ -1324,7 +1324,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : "URLs can only have 5 tags max",
+        STD_JSON.MESSAGE : "URLs can only have up to the per-URL tag limit of tags",
     }
     """
     MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
@@ -1350,7 +1350,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         ).first()
         url_id_in_this_utub = url_in_this_utub.id
 
-        # Add five tags to this URL
+        # Apply the per-URL tag limit of tags to this URL
         for idx in range(MAX_NUM_OF_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()
@@ -1394,7 +1394,9 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
 
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.FIVE_TAGS_MAX
+    assert add_tag_response_json[
+        STD_JSON.MESSAGE
+    ] == TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(max_tags=TAG_CONSTANTS.MAX_URL_TAGS)
 
     with app.app_context():
         # Ensure no new tags exist, accounting for additional
@@ -1434,14 +1436,106 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
 
 
-def test_add_tag_to_url_with_five_tags_as_utub_member(
+def test_add_max_th_tag_succeeds(
     add_one_url_and_all_users_to_each_utub_no_tags,
-    add_tags_to_utubs,
+    add_max_tags_to_utubs,
+    login_first_user_without_register,
+):
+    """
+    GIVEN 3 users, 3 UTubs, with all users in each UTub, one URL exists in each UTub, the per-URL
+        tag vocabulary is seeded to the cap, and exactly MAX_URL_TAGS - 1 tags are already applied
+        to a single URL the logged-in creator added
+    WHEN the user adds the MAX_URL_TAGS-th (final allowed) tag to that URL
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 200 HTTP status code, the proper success JSON
+        response is sent, and that the URL now carries exactly MAX_URL_TAGS tag associations,
+        proving the boundary tag is accepted (not rejected).
+    """
+    MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get UTub this user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Get all tags for this UTub
+        all_tags: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id_user_is_creator_of
+        ).all()
+
+        # Get a URL in this UTub that this user added
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_in_this_utub = url_in_this_utub.id
+
+        # Apply MAX_URL_TAGS - 1 tags to this URL, leaving exactly one slot open
+        for idx in range(MAX_NUM_OF_TAGS - 1):
+            previously_added_tag_to_add = all_tags[idx]
+            new_url_tag_association = Utub_Url_Tags()
+            new_url_tag_association.utub_tag_id = previously_added_tag_to_add.id
+            new_url_tag_association.utub_url_id = url_id_in_this_utub
+            new_url_tag_association.utub_id = utub_id_user_is_creator_of
+
+            db.session.add(new_url_tag_association)
+
+        db.session.commit()
+
+        # The boundary tag to add (one not yet applied to this URL)
+        boundary_tag_to_add: Utub_Tags = all_tags[MAX_NUM_OF_TAGS - 1]
+        boundary_tag_string_to_add = boundary_tag_to_add.tag_string
+
+        # Confirm pre-POST state: exactly MAX_URL_TAGS - 1 tags applied to this URL
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Utub_Url_Tags.utub_url_id == url_id_in_this_utub,
+            ).count()
+            == MAX_NUM_OF_TAGS - 1
+        )
+
+    # Add the boundary (MAX_URL_TAGS-th) tag to this URL
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_in_this_utub,
+        ),
+        json={TAG_FORM.TAG_STRING: boundary_tag_string_to_add},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 200
+
+    add_tag_response_json = add_tag_response.json
+    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
+
+    with app.app_context():
+        # Ensure the URL now carries exactly MAX_URL_TAGS tag associations
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Utub_Url_Tags.utub_url_id == url_id_in_this_utub,
+            ).count()
+            == MAX_NUM_OF_TAGS
+        )
+
+
+def test_add_tag_to_url_with_max_tags_as_utub_member(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    add_max_tags_to_utubs,
     login_second_user_without_register,
 ):
     """
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a member of a UTub,
-        one URL exists in each UTub, 8 Tags exist, and max tags are applied to a single URL that this user did add
+        one URL exists in each UTub, the per-URL tag limit of unique tags exist, and max tags are applied to a single URL that this user did add
     WHEN the user tries to add a tag to the same URL with max tags in a UTub they are a member of
         - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
@@ -1452,7 +1546,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : TAGS_FAILURE.FIVE_TAGS_MAX,
+        STD_JSON.MESSAGE : TAGS_FAILURE.MAX_URL_TAGS_REACHED (formatted with max_tags),
     }
     """
     MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
@@ -1478,7 +1572,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         ).first()
         url_id_in_this_utub = url_in_this_utub.id
 
-        # Add five tags to this URL
+        # Apply the per-URL tag limit of tags to this URL
         for idx in range(MAX_NUM_OF_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()
@@ -1522,7 +1616,9 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
 
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.FIVE_TAGS_MAX
+    assert add_tag_response_json[
+        STD_JSON.MESSAGE
+    ] == TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(max_tags=TAG_CONSTANTS.MAX_URL_TAGS)
 
     with app.app_context():
         # Ensure no new tags exist, accounting for additional
@@ -2110,13 +2206,13 @@ def test_add_fresh_tag_to_valid_url_log(
 
 def test_add_tag_to_url_with_max_tags_log(
     add_one_url_and_all_users_to_each_utub_no_tags,
-    add_tags_to_utubs,
+    add_max_tags_to_utubs,
     login_first_user_without_register,
     caplog,
 ):
     """
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a creator of a UTub,
-        one URL exists in each UTub, 8 Tags exist, and max tags are applied to a single URL in a UTub
+        one URL exists in each UTub, the per-URL tag limit of unique tags exist, and max tags are applied to a single URL in a UTub
     WHEN the user tries to add a tag to the same URL with max tags in a UTub they are a creator of
         - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
@@ -2144,7 +2240,7 @@ def test_add_tag_to_url_with_max_tags_log(
         ).first()
         url_id_in_this_utub = url_in_this_utub.id
 
-        # Add five tags to this URL
+        # Apply the per-URL tag limit of tags to this URL
         for idx in range(MAX_NUM_OF_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()

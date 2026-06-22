@@ -234,8 +234,15 @@ a.urlString {
     padding-bottom: 0;
 }
 
-.urlTagsContainer span:first-child {
+.urlTagsContainer {
+    flex-wrap: wrap;
+    column-gap: 4px;
+    row-gap: 4px;
+}
+
+.urlTagsContainer > .tagBadge {
     margin-left: 0;
+    margin-right: 0;
 }
 
 .urlStringBtnUpdate,

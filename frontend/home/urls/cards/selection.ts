@@ -13,6 +13,13 @@ import {
 import { hideAndResetCreateURLTagForm } from "../tags/create.js";
 import { setFocusEventListenersOnURLCard } from "./cards.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
+import { isCoarsePointer } from "../../mobile.js";
+
+// Touch devices have no hover to reveal a tag's delete "×", so tapping a tag
+// toggles this class on it (one tag at a time) to slide the "×" out. The
+// matching reveal styling lives in styles/home/tags.css.
+const TAG_DELETE_REVEAL_CLASS = "tagBadgeDeleteRevealed";
+const TAG_DELETE_REVEAL_SELECTOR = "." + TAG_DELETE_REVEAL_CLASS;
 
 // Streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
 export function getSelectedURLCard(): JQuery | null {
@@ -60,6 +67,23 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
         return;
     }
 
+    // On touch, tapping a tag reveals that tag's delete "×" (one at a time)
+    // rather than closing the card — the touch equivalent of the desktop hover
+    // reveal. The "×" tap itself is handled above (.urlTagBtnDelete is ignored).
+    if (isCoarsePointer()) {
+      const tappedTagBadge = $(event.target).closest(".tagBadge");
+      if (tappedTagBadge.length) {
+        const alreadyRevealed = tappedTagBadge.hasClass(
+          TAG_DELETE_REVEAL_CLASS,
+        );
+        urlCard
+          .find(TAG_DELETE_REVEAL_SELECTOR)
+          .removeClass(TAG_DELETE_REVEAL_CLASS);
+        if (!alreadyRevealed) tappedTagBadge.addClass(TAG_DELETE_REVEAL_CLASS);
+        return;
+      }
+    }
+
     deselectURL(urlCard);
   });
 }
@@ -71,6 +95,7 @@ export function disableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
 // Clean up when deselecting a URL card
 function deselectURL(urlCard: JQuery): void {
   disableClickOnSelectedURLCardToHide(urlCard);
+  urlCard.find(TAG_DELETE_REVEAL_SELECTOR).removeClass(TAG_DELETE_REVEAL_CLASS);
   setState({ selectedURLCardID: null });
   urlCard.attr({ urlSelected: false });
   urlCard.find(".urlString").off("click.goToURL");
