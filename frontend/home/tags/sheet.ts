@@ -1,7 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
-import { emit as emitMetric } from "../../lib/metrics-client.js";
+import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { TAG_SHEET_TOGGLE_ACTION } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
@@ -117,7 +117,7 @@ export function openTagSheet(): void {
 
   _updateEmptyState();
 
-  emitMetric({
+  recordUIEvent({
     event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
     action: TAG_SHEET_TOGGLE_ACTION.OPEN,
   });
@@ -156,7 +156,7 @@ export function closeTagSheet({
   _opener = null;
 
   if (wasOpen) {
-    emitMetric({
+    recordUIEvent({
       event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
       action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
     });
