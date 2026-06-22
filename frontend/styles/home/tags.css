@@ -210,3 +210,24 @@
         background-color: var(--tagBackgroundColor) !important;
     }
 }
+
+/* Touch devices have no hover to reveal the per-tag delete "×". Tapping a tag
+   toggles .tagBadgeDeleteRevealed on it (see cards/selection.ts), sliding the
+   "×" out one tag at a time — the touch equivalent of the desktop hover reveal
+   above. Muted gray at rest so a full row of tags stays readable; red only
+   while pressed to confirm the destructive action. */
+@media (any-pointer: coarse) {
+    .tagBadgeDeleteRevealed .urlTagBtnDelete {
+        width: 100%;
+        opacity: 1;
+        color: var(--grayBadgeSelection);
+    }
+
+    .tagBadgeDeleteRevealed .urlTagBtnDelete:active {
+        color: var(--removeIconColor);
+    }
+
+    .tagBadgeDeleteRevealed>.tagText {
+        padding-right: 6px;
+    }
+}
