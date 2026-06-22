@@ -236,10 +236,13 @@ a.urlString {
 
 .urlTagsContainer {
     flex-wrap: wrap;
+    column-gap: 4px;
+    row-gap: 4px;
 }
 
-.urlTagsContainer span:first-child {
+.urlTagsContainer > .tagBadge {
     margin-left: 0;
+    margin-right: 0;
 }
 
 .urlStringBtnUpdate,
