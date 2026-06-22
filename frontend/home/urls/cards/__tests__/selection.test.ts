@@ -7,6 +7,7 @@ import {
 import { enableTabbingOnURLCardElements } from "../utils.js";
 import { resetStore, setState } from "../../../../store/app-store.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
+import { isCoarsePointer } from "../../../mobile.js";
 
 vi.mock("../update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
@@ -24,8 +25,28 @@ vi.mock("../utils.js", () => ({
   enableTabbingOnURLCardElements: vi.fn(),
   disableTabbingOnURLCardElements: vi.fn(),
 }));
+vi.mock("../../../mobile.js", () => ({
+  isCoarsePointer: vi.fn(() => false),
+}));
 
 const $ = window.jQuery;
+
+const TAG_DELETE_REVEAL_CLASS = "tagBadgeDeleteRevealed";
+
+const TAGGED_CARD_HTML = `
+  <div class="urlRow" utuburlid="42" urlSelected="false" filterable="true">
+    <span class="goToUrlIcon"></span>
+    <div class="urlTagsContainer">
+      <span class="tagBadge" data-tag="1">
+        first<button class="urlTagBtnDelete">×</button>
+      </span>
+      <span class="tagBadge" data-tag="2">
+        second<button class="urlTagBtnDelete">×</button>
+      </span>
+    </div>
+    <a class="urlString" href="https://example.com"></a>
+  </div>
+`;
 
 const URL_CARD_HTML = `
   <div class="urlRow" utuburlid="42" urlSelected="false" filterable="true">
@@ -257,6 +278,79 @@ describe("URL Card Selection", () => {
       urlCard.attr("filterable", "false");
       emit(AppEvents.URL_TAG_FILTER_APPLIED);
 
+      expect(urlCard.attr("urlSelected")).toBe("false");
+    });
+  });
+
+  describe("mobile tap-to-reveal tag delete (coarse pointer)", () => {
+    beforeEach(() => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      document.body.innerHTML = TAGGED_CARD_HTML;
+      urlCard = $(".urlRow");
+    });
+
+    it("tapping a tag reveals its delete × and does NOT deselect the card", () => {
+      selectURLCard(urlCard);
+      const firstTag = urlCard.find('.tagBadge[data-tag="1"]');
+
+      firstTag.trigger("click");
+
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(true);
+      expect(urlCard.attr("urlSelected")).toBe("true");
+    });
+
+    it("tapping an already-revealed tag toggles the reveal off", () => {
+      selectURLCard(urlCard);
+      const firstTag = urlCard.find('.tagBadge[data-tag="1"]');
+
+      firstTag.trigger("click");
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(true);
+
+      firstTag.trigger("click");
+
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(false);
+      expect(urlCard.attr("urlSelected")).toBe("true");
+    });
+
+    it("tapping a different tag moves the reveal to that one tag only", () => {
+      selectURLCard(urlCard);
+      const firstTag = urlCard.find('.tagBadge[data-tag="1"]');
+      const secondTag = urlCard.find('.tagBadge[data-tag="2"]');
+
+      firstTag.trigger("click");
+      secondTag.trigger("click");
+
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(false);
+      expect(secondTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(true);
+    });
+
+    it("tapping a non-tag element still deselects the card", () => {
+      selectURLCard(urlCard);
+
+      urlCard.find(".urlString").trigger("click");
+
+      expect(urlCard.attr("urlSelected")).toBe("false");
+    });
+
+    it("deselectAllURLs strips the reveal class from any revealed tag", () => {
+      selectURLCard(urlCard);
+      const firstTag = urlCard.find('.tagBadge[data-tag="1"]');
+      firstTag.trigger("click");
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(true);
+
+      deselectAllURLs();
+
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(false);
+    });
+
+    it("does NOT reveal on a fine pointer (desktop) — tag tap deselects", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(false);
+      selectURLCard(urlCard);
+      const firstTag = urlCard.find('.tagBadge[data-tag="1"]');
+
+      firstTag.trigger("click");
+
+      expect(firstTag.hasClass(TAG_DELETE_REVEAL_CLASS)).toBe(false);
       expect(urlCard.attr("urlSelected")).toBe("false");
     });
   });
