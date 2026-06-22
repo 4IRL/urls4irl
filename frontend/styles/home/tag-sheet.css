@@ -79,7 +79,18 @@
         left: 0;
         right: 0;
         bottom: 0;
-        height: 62%;
+        /* Height is viewport-relative, not `62%` of #mainPanel. A percentage
+           height only resolves against an ancestor with a *definite* height;
+           the chain here is `body { min-height: 100dvh }` -> `#mainPanel
+           { flex: 1 }`, so the ancestor height is indefinite. Chromium
+           special-cases flex items and resolves it anyway, but iOS Safari does
+           not: on the sheet's first layout `62%` collapsed to `auto` and the
+           sheet opened at full height (content pinned to the top, grabber +
+           backdrop unreachable -> impossible to close). `100dvh` is always
+           definite, so `calc` keeps the intended ~62% proportion of the URL
+           deck area (viewport minus the 3rem navbar + 1.75rem footer) on every
+           open across engines. */
+        height: calc((100dvh - 4.75rem) * 0.62);
         background: var(--panelBackgroundColor);
         border-top: 2px solid var(--contentTopBorder);
         border-radius: 1.25rem 1.25rem 0 0;
