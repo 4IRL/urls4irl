@@ -117,6 +117,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_TAG_DELETE_CONFIRM: Resource.TAG,
     EventName.UI_TAG_DELETE_CANCEL: Resource.TAG,
     EventName.UI_TAG_FILTER_TOGGLE: Resource.TAG,
+    EventName.UI_TAG_SHEET_TOGGLE: Resource.TAG,
     # UI — Members
     EventName.UI_MEMBER_INVITE_OPEN: Resource.MEMBER,
     EventName.UI_MEMBER_REMOVE_OPEN: Resource.MEMBER,

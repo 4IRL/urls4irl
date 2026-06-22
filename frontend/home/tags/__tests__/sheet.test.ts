@@ -6,6 +6,8 @@ import {
   relocateTagDeckForViewport,
   isTagSheetOpen,
 } from "../sheet.js";
+import { TAG_SHEET_TOGGLE_ACTION } from "../../../types/metrics-dim-values.js";
+import { UI_EVENTS } from "../../../types/metrics-events.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../../__tests__/helpers/mock-metrics-client.js"),
@@ -300,12 +302,34 @@ describe("Tag Sheet Controller", () => {
     });
   });
 
-  // Metrics emit is wired in Step 6 (UI_TAG_SHEET_TOGGLE / TAG_SHEET_TOGGLE_ACTION
-  // do not exist until generate-types runs). The emit in sheet.ts is currently a
-  // placeholder comment, so the assertion is deferred to Step 6.
-  it.todo(
-    "emits UI_TAG_SHEET_TOGGLE with action OPEN on open and CLOSE on close (wired in Step 6)",
-  );
+  describe("metrics", () => {
+    it("emits UI_TAG_SHEET_TOGGLE with action OPEN on open and CLOSE on close", async () => {
+      await setIsMobile(true);
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      openTagSheet();
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+        action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+      });
+
+      closeTagSheet({ returnFocus: false });
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+        action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+      });
+    });
+
+    it("does not emit a CLOSE metric when the sheet is already closed", async () => {
+      await setIsMobile(true);
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      expect(isTagSheetOpen()).toBe(false);
+      closeTagSheet({ returnFocus: false });
+
+      expect(emit).not.toHaveBeenCalled();
+    });
+  });
 
   describe("programmatic close", () => {
     it("does not move focus when returnFocus is false", async () => {

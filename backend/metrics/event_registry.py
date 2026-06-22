@@ -361,6 +361,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description="Tag filter toggled on/off",
         category=EventCategory.UI,
     ),
+    EventName.UI_TAG_SHEET_TOGGLE: EventRegistryEntry(
+        description="Mobile tag-filter bottom sheet opened/closed",
+        category=EventCategory.UI,
+        dimensions={"action": ("open", "close")},
+    ),
     EventName.UI_MEMBER_INVITE_OPEN: EventRegistryEntry(
         description="Member invite form opened",
         category=EventCategory.UI,

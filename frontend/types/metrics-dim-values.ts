@@ -147,6 +147,11 @@ export const MOBILE_NAV_TARGET = {
   TAGS: "tags",
 } as const;
 
+export const TAG_SHEET_TOGGLE_ACTION = {
+  OPEN: "open",
+  CLOSE: "close",
+} as const;
+
 export const URL_ACCESS_TRIGGER = {
   CORNER_BUTTON: "corner_button",
   URL_TEXT: "url_text",

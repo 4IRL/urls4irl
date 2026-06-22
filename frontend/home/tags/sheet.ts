@@ -1,6 +1,9 @@
 import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
+import { emit as emitMetric } from "../../lib/metrics-client.js";
+import { TAG_SHEET_TOGGLE_ACTION } from "../../types/metrics-dim-values.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
 import { isMobile } from "../mobile.js";
 
@@ -114,13 +117,21 @@ export function openTagSheet(): void {
 
   _updateEmptyState();
 
-  // Metric emit wired in Step 6 (UI_TAG_SHEET_TOGGLE, action: OPEN) once the
-  // backend dimension model and generated constants exist.
+  emitMetric({
+    event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+    action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+  });
 }
 
 export function closeTagSheet({
   returnFocus = true,
 }: { returnFocus?: boolean } = {}): void {
+  // Capture prior-open state so the CLOSE metric only fires for a real
+  // open→close transition. Several programmatic callers (deck-switch, desktop
+  // relocate) invoke this on an already-closed sheet; emitting there would
+  // inflate close counts with no matching open.
+  const wasOpen = sheetOpen;
+
   $(SHEET_SELECTOR).removeClass(SHEET_OPEN_CLASS).attr("aria-hidden", "true");
   $(BACKDROP_SELECTOR).removeClass(BACKDROP_SHOW_CLASS);
   $(document).off(ESCAPE_KEYDOWN_NAMESPACE);
@@ -144,8 +155,12 @@ export function closeTagSheet({
   }
   _opener = null;
 
-  // Metric emit wired in Step 6 (UI_TAG_SHEET_TOGGLE, action: CLOSE) once the
-  // backend dimension model and generated constants exist.
+  if (wasOpen) {
+    emitMetric({
+      event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+      action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+    });
+  }
 }
 
 export function toggleTagSheet(): void {
