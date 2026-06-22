@@ -180,7 +180,7 @@ export function initTagSheet(): void {
   // crossings are owned by initMobileLayout's matchMedia listener in mobile.ts).
   relocateTagDeckForViewport();
 
-  $(HANDLE_SELECTOR).on("click", () => toggleTagSheet());
+  $(HANDLE_SELECTOR).on("click", toggleTagSheet);
   $(GRABBER_SELECTOR).on("click", () => closeTagSheet());
   $(BACKDROP_SELECTOR).on("click", () => closeTagSheet());
 
