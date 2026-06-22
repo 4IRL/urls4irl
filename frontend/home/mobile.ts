@@ -19,6 +19,15 @@ export function isMobile(): boolean {
 }
 
 /**
+ * Check if the device has a coarse pointer (touch). Mirrors the
+ * `@media (any-pointer: coarse)` query that gates touch-only affordances in CSS,
+ * so JS and CSS agree regardless of viewport width.
+ */
+export function isCoarsePointer(): boolean {
+  return window.matchMedia("(any-pointer: coarse)").matches;
+}
+
+/**
  * Initialize mobile layout event listeners
  */
 export function initMobileLayout(): void {

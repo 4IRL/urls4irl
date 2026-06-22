@@ -13,7 +13,7 @@ import {
 import { hideAndResetCreateURLTagForm } from "../tags/create.js";
 import { setFocusEventListenersOnURLCard } from "./cards.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
-import { isMobile } from "../../mobile.js";
+import { isCoarsePointer } from "../../mobile.js";
 
 // Touch devices have no hover to reveal a tag's delete "×", so tapping a tag
 // toggles this class on it (one tag at a time) to slide the "×" out. The
@@ -70,7 +70,7 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
     // On touch, tapping a tag reveals that tag's delete "×" (one at a time)
     // rather than closing the card — the touch equivalent of the desktop hover
     // reveal. The "×" tap itself is handled above (.urlTagBtnDelete is ignored).
-    if (isMobile()) {
+    if (isCoarsePointer()) {
       const tappedTagBadge = $(event.target).closest(".tagBadge");
       if (tappedTagBadge.length) {
         const alreadyRevealed = tappedTagBadge.hasClass(
