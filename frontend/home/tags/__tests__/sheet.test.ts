@@ -4,6 +4,7 @@ import {
   closeTagSheet,
   toggleTagSheet,
   relocateTagDeckForViewport,
+  refreshTagSheetHandleVisibility,
   isTagSheetOpen,
 } from "../sheet.js";
 import { TAG_SHEET_TOGGLE_ACTION } from "../../../types/metrics-dim-values.js";
@@ -431,6 +432,30 @@ describe("Tag Sheet Controller", () => {
       expect(isTagSheetOpen()).toBe(false);
     });
 
+    it("closes the sheet for target utub-deck", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+
+      expect(isTagSheetOpen()).toBe(false);
+    });
+
+    it("closes the sheet for target no-utub", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "no-utub" });
+
+      expect(isTagSheetOpen()).toBe(false);
+    });
+
     it("relocates #TagDeck back to #leftPanel for target desktop", async () => {
       await setIsMobile(true);
       initTagSheet();
@@ -443,6 +468,67 @@ describe("Tag Sheet Controller", () => {
 
       expect($("#tagSheetBody #TagDeck").length).toBe(0);
       expect($("#leftPanel #TagDeck").length).toBe(1);
+    });
+  });
+
+  describe("refreshTagSheetHandleVisibility", () => {
+    // Each case starts from the all-guards-satisfied baseline and flips exactly
+    // one guard, isolating that guard as the sole cause of the handle hiding.
+    function seedActiveUtubSelector(): void {
+      $("#centerPanel").append('<div class="UTubSelector active"></div>');
+    }
+
+    it("shows the handle when every guard is satisfied", async () => {
+      await setIsMobile(true);
+      seedActiveUtubSelector();
+      // The SHEET_HTML fixture already gives #centerPanel the visible-flex class.
+      expect($("#centerPanel").hasClass("visible-flex")).toBe(true);
+      await setCrossSearchActive(false);
+
+      refreshTagSheetHandleVisibility();
+
+      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(false);
+    });
+
+    it("hides the handle when not mobile", async () => {
+      await setIsMobile(false);
+      seedActiveUtubSelector();
+      await setCrossSearchActive(false);
+
+      refreshTagSheetHandleVisibility();
+
+      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+    });
+
+    it("hides the handle when no UTub is selected", async () => {
+      await setIsMobile(true);
+      // No active .UTubSelector seeded — the utub-selected guard fails.
+      await setCrossSearchActive(false);
+
+      refreshTagSheetHandleVisibility();
+
+      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+    });
+
+    it("hides the handle when the URL deck is not showing", async () => {
+      await setIsMobile(true);
+      seedActiveUtubSelector();
+      $("#centerPanel").removeClass("visible-flex");
+      await setCrossSearchActive(false);
+
+      refreshTagSheetHandleVisibility();
+
+      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+    });
+
+    it("hides the handle when cross-utub search is active", async () => {
+      await setIsMobile(true);
+      seedActiveUtubSelector();
+      await setCrossSearchActive(true);
+
+      refreshTagSheetHandleVisibility();
+
+      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
     });
   });
 

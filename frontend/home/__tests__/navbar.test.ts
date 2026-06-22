@@ -96,7 +96,11 @@ describe("navbar", () => {
 
     it("clicking #toTags opens the tag sheet", () => {
       initNavbar();
+      const hideSpy = vi.spyOn(NAVBAR_TOGGLER.toggler!, "hide");
+
       $("button#toTags").trigger("click");
+
+      expect(hideSpy).toHaveBeenCalledTimes(1);
       expect(openTagSheet).toHaveBeenCalled();
     });
 
