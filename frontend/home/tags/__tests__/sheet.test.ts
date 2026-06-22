@@ -54,12 +54,6 @@ vi.mock("../../search/cross-utub-search.js", () => ({
 
 const $ = window.jQuery;
 
-const UTUB_SELECTED_EVENT = "utub:selected";
-const UTUB_DELETED_EVENT = "utub:deleted";
-const TAG_FILTER_CHANGED_EVENT = "tag:filter-changed";
-const CROSS_SEARCH_EVENT = "cross-utub-search:visibility-changed";
-const MOBILE_DECK_SWITCHED_EVENT = "mobile:deck-switched";
-
 const SHEET_OPEN_CLASS = "tag-sheet-open";
 const BACKDROP_SHOW_CLASS = "tag-sheet-backdrop-show";
 const HIDDEN_CLASS = "hidden";
@@ -292,12 +286,12 @@ describe("Tag Sheet Controller", () => {
       initTagSheet();
       expect($("#tagSheetHandleCount").hasClass(HIDDEN_CLASS)).toBe(true);
 
-      const { emit } = await import("../../../lib/event-bus.js");
-      emit(TAG_FILTER_CHANGED_EVENT, { selectedTagIDs: [1, 2] });
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [1, 2] });
       expect($("#tagSheetHandleCount").hasClass(HIDDEN_CLASS)).toBe(false);
       expect($("#tagSheetHandleCount").text()).toBe("2");
 
-      emit(TAG_FILTER_CHANGED_EVENT, { selectedTagIDs: [] });
+      emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs: [] });
       expect($("#tagSheetHandleCount").hasClass(HIDDEN_CLASS)).toBe(true);
     });
   });
@@ -361,9 +355,9 @@ describe("Tag Sheet Controller", () => {
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      const { emit } = await import("../../../lib/event-bus.js");
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
       await setCrossSearchActive(true);
-      emit(CROSS_SEARCH_EVENT, { active: true });
+      emit(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, { active: true });
       expect(isTagSheetOpen()).toBe(false);
       // While cross-search is active the handle is hidden despite an active UTub.
       expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
@@ -373,7 +367,7 @@ describe("Tag Sheet Controller", () => {
       await setCrossSearchActive(false);
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
-      emit(CROSS_SEARCH_EVENT, { active: false });
+      emit(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, { active: false });
       expect(isTagSheetOpen()).toBe(true);
       expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(false);
     });
@@ -386,8 +380,8 @@ describe("Tag Sheet Controller", () => {
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      const { emit } = await import("../../../lib/event-bus.js");
-      emit(UTUB_SELECTED_EVENT, {});
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.UTUB_SELECTED, {});
 
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
       expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("true");
@@ -400,8 +394,8 @@ describe("Tag Sheet Controller", () => {
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      const { emit } = await import("../../../lib/event-bus.js");
-      emit(UTUB_DELETED_EVENT, { utubID: 1 });
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.UTUB_DELETED, { utubID: 1 });
 
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
       expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("true");
@@ -416,8 +410,8 @@ describe("Tag Sheet Controller", () => {
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      const { emit } = await import("../../../lib/event-bus.js");
-      emit(MOBILE_DECK_SWITCHED_EVENT, { target: "url-deck" });
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
 
       // Navigating (back) to the URL deck while the sheet is open must dismiss it;
       // otherwise #mainPanel siblings stay inert and the navbar cannot re-open over
@@ -431,8 +425,8 @@ describe("Tag Sheet Controller", () => {
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      const { emit } = await import("../../../lib/event-bus.js");
-      emit(MOBILE_DECK_SWITCHED_EVENT, { target: "member-deck" });
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "member-deck" });
 
       expect(isTagSheetOpen()).toBe(false);
     });
@@ -443,9 +437,9 @@ describe("Tag Sheet Controller", () => {
       relocateTagDeckForViewport();
       expect($("#tagSheetBody #TagDeck").length).toBe(1);
 
-      const { emit } = await import("../../../lib/event-bus.js");
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
       await setIsMobile(false);
-      emit(MOBILE_DECK_SWITCHED_EVENT, { target: "desktop" });
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "desktop" });
 
       expect($("#tagSheetBody #TagDeck").length).toBe(0);
       expect($("#leftPanel #TagDeck").length).toBe(1);
