@@ -46,10 +46,12 @@ class UI_TEST_STRINGS:
     DESC_MAX_FONT_PX: int = 20  # mirrors DESC_MAX_FONT_PX in header-fit.ts
     DESC_MIN_FONT_PX: int = 14  # mirrors DESC_MIN_FONT_PX in header-fit.ts
 
-    # A 30-char title (the UTub name cap) and a ~480-char description (under the
-    # 500-char cap) that overflow a single line, forcing the fit logic down to
-    # its minimum font and the text to wrap. Used by the URLDeck header-font
-    # Selenium tests.
+    # A 30-char title (the UTub name cap) and a ~480-char description that
+    # overflow a single line, forcing the fit logic down to its minimum font and
+    # the text to wrap. Used by the URLDeck header-font Selenium tests. The
+    # description is written directly to the DB (bypassing the validation-layer
+    # description cap), so its length is deliberately longer than that cap — it
+    # only needs to be long enough to force min-font wrapping.
     SHORT_FIT_UTUB_NAME = "ShortName"
     SHORT_FIT_UTUB_DESCRIPTION = "A short description."
     LONG_FIT_UTUB_NAME = "Wxyz" * 6 + "QrstUv"  # exactly 30 chars, no spaces
@@ -61,7 +63,7 @@ class UI_TEST_STRINGS:
         "length-responsive font fitting is meant to guarantee for every member "
         "who opens this shared collection of links on a small or large screen "
         "alike regardless of how much explanatory text the owner decided to add."
-    )  # ~480 chars, under the 500 cap
+    )  # ~480 chars; written directly to the DB, bypassing the validation cap
 
     # Tags
     TEST_TAG_NAME_1 = "Terrible"

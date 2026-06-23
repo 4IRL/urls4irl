@@ -790,7 +790,7 @@ def test_update_utub_description_too_long(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions
     WHEN the creator attempts to modify the UTub description to a new description that is longer than
-        500 characters, via a POST to:
+        the maximum allowed length, via a POST to:
         "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
