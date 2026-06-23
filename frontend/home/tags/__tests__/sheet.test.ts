@@ -72,6 +72,16 @@ const SHEET_HTML = `
       <div id="UTubDeck" class="deck"></div>
       <div id="MemberDeck" class="deck"></div>
       <div id="TagDeck" class="deck">
+        <div class="titleElement">
+          <div id="TagDeckTitleGroup" class="flex-row gap-10p">
+            <div id="TagDeckHeaderAndCaret" class="clickable">
+              <h2 id="TagDeckHeader">Tags</h2>
+            </div>
+          </div>
+          <div class="button-container">
+            <button id="utubTagBtnCreate" type="button"></button>
+          </div>
+        </div>
         <div id="listTags"></div>
       </div>
     </div>
@@ -263,6 +273,30 @@ describe("Tag Sheet Controller", () => {
       $("#tagSheetGrabber").trigger("click");
 
       expect(isTagSheetOpen()).toBe(false);
+    });
+
+    it("clicking the title group (left half of the header) closes the sheet", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+
+      $("#TagDeckTitleGroup").trigger("click");
+
+      expect(isTagSheetOpen()).toBe(false);
+    });
+
+    it("clicking a title-row action button does not close the sheet", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+
+      // The buttons live in the right-half .button-container, outside the
+      // #TagDeckTitleGroup close target, so they never dismiss the sheet.
+      $("#utubTagBtnCreate").trigger("click");
+
+      expect(isTagSheetOpen()).toBe(true);
     });
 
     it("Escape keydown closes the sheet while open and is a no-op when closed", async () => {

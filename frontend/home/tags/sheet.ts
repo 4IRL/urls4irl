@@ -22,6 +22,10 @@ const HANDLE_SELECTOR = `#${HANDLE_ID}`;
 const HANDLE_COUNT_SELECTOR = "#tagSheetHandleCount";
 const GRABBER_ID = "tagSheetGrabber";
 const GRABBER_SELECTOR = `#${GRABBER_ID}`;
+// Left half of the tag deck's title row — a secondary, larger close target
+// (the grabber bar alone is an awkward touch target). Sized to 50% width in
+// tag-sheet.css so the action buttons on the right half stay tappable.
+const TITLE_GROUP_SELECTOR = "#TagDeckTitleGroup";
 const EMPTY_STATE_SELECTOR = "#tagSheetEmpty";
 const MAIN_PANEL_SELECTOR = "#mainPanel";
 const TAG_DECK_SELECTOR = "#TagDeck";
@@ -183,6 +187,14 @@ export function initTagSheet(): void {
   $(HANDLE_SELECTOR).on("click", toggleTagSheet);
   $(GRABBER_SELECTOR).on("click", () => closeTagSheet());
   $(BACKDROP_SELECTOR).on("click", () => closeTagSheet());
+
+  // Tapping the title group (left half of the tag deck header) closes the sheet
+  // — a larger touch target than the grabber. Mobile + open only: on desktop the
+  // same element drives the caret collapse (collapsible-decks.ts), which already
+  // no-ops on mobile, so the two handlers never conflict.
+  $(TITLE_GROUP_SELECTOR).on("click", () => {
+    if (isMobile() && sheetOpen) closeTagSheet();
+  });
 
   on(AppEvents.UTUB_SELECTED, () => {
     if (sheetOpen) closeTagSheet({ returnFocus: false });

@@ -162,6 +162,16 @@
         outline-offset: 2px;
     }
 
+    /* Enlarge the close tap target: inside the sheet, the left half of the tag
+       deck's title row (the "Tags (N/M)" group) doubles as a close affordance —
+       the lone grabber bar is too small/unintuitive on touch. Capped at 50% so
+       the action buttons (add/edit/funnel) on the right half stay tappable. The
+       click-to-close handler lives in sheet.ts; this only sizes the hit area. */
+    #tagSheetBody #TagDeckTitleGroup {
+        flex: 0 0 50%;
+        cursor: pointer;
+    }
+
     /* Host the relocated #TagDeck so it fills the sheet body; its inner
        .content already scrolls (decks.css). */
     #tagSheetBody {
