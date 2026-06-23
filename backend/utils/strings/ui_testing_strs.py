@@ -37,6 +37,32 @@ class UI_TEST_STRINGS:
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"
     TEST_UTUB_NAME_2 = MOCK_UTUB_NAME_BASE + "2"
 
+    # URLDeck header/subheader length-responsive font sizes (px). These mirror
+    # the TypeScript constants in frontend/home/utubs/header-fit.ts — they are a
+    # cross-language pairing and MUST be kept in sync when changing a font value
+    # in either file.
+    TITLE_MAX_FONT_PX: int = 32  # mirrors TITLE_MAX_FONT_PX in header-fit.ts
+    TITLE_MIN_FONT_PX: int = 16  # mirrors TITLE_MIN_FONT_PX in header-fit.ts
+    DESC_MAX_FONT_PX: int = 20  # mirrors DESC_MAX_FONT_PX in header-fit.ts
+    DESC_MIN_FONT_PX: int = 14  # mirrors DESC_MIN_FONT_PX in header-fit.ts
+
+    # A 30-char title (the UTub name cap) and a ~480-char description (under the
+    # 500-char cap) that overflow a single line, forcing the fit logic down to
+    # its minimum font and the text to wrap. Used by the URLDeck header-font
+    # Selenium tests.
+    SHORT_FIT_UTUB_NAME = "ShortName"
+    SHORT_FIT_UTUB_DESCRIPTION = "A short description."
+    LONG_FIT_UTUB_NAME = "Wxyz" * 6 + "QrstUv"  # exactly 30 chars, no spaces
+    LONG_FIT_UTUB_DESCRIPTION = (
+        "This UTub description is intentionally very long so that even at the "
+        "minimum font size it cannot possibly fit on a single line and must "
+        "wrap across multiple lines while remaining fully visible without being "
+        "truncated by an ellipsis, which is exactly the behaviour the "
+        "length-responsive font fitting is meant to guarantee for every member "
+        "who opens this shared collection of links on a small or large screen "
+        "alike regardless of how much explanatory text the owner decided to add."
+    )  # ~480 chars, under the 500 cap
+
     # Tags
     TEST_TAG_NAME_1 = "Terrible"
 
