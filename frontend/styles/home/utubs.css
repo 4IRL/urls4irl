@@ -238,6 +238,10 @@
 #UTubNameOuterUpdateWrap {
     flex: 1;
     min-width: 0;
+    /* Reserve a gap before the action buttons (filter funnel / add URL) so the
+       trailing edit-name pencil never butts up against them when a long title
+       fills the row. */
+    margin-inline-end: 0.75rem;
 }
 
 #UTubDescriptionInnerUpdateWrap {

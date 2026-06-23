@@ -172,6 +172,18 @@ def test_url_deck_header_and_subheader_shrink_and_wrap_when_long(
     single_desc_line_px = _computed_line_height_px(browser, subheader)
     assert _single_line_height(browser, subheader) > single_desc_line_px
 
+    # 4. A full-width title's trailing edit-name pencil must not butt up against
+    #    the action buttons (filter/add): the name group reserves an inline-end
+    #    gap before them.
+    name_group_margin_end_px = float(
+        browser.execute_script(
+            "return window.getComputedStyle("
+            "document.getElementById('UTubNameOuterUpdateWrap')"
+            ").marginInlineEnd;"
+        ).rstrip("px")
+    )
+    assert name_group_margin_end_px > 0
+
 
 def test_url_deck_header_edit_still_opens_after_font_fit(
     browser: WebDriver, create_test_utubs, provide_app: Flask
