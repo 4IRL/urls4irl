@@ -2,6 +2,7 @@ from flask import Flask
 import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import (
     get_utub_this_user_created,
     update_utub_name_and_description,
@@ -17,7 +18,6 @@ from tests.functional.utubs_ui.selenium_utils import (
     open_update_utub_desc_input,
     open_update_utub_name_input,
 )
-from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 
 pytestmark = pytest.mark.utubs_ui
 
@@ -31,7 +31,52 @@ def _scroll_height_within_client_height(browser: WebDriver, element) -> bool:
 
 
 def _single_line_height(browser: WebDriver, element) -> int:
+    """Return the rendered clientHeight (px) of the element."""
     return browser.execute_script("return arguments[0].clientHeight;", element)
+
+
+def _parse_font_px(css_value: str) -> int:
+    """Parse a CSS font-size string (e.g. ``"32px"`` or ``"32.00px"``) to int px."""
+    return int(float(css_value.rstrip("px")))
+
+
+def _computed_line_height_px(browser: WebDriver, element) -> float:
+    """Return the element's computed single-line height in px.
+
+    Reads ``getComputedStyle(element).lineHeight``. When the browser reports
+    the keyword ``"normal"`` (no explicit line-height resolved to a length),
+    falls back to measuring the actual rendered height of a single line by
+    cloning the element, forcing its content to one short line, and reading
+    the clone's ``clientHeight``. This keeps the test robust to stylesheet
+    line-height changes instead of assuming a fixed multiple of the font size.
+    """
+    return browser.execute_script(
+        """
+        const element = arguments[0];
+        const computed = window.getComputedStyle(element);
+        const lineHeight = computed.lineHeight;
+        if (lineHeight && lineHeight !== "normal") {
+            const parsed = parseFloat(lineHeight);
+            if (!Number.isNaN(parsed)) {
+                return parsed;
+            }
+        }
+        const clone = element.cloneNode(false);
+        clone.textContent = "M";
+        clone.style.height = "auto";
+        clone.style.minHeight = "0";
+        clone.style.maxHeight = "none";
+        clone.style.whiteSpace = "nowrap";
+        clone.style.position = "absolute";
+        clone.style.visibility = "hidden";
+        clone.style.pointerEvents = "none";
+        element.parentElement.appendChild(clone);
+        const measured = clone.clientHeight;
+        clone.remove();
+        return measured;
+        """,
+        element,
+    )
 
 
 def test_url_deck_header_and_subheader_render_at_max_font_when_short(
@@ -63,11 +108,13 @@ def test_url_deck_header_and_subheader_render_at_max_font_when_short(
     assert header is not None
     assert subheader is not None
 
-    assert header.value_of_css_property("font-size") == (
-        f"{UI_TEST_STRINGS.TITLE_MAX_FONT_PX}px"
+    assert (
+        _parse_font_px(header.value_of_css_property("font-size"))
+        == UI_TEST_STRINGS.TITLE_MAX_FONT_PX
     )
-    assert subheader.value_of_css_property("font-size") == (
-        f"{UI_TEST_STRINGS.DESC_MAX_FONT_PX}px"
+    assert (
+        _parse_font_px(subheader.value_of_css_property("font-size"))
+        == UI_TEST_STRINGS.DESC_MAX_FONT_PX
     )
 
     # Short text fits on a single line, so it is never clipped.
@@ -107,10 +154,11 @@ def test_url_deck_header_and_subheader_shrink_and_wrap_when_long(
 
     # 1. Description clamps to its minimum font; the 30-char title shrinks into
     #    the [min, max] range (it may or may not hit min depending on its width).
-    assert subheader.value_of_css_property("font-size") == (
-        f"{UI_TEST_STRINGS.DESC_MIN_FONT_PX}px"
+    assert (
+        _parse_font_px(subheader.value_of_css_property("font-size"))
+        == UI_TEST_STRINGS.DESC_MIN_FONT_PX
     )
-    header_font_px = int(float(header.value_of_css_property("font-size").rstrip("px")))
+    header_font_px = _parse_font_px(header.value_of_css_property("font-size"))
     assert UI_TEST_STRINGS.TITLE_MIN_FONT_PX <= header_font_px
     assert header_font_px <= UI_TEST_STRINGS.TITLE_MAX_FONT_PX
 
@@ -121,7 +169,7 @@ def test_url_deck_header_and_subheader_shrink_and_wrap_when_long(
     # 3. Wrapped / fully visible: nothing clipped, and the description spans more
     #    than a single line.
     assert _scroll_height_within_client_height(browser, subheader)
-    single_desc_line_px = UI_TEST_STRINGS.DESC_MIN_FONT_PX * 2
+    single_desc_line_px = _computed_line_height_px(browser, subheader)
     assert _single_line_height(browser, subheader) > single_desc_line_px
 
 
