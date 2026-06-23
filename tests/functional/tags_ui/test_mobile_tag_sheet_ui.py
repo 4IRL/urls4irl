@@ -22,6 +22,8 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_and_select_utub_by_utubid_mobile
 from tests.functional.selenium_utils import (
     Decks,
+    click_on_navbar,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_click_element,
     wait_until_hidden,
     wait_until_in_focus,
@@ -114,9 +116,13 @@ def test_tag_sheet_happy_path_open_filter_close(
     assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
     assert_visible_css_selector(browser, HPL.TAG_SHEET_HANDLE)
 
-    # Tap the handle to open the sheet.
+    # Tap the handle to open the sheet, then wait for the slide-up to finish:
+    # `visibility_of_element_located` returns mid-transform, and tapping a tag
+    # filter row while the sheet is still sliding lands the click on a moving
+    # target (the tag never toggles), so gate on the sheet position settling.
     wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
     wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_for_animation_to_end_check_top_lhs_corner(browser, HPL.TAG_SHEET)
 
     # Sheet overlays the URL deck — both visible simultaneously (NOT a single deck).
     assert_visible_css_selector(browser, HPL.TAG_SHEET)
@@ -138,6 +144,38 @@ def test_tag_sheet_happy_path_open_filter_close(
 
     _wait_until_visible_url_count(browser, num_urls_tagged)
     assert len(_visible_url_rows(browser)) == num_urls_tagged
+
+
+def test_tag_sheet_opens_over_url_deck_from_member_deck(
+    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a logged-in mobile user who has navigated to the Member deck
+    WHEN they tap Tags in the navbar
+    THEN the app switches to the URL deck and opens the tag sheet over it — the
+        sheet must never overlay the Member deck
+    """
+    browser = browser_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+
+    # Navigate to the Member deck first.
+    click_on_navbar(browser)
+    wait_then_click_element(browser, HPL.NAVBAR_MEMBER_DECK)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.MEMBERS)
+
+    # Tap Tags in the navbar.
+    click_on_navbar(browser)
+    wait_then_click_element(browser, HPL.NAVBAR_TAGS_DECK)
+
+    # The sheet opens over the URL deck, not the Member deck.
+    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
+    assert_visible_css_selector(browser, HPL.TAG_SHEET)
+    assert_visible_css_selector(browser, HPL.URL_DECK)
+    assert_not_visible_css_selector(browser, HPL.MEMBER_DECK)
 
 
 def test_tag_sheet_close_via_backdrop(

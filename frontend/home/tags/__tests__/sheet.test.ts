@@ -416,7 +416,18 @@ describe("Tag Sheet Controller", () => {
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
-      emit(AppEvents.UTUB_SELECTED, {});
+      // The UTUB_SELECTED subscriber ignores the payload, but emit() is typed to
+      // require a full UtubSelectedPayload — supply a minimal valid one.
+      emit(AppEvents.UTUB_SELECTED, {
+        utubID: 1,
+        utubName: "Test UTub",
+        urls: [],
+        tags: [],
+        members: [],
+        utubOwnerID: 1,
+        isCurrentUserOwner: true,
+        currentUserID: 1,
+      });
 
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
       expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("true");

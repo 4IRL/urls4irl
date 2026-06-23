@@ -60,12 +60,13 @@ export function initNavbar(): void {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
-    // Collapse the hamburger before opening the sheet: openTagSheet() moves focus
-    // into the sheet and marks #mainPanel siblings inert, which leaves the still-
-    // open Bootstrap collapse in a desynced state that cannot be reopened. The
-    // deck-switch handlers close the dropdown via their setMobileUIWhen* routing;
-    // the sheet has no such routing, so close it explicitly here.
-    NAVBAR_TOGGLER.toggler?.hide();
+    // The tag sheet overlays the URL deck, so first switch to the URL deck —
+    // otherwise tapping Tags from the Member/UTub deck opens the sheet over the
+    // wrong deck. This also collapses the hamburger (it calls toggler.hide()),
+    // which must happen before openTagSheet() moves focus into the sheet and
+    // marks #mainPanel siblings inert (a still-open Bootstrap collapse would
+    // otherwise desync and become unreopenable). Then open the sheet over it.
+    setMobileUIWhenUTubSelectedOrURLNavSelected();
     openTagSheet();
   });
 
