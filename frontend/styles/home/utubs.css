@@ -217,17 +217,15 @@
 
 #UTubDescriptionSubheaderWrap {
     margin-bottom: 0.25rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     min-width: 0;
     flex-shrink: 1;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 #UTubNameOuterUpdateWrap {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
 }
 
 #UTubDescriptionInnerUpdateWrap {

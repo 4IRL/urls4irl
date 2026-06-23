@@ -115,7 +115,7 @@
 }
 
 .deck .titleElement:first-child {
-    height: 38px;
+    min-height: 38px;
 }
 
 /* Member/Tag header bands only (UTub deck excluded — its search subheader keeps
