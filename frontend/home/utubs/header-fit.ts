@@ -78,17 +78,19 @@ export function fitElementFont({
 }): void {
   // Skip hidden/disconnected elements (e.g. a deck not currently shown):
   // measuring them yields 0-width geometry and would produce a wrong fit.
-  const isVisible =
-    typeof element.checkVisibility === "function"
-      ? element.checkVisibility({ visibilityProperty: true })
-      : element.offsetParent !== null;
+  // offsetParent is null for any element in a display:none subtree (the case
+  // that matters for hidden decks), so it reliably detects that here.
+  const isVisible = element.offsetParent !== null;
   if (!isVisible) return;
+
+  // Need the parent to measure available width; a disconnected element has none.
+  if (!element.parentElement) return;
 
   // Available width = parent's content width minus the width of every sibling
   // sharing the parent's flex space (e.g. the pencil-icon span next to the title).
-  const rawContainerWidthPx = element.parentElement?.clientWidth ?? 0;
+  const rawContainerWidthPx = element.parentElement.clientWidth;
   let siblingWidthPx = 0;
-  for (const child of element.parentElement?.children ?? []) {
+  for (const child of element.parentElement.children) {
     if (child !== element) siblingWidthPx += (child as HTMLElement).offsetWidth;
   }
   const containerWidthPx = rawContainerWidthPx - siblingWidthPx;
@@ -109,7 +111,9 @@ export function fitElementFont({
     baseFontPx,
     minFontPx,
   });
-  element.style.fontSize = fittedPx + "px";
+  // The element was already set to base before measuring, so only write on a
+  // change to avoid a redundant style mutation when the text already fits.
+  if (fittedPx !== baseFontPx) element.style.fontSize = fittedPx + "px";
 }
 
 /**
