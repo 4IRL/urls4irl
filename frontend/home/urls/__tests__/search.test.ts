@@ -25,7 +25,11 @@ const SEARCH_HTML = `
   <button id="URLSearchFilterIconClose" class="hidden"></button>
   <div id="SearchURLWrap" class="hidden"></div>
   <input id="URLContentSearch" value="" />
-  <div id="UTubDescriptionSubheaderWrap"></div>
+  <div id="UTubDescriptionSubheaderOuterWrap">
+    <div id="UTubDescriptionSubheaderWrap">
+      <h5 id="URLDeckSubheader">A long UTub description</h5>
+    </div>
+  </div>
   <button id="URLDeckSubheaderCreateDescription"></button>
   <p id="URLSearchNoResults" class="hidden"></p>
   <span id="URLSearchAnnouncement"></span>
@@ -84,6 +88,18 @@ describe("URL Search", () => {
         document.getElementById("URLContentSearch"),
       );
     });
+
+    it("collapses the description to one line via url-search-open", () => {
+      expect(
+        $("#UTubDescriptionSubheaderOuterWrap").hasClass("url-search-open"),
+      ).toBe(false);
+
+      $("#URLSearchFilterIcon").trigger("click");
+
+      expect(
+        $("#UTubDescriptionSubheaderOuterWrap").hasClass("url-search-open"),
+      ).toBe(true);
+    });
   });
 
   describe("clicking #URLSearchFilterIconClose", () => {
@@ -103,6 +119,18 @@ describe("URL Search", () => {
 
       expect($("#URLSearchFilterIcon").hasClass("hidden")).toBe(false);
       expect($("#URLSearchFilterIconClose").hasClass("hidden")).toBe(true);
+    });
+
+    it("restores the wrapping description by removing url-search-open", () => {
+      expect(
+        $("#UTubDescriptionSubheaderOuterWrap").hasClass("url-search-open"),
+      ).toBe(true);
+
+      $("#URLSearchFilterIconClose").trigger("click");
+
+      expect(
+        $("#UTubDescriptionSubheaderOuterWrap").hasClass("url-search-open"),
+      ).toBe(false);
     });
 
     it("clears the search input value", () => {

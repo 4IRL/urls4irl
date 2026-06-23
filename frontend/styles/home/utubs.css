@@ -175,6 +175,18 @@
     #utubNameFilterBtnClose {
         display: none;
     }
+
+    /* While the URL search is open, the search input drops onto its own
+       full-width row below the description. Collapse the (font-fitted, possibly
+       multi-line) description to a single truncated line so the header band does
+       not grow taller. The wrapping state returns when search closes. */
+    #UTubDescriptionSubheaderOuterWrap.url-search-open #URLDeckSubheader {
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 }
 
 @media (min-width: 992px) {
