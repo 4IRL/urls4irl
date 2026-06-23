@@ -46,24 +46,22 @@ class UI_TEST_STRINGS:
     DESC_MAX_FONT_PX: int = 20  # mirrors DESC_MAX_FONT_PX in header-fit.ts
     DESC_MIN_FONT_PX: int = 14  # mirrors DESC_MIN_FONT_PX in header-fit.ts
 
-    # A 30-char title (the UTub name cap) and a ~480-char description that
+    # A 30-char title (the UTub name cap) and a ~240-char description that
     # overflow a single line, forcing the fit logic down to its minimum font and
-    # the text to wrap. Used by the URLDeck header-font Selenium tests. The
-    # description is written directly to the DB (bypassing the validation-layer
-    # description cap), so its length is deliberately longer than that cap — it
-    # only needs to be long enough to force min-font wrapping.
+    # the text to wrap across multiple lines. Used by the URLDeck header-font
+    # Selenium tests. The description stays under the MAX_DESCRIPTION_LENGTH (250)
+    # column limit while still being long enough — with spaces so word-break wraps
+    # at word boundaries — to clamp the description to its minimum font and span
+    # several lines in the narrow URLDeck panel.
     SHORT_FIT_UTUB_NAME = "ShortName"
     SHORT_FIT_UTUB_DESCRIPTION = "A short description."
     LONG_FIT_UTUB_NAME = "Wxyz" * 6 + "QrstUv"  # exactly 30 chars, no spaces
     LONG_FIT_UTUB_DESCRIPTION = (
-        "This UTub description is intentionally very long so that even at the "
-        "minimum font size it cannot possibly fit on a single line and must "
-        "wrap across multiple lines while remaining fully visible without being "
-        "truncated by an ellipsis, which is exactly the behaviour the "
-        "length-responsive font fitting is meant to guarantee for every member "
-        "who opens this shared collection of links on a small or large screen "
-        "alike regardless of how much explanatory text the owner decided to add."
-    )  # ~480 chars; written directly to the DB, bypassing the validation cap
+        "This UTub description is intentionally long enough that even at the "
+        "smallest font size it cannot fit on one line and must wrap across "
+        "several lines while staying fully visible and never truncated, "
+        "which is the responsive font-fitting behaviour."
+    )  # 244 chars; stays under the 250-char column limit yet still forces min-font wrapping
 
     # Tags
     TEST_TAG_NAME_1 = "Terrible"

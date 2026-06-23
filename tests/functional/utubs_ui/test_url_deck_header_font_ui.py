@@ -78,7 +78,7 @@ def test_url_deck_header_and_subheader_shrink_and_wrap_when_long(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
-    GIVEN a UTub whose title (30 chars) and description (~480 chars) overflow
+    GIVEN a UTub whose title (30 chars) and description (~244 chars) overflow
         a single line
     WHEN the owner selects it
     THEN the description renders at the min description font, the title renders
