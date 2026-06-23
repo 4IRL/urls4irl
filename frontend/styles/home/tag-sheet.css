@@ -75,22 +75,21 @@
        { display: none }` specificity (1-0-0); otherwise the ID rule wins and the
        sheet never renders on mobile. */
     #tagDeckSheet.tag-deck-sheet {
-        position: absolute;
+        /* Anchored to the VIEWPORT, not #mainPanel. Anchoring to #mainPanel
+           (position: absolute) is fragile on iOS Safari: #mainPanel is
+           `flex: 1` inside a `min-height: 100dvh` body, and iOS lets it grow
+           taller than the visible viewport (dynamic toolbar + content), so a
+           `bottom: 0` sheet landed below the fold and the page scrolled — the
+           sheet appeared full-height with its content pinned to the top and the
+           grabber/backdrop unreachable (impossible to close). `position: fixed`
+           pins the sheet to the visual viewport, immune to #mainPanel's height
+           and any page scroll. `62dvh` (dynamic viewport height) keeps the
+           intended ~62% proportion across engines. */
+        position: fixed;
         left: 0;
         right: 0;
         bottom: 0;
-        /* Height is viewport-relative, not `62%` of #mainPanel. A percentage
-           height only resolves against an ancestor with a *definite* height;
-           the chain here is `body { min-height: 100dvh }` -> `#mainPanel
-           { flex: 1 }`, so the ancestor height is indefinite. Chromium
-           special-cases flex items and resolves it anyway, but iOS Safari does
-           not: on the sheet's first layout `62%` collapsed to `auto` and the
-           sheet opened at full height (content pinned to the top, grabber +
-           backdrop unreachable -> impossible to close). `100dvh` is always
-           definite, so `calc` keeps the intended ~62% proportion of the URL
-           deck area (viewport minus the 3rem navbar + 1.75rem footer) on every
-           open across engines. */
-        height: calc((100dvh - 4.75rem) * 0.62);
+        height: 62dvh;
         background: var(--panelBackgroundColor);
         border-top: 2px solid var(--contentTopBorder);
         border-radius: 1.25rem 1.25rem 0 0;
@@ -125,7 +124,11 @@
        (specificity 1-0-0); the element stays in the DOM at opacity 0 when closed
        (pointer-events: none) and fades in only via the show class. */
     #tagSheetBackdrop.tag-sheet-backdrop {
-        position: absolute;
+        /* Fixed to the viewport for the same reason as the sheet — covers the
+           full visual viewport regardless of #mainPanel height or scroll, so the
+           dimmed area always matches what the user sees and the tap-to-close
+           region is always reachable. */
+        position: fixed;
         display: block;
         inset: 0;
         background: #000;
