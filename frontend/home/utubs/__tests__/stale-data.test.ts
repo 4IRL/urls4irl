@@ -8,6 +8,8 @@ vi.mock("../selectors.js", () => ({
   getUTubInfo: vi.fn(),
 }));
 
+vi.mock("../header-fit.js", () => ({ fitUTubHeaderAndSubheader: vi.fn() }));
+
 vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
 }));

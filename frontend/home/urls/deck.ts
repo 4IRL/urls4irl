@@ -28,6 +28,7 @@ import {
   setURLSearchEventListener,
   reapplyURLSearchFilter,
 } from "./search.js";
+import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import type { UtubUrlItem, UtubTag } from "../../types/url.js";
 
 // Clear the URL Deck
@@ -156,6 +157,7 @@ export function setURLDeckWhenNoUTubSelected(): void {
   $("#URLDeckHeader").off("click.updateUTubname");
   $("#UTubDescriptionSubheaderWrap").removeClass("hidden");
   disableURLSearch();
+  fitUTubHeaderAndSubheader();
 }
 
 export function initURLDeck(): void {

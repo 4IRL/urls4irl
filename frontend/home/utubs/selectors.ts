@@ -19,6 +19,7 @@ import {
   showCreateDescriptionButtonAlways,
 } from "../urls/update-description.js";
 import { isUTubSearchActive } from "./search.js";
+import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
 
 type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
@@ -133,6 +134,8 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
   if (isCurrentUserOwner) {
     $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
   }
+
+  fitUTubHeaderAndSubheader();
 }
 
 // Handles progagating changes across page related to a UTub selection

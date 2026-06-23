@@ -10,6 +10,10 @@ vi.mock("../create-btns.js", () => ({
   createURLShowInputEventListeners: vi.fn(),
 }));
 
+vi.mock("../../utubs/header-fit.js", () => ({
+  fitUTubHeaderAndSubheader: vi.fn(),
+}));
+
 vi.mock("../update-description.js", () => ({
   setupUpdateUTubDescriptionEventListeners: vi.fn(),
   updateUTubDescriptionHideInput: vi.fn(),
