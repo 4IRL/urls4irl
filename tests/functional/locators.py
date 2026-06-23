@@ -138,6 +138,14 @@ class HomePageLocators(GenericPageLocator):
     UTUB_TAG_COUNT_WRAP = ".tagCountWrap"
     BUTTON_UTUB_TAG_DELETE = ".utubTagBtnDelete"
 
+    # Mobile Tag filter bottom sheet
+    TAG_SHEET = "#tagDeckSheet"
+    TAG_SHEET_HANDLE = "#tagSheetHandle"
+    TAG_SHEET_BACKDROP = "#tagSheetBackdrop"
+    TAG_SHEET_GRABBER = "#tagSheetGrabber"
+    TAG_SHEET_HANDLE_COUNT = "#tagSheetHandleCount"
+    TAG_SHEET_EMPTY = "#tagSheetEmpty"
+
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"

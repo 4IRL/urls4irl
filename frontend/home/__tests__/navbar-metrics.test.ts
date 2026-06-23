@@ -23,7 +23,9 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenMemberDeckSelected: vi.fn(),
   setMobileUIWhenUTubSelectedOrURLNavSelected: vi.fn(),
   setMobileUIWhenUTubDeckSelected: vi.fn(),
-  setMobileUIWhenTagDeckSelected: vi.fn(),
+}));
+vi.mock("../tags/sheet.js", () => ({
+  openTagSheet: vi.fn(),
 }));
 // navbar.ts imports the cross-search module; mock it so the real module (and its
 // heavy transitive imports) don't load into this metrics-focused suite.

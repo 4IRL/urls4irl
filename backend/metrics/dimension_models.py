@@ -201,6 +201,10 @@ class _DimTagDeleteCancel(UIBaseDimensions):
     scope: TagScope
 
 
+class _DimTagSheetToggle(UIBaseDimensions):
+    action: Literal["open", "close"]
+
+
 class _DimFormSubmit(UIBaseDimensions):
     trigger: Literal["enter_key", "button_click"]
     form: HomeForm
@@ -410,6 +414,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_TAG_DELETE_CONFIRM: _DimTagDeleteConfirm,
     EventName.UI_TAG_DELETE_CANCEL: _DimTagDeleteCancel,
     EventName.UI_TAG_FILTER_TOGGLE: _DimDeviceOnly,
+    EventName.UI_TAG_SHEET_TOGGLE: _DimTagSheetToggle,
     # UI — Members
     EventName.UI_MEMBER_INVITE_OPEN: _DimDeviceOnly,
     EventName.UI_MEMBER_REMOVE_OPEN: _DimDeviceOnly,

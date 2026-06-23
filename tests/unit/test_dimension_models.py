@@ -142,6 +142,14 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         {"scope": "url", "device_type": DeviceType.DESKTOP},
     ),
     (
+        EventName.UI_TAG_SHEET_TOGGLE,
+        {"action": "open", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_TAG_SHEET_TOGGLE,
+        {"action": "close", "device_type": DeviceType.DESKTOP},
+    ),
+    (
         EventName.UI_FORM_SUBMIT,
         {
             "trigger": "enter_key",

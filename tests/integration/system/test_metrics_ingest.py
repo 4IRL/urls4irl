@@ -76,6 +76,80 @@ def test_ingest_happy_path_no_csrf(
     assert count_counter_keys(provide_metrics_redis, EventName.UI_URL_COPY) == 1
 
 
+def test_ingest_records_tag_sheet_toggle_with_action_dimension(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN an anonymous client
+    WHEN POSTing UI_TAG_SHEET_TOGGLE events with action open and close
+    THEN each is accepted and a distinct Redis counter carries the `action` dim.
+    """
+    response = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_TAG_SHEET_TOGGLE.value,
+                    "dimensions": {
+                        "action": "open",
+                        "device_type": DeviceType.MOBILE,
+                    },
+                },
+                {
+                    "event_name": EventName.UI_TAG_SHEET_TOGGLE.value,
+                    "dimensions": {
+                        "action": "close",
+                        "device_type": DeviceType.MOBILE,
+                    },
+                },
+            ]
+        },
+    )
+
+    assert response.status_code == 200
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json["accepted"] == 2
+
+    counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.UI_TAG_SHEET_TOGGLE
+    )
+    assert len(counter_keys) == 2
+    actions = {parse_dims(counter_key)["action"] for counter_key in counter_keys}
+    assert actions == {"open", "close"}
+
+
+def test_ingest_rejects_unknown_tag_sheet_toggle_action(
+    metrics_enabled_app: Flask,
+    client: FlaskClient,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN an anonymous client
+    WHEN POSTing UI_TAG_SHEET_TOGGLE with an action outside the closed set
+    THEN the event is rejected and no counter is written.
+    """
+    response = client.post(
+        INGEST_URL,
+        json={
+            "events": [
+                {
+                    "event_name": EventName.UI_TAG_SHEET_TOGGLE.value,
+                    "dimensions": {
+                        "action": "peek",
+                        "device_type": DeviceType.MOBILE,
+                    },
+                }
+            ]
+        },
+    )
+
+    assert response.status_code == 400
+    assert count_counter_keys(provide_metrics_redis, EventName.UI_TAG_SHEET_TOGGLE) == 0
+
+
 def test_ingest_accepts_transport_beacon_query_param(
     metrics_enabled_app: Flask,
     client: FlaskClient,

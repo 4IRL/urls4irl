@@ -39,6 +39,7 @@ export const UI_EVENTS = {
   UI_TAG_DELETE_CONFIRM: "ui_tag_delete_confirm",
   UI_TAG_DELETE_CANCEL: "ui_tag_delete_cancel",
   UI_TAG_FILTER_TOGGLE: "ui_tag_filter_toggle",
+  UI_TAG_SHEET_TOGGLE: "ui_tag_sheet_toggle",
   UI_MEMBER_INVITE_OPEN: "ui_member_invite_open",
   UI_MEMBER_REMOVE_OPEN: "ui_member_remove_open",
   UI_MEMBER_REMOVE_CONFIRM: "ui_member_remove_confirm",

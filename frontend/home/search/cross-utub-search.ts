@@ -12,7 +12,7 @@ import {
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TARGET,
   CROSS_UTUB_SEARCH_RESULT_ACCESS_TRIGGER,
 } from "../../types/metrics-dim-values.js";
-import { AppEvents, on } from "../../lib/event-bus.js";
+import { AppEvents, emit as emitBusEvent, on } from "../../lib/event-bus.js";
 import { getState } from "../../store/app-store.js";
 import { setSearchModeActive } from "../left-panel-toggle.js";
 import {
@@ -397,6 +397,10 @@ export function enterCrossUtubSearchMode(): void {
   // iOS only raises the keyboard from a gesture-synchronous focus, never a
   // deferred one.
   document.getElementById("crossUtubSearchInput")?.focus();
+
+  emitBusEvent(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, {
+    active: true,
+  });
 }
 
 // Re-opens cross-UTub search mode from a browser-history entry (see
@@ -482,6 +486,10 @@ export function exitCrossUtubSearchMode({
   updateSubmitButtonState();
 
   $("#toCrossUtubSearch").trigger("focus");
+
+  emitBusEvent(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, {
+    active: false,
+  });
 }
 
 function clearSearchInput(): void {
@@ -768,6 +776,9 @@ export function initCrossUtubSearch(): void {
   _onBreakpointChange = () => {
     if (!_searchModeActive) return;
     _searchModeActive = false;
+    emitBusEvent(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, {
+      active: false,
+    });
     // Sync the shared resolver: enterCrossUtubSearchMode() set search mode
     // active via setSearchModeActive, so release it here too. This clears the
     // search-mode intent and lets the resolver reconcile; mobile.ts's own

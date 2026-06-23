@@ -122,6 +122,11 @@ export type DimTagDeleteCancel = {
   scope: TagScope;
 };
 
+export type DimTagSheetToggle = {
+  device_type: DeviceType;
+  action: "open" | "close";
+};
+
 export type DimFormSubmit = {
   device_type: DeviceType;
   trigger: "enter_key" | "button_click";
@@ -219,6 +224,7 @@ export type UIEventDimensions = {
   ui_tag_delete_confirm: DimTagDeleteConfirm;
   ui_tag_delete_cancel: DimTagDeleteCancel;
   ui_tag_filter_toggle: DimDeviceOnly;
+  ui_tag_sheet_toggle: DimTagSheetToggle;
   ui_member_invite_open: DimDeviceOnly;
   ui_member_remove_open: DimDeviceOnly;
   ui_member_remove_confirm: DimDeviceOnly;

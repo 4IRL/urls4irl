@@ -6,8 +6,8 @@ import {
   setMobileUIWhenMemberDeckSelected,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubDeckSelected,
-  setMobileUIWhenTagDeckSelected,
 } from "./mobile.js";
+import { openTagSheet } from "./tags/sheet.js";
 import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
@@ -60,7 +60,14 @@ export function initNavbar(): void {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
     emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
-    setMobileUIWhenTagDeckSelected();
+    // The tag sheet overlays the URL deck, so first switch to the URL deck —
+    // otherwise tapping Tags from the Member/UTub deck opens the sheet over the
+    // wrong deck. This also collapses the hamburger (it calls toggler.hide()),
+    // which must happen before openTagSheet() moves focus into the sheet and
+    // marks #mainPanel siblings inert (a still-open Bootstrap collapse would
+    // otherwise desync and become unreopenable). Then open the sheet over it.
+    setMobileUIWhenUTubSelectedOrURLNavSelected();
+    openTagSheet();
   });
 
   // "Return Home" inside the hamburger — only visible while cross-UTub search is

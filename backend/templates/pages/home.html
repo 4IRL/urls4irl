@@ -36,6 +36,17 @@
     </div>
     <!-- End Center Panel -->
 
+    <!-- Mobile Tag filter bottom sheet (mobile-only; #TagDeck relocated into the body by JS) -->
+    <div id="tagSheetBackdrop" class="tag-sheet-backdrop"></div>
+    <section id="tagDeckSheet" class="tag-deck-sheet" role="dialog" aria-modal="true"
+        aria-label="Filter URLs by tag" aria-hidden="true">
+        <button id="tagSheetGrabber" class="tag-sheet-grabber" type="button" aria-label="Close tag filter"></button>
+        <div id="tagSheetBody" class="tag-sheet-body">
+            <p id="tagSheetEmpty" class="hidden">No tags in this UTub.</p>
+        </div>
+    </section>
+    <!-- End Mobile Tag filter bottom sheet -->
+
     <!-- Cross-UTub Search Mode overlay -->
     {% include 'components/home/SearchMode/SearchMode.html' %}
     <!-- End Cross-UTub Search Mode overlay -->

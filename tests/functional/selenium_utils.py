@@ -56,6 +56,12 @@ def cpu_throttle_for_testing(browser: ChromeRemoteWebDriver, rate: int):
 
 
 def click_on_navbar(browser: WebDriver):
+    # Settle any in-progress collapse transition before tapping the toggler:
+    # Bootstrap ignores a toggle click while `collapsing` is active, so clicking
+    # mid-transition (e.g. right after a deck-nav button collapsed the dropdown)
+    # silently no-ops and the dropdown never opens. This pre-wait is a no-op when
+    # nothing is transitioning.
+    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
     wait_then_click_element(browser, HPL.NAVBAR_TOGGLER)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
 
