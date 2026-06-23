@@ -182,14 +182,18 @@ def test_navbar_after_open_tag_deck_mobile(
     )
 
     # Open the tag sheet via the navbar Tags button. #toTags collapses the
-    # hamburger (so its Bootstrap state stays clean while the sheet traps focus),
-    # so wait for the dropdown's `show` class to be fully removed before the next
-    # toggler click — waiting only for `collapsing` to clear can return mid-hide
-    # and desync the subsequent re-open (a deterministic Selenium-timing race, not
-    # a padded-timeout fix).
+    # hamburger (so its Bootstrap state stays clean while the sheet traps focus).
+    # The re-open click below is ignored by Bootstrap if the hide transition is
+    # still running, so gate on the hide FULLY completing: `show` is removed at
+    # the start of the transition and `collapsing` at its end. Waiting for
+    # `collapsing` alone can return before it is even added (mid-hide); waiting
+    # for `show` first guarantees `collapsing` is present, then waiting for
+    # `collapsing` to clear confirms the collapse settled — deterministic, not a
+    # padded timeout.
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_TAGS_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="show")
+    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
 
     # The sheet overlays the URL deck — both are visible simultaneously
     wait_until_visible_css_selector(browser, HPL.TAG_SHEET)

@@ -3,6 +3,7 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.wait import WebDriverWait
 
 from backend import db
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -33,6 +34,26 @@ pytestmark = [pytest.mark.tags_ui, pytest.mark.mobile_ui]
 USER_ID_FOR_TEST = 1
 HIDDEN_CLASS = "hidden"
 EXPECTED_SINGLE_FILTER_COUNT_TEXT = "1"
+
+
+def _visible_url_rows(browser: WebDriver) -> list:
+    return [
+        url_row
+        for url_row in browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+        if url_row.is_displayed()
+    ]
+
+
+def _wait_until_visible_url_count(
+    browser: WebDriver, expected: int, timeout: int = 3
+) -> None:
+    """Tag filtering updates URL-row visibility asynchronously via the
+    TAG_FILTER_CHANGED event after the tag is tapped; counting rows immediately
+    races that DOM update under parallel load. Gate on the expected count first.
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda driver: len(_visible_url_rows(driver)) == expected
+    )
 
 
 def _add_tag_to_subset_of_urls(
@@ -103,12 +124,8 @@ def test_tag_sheet_happy_path_open_filter_close(
 
     # Apply a tag filter; URL rows filter live and the handle count shows "1".
     apply_tag_filter_based_on_id(browser, tag_id)
-    visible_url_rows = [
-        url_row
-        for url_row in browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-        if url_row.is_displayed()
-    ]
-    assert len(visible_url_rows) == num_urls_tagged
+    _wait_until_visible_url_count(browser, num_urls_tagged)
+    assert len(_visible_url_rows(browser)) == num_urls_tagged
 
     handle_count = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE_COUNT)
     assert HIDDEN_CLASS not in (handle_count.get_attribute("class") or "")
@@ -119,12 +136,8 @@ def test_tag_sheet_happy_path_open_filter_close(
     wait_until_hidden(browser, HPL.TAG_SHEET)
     assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
 
-    persisted_visible_rows = [
-        url_row
-        for url_row in browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-        if url_row.is_displayed()
-    ]
-    assert len(persisted_visible_rows) == num_urls_tagged
+    _wait_until_visible_url_count(browser, num_urls_tagged)
+    assert len(_visible_url_rows(browser)) == num_urls_tagged
 
 
 def test_tag_sheet_close_via_backdrop(

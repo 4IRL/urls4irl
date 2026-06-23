@@ -125,12 +125,21 @@
        (pointer-events: none) and fades in only via the show class. */
     #tagSheetBackdrop.tag-sheet-backdrop {
         /* Fixed to the viewport for the same reason as the sheet — covers the
-           full visual viewport regardless of #mainPanel height or scroll, so the
+           visible content area regardless of #mainPanel height or scroll, so the
            dimmed area always matches what the user sees and the tap-to-close
-           region is always reachable. */
+           region is always reachable. Starts at `top: 3rem` (the navbar height)
+           so it never overlays the navbar: the navbar is a <body> sibling, not a
+           #mainPanel child, so it stays interactive while the sheet is open
+           (tapping a navbar deck-nav item closes the sheet via
+           MOBILE_DECK_SWITCHED). Covering the navbar would intercept the
+           toggler/dropdown clicks. The navbar dropdown (z-index 1050) still
+           renders above this backdrop (z-index 1039). */
         position: fixed;
         display: block;
-        inset: 0;
+        top: 3rem;
+        left: 0;
+        right: 0;
+        bottom: 0;
         background: #000;
         opacity: 0;
         pointer-events: none;
