@@ -1,13 +1,13 @@
-"""shrink utubDescription to varchar 250
+"""shrink utubDescription to varchar 325
 
-Shrinks "Utubs"."utubDescription" from VARCHAR(500) to VARCHAR(250) so the live
+Shrinks "Utubs"."utubDescription" from VARCHAR(500) to VARCHAR(325) so the live
 column matches UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH (the model already declares
-String(250)). This reconciles the model/DB drift introduced when the validation
-cap was lowered to 250.
+String(325)). This reconciles the model/DB drift introduced when the validation
+cap was lowered from 500.
 
 The deploy of this migration is GATED on issue #655's production audit: the
-shrink will error if any existing "utubDescription" row exceeds 250 characters,
-so the audit must confirm no live row is longer than 250 chars before upgrade.
+shrink will error if any existing "utubDescription" row exceeds 325 characters,
+so the audit must confirm no live row is longer than 325 chars before upgrade.
 
 Revision ID: 1253bb6a734e
 Revises: af33bd794058
@@ -29,7 +29,7 @@ def upgrade():
     op.alter_column(
         "Utubs",
         "utubDescription",
-        type_=sa.String(length=250),
+        type_=sa.String(length=325),
         existing_type=sa.String(length=500),
         existing_nullable=True,
     )
@@ -40,6 +40,6 @@ def downgrade():
         "Utubs",
         "utubDescription",
         type_=sa.String(length=500),
-        existing_type=sa.String(length=250),
+        existing_type=sa.String(length=325),
         existing_nullable=True,
     )

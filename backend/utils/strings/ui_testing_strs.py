@@ -49,7 +49,7 @@ class UI_TEST_STRINGS:
     # A 30-char title (the UTub name cap) and a ~240-char description that
     # overflow a single line, forcing the fit logic down to its minimum font and
     # the text to wrap across multiple lines. Used by the URLDeck header-font
-    # Selenium tests. The description stays under the MAX_DESCRIPTION_LENGTH (250)
+    # Selenium tests. The description stays under the MAX_DESCRIPTION_LENGTH (325)
     # column limit while still being long enough — with spaces so word-break wraps
     # at word boundaries — to clamp the description to its minimum font and span
     # several lines in the narrow URLDeck panel.
@@ -61,7 +61,7 @@ class UI_TEST_STRINGS:
         "smallest font size it cannot fit on one line and must wrap across "
         "several lines while staying fully visible and never truncated, "
         "which is the responsive font-fitting behaviour."
-    )  # 244 chars; stays under the 250-char column limit yet still forces min-font wrapping
+    )  # 244 chars; stays under the 325-char column limit yet still forces min-font wrapping
 
     # Tags
     TEST_TAG_NAME_1 = "Terrible"
