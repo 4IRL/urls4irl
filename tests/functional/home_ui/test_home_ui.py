@@ -169,7 +169,7 @@ def test_navbar_dropdown_dividers_non_admin(
     click_on_navbar(browser)
 
     assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) == "0px"
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) != "0px"
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) == "1px"
 
 
 def test_navbar_dropdown_dividers_admin(
@@ -192,8 +192,8 @@ def test_navbar_dropdown_dividers_admin(
     click_on_navbar(browser)
 
     assert _navbar_item_border_top_width(browser, HPL.NAVBAR_ADMIN_METRICS) == "0px"
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) != "0px"
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) != "0px"
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) == "1px"
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) == "1px"
 
 
 def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask):

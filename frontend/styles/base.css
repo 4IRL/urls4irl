@@ -576,8 +576,7 @@ a {
         border-bottom: 0;
     }
 
-    .home#NavbarNavDropdown #NavbarDropdownsHome > .nav-item.home:not(.hidden)
-        + .nav-item.home:not(.hidden) {
+    .home#NavbarNavDropdown #NavbarDropdownsHome > .nav-item.home:not(.hidden) + .nav-item.home:not(.hidden) {
         border-top: 1px solid var(--grayBadgeSelectionFocus);
     }
 
