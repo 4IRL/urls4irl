@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 set +x # Disable command echoing
 
 echo "----------------------------------------------------"
@@ -8,16 +9,14 @@ echo -e "\n\n START LOG BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 
 # Compress daily backup on host
 echo "Compressing logs on host..."
-gzip -c "${LOG_FILE}" > "${COMPRESSED_LOG_FILE}"
-if [ "$?" -ne 0 ]; then
+if ! gzip -c "${LOG_FILE}" > "${COMPRESSED_LOG_FILE}"; then
   echo "Error: Failure in compressing the logs"
   return 1
 fi
 echo "Success: Compressed logs on host"
 
 echo "Removing uncompressed daily log files..."
-rm -f "${LOG_FILE}"
-if [ "$?" -ne 0 ]; then
+if ! rm -f "${LOG_FILE}"; then
   echo "Error: Failure in removing uncompressed log files"
   return 1
 fi

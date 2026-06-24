@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 set +x # Disable command echoing
 
 SENSITIVE_VARS=("R2_ENDPOINT" "SECRET_ACCESS_KEY" "ACCESS_KEY" "DB_PASS" "DB_USER" "DB_NAME" "ACCESS_TOKEN" "DB_BACKUP_DIR" "DB_BACKUP_FILE" "COMPRESSED_DB_BACKUP_FILE" "LOG_DIR" "LOG_FILE" "COMPRESSED_LOG_FILE" "FINAL_LOG_FILE" "TMP_LOG_DIR" "NOTIFICATION_URL" PGPASSWORD)
@@ -52,14 +53,13 @@ exec 2>&1
 
 send_notification_msg() {
     local output="$1"
-    if [[ "$PRODUCTION" != "true" ]]; then
+    if [[ "${PRODUCTION:-}" != "true" ]]; then
         output="IGNORE, IN DEVELOPMENT: $output"
-        echo $output
+        echo "$output"
     else
-        restricted_curl "POST" "$NOTIFICATION_URL" "DOCKER: $output"
-    fi
-    if [ "$?" -ne 0 ]; then
-      echo "Error: Failure in sending notification"
+        if ! restricted_curl "POST" "${NOTIFICATION_URL:-}" "DOCKER: $output"; then
+          echo "Error: Failure in sending notification"
+        fi
     fi
 }
 
@@ -68,16 +68,15 @@ echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 
 # Build variables for database backup
 DB_BACKUP_DIR="/backups/"
-DB_BACKUP_FILE="${DB_BACKUP_DIR}${POSTGRES_DB}_$(date +%Y%m%d_%H%M%S)_daily.sql"
+DB_BACKUP_FILE="${DB_BACKUP_DIR}${POSTGRES_DB:-}_$(date +%Y%m%d_%H%M%S)_daily.sql"
 COMPRESSED_DB_BACKUP_FILE="${DB_BACKUP_FILE}.gz"
-DB_USER=${POSTGRES_USER}
-DB_PASS=${POSTGRES_PASSWORD}
-DB_NAME=${POSTGRES_DB}
+DB_USER=${POSTGRES_USER:-}
+DB_PASS=${POSTGRES_PASSWORD:-}
+DB_NAME=${POSTGRES_DB:-}
 export DB_BACKUP_FILE COMPRESSED_DB_BACKUP_FILE DB_USER DB_PASS DB_NAME DB_BACKUP_DIR
 
 database_backed_up="true"
-source "$SCRIPT_DIR/backup-database.sh"
-if [ "$?" -ne 0 ]; then
+if ! source "$SCRIPT_DIR/backup-database.sh"; then
   echo "Error: Failure in daily local backup of database"
   send_notification_msg "Error: Failure in daily local backup of database"
   database_backed_up="false"
@@ -91,8 +90,7 @@ COMPRESSED_LOG_FILE="${LOG_FILE}.gz"
 export LOG_FILE COMPRESSED_LOG_FILE
 
 logs_backed_up="true"
-source "$SCRIPT_DIR/backup-logs.sh"
-if [ "$?" -ne 0 ]; then
+if ! source "$SCRIPT_DIR/backup-logs.sh"; then
   echo "Error: Failure in daily local backup of app logs"
   send_notification_msg "Error: Failure in daily local backup of app logs: $(date -d "yesterday" +%Y-%m-%d).log"
   logs_backed_up="false"
@@ -102,10 +100,9 @@ unset LOG_FILE LOG_DIR
 
 
 source "$SCRIPT_DIR/remote-object-storage.sh"
-remote_backup "$database_backed_up" "$logs_backed_up"
-if [ "$?" -ne 0 ]; then
+if ! remote_backup "$database_backed_up" "$logs_backed_up"; then
   echo "Error: Failure in daily export of backups to remote object storage"
-  send_notification_msg "Remote Backup Failure: $REMOTE_BACKUP_ERROR"
+  send_notification_msg "Remote Backup Failure: ${REMOTE_BACKUP_ERROR:-}"
   exit 1
 fi
 
@@ -120,7 +117,7 @@ cleanup_secrets
 echo -e "\n\nFINISHED RUNNING DAILY TASKS\n\n"
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
 
-if [[ "$PRODUCTION" != "true" ]]; then
+if [[ "${PRODUCTION:-}" != "true" ]]; then
     echo "Testing logs for development - $(date +%Y%m%d_%H%M%S)"
     send_notification_msg "Testing logs for development - $(date +%Y%m%d_%H%M%S)"
     exit 0

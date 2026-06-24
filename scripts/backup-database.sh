@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 set +x # Disable command echoing
 
 echo "----------------------------------------------------"
@@ -6,28 +7,8 @@ echo -e "\n\n START LOCAL DATABASE BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 
 # ------- BACKUP DATABASE, STORE AND COMPRESS ON HOST ------- #
 
-# Create backup and store on host
-docker_container=""
-
-if [[ "$PRODUCTION" == "true" ]]; then
-    docker_container="u4i-prod-postgres"
-elif [[ "$DEV_SERVER" == "true" ]]; then
-    docker_container="u4i-dev-postgres"
-else
-    docker_container="u4i-local-postgres"
-fi
-
 echo "Generating backup and storing on the host..."
-PGPASSWORD="$DB_PASS" \
-    pg_dump -h "db" \
-        -U "$DB_USER" \
-        -d "$DB_NAME" \
-        --clean \
-        --if-exists \
-        --create \
-        > "${DB_BACKUP_FILE}"
-
-if [ "$?" -ne 0 ]; then
+if ! PGPASSWORD="$DB_PASS" pg_dump -h "db" -U "$DB_USER" -d "$DB_NAME" --clean --if-exists --create > "${DB_BACKUP_FILE}"; then
   echo "Error: Failure in generating backup in docker container"
   return 1
 fi
@@ -37,8 +18,7 @@ unset DB_PASS DB_USER DB_NAME
 
 # Compress daily backup on host
 echo "Compressing backup on host..."
-gzip -c "${DB_BACKUP_FILE}" > "${COMPRESSED_DB_BACKUP_FILE}"
-if [ "$?" -ne 0 ]; then
+if ! gzip -c "${DB_BACKUP_FILE}" > "${COMPRESSED_DB_BACKUP_FILE}"; then
   echo "Error: Failure in compressing the backup"
   return 1
 fi

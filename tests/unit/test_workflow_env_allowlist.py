@@ -283,10 +283,10 @@ def test_render_env_dump_filters_to_allow_list_and_present_only():
         "POSTGRES_DB": "u4i",
         "PRODUCTION": "true",
         "REDIS_PASSWORD": "should-not-appear",
-        "DEV_SERVER": "false",
+        "ACCESS_KEY": "abc123",
     }
     dump = render_env_dump(env_mapping=env_mapping)
-    assert dump == "DEV_SERVER=false\nPOSTGRES_DB=u4i\nPRODUCTION=true\n"
+    assert dump == "ACCESS_KEY=abc123\nPOSTGRES_DB=u4i\nPRODUCTION=true\n"
     assert "REDIS_PASSWORD" not in dump
 
 
