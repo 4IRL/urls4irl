@@ -3,6 +3,7 @@ import { $ } from "../../lib/globals.js";
 
 import type { UtubDetail } from "../../types/utub.js";
 import { setState } from "../../store/app-store.js";
+import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import { getUTubInfo } from "./selectors.js";
 
 // Handles updating a UTub if found to include stale data
@@ -54,4 +55,6 @@ function updateUTubNameAndDescription(
   if (utubDescriptionElem.text() !== utubDescription) {
     utubDescriptionElem.text(utubDescription);
   }
+
+  fitUTubHeaderAndSubheader();
 }

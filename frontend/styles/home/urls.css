@@ -403,11 +403,8 @@ a.urlString {
 }
 
 #URLDeckSubheader {
-    word-break: break-all;
+    word-break: break-word;
     margin: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 #URLDeckErrorIndicator {

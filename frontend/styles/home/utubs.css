@@ -175,6 +175,18 @@
     #utubNameFilterBtnClose {
         display: none;
     }
+
+    /* While the URL search is open, the search input drops onto its own
+       full-width row below the description. Collapse the (font-fitted, possibly
+       multi-line) description to a single truncated line so the header band does
+       not grow taller. The wrapping state returns when search closes. */
+    #UTubDescriptionSubheaderOuterWrap.url-search-open #URLDeckSubheader {
+        flex: 1;
+        min-width: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
 }
 
 @media (min-width: 992px) {
@@ -217,17 +229,19 @@
 
 #UTubDescriptionSubheaderWrap {
     margin-bottom: 0.25rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     min-width: 0;
     flex-shrink: 1;
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
 #UTubNameOuterUpdateWrap {
     flex: 1;
     min-width: 0;
-    overflow: hidden;
+    /* Reserve a gap before the action buttons (filter funnel / add URL) so the
+       trailing edit-name pencil never butts up against them when a long title
+       fills the row. */
+    margin-inline-end: 0.75rem;
 }
 
 #UTubDescriptionInnerUpdateWrap {

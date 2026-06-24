@@ -98,6 +98,10 @@ export function setURLSearchEventListener(): void {
     wrapper.addClass("visible-flex").removeClass("hidden");
     $("#URLDeckSubheaderCreateDescription").addClass("hidden");
     $("#URLDeckNoDescription").hideClass();
+    // Collapse the (possibly multi-line, font-fitted) description to a single
+    // truncated line while the search input is open so the header band does not
+    // grow taller on mobile, where the search drops onto its own full-width row.
+    $("#UTubDescriptionSubheaderOuterWrap").addClass("url-search-open");
     searchIcon.addClass("hidden");
     searchIconClose.removeClass("hidden");
 
@@ -182,6 +186,8 @@ export function collapseURLSearchInput(): void {
   $("#SearchURLWrap").addClass("hidden").removeClass("visible-flex");
   $("#URLDeckSubheaderCreateDescription").removeClass("hidden");
   $("#URLContentSearch").removeClass("url-search-expanded");
+  // Restore the full, font-fitted (wrapping) description now that search closed.
+  $("#UTubDescriptionSubheaderOuterWrap").removeClass("url-search-open");
 
   const hasNoDescription =
     !$("#URLDeckSubheader").text().length &&

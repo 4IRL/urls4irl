@@ -9,6 +9,7 @@ import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
+import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
@@ -320,6 +321,7 @@ function updateUTubDescriptionSuccess(
 
   // Hide all inputs on success
   updateUTubDescriptionHideInput();
+  fitUTubHeaderAndSubheader();
 }
 
 // Handle error response display to user

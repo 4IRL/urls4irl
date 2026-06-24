@@ -16,6 +16,10 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 
+vi.mock("../../utubs/header-fit.js", () => ({
+  fitUTubHeaderAndSubheader: vi.fn(),
+}));
+
 vi.mock("../../../lib/globals.js", async () => {
   const jquery = (await import("jquery")).default;
   return {

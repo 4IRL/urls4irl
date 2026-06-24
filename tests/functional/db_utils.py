@@ -57,6 +57,16 @@ def update_utub_to_empty_desc(app: Flask, utub_id: int):
         db.session.commit()
 
 
+def update_utub_name_and_description(
+    app: Flask, utub_id: int, name: str, description: str
+):
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.name = name
+        utub.utub_description = description
+        db.session.commit()
+
+
 def create_test_searchable_utubs(app: Flask, test_user_id: int) -> dict[str, int]:
     """
     Assumes users created. Creates sample UTubs, each user owns one.

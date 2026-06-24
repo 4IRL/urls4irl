@@ -13,6 +13,10 @@ vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
 }));
 
+vi.mock("../../utubs/header-fit.js", () => ({
+  fitUTubHeaderAndSubheader: vi.fn(),
+}));
+
 vi.mock("../cards/cards.js", () => ({
   createURLBlock: vi.fn(() => window.jQuery('<div class="urlRow"></div>')),
   updateURLAfterFindingStaleData: vi.fn(),

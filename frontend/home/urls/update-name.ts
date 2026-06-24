@@ -14,6 +14,7 @@ import {
   sameNameWarningHideModal,
 } from "../utubs/utils.js";
 import { getState, setState } from "../../store/app-store.js";
+import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { highlightInput, showInput, hideInput } from "../btns-forms.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
@@ -438,4 +439,5 @@ export function setUTubNameAndDescription(utubName: string): void {
   $("#URLDeckHeader").text(utubName);
   $("#utubNameUpdate").val(utubName);
   updateUTubNameHideInput();
+  fitUTubHeaderAndSubheader();
 }

@@ -8,6 +8,8 @@ const { mockMetricsClient } = await vi.hoisted(
 
 vi.mock("../../../lib/metrics-client.js", () => mockMetricsClient());
 
+vi.mock("../header-fit.js", () => ({ fitUTubHeaderAndSubheader: vi.fn() }));
+
 vi.mock("../deck.js", () => ({
   showUTubLoadingIconAndSetTimeout: vi.fn(() => 0),
   hideUTubLoadingIconAndClearTimeout: vi.fn(),
