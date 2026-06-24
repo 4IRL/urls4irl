@@ -28,18 +28,34 @@ NET=backup_test_net
 DB=backup_test_db
 MAIN=backup_test_main
 GUARD=backup_test_guard
+MINIO=backup_test_minio
+PRODSIM=backup_test_prodsim
+
+# MinIO is S3-compatible (same API as Cloudflare R2), so pointing the real,
+# un-stubbed rclone at it exercises the production upload code path hermetically.
+MINIO_USER=minioadmin
+MINIO_PASS=minioadmin123
+MINIO_ENDPOINT=http://minio:9000
+
+SECRETS_VOL=backup_test_secrets
 
 NETWORK_CREATED=0
 DB_STARTED=""
 MAIN_STARTED=""
 GUARD_STARTED=""
+MINIO_STARTED=""
+PRODSIM_STARTED=""
+SECRETS_VOL_CREATED=""
 
 cleanup() {
     echo "🧹 Cleaning up..."
     [ -n "$MAIN_STARTED" ] && docker rm -f "$MAIN" >/dev/null 2>&1 || true
     [ -n "$GUARD_STARTED" ] && docker rm -f "$GUARD" >/dev/null 2>&1 || true
+    [ -n "$PRODSIM_STARTED" ] && docker rm -f "$PRODSIM" >/dev/null 2>&1 || true
+    [ -n "$MINIO_STARTED" ] && docker rm -f "$MINIO" >/dev/null 2>&1 || true
     [ -n "$DB_STARTED" ] && docker rm -f "$DB" >/dev/null 2>&1 || true
     [ "$NETWORK_CREATED" = "1" ] && docker network rm "$NET" >/dev/null 2>&1 || true
+    [ -n "$SECRETS_VOL_CREATED" ] && docker volume rm "$SECRETS_VOL" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -71,6 +87,31 @@ for attempt in $(seq 1 30); do
     sleep 1
 done
 docker exec "$DB" pg_isready -U bob -d test >/dev/null 2>&1 || { echo "❌ Postgres sidecar never became ready" >&2; exit 1; }
+
+# --- MinIO (S3-compatible) sidecar + buckets for the real-upload legs ---
+echo "🪣 Starting MinIO sidecar (alias minio)"
+MINIO_STARTED=$(docker run -d \
+    --network "$NET" --network-alias minio \
+    -e MINIO_ROOT_USER="$MINIO_USER" -e MINIO_ROOT_PASSWORD="$MINIO_PASS" \
+    --name "$MINIO" \
+    minio/minio server /data)
+
+# Wait for MinIO and create the two buckets using the workflow image's own rclone
+# (--s3-no-check-bucket in the prod script means the buckets must pre-exist).
+echo "⏳ Waiting for MinIO and creating buckets..."
+docker run --rm --network "$NET" --entrypoint bash "$WORKFLOW_IMAGE" -c "
+export RCLONE_CONFIG_REMOTE_TYPE=s3
+export RCLONE_CONFIG_REMOTE_PROVIDER=Other
+export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID=$MINIO_USER
+export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY=$MINIO_PASS
+export RCLONE_CONFIG_REMOTE_ENDPOINT=$MINIO_ENDPOINT
+for attempt in \$(seq 1 30); do rclone lsd remote: >/dev/null 2>&1 && break; sleep 1; done
+rclone mkdir remote:u4i-backups
+rclone mkdir remote:u4i-logs
+rclone lsd remote: | grep -q u4i-backups
+rclone lsd remote: | grep -q u4i-logs
+" || { echo "❌ Could not provision MinIO buckets" >&2; exit 1; }
+echo "✅ MinIO ready with u4i-backups + u4i-logs buckets"
 
 # --- Provision the REAL schema + seed data (drift-proof: uses migrations) ---
 # Non-prod mode: DOCKER=true → DB host resolves to `db`; REDIS_URI defaults to
@@ -104,9 +145,11 @@ wait_for_env_file "$MAIN" || { echo "❌ /app/container_environment not written 
 docker exec "$MAIN" mkdir -p /backups
 docker exec "$MAIN" chown 1001:1001 /backups
 
-echo "🧪 Running driver legs (DB round-trip, log, prune, rclone) inside the workflow image..."
+echo "🧪 Running driver legs (DB round-trip, log, prune, rclone stub + MinIO) inside the workflow image..."
 docker cp "$SCRIPT_DIR/backup-pipeline-driver.sh" "$MAIN":/tmp/driver.sh
-docker exec -u 1001 "$MAIN" bash /tmp/driver.sh
+docker exec -u 1001 \
+    -e MINIO_USER="$MINIO_USER" -e MINIO_PASS="$MINIO_PASS" -e MINIO_ENDPOINT="$MINIO_ENDPOINT" \
+    "$MAIN" bash /tmp/driver.sh
 
 # --- Leg 5: missing-var guard (separate container, cron-like clean env) ---
 echo "── Leg 5: missing-var guard ──"
@@ -143,6 +186,75 @@ if docker exec "$GUARD" bash -c 'ls /backups/*_daily.sql.gz >/dev/null 2>&1'; th
     exit 1
 fi
 echo "✅ Leg 5 PASSED: guard notified and aborted before any backup"
+
+# --- Leg 7: full PRODUCTION=true daily-docker.sh end-to-end ---
+# Exercises the real production flow as one run: build_container_env.py loading
+# /run/secrets → dump → verify → REAL rclone upload to MinIO → success
+# notification. Only the Discord webhook is stubbed (no external network).
+echo "── Leg 7: prod-mode daily-docker.sh end-to-end ──"
+
+# Populate a named volume with the secret files (a named volume lives inside the
+# Docker VM, so this is portable — a host bind-mount of a mktemp dir is not shared
+# into Colima's VM and would arrive empty locally).
+docker volume create "$SECRETS_VOL" >/dev/null
+SECRETS_VOL_CREATED=1
+docker run --rm -v "$SECRETS_VOL":/s --entrypoint bash "$WORKFLOW_IMAGE" -c "
+printf '%s' 'test'                                        > /s/POSTGRES_DB
+printf '%s' 'bob'                                         > /s/POSTGRES_USER
+printf '%s' 'test'                                        > /s/POSTGRES_PASSWORD
+printf '%s' 'redispw'                                     > /s/REDIS_PASSWORD
+printf '%s' 'https://discord.com/api/webhooks/1/stubbed'  > /s/NOTIFICATION_URL
+printf '%s' '$MINIO_USER'                                 > /s/ACCESS_KEY
+printf '%s' '$MINIO_PASS'                                 > /s/SECRET_ACCESS_KEY
+printf '%s' '$MINIO_ENDPOINT'                             > /s/R2_ENDPOINT
+"
+
+PRODSIM_STARTED=$(docker run -d \
+    --network "$NET" --no-healthcheck \
+    -e PRODUCTION=true -e DEV_SERVER=false \
+    -e POSTGRES_HOST=db -e POSTGRES_PORT=5432 \
+    -e METRICS_FLUSH_LIVENESS_THRESHOLD_SECONDS=180 \
+    -v "$SECRETS_VOL":/run/secrets:ro \
+    --name "$PRODSIM" \
+    "$WORKFLOW_IMAGE")
+
+wait_for_env_file "$PRODSIM" || { echo "❌ /app/container_environment not written in $PRODSIM" >&2; exit 1; }
+
+# /backups volume + yesterday's log so both DB and log legs succeed.
+docker exec "$PRODSIM" mkdir -p /backups /app/volume/logs
+docker exec "$PRODSIM" chown -R 1001:1001 /backups /app/volume
+docker exec -u 1001 "$PRODSIM" bash -c 'printf "prod-sim log line\n" > "/app/volume/logs/$(date -d yesterday +%Y-%m-%d)_daily.log"'
+# Stub the Discord notifier (capture messages instead of POSTing to discord.com).
+docker exec "$PRODSIM" bash -c 'printf "#!/bin/bash\necho \"NOTIFY: \$3\" >> /tmp/notify.log\nexit 0\n" > /usr/bin/restricted_curl && chmod +x /usr/bin/restricted_curl'
+
+set +e
+docker exec -u 1001 "$PRODSIM" bash /app/daily-docker.sh
+prodsim_rc=$?
+set -e
+if [ "$prodsim_rc" -ne 0 ]; then
+    echo "❌ Leg 7: daily-docker.sh exited $prodsim_rc in prod mode" >&2
+    echo "--- workflow_logs dir ---" >&2
+    docker exec "$PRODSIM" sh -c 'ls -la /app/workflow_logs/ 2>&1; echo "--- log contents ---"; cat /app/workflow_logs/*.txt 2>&1' >&2 || true
+    exit 1
+fi
+
+PRODSIM_LOG=$(docker exec "$PRODSIM" cat "/app/workflow_logs/$(docker exec "$PRODSIM" date +%Y_%m_%d)-daily-workflow-logs.txt" 2>/dev/null || echo "")
+echo "$PRODSIM_LOG" | grep -q "Success: Sent daily database backup to Cloudflare R2" \
+    || { echo "❌ Leg 7: database upload did not report success" >&2; exit 1; }
+docker exec "$PRODSIM" cat /tmp/notify.log 2>/dev/null | grep -q "Success: Backups saved and exported to cloud" \
+    || { echo "❌ Leg 7: success notification not dispatched" >&2; exit 1; }
+
+# Confirm the objects actually persisted in MinIO (real end-to-end upload).
+docker run --rm --network "$NET" --entrypoint bash "$WORKFLOW_IMAGE" -c "
+export RCLONE_CONFIG_REMOTE_TYPE=s3
+export RCLONE_CONFIG_REMOTE_PROVIDER=Other
+export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID=$MINIO_USER
+export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY=$MINIO_PASS
+export RCLONE_CONFIG_REMOTE_ENDPOINT=$MINIO_ENDPOINT
+rclone ls remote:u4i-backups/ | grep -q 'test_.*_daily.sql.gz'
+rclone ls remote:u4i-logs/ | grep -q '_daily.log.gz'
+" || { echo "❌ Leg 7: expected objects not found in MinIO buckets" >&2; exit 1; }
+echo "✅ Leg 7 PASSED: prod-mode end-to-end (secrets → dump → verify → real MinIO upload → notification)"
 
 echo "✅ ALL BACKUP PIPELINE LEGS PASSED"
 exit 0

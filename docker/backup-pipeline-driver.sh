@@ -178,10 +178,49 @@ leg_rclone_monthly() {
     ok "Leg 4b PASSED: monthly copy issued and temp file cleaned"
 }
 
+# ----------------------------------------------------------------------
+# Leg 6 — real rclone upload against a MinIO (S3-compatible) sidecar.
+# Unlike Leg 4 (which stubs rclone), this runs the genuine upload code path —
+# config assembly, auth, copy, --header-upload — against a real S3 server, and
+# confirms the objects actually persisted. MinIO creds/endpoint come from the
+# orchestrator via the environment (MINIO_USER / MINIO_PASS / MINIO_ENDPOINT).
+# ----------------------------------------------------------------------
+leg_rclone_minio() {
+    echo "── Leg 6: real rclone upload to MinIO (S3) ──"
+    (
+        export PRODUCTION=true
+        export ACCESS_KEY="$MINIO_USER" SECRET_ACCESS_KEY="$MINIO_PASS" R2_ENDPOINT="$MINIO_ENDPOINT"
+        export COMPRESSED_DB_BACKUP_FILE=/tmp/minio_test_daily.sql.gz
+        export COMPRESSED_LOG_FILE=/tmp/minio_test_daily.log.gz
+        printf 'real db payload\n' | gzip > "$COMPRESSED_DB_BACKUP_FILE"
+        printf 'real log payload\n' | gzip > "$COMPRESSED_LOG_FILE"
+
+        source /app/remote-object-storage.sh
+        set +e
+        remote_backup true true
+        remote_rc=$?
+        [ "$remote_rc" -eq 0 ] || { echo "❌ Leg 6: remote_backup exited $remote_rc (real upload failed)"; exit 1; }
+
+        # Re-establish a minimal rclone config (remote_backup unset it) and confirm
+        # the objects truly landed in MinIO.
+        export RCLONE_CONFIG_REMOTE_TYPE=s3
+        export RCLONE_CONFIG_REMOTE_PROVIDER=Other
+        export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID="$MINIO_USER"
+        export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY="$MINIO_PASS"
+        export RCLONE_CONFIG_REMOTE_ENDPOINT="$MINIO_ENDPOINT"
+        rclone ls remote:u4i-backups/ | grep -q "minio_test_daily.sql.gz" \
+            || { echo "❌ Leg 6: db object not found in MinIO bucket"; exit 1; }
+        rclone ls remote:u4i-logs/ | grep -q "minio_test_daily.log.gz" \
+            || { echo "❌ Leg 6: log object not found in MinIO bucket"; exit 1; }
+    ) || exit 1
+    ok "Leg 6 PASSED: real upload landed in both MinIO buckets"
+}
+
 leg_db_backup_and_restore
 leg_log_backup
 leg_prune
 leg_rclone_default
 leg_rclone_monthly
+leg_rclone_minio
 
 echo "✅ ALL DRIVER LEGS PASSED"
