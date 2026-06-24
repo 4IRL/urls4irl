@@ -72,6 +72,19 @@ send_notification_msg() {
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
 echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 
+# Fail fast WITH a notification if any required Postgres var is missing or empty.
+# These are sourced from /app/container_environment. Without this guard, set -u
+# would abort at the first ${POSTGRES_DB} expansion below — before the backup
+# block could send a failure notification — leaving only a cron.log line as the
+# signal. Checking here turns a silent misconfiguration into a notified one.
+for required_var in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD; do
+    if [[ -z "${!required_var:-}" ]]; then
+        echo "Error: required environment variable ${required_var} is missing or empty"
+        send_notification_msg "Error: required environment variable ${required_var} is missing or empty — aborting daily backup"
+        exit 1
+    fi
+done
+
 # Build variables for database backup
 DB_BACKUP_DIR="/backups/"
 DB_BACKUP_FILE="${DB_BACKUP_DIR}${POSTGRES_DB}_$(date +%Y%m%d_%H%M%S)_daily.sql"
