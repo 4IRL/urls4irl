@@ -57,6 +57,7 @@ COPY scripts/restricted-curl.sh /usr/bin/restricted_curl
 
 # Copy the cron-environment dump builder (called by startup-workflow.sh).
 COPY --chown=workflow:workflow scripts/build_container_env.py /app/build_container_env.py
+COPY --chown=workflow:workflow scripts/backup_maintenance.py /app/backup_maintenance.py
 
 # Copy metrics flush + liveness scripts. flush_metrics.py side-loads three backend
 # leaf modules by absolute path (see _load_module_direct); copy only those three

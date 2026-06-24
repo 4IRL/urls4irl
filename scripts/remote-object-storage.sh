@@ -1,39 +1,35 @@
 #!/bin/bash
+set -euo pipefail
+set +x # Disable command echoing
 
 remote_backup() {
-  set +x # Disable command echoing
-
-  local database_success="$1"
-  local log_success="$2"
+  local database_success="${1:-}"
+  local log_success="${2:-}"
   local failure=0
   local db_mime_type=""
   local log_mime_type=""
   REMOTE_BACKUP_ERROR=""
 
-  if [[ "$PRODUCTION" != "true" ]]; then
+  if [[ "${PRODUCTION:-}" != "true" ]]; then
     echo -e "\n\n Skipping remote object storage due to not in production \n\n"
     REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
     failure=1
     return $failure
   fi
 
+  # Configure rclone via environment variables (no plaintext config file on disk)
+  export RCLONE_CONFIG_REMOTE_TYPE=s3
+  export RCLONE_CONFIG_REMOTE_PROVIDER=Cloudflare
+  export RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID="$ACCESS_KEY"
+  export RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY="$SECRET_ACCESS_KEY"
+  export RCLONE_CONFIG_REMOTE_ACL=private
+  export RCLONE_CONFIG_REMOTE_ENDPOINT="$R2_ENDPOINT"
+  export RCLONE_CONFIG_REMOTE_NO_CHECK_BUCKET=true
+
   echo "----------------------------------------------------"
   echo -e "\n\n START REMOTE OBJECT STORAGE SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 
   # ------- SEND DATABASE AND LOG BACKUP TO R2 ------- #
-
-  # Create rclone config file
-  CONFIG_FILE="${DB_BACKUP_DIR}/rclone-config.txt"
-  cat > "$CONFIG_FILE" <<EOF
-[remote]
-type = s3
-provider = Cloudflare
-access_key_id = $ACCESS_KEY
-secret_access_key = $SECRET_ACCESS_KEY
-acl = private
-endpoint = $R2_ENDPOINT
-no_check_bucket = true
-EOF
 
   unset ACCESS_KEY SECRET_ACCESS_KEY R2_ENDPOINT
 
@@ -42,10 +38,9 @@ EOF
     echo "Copying daily database backup to Cloudflare R2..."
     db_mime_type=$(file --mime-type -b "${COMPRESSED_DB_BACKUP_FILE}")
 
-    rclone --config="$CONFIG_FILE" copy "${COMPRESSED_DB_BACKUP_FILE}" "remote:u4i-backups/" \
-      --progress --s3-no-check-bucket \
-      --header-upload "Content-Type:$db_mime_type"
-    if [ "$?" -ne 0 ]; then
+    if ! rclone copy "${COMPRESSED_DB_BACKUP_FILE}" "remote:u4i-backups/" \
+      --s3-no-check-bucket \
+      --header-upload "Content-Type:$db_mime_type"; then
       echo "Error: Failure in sending daily database backup to Cloudflare R2"
       REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
       failure=1
@@ -58,19 +53,18 @@ EOF
     CURRENT_DAY=$(date +%d)
     if [ "$CURRENT_DAY" -eq 1 ]; then
       # First day of the month, send a monthly backup
-      monthly_file="${COMPRESSED_DB_BACKUP_FILE/daily/monthly}"     
+      monthly_file="${COMPRESSED_DB_BACKUP_FILE/daily/monthly}"
       cp "${COMPRESSED_DB_BACKUP_FILE}" "${monthly_file}"
-      rclone --config="$CONFIG_FILE" copy "${monthly_file}" "remote:u4i-backups/" \
-        --progress --s3-no-check-bucket \
-        --header-upload "Content-Type:$db_mime_type"
-      if [ "$?" -ne 0 ]; then
+      if ! rclone copy "${monthly_file}" "remote:u4i-backups/" \
+        --s3-no-check-bucket \
+        --header-upload "Content-Type:$db_mime_type"; then
         echo "Error: Failure in sending monthly database backup to Cloudflare R2"
         REMOTE_BACKUP_ERROR="Error: Failure in sending monthly database backup to Cloudflare R2"
         failure=1
       else
-      echo "Success: Sent monthly database backup to Cloudflare R2"
+        echo "Success: Sent monthly database backup to Cloudflare R2"
       fi
-      rm "${monthly_file}"
+      rm -f "${monthly_file}"
     fi
   else
     echo "Skipping database remote backup due to local backup failure"
@@ -82,10 +76,9 @@ EOF
   if [ "$log_success" == "true" ]; then
     echo "Copying daily app logs to Cloudflare R2..."
     log_mime_type=$(file --mime-type -b "${COMPRESSED_LOG_FILE}")
-    rclone --config="$CONFIG_FILE" copy "${COMPRESSED_LOG_FILE}" "remote:u4i-logs/" \
-      --progress --s3-no-check-bucket \
-      --header-upload "Content-Type:$log_mime_type"
-    if [ "$?" -ne 0 ]; then
+    if ! rclone copy "${COMPRESSED_LOG_FILE}" "remote:u4i-logs/" \
+      --s3-no-check-bucket \
+      --header-upload "Content-Type:$log_mime_type"; then
       echo "Error: Failure in sending daily app logs to Cloudflare R2"
       REMOTE_BACKUP_ERROR="Error: Failure in sending daily app logs to Cloudflare R2"
       failure=1
@@ -98,8 +91,8 @@ EOF
     failure=1
   fi
 
-  rm "$CONFIG_FILE"
-  unset CONFIG_FILE DB_BACKUP_DIR
+  unset RCLONE_CONFIG_REMOTE_TYPE RCLONE_CONFIG_REMOTE_PROVIDER RCLONE_CONFIG_REMOTE_ACCESS_KEY_ID RCLONE_CONFIG_REMOTE_SECRET_ACCESS_KEY RCLONE_CONFIG_REMOTE_ACL RCLONE_CONFIG_REMOTE_ENDPOINT RCLONE_CONFIG_REMOTE_NO_CHECK_BUCKET
+  unset DB_BACKUP_DIR
 
   echo -e "\n\n FINISH REMOTE OBJECT STORAGE SESSION $(date +%Y%m%d_%H%M%S)\n\n"
   echo "----------------------------------------------------"
