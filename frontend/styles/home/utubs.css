@@ -83,6 +83,10 @@
 
 #UTubNameUpdateWrap {
     min-width: 0;
+    /* Anchor the edit pencil to the first line (not the vertical middle of a
+       wrapped title) so it sits in a stable, predictable spot. It is always
+       visible on touch, where hover/focus reveal is impossible. */
+    align-items: flex-start;
 }
 
 #URLDeckHeader.editable,
@@ -233,6 +237,10 @@
     flex-shrink: 1;
     overflow-wrap: break-word;
     word-break: break-word;
+    /* Anchor the edit pencil beside the first line (not the vertical middle of a
+       multi-line description) so it stays in a stable, predictable spot — it is
+       always visible on touch, where hover/focus reveal is impossible. */
+    align-items: flex-start;
 }
 
 #UTubNameOuterUpdateWrap {
