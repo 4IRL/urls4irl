@@ -38,6 +38,44 @@ jobs:
                 cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
             - name: Run Smoke Test
-              run: | 
+              run: |
                 chmod +x docker/smoke-test.sh
                 docker/smoke-test.sh ${{ matrix.name }}:test
+
+    BackupPipelineTest:
+        name: Backup Pipeline E2E
+        needs: ProdBuild
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
+
+            # Both images were built (and cached mode=max) by ProdBuild, so these
+            # restore from the GHA cache rather than rebuilding. We need BOTH in one
+            # job: the prod image provisions the real schema, the workflow image runs
+            # the backup pipeline under test.
+            - name: Load u4i-prod from cache
+              uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+              with:
+                context: .
+                file: docker/Dockerfile
+                load: true
+                tags: u4i-prod:test
+                cache-from: type=gha,scope=u4i-prod
+
+            - name: Load u4i-workflow from cache
+              uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+              with:
+                context: .
+                file: docker/Dockerfile.Workflow
+                load: true
+                tags: u4i-workflow:test
+                cache-from: type=gha,scope=u4i-workflow
+
+            - name: Run Backup Pipeline Test
+              run: |
+                chmod +x docker/backup-pipeline-test.sh docker/backup-pipeline-driver.sh
+                docker/backup-pipeline-test.sh u4i-prod:test u4i-workflow:test

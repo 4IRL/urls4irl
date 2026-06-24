@@ -6,7 +6,7 @@ EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows addmock audit plan-list
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-backup-pipeline test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows addmock audit plan-list
 
 .DEFAULT_GOAL := help
 
@@ -52,6 +52,12 @@ test-ui-parallel-built: start-built ## Run UI tests in parallel against built as
 
 test-js: ## Run all JS unit tests (vitest)
 	$(EXEC_VITE) npm test
+
+test-backup-pipeline: ## Build web+workflow images and run the backup pipeline E2E harness locally
+	docker build -f docker/Dockerfile.Local    -t u4i-local-web:test .
+	docker build -f docker/Dockerfile.Workflow -t u4i-local-workflow:test .
+	chmod +x docker/backup-pipeline-test.sh docker/backup-pipeline-driver.sh
+	docker/backup-pipeline-test.sh u4i-local-web:test u4i-local-workflow:test
 
 test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
