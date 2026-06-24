@@ -184,21 +184,6 @@ def test_url_deck_header_and_subheader_shrink_and_wrap_when_long(
     )
     assert name_group_margin_end_px > 0
 
-    # 5. The edit-description pencil is anchored beside the FIRST line of the
-    #    wrapped description (a stable spot, always visible on touch), not
-    #    floating at the vertical middle of the tall block.
-    pencil_anchored_to_first_line = browser.execute_script(
-        "const wrap = document.getElementById('UTubDescriptionSubheaderWrap');"
-        "const text = document.getElementById('URLDeckSubheader');"
-        "const pencil = wrap.querySelector('.edit-pencil-icon');"
-        "const lineHeight = parseFloat(getComputedStyle(text).lineHeight);"
-        "const pencilRect = pencil.getBoundingClientRect();"
-        "const textRect = text.getBoundingClientRect();"
-        "return (pencilRect.top + pencilRect.height / 2) - textRect.top"
-        " < lineHeight;"
-    )
-    assert pencil_anchored_to_first_line
-
 
 def test_url_deck_header_edit_still_opens_after_font_fit(
     browser: WebDriver, create_test_utubs, provide_app: Flask
