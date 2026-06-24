@@ -29,6 +29,12 @@ cleanup_secrets() {
             unset "$var"
         fi
     done
+
+    if [[ -n "${WORKFLOW_LOG_DIR:-}" ]]; then
+      if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "$WORKFLOW_LOG_DIR" --pattern '*-daily-workflow-logs.txt' --max-files 90; then
+          echo "Warning: workflow_logs prune failed"
+      fi
+    fi
 }
 
 trap cleanup_secrets EXIT

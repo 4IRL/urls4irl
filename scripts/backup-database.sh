@@ -34,18 +34,9 @@ fi
 rm "${DB_BACKUP_FILE}"
 
 # ------- ROTATE LOCAL DB's - ONLY STORE PAST 90 DAYS  ------- #
-MAX_BACKUP_FILES=90
-NUM_BACKUPS=$(find "${DB_BACKUP_DIR}" -maxdepth 1 -type f | wc -l)
-    if [ "$NUM_BACKUPS" -gt "$MAX_BACKUP_FILES" ]; then
-        OLDEST_FILE=$(find "${DB_BACKUP_DIR}" -maxdepth 1 -type f -printf '%T+ %p\n' | sort | head -n 1 | cut -d ' ' -f2-)
-        echo "Oldest file is ${OLDEST_FILE}, removing..."
-        rm "${OLDEST_FILE}"
-        unset OLDEST_FILE
-    else
-        echo "No local backup files to prune ..."
-    fi
+/opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "${DB_BACKUP_DIR}" --pattern '*.sql.gz' --max-files 90
 
-unset NUM_BACKUPS DB_BACKUP_FILE
+unset DB_BACKUP_FILE
 
 
 echo -e "\n\n FINISH LOCAL DATABASE BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
