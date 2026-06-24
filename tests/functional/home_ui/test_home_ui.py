@@ -141,6 +141,61 @@ def test_navbar_hamburger_desktop_admin_member(
     assert logout_btn is not None
 
 
+def _navbar_item_border_top_width(browser: WebDriver, locator: str) -> str:
+    element = wait_then_get_element(browser, locator)
+    assert element is not None
+    return browser.execute_script(
+        "return window.getComputedStyle(arguments[0]).borderTopWidth;", element
+    )
+
+
+def test_navbar_dropdown_dividers_non_admin(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Guards the desktop dropdown dividers for a non-admin member (issue #634).
+
+    GIVEN a logged-in non-admin user on the desktop home page
+    WHEN they open the navbar hamburger dropdown
+    THEN Settings shows no top border (no stray line under the green accent)
+        and Logout shows a top divider between Settings and Logout
+    """
+    app = provide_app
+    # User 1 is seeded as the admin; user 2 is a regular member.
+    user_id = 2
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    click_on_navbar(browser)
+
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) == "0px"
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) != "0px"
+
+
+def test_navbar_dropdown_dividers_admin(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Guards the desktop dropdown dividers for an admin member (issue #634).
+
+    GIVEN a logged-in ADMIN user on the desktop home page
+    WHEN they open the navbar hamburger dropdown
+    THEN Admin · Metrics (the first item) shows no top border, while Settings
+        and Logout each show a top divider so all three read as separate items
+    """
+    app = provide_app
+    # User 1 is seeded with the ADMIN role.
+    user_id = 1
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    click_on_navbar(browser)
+
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_ADMIN_METRICS) == "0px"
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) != "0px"
+    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) != "0px"
+
+
 def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask):
     """
     Tests a user's ability to refresh the U4I Home page by clicking the upper LHS logo.

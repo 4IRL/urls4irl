@@ -564,17 +564,20 @@ a {
         padding-top: 0;
     }
 
-    /* Drop the outer per-row borders (the top accent + glow frame the card),
-       then add back one distinct divider between the Admin·Metrics and Logout
-       sections so they read as separate items. */
-    .home#NavbarNavDropdown #NavbarDropdownsHome button,
-    .home#NavbarNavDropdown #NavbarDropdownsHome #adminMetrics,
-    .home#NavbarNavDropdown .nav-item.home#logout {
+    /* The top accent + glow frame the card, so drop every per-row border,
+       then draw one divider between each pair of adjacent VISIBLE action items.
+       Keying the divider off .nav-item.home:not(.hidden) lets it adapt to
+       whichever items render (admin vs non-admin, home vs settings vs
+       admin-metrics) instead of assuming a fixed item set, and skips both the
+       "Logged in as" row (.user) and the hidden deck-switcher buttons, which
+       would otherwise break sibling adjacency. */
+    .home#NavbarNavDropdown #NavbarDropdownsHome > .nav-item {
         border-top: 0;
         border-bottom: 0;
     }
 
-    .home#NavbarNavDropdown #adminMetrics + .nav-item#logout {
+    .home#NavbarNavDropdown #NavbarDropdownsHome > .nav-item.home:not(.hidden)
+        + .nav-item.home:not(.hidden) {
         border-top: 1px solid var(--grayBadgeSelectionFocus);
     }
 
