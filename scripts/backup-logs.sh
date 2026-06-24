@@ -15,6 +15,12 @@ if ! gzip -c "${LOG_FILE}" > "${COMPRESSED_LOG_FILE}"; then
 fi
 echo "Success: Compressed logs on host"
 
+# Verify the compressed log archive is a valid gzip (size is not enforced; a quiet day yields a near-empty log)
+if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py verify-dump --path "${COMPRESSED_LOG_FILE}" --min-size 0; then
+  echo "Error: log backup failed integrity verification"
+  return 1
+fi
+
 echo "Removing uncompressed daily log files..."
 if ! rm -f "${LOG_FILE}"; then
   echo "Error: Failure in removing uncompressed log files"

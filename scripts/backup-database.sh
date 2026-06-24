@@ -24,6 +24,12 @@ if ! gzip -c "${DB_BACKUP_FILE}" > "${COMPRESSED_DB_BACKUP_FILE}"; then
 fi
 echo "Success: Compressed backup on host"
 
+# Verify the compressed dump is a valid gzip and large enough to be a real dump
+if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py verify-dump --path "${COMPRESSED_DB_BACKUP_FILE}" --min-size 1024; then
+  echo "Error: DB backup failed integrity/size verification"
+  return 1
+fi
+
 # Remove original uncompressed file
 rm "${DB_BACKUP_FILE}"
 
