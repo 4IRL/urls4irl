@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import gzip
 import os
+from unittest import mock
 
 import pytest
 
+import scripts.backup_maintenance
 from scripts.backup_maintenance import (
     DEFAULT_MIN_DUMP_BYTES,
     EXIT_FAILURE,
@@ -125,6 +127,28 @@ def test_verify_dump_zero_byte_file_at_default_min_returns_too_small(tmp_path):
     assert "too small" in message
 
 
+def test_verify_dump_os_error_during_read_returns_corrupt(tmp_path):
+    """
+    GIVEN a file whose gzip stream cannot be opened (gzip.open raises OSError)
+    WHEN verify_dump is invoked
+    THEN it returns (EXIT_FAILURE, "backup corrupt: ...") via the OSError branch.
+    """
+    dump_path = tmp_path / "io-error.sql.gz"
+    with gzip.open(dump_path, "wb") as gzip_file:
+        gzip_file.write(b"x" * 2048)
+
+    with mock.patch.object(
+        scripts.backup_maintenance.gzip,
+        "open",
+        side_effect=OSError("io error"),
+    ):
+        exit_code, message = verify_dump(path=str(dump_path), min_size_bytes=1024)
+
+    assert exit_code == EXIT_FAILURE
+    assert "corrupt" in message
+    assert str(dump_path) in message
+
+
 def test_verify_dump_missing_path_returns_missing(tmp_path):
     """
     GIVEN a path that does not exist
@@ -224,6 +248,67 @@ def test_scan_log_entries_returns_matching_files_with_mtimes(tmp_path):
     assert len(entries) == 2
     assert all(isinstance(mtime, float) for mtime, _ in entries)
     assert str(tmp_path / "cron.log") not in returned_paths
+
+
+def test_scan_log_entries_skips_non_regular_file_matching_glob(tmp_path):
+    """
+    GIVEN a real file and a symlink both matching the glob in the directory
+    WHEN scan_log_entries is invoked
+    THEN only the real regular file entry is returned (the symlink is skipped).
+    """
+    real_file = tmp_path / "2024-01-01-daily-workflow-logs.txt"
+    real_file.write_text("entry")
+    symlink_path = tmp_path / "2024-01-02-daily-workflow-logs.txt"
+    os.symlink(tmp_path, symlink_path)
+
+    entries = scan_log_entries(
+        directory=str(tmp_path), pattern="*-daily-workflow-logs.txt"
+    )
+
+    returned_paths = {path for _, path in entries}
+    assert returned_paths == {str(real_file)}
+    assert str(symlink_path) not in returned_paths
+
+
+def test_prune_logs_skips_unremovable_file_and_warns(tmp_path, capsys):
+    """
+    GIVEN three over-cap dated logs where one deletion raises OSError
+    WHEN prune_logs is invoked with max_files=1
+    THEN removed_count reflects only the successful deletions, the unremovable
+        path is absent from removed_paths, and a warning naming it is written to
+        stderr while the function still completes the remaining deletions.
+    """
+    log_dir = tmp_path
+    dated_files = []
+    for day_index in range(3):
+        dated_path = log_dir / f"2024-01-0{day_index + 1}-daily-workflow-logs.txt"
+        dated_path.write_text("entry")
+        os.utime(dated_path, (1_000 + day_index, 1_000 + day_index))
+        dated_files.append(dated_path)
+
+    assert all(dated.exists() for dated in dated_files)
+
+    unremovable_path = str(dated_files[0])
+    real_remove = os.remove
+
+    def remove_with_one_failure(path: str) -> None:
+        if path == unremovable_path:
+            raise OSError("permission denied")
+        real_remove(path)
+
+    with mock.patch.object(
+        scripts.backup_maintenance.os, "remove", side_effect=remove_with_one_failure
+    ):
+        removed_count, removed_paths = prune_logs(
+            directory=str(log_dir),
+            pattern="*-daily-workflow-logs.txt",
+            max_files=1,
+        )
+
+    assert removed_count == 1
+    assert unremovable_path not in removed_paths
+    assert str(dated_files[1]) in removed_paths
+    assert f"Warning: could not prune {unremovable_path}" in capsys.readouterr().err
 
 
 def test_prune_logs_removes_oldest_over_cap_and_never_touches_live_log(tmp_path):

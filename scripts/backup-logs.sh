@@ -28,7 +28,9 @@ if ! rm -f "${LOG_FILE}"; then
 fi
 
 # ------- ROTATE LOCAL DB's - ONLY STORE PAST 90 DAYS  ------- #
-/opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "${LOG_DIR}" --pattern '*_daily.log.gz' --max-files 90
+if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "${LOG_DIR}" --pattern '*_daily.log.gz' --max-files 90; then
+  echo "Warning: log prune failed"
+fi
 
 echo -e "\n\n FINISH LOG BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 echo "----------------------------------------------------"

@@ -28,7 +28,6 @@ import sys
 from pathlib import Path
 
 DEFAULT_MIN_DUMP_BYTES: int = 1024
-WORKFLOW_LOG_GLOB: str = "*-daily-workflow-logs.txt"
 EXIT_OK: int = 0
 EXIT_FAILURE: int = 1
 
@@ -54,7 +53,7 @@ def verify_dump(*, path: str, min_size_bytes: int) -> tuple[int, str]:
         >>> verify_dump(path="/tiny.sql.gz", min_size_bytes=1024)
         (1, 'backup too small: 10b < 1024b: /tiny.sql.gz')
     """
-    if not os.path.exists(path):
+    if not Path(path).exists():
         return (EXIT_FAILURE, f"backup missing: {path}")
 
     decompressed_bytes = 0
@@ -102,10 +101,10 @@ def select_files_to_prune(
     """
     if max_files < 1:
         raise ValueError(f"max_files must be >= 1, got {max_files}")
-    ascending_by_mtime = sorted(entries, key=lambda entry: entry[0])
-    if len(ascending_by_mtime) <= max_files:
+    sorted_entries = sorted(entries, key=lambda entry: entry[0])
+    if len(sorted_entries) <= max_files:
         return []
-    over_cap = ascending_by_mtime[: len(ascending_by_mtime) - max_files]
+    over_cap = sorted_entries[: len(sorted_entries) - max_files]
     return [path for _, path in over_cap]
 
 
@@ -139,8 +138,10 @@ def prune_logs(
     """Remove over-cap files matching ``pattern`` in ``directory``, oldest-first.
 
     Composes ``scan_log_entries`` and ``select_files_to_prune``, then deletes the
-    selected files. A failed deletion (``OSError``) is skipped so one unremovable
-    file never blocks the rest. Returns ``(removed_count, removed_paths)``.
+    selected files. A failed deletion (``OSError``) is skipped — a warning naming
+    the skipped file is written to ``stderr`` so the failure leaves a diagnostic
+    trail — so one unremovable file never blocks the rest. Returns
+    ``(removed_count, removed_paths)``.
 
     Examples:
         >>> # directory holds 3 dated logs, cap of 1 -> 2 oldest removed
@@ -160,7 +161,11 @@ def prune_logs(
     for path in paths_to_prune:
         try:
             os.remove(path)
-        except OSError:
+        except OSError as remove_error:
+            print(
+                f"Warning: could not prune {path}: {remove_error}",
+                file=sys.stderr,
+            )
             continue
         removed_paths.append(path)
     return (len(removed_paths), removed_paths)
@@ -184,7 +189,7 @@ def main(argv: list[str]) -> int:
 
     prune_parser = subparsers.add_parser("prune-logs")
     prune_parser.add_argument("--directory", required=True)
-    prune_parser.add_argument("--pattern", default=WORKFLOW_LOG_GLOB)
+    prune_parser.add_argument("--pattern", default="*-daily-workflow-logs.txt")
     prune_parser.add_argument("--max-files", type=int, required=True)
 
     args = parser.parse_args(argv)

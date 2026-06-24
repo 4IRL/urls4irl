@@ -34,7 +34,9 @@ fi
 rm "${DB_BACKUP_FILE}"
 
 # ------- ROTATE LOCAL DB's - ONLY STORE PAST 90 DAYS  ------- #
-/opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "${DB_BACKUP_DIR}" --pattern '*.sql.gz' --max-files 90
+if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "${DB_BACKUP_DIR}" --pattern '*.sql.gz' --max-files 90; then
+  echo "Warning: log prune failed"
+fi
 
 unset DB_BACKUP_FILE
 
