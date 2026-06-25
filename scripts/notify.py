@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
 import subprocess
 import sys
 import time
@@ -111,36 +112,19 @@ def sanitize_message(raw: str) -> str:
 
     Examples:
         >>> sanitize_message("line one\\nline two")
-        "line one\\\\nline two"
+        'line one\\\\nline two'
         >>> sanitize_message('file "name\\\\path"')
         "file 'name/path'"
         >>> sanitize_message("done}")
-        "done)"
+        'done)'
     """
     result = raw.replace('"', "'")
     result = result.replace("}", ")")
     result = result.replace("\\", "/")
     result = result.replace("\n", "\\n")
 
-    rebuilt_chars: list[str] = []
-    for character in result:
-        if ord(character) < 0x20:
-            rebuilt_chars.append(" ")
-        else:
-            rebuilt_chars.append(character)
-    result = "".join(rebuilt_chars).strip()
-
-    collapsed_chars: list[str] = []
-    previous_was_space = False
-    for character in result:
-        if character == " ":
-            if previous_was_space:
-                continue
-            previous_was_space = True
-        else:
-            previous_was_space = False
-        collapsed_chars.append(character)
-    result = "".join(collapsed_chars)
+    result = re.sub(r"[\x00-\x1f]", " ", result).strip()
+    result = re.sub(r" {2,}", " ", result)
 
     result = result[:DISCORD_CONTENT_MAX_CHARS]
     if result.endswith("\\") and not result.endswith("\\\\"):
@@ -197,7 +181,7 @@ def build_summary_message(
     """
     local_failed = (not database_ok) or (not logs_ok)
     remote_failed = any(
-        _remote_glyph(status) == STATUS_FAIL_GLYPH
+        status == _REMOTE_STATUS_FAIL
         for status in (remote_db, remote_monthly, remote_logs)
     )
     exit_code = 1 if (local_failed or remote_failed) else 0
