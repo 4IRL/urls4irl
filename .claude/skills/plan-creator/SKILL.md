@@ -441,11 +441,39 @@ ISSUE_NODE_ID=$(GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh issue view <N> --r
 
 Then run the `addProjectV2ItemById` mutation and the bot-assignee mutation. Copy the exact mutation structures from `.claude/skills/git-push/SKILL.md` Step 9.
 
-### 4d. Detect master parent and back-link
+### 4d. Detect master parent, attach as native sub-issue, and back-link
 
-**Sub-plan mode** (Step 0 set `<sub-plan-mode>=true`): read `<master-path>` and grep its YAML frontmatter for `github_issue:`. If found, append `\n\nPart of #<umbrella>` to the new issue body via `gh issue edit --body-file`.
+First, resolve which umbrella issue (if any) this sub-plan belongs to:
 
-**Default mode:** glob `plans/<topic>/*-master.md`. If exactly one file exists and its frontmatter has `github_issue:`, do the same append. If multiple master files exist or none have a linked issue, skip.
+**Sub-plan mode** (Step 0 set `<sub-plan-mode>=true`): read `<master-path>` frontmatter for `github_issue:` (the umbrella number `<umbrella>`) and `github_issue_node_id:` (the umbrella's GraphQL node ID `<umbrella-node-id>`).
+
+**Default mode:** glob `plans/<topic>/*-master.md`. If exactly one file exists and its frontmatter has `github_issue:`, use it. If multiple master files exist or none have a linked issue, **skip this entire step**.
+
+When an umbrella is found, do BOTH of the following:
+
+**1. Attach as a native GitHub sub-issue (the structural parent/child link).** This makes the phase issue a child of the umbrella in GitHub's sub-issue hierarchy. You captured the new phase issue's node ID as `<issue-node-id>` in Step 4c. Resolve `<umbrella-node-id>` from the master frontmatter `github_issue_node_id:`; if that key is absent (older / hand-written master), fetch it:
+
+```bash
+GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh issue view <umbrella> --repo 4IRL/urls4irl --json id --jq .id
+```
+
+Write the mutation to a `.graphql` file (never inline — braces+quotes trip the security prompt) and run it via `-F query=@file`:
+
+`plans/<topic>/tmp/add-sub-issue.graphql`:
+```graphql
+mutation {
+  addSubIssue(input: { issueId: "<umbrella-node-id>", subIssueId: "<issue-node-id>" }) {
+    subIssue { number }
+  }
+}
+```
+```bash
+GH_TOKEN=$(~/.claude/generate-gh-token.sh) gh api graphql -F query=@plans/<topic>/tmp/add-sub-issue.graphql
+```
+
+If the call errors with an unknown-field / schema error on `addSubIssue`, retry the **same** command with `-H "GraphQL-Features: sub_issues"` appended (the sub-issues schema was preview-gated behind that header before GA). If it still fails, surface the error and the manual command but **do not block plan creation** — the `Part of #N` text link below still records the relationship.
+
+**2. Append the `Part of #N` body backref (human-readable secondary link).** Append `\n\nPart of #<umbrella>` to the new phase issue body via `gh issue edit --body-file`. This keeps a visible link in the issue body and timeline alongside the structural sub-issue relationship.
 
 ### 4e. Write issue link to plan frontmatter
 

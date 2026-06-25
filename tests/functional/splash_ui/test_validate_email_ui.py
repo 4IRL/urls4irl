@@ -16,6 +16,7 @@ from tests.functional.splash_ui.selenium_utils import register_user_ui
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
     login_user_ui,
+    wait_for_element_presence,
     wait_for_element_to_be_removed,
     wait_for_modal_ready,
     wait_then_click_element,
@@ -167,13 +168,19 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     wait_then_click_element(browser, email_validation_btn_close)
 
     # The btn-close fires Bootstrap's modal-hide AND logoutOnExit's async logout
-    # AJAX, which then runs window.location.replace("/"). The anonymous splash page
-    # re-renders a fresh (hidden) #EmailValidationModal, so a selector-based hidden
-    # wait can re-locate that fresh element mid-navigation and latch onto a transient
-    # reload state. Instead, wait on the ORIGINAL modal element going stale: that is
-    # the structural signal that the redirect destroyed the old DOM, which together
-    # with the anonymous WELCOME_TEXT assertion below proves both the modal closed
-    # and the logout/redirect completed.
+    # AJAX, which then runs window.location.replace("/"). Wait for the deterministic
+    # positive signal that the logout + redirect completed: the reloaded anonymous
+    # splash renders #splashConfig with data-show-email-validation="false" (the route
+    # sets "true" only for an authenticated-but-unvalidated session). Gating on that
+    # element appearing avoids the previous flake, where waiting for the original
+    # modal element to go stale raced the logout redirect under parallel load.
+    splash_config = wait_for_element_presence(
+        browser, SPL.SPLASH_CONFIG_ANONYMOUS, timeout=10
+    )
+    assert splash_config is not None
+
+    # The redirect having landed, the original modal element must now be stale —
+    # a structural confirmation the old DOM was destroyed (no longer the gating wait).
     assert wait_for_element_to_be_removed(browser, modal_element, timeout=10)
 
     # After logout, user should be redirected to splash page as anonymous

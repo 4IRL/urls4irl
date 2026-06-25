@@ -24,6 +24,7 @@ keys into Postgres.
 from __future__ import annotations
 
 from collections import namedtuple
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
@@ -87,6 +88,7 @@ _metrics_strs_module = _load_module_direct(
     "_metrics_strs", "backend/utils/strings/metrics_strs.py"
 )
 _latency_module = _load_module_direct("_metrics_latency", "backend/metrics/latency.py")
+_notify_module = _load_module_direct("_notify", "scripts/notify.py")
 epoch_to_aware_datetime = _buckets_module.epoch_to_aware_datetime
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
 LATENCY_SAMPLE_CAP_DEFAULT = _latency_module.LATENCY_SAMPLE_CAP_DEFAULT
@@ -96,6 +98,15 @@ LATENCY_PRUNE_INTERVAL_SECONDS = _latency_module.LATENCY_PRUNE_INTERVAL_SECONDS
 LATENCY_ROLLUP_RETENTION_DAYS = _latency_module.LATENCY_ROLLUP_RETENTION_DAYS
 LATENCY_ROLLUP_INTERVAL_SECONDS = _latency_module.LATENCY_ROLLUP_INTERVAL_SECONDS
 LATENCY_ROLLUP_BACKFILL_DAYS = _latency_module.LATENCY_ROLLUP_BACKFILL_DAYS
+build_message = _notify_module.build_message
+send = _notify_module.send
+resolve_notification_env = _notify_module.resolve_notification_env
+mark_failure_and_should_notify = _notify_module.mark_failure_and_should_notify
+clear_failure_and_should_notify_recovery = (
+    _notify_module.clear_failure_and_should_notify_recovery
+)
+STATUS_FAILURE = _notify_module.STATUS_FAILURE
+STATUS_RECOVERED = _notify_module.STATUS_RECOVERED
 
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 DEFAULT_BUCKET_SECONDS: int = 3600
@@ -120,6 +131,11 @@ FLUSH_LOCK_TTL_SECONDS: int = 55
 # key is read by the admin dashboard's summary endpoint to surface "Last flush"
 # accurately even during low-traffic stretches.
 FLUSH_LAST_SUCCESS_KEY: str = METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY
+
+# Transition-throttle flag — set on the first failure of an outage and cleared
+# on the first subsequent success, so Discord receives at most one failure
+# message and one recovery message per outage rather than a per-minute flood.
+FLUSH_FAILURE_FLAG_KEY: str = "metrics:flush:failure_notified"
 
 # Parsed latency-key fields. endpoint/method are flat key segments promoted to
 # flat columns at flush; dimensions_dict holds the device-only JSONB blob.
@@ -679,6 +695,48 @@ def _build_pg_conn_from_env() -> psycopg2.extensions.connection:
     )
 
 
+def run_flush_job(
+    *,
+    redis_client: redis.Redis,
+    pg_conn: psycopg2.extensions.connection,
+    notifier: Callable[..., int] = send,
+) -> int:
+    """Run a flush and emit transition-throttled failure/recovery alerts.
+
+    Wraps ``run_flush`` with the Redis-flag transition logic from ``notify.py``:
+    on success, if a prior failure flag is cleared, send exactly one
+    ``RECOVERED`` alert; on failure, if the flag was absent, send exactly one
+    ``FAILURE`` alert carrying the error detail, then re-raise.
+
+    The wrapper deliberately does NOT call ``logger.exception`` — it only fires
+    the conditional notifier and re-raises so the exception is logged exactly
+    once, by the ``__main__`` handler. The ``notifier`` default keeps production
+    wiring; tests inject a spy.
+    """
+    try:
+        upserted_rows = run_flush(redis_client=redis_client, pg_conn=pg_conn)
+    except Exception as flush_error:
+        if mark_failure_and_should_notify(redis_client, FLUSH_FAILURE_FLAG_KEY):
+            production, notification_url = resolve_notification_env()
+            message = build_message(
+                job="METRICS_FLUSH",
+                status=STATUS_FAILURE,
+                detail=str(flush_error),
+            )
+            notifier(
+                message,
+                production=production,
+                notification_url=notification_url,
+            )
+        raise
+
+    if clear_failure_and_should_notify_recovery(redis_client, FLUSH_FAILURE_FLAG_KEY):
+        production, notification_url = resolve_notification_env()
+        message = build_message(job="METRICS_FLUSH", status=STATUS_RECOVERED)
+        notifier(message, production=production, notification_url=notification_url)
+    return upserted_rows
+
+
 if __name__ == "__main__":
     started_at = time.time()
     redis_client_main: redis.Redis | None = None
@@ -686,7 +744,9 @@ if __name__ == "__main__":
     try:
         redis_client_main = _build_redis_client_from_env()
         pg_conn_main = _build_pg_conn_from_env()
-        upserted_rows = run_flush(redis_client=redis_client_main, pg_conn=pg_conn_main)
+        upserted_rows = run_flush_job(
+            redis_client=redis_client_main, pg_conn=pg_conn_main
+        )
         elapsed_ms = int((time.time() - started_at) * 1000)
         logger.info("upserted=%d elapsed_ms=%d", upserted_rows, elapsed_ms)
         sys.exit(0)

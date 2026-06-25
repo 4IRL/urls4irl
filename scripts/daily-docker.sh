@@ -57,16 +57,8 @@ LOGFILE="$WORKFLOW_LOG_DIR/$(date +%Y_%m_%d)-daily-workflow-logs.txt"
 exec 1>>"$LOGFILE"
 exec 2>&1
 
-send_notification_msg() {
-    local output="$1"
-    if [[ "${PRODUCTION:-}" != "true" ]]; then
-        output="IGNORE, IN DEVELOPMENT: $output"
-        echo "$output"
-    else
-        if ! restricted_curl "POST" "${NOTIFICATION_URL:-}" "DOCKER: $output"; then
-          echo "Error: Failure in sending notification"
-        fi
-    fi
+notify_step() {
+    /opt/metrics-venv/bin/python /app/scripts/notify.py --job "$1" --status "$2" --detail "${3:-}" || true
 }
 
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
@@ -80,7 +72,7 @@ echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 for required_var in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD; do
     if [[ -z "${!required_var:-}" ]]; then
         echo "Error: required environment variable ${required_var} is missing or empty"
-        send_notification_msg "Error: required environment variable ${required_var} is missing or empty — aborting daily backup"
+        notify_step "DAILY" "FAILURE" "Error: required environment variable ${required_var} is missing or empty — aborting daily backup"
         exit 1
     fi
 done
@@ -97,8 +89,10 @@ export DB_BACKUP_FILE COMPRESSED_DB_BACKUP_FILE DB_USER DB_PASS DB_NAME DB_BACKU
 database_backed_up="true"
 if ! source "$SCRIPT_DIR/backup-database.sh"; then
   echo "Error: Failure in daily local backup of database"
-  send_notification_msg "Error: Failure in daily local backup of database"
+  notify_step "DB_BACKUP" "FAILURE" "Error: Failure in daily local backup of database"
   database_backed_up="false"
+else
+  notify_step "DB_BACKUP" "SUCCESS" "$(basename "$COMPRESSED_DB_BACKUP_FILE") ($(du -h "$COMPRESSED_DB_BACKUP_FILE" 2>/dev/null | cut -f1))"
 fi
 unset DB_BACKUP_FILE DB_USER DB_PASS DB_NAME
 
@@ -111,33 +105,27 @@ export LOG_FILE COMPRESSED_LOG_FILE
 logs_backed_up="true"
 if ! source "$SCRIPT_DIR/backup-logs.sh"; then
   echo "Error: Failure in daily local backup of app logs"
-  send_notification_msg "Error: Failure in daily local backup of app logs: $(date -d "yesterday" +%Y-%m-%d).log"
+  notify_step "LOG_BACKUP" "FAILURE" "Error: Failure in daily local backup of app logs: $(date -d "yesterday" +%Y-%m-%d).log"
   logs_backed_up="false"
+else
+  notify_step "LOG_BACKUP" "SUCCESS" "$(basename "$COMPRESSED_LOG_FILE") ($(du -h "$COMPRESSED_LOG_FILE" 2>/dev/null | cut -f1))"
 fi
 
 unset LOG_FILE LOG_DIR
 
 
 source "$SCRIPT_DIR/remote-object-storage.sh"
-if ! remote_backup "$database_backed_up" "$logs_backed_up"; then
+remote_exit=0
+remote_backup "$database_backed_up" "$logs_backed_up" || remote_exit=$?
+if [[ $remote_exit -ne 0 ]]; then
   echo "Error: Failure in daily export of backups to remote object storage"
-  send_notification_msg "Remote Backup Failure: ${REMOTE_BACKUP_ERROR:-}"
-  exit 1
 fi
 
-send_notification_msg "Success: Backups saved and exported to cloud"
-unset ACCESS_KEY SECRET_ACCESS_KEY R2_ENDPOINT
-unset DB_BACKUP_DIR COMPRESSED_DB_BACKUP_FILE
-unset COMPRESSED_LOG_FILE
-unset NOTIFICATION_URL
+/opt/metrics-venv/bin/python /app/scripts/notify.py --summary \
+  --database "$([ "$database_backed_up" = "true" ] && echo ok || echo fail)" \
+  --logs "$([ "$logs_backed_up" = "true" ] && echo ok || echo fail)" \
+  --remote-db "${REMOTE_DB_STATUS:-skip}" \
+  --remote-monthly "${REMOTE_DB_MONTHLY_STATUS:-skip}" \
+  --remote-logs "${REMOTE_LOGS_STATUS:-skip}" || true
 
-cleanup_secrets
-
-echo -e "\n\nFINISHED RUNNING DAILY TASKS\n\n"
-echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
-
-if [[ "${PRODUCTION:-}" != "true" ]]; then
-    echo "Testing logs for development - $(date +%Y%m%d_%H%M%S)"
-    send_notification_msg "Testing logs for development - $(date +%Y%m%d_%H%M%S)"
-    exit 0
-fi
+exit $remote_exit

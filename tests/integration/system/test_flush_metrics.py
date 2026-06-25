@@ -14,10 +14,12 @@ from redis import Redis
 from backend.metrics.events import EVENT_CATEGORY, EVENT_DESCRIPTIONS, EventName
 from backend.utils.strings.metrics_strs import METRICS_REDIS
 from scripts.flush_metrics import (
+    FLUSH_FAILURE_FLAG_KEY,
     FLUSH_LAST_SUCCESS_KEY,
     FLUSH_LOCK_KEY,
     FLUSH_LOCK_TTL_SECONDS,
     run_flush,
+    run_flush_job,
 )
 from tests.integration.system.metrics_helpers import (
     build_counter_key,
@@ -42,9 +44,11 @@ def _release_flush_lock(provide_metrics_redis: Redis):
     """
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
     provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
+    provide_metrics_redis.delete(FLUSH_FAILURE_FLAG_KEY)
     yield
     provide_metrics_redis.delete(FLUSH_LOCK_KEY)
     provide_metrics_redis.delete(FLUSH_LAST_SUCCESS_KEY)
+    provide_metrics_redis.delete(FLUSH_FAILURE_FLAG_KEY)
 
 
 def _seed_event_registry(pg_conn: Any, event: EventName) -> None:
@@ -752,3 +756,52 @@ def test_flush_does_not_stamp_liveness_sentinel_when_lock_held(
         provide_metrics_redis.delete(FLUSH_LOCK_KEY)
         _truncate_metrics_tables(pg_conn)
         pg_conn.close()
+
+
+def test_run_flush_job_sets_failure_flag_then_clears_on_recovery(
+    app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a real metrics Redis and run_flush_job driven first with a forced
+        failure (a deliberately-closed pg_conn) and then with a healthy run
+    WHEN run_flush_job is invoked across the failure -> recovery transition
+    THEN FLUSH_FAILURE_FLAG_KEY is absent before the failure, set after the
+        failure (which re-raises), and cleared after the subsequent success —
+        proving the transition-throttle flag is round-tripped against real
+        Redis, not just a MagicMock.
+    """
+    spy_notifier = MagicMock(return_value=0)
+
+    # Before-state: the flag must be absent so the assertions measure this run.
+    assert provide_metrics_redis.get(FLUSH_FAILURE_FLAG_KEY) is None
+
+    # Forced failure: a closed connection makes run_flush raise inside the
+    # lock-held body (psycopg2 raises InterfaceError on a closed connection).
+    closed_pg_conn = build_pg_conn(app)
+    closed_pg_conn.close()
+    with pytest.raises(Exception):
+        run_flush_job(
+            redis_client=provide_metrics_redis,
+            pg_conn=closed_pg_conn,
+            notifier=spy_notifier,
+        )
+    assert provide_metrics_redis.get(FLUSH_FAILURE_FLAG_KEY) is not None
+
+    # The failure left the distributed lock held; release it so the recovery
+    # flush can acquire it (mirrors the 55s TTL expiring before the next tick).
+    provide_metrics_redis.delete(FLUSH_LOCK_KEY)
+
+    # Recovery: a healthy flush over an empty counter namespace clears the flag.
+    healthy_pg_conn = build_pg_conn(app)
+    try:
+        _truncate_metrics_tables(healthy_pg_conn)
+        run_flush_job(
+            redis_client=provide_metrics_redis,
+            pg_conn=healthy_pg_conn,
+            notifier=spy_notifier,
+        )
+        assert provide_metrics_redis.get(FLUSH_FAILURE_FLAG_KEY) is None
+    finally:
+        _truncate_metrics_tables(healthy_pg_conn)
+        healthy_pg_conn.close()

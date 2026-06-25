@@ -105,7 +105,7 @@ If any check fails, fix the plan file. Do not proceed to Step 7 until both pass.
 
 ## Step 7: Create Umbrella Issue
 
-Create a GitHub issue that represents the entire multi-PR initiative. Sub-plan issues will link back to it via `Part of #<umbrella>`. The umbrella closes automatically when the final sub-PR's `Closes #<umbrella>` lands on merge (driven by `/git-push`).
+Create a GitHub issue that represents the entire multi-PR initiative — this is the **parent** of every phase. Each phase's sub-plan issue (created on-demand later by `/plan-creator`) is attached to this umbrella as a **native GitHub sub-issue**, so the umbrella renders the full phase tree in GitHub's hierarchy; sub-plan issues additionally carry a `Part of #<umbrella>` body backref. The umbrella closes automatically when the final sub-PR's `Closes #<umbrella>` lands on merge (driven by `/git-push`).
 
 ### 7a. Generate body and labels
 
@@ -149,6 +149,8 @@ Capture `<issue-number>` and `<issue-url>`.
 
 Mirror `.claude/skills/plan-creator/SKILL.md` § Step 4c — `addProjectV2ItemById` mutation to project `PVT_kwDOCEIbTM4Ai9RV`, plus bot-assignee mutation from `/git-push` Step 9.
 
+While doing so you fetch the umbrella issue's GraphQL node ID. **Capture it as `<umbrella-node-id>`** — Step 7d persists it so `/plan-creator` can attach each phase issue as a native sub-issue without re-fetching.
+
 ### 7d. Write frontmatter
 
 Insert YAML frontmatter at the top of `plans/<parent-topic>/<name>-master.md`:
@@ -157,10 +159,11 @@ Insert YAML frontmatter at the top of `plans/<parent-topic>/<name>-master.md`:
 ---
 github_issue: <N>
 github_issue_url: <url>
+github_issue_node_id: <umbrella-node-id>
 ---
 ```
 
-This is what `/plan-creator` § Step 4d reads when creating sub-plan issues to discover the umbrella and append `Part of #<N>`.
+This is what `/plan-creator` § Step 4d reads when creating sub-plan issues to discover the umbrella, attach the new phase issue to it as a native GitHub sub-issue (via `github_issue_node_id`), and append the `Part of #<N>` body backref. If `github_issue_node_id` is ever missing (e.g. a hand-written master), `/plan-creator` falls back to fetching it from the issue number.
 
 ### Skip rules
 

@@ -131,6 +131,7 @@ leg_rclone_default() {
     (
         rclone() { echo "rclone $*" >> /tmp/rclone-calls; return 0; }
         file() { echo "application/gzip"; }
+        notify_step() { :; }
         export PRODUCTION=true
         export ACCESS_KEY=dummy SECRET_ACCESS_KEY=dummy R2_ENDPOINT=https://dummy.r2
         export COMPRESSED_DB_BACKUP_FILE=/tmp/fake_db_daily.sql.gz
@@ -157,6 +158,7 @@ leg_rclone_monthly() {
         file() { echo "application/gzip"; }
         # Force the day-of-month-1 branch regardless of the calendar.
         date() { if [ "${1:-}" = "+%d" ]; then echo "01"; else command date "$@"; fi; }
+        notify_step() { :; }
         export PRODUCTION=true
         export ACCESS_KEY=dummy SECRET_ACCESS_KEY=dummy R2_ENDPOINT=https://dummy.r2
         export COMPRESSED_DB_BACKUP_FILE=/tmp/fake_db_daily.sql.gz
@@ -194,6 +196,7 @@ leg_rclone_minio() {
         export COMPRESSED_LOG_FILE=/tmp/minio_test_daily.log.gz
         printf 'real db payload\n' | gzip > "$COMPRESSED_DB_BACKUP_FILE"
         printf 'real log payload\n' | gzip > "$COMPRESSED_LOG_FILE"
+        notify_step() { :; }
 
         source /app/remote-object-storage.sh
         set +e
