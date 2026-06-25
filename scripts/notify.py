@@ -278,7 +278,7 @@ def format_job_health(
     return row, _HEALTH_STATE_STALE
 
 
-def _read_sentinel_epoch(redis_client, key: str) -> int | None:
+def _read_sentinel_epoch(redis_client: redis.Redis, key: str) -> int | None:
     """Best-effort decode of a sentinel epoch; any miss/non-int/error -> None."""
     try:
         raw_value = redis_client.get(key)
