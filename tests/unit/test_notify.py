@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from unittest.mock import MagicMock
 
 import pytest
@@ -127,6 +128,16 @@ def test_sanitize_message_strips_dangling_backslash_after_truncation():
     assert len(result) <= DISCORD_CONTENT_MAX_CHARS
 
 
+def test_sanitize_message_replaces_control_chars():
+    """
+    GIVEN a string containing a tab and a carriage return between letters
+    WHEN sanitized
+    THEN each ASCII control char becomes a space and the resulting space run
+        collapses to a single space.
+    """
+    assert sanitize_message("a\tb\rc") == "a b c"
+
+
 # ---------------------------------------------------------------------------
 # build_message
 # ---------------------------------------------------------------------------
@@ -242,6 +253,40 @@ def test_build_summary_message_remote_logs_failure():
     )
     assert exit_code == 1
     assert "❌ ☁️ R2 logs" in message
+
+
+def test_build_summary_message_remote_db_failure():
+    """
+    GIVEN the R2 daily upload failed
+    WHEN building the summary
+    THEN exit code is 1 with a failing R2 daily row.
+    """
+    message, exit_code = build_summary_message(
+        database_ok=True,
+        logs_ok=True,
+        remote_db="fail",
+        remote_monthly="skip",
+        remote_logs="ok",
+    )
+    assert exit_code == 1
+    assert "❌ ☁️ R2 daily" in message
+
+
+def test_build_summary_message_remote_monthly_failure():
+    """
+    GIVEN the R2 monthly upload failed
+    WHEN building the summary
+    THEN exit code is 1 with a failing R2 monthly row.
+    """
+    message, exit_code = build_summary_message(
+        database_ok=True,
+        logs_ok=True,
+        remote_db="ok",
+        remote_monthly="fail",
+        remote_logs="ok",
+    )
+    assert exit_code == 1
+    assert "❌ ☁️ R2 monthly" in message
 
 
 def test_build_summary_message_skip_never_fails():
@@ -676,6 +721,54 @@ def test_clear_failure_recovery_returns_false_when_no_flag():
     redis_mock = MagicMock()
     redis_mock.delete.return_value = 0
     assert clear_failure_and_should_notify_recovery(redis_mock, "flag") is False
+
+
+# ---------------------------------------------------------------------------
+# _load_env_from_container_dump
+# ---------------------------------------------------------------------------
+
+
+_INJECTED_DUMP_KEY = "U4I_NOTIFY_DUMP_TEST_KEY"
+
+
+def test_load_env_from_container_dump_unreadable_path_no_raise_no_pollution(
+    monkeypatch, tmp_path
+):
+    """
+    GIVEN CONTAINER_ENVIRONMENT_FILE points at a file with no read permission
+    WHEN the dump loader runs
+    THEN the swallowed OSError does not propagate and os.environ is unchanged.
+    """
+    dump_file = tmp_path / "container_environment"
+    dump_file.write_text(f"{_INJECTED_DUMP_KEY}=should-not-be-set\n")
+    dump_file.chmod(0o000)
+    monkeypatch.delenv(_INJECTED_DUMP_KEY, raising=False)
+    monkeypatch.setattr(notify, "CONTAINER_ENVIRONMENT_FILE", str(dump_file))
+
+    environ_before = set(os.environ)
+    notify._load_env_from_container_dump()
+
+    assert set(os.environ) == environ_before
+    assert _INJECTED_DUMP_KEY not in os.environ
+
+
+def test_load_env_from_container_dump_skips_comment_and_malformed_lines(
+    monkeypatch, tmp_path
+):
+    """
+    GIVEN a dump file whose only lines are a comment and a malformed (no '=')
+        line
+    WHEN the dump loader runs
+    THEN neither line raises and os.environ gains no new keys.
+    """
+    dump_file = tmp_path / "container_environment"
+    dump_file.write_text("# a comment line\nMALFORMED_LINE_NO_EQUALS\n")
+    monkeypatch.setattr(notify, "CONTAINER_ENVIRONMENT_FILE", str(dump_file))
+
+    environ_before = set(os.environ)
+    notify._load_env_from_container_dump()
+
+    assert set(os.environ) == environ_before
 
 
 # ---------------------------------------------------------------------------
