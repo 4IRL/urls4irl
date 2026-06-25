@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.utils.constants import UTUB_CONSTANTS, TAG_CONSTANTS
+from backend.utils.strings.tag_strs import TAGS_FAILURE
 
 pytestmark = pytest.mark.unit
 
@@ -102,6 +103,63 @@ class TestAddTagRequest:
             AddTagRequest.model_validate(
                 {"tagString": "a" * (TAG_CONSTANTS.MAX_TAG_LENGTH + 1)}
             )
+
+
+class TestAddTagsRequest:
+    def test_valid_multi_string_list(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        req = AddTagsRequest.model_validate({"tagStrings": ["python", "web"]})
+        assert req.tagStrings == ["python", "web"]
+
+    def test_empty_list_raises(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        with pytest.raises(ValidationError) as exc_info:
+            AddTagsRequest.model_validate({"tagStrings": []})
+        errors = exc_info.value.errors()
+        assert any(error["loc"][0] == "tagStrings" for error in errors)
+
+    def test_list_exceeding_max_url_tags_raises(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        too_many = [f"tag{index}" for index in range(TAG_CONSTANTS.MAX_URL_TAGS + 1)]
+        with pytest.raises(ValidationError) as exc_info:
+            AddTagsRequest.model_validate({"tagStrings": too_many})
+        errors = exc_info.value.errors()
+        assert any(error["loc"][0] == "tagStrings" for error in errors)
+
+    def test_whitespace_only_element_raises(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        with pytest.raises(ValidationError) as exc_info:
+            AddTagsRequest.model_validate({"tagStrings": ["python", "   "]})
+        errors = exc_info.value.errors()
+        assert any(TAGS_FAILURE.TAG_EMPTY in str(error["msg"]) for error in errors)
+
+    def test_html_element_is_rejected(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        with pytest.raises(ValidationError) as exc_info:
+            AddTagsRequest.model_validate({"tagStrings": ["<b>python</b>"]})
+        errors = exc_info.value.errors()
+        assert any(error["loc"][0] == "tagStrings" for error in errors)
+
+    def test_over_length_element_raises(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        with pytest.raises(ValidationError):
+            AddTagsRequest.model_validate(
+                {"tagStrings": ["a" * (TAG_CONSTANTS.MAX_TAG_LENGTH + 1)]}
+            )
+
+    def test_duplicate_elements_deduplicated_case_insensitive(self):
+        from backend.schemas.requests.tags import AddTagsRequest
+
+        req = AddTagsRequest.model_validate(
+            {"tagStrings": ["python", "Python", " python ", "web"]}
+        )
+        assert req.tagStrings == ["python", "web"]
 
 
 class TestAddMemberRequest:
