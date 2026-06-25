@@ -19,6 +19,7 @@ UTUB_TAG_ID = "utubTagID"
 URLS = "urls"
 URL = "URL"
 UTUB_URL_TAG_IDS = "utubUrlTagIDs"
+APPLIED_TAGS = "appliedTags"
 URL_TAGS = "urlTags"
 URL_STRING = "urlString"
 URL_ID = "urlID"
@@ -39,6 +40,7 @@ class MODELS:
     NAME = NAME
     URL_ID = URL_ID
     URL_TAG_IDS = UTUB_URL_TAG_IDS
+    APPLIED_TAGS = APPLIED_TAGS
     URL_TAGS = URL_TAGS
     URL_STRING = URL_STRING
     ADDED_BY = ADDED_BY

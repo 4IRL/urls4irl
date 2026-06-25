@@ -4,6 +4,7 @@ from backend.schemas.metrics import MetricsIngestResponseSchema
 from backend.schemas.system import HealthResponseSchema
 from backend.schemas.tags import (
     UrlTagModifiedResponseSchema,
+    UrlTagsModifiedResponseSchema,
     UtubTagAddedToUtubResponseSchema,
     UtubTagDeletedFromUtubResponseSchema,
     UtubTagOnAddDeleteSchema,
@@ -57,6 +58,7 @@ __all__ = [
     "UtubSummaryItemSchema",
     "UtubSummaryListSchema",
     "UrlTagModifiedResponseSchema",
+    "UrlTagsModifiedResponseSchema",
     "UtubTagAddedToUtubResponseSchema",
     "UtubTagDeletedFromUtubResponseSchema",
     "UtubTagOnAddDeleteSchema",

@@ -5,6 +5,7 @@ from backend.utils.strings.utub_strs import UTUB_GENERAL
 
 # Strings for tags success
 TAG_ADDED_TO_URL = "Tag added to this URL."
+TAGS_ADDED_TO_URL = "Tags added to this URL."
 TAG_ADDED_TO_UTUB = "Tag added to this UTub."
 TAG_REMOVED_FROM_URL = "Tag removed from this URL."
 TAG_REMOVED_FROM_UTUB = "Tag removed from UTub and associated URLs."
@@ -22,6 +23,7 @@ TAG_FILTER_NO_RESULTS = "No URLs match selected tags"
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL
+    TAGS_ADDED_TO_URL = TAGS_ADDED_TO_URL
     TAG_ADDED_TO_UTUB = TAG_ADDED_TO_UTUB
     TAG_REMOVED_FROM_URL = TAG_REMOVED_FROM_URL
     TAG_REMOVED_FROM_UTUB = TAG_REMOVED_FROM_UTUB
