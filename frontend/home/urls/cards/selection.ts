@@ -54,6 +54,13 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
       ".goToUrlIcon",
       ".urlBtnAccess",
       ".urlBtnDelete",
+      ".urlTagCombobox",
+      ".urlTagComboboxInput",
+      ".urlTagListbox",
+      ".urlTagOption",
+      ".urlTagStagedChip",
+      ".urlTagComboboxSubmitBtn",
+      ".urlTagComboboxCancelBtn",
     ];
 
     for (

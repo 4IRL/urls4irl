@@ -231,3 +231,156 @@
         padding-right: 6px;
     }
 }
+
+/* ---------------------------------------------------------------------------
+   Multi-tag apply combobox. Styled inline inside the selected URL card,
+   replacing the single-input create form. Colors/spacing traced to the design
+   mocks (plans/tags/mocks/combobox-desktop.html, combobox-mobile.html) against
+   the real tokens in styles/tokens.css.
+   --------------------------------------------------------------------------- */
+
+.urlTagComboboxWrap {
+    gap: 5px;
+}
+
+/* Input container: gray border at rest -> brand green on focus. */
+.urlTagCombobox {
+    background: var(--pageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    padding: 7px 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+    transition: border-color 0.3s ease;
+}
+
+.urlTagCombobox.focused {
+    border-color: var(--deckSelectionGreen);
+}
+
+.urlTagCombobox.disabled {
+    opacity: 0.6;
+}
+
+.urlTagComboboxInput {
+    flex: 1 1 90px;
+    min-width: 90px;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: whitesmoke;
+    /* 16px prevents iOS Safari from zooming when the input gains focus. */
+    font-size: 16px;
+    padding: 4px 2px;
+}
+
+/* Staged (not-yet-applied) chips — sky-blue, DISTINCT from the green applied
+   .tagBadge. They never enter .urlTagsContainer until submit, so the stale-data
+   diff and isTagInURL (which query .urlTagsContainer > .tagBadge) never mistake
+   them for applied tags. */
+.urlTagStagedChip {
+    gap: 6px;
+    background: rgba(91, 192, 235, 0.16);
+    border: 1px solid var(--addTagColor);
+    border-radius: 12px;
+    padding: 3px 8px;
+    color: #cdeaf7;
+    font-weight: 700;
+    font-size: 0.85rem;
+    transition: background-color 0.2s ease;
+}
+
+.urlTagStagedChipRemove {
+    background: transparent;
+    border: none;
+    color: var(--addTagColor);
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+}
+
+/* In-flow dropdown — grows the card rather than overlaying, so the card's
+   overflow:hidden never clips it. */
+.urlTagListbox {
+    margin-top: 4px;
+    background: var(--cardBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+}
+
+.urlTagOption {
+    padding: 9px 12px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(52, 60, 61, 0.6);
+    transition: background-color 0.2s ease;
+}
+
+.urlTagOption:last-child {
+    border-bottom: none;
+}
+
+.urlTagOption.active {
+    background: rgba(126, 130, 130, 1.0);
+}
+
+.urlTagOptionCreateNew {
+    color: var(--addTagColor);
+}
+
+.urlTagOptionCount {
+    font-weight: 400;
+    font-size: 0.75rem;
+    color: var(--grayBadgeSelection);
+    background: var(--cardBackgroundColor);
+    border-radius: var(--radius-pill);
+    padding: 1px 9px;
+}
+
+.urlTagListboxHint {
+    padding: 9px 12px;
+    font-size: 0.85rem;
+    color: var(--grayBadgeSelection);
+    font-style: italic;
+}
+
+.urlTagComboboxMsg {
+    font-size: 0.78rem;
+    color: var(--grayBadgeSelection);
+}
+
+.urlTagComboboxMsg.warn {
+    color: var(--editURLColor);
+}
+
+@media not all and (any-pointer: coarse) {
+    .urlTagOption:hover {
+        background: rgba(126, 130, 130, 0.5);
+    }
+}
+
+/* Coarse pointer (touch): 44px-min option rows and chip remove targets, and the
+   chip X is persistently shown (no hover). */
+@media (any-pointer: coarse) {
+    .urlTagOption {
+        min-height: 44px;
+    }
+
+    .urlTagStagedChipRemove {
+        min-height: 44px;
+        min-width: 44px;
+        justify-content: center;
+    }
+}
+
+/* Reduced-motion: disable the focus/hover/chip transitions. */
+@media (prefers-reduced-motion: reduce) {
+
+    .urlTagCombobox,
+    .urlTagListbox,
+    .urlTagStagedChip {
+        transition: none;
+    }
+}

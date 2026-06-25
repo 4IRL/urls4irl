@@ -56,6 +56,32 @@ const URL_CARD_HTML = `
   </div>
 `;
 
+// Staged chips, the listbox, and the combobox controls live inside the card but
+// must never deselect it when clicked. The child elements MUST be present in the
+// DOM here — if a selector were mistyped, trigger() would fire on nothing and the
+// urlSelected assertion would pass vacuously.
+const COMBOBOX_CARD_HTML = `
+  <div class="urlRow" utuburlid="42" urlSelected="false" filterable="true">
+    <span class="goToUrlIcon"></span>
+    <div class="urlTagComboboxWrap">
+      <div class="urlTagCombobox">
+        <span class="urlTagStagedChip" data-staged-tag-string="react">
+          react<button class="urlTagStagedChipRemove">×</button>
+        </span>
+        <input class="urlTagComboboxInput" type="text" />
+      </div>
+      <div class="urlTagListbox">
+        <div class="urlTagOption">pytest</div>
+      </div>
+      <div class="urlTagComboboxFooter">
+        <button class="urlTagComboboxCancelBtn">Cancel</button>
+        <button class="urlTagComboboxSubmitBtn">Add tags</button>
+      </div>
+    </div>
+    <a class="urlString" href="https://example.com"></a>
+  </div>
+`;
+
 const MULTI_CARD_HTML = `
   <div class="urlRow" utuburlid="10" urlSelected="false" filterable="true">
     <span class="goToUrlIcon"></span>
@@ -157,6 +183,38 @@ describe("URL Card Selection", () => {
       selectURLCard(urlCard);
       urlCard.find(".urlTitle").trigger("click");
       expect(urlCard.attr("urlSelected")).toBe("true");
+    });
+  });
+
+  describe("tag combobox elements never deselect the URL card", () => {
+    // Regression: the combobox lives inside the selected URL card, so interacting
+    // with its input, staged chips, listbox, or submit/cancel buttons must not
+    // bubble up to the card-level deselect handler. The coarse-pointer
+    // tap-to-reveal-delete branch keys off `.tagBadge` only — staged chips and
+    // options use distinct classes and bypass it entirely.
+    beforeEach(() => {
+      document.body.innerHTML = COMBOBOX_CARD_HTML;
+      urlCard = $(".urlRow");
+    });
+
+    const COMBOBOX_CHILD_SELECTORS = [
+      ".urlTagComboboxInput",
+      ".urlTagStagedChip",
+      ".urlTagListbox",
+      ".urlTagComboboxSubmitBtn",
+      ".urlTagComboboxCancelBtn",
+    ];
+
+    COMBOBOX_CHILD_SELECTORS.forEach((selector) => {
+      it(`clicking ${selector} does NOT deselect the URL card`, () => {
+        selectURLCard(urlCard);
+        const target = urlCard.find(selector);
+        expect(target.length).toBe(1);
+
+        target.trigger("click");
+
+        expect(urlCard.attr("urlSelected")).toBe("true");
+      });
     });
   });
 
