@@ -241,7 +241,7 @@ fi
 PRODSIM_LOG=$(docker exec "$PRODSIM" cat "/app/workflow_logs/$(docker exec "$PRODSIM" date +%Y_%m_%d)-daily-workflow-logs.txt" 2>/dev/null || echo "")
 echo "$PRODSIM_LOG" | grep -q "Success: Sent daily database backup to Cloudflare R2" \
     || { echo "❌ Leg 7: database upload did not report success" >&2; exit 1; }
-docker exec "$PRODSIM" cat /tmp/notify.log 2>/dev/null | grep -q "DAILY_BACKUP SUCCESS" \
+docker exec "$PRODSIM" cat /tmp/notify.log 2>/dev/null | grep -qE "Daily Backup.*SUCCESS" \
     || { echo "❌ Leg 7: success notification not dispatched" >&2; exit 1; }
 
 # Confirm the objects actually persisted in MinIO (real end-to-end upload).
