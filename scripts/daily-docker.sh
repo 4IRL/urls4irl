@@ -61,10 +61,6 @@ notify_step() {
     /opt/metrics-venv/bin/python /app/scripts/notify.py --job "$1" --status "$2" --detail "${3:-}" || true
 }
 
-send_notification_msg() {
-    notify_step "DAILY" "INFO" "$1"
-}
-
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
 echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 
