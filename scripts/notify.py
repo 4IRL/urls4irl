@@ -296,7 +296,7 @@ def _read_sentinel_epoch(redis_client: redis.Redis, key: str) -> int | None:
         return None
 
 
-def read_metrics_health(*, redis_client, now_epoch: int) -> str:
+def read_metrics_health(*, redis_client: redis.Redis | None, now_epoch: int) -> str:
     """Return the full METRICS SECTION string (real newlines, un-sanitized).
 
     Best-effort reads both sentinels (never raises). The section verdict:
@@ -405,7 +405,9 @@ def send(message: str, *, production: str, notification_url: str) -> int:
     return completed.returncode
 
 
-def mark_failure_and_should_notify(redis_client, failure_flag_key: str) -> bool:
+def mark_failure_and_should_notify(
+    redis_client: redis.Redis, failure_flag_key: str
+) -> bool:
     """Set the failure flag with ``NX``; return ``True`` only on first failure.
 
     A ``True`` return means the flag was absent (this is the start of an
@@ -415,7 +417,7 @@ def mark_failure_and_should_notify(redis_client, failure_flag_key: str) -> bool:
 
 
 def clear_failure_and_should_notify_recovery(
-    redis_client, failure_flag_key: str
+    redis_client: redis.Redis, failure_flag_key: str
 ) -> bool:
     """Delete the failure flag; return ``True`` only when one was cleared.
 
