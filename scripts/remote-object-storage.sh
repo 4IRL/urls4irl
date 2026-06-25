@@ -80,6 +80,11 @@ remote_backup() {
   else
     echo "Skipping database remote backup due to local backup failure"
     REMOTE_BACKUP_ERROR="Skipping database remote backup due to local backup failure"
+    # REMOTE_DB_STATUS stays "skip" (its default): the remote DB backup was
+    # intentionally NOT attempted because the upstream local DB backup already
+    # failed and reported its own failure. This is distinct from an
+    # attempted-and-failed remote upload (REMOTE_DB_STATUS=fail), which the
+    # digest renders differently.
     failure=1
   fi
 

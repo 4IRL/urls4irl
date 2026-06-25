@@ -673,6 +673,26 @@ def test_send_prod_mode_empty_url_returns_one():
     assert send("hi", production="true", notification_url="") == 1
 
 
+def test_send_prod_mode_missing_binary_returns_one(monkeypatch, capsys):
+    """
+    GIVEN the restricted_curl binary is absent (subprocess.run raises
+        FileNotFoundError)
+    WHEN sending
+    THEN 1 is returned without raising and the failure is logged to stderr.
+    """
+    monkeypatch.setattr(
+        "scripts.notify.subprocess.run",
+        MagicMock(side_effect=FileNotFoundError("no such file")),
+    )
+    return_code = send(
+        "hi",
+        production="true",
+        notification_url="https://discord.com/api/webhooks/1/abc",
+    )
+    assert return_code == 1
+    assert "Failed to invoke" in capsys.readouterr().err
+
+
 # ---------------------------------------------------------------------------
 # transition decisions
 # ---------------------------------------------------------------------------

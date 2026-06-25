@@ -391,10 +391,17 @@ def send(message: str, *, production: str, notification_url: str) -> int:
         return 0
     if not notification_url:
         return 1
-    completed = subprocess.run(
-        [RESTRICTED_CURL_BINARY, "POST", notification_url, message],
-        check=False,
-    )
+    try:
+        completed = subprocess.run(
+            [RESTRICTED_CURL_BINARY, "POST", notification_url, message],
+            check=False,
+        )
+    except OSError as os_error:
+        print(
+            f"Failed to invoke {RESTRICTED_CURL_BINARY}: {os_error}",
+            file=sys.stderr,
+        )
+        return 1
     return completed.returncode
 
 
