@@ -819,3 +819,49 @@ def test_main_single_message_returns_send_code(monkeypatch):
     sent_message = send_spy.call_args.args[0]
     assert "DB_BACKUP SUCCESS" in sent_message
     assert "file.gz" in sent_message
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        [],
+        ["--job", "DB_BACKUP"],
+        ["--status", "SUCCESS"],
+    ],
+)
+def test_main_missing_job_or_status_without_summary_errors(argv, monkeypatch):
+    """
+    GIVEN a non-summary invocation missing --job and/or --status
+    WHEN main runs
+    THEN argparse exits with code 2 and never sends a message.
+    """
+    monkeypatch.setenv("PRODUCTION", "false")
+    monkeypatch.setenv("NOTIFICATION_URL", "")
+    send_spy = MagicMock(return_value=0)
+    monkeypatch.setattr(notify, "send", send_spy)
+
+    with pytest.raises(SystemExit) as exit_info:
+        main(argv)
+
+    assert exit_info.value.code == 2
+    send_spy.assert_not_called()
+
+
+def test_main_summary_without_remote_flags_uses_skip_defaults(monkeypatch):
+    """
+    GIVEN a --summary invocation that omits every remote-status flag
+    WHEN main runs
+    THEN the skip defaults keep _remote_glyph from raising and the run succeeds.
+    """
+    monkeypatch.setenv("PRODUCTION", "false")
+    monkeypatch.setenv("NOTIFICATION_URL", "")
+    monkeypatch.setattr(notify, "_build_metrics_redis_client", lambda: None)
+    send_spy = MagicMock(return_value=0)
+    monkeypatch.setattr(notify, "send", send_spy)
+
+    exit_code = main(["--summary"])
+
+    assert exit_code == 0
+    send_spy.assert_called_once()
+    sent_message = send_spy.call_args.args[0]
+    assert f"**Daily Backup — {STATUS_SUCCESS}**" in sent_message

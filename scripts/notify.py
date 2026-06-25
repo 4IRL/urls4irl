@@ -81,6 +81,8 @@ _HEALTH_STATE_HEALTHY: str = "healthy"
 _HEALTH_STATE_STALE: str = "stale"
 _HEALTH_STATE_UNKNOWN: str = "unknown"
 
+_MISSING_JOB_STATUS_ERROR: str = "--job and --status are required without --summary"
+
 
 def sanitize_message(raw: str) -> str:
     """Make ``raw`` safe to interpolate into ``{"content":"<raw>"}`` raw JSON.
@@ -461,11 +463,17 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument("--job")
     parser.add_argument("--status")
     parser.add_argument("--detail", default="")
-    parser.add_argument("--database", choices=("ok", "fail"))
-    parser.add_argument("--logs", choices=("ok", "fail"))
-    parser.add_argument("--remote-db", choices=("ok", "fail", "skip"))
-    parser.add_argument("--remote-monthly", choices=("ok", "fail", "skip"))
-    parser.add_argument("--remote-logs", choices=("ok", "fail", "skip"))
+    parser.add_argument("--database", choices=("ok", "fail"), default=_REMOTE_STATUS_OK)
+    parser.add_argument("--logs", choices=("ok", "fail"), default=_REMOTE_STATUS_OK)
+    parser.add_argument(
+        "--remote-db", choices=("ok", "fail", "skip"), default=_REMOTE_STATUS_SKIP
+    )
+    parser.add_argument(
+        "--remote-monthly", choices=("ok", "fail", "skip"), default=_REMOTE_STATUS_SKIP
+    )
+    parser.add_argument(
+        "--remote-logs", choices=("ok", "fail", "skip"), default=_REMOTE_STATUS_SKIP
+    )
     return parser
 
 
@@ -473,6 +481,8 @@ def main(argv: list[str]) -> int:
     """CLI entrypoint: single-message (``--job/--status``) or ``--summary``."""
     parser = _build_arg_parser()
     args = parser.parse_args(argv)
+    if not args.summary and (not args.job or not args.status):
+        parser.error(_MISSING_JOB_STATUS_ERROR)
     production, notification_url = resolve_notification_env()
 
     if args.summary:
