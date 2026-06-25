@@ -186,11 +186,13 @@ describe("combobox metrics — UI_FORM_SUBMIT", () => {
 });
 
 describe("combobox metrics — UI_FORM_CANCEL", () => {
-  it("emits ui_form_cancel with CANCEL_BUTTON when the cancel button is clicked", async () => {
+  it("emits ui_form_cancel with CANCEL_BUTTON when the big cancel button is clicked", async () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
     const urlCard = mountCombobox();
+    const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
 
-    urlCard.find(".urlTagComboboxCancelBtn").trigger("click");
+    showTagCombobox(urlCard, urlTagBtnCreate);
+    urlCard.find(".urlTagCancelBigBtnCreate").trigger("click");
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_FORM_CANCEL,

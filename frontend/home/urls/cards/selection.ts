@@ -60,7 +60,6 @@ export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
       ".urlTagOption",
       ".urlTagStagedChip",
       ".urlTagComboboxSubmitBtn",
-      ".urlTagComboboxCancelBtn",
     ];
 
     for (

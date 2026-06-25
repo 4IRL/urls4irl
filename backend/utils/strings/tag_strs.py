@@ -28,6 +28,7 @@ TAG_CREATE_NEW = "Create new"
 TAGS_LIMIT_REACHED = "Maximum {max} tags reached — remove a tag to add more"
 TAGS_NO_MATCHES = "No matching tags"
 TAGS_MATCH_COUNT = "{n} matches"
+TAGS_MATCH_COUNT_ONE = "1 match"
 TAGS_EMPTY_HINT = "No tags yet — type to create one"
 
 

@@ -122,6 +122,7 @@ const appConfig = {
     TAGS_LIMIT_REACHED: "Maximum {max} tags reached — remove a tag to add more",
     TAGS_NO_MATCHES: "No matching tags",
     TAGS_MATCH_COUNT: "{n} matches",
+    TAGS_MATCH_COUNT_ONE: "1 match",
     TAGS_EMPTY_HINT: "No tags yet — type to create one",
     URL_SEARCH_NO_RESULTS: "No URLs found",
     UTUB_NO_URLS: "No URLs yet",

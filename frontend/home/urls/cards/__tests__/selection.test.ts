@@ -74,7 +74,6 @@ const COMBOBOX_CARD_HTML = `
         <div class="urlTagOption">pytest</div>
       </div>
       <div class="urlTagComboboxFooter">
-        <button class="urlTagComboboxCancelBtn">Cancel</button>
         <button class="urlTagComboboxSubmitBtn">Add tags</button>
       </div>
     </div>
@@ -202,7 +201,6 @@ describe("URL Card Selection", () => {
       ".urlTagStagedChip",
       ".urlTagListbox",
       ".urlTagComboboxSubmitBtn",
-      ".urlTagComboboxCancelBtn",
     ];
 
     COMBOBOX_CHILD_SELECTORS.forEach((selector) => {

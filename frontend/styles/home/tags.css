@@ -250,6 +250,7 @@
     border-radius: var(--radius-sm);
     padding: 7px 8px;
     flex-wrap: wrap;
+    align-items: center;
     gap: 6px;
     transition: border-color 0.3s ease;
 }
@@ -274,26 +275,30 @@
     padding: 4px 2px;
 }
 
-/* Staged (not-yet-applied) chips — sky-blue, DISTINCT from the green applied
-   .tagBadge. They never enter .urlTagsContainer until submit, so the stale-data
-   diff and isTagInURL (which query .urlTagsContainer > .tagBadge) never mistake
-   them for applied tags. */
+/* Staged (not-yet-applied) chips — neutral gray, reading as "pending" and
+   DISTINCT from the green applied .tagBadge. They never enter .urlTagsContainer
+   until submit, so the stale-data diff and isTagInURL (which query
+   .urlTagsContainer > .tagBadge) never mistake them for applied tags. */
 .urlTagStagedChip {
     gap: 6px;
-    background: rgba(91, 192, 235, 0.16);
-    border: 1px solid var(--addTagColor);
+    background: rgba(126, 130, 130, 0.18);
+    border: 1px solid var(--grayBadgeSelection);
     border-radius: 12px;
     padding: 3px 8px;
-    color: #cdeaf7;
+    color: whitesmoke;
     font-weight: 700;
     font-size: 0.85rem;
     transition: background-color 0.2s ease;
+    /* Each chip stays a single-line pill like .tagBadge; the container wraps
+       chips onto new rows and grows taller rather than squashing them. */
+    white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .urlTagStagedChipRemove {
     background: transparent;
     border: none;
-    color: var(--addTagColor);
+    color: var(--grayBadgeSelection);
     font-weight: 700;
     cursor: pointer;
     padding: 0;
@@ -309,7 +314,14 @@
     overflow: hidden;
 }
 
+/* Suggestion row: tag name on the left, muted "N URLs" count pinned to the
+   right (real space-between — the `justify-space-between` utility does not
+   exist, so the count would otherwise sit a gap away from the name). */
 .urlTagOption {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding: 9px 12px;
     font-size: 0.9rem;
     font-weight: 700;
@@ -326,8 +338,19 @@
     background: rgba(126, 130, 130, 1.0);
 }
 
+/* "Create new" is an action, not a match — set it apart with a subtle green
+   tint and a leading "+", and group icon+label on the left (no space-between). */
 .urlTagOptionCreateNew {
-    color: var(--addTagColor);
+    justify-content: flex-start;
+    gap: 8px;
+    color: var(--deckSelectionGreen);
+    background: rgba(96, 218, 170, 0.12);
+}
+
+.urlTagOptionCreateIcon {
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1;
 }
 
 .urlTagOptionCount {
@@ -349,29 +372,83 @@
 .urlTagComboboxMsg {
     font-size: 0.78rem;
     color: var(--grayBadgeSelection);
+    /* Yield space to the fixed-width submit button: wrap/shrink instead of
+       forcing the button onto a second line. */
+    min-width: 0;
 }
 
 .urlTagComboboxMsg.warn {
     color: var(--editURLColor);
 }
 
+/* Footer: quiet "N matches" helper text on the left, single primary action on
+   the right. Styled explicitly (the `justify-space-between` utility does not
+   exist, so the row would otherwise cram to the left). */
+/* Footer: the quiet "N matches" helper text sits right next to the single
+   filled-green primary, both grouped at the right. */
+.urlTagComboboxFooter {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+/* Footer submit button: the single filled primary — green "Add tags". Never
+   wraps to a second line or shrinks below its label — the helper text on the
+   left yields space instead. */
+.urlTagComboboxSubmitBtn {
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    background: var(--splashGreen);
+    color: var(--panelBackgroundColor);
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.urlTagComboboxSubmitBtn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* The Add-Tag button is the always-visible exit: while the combobox is open it
+   toggles into a Cancel affordance. It is the secondary action, so it reads as a
+   quiet red-outline ghost (not a filled block competing with the green primary),
+   filling on hover. The `.cancel` modifier raises specificity above `.btn-info`. */
+.urlTagCancelBigBtnCreate.cancel {
+    background: transparent;
+    border: 1px solid var(--removeIconColor);
+    color: var(--removeIconColor);
+    white-space: nowrap;
+}
+
 @media not all and (any-pointer: coarse) {
     .urlTagOption:hover {
         background: rgba(126, 130, 130, 0.5);
     }
+
+    .urlTagComboboxSubmitBtn:hover:not(:disabled) {
+        background: var(--darkSplashGreen);
+    }
+
+    .urlTagCancelBigBtnCreate.cancel:hover {
+        background: var(--removeIconColor);
+        border-color: var(--removeIconColor);
+        color: var(--panelBackgroundColor);
+    }
 }
 
-/* Coarse pointer (touch): 44px-min option rows and chip remove targets, and the
-   chip X is persistently shown (no hover). */
+/* Coarse pointer (touch): 44px-min dropdown option rows for comfortable tapping.
+   The chip remove button is intentionally NOT enlarged here — a 44px target
+   would inflate the whole chip far beyond the compact .tagBadge size; it keeps
+   its natural icon size to match the applied tag badges' delete affordance. */
 @media (any-pointer: coarse) {
     .urlTagOption {
         min-height: 44px;
-    }
-
-    .urlTagStagedChipRemove {
-        min-height: 44px;
-        min-width: 44px;
-        justify-content: center;
     }
 }
 

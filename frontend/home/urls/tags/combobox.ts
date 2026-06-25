@@ -67,6 +67,7 @@ const FILTER_DEBOUNCE_MS = 200;
 const OPTION_ID_PREFIX = "urlTagOption";
 const TOOLTIP_STORE_KEY = "urlTagComboboxTooltip";
 const STAGED_RESET_KEY = "urlTagComboboxResetStaged";
+const LIMIT_SYNC_KEY = "urlTagComboboxSyncLimit";
 
 let comboboxIdCounter = 0;
 
@@ -80,7 +81,6 @@ interface ComboboxRefs {
   listbox: JQuery;
   message: JQuery;
   submitBtn: JQuery;
-  cancelBtn: JQuery;
   listboxId: string;
   stagedStrings: string[];
   debounceTimer: ReturnType<typeof setTimeout> | null;
@@ -162,20 +162,12 @@ export function createTagComboboxBlock(
     .attr({ type: "button" })
     .text("Add tags");
 
-  const cancelBtn = $(document.createElement("button"))
-    .addClass("urlTagComboboxCancelBtn")
-    .attr({ type: "button" })
-    .text("Cancel");
-
   const footer = $(document.createElement("div"))
-    .addClass(
-      "urlTagComboboxFooter flex-row justify-space-between align-center",
-    )
+    .addClass("urlTagComboboxFooter")
     .append(message)
     .append(
       $(document.createElement("div"))
         .addClass("urlTagComboboxActions flex-row gap-5p")
-        .append(cancelBtn)
         .append(submitBtn),
     );
 
@@ -191,7 +183,6 @@ export function createTagComboboxBlock(
     listbox,
     message,
     submitBtn,
-    cancelBtn,
     listboxId,
     stagedStrings: [],
     debounceTimer: null,
@@ -204,6 +195,17 @@ export function createTagComboboxBlock(
     refs.stagedStrings = [];
   });
 
+  // Lets the open-time lifecycle (which only has `urlCard`, not this closure)
+  // reflect the URL's tag count immediately on open: at the cap, show the
+  // limit-reached message + disabled input before any keystroke.
+  wrap.data(LIMIT_SYNC_KEY, () => {
+    if (remainingCapacity(refs) <= 0) {
+      setLimitReachedState(refs);
+    } else {
+      reEnableInputIfBelowLimit(refs);
+    }
+  });
+
   bindComboboxBehavior(refs);
 
   return wrap;
@@ -214,7 +216,7 @@ export function createTagComboboxBlock(
  * `refs` so each card's combobox owns its own staged-strings state.
  */
 function bindComboboxBehavior(refs: ComboboxRefs): void {
-  const { input, combobox, submitBtn, cancelBtn } = refs;
+  const { input, combobox, submitBtn } = refs;
 
   input.on("focus.urlTagCombobox", () => combobox.addClass("focused"));
   input.on("blur.urlTagCombobox", () => {
@@ -244,16 +246,6 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
     void submitStagedTags(refs.urlCard, refs.utubID, refs.utubUrlID, [
       ...refs.stagedStrings,
     ]);
-  });
-
-  cancelBtn.on("click.urlTagCombobox", () => {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.TAG_CREATE,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    hideAndResetTagCombobox(refs.urlCard);
   });
 }
 
@@ -340,11 +332,14 @@ function renderListbox(refs: ComboboxRefs): void {
   input.attr("aria-expanded", hasOptions ? "true" : "false");
 
   if (hasOptions) {
-    // Only auto-activate the first option when the user has actually typed —
-    // an empty query keeps no active option so Enter-to-submit works directly
-    // once chips are staged.
-    if (trimmedQuery.length > 0) {
-      activateOption(refs, listbox.find(".urlTagOption").first());
+    // Auto-activate only the "create new" action row (never an arbitrary
+    // existing match), so that — and only that — row carries the active
+    // highlight on render. Existing suggestions highlight on hover/arrow. When
+    // there is no create-new row (e.g. the query exactly matches a tag), nothing
+    // is pre-highlighted, and Enter still stages the typed query directly.
+    const createNewOption = listbox.find(".urlTagOptionCreateNew");
+    if (createNewOption.length > 0) {
+      activateOption(refs, createNewOption);
     }
     announceMatchCount(refs, suggestions.length);
   } else {
@@ -361,7 +356,7 @@ function buildSuggestionOption(
 ): JQuery {
   const optionId = `${refs.listboxId}-opt-${index}`;
   const option = $(document.createElement("div"))
-    .addClass("urlTagOption flex-row justify-space-between align-center")
+    .addClass("urlTagOption")
     .attr({ role: "option", id: optionId, "aria-selected": "false" })
     .data("tagString", tag.tagString);
 
@@ -387,13 +382,17 @@ function buildCreateNewOption(
 ): JQuery {
   const optionId = `${refs.listboxId}-opt-${index}`;
   const option = $(document.createElement("div"))
-    .addClass(
-      "urlTagOption urlTagOptionCreateNew flex-row justify-space-between align-center",
-    )
+    .addClass("urlTagOption urlTagOptionCreateNew")
     .attr({ role: "option", id: optionId, "aria-selected": "false" })
     .data("tagString", query)
     .data("createNew", true);
 
+  option.append(
+    $(document.createElement("span"))
+      .addClass("urlTagOptionCreateIcon")
+      .attr({ "aria-hidden": "true" })
+      .text("+"),
+  );
   option.append(
     $(document.createElement("span"))
       .addClass("urlTagOptionLabel")
@@ -549,10 +548,11 @@ function announce(
 }
 
 function announceMatchCount(refs: ComboboxRefs, count: number): void {
-  announce(
-    refs,
-    APP_CONFIG.strings.TAGS_MATCH_COUNT.replace("{n}", String(count)),
-  );
+  const text =
+    count === 1
+      ? APP_CONFIG.strings.TAGS_MATCH_COUNT_ONE
+      : APP_CONFIG.strings.TAGS_MATCH_COUNT.replace("{n}", String(count));
+  announce(refs, text);
 }
 
 function updateSubmitState(refs: ComboboxRefs): void {
@@ -676,6 +676,13 @@ export function showTagCombobox(
   enableTabbableChildElements(comboboxWrap);
   comboboxWrap.showClassFlex();
 
+  // Reflect the URL's tag count immediately: if it is already at the cap, show
+  // the limit-reached message + disabled input on open, not after the first key.
+  const syncLimit = comboboxWrap.data(LIMIT_SYNC_KEY) as
+    | (() => void)
+    | undefined;
+  if (syncLimit) syncLimit();
+
   if (isMobile()) {
     comboboxWrap.find("input").focus();
   }
@@ -708,6 +715,11 @@ export function showTagCombobox(
     .addClass("cancel urlTagCancelBigBtnCreate")
     .text("Cancel")
     .offAndOnExact("click", function () {
+      emit({
+        event: UI_EVENTS.UI_FORM_CANCEL,
+        form: HOME_FORM.TAG_CREATE,
+        trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
+      });
       clearOpenForm();
       hideAndResetTagCombobox(urlCard);
     });

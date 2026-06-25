@@ -1,6 +1,7 @@
 import {
   createTagComboboxBlock,
   hideAndResetTagCombobox,
+  showTagCombobox,
 } from "../combobox.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
 
@@ -30,6 +31,22 @@ vi.mock("../../cards/options/tag-btn.js", () => ({
 vi.mock("../../mobile.js", () => ({
   isMobile: vi.fn(() => false),
 }));
+
+vi.mock("../../../../lib/modal-tracking.js", () => ({
+  setOpenForm: vi.fn(),
+  clearOpenForm: vi.fn(),
+}));
+
+vi.mock("../../../../lib/globals.js", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("../../../../lib/globals.js")>();
+  return {
+    ...actual,
+    bootstrap: {
+      Tooltip: { getInstance: vi.fn(() => null) },
+    } as unknown as typeof window.bootstrap,
+  };
+});
 
 vi.mock("../tags.js", () => ({
   createTagDeleteIcon: vi.fn(() => window.jQuery("<svg></svg>")),
@@ -197,6 +214,28 @@ describe("combobox — at-cap", () => {
 
     expect(urlCard.find(".urlTagComboboxInput").prop("disabled")).toBe(true);
     expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+    const expectedMsg = APP_CONFIG.strings.TAGS_LIMIT_REACHED.replace(
+      "{max}",
+      String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
+    );
+    expect(urlCard.find(".urlTagComboboxMsg").text()).toBe(expectedMsg);
+  });
+
+  it("disables the input and shows the limit message immediately on open", () => {
+    document.body.innerHTML = URL_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const appliedIds = Array.from(
+      { length: APP_CONFIG.constants.TAGS_MAX_ON_URLS },
+      (_, index) => index + 1,
+    ).join(",");
+    urlCard.attr("data-utub-url-tag-ids", appliedIds);
+    const block = createTagComboboxBlock(urlCard, 1, 1);
+    urlCard.find(".tagsAndTagCreateWrap").append(block);
+
+    // Open the combobox without typing a single character.
+    showTagCombobox(urlCard, urlCard.find(".urlTagBtnCreate"));
+
+    expect(urlCard.find(".urlTagComboboxInput").prop("disabled")).toBe(true);
     const expectedMsg = APP_CONFIG.strings.TAGS_LIMIT_REACHED.replace(
       "{max}",
       String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
