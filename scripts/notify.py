@@ -85,21 +85,25 @@ _HEALTH_STATE_UNKNOWN: str = "unknown"
 def sanitize_message(raw: str) -> str:
     """Make ``raw`` safe to interpolate into ``{"content":"<raw>"}`` raw JSON.
 
-    ``restricted_curl`` does no JSON escaping, so any unescaped ``"``, ``\\`` or
-    real newline in the message breaks the payload. Transforms, in order:
+    ``restricted_curl`` does no JSON escaping, so any unescaped ``"``, ``\\``,
+    ``}`` or real newline in the message breaks the payload. Transforms, in
+    order:
 
     1. ``"`` -> ``'`` (avoid JSON quote-escaping entirely).
-    2. Literal backslash ``\\`` -> ``/`` (neutralize stray backslashes). Runs
-       BEFORE step 3 so the backslash in the newly-introduced ``\\n`` escape is
+    2. ``}`` -> ``)`` (a closing brace in the message would prematurely close
+       the manually-built ``{"content":"<raw>"}`` JSON object in
+       ``restricted-curl.sh``).
+    3. Literal backslash ``\\`` -> ``/`` (neutralize stray backslashes). Runs
+       BEFORE step 4 so the backslash in the newly-introduced ``\\n`` escape is
        never re-converted.
-    3. Each real newline (0x0A) -> the two-character escape ``\\`` + ``n`` so
+    4. Each real newline (0x0A) -> the two-character escape ``\\`` + ``n`` so
        structural line breaks survive into the JSON as valid ``\\n`` escapes
        that Discord renders as line breaks.
-    4. ``\\r``, ``\\t`` and any other ASCII control char -> single space; then
+    5. ``\\r``, ``\\t`` and any other ASCII control char -> single space; then
        strip leading/trailing whitespace.
-    5. Collapse runs of spaces to one (the escaped ``\\n`` is not whitespace, so
+    6. Collapse runs of spaces to one (the escaped ``\\n`` is not whitespace, so
        line breaks survive).
-    6. Truncate to ``DISCORD_CONTENT_MAX_CHARS``; if the slice ends in a lone
+    7. Truncate to ``DISCORD_CONTENT_MAX_CHARS``; if the slice ends in a lone
        (unpaired) trailing backslash, strip it so it cannot escape the closing
        quote when a ``\\n`` escape straddles the boundary.
 
@@ -108,8 +112,11 @@ def sanitize_message(raw: str) -> str:
         "line one\\\\nline two"
         >>> sanitize_message('file "name\\\\path"')
         "file 'name/path'"
+        >>> sanitize_message("done}")
+        "done)"
     """
     result = raw.replace('"', "'")
+    result = result.replace("}", ")")
     result = result.replace("\\", "/")
     result = result.replace("\n", "\\n")
 

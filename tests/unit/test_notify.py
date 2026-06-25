@@ -73,6 +73,16 @@ def test_sanitize_message_replaces_backslash_before_newline_escape():
     assert sanitize_message('file "name\\path"') == "file 'name/path'"
 
 
+def test_sanitize_message_strips_closing_brace():
+    """
+    GIVEN a string containing a closing brace
+    WHEN sanitized
+    THEN the brace is replaced so it cannot prematurely close the manually
+        built {"content":"<raw>"} JSON object in restricted-curl.sh.
+    """
+    assert "}" not in sanitize_message("backup done}")
+
+
 def test_sanitize_message_preserves_markdown_and_special_unicode():
     """
     GIVEN emoji, bold markdown, a middot, and an em dash
