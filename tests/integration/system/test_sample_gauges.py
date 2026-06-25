@@ -2,12 +2,18 @@ from __future__ import annotations
 
 import time
 from typing import Any
+from unittest.mock import MagicMock
 
 import pytest
 from flask import Flask
+from redis import Redis
 
 from backend.metrics.gauges import GaugeName
-from scripts.sample_gauges import run_sample
+from scripts.sample_gauges import (
+    GAUGE_FAILURE_FLAG_KEY,
+    run_sample,
+    run_sample_job,
+)
 from tests.integration.system.metrics_helpers import (
     build_pg_conn,
     truncate_gauges_tables,
@@ -306,3 +312,55 @@ def test_relational_max_below_threshold_is_suppressed(
     finally:
         _truncate_all(pg_conn)
         pg_conn.close()
+
+
+def test_run_sample_job_sets_failure_flag_then_clears_on_recovery(
+    metrics_enabled_runner_app: Flask,
+    provide_metrics_redis: Redis,
+):
+    """
+    GIVEN a real metrics Redis and run_sample_job driven first with a forced
+        failure (a deliberately-closed pg_conn) and then with a healthy run
+    WHEN run_sample_job is invoked across the failure -> recovery transition
+    THEN GAUGE_FAILURE_FLAG_KEY is absent before the failure, set after the
+        failure (which re-raises), and cleared after the subsequent success —
+        proving the transition-throttle flag is round-tripped against real
+        Redis, not just a MagicMock.
+    """
+    app = metrics_enabled_runner_app
+    spy_notifier = MagicMock(return_value=0)
+
+    # Before-state: the flag must be absent so the assertions measure this run.
+    provide_metrics_redis.delete(GAUGE_FAILURE_FLAG_KEY)
+    assert provide_metrics_redis.get(GAUGE_FAILURE_FLAG_KEY) is None
+
+    try:
+        # Forced failure: a closed connection makes run_sample raise (psycopg2
+        # raises InterfaceError on a closed connection).
+        closed_pg_conn = build_pg_conn(app)
+        closed_pg_conn.close()
+        with pytest.raises(Exception):
+            run_sample_job(
+                pg_conn=closed_pg_conn,
+                redis_client=provide_metrics_redis,
+                now_epoch=int(time.time()),
+                notifier=spy_notifier,
+            )
+        assert provide_metrics_redis.get(GAUGE_FAILURE_FLAG_KEY) is not None
+
+        # Recovery: a healthy sample over a clean table clears the flag.
+        healthy_pg_conn = build_pg_conn(app)
+        try:
+            _truncate_all(healthy_pg_conn)
+            run_sample_job(
+                pg_conn=healthy_pg_conn,
+                redis_client=provide_metrics_redis,
+                now_epoch=int(time.time()),
+                notifier=spy_notifier,
+            )
+            assert provide_metrics_redis.get(GAUGE_FAILURE_FLAG_KEY) is None
+        finally:
+            _truncate_all(healthy_pg_conn)
+            healthy_pg_conn.close()
+    finally:
+        provide_metrics_redis.delete(GAUGE_FAILURE_FLAG_KEY)

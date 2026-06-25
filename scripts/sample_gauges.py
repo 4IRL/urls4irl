@@ -79,11 +79,21 @@ _gauges_module = _load_module_direct("_metrics_gauges", "backend/metrics/gauges.
 _metrics_strs_module = _load_module_direct(
     "_metrics_strs", "backend/utils/strings/metrics_strs.py"
 )
+_notify_module = _load_module_direct("_notify", "scripts/notify.py")
 GaugeName = _gauges_module.GaugeName
 GAUGE_REGISTRY = _gauges_module.GAUGE_REGISTRY
 build_gauge_sql = _gauges_module.build_gauge_sql
 value_column_for = _gauges_module.value_column_for
 METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
+build_message = _notify_module.build_message
+send = _notify_module.send
+resolve_notification_env = _notify_module.resolve_notification_env
+mark_failure_and_should_notify = _notify_module.mark_failure_and_should_notify
+clear_failure_and_should_notify_recovery = (
+    _notify_module.clear_failure_and_should_notify_recovery
+)
+STATUS_FAILURE = _notify_module.STATUS_FAILURE
+STATUS_RECOVERED = _notify_module.STATUS_RECOVERED
 
 CONTAINER_ENVIRONMENT_FILE: str = "/app/container_environment"
 EXECUTE_VALUES_PAGE_SIZE: int = 200
@@ -98,6 +108,11 @@ INSERT_SQL: str = (
 # healthcheck stays check_flush_liveness.py; a dedicated gauge healthcheck is an
 # explicit follow-up non-goal. Written best-effort (see _record_sample_success).
 GAUGE_LAST_SUCCESS_KEY: str = METRICS_REDIS.GAUGE_LAST_SUCCESS_KEY
+
+# Transition-throttle flag — set on the first failure of an outage and cleared
+# on the first subsequent success, so Discord receives at most one failure
+# message and one recovery message per outage rather than a per-run flood.
+GAUGE_FAILURE_FLAG_KEY: str = "metrics:gauge:failure_notified"
 
 
 def run_sample(
@@ -229,14 +244,74 @@ def _build_pg_conn_from_env() -> psycopg2.extensions.connection:
     )
 
 
+def _build_redis_client_from_env() -> redis.Redis:
+    metrics_uri = os.environ.get("METRICS_REDIS_URI")
+    if not metrics_uri:
+        _load_env_from_container_dump()
+        metrics_uri = os.environ.get("METRICS_REDIS_URI")
+    if not metrics_uri:
+        raise RuntimeError("METRICS_REDIS_URI environment variable is required")
+    return redis.Redis.from_url(metrics_uri)
+
+
+def run_sample_job(
+    *,
+    pg_conn: psycopg2.extensions.connection,
+    redis_client: redis.Redis,
+    now_epoch: int,
+    notifier=send,
+) -> int:
+    """Run a gauge sample and emit transition-throttled failure/recovery alerts.
+
+    Wraps ``run_sample`` with the Redis-flag transition logic from ``notify.py``:
+    on success, stamps the best-effort liveness sentinel via
+    ``_record_sample_success`` and, if a prior failure flag is cleared, sends
+    exactly one ``RECOVERED`` alert; on failure, if the flag was absent, sends
+    exactly one ``FAILURE`` alert carrying the error detail, then re-raises.
+
+    The wrapper deliberately does NOT call ``logger.exception`` — it only fires
+    the conditional notifier and re-raises so the exception is logged exactly
+    once, by the ``__main__`` handler. The ``notifier`` default keeps production
+    wiring; tests inject a spy.
+    """
+    try:
+        sampled_rows = run_sample(pg_conn=pg_conn, now_epoch=now_epoch)
+    except Exception as sample_error:
+        if mark_failure_and_should_notify(redis_client, GAUGE_FAILURE_FLAG_KEY):
+            production, notification_url = resolve_notification_env()
+            message = build_message(
+                job="GAUGE_SAMPLE",
+                status=STATUS_FAILURE,
+                detail=str(sample_error),
+            )
+            notifier(
+                message,
+                production=production,
+                notification_url=notification_url,
+            )
+        raise
+
+    _record_sample_success(now_epoch)
+    if clear_failure_and_should_notify_recovery(redis_client, GAUGE_FAILURE_FLAG_KEY):
+        production, notification_url = resolve_notification_env()
+        message = build_message(job="GAUGE_SAMPLE", status=STATUS_RECOVERED)
+        notifier(message, production=production, notification_url=notification_url)
+    return sampled_rows
+
+
 if __name__ == "__main__":
     started_at = time.time()
+    redis_client_main: redis.Redis | None = None
     pg_conn_main: psycopg2.extensions.connection | None = None
     try:
+        redis_client_main = _build_redis_client_from_env()
         pg_conn_main = _build_pg_conn_from_env()
         now_epoch_main = int(time.time())
-        sampled_rows = run_sample(pg_conn=pg_conn_main, now_epoch=now_epoch_main)
-        _record_sample_success(now_epoch_main)
+        sampled_rows = run_sample_job(
+            pg_conn=pg_conn_main,
+            redis_client=redis_client_main,
+            now_epoch=now_epoch_main,
+        )
         elapsed_ms = int((time.time() - started_at) * 1000)
         logger.info("sampled=%d elapsed_ms=%d", sampled_rows, elapsed_ms)
         sys.exit(0)
@@ -247,5 +322,10 @@ if __name__ == "__main__":
         if pg_conn_main is not None:
             try:
                 pg_conn_main.close()
+            except Exception:
+                pass
+        if redis_client_main is not None:
+            try:
+                redis_client_main.close()
             except Exception:
                 pass
