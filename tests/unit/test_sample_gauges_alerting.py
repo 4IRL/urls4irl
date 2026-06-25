@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import scripts.sample_gauges as sample_gauges
 from scripts.sample_gauges import (
     GAUGE_FAILURE_FLAG_KEY,
     run_sample_job,
@@ -14,23 +15,17 @@ pytestmark = pytest.mark.unit
 
 def _patch_run_sample(monkeypatch, *, return_value=None, side_effect=None) -> None:
     """Replace ``sample_gauges.run_sample`` with a stub returning/raising as given."""
-    import scripts.sample_gauges as sample_gauges
-
     stub = MagicMock(return_value=return_value, side_effect=side_effect)
     monkeypatch.setattr(sample_gauges, "run_sample", stub)
 
 
 def _patch_record_success(monkeypatch) -> None:
     """Stub the best-effort liveness stamp so the unit test never touches Redis."""
-    import scripts.sample_gauges as sample_gauges
-
     monkeypatch.setattr(sample_gauges, "_record_sample_success", MagicMock())
 
 
 def _patch_env(monkeypatch) -> None:
     """Make ``resolve_notification_env`` deterministic so notifier call args are stable."""
-    import scripts.sample_gauges as sample_gauges
-
     monkeypatch.setattr(
         sample_gauges,
         "resolve_notification_env",

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from backend.utils.strings.metrics_strs import METRICS_REDIS
+from scripts import notify
 from scripts.notify import (
     DISCORD_CONTENT_MAX_CHARS,
     FLUSH_LAST_SUCCESS_KEY,
@@ -679,8 +680,6 @@ def test_build_metrics_redis_client_dump_fallback(monkeypatch):
     WHEN building the metrics Redis client
     THEN redis.Redis.from_url is called with the injected URI.
     """
-    from scripts import notify
-
     monkeypatch.delenv("METRICS_REDIS_URI", raising=False)
 
     def _inject_dump(*args, **kwargs):
@@ -703,8 +702,6 @@ def test_build_metrics_redis_client_missing_returns_none(monkeypatch):
     WHEN building the metrics Redis client
     THEN None is returned rather than raising.
     """
-    from scripts import notify
-
     monkeypatch.delenv("METRICS_REDIS_URI", raising=False)
     monkeypatch.setattr(notify, "_load_env_from_container_dump", lambda *a, **k: None)
     assert notify._build_metrics_redis_client() is None
@@ -722,8 +719,6 @@ def test_main_summary_composes_both_sections_and_sanitizes(monkeypatch):
     THEN the message sent contains both the backup and metrics sections joined
         by a blank line, has no raw newline bytes, and the exit code matches.
     """
-    from scripts import notify
-
     monkeypatch.setenv("PRODUCTION", "false")
     monkeypatch.setenv("NOTIFICATION_URL", "")
 
@@ -770,8 +765,6 @@ def test_main_summary_failure_exit_code(monkeypatch):
     WHEN main runs
     THEN the exit code is 1 (skip/health do not flip it).
     """
-    from scripts import notify
-
     monkeypatch.setenv("PRODUCTION", "false")
     monkeypatch.setenv("NOTIFICATION_URL", "")
     monkeypatch.setattr(notify, "_build_metrics_redis_client", lambda: None)
@@ -801,8 +794,6 @@ def test_main_single_message_returns_send_code(monkeypatch):
     WHEN main runs
     THEN send's return code is returned and Redis is never touched.
     """
-    from scripts import notify
-
     monkeypatch.setenv("PRODUCTION", "false")
     monkeypatch.setenv("NOTIFICATION_URL", "")
     build_redis_spy = MagicMock()

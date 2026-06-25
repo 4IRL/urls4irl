@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
+import scripts.flush_metrics as flush_metrics
 from scripts.flush_metrics import (
     FLUSH_FAILURE_FLAG_KEY,
     run_flush_job,
@@ -14,16 +15,12 @@ pytestmark = pytest.mark.unit
 
 def _patch_run_flush(monkeypatch, *, return_value=None, side_effect=None) -> None:
     """Replace ``flush_metrics.run_flush`` with a stub returning/raising as given."""
-    import scripts.flush_metrics as flush_metrics
-
     stub = MagicMock(return_value=return_value, side_effect=side_effect)
     monkeypatch.setattr(flush_metrics, "run_flush", stub)
 
 
 def _patch_env(monkeypatch) -> None:
     """Make ``resolve_notification_env`` deterministic so notifier call args are stable."""
-    import scripts.flush_metrics as flush_metrics
-
     monkeypatch.setattr(
         flush_metrics,
         "resolve_notification_env",
