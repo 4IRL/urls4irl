@@ -328,6 +328,10 @@ function renderListbox(refs: ComboboxRefs): void {
     listbox.removeClass("hidden");
     input.attr("aria-expanded", "true");
     announce(refs, APP_CONFIG.strings.TAGS_EMPTY_HINT);
+    // Keep the submit button in sync even on this early-return path: in a UTub
+    // with no existing tags, staging the first chip lands here, and skipping this
+    // would leave the submit button stuck disabled.
+    updateSubmitState(refs);
     return;
   }
 
@@ -846,6 +850,17 @@ export function submitStagedTagsSuccess(
     emit({ event: UI_EVENTS.UI_TAG_APPLY });
   }
 
+  // Snapshot which applied tags already existed in the deck BEFORE merging the
+  // response into the store. `mergeAppliedTagsIntoStore` appends brand-new tags
+  // to `getState().tags`, which would otherwise make `isTagInUTubTagDeck` report
+  // every applied tag (including brand-new ones) as already-present, so their
+  // deck filter would never be built.
+  const tagIdsAlreadyInDeck = new Set(
+    response.appliedTags
+      .filter((appliedTag) => isTagInUTubTagDeck(appliedTag.id))
+      .map((appliedTag) => appliedTag.id),
+  );
+
   mergeAppliedTagsIntoStore({ appliedTags: response.appliedTags });
 
   const urlID = parseInt(urlCard.attr("utuburlid") as string);
@@ -872,7 +887,7 @@ export function submitStagedTagsSuccess(
 
   let builtNewDeckFilter = false;
   response.appliedTags.forEach((appliedTag) => {
-    if (!isTagInUTubTagDeck(appliedTag.id)) {
+    if (!tagIdsAlreadyInDeck.has(appliedTag.id)) {
       const newTag = buildTagFilterInDeck(
         utubID,
         appliedTag.id,
