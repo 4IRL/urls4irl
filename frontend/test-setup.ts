@@ -69,6 +69,7 @@ const appConfig = {
     updateURL: "/utubs/-1/urls/-2",
     updateURLTitle: "/utubs/-1/urls/-2/title",
     createURLTag: "/utubs/-1/urls/-2/tags",
+    createURLTagsBatch: "/utubs/-1/urls/-2/tags/batch",
     deleteURLTag: "/utubs/-1/urls/-2/tags/-3",
     createUTubTag: "/utubs/-1/tags",
     deleteUTubTag: "/utubs/-1/tags/-2",

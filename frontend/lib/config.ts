@@ -47,6 +47,7 @@ export interface AppRoutes {
   updateURL: (utubId: number, urlId: number) => string;
   updateURLTitle: (utubId: number, urlId: number) => string;
   createURLTag: (utubId: number, urlId: number) => string;
+  createURLTagsBatch: (utubId: number, urlId: number) => string;
   deleteUTubTag: (utubId: number, tagId: number) => string;
   removeMember: (utubId: number, userId: number) => string;
 
@@ -143,6 +144,10 @@ export const APP_CONFIG: AppConfig = Object.freeze({
 
     createURLTag: (utubId: number, urlId: number) =>
       rawConfig.routes.createURLTag
+        .replace("-1", String(utubId))
+        .replace("-2", String(urlId)),
+    createURLTagsBatch: (utubId: number, urlId: number) =>
+      rawConfig.routes.createURLTagsBatch
         .replace("-1", String(utubId))
         .replace("-2", String(urlId)),
     deleteURLTag: (utubId: number, urlId: number, tagId: number) =>

@@ -126,6 +126,9 @@ def generate_routes_js() -> dict[str, str]:
         "createURLTag": url_for(
             URL_TAG_ROUTES.CREATE_URL_TAG, utub_id=-1, utub_url_id=-2
         ),
+        "createURLTagsBatch": url_for(
+            URL_TAG_ROUTES.BATCH_ADD_URL_TAGS, utub_id=-1, utub_url_id=-2
+        ),
         "deleteURLTag": url_for(
             URL_TAG_ROUTES.DELETE_URL_TAG, utub_id=-1, utub_url_id=-2, utub_tag_id=-3
         ),
