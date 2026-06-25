@@ -1,0 +1,271 @@
+import {
+  createTagComboboxBlock,
+  hideAndResetTagCombobox,
+} from "../combobox.js";
+import { APP_CONFIG } from "../../../../lib/config.js";
+
+const { mockMetricsClient } = await vi.hoisted(
+  async () =>
+    await import("../../../../__tests__/helpers/mock-metrics-client.js"),
+);
+
+vi.mock("../../../../lib/metrics-client.js", () => mockMetricsClient());
+
+vi.mock("../../cards/selection.js", () => ({
+  disableClickOnSelectedURLCardToHide: vi.fn(),
+  enableClickOnSelectedURLCardToHide: vi.fn(),
+}));
+
+vi.mock("../../cards/utils.js", () => ({
+  disableEditingURLString: vi.fn(),
+  disableEditingURLTitle: vi.fn(),
+  enableEditingURLString: vi.fn(),
+  enableEditingURLTitle: vi.fn(),
+}));
+
+vi.mock("../../cards/options/tag-btn.js", () => ({
+  createAddTagIcon: vi.fn(() => window.jQuery("<i></i>")),
+}));
+
+vi.mock("../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+}));
+
+vi.mock("../tags.js", () => ({
+  createTagDeleteIcon: vi.fn(() => window.jQuery("<svg></svg>")),
+  disableTagRemovalInURLCard: vi.fn(),
+  enableTagRemovalInURLCard: vi.fn(),
+}));
+
+const storeTags: { id: number; tagString: string; tagApplied: number }[] = [];
+
+vi.mock("../../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ urls: [], tags: storeTags })),
+  setState: vi.fn(),
+}));
+
+const $ = window.jQuery;
+
+const URL_CARD_HTML = `
+  <div class="urlRow" utuburlid="1" urlSelected="true" data-utub-url-tag-ids="">
+    <button class="urlTagBtnCreate fourty-p-width"></button>
+    <div class="urlBtnAccess"></div>
+    <div class="urlStringBtnUpdate"></div>
+    <div class="urlBtnDelete"></div>
+    <div class="urlBtnCopy"></div>
+    <div class="tagBadge"></div>
+    <div class="tagsAndTagCreateWrap"></div>
+  </div>
+`;
+
+function setTags(
+  tags: { id: number; tagString: string; tagApplied: number }[],
+): void {
+  storeTags.length = 0;
+  storeTags.push(...tags);
+}
+
+function mountCombobox(): JQuery {
+  document.body.innerHTML = URL_CARD_HTML;
+  const urlCard = $(".urlRow");
+  const block = createTagComboboxBlock(urlCard, 1, 1);
+  urlCard.find(".tagsAndTagCreateWrap").append(block);
+  // Reveal so input events behave consistently.
+  urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
+  return urlCard;
+}
+
+function typeInInput(urlCard: JQuery, value: string): void {
+  const input = urlCard.find(".urlTagComboboxInput");
+  input.val(value).trigger("input");
+  vi.runAllTimers();
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.useFakeTimers();
+  setTags([
+    { id: 1, tagString: "python", tagApplied: 5 },
+    { id: 2, tagString: "pytest", tagApplied: 4 },
+    { id: 3, tagString: "backend", tagApplied: 9 },
+  ]);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
+});
+
+describe("combobox — happy path", () => {
+  it("filters suggestions and shows a create-new option for a novel query", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+
+    const options = urlCard.find(".urlTagOption");
+    const labels = options
+      .map((_, el) => $(el).find(".urlTagOptionLabel").text())
+      .get();
+
+    expect(labels.some((label) => label === "python")).toBe(true);
+    expect(labels.some((label) => label === "pytest")).toBe(true);
+    expect(urlCard.find(".urlTagOptionCreateNew").text()).toContain(
+      APP_CONFIG.strings.TAG_CREATE_NEW,
+    );
+  });
+
+  it("does NOT show create-new when an exact match exists", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "python");
+
+    expect(urlCard.find(".urlTagOptionCreateNew").length).toBe(0);
+  });
+
+  it("stages two chips by clicking options", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+
+    urlCard.find(".urlTagOptionCreateNew").trigger("click");
+    typeInInput(urlCard, "back");
+    urlCard
+      .find(".urlTagOption")
+      .filter((_, el) => $(el).find(".urlTagOptionLabel").text() === "backend")
+      .trigger("click");
+
+    const chips = urlCard.find(".urlTagStagedChip");
+    expect(chips.length).toBe(2);
+    expect(chips.eq(0).attr("data-staged-tag-string")).toBe("py");
+    expect(chips.eq(1).attr("data-staged-tag-string")).toBe("backend");
+  });
+
+  it("removes a staged chip via its remove button", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    urlCard.find(".urlTagOptionCreateNew").trigger("click");
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(1);
+
+    urlCard.find(".urlTagStagedChipRemove").trigger("click");
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+  });
+});
+
+describe("combobox — sad path", () => {
+  it("does NOT show a create-new option for a whitespace-only query", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "   ");
+
+    expect(urlCard.find(".urlTagOptionCreateNew").length).toBe(0);
+  });
+
+  it("does NOT create a chip from a whitespace-only query on Enter (no active option)", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "   ");
+    const input = urlCard.find(".urlTagComboboxInput");
+
+    // Close the dropdown first so no existing suggestion is active; Enter on a
+    // trim-empty query with no active option and no staged chips must do nothing.
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    input.trigger($.Event("keydown", { key: "Enter" }));
+
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+  });
+
+  it("does NOT stage an empty query on Enter when no option is active", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "");
+    const input = urlCard.find(".urlTagComboboxInput");
+
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    input.trigger($.Event("keydown", { key: "Enter" }));
+
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+  });
+});
+
+describe("combobox — at-cap", () => {
+  it("blocks staging and shows the limit message when at the cap", () => {
+    document.body.innerHTML = URL_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const appliedIds = Array.from(
+      { length: APP_CONFIG.constants.TAGS_MAX_ON_URLS },
+      (_, i) => i + 1,
+    ).join(",");
+    urlCard.attr("data-utub-url-tag-ids", appliedIds);
+    const block = createTagComboboxBlock(urlCard, 1, 1);
+    urlCard.find(".tagsAndTagCreateWrap").append(block);
+    urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
+
+    typeInInput(urlCard, "newtag");
+
+    expect(urlCard.find(".urlTagComboboxInput").prop("disabled")).toBe(true);
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+    const expectedMsg = APP_CONFIG.strings.TAGS_LIMIT_REACHED.replace(
+      "{max}",
+      String(APP_CONFIG.constants.TAGS_MAX_ON_URLS),
+    );
+    expect(urlCard.find(".urlTagComboboxMsg").text()).toBe(expectedMsg);
+  });
+});
+
+describe("combobox — keyboard", () => {
+  it("ArrowDown then Enter stages the active option", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    const input = urlCard.find(".urlTagComboboxInput");
+
+    input.trigger($.Event("keydown", { key: "ArrowDown" }));
+    input.trigger($.Event("keydown", { key: "Enter" }));
+
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(1);
+  });
+
+  it("Tab with an active option stages it", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    const input = urlCard.find(".urlTagComboboxInput");
+
+    // A non-empty query auto-activates the first option.
+    input.trigger($.Event("keydown", { key: "Tab" }));
+
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(1);
+  });
+
+  it("Backspace on empty input removes the last chip", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    urlCard.find(".urlTagOptionCreateNew").trigger("click");
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(1);
+
+    const input = urlCard.find(".urlTagComboboxInput");
+    input.val("");
+    input.trigger($.Event("keydown", { key: "Backspace" }));
+
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+  });
+
+  it("first Escape closes only the dropdown", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    expect(urlCard.find(".urlTagListbox").hasClass("hidden")).toBe(false);
+
+    const input = urlCard.find(".urlTagComboboxInput");
+    const escapeEvent = $.Event("keydown", { key: "Escape" });
+    input.trigger(escapeEvent);
+
+    expect(urlCard.find(".urlTagListbox").hasClass("hidden")).toBe(true);
+    expect(escapeEvent.isPropagationStopped()).toBe(true);
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("hideAndResetTagCombobox", () => {
+  it("clears staged chips and re-enables card buttons", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    urlCard.find(".urlTagOptionCreateNew").trigger("click");
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(1);
+
+    hideAndResetTagCombobox(urlCard);
+
+    expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+  });
+});
