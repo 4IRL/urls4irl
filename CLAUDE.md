@@ -19,6 +19,19 @@ Whenever you present the user with 2+ discrete options — approval, strategy ch
 
 urls4irl is a full-stack web app for managing shared collections of URLs called "UTubs". Flask backend with Jinja2 templates and a vanilla JS frontend currently transitioning to Vite/ES6 modules.
 
+### Environment & Branch Terminology (IMPORTANT — non-standard)
+
+This project's naming differs from most companies. Do not assume the conventional meanings:
+
+| This project | Conventional equivalent | What it actually is |
+|---|---|---|
+| **`dev`** | **Staging** | A **remote** server that replicates **prod**. It is updated when **PRs are merged**. Treat `dev` as the staging/pre-prod environment — NOT a developer's local machine. |
+| **`local`** | **Dev** | The **local** environment you run on your own machine (the Docker stack via `make up d=1`) **before** opening a PR. This is "development" in the usual sense. |
+
+- When this repo (configs, compose files, env vars, scripts, docs) says **`dev`**, read it as **staging** (remote, prod-like, updated on merge).
+- When it says **`local`**, read it as **local development** (your machine, pre-PR).
+- So the promotion path is: **`local` (your machine) → PR → merge → `dev` (remote staging) → prod.**
+
 
 ## Project Structure
 
