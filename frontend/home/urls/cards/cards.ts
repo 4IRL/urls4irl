@@ -16,7 +16,7 @@ import {
   createURLStringAndUpdateBlock,
 } from "./url-string.js";
 import { createTagBadgeInURL, createTagBadgesAndWrap } from "../tags/tags.js";
-import { createTagInputBlock } from "../tags/create.js";
+import { createTagComboboxBlock } from "../tags/combobox.js";
 import { createURLOptionsButtons } from "./options/btns.js";
 import {
   createURL,
@@ -205,7 +205,9 @@ function createTagsAndOptionsForUrlBlock(
   tagsAndButtonsWrap.append(tagsAndTagCreateWrap);
   tagsAndTagCreateWrap.append(tagBadgesWrap);
 
-  tagsAndTagCreateWrap.append(createTagInputBlock(urlCard, utubID));
+  tagsAndTagCreateWrap.append(
+    createTagComboboxBlock(urlCard, utubID, url.utubUrlID),
+  );
 
   tagsAndButtonsWrap.append(createURLOptionsButtons(url, urlCard, utubID));
 

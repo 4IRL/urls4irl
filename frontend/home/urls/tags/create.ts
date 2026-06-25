@@ -4,19 +4,10 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
-import { ICON_SIZE_LG, METHOD_TYPES } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
-import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
+import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import {
-  makeTextInput,
-  makeSubmitButton,
-  makeCancelButton,
-} from "../../btns-forms.js";
-import {
-  setFocusEventListenersOnCreateURLTagInput,
-  createTagBadgeInURL,
-} from "./tags.js";
+import { createTagBadgeInURL } from "./tags.js";
 import {
   disableTagRemovalInURLCard,
   enableTagRemovalInURLCard,
@@ -46,12 +37,7 @@ import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
-import {
-  FORM_CANCEL_TRIGGER,
-  FORM_SUBMIT_TRIGGER,
-  HOME_FORM,
-  TAG_SCOPE,
-} from "../../../types/metrics-dim-values.js";
+import { HOME_FORM, TAG_SCOPE } from "../../../types/metrics-dim-values.js";
 
 type AddTagRequest = Schema<"AddTagRequest">;
 type UrlTagModifiedResponse = SuccessResponse<"createUtubUrlTag">;
@@ -63,62 +49,6 @@ type CreateUrlTagFieldName = (typeof CREATE_URL_TAG_FIELD_NAMES)[number];
 
 function isCreateUrlTagFieldName(key: string): key is CreateUrlTagFieldName {
   return (CREATE_URL_TAG_FIELD_NAMES as readonly string[]).includes(key);
-}
-
-export function createTagInputBlock(
-  urlCard: JQuery,
-  utubID: number,
-): JQuery<HTMLElement> {
-  const urlTagCreateTextInputContainer = makeTextInput(
-    "urlTag",
-    METHOD_TYPES.CREATE.description!,
-  ).addClass("createUrlTagWrap hidden flex-start gap-5p");
-
-  urlTagCreateTextInputContainer.find("label").text("Tag");
-
-  // Customize the input text box for the Url title
-  const urlTagTextInput = urlTagCreateTextInputContainer
-    .find("input")
-    .prop("minLength", APP_CONFIG.constants.TAGS_MIN_LENGTH)
-    .prop("maxLength", APP_CONFIG.constants.TAGS_MAX_LENGTH);
-
-  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard, utubID);
-
-  // Create Url Title submit button
-  const urlTagSubmitBtnCreate = makeSubmitButton(ICON_SIZE_LG).addClass(
-    "urlTagSubmitBtnCreate",
-  );
-
-  urlTagSubmitBtnCreate.onExact("click.createURLTag", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_SUBMIT,
-      form: HOME_FORM.TAG_CREATE,
-      trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
-    });
-    clearOpenForm();
-    createURLTag(urlTagTextInput, urlCard, utubID);
-  });
-
-  // Create Url Title cancel button
-  const urlTagCancelBtnCreate = makeCancelButton(ICON_SIZE_LG).addClass(
-    "urlTagCancelBtnCreate",
-  );
-
-  urlTagCancelBtnCreate.onExact("click.createURLTag", function () {
-    emit({
-      event: UI_EVENTS.UI_FORM_CANCEL,
-      form: HOME_FORM.TAG_CREATE,
-      trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
-    });
-    clearOpenForm();
-    hideAndResetCreateURLTagForm(urlCard);
-  });
-
-  urlTagCreateTextInputContainer
-    .append(urlTagSubmitBtnCreate)
-    .append(urlTagCancelBtnCreate);
-
-  return urlTagCreateTextInputContainer;
 }
 
 /**

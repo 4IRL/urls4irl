@@ -1,7 +1,8 @@
-import type { UtubTag } from "../../../types/url.js";
+import type { UtubUrlItem, UtubTag } from "../../../types/url.js";
 
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { KEYS } from "../../../lib/constants.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../../lib/modal-tracking.js";
@@ -12,8 +13,18 @@ import {
   HOME_FORM,
   TAG_SCOPE,
 } from "../../../types/metrics-dim-values.js";
-import { filterTagSuggestions, hasExactTagMatch } from "./combobox-state.js";
 import {
+  filterTagSuggestions,
+  hasExactTagMatch,
+  mergeAppliedTagsIntoStore,
+} from "./combobox-state.js";
+import type {
+  AddTagsRequest,
+  UrlTagsModifiedResponse,
+  UrlTagError,
+} from "./combobox-state.js";
+import {
+  createTagBadgeInURL,
   createTagDeleteIcon,
   disableTagRemovalInURLCard,
   enableTagRemovalInURLCard,
@@ -28,17 +39,34 @@ import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "../cards/selection.js";
+import {
+  setTimeoutAndShowURLCardLoadingIcon,
+  clearTimeoutIDAndHideLoadingIcon,
+} from "../cards/loading.js";
+import { getUpdatedURL, handleRejectFromGetURL } from "../cards/get.js";
 import { isMobile } from "../../mobile.js";
 import {
   enableTabbableChildElements,
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { createAddTagIcon } from "../cards/options/tag-btn.js";
-import { getState } from "../../../store/app-store.js";
+import { isTagInUTubTagDeck } from "../../tags/utils.js";
+import { buildTagFilterInDeck } from "../../tags/tags.js";
+import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
+import { getState, setState } from "../../../store/app-store.js";
+
+const SUBMIT_FIELD_NAMES = ["tagStrings"] as const;
+
+type SubmitFieldName = (typeof SUBMIT_FIELD_NAMES)[number];
+
+function isSubmitFieldName(key: string): key is SubmitFieldName {
+  return (SUBMIT_FIELD_NAMES as readonly string[]).includes(key);
+}
 
 const FILTER_DEBOUNCE_MS = 200;
 const OPTION_ID_PREFIX = "urlTagOption";
 const TOOLTIP_STORE_KEY = "urlTagComboboxTooltip";
+const STAGED_RESET_KEY = "urlTagComboboxResetStaged";
 
 let comboboxIdCounter = 0;
 
@@ -169,6 +197,13 @@ export function createTagComboboxBlock(
     debounceTimer: null,
   };
 
+  // Expose a staged-state reset so the close/reset lifecycle (which only has the
+  // `urlCard` DOM, not this closure) can clear the backing string array — the
+  // DOM chips are removed there, but `refs.stagedStrings` must be cleared too.
+  wrap.data(STAGED_RESET_KEY, () => {
+    refs.stagedStrings = [];
+  });
+
   bindComboboxBehavior(refs);
 
   return wrap;
@@ -199,12 +234,16 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
   );
 
   submitBtn.on("click.urlTagCombobox", () => {
+    if (refs.stagedStrings.length === 0) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.TAG_CREATE,
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     clearOpenForm();
+    void submitStagedTags(refs.urlCard, refs.utubID, refs.utubUrlID, [
+      ...refs.stagedStrings,
+    ]);
   });
 
   cancelBtn.on("click.urlTagCombobox", () => {
@@ -550,6 +589,9 @@ function handleInputKeydown(
           trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
         });
         clearOpenForm();
+        void submitStagedTags(refs.urlCard, refs.utubID, refs.utubUrlID, [
+          ...refs.stagedStrings,
+        ]);
       } else {
         stageActiveOrQuery(refs, query, activeOption);
       }
@@ -694,6 +736,10 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
   comboboxWrap.hideClass();
 
   // Reset staged chips, input, and listbox
+  const resetStaged = comboboxWrap.data(STAGED_RESET_KEY) as
+    | (() => void)
+    | undefined;
+  if (resetStaged) resetStaged();
   comboboxWrap.find(".urlTagStagedChip").remove();
   comboboxWrap.find(".urlTagComboboxInput").val("").prop("disabled", false);
   comboboxWrap
@@ -731,4 +777,183 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
   ) {
     enableClickOnSelectedURLCardToHide(urlCard);
   }
+}
+
+/**
+ * Submits the staged tag strings to the batch endpoint. Preserves the
+ * single-path concurrent-deletion guard (`getUpdatedURL`) and loading icon, and
+ * keeps the card from deselecting mid-flight. The `UI_FORM_SUBMIT` emit and
+ * `clearOpenForm()` are owned by the caller (submit button / Enter-key handler),
+ * mirroring how `create.ts` emits in the button handler before calling
+ * `createURLTag`.
+ */
+export async function submitStagedTags(
+  urlCard: JQuery,
+  utubID: number,
+  utubUrlID: number,
+  stagedStrings: string[],
+): Promise<void> {
+  const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  try {
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
+
+    disableClickOnSelectedURLCardToHide(urlCard);
+
+    const data: AddTagsRequest = { tagStrings: stagedStrings };
+    const request = ajaxCall(
+      "post",
+      APP_CONFIG.routes.createURLTagsBatch(utubID, utubUrlID),
+      data,
+    );
+
+    request.done(function (
+      response: UrlTagsModifiedResponse,
+      _: JQuery.Ajax.SuccessTextStatus,
+      xhr: JQuery.jqXHR,
+    ) {
+      if (xhr.status === 200) {
+        submitStagedTagsSuccess(response, urlCard, utubID);
+      }
+    });
+
+    request.fail(function (xhr: JQuery.jqXHR) {
+      submitStagedTagsFail(xhr, urlCard);
+    });
+
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
+  } catch (error) {
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
+  }
+}
+
+/**
+ * Applies a successful batch response: merges applied tags into the store,
+ * appends real `.tagBadge` nodes, rebuilds the URL's tag-id attribute, syncs the
+ * tag deck, and resets the combobox.
+ */
+export function submitStagedTagsSuccess(
+  response: UrlTagsModifiedResponse,
+  urlCard: JQuery,
+  utubID: number,
+): void {
+  if (response.appliedTags.length > 0) {
+    emit({ event: UI_EVENTS.UI_TAG_APPLY });
+  }
+
+  mergeAppliedTagsIntoStore({ appliedTags: response.appliedTags });
+
+  const urlID = parseInt(urlCard.attr("utuburlid") as string);
+  setState({
+    urls: getState().urls.map((existingUrl: UtubUrlItem) =>
+      existingUrl.utubUrlID === urlID
+        ? { ...existingUrl, utubUrlTagIDs: response.utubUrlTagIDs }
+        : existingUrl,
+    ),
+  });
+
+  const tagsContainer = urlCard.find(".urlTagsContainer");
+  response.appliedTags.forEach((appliedTag) => {
+    tagsContainer.append(
+      createTagBadgeInURL(appliedTag.id, appliedTag.tagString, urlCard, utubID),
+    );
+  });
+
+  urlCard.attr("data-utub-url-tag-ids", response.utubUrlTagIDs.join(","));
+
+  if (response.appliedTags.length > 0) {
+    $("#unselectAllTagFilters").showClassNormal();
+  }
+
+  let builtNewDeckFilter = false;
+  response.appliedTags.forEach((appliedTag) => {
+    if (!isTagInUTubTagDeck(appliedTag.id)) {
+      const newTag = buildTagFilterInDeck(
+        utubID,
+        appliedTag.id,
+        appliedTag.tagString,
+        appliedTag.tagApplied,
+      );
+      if (
+        $(".tagFilter.selected").length ===
+        APP_CONFIG.constants.TAGS_MAX_ON_URLS
+      ) {
+        newTag.addClass("disabled").off(".tagFilterSelected");
+      }
+      $("#listTags").append(newTag);
+      builtNewDeckFilter = true;
+    } else {
+      updateTagFilterCount(
+        appliedTag.id,
+        appliedTag.tagApplied,
+        TagCountOperation.INCREMENT,
+      );
+    }
+  });
+
+  if (builtNewDeckFilter) {
+    $("#utubTagBtnUpdateAllOpen").showClassNormal();
+  }
+
+  hideAndResetTagCombobox(urlCard);
+}
+
+/**
+ * Handles a failed batch submit: 429 short-circuit, CSRF HTML handling, 400
+ * field/message inline errors, and the error page for the remaining statuses.
+ */
+export function submitStagedTagsFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
+  if (is429Handled(xhr)) return;
+
+  if (!("responseJSON" in xhr)) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(APP_CONFIG.routes.errorPage);
+    return;
+  }
+
+  switch (xhr.status) {
+    case 400: {
+      const responseJSON = xhr.responseJSON as UrlTagError;
+      if (responseJSON.errors) {
+        displayBatchFieldErrors(
+          responseJSON.errors as Partial<Record<SubmitFieldName, string[]>>,
+          urlCard,
+        );
+      } else if (responseJSON.message) {
+        displayBatchMessage(responseJSON.message as string, urlCard);
+      }
+      break;
+    }
+    case 403:
+    case 404:
+    default:
+      window.location.assign(APP_CONFIG.routes.errorPage);
+  }
+}
+
+function displayBatchFieldErrors(
+  errors: Partial<Record<SubmitFieldName, string[]>>,
+  urlCard: JQuery,
+): void {
+  for (const errorFieldName in errors) {
+    if (isSubmitFieldName(errorFieldName)) {
+      displayBatchMessage(errors[errorFieldName]![0], urlCard);
+      return;
+    }
+  }
+}
+
+function displayBatchMessage(message: string, urlCard: JQuery): void {
+  urlCard.find(".urlTagComboboxMsg").text(message).addClass("warn");
 }

@@ -49,7 +49,6 @@ vi.mock("../../../tags/tags.js", () => ({
 }));
 
 vi.mock("../tags.js", () => ({
-  setFocusEventListenersOnCreateURLTagInput: vi.fn(),
   createTagBadgeInURL: vi.fn(() => window.jQuery("<span></span>")),
   disableTagRemovalInURLCard: vi.fn(),
   enableTagRemovalInURLCard: vi.fn(),

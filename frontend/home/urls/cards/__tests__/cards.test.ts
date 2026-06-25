@@ -39,9 +39,9 @@ vi.mock("../../tags/tags.js", () => ({
     window.jQuery('<div class="urlTagsContainer"></div>'),
   ),
 }));
-vi.mock("../../tags/create.js", () => ({
-  createTagInputBlock: vi.fn(() =>
-    window.jQuery('<div class="tagInputBlock"></div>'),
+vi.mock("../../tags/combobox.js", () => ({
+  createTagComboboxBlock: vi.fn(() =>
+    window.jQuery('<div class="urlTagComboboxWrap"></div>'),
   ),
 }));
 vi.mock("../options/btns.js", () => ({

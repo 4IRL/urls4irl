@@ -10,7 +10,7 @@ import {
   enableTabbingOnURLCardElements,
   disableTabbingOnURLCardElements,
 } from "./utils.js";
-import { hideAndResetCreateURLTagForm } from "../tags/create.js";
+import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { setFocusEventListenersOnURLCard } from "./cards.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 import { isCoarsePointer } from "../../mobile.js";
@@ -104,7 +104,7 @@ function deselectURL(urlCard: JQuery): void {
     .removeClass("visible-flex hidden visible-on-focus");
   hideAndResetUpdateURLTitleForm(urlCard);
   hideAndResetUpdateURLStringForm(urlCard);
-  hideAndResetCreateURLTagForm(urlCard);
+  hideAndResetTagCombobox(urlCard);
   disableTabbingOnURLCardElements(urlCard);
   setURLCardSelectionEventListener(urlCard);
   setFocusEventListenersOnURLCard(urlCard);
