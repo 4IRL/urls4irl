@@ -28,6 +28,7 @@ class SPLASH_ROUTES:
 class URL_TAG_ROUTES:
     _URL_TAGS = "utub_url_tags."
     CREATE_URL_TAG = _URL_TAGS + "create_utub_url_tag"
+    BATCH_ADD_URL_TAGS = _URL_TAGS + "create_utub_url_tags"
     DELETE_URL_TAG = _URL_TAGS + "delete_utub_url_tag"
 
 

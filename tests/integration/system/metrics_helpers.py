@@ -33,6 +33,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_REMOVED_FROM_UTUB,
         EventName.URL_STRING_UPDATED,
         EventName.UTUB_TAG_CREATED,
+        EventName.TAGS_APPLIED_BATCH,
         EventName.REGISTER_SUCCESS,
         EventName.REGISTER_REJECTED,
         EventName.LOGIN_SUCCESS,
@@ -56,7 +57,9 @@ drives — each has its own per-cause emit test under
 tests/integration/splash/ and tests/integration/utuburls/.
 CROSS_UTUB_SEARCH_PERFORMED fires only from the /search service flow, which the
 shared seed does not exercise; its per-dimension emit test lives under
-tests/integration/search/. Each excluded event
+tests/integration/search/. TAGS_APPLIED_BATCH fires only from the batch
+tag-apply service flow, which the shared seed does not exercise; its per-batch
+emit test lives under tests/integration/utubtags/. Each excluded event
 has its own per-route emit test under tests/integration/<feature>/ and flushes
 through the same pipeline, so the end-to-end invariant is still covered.
 """
@@ -85,6 +88,22 @@ def truncate_gauges_tables(pg_conn: Any) -> None:
 
 def count_counter_keys(metrics_redis: Redis, event: EventName) -> int:
     return len(find_counter_keys(metrics_redis, event))
+
+
+def sum_counter_values(metrics_redis: Redis, event: EventName) -> int:
+    """Sum the integer values of every counter key for `event`.
+
+    Counter keys are stored via Redis ``INCR``, so multiple emits that share
+    identical dimensions collapse into a single key whose value carries the
+    increment count. Use this (not ``count_counter_keys``) when asserting the
+    total number of times an event fired regardless of dimension cardinality.
+    """
+    total = 0
+    for counter_key in find_counter_keys(metrics_redis, event):
+        raw_value = metrics_redis.get(counter_key)
+        if raw_value is not None:
+            total += int(raw_value)
+    return total
 
 
 def parse_dims(counter_key: bytes) -> dict:

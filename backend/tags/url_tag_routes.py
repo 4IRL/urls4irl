@@ -11,10 +11,16 @@ from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.tags import AddTagRequest
-from backend.schemas.tags import UrlTagModifiedResponseSchema
+from backend.schemas.requests.tags import AddTagRequest, AddTagsRequest
+from backend.schemas.tags import (
+    UrlTagModifiedResponseSchema,
+    UrlTagsModifiedResponseSchema,
+)
 from backend.tags.constants import URLTagErrorCodes
-from backend.tags.services.create_url_tag import add_tag_to_url_if_valid
+from backend.tags.services.create_url_tag import (
+    add_tag_to_url_if_valid,
+    add_tags_to_url_if_valid,
+)
 from backend.tags.services.delete_url_tag import delete_url_tag
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.tag_strs import TAGS_FAILURE
@@ -58,6 +64,47 @@ def create_utub_url_tag(
     """
     return add_tag_to_url_if_valid(
         tag_string=add_tag_request.tagString,
+        utub=current_utub,
+        utub_url=current_utub_url,
+    )
+
+
+@utub_url_tags.route(
+    "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/batch", methods=["POST"]
+)
+@utub_membership_with_valid_url_in_utub_required
+@api_route(
+    request_schema=AddTagsRequest,
+    response_schema=UrlTagsModifiedResponseSchema,
+    error_message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+    error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.TAGS],
+    description="Apply multiple tags to a URL in a UTub",
+    status_codes={
+        200: UrlTagsModifiedResponseSchema,
+        400: ErrorResponse,
+        404: ErrorResponse,
+    },
+)
+def create_utub_url_tags(
+    utub_id: int,
+    utub_url_id: int,
+    current_utub: Utubs,
+    current_utub_url: Utub_Urls,
+    add_tags_request: AddTagsRequest,
+) -> FlaskResponse:
+    """
+    User wants to apply multiple tags to a URL in one atomic batch.
+
+    Args:
+        utub_id (int): The UTub containing the URL
+        utub_url_id (int): The URL having tags applied to it
+        current_utub (Utubs): The UTub model
+        current_utub_url (Utub_Urls): The URL model
+        add_tags_request (AddTagsRequest): Validated request schema
+    """
+    return add_tags_to_url_if_valid(
+        tag_strings=add_tags_request.tagStrings,
         utub=current_utub,
         utub_url=current_utub_url,
     )

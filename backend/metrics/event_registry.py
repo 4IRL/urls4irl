@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from backend.metrics.events import EventCategory, EventName
+from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 
@@ -86,6 +87,11 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.TAG_APPLIED: EventRegistryEntry(
         description="Tag added to a URL",
         category=EventCategory.DOMAIN,
+    ),
+    EventName.TAGS_APPLIED_BATCH: EventRegistryEntry(
+        description="Multiple tags applied to a URL in one batch",
+        category=EventCategory.DOMAIN,
+        dimensions={"batch_size_bucket": TAGS_BATCH_SIZE_BUCKETS},
     ),
     EventName.TAG_REMOVED: EventRegistryEntry(
         description="Tag removed from a URL",

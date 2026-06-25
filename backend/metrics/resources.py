@@ -68,6 +68,7 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.URL_STRING_UPDATED: Resource.URL,
     EventName.URL_TITLE_UPDATED: Resource.URL,
     EventName.TAG_APPLIED: Resource.TAG,
+    EventName.TAGS_APPLIED_BATCH: Resource.TAG,
     EventName.TAG_REMOVED: Resource.TAG,
     EventName.TAG_DELETED: Resource.TAG,
     EventName.UTUB_TAG_CREATED: Resource.TAG,
