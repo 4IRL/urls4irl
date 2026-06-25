@@ -9,12 +9,15 @@ remote_backup() {
   local db_mime_type=""
   local log_mime_type=""
   REMOTE_BACKUP_ERROR=""
+  REMOTE_DB_STATUS=skip
+  REMOTE_DB_MONTHLY_STATUS=skip
+  REMOTE_LOGS_STATUS=skip
 
   if [[ "${PRODUCTION:-}" != "true" ]]; then
     echo -e "\n\n Skipping remote object storage due to not in production \n\n"
-    REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
-    failure=1
-    return $failure
+    failure=0
+    REMOTE_BACKUP_ERROR=""
+    return 0
   fi
 
   # Configure rclone via environment variables (no plaintext config file on disk)
@@ -43,9 +46,13 @@ remote_backup() {
       --header-upload "Content-Type:$db_mime_type"; then
       echo "Error: Failure in sending daily database backup to Cloudflare R2"
       REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
+      REMOTE_DB_STATUS=fail
       failure=1
+      notify_step "REMOTE_DB" "FAILURE" "Error: Failure in sending daily database backup to Cloudflare R2"
     else
       echo "Success: Sent daily database backup to Cloudflare R2"
+      REMOTE_DB_STATUS=ok
+      notify_step "REMOTE_DB" "SUCCESS" "$(basename "${COMPRESSED_DB_BACKUP_FILE}")"
     fi
 
     # ------- IF FIRST OF MONTH, SEND A FIRST-OF-MONTH DATABASE BACKUP  ------- #
@@ -60,9 +67,13 @@ remote_backup() {
         --header-upload "Content-Type:$db_mime_type"; then
         echo "Error: Failure in sending monthly database backup to Cloudflare R2"
         REMOTE_BACKUP_ERROR="Error: Failure in sending monthly database backup to Cloudflare R2"
+        REMOTE_DB_MONTHLY_STATUS=fail
         failure=1
+        notify_step "REMOTE_DB_MONTHLY" "FAILURE" "Error: Failure in sending monthly database backup to Cloudflare R2"
       else
         echo "Success: Sent monthly database backup to Cloudflare R2"
+        REMOTE_DB_MONTHLY_STATUS=ok
+        notify_step "REMOTE_DB_MONTHLY" "SUCCESS" "$(basename "${monthly_file}")"
       fi
       rm -f "${monthly_file}"
     fi
@@ -81,9 +92,13 @@ remote_backup() {
       --header-upload "Content-Type:$log_mime_type"; then
       echo "Error: Failure in sending daily app logs to Cloudflare R2"
       REMOTE_BACKUP_ERROR="Error: Failure in sending daily app logs to Cloudflare R2"
+      REMOTE_LOGS_STATUS=fail
       failure=1
+      notify_step "REMOTE_LOGS" "FAILURE" "Error: Failure in sending daily app logs to Cloudflare R2"
     else
       echo "Success: Sent daily app logs to Cloudflare R2"
+      REMOTE_LOGS_STATUS=ok
+      notify_step "REMOTE_LOGS" "SUCCESS" "$(basename "${COMPRESSED_LOG_FILE}")"
     fi
   else
     echo "Skipping log remote backup due to local backup failure"
