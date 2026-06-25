@@ -20,6 +20,7 @@ transaction. On any failure the whole batch is rolled back and the run fails
 
 from __future__ import annotations
 
+from collections.abc import Callable
 import importlib.util
 import logging
 import os
@@ -259,7 +260,7 @@ def run_sample_job(
     pg_conn: psycopg2.extensions.connection,
     redis_client: redis.Redis,
     now_epoch: int,
-    notifier=send,
+    notifier: Callable[..., int] = send,
 ) -> int:
     """Run a gauge sample and emit transition-throttled failure/recovery alerts.
 

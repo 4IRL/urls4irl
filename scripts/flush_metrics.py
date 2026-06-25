@@ -24,6 +24,7 @@ keys into Postgres.
 from __future__ import annotations
 
 from collections import namedtuple
+from collections.abc import Callable
 from datetime import datetime, timedelta, timezone
 import importlib.util
 import json
@@ -698,7 +699,7 @@ def run_flush_job(
     *,
     redis_client: redis.Redis,
     pg_conn: psycopg2.extensions.connection,
-    notifier=send,
+    notifier: Callable[..., int] = send,
 ) -> int:
     """Run a flush and emit transition-throttled failure/recovery alerts.
 
