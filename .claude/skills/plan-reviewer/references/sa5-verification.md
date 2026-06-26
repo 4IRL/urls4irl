@@ -15,6 +15,7 @@
   - JS behavior changes verified only by integration tests — need JS unit tests (vitest) or UI/Selenium tests
   - Backend-only changes verified only by UI tests — integration tests are faster and more precise
   If a step changes templates or JS and the only verification is `make test-marker-parallel`, flag it and recommend adding `make test-js` and/or the relevant `_ui` marker test.
+  - **Built-target rule applies to ALL make test-* references (required for UI plans):** The CLAUDE.md built-targets rule ('UI tests always use built targets — never run UI tests against the dev server') applies to EVERY `make test-*` reference in the plan — explicit verification bullets, Red-Green iteration hints, and per-test debug loops alike. When reviewing any step that mentions a `make test-*` command for UI tests, read the Makefile and confirm the target uses `$(EXEC_WEB_BUILT)` (or `start-built` as a prerequisite) rather than `$(EXEC_WEB)`. If a non-built target is referenced for UI tests in any context, flag as **Major** regardless of whether the instruction is labeled 'verification' or 'iteration'.
 
 - **Test coverage**: Happy path, sad path, and edge case tests exist for every changed endpoint? Missing edge case coverage?
 

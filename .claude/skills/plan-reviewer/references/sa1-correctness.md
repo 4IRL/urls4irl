@@ -25,6 +25,7 @@
 - **Config inheritance chains**: When a plan modifies a parent config (tsconfig, eslint, etc.), trace `extends` references to child configs and verify the change doesn't silently break inherited behavior.
 
 - **New symbol reference → verify import (required):** When a plan instructs adding any symbol reference (`isinstance`, `issubclass`, type hint, function call) to an existing file, read that file's import block and confirm the symbol is already imported. If it is not, flag the missing import as **Major**. Do NOT assume the plan would have mentioned it.
+  - **Import name-collision check (required):** When a plan instructs adding a new import of bare name S into file F — whether as a new `import` line or as part of a `from X import S` — read file F's full import block and grep for any existing `import S` or `from ... import ... S` (bare name, not aliased). If a collision is found, flag as **Major**: Python silently rebinds the name at module scope, the new import shadows the original, and every existing call site that depended on the shadowed version will receive the wrong function signature at runtime. The fix must alias one of the two imports (e.g., `from X import S as S_playwright`) and update all call sites for the aliased version.
 
 When a plan instructs inserting code into an existing function, read the full function body — not just the lines the plan cites. This surfaces: (a) existing imports the new code depends on, (b) established defensive patterns already in use nearby, (c) variable names or parameter types the new code must match.
 
