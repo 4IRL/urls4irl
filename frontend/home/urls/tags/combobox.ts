@@ -243,9 +243,12 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
       trigger: FORM_SUBMIT_TRIGGER.BUTTON_CLICK,
     });
     clearOpenForm();
-    void submitStagedTags(refs.urlCard, refs.utubID, refs.utubUrlID, [
-      ...refs.stagedStrings,
-    ]);
+    void submitStagedTags({
+      urlCard: refs.urlCard,
+      utubID: refs.utubID,
+      utubUrlID: refs.utubUrlID,
+      stagedStrings: [...refs.stagedStrings],
+    });
   });
 }
 
@@ -593,9 +596,12 @@ function handleInputKeydown(
           trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
         });
         clearOpenForm();
-        void submitStagedTags(refs.urlCard, refs.utubID, refs.utubUrlID, [
-          ...refs.stagedStrings,
-        ]);
+        void submitStagedTags({
+          urlCard: refs.urlCard,
+          utubID: refs.utubID,
+          utubUrlID: refs.utubUrlID,
+          stagedStrings: [...refs.stagedStrings],
+        });
       } else {
         stageActiveOrQuery(refs, query, activeOption);
       }
@@ -803,12 +809,17 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
  * mirroring how `create.ts` emits in the button handler before calling
  * `createURLTag`.
  */
-export async function submitStagedTags(
-  urlCard: JQuery,
-  utubID: number,
-  utubUrlID: number,
-  stagedStrings: string[],
-): Promise<void> {
+export async function submitStagedTags({
+  urlCard,
+  utubID,
+  utubUrlID,
+  stagedStrings,
+}: {
+  urlCard: JQuery;
+  utubID: number;
+  utubUrlID: number;
+  stagedStrings: string[];
+}): Promise<void> {
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
@@ -828,12 +839,12 @@ export async function submitStagedTags(
       xhr: JQuery.jqXHR,
     ) {
       if (xhr.status === 200) {
-        submitStagedTagsSuccess(response, urlCard, utubID);
+        submitStagedTagsSuccess({ response, urlCard, utubID });
       }
     });
 
     request.fail(function (xhr: JQuery.jqXHR) {
-      submitStagedTagsFail(xhr, urlCard);
+      submitStagedTagsFail({ xhr, urlCard });
     });
 
     request.always(function () {
@@ -853,11 +864,15 @@ export async function submitStagedTags(
  * appends real `.tagBadge` nodes, rebuilds the URL's tag-id attribute, syncs the
  * tag deck, and resets the combobox.
  */
-export function submitStagedTagsSuccess(
-  response: UrlTagsModifiedResponse,
-  urlCard: JQuery,
-  utubID: number,
-): void {
+export function submitStagedTagsSuccess({
+  response,
+  urlCard,
+  utubID,
+}: {
+  response: UrlTagsModifiedResponse;
+  urlCard: JQuery;
+  utubID: number;
+}): void {
   if (response.appliedTags.length > 0) {
     emit({ event: UI_EVENTS.UI_TAG_APPLY });
   }
@@ -934,7 +949,13 @@ export function submitStagedTagsSuccess(
  * Handles a failed batch submit: 429 short-circuit, CSRF HTML handling, 400
  * field/message inline errors, and the error page for the remaining statuses.
  */
-export function submitStagedTagsFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
+export function submitStagedTagsFail({
+  xhr,
+  urlCard,
+}: {
+  xhr: JQuery.jqXHR;
+  urlCard: JQuery;
+}): void {
   if (is429Handled(xhr)) return;
 
   if (!("responseJSON" in xhr)) {

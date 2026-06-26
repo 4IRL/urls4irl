@@ -127,7 +127,7 @@ describe("submitStagedTagsSuccess — happy path", () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
     const urlCard = $(".urlRow");
 
-    submitStagedTagsSuccess(response, urlCard, 1);
+    submitStagedTagsSuccess({ response, urlCard, utubID: 1 });
 
     expect(emit).toHaveBeenCalledWith({ event: UI_EVENTS.UI_TAG_APPLY });
     expect(storeState.tags).toEqual(response.appliedTags);
@@ -140,11 +140,15 @@ describe("submitStagedTagsSuccess — happy path", () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
     const urlCard = $(".urlRow");
 
-    submitStagedTagsSuccess(
-      { status: "Success" as const, utubUrlTagIDs: [], appliedTags: [] },
+    submitStagedTagsSuccess({
+      response: {
+        status: "Success" as const,
+        utubUrlTagIDs: [],
+        appliedTags: [],
+      },
       urlCard,
-      1,
-    );
+      utubID: 1,
+    });
 
     expect(emit).not.toHaveBeenCalledWith({ event: UI_EVENTS.UI_TAG_APPLY });
     expect(urlCard.find(".urlTagsContainer .tagBadge").length).toBe(0);
@@ -156,13 +160,13 @@ describe("submitStagedTagsFail — sad paths", () => {
     const { emit } = await import("../../../../lib/metrics-client.js");
     const urlCard = $(".urlRow");
 
-    submitStagedTagsFail(
-      {
+    submitStagedTagsFail({
+      xhr: {
         status: 400,
         responseJSON: { errors: { tagStrings: ["Too many tags"] } },
       } as unknown as JQuery.jqXHR,
       urlCard,
-    );
+    });
 
     expect(urlCard.find(".urlTagComboboxMsg").text()).toBe("Too many tags");
     expect(urlCard.find(".urlTagComboboxMsg").hasClass("warn")).toBe(true);
@@ -173,7 +177,10 @@ describe("submitStagedTagsFail — sad paths", () => {
     vi.mocked(is429Handled).mockReturnValueOnce(true);
     const urlCard = $(".urlRow");
 
-    submitStagedTagsFail({ status: 429 } as unknown as JQuery.jqXHR, urlCard);
+    submitStagedTagsFail({
+      xhr: { status: 429 } as unknown as JQuery.jqXHR,
+      urlCard,
+    });
 
     expect(urlCard.find(".urlTagComboboxMsg").text()).toBe("");
   });
