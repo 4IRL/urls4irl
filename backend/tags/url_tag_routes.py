@@ -18,8 +18,8 @@ from backend.schemas.tags import (
 )
 from backend.tags.constants import URLTagErrorCodes
 from backend.tags.services.create_url_tag import (
+    add_batch_tags_to_existing_url,
     add_tag_to_url_if_valid,
-    add_tags_to_url_if_valid,
 )
 from backend.tags.services.delete_url_tag import delete_url_tag
 from backend.utils.strings.openapi_strs import OPEN_API
@@ -103,7 +103,7 @@ def create_utub_url_tags(
         current_utub_url (Utub_Urls): The URL model
         add_tags_request (AddTagsRequest): Validated request schema
     """
-    return add_tags_to_url_if_valid(
+    return add_batch_tags_to_existing_url(
         tag_strings=add_tags_request.tagStrings,
         utub=current_utub,
         utub_url=current_utub_url,

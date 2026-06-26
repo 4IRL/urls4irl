@@ -87,7 +87,7 @@ def add_tag_to_url_if_valid(
     ).to_response()
 
 
-def add_tags_to_url_if_valid(
+def add_batch_tags_to_existing_url(
     tag_strings: list[str], utub: Utubs, utub_url: Utub_Urls
 ) -> FlaskResponse:
     """
@@ -170,8 +170,12 @@ def add_tags_to_url_if_valid(
             # actually applied; an all-already-applied batch is a no-op.
             utub.set_last_updated()
         db.session.commit()
-    except Exception:
+    except Exception as exc:
         db.session.rollback()
+        warning_log(
+            f"Batch tag-apply failed | UTub.id={utub.id} | UTubURL.id={utub_url.id} "
+            f"| RequestedCount={len(deduped_strings)} | error_type={type(exc).__name__}"
+        )
         raise
 
     if not to_apply:

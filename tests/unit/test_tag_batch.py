@@ -15,8 +15,10 @@ pytestmark = pytest.mark.unit
         (5, "2-5"),
         (6, "6-10"),
         (10, "6-10"),
-        (11, "11-20"),
-        (20, "11-20"),
+        (11, "11-15"),
+        (15, "11-15"),
+        (16, "16-20"),
+        (20, "16-20"),
     ],
 )
 def test_bucket_tags_batch_size_boundary_cases(

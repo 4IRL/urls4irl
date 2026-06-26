@@ -11,7 +11,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.tags.constants import URLTagErrorCodes
-from backend.tags.services.create_url_tag import add_tags_to_url_if_valid
+from backend.tags.services.create_url_tag import add_batch_tags_to_existing_url
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -23,6 +23,7 @@ from tests.integration.system.metrics_helpers import (
     parse_dims,
     sum_counter_values,
 )
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
@@ -51,14 +52,15 @@ def _get_creator_utub_and_url() -> tuple[int, int]:
 
 # Happy Path Tests :)
 def test_batch_add_two_fresh_tags_succeeds(
-    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
 ):
     """
     GIVEN a creator of a UTub with a URL that has no tags
     WHEN they POST two fresh tag strings to the batch endpoint
     THEN the server returns 200, the response reflects both newly-applied tags,
-        two new Utub_Tags vocabulary rows are created, and two new
-        Utub_Url_Tags associations exist.
+        two new Utub_Tags vocabulary rows are created, two new Utub_Url_Tags
+        associations exist, and the success breadcrumb is logged with the
+        UTub/URL/applied-count context.
     """
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -96,6 +98,11 @@ def test_batch_add_two_fresh_tags_succeeds(
             ).count()
             == initial_assoc_count + 2
         )
+
+    assert is_string_in_logs("Applied batch of UTubURLTags", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id}", caplog.records)
+    assert is_string_in_logs(f"UTubURL.id={utub_url_id}", caplog.records)
+    assert is_string_in_logs("AppliedCount=2", caplog.records)
 
 
 def test_batch_add_mix_new_and_existing_vocab_only_creates_new(
@@ -203,7 +210,7 @@ def test_batch_add_dedupes_within_payload(
         utub: Utubs = Utubs.query.get(utub_id)
         utub_url: Utub_Urls = Utub_Urls.query.get(utub_url_id)
 
-        add_tags_to_url_if_valid(
+        add_batch_tags_to_existing_url(
             tag_strings=[FRESH_TAG_ALPHA, FRESH_TAG_ALPHA],
             utub=utub,
             utub_url=utub_url,
@@ -555,13 +562,15 @@ def test_batch_add_records_tag_applied_per_tag_and_one_batch_event(
 
 # Atomicity Tests
 def test_batch_add_mid_batch_exception_leaves_zero_rows(
-    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
 ):
     """
     GIVEN a creator of a UTub with a URL
     WHEN _add_url_tag raises on its 2nd call mid-batch
     THEN zero new vocabulary rows AND zero new association rows remain (single
-        final commit guarantees all-or-nothing atomicity).
+        final commit guarantees all-or-nothing atomicity), and the rollback
+        breadcrumb is logged with the UTub/URL/requested-count and the
+        propagated exception type.
     """
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -612,3 +621,9 @@ def test_batch_add_mid_batch_exception_leaves_zero_rows(
     with app.app_context():
         assert Utub_Tags.query.count() == initial_vocab_count
         assert Utub_Url_Tags.query.count() == initial_assoc_count
+
+    assert is_string_in_logs("Batch tag-apply failed", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id}", caplog.records)
+    assert is_string_in_logs(f"UTubURL.id={utub_url_id}", caplog.records)
+    assert is_string_in_logs("RequestedCount=3", caplog.records)
+    assert is_string_in_logs("error_type=RuntimeError", caplog.records)
