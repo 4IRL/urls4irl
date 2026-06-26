@@ -128,6 +128,23 @@
     padding-block: 0;
 }
 
+/* The UTub deck was excluded from the symmetric header sizing above, so on
+   desktop its expanded title sat higher than the Member/Tag titles. Its search
+   input is a separate (collapsed-by-default) subheader band, so the header band
+   can adopt the siblings' fixed height + zeroed insets. Scoped to the expanded
+   state (the collapsed header keeps its original sizing) and to desktop (mobile
+   keeps the always-visible search subheader's top inset). */
+@media (min-width: 992px) {
+    .deck#UTubDeck:not(.collapsed) {
+        padding-top: 0;
+    }
+
+    #UTubDeck:not(.collapsed) .titleElement:first-child {
+        height: 44px;
+        padding-block: 0;
+    }
+}
+
 .titleElement.dynamic-subheader {
     min-height: var(--deckSubheaderMinHeight);
 }
