@@ -698,11 +698,11 @@ export function showTagCombobox({
 
   if (isMobile()) {
     comboboxWrap.find("input").focus();
+  } else {
+    setTimeout(function () {
+      comboboxWrap.find("input").trigger("focus");
+    }, 100);
   }
-
-  setTimeout(function () {
-    comboboxWrap.find("input").trigger("focus");
-  }, 100);
 
   // Disable URL buttons while tags are being added
   urlCard.find(".urlBtnAccess").hideClass();

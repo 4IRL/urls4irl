@@ -198,6 +198,22 @@ def test_cancel_combobox_btn_creator(
     assert combobox_input is not None
     assert not combobox_input.is_displayed()
 
+    restored_elements = (
+        HPL.BUTTON_URL_ACCESS,
+        HPL.BUTTON_URL_DELETE,
+    )
+    for elem_selector in restored_elements:
+        restored_btn = browser.find_element(
+            By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {elem_selector}"
+        )
+        assert restored_btn.is_displayed()
+
+    add_tag_btn = browser.find_element(
+        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}"
+    )
+    classes = add_tag_btn.get_attribute("class")
+    assert classes and HPL.BUTTON_BIG_TAG_CANCEL_CREATE.replace(".", "") not in classes
+
 
 def test_cancel_combobox_key_creator(
     browser: WebDriver, create_test_urls, provide_app: Flask

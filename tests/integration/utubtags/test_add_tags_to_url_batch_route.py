@@ -439,6 +439,59 @@ def test_batch_add_non_member_returns_404(
     assert response.status_code == 404
 
 
+def test_batch_add_as_utub_member_succeeds(
+    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in user who is a MEMBER (not the creator) of a UTub that has a URL
+    WHEN they POST two fresh tag strings to the batch endpoint for that URL
+    THEN the server returns 200, the response reflects both newly-applied tags,
+        and two new Utub_Url_Tags associations exist where none did before.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        utub_id = utub_user_is_member_of.id
+        url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).first()
+        utub_url_id = url_in_utub.id
+        initial_assoc_count = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
+        ).count()
+        assert initial_assoc_count == 0
+
+    response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.BATCH_ADD_URL_TAGS, utub_id=utub_id, utub_url_id=utub_url_id
+        ),
+        json={TAG_STRINGS_FIELD: [FRESH_TAG_ALPHA, FRESH_TAG_BETA]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAGS_ADDED_TO_URL
+    assert len(response_json[MODEL_STRS.APPLIED_TAGS]) == 2
+
+    with app.app_context():
+        url_after: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+        assert sorted(response_json[MODEL_STRS.URL_TAG_IDS]) == sorted(
+            url_after.associated_tag_ids
+        )
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id,
+                Utub_Url_Tags.utub_url_id == utub_url_id,
+            ).count()
+            == initial_assoc_count + 2
+        )
+
+
 def test_batch_add_invalid_csrf_returns_403(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):

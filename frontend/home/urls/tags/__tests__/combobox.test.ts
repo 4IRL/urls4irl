@@ -296,6 +296,21 @@ describe("combobox — keyboard", () => {
     expect(escapeEvent.isPropagationStopped()).toBe(true);
     expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(false);
   });
+
+  it("second Escape cancels and hides the whole combobox", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+
+    const input = urlCard.find(".urlTagComboboxInput");
+    // First Escape closes only the dropdown; the wrap stays visible.
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(false);
+
+    // Second Escape runs hideAndResetTagCombobox, hiding the whole wrap.
+    input.trigger($.Event("keydown", { key: "Escape" }));
+
+    expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+  });
 });
 
 describe("hideAndResetTagCombobox", () => {
