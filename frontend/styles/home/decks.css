@@ -42,13 +42,21 @@
 .deck#MemberDeck.collapsed,
 .deck#TagDeck.collapsed {
     flex: 0 0 48px;
-    /* Collapsed: only the header band is visible (subheader + content are
-       height:0). Drop the asymmetric top inset and center the band vertically so
-       every deck title sits mid-section regardless of its band height — the old
-       padding-top pushed the 44px Member/Tag bands past the 48px deck. */
-    padding-top: 0;
+    /* Header stays at flex-start (top) so the deck's bottom edge slides cleanly
+       up to meet it as the content collapses. NOT justify-content:center — that
+       re-centers the header in the deck's *animating* height, making it float in
+       mid-deck during the collapse/expand. The 44px band nearly fills the 48px
+       deck; padding-top supplies the small remaining inset to center it. */
+    padding-top: 2px;
     padding-bottom: 0;
-    justify-content: center;
+}
+
+/* Member/Tag carry a 2px top separator border (`.deck + .deck`) that already
+   supplies part of the centering inset, so they need 1px less top padding than
+   the borderless first-in-column UTub deck. */
+.deck#MemberDeck.collapsed,
+.deck#TagDeck.collapsed {
+    padding-top: 1px;
 }
 
 .content {
@@ -74,11 +82,9 @@
     height: 0;
     min-height: 0;
     overflow: hidden;
-    /* Collapse to a true 0px so the header band centers cleanly. flex:0 0 0 is
-       essential: the content's normal flex-grow:1 would otherwise stretch it to
-       fill the collapsed deck's leftover space (despite height:0), pushing the
-       justify-content-centered title upward. Border + vertical padding are
-       zeroed for the same reason — invisible here but still occupy flex space. */
+    /* Collapse to a true 0px so the deck shrinks to just its header band — the
+       content's normal flex-grow:1 would otherwise keep it filling the deck.
+       Border + vertical padding zeroed so no invisible flex space remains. */
     flex: 0 0 0;
     border-top-width: 0;
     padding-block: 0;
@@ -140,18 +146,18 @@
     padding-block: 0;
 }
 
-/* The UTub deck was excluded from the symmetric header sizing above, so on
-   desktop its expanded title sat higher than the Member/Tag titles. Its search
-   input is a separate (collapsed-by-default) subheader band, so the header band
-   can adopt the siblings' fixed height + zeroed insets. Scoped to the expanded
-   state (the collapsed header keeps its original sizing) and to desktop (mobile
-   keeps the always-visible search subheader's top inset). */
+/* The UTub deck was excluded from the symmetric header sizing above, so its
+   title sat higher than the Member/Tag titles. Its search input is a separate
+   subheader band, so the header band can adopt the siblings' fixed 44px height
+   in both states. Desktop-only: mobile keeps the min-height:38px sizing (the
+   always-visible search subheader's spacing, and the decks don't collapse there).
+   The expanded deck drops its top inset; the collapsed inset is set above. */
 @media (min-width: 992px) {
     .deck#UTubDeck:not(.collapsed) {
         padding-top: 0;
     }
 
-    #UTubDeck:not(.collapsed) .titleElement:first-child {
+    #UTubDeck .titleElement:first-child {
         height: 44px;
         padding-block: 0;
     }
