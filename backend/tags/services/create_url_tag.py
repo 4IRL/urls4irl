@@ -123,16 +123,14 @@ def add_tags_to_url_if_valid(
     # rejection guarantees zero vocabulary (Utub_Tags) and zero association
     # (Utub_Url_Tags) rows are written.
     already_present_ids = set(utub_url.associated_tag_ids)
-    existing_vocab_strings = {
-        tag.tag_string
+    existing_vocab_ids_by_string: dict[str, int] = {
+        tag.tag_string: tag.id
         for tag in Utub_Tags.query.filter(Utub_Tags.utub_id == utub.id).all()
     }
     net_new_count = 0
     for tag_string in deduped_strings:
         stripped = tag_string.strip()
-        existing_tag_id = _utub_tag_id_for_string(
-            stripped, existing_vocab_strings, utub
-        )
+        existing_tag_id = existing_vocab_ids_by_string.get(stripped)
         if existing_tag_id is None or existing_tag_id not in already_present_ids:
             net_new_count += 1
 
@@ -234,30 +232,6 @@ def add_tags_to_url_if_valid(
             applied_tags=applied_tags,
         ),
     ).to_response()
-
-
-def _utub_tag_id_for_string(
-    tag_string: str, existing_vocab_strings: set[str], utub: Utubs
-) -> int | None:
-    """
-    Returns the vocabulary tag ID for a tag string in a UTub if it already
-    exists, else None — without writing any rows. Used by the read-only
-    limit pre-check (Pass 1) to determine which deduped strings are net-new.
-
-    Args:
-        tag_string (str): The stripped tag string to look up
-        existing_vocab_strings (set[str]): Pre-fetched UTub vocabulary strings
-        utub (Utubs): The UTub containing the vocabulary
-
-    Returns:
-        (int | None): The existing tag's ID, or None if the string is net-new
-    """
-    if tag_string not in existing_vocab_strings:
-        return None
-    existing_tag: Utub_Tags = Utub_Tags.query.filter(
-        Utub_Tags.utub_id == utub.id, Utub_Tags.tag_string == tag_string
-    ).first()
-    return existing_tag.id if existing_tag else None
 
 
 def _url_is_at_url_tag_limit(utub: Utubs, utub_url: Utub_Urls) -> bool:
