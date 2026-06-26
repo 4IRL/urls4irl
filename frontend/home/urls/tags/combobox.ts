@@ -1,4 +1,9 @@
 import type { UtubUrlItem, UtubTag } from "../../../types/url.js";
+import type {
+  AddTagsRequest,
+  UrlTagsModifiedResponse,
+  UrlTagError,
+} from "./combobox-state.js";
 
 import { $, bootstrap } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
@@ -17,11 +22,6 @@ import {
   filterTagSuggestions,
   hasExactTagMatch,
   mergeAppliedTagsIntoStore,
-} from "./combobox-state.js";
-import type {
-  AddTagsRequest,
-  UrlTagsModifiedResponse,
-  UrlTagError,
 } from "./combobox-state.js";
 import {
   createTagBadgeInURL,
