@@ -42,8 +42,13 @@
 .deck#MemberDeck.collapsed,
 .deck#TagDeck.collapsed {
     flex: 0 0 48px;
-    padding-top: 0.15rem;
+    /* Collapsed: only the header band is visible (subheader + content are
+       height:0). Drop the asymmetric top inset and center the band vertically so
+       every deck title sits mid-section regardless of its band height — the old
+       padding-top pushed the 44px Member/Tag bands past the 48px deck. */
+    padding-top: 0;
     padding-bottom: 0;
+    justify-content: center;
 }
 
 .content {
@@ -66,10 +71,17 @@
 .deck.collapsed .content,
 .deck.collapsed .titleElement:nth-of-type(2) {
     opacity: 0;
-    flex-shrink: 0;
     height: 0;
     min-height: 0;
     overflow: hidden;
+    /* Collapse to a true 0px so the header band centers cleanly. flex:0 0 0 is
+       essential: the content's normal flex-grow:1 would otherwise stretch it to
+       fill the collapsed deck's leftover space (despite height:0), pushing the
+       justify-content-centered title upward. Border + vertical padding are
+       zeroed for the same reason — invisible here but still occupy flex space. */
+    flex: 0 0 0;
+    border-top-width: 0;
+    padding-block: 0;
 }
 
 /* Suppress the collapse/expand animation for programmatic (auto) minimize and
