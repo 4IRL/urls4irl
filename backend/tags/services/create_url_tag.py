@@ -167,7 +167,10 @@ def add_tags_to_url_if_valid(
         for utub_tag in to_apply:
             _add_url_tag(utub_url, utub_tag)
 
-        utub.set_last_updated()
+        if to_apply:
+            # Only bump the UTub modification time when at least one new tag is
+            # actually applied; an all-already-applied batch is a no-op.
+            utub.set_last_updated()
         db.session.commit()
     except Exception:
         db.session.rollback()
