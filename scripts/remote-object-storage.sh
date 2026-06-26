@@ -52,7 +52,6 @@ remote_backup() {
     else
       echo "Success: Sent daily database backup to Cloudflare R2"
       REMOTE_DB_STATUS=ok
-      notify_step "REMOTE_DB" "SUCCESS" "$(basename "${COMPRESSED_DB_BACKUP_FILE}")"
     fi
 
     # ------- IF FIRST OF MONTH, SEND A FIRST-OF-MONTH DATABASE BACKUP  ------- #
@@ -73,7 +72,6 @@ remote_backup() {
       else
         echo "Success: Sent monthly database backup to Cloudflare R2"
         REMOTE_DB_MONTHLY_STATUS=ok
-        notify_step "REMOTE_DB_MONTHLY" "SUCCESS" "$(basename "${monthly_file}")"
       fi
       rm -f "${monthly_file}"
     fi
@@ -103,7 +101,6 @@ remote_backup() {
     else
       echo "Success: Sent daily app logs to Cloudflare R2"
       REMOTE_LOGS_STATUS=ok
-      notify_step "REMOTE_LOGS" "SUCCESS" "$(basename "${COMPRESSED_LOG_FILE}")"
     fi
   else
     echo "Skipping log remote backup due to local backup failure"

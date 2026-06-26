@@ -243,6 +243,13 @@ echo "$PRODSIM_LOG" | grep -q "Success: Sent daily database backup to Cloudflare
     || { echo "❌ Leg 7: database upload did not report success" >&2; exit 1; }
 docker exec "$PRODSIM" cat /tmp/notify.log 2>/dev/null | grep -qE "Daily Backup.*SUCCESS" \
     || { echo "❌ Leg 7: success notification not dispatched" >&2; exit 1; }
+# Per-step SUCCESS lines are intentionally suppressed — only the digest reports
+# each leg's outcome. Per-step messages carry the "DOCKER: " prefix (the digest
+# does not), so any "DOCKER: <STEP> SUCCESS" line means a per-step success leaked.
+if docker exec "$PRODSIM" cat /tmp/notify.log 2>/dev/null | grep -qE "DOCKER: [A-Z_]+ SUCCESS"; then
+    echo "❌ Leg 7: per-step SUCCESS notification leaked (should be digest-only)" >&2
+    exit 1
+fi
 
 # Confirm the objects actually persisted in MinIO (real end-to-end upload).
 docker run --rm --network "$NET" --entrypoint bash "$WORKFLOW_IMAGE" -c "

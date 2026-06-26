@@ -86,13 +86,13 @@ DB_PASS=${POSTGRES_PASSWORD}
 DB_NAME=${POSTGRES_DB}
 export DB_BACKUP_FILE COMPRESSED_DB_BACKUP_FILE DB_USER DB_PASS DB_NAME DB_BACKUP_DIR
 
+# Per-step notifications fire on FAILURE only — per-step SUCCESS is intentionally
+# silent because the end-of-run digest already reports each leg's outcome.
 database_backed_up="true"
 if ! source "$SCRIPT_DIR/backup-database.sh"; then
   echo "Error: Failure in daily local backup of database"
   notify_step "DB_BACKUP" "FAILURE" "Error: Failure in daily local backup of database"
   database_backed_up="false"
-else
-  notify_step "DB_BACKUP" "SUCCESS" "$(basename "$COMPRESSED_DB_BACKUP_FILE") ($(du -h "$COMPRESSED_DB_BACKUP_FILE" 2>/dev/null | cut -f1))"
 fi
 unset DB_BACKUP_FILE DB_USER DB_PASS DB_NAME
 
@@ -107,8 +107,6 @@ if ! source "$SCRIPT_DIR/backup-logs.sh"; then
   echo "Error: Failure in daily local backup of app logs"
   notify_step "LOG_BACKUP" "FAILURE" "Error: Failure in daily local backup of app logs: $(date -d "yesterday" +%Y-%m-%d).log"
   logs_backed_up="false"
-else
-  notify_step "LOG_BACKUP" "SUCCESS" "$(basename "$COMPRESSED_LOG_FILE") ($(du -h "$COMPRESSED_LOG_FILE" 2>/dev/null | cut -f1))"
 fi
 
 unset LOG_FILE LOG_DIR
