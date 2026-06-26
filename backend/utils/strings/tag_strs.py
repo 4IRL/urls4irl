@@ -24,7 +24,7 @@ TAG_FILTER_NO_RESULTS = "No URLs match selected tags"
 # via APP_CONFIG.strings, so they go through the full APP_CONFIG bridge
 # (constants.STRINGS + generate_strings_js() + frontend/test-setup.ts mock).
 ADD_TAGS_PLACEHOLDER = "Type to search or create tags…"
-TAG_CREATE_NEW = "Create new"
+TAG_CREATE_NEW = "Create tag"
 TAGS_LIMIT_REACHED = "Maximum {max} tags reached — remove a tag to add more"
 TAGS_NO_MATCHES = "No matching tags"
 TAGS_MATCH_COUNT = "{n} matches"

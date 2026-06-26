@@ -273,7 +273,7 @@ function getActiveOption(refs: ComboboxRefs): JQuery {
 
 /**
  * Rebuilds the listbox options from `filterTagSuggestions`, the conditional
- * "Create new" option, the empty-UTub hint, and the applied-tag disabled rows.
+ * "Create tag" option, the empty-UTub hint, and the applied-tag disabled rows.
  */
 function renderListbox(refs: ComboboxRefs): void {
   const { input, listbox } = refs;

@@ -125,7 +125,7 @@ def stage_tag_suggestion(browser: WebDriver, tag_text: str) -> None:
 
 def stage_new_tag(browser: WebDriver, text: str) -> None:
     """
-    Types `text` and stages it via the "Create new" option (a brand-new tag that
+    Types `text` and stages it via the "Create tag" option (a brand-new tag that
     does not yet exist in the UTub becomes a chip).
     """
     chips_before = _count_staged_chips(browser)
@@ -151,7 +151,7 @@ def add_tag_to_url(browser: WebDriver, selected_url_id: int, tag_string: str) ->
     Setup helper for sibling tags_ui suites: opens the combobox on the selected
     URL and stages a single tag string as a chip, leaving it ready to submit (the
     caller clicks the submit button). Stages via the auto-activated option (an
-    existing-tag suggestion or the "Create new" option) by typing then pressing
+    existing-tag suggestion or the "Create tag" option) by typing then pressing
     ENTER, so it works for both fresh and existing tag strings.
     """
     open_tag_combobox(browser, selected_url_id)

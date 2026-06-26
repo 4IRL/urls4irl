@@ -35,7 +35,7 @@ export function filterTagSuggestions({
 
 /**
  * True when the query exactly matches an existing UTub tag string
- * (case-insensitive, after trim). Used to suppress the "Create new" option.
+ * (case-insensitive, after trim). Used to suppress the "Create tag" option.
  */
 export function hasExactTagMatch({ query }: { query: string }): boolean {
   const normalizedQuery = query.trim().toLowerCase();
