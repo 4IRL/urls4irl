@@ -381,9 +381,6 @@
     color: var(--editURLColor);
 }
 
-/* Footer: quiet "N matches" helper text on the left, single primary action on
-   the right. Styled explicitly (the `justify-space-between` utility does not
-   exist, so the row would otherwise cram to the left). */
 /* Footer: the quiet "N matches" helper text sits right next to the single
    filled-green primary, both grouped at the right. */
 .urlTagComboboxFooter {
