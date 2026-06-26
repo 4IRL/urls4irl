@@ -197,11 +197,27 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_URL_ACCESS = ".urlBtnAccess"
 
     BUTTON_TAG_CREATE = ".urlTagBtnCreate"
-    INPUT_TAG_CREATE = ".urlTagCreate"
-    BUTTON_TAG_SUBMIT_CREATE = ".urlTagSubmitBtnCreate"
-    BUTTON_TAG_CANCEL_CREATE = ".urlTagCancelBtnCreate"
     BUTTON_BIG_TAG_CANCEL_CREATE = ".urlTagCancelBigBtnCreate"
-    ERROR_TAG_CREATE = ".urlTagCreate-error"
+
+    # Per-URL tag combobox (replaces the legacy single free-text input). The
+    # combobox always submits via the batch endpoint, so the legacy submit/cancel
+    # locators below are repointed to the combobox's own submit/cancel buttons
+    # and the legacy "input" locator to the combobox text input — this keeps the
+    # sibling tags_ui suites (which only use these as add-a-tag setup) driving the
+    # current built UI instead of the removed single input.
+    INPUT_TAG_COMBOBOX = ".urlTagComboboxInput"
+    TAG_COMBOBOX_OPTION = ".urlTagOption"
+    TAG_COMBOBOX_CREATE_NEW = ".urlTagOptionCreateNew"
+    TAG_STAGED_CHIP = ".urlTagStagedChip"
+    TAG_STAGED_CHIP_REMOVE = ".urlTagStagedChip button"
+    BUTTON_TAGS_SUBMIT_BATCH = ".urlTagComboboxSubmitBtn"
+    BUTTON_TAGS_CANCEL_BATCH = BUTTON_BIG_TAG_CANCEL_CREATE
+    TAG_COMBOBOX_MSG = ".urlTagComboboxMsg"
+
+    INPUT_TAG_CREATE = INPUT_TAG_COMBOBOX
+    BUTTON_TAG_SUBMIT_CREATE = BUTTON_TAGS_SUBMIT_BATCH
+    BUTTON_TAG_CANCEL_CREATE = BUTTON_TAGS_CANCEL_BATCH
+    ERROR_TAG_CREATE = TAG_COMBOBOX_MSG
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 

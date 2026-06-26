@@ -7,7 +7,7 @@ from backend.schemas.requests.splash import (
     RegisterRequest,
     ResetPasswordRequest,
 )
-from backend.schemas.requests.tags import AddTagRequest
+from backend.schemas.requests.tags import AddTagRequest, AddTagsRequest
 from backend.schemas.requests.urls import (
     CreateURLRequest,
     UpdateURLStringRequest,
@@ -29,6 +29,7 @@ __all__ = [
     "RegisterRequest",
     "ResetPasswordRequest",
     "AddTagRequest",
+    "AddTagsRequest",
     "CreateURLRequest",
     "UpdateURLStringRequest",
     "UpdateURLTitleRequest",

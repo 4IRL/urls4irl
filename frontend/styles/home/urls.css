@@ -211,8 +211,10 @@ a.urlString {
     width: 100%;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap>.text-input-container {
-    width: 45%;
+/* The multi-tag combobox spans the full card width when open (replacing the old
+   single-input create form, which was width-capped at 45%). */
+.urlRow[filterable="true"][urlSelected="true"] .urlTagComboboxWrap {
+    width: 100%;
 }
 
 .urlRow[filterable="false"],

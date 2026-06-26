@@ -465,6 +465,7 @@
                 "register_rejected",
                 "register_success",
                 "tag_applied",
+                "tags_applied_batch",
                 "tag_deleted",
                 "tag_removed",
                 "url_accessed",
@@ -790,6 +791,7 @@
                 "register_rejected",
                 "register_success",
                 "tag_applied",
+                "tags_applied_batch",
                 "tag_deleted",
                 "tag_removed",
                 "url_accessed",
@@ -2678,6 +2680,90 @@
                     },
                     {
                       "$ref": "#/components/schemas/UrlTagModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_URLTagErrorCodes"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "URLTagErrorCodes": {
+            "$ref": "#/components/schemas/URLTagErrorCodes"
+          }
+        }
+      }
+    },
+    "/utubs/{utub_id}/urls/{utub_url_id}/tags/batch": {
+      "post": {
+        "operationId": "createUtubUrlTags",
+        "tags": ["tags"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Apply multiple tags to a URL in a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddTagsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "URL tags modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UrlTagsModifiedResponseSchema"
                     }
                   ]
                 }
@@ -4992,6 +5078,44 @@
         "enum": [1, 2],
         "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
         "description": "Error codes for URLTagErrorCodes"
+      },
+      "AddTagsRequest": {
+        "properties": {
+          "tagStrings": {
+            "description": "Tags to apply to the URL",
+            "examples": [["python", "web"]],
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "type": "array"
+          }
+        },
+        "required": ["tagStrings"],
+        "type": "object"
+      },
+      "UrlTagsModifiedResponseSchema": {
+        "properties": {
+          "utubUrlTagIDs": {
+            "description": "Full updated list of tag IDs on the URL",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "appliedTags": {
+            "description": "Tags newly applied in this batch, with refreshed UTub-wide counts",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["utubUrlTagIDs", "appliedTags"],
+        "type": "object"
       },
       "UtubTagAddedToUtubResponseSchema": {
         "properties": {

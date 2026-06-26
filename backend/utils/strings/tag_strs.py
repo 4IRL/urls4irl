@@ -5,6 +5,7 @@ from backend.utils.strings.utub_strs import UTUB_GENERAL
 
 # Strings for tags success
 TAG_ADDED_TO_URL = "Tag added to this URL."
+TAGS_ADDED_TO_URL = "Tags added to this URL."
 TAG_ADDED_TO_UTUB = "Tag added to this UTub."
 TAG_REMOVED_FROM_URL = "Tag removed from this URL."
 TAG_REMOVED_FROM_UTUB = "Tag removed from UTub and associated URLs."
@@ -19,9 +20,22 @@ DELETE_UTUB_TAG_WARNING = (
 )
 TAG_FILTER_NO_RESULTS = "No URLs match selected tags"
 
+# Combobox (multi-tag apply) strings — read dynamically by production TypeScript
+# via APP_CONFIG.strings, so they go through the full APP_CONFIG bridge
+# (constants.STRINGS + generate_strings_js() + frontend/test-setup.ts mock).
+ADD_TAGS_PLACEHOLDER = "Type to search or create tags…"
+ADD_TAGS_SUBMIT = "Add tags"
+TAG_CREATE_NEW = "Create tag"
+TAGS_LIMIT_REACHED = "Maximum {max} tags reached — remove a tag to add more"
+TAGS_NO_MATCHES = "No matching tags"
+TAGS_MATCH_COUNT = "{n} matches"
+TAGS_MATCH_COUNT_ONE = "1 match"
+TAGS_EMPTY_HINT = "No tags yet — type to create one"
+
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL
+    TAGS_ADDED_TO_URL = TAGS_ADDED_TO_URL
     TAG_ADDED_TO_UTUB = TAG_ADDED_TO_UTUB
     TAG_REMOVED_FROM_URL = TAG_REMOVED_FROM_URL
     TAG_REMOVED_FROM_UTUB = TAG_REMOVED_FROM_UTUB

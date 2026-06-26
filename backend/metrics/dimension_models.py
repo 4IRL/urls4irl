@@ -10,6 +10,7 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
+from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 # ---------------------------------------------------------------------------
@@ -307,6 +308,18 @@ class _DimApiMetricsIngestBatch(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+# All domain events with only device_type auto-injection use `_DimDeviceOnly`;
+# domain events with closed-set non-device_type dims use a dedicated BaseModel
+# (e.g. `_DimTagsAppliedBatch`, `_DimCrossUtubSearchPerformed`).
+class _DimTagsAppliedBatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Closed set sourced from the same `TAGS_BATCH_SIZE_BUCKETS` constant fed to
+    # the registry, so the audit set-compare between this Literal and the
+    # registry tuple can never drift.
+    batch_size_bucket: Literal[TAGS_BATCH_SIZE_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimCrossUtubSearchPerformed(BaseModel):
     model_config = ConfigDict(extra="forbid")
     has_results: Literal["true", "false"]
@@ -363,6 +376,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.REGISTER_REJECTED: _DimRegisterRejected,
     EventName.REGISTER_SUCCESS: _DimDeviceOnly,
     EventName.TAG_APPLIED: _DimDeviceOnly,
+    EventName.TAGS_APPLIED_BATCH: _DimTagsAppliedBatch,
     EventName.TAG_DELETED: _DimDeviceOnly,
     EventName.TAG_REMOVED: _DimDeviceOnly,
     EventName.URL_ACCESSED: _DimDeviceOnly,

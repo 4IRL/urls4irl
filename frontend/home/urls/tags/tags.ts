@@ -1,17 +1,7 @@
 import type { UtubTag } from "../../../types/url.js";
 
 import { $ } from "../../../lib/globals.js";
-import { KEYS } from "../../../lib/constants.js";
-import { emit } from "../../../lib/metrics-client.js";
-import { clearOpenForm } from "../../../lib/modal-tracking.js";
-import { UI_EVENTS } from "../../../types/metrics-events.js";
-import { createURLTag, hideAndResetCreateURLTagForm } from "./create.js";
 import { deleteURLTag } from "./delete.js";
-import {
-  FORM_CANCEL_TRIGGER,
-  FORM_SUBMIT_TRIGGER,
-  HOME_FORM,
-} from "../../../types/metrics-dim-values.js";
 
 /**
  * Hide tag deletion button when needed
@@ -60,48 +50,6 @@ export function createTagBadgesAndWrap(
   }
 
   return tagBadgesWrap;
-}
-
-export function setFocusEventListenersOnCreateURLTagInput(
-  urlTagInput: JQuery,
-  urlCard: JQuery,
-  utubID: number,
-): void {
-  urlTagInput.offAndOn("focus.createURLTagFocus", function () {
-    $(document).offAndOn(
-      "keyup.createURLTagFocus",
-      function (keyupEvent: JQuery.TriggeredEvent) {
-        switch (keyupEvent.key) {
-          case KEYS.ENTER:
-            // Handle enter key pressed
-            emit({
-              event: UI_EVENTS.UI_FORM_SUBMIT,
-              form: HOME_FORM.TAG_CREATE,
-              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
-            });
-            clearOpenForm();
-            createURLTag(urlTagInput, urlCard, utubID);
-            break;
-          case KEYS.ESCAPE:
-            // Handle escape key pressed
-            emit({
-              event: UI_EVENTS.UI_FORM_CANCEL,
-              form: HOME_FORM.TAG_CREATE,
-              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
-            });
-            clearOpenForm();
-            hideAndResetCreateURLTagForm(urlCard);
-            break;
-          default:
-          /* no-op */
-        }
-      },
-    );
-  });
-
-  urlTagInput.offAndOn("blur.createURLTagFocus", function () {
-    $(document).off("keyup.createURLTagFocus");
-  });
 }
 
 /**

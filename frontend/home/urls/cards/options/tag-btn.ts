@@ -1,6 +1,6 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
-import { showCreateURLTagForm } from "../../tags/create.js";
+import { showTagCombobox } from "../../tags/combobox.js";
 
 export function createAddTagIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "24px";
@@ -59,7 +59,7 @@ export function createAddTagBtn(urlCard: JQuery): JQuery<HTMLElement> {
     })
     .disableTab()
     .onExact("click", function () {
-      showCreateURLTagForm(urlCard, urlTagBtnCreate);
+      showTagCombobox({ urlCard, urlTagBtnCreate });
     })
     .append(createAddTagIcon());
 

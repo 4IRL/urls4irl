@@ -81,3 +81,14 @@ class UrlTagModifiedResponseSchema(BaseSchema):
         alias=TAG_COUNTS_MODIFIED,
         description="New count of URLs this tag is applied to after modification",
     )
+
+
+class UrlTagsModifiedResponseSchema(BaseSchema):
+    utub_url_tag_ids: list[int] = Field(
+        alias=M.URL_TAG_IDS,
+        description="Full updated list of tag IDs on the URL",
+    )
+    applied_tags: list[UtubTagSchema] = Field(
+        alias=M.APPLIED_TAGS,
+        description="Tags newly applied in this batch, with refreshed UTub-wide counts",
+    )

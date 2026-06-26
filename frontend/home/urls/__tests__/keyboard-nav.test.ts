@@ -9,8 +9,8 @@ vi.mock("../cards/update-title.js", () => ({
 vi.mock("../cards/update-string.js", () => ({
   hideAndResetUpdateURLStringForm: vi.fn(),
 }));
-vi.mock("../tags/create.js", () => ({
-  hideAndResetCreateURLTagForm: vi.fn(),
+vi.mock("../tags/combobox.js", () => ({
+  hideAndResetTagCombobox: vi.fn(),
 }));
 vi.mock("../cards/cards.js", () => ({
   setFocusEventListenersOnURLCard: vi.fn(),

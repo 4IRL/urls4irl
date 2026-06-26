@@ -467,6 +467,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/utubs/{utub_id}/urls/{utub_url_id}/tags/batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Apply multiple tags to a URL in a UTub */
+    post: operations["createUtubUrlTags"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/utubs/{utub_id}/urls/{utub_url_id}/tags/{utub_tag_id}": {
     parameters: {
       query?: never;
@@ -1554,6 +1571,22 @@ export interface components {
      * @enum {integer}
      */
     URLTagErrorCodes: 1 | 2;
+    AddTagsRequest: {
+      /**
+       * @description Tags to apply to the URL
+       * @example [
+       *       "python",
+       *       "web"
+       *     ]
+       */
+      tagStrings: string[];
+    };
+    UrlTagsModifiedResponseSchema: {
+      /** @description Full updated list of tag IDs on the URL */
+      utubUrlTagIDs: number[];
+      /** @description Tags newly applied in this batch, with refreshed UTub-wide counts */
+      appliedTags: components["schemas"]["UtubTagSchema"][];
+    };
     UtubTagAddedToUtubResponseSchema: {
       /** @description Tag that was added to the UTub */
       utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
@@ -1859,6 +1892,7 @@ export interface operations {
           | "register_rejected"
           | "register_success"
           | "tag_applied"
+          | "tags_applied_batch"
           | "tag_deleted"
           | "tag_removed"
           | "url_accessed"
@@ -2068,6 +2102,7 @@ export interface operations {
           | "register_rejected"
           | "register_success"
           | "tag_applied"
+          | "tags_applied_batch"
           | "tag_deleted"
           | "tag_removed"
           | "url_accessed"
@@ -3242,6 +3277,52 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SuccessEnvelope"] &
             components["schemas"]["UrlTagModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  createUtubUrlTags: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddTagsRequest"];
+      };
+    };
+    responses: {
+      /** @description URL tags modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlTagsModifiedResponseSchema"];
         };
       };
       /** @description Bad request */

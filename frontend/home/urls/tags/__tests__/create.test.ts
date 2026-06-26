@@ -46,7 +46,6 @@ vi.mock("../../../tags/tags.js", () => ({
 }));
 
 vi.mock("../tags.js", () => ({
-  setFocusEventListenersOnCreateURLTagInput: vi.fn(),
   createTagBadgeInURL: vi.fn(),
   disableTagRemovalInURLCard: vi.fn(),
   enableTagRemovalInURLCard: vi.fn(),
