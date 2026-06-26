@@ -164,7 +164,7 @@ export function createTagComboboxBlock({
   const submitBtn = $(document.createElement("button"))
     .addClass("urlTagComboboxSubmitBtn")
     .attr({ type: "button" })
-    .text("Add tags");
+    .text(APP_CONFIG.strings.ADD_TAGS_SUBMIT);
 
   const footer = $(document.createElement("div"))
     .addClass("urlTagComboboxFooter")
