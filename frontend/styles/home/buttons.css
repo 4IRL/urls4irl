@@ -56,15 +56,21 @@
     flex-shrink: 0;
 }
 
+/* Center the SVG icon within every header action button on all pointers.
+   Without this, default inline-block buttons leave the icon on the text
+   baseline (descender gap below), skewing the title block upward on desktop. */
+.button-container button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
 @media (any-pointer: coarse) {
+    /* Touch devices keep the 44px tap-target minimum; desktop stays icon-sized. */
     .button-container button {
         min-width: 2.75rem;
         min-height: 2.75rem;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
     }
-
 }
 
 @media not all and (any-pointer: coarse) {

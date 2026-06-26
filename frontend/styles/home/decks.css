@@ -25,7 +25,7 @@
 
 /* Slim horizontal rule between consecutive LHS decks. */
 .deck + .deck {
-    border-top: 1px solid var(--borderColor);
+    border-top: 2px solid var(--borderColor);
 }
 
 /* Small muted total rendered inline INSIDE the deck title, e.g. "Members (5)".
