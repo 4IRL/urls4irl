@@ -59,7 +59,7 @@ export function createAddTagBtn(urlCard: JQuery): JQuery<HTMLElement> {
     })
     .disableTab()
     .onExact("click", function () {
-      showTagCombobox(urlCard, urlTagBtnCreate);
+      showTagCombobox({ urlCard, urlTagBtnCreate });
     })
     .append(createAddTagIcon());
 

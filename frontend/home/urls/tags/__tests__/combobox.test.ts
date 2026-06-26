@@ -85,7 +85,7 @@ function setTags(
 function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
-  const block = createTagComboboxBlock(urlCard, 1, 1);
+  const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
   urlCard.find(".tagsAndTagCreateWrap").append(block);
   // Reveal so input events behave consistently.
   urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
@@ -206,7 +206,7 @@ describe("combobox — at-cap", () => {
       (_, i) => i + 1,
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
-    const block = createTagComboboxBlock(urlCard, 1, 1);
+    const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
     urlCard.find(".tagsAndTagCreateWrap").append(block);
     urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
 
@@ -229,11 +229,14 @@ describe("combobox — at-cap", () => {
       (_, index) => index + 1,
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
-    const block = createTagComboboxBlock(urlCard, 1, 1);
+    const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
     urlCard.find(".tagsAndTagCreateWrap").append(block);
 
     // Open the combobox without typing a single character.
-    showTagCombobox(urlCard, urlCard.find(".urlTagBtnCreate"));
+    showTagCombobox({
+      urlCard,
+      urlTagBtnCreate: urlCard.find(".urlTagBtnCreate"),
+    });
 
     expect(urlCard.find(".urlTagComboboxInput").prop("disabled")).toBe(true);
     const expectedMsg = APP_CONFIG.strings.TAGS_LIMIT_REACHED.replace(

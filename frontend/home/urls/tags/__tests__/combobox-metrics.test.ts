@@ -114,7 +114,7 @@ const URL_CARD_HTML = `
 function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
-  const block = createTagComboboxBlock(urlCard, 1, 1);
+  const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
   urlCard.find(".tagsAndTagCreateWrap").append(block);
   urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
   return urlCard;
@@ -143,7 +143,7 @@ describe("combobox metrics — UI_TAG_CREATE_OPEN", () => {
     const urlCard = mountCombobox();
     const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
 
-    showTagCombobox(urlCard, urlTagBtnCreate);
+    showTagCombobox({ urlCard, urlTagBtnCreate });
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_TAG_CREATE_OPEN,
@@ -191,7 +191,7 @@ describe("combobox metrics — UI_FORM_CANCEL", () => {
     const urlCard = mountCombobox();
     const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
 
-    showTagCombobox(urlCard, urlTagBtnCreate);
+    showTagCombobox({ urlCard, urlTagBtnCreate });
     urlCard.find(".urlTagCancelBigBtnCreate").trigger("click");
 
     expect(emit).toHaveBeenCalledWith({

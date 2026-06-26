@@ -30,13 +30,16 @@ describe("createAddTagBtn — opens the combobox on click", () => {
     vi.clearAllMocks();
   });
 
-  it("calls showTagCombobox once with (urlCard, button) when clicked", () => {
+  it("calls showTagCombobox once with { urlCard, urlTagBtnCreate } when clicked", () => {
     const urlCard = $('<div class="urlRow"></div>');
     const button = createAddTagBtn(urlCard);
 
     button.trigger("click");
 
     expect(showTagCombobox).toHaveBeenCalledTimes(1);
-    expect(showTagCombobox).toHaveBeenCalledWith(urlCard, button);
+    expect(showTagCombobox).toHaveBeenCalledWith({
+      urlCard,
+      urlTagBtnCreate: button,
+    });
   });
 });

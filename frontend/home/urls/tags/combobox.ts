@@ -117,11 +117,15 @@ function getAppliedTagIds(urlCard: JQuery): number[] {
  * `createTagInputBlock` is mounted at card-build time. The open-time lifecycle
  * lives in `showTagCombobox`.
  */
-export function createTagComboboxBlock(
-  urlCard: JQuery,
-  utubID: number,
-  utubUrlID: number,
-): JQuery<HTMLElement> {
+export function createTagComboboxBlock({
+  urlCard,
+  utubID,
+  utubUrlID,
+}: {
+  urlCard: JQuery;
+  utubID: number;
+  utubUrlID: number;
+}): JQuery<HTMLElement> {
   const listboxId = `${OPTION_ID_PREFIX}Listbox-${++comboboxIdCounter}`;
 
   const wrap = $(document.createElement("div")).addClass(
@@ -671,10 +675,13 @@ function closeDropdown(refs: ComboboxRefs): void {
  * `createTagComboboxBlock` to have already mounted the hidden wrap at card-build
  * time.
  */
-export function showTagCombobox(
-  urlCard: JQuery,
-  urlTagBtnCreate: JQuery,
-): void {
+export function showTagCombobox({
+  urlCard,
+  urlTagBtnCreate,
+}: {
+  urlCard: JQuery;
+  urlTagBtnCreate: JQuery;
+}): void {
   emit({ event: UI_EVENTS.UI_TAG_CREATE_OPEN, scope: TAG_SCOPE.URL });
   setOpenForm(HOME_FORM.TAG_CREATE);
 
@@ -749,7 +756,7 @@ export function hideAndResetTagCombobox(urlCard: JQuery): void {
     .removeClass("cancel urlTagCancelBigBtnCreate")
     .addClass("fourty-p-width")
     .offAndOnExact("click", function () {
-      showTagCombobox(urlCard, urlTagBtnCreate);
+      showTagCombobox({ urlCard, urlTagBtnCreate });
     })
     .text("")
     .append(createAddTagIcon());
