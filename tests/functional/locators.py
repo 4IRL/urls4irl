@@ -211,7 +211,7 @@ class HomePageLocators(GenericPageLocator):
     TAG_STAGED_CHIP = ".urlTagStagedChip"
     TAG_STAGED_CHIP_REMOVE = ".urlTagStagedChip button"
     BUTTON_TAGS_SUBMIT_BATCH = ".urlTagComboboxSubmitBtn"
-    BUTTON_TAGS_CANCEL_BATCH = ".urlTagComboboxCancelBtn"
+    BUTTON_TAGS_CANCEL_BATCH = BUTTON_BIG_TAG_CANCEL_CREATE
     TAG_COMBOBOX_MSG = ".urlTagComboboxMsg"
 
     INPUT_TAG_CREATE = INPUT_TAG_COMBOBOX

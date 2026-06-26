@@ -398,8 +398,6 @@ def test_create_tag_above_limit_blocks_staging(
     assert badge_count_before == TAG_CONSTANTS.MAX_URL_TAGS
 
     open_tag_combobox(browser, url_in_utub.id)
-    # Typing triggers the listbox render, which applies the limit-reached state.
-    type_in_tag_combobox(browser, "x")
 
     message_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_COMBOBOX_MSG}"
     message_elem = wait_then_get_element(browser, message_selector, time=3)

@@ -29,8 +29,12 @@ from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_s
 def open_tag_combobox(browser: WebDriver, url_id: int) -> None:
     """
     Opens the per-URL tag combobox by clicking the Add Tag button, then waits for
-    the combobox text input to be visible and focused before any keys are sent
-    (readiness wait, hardening the root cause of focus/send_keys races).
+    the combobox text input to be visible before any keys are sent (readiness
+    wait, hardening the root cause of focus/send_keys races).
+
+    When the URL is already at the tag cap, ``showTagCombobox`` disables the input
+    on open, and a disabled input can never become ``document.activeElement`` — so
+    the focus wait is skipped for the at-limit case rather than timing out.
     """
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_id}']"
 
@@ -39,7 +43,10 @@ def open_tag_combobox(browser: WebDriver, url_id: int) -> None:
 
     combobox_input_selector = f"{url_selector} {HPL.INPUT_TAG_COMBOBOX}"
     wait_until_visible_css_selector(browser, combobox_input_selector, timeout=3)
-    wait_until_in_focus(browser, combobox_input_selector, timeout=3)
+
+    combobox_input = browser.find_element(By.CSS_SELECTOR, combobox_input_selector)
+    if combobox_input.is_enabled():
+        wait_until_in_focus(browser, combobox_input_selector, timeout=3)
 
 
 def type_in_tag_combobox(browser: WebDriver, text: str) -> WebElement:
