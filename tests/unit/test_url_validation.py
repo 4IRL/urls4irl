@@ -335,7 +335,7 @@ URLS_WITH_DIFFERENT_PATH = {
     ],
 }
 
-# After Step 3, validate_url strips tracking params from http/https URLs. All
+# validate_url strips tracking params from http/https URLs at the final normalization stage. All
 # http/https keys in VALID_MOCK_URLS_FOR_NORMALIZE must remain tracking-param-free;
 # use URLS_WITH_TRACKING_PARAMS for stripping test cases.
 VALID_MOCK_URLS_FOR_VALIDATE = VALID_MOCK_URLS_FOR_NORMALIZE.keys()
