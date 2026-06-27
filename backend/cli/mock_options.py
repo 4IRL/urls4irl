@@ -214,8 +214,9 @@ def _add_tracking_seed_urls(db: SQLAlchemy):
 
     Inserts each tracking URL from ``MOCK_TRACKING_SEED_URL_PAIRS`` into UTub 1
     owned by user 1, with one tag each. These rows deliberately retain their
-    tracking query params (mock inserts skip the validator), so the Step 9 data
-    migration has rows to strip and collapse. Kept out of the default clean seed
+    tracking query params (mock inserts skip the validator), so the
+    strip_tracking_query_params migration (681906a2f237) has rows to strip and
+    collapse. Kept out of the default clean seed
     sets to avoid perturbing unrelated suites. Idempotent on
     ``Urls.url_string`` and the ``(utub, url)`` association. Requires an active
     Flask app context.
