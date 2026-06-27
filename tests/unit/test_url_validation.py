@@ -652,6 +652,12 @@ def test_is_tracking_param(param_name: str, expected: bool):
         ("https://x.com/p?UTM_SOURCE=g&q=1", "https://x.com/p?q=1"),
         ("https://x.com/p?utm_campaign=a&utm_medium=b", "https://x.com/p"),
         ("https://x.com/p?q=1&q=2&utm_source=g", "https://x.com/p?q=1&q=2"),
+        ("ftp://example.com/file?q=1", "ftp://example.com/file?q=1"),
+        ("ftp://example.com/file?utm_source=x", "ftp://example.com/file"),
+        (
+            "mailto:someone@example.com?subject=hi&utm_source=x",
+            "mailto:someone@example.com?subject=hi",
+        ),
     ],
 )
 def test_strip_tracking_params(href: str, expected: str):
