@@ -4508,13 +4508,24 @@
             "maxLength": 100,
             "minLength": 1,
             "type": "string"
+          },
+          "tagStrings": {
+            "description": "Optional tags to apply to the URL on creation",
+            "examples": [["python", "web"]],
+            "items": {
+              "maxLength": 30,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "type": "array"
           }
         },
         "required": ["urlString", "urlTitle"],
         "type": "object"
       },
       "UrlCreatedItemSchema": {
-        "description": "URL item shape for creation responses (same fields as UtubUrlDeleteSchema).",
+        "description": "URL item shape for creation responses (UtubUrlDeleteSchema fields + tag IDs).",
         "properties": {
           "utubUrlID": {
             "description": "Unique ID of the URL within the UTub",
@@ -4527,9 +4538,35 @@
           "urlTitle": {
             "description": "Display title for the URL",
             "type": "string"
+          },
+          "utubUrlTagIDs": {
+            "description": "Tag IDs applied to the URL on creation",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
           }
         },
         "required": ["utubUrlID", "urlString", "urlTitle"],
+        "type": "object"
+      },
+      "UtubTagSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique tag ID within the UTub",
+            "type": "integer"
+          },
+          "tagString": {
+            "description": "Tag label text",
+            "type": "string"
+          },
+          "tagApplied": {
+            "default": 0,
+            "description": "Number of URLs in the UTub this tag is applied to",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "tagString"],
         "type": "object"
       },
       "UrlCreatedResponseSchema": {
@@ -4545,6 +4582,13 @@
           "URL": {
             "$ref": "#/components/schemas/UrlCreatedItemSchema",
             "description": "URL item that was created"
+          },
+          "appliedTags": {
+            "description": "Tags applied to the URL on creation, with UTub-wide counts",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
           }
         },
         "required": ["utubID", "addedByUserID", "URL"],
@@ -4779,25 +4823,6 @@
         "enum": [1, 2],
         "x-enum-varnames": ["UNKNOWN_ERROR", "INVALID_FORM_INPUT"],
         "description": "Error codes for UTubErrorCodes"
-      },
-      "UtubTagSchema": {
-        "properties": {
-          "id": {
-            "description": "Unique tag ID within the UTub",
-            "type": "integer"
-          },
-          "tagString": {
-            "description": "Tag label text",
-            "type": "string"
-          },
-          "tagApplied": {
-            "default": 0,
-            "description": "Number of URLs in the UTub this tag is applied to",
-            "type": "integer"
-          }
-        },
-        "required": ["id", "tagString"],
-        "type": "object"
       },
       "UtubUrlSchema": {
         "properties": {

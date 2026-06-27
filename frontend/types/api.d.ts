@@ -1346,8 +1346,16 @@ export interface components {
       urlString: string;
       /** @description Display title for the URL */
       urlTitle: string;
+      /**
+       * @description Optional tags to apply to the URL on creation
+       * @example [
+       *       "python",
+       *       "web"
+       *     ]
+       */
+      tagStrings?: string[];
     };
-    /** @description URL item shape for creation responses (same fields as UtubUrlDeleteSchema). */
+    /** @description URL item shape for creation responses (UtubUrlDeleteSchema fields + tag IDs). */
     UrlCreatedItemSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -1355,6 +1363,19 @@ export interface components {
       urlString: string;
       /** @description Display title for the URL */
       urlTitle: string;
+      /** @description Tag IDs applied to the URL on creation */
+      utubUrlTagIDs?: number[];
+    };
+    UtubTagSchema: {
+      /** @description Unique tag ID within the UTub */
+      id: number;
+      /** @description Tag label text */
+      tagString: string;
+      /**
+       * @description Number of URLs in the UTub this tag is applied to
+       * @default 0
+       */
+      tagApplied: number;
     };
     UrlCreatedResponseSchema: {
       /** @description ID of the UTub the URL was added to */
@@ -1363,6 +1384,8 @@ export interface components {
       addedByUserID: number;
       /** @description URL item that was created */
       URL: components["schemas"]["UrlCreatedItemSchema"];
+      /** @description Tags applied to the URL on creation, with UTub-wide counts */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
     };
     ErrorResponse_URLErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["URLErrorCodes"];
@@ -1454,17 +1477,6 @@ export interface components {
      * @enum {integer}
      */
     UTubErrorCodes: 1 | 2;
-    UtubTagSchema: {
-      /** @description Unique tag ID within the UTub */
-      id: number;
-      /** @description Tag label text */
-      tagString: string;
-      /**
-       * @description Number of URLs in the UTub this tag is applied to
-       * @default 0
-       */
-      tagApplied: number;
-    };
     UtubUrlSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
