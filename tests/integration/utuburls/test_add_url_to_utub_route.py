@@ -6,14 +6,18 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.extensions.url_validation.url_validator import InvalidURLError
 from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
+from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
@@ -30,6 +34,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
     REJECTION_REASON_DIM_KEY,
+    sum_counter_values,
 )
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
@@ -175,6 +180,337 @@ def test_add_url_to_utub_records_metric(
 
     assert add_url_response.status_code == 200
     assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 1
+    url_added_counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_ADDED_TO_UTUB
+    )
+    assert parse_dims(url_added_counter_keys[0])["tag_count_bucket"] == "0"
+
+
+TAG_STRINGS_FIELD = "tagStrings"
+
+
+def _member_utub_and_fresh_url() -> tuple[int, str, str]:
+    """Returns (utub_id, url_string, url_title) for a URL not yet in a member UTub."""
+    current_utub_member_of: Utubs = Utubs.query.filter(
+        Utubs.utub_creator != current_user.id
+    ).first()
+    url_to_add: Urls = Urls.query.first()
+    url_string_to_add = url_to_add.url_string
+    return (
+        current_utub_member_of.id,
+        url_string_to_add,
+        f"This is {url_string_to_add}",
+    )
+
+
+def test_add_url_with_zero_tags_returns_empty_applied_tags(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub
+    WHEN they POST a valid URL with an empty tagStrings list
+    THEN the response is 200 with appliedTags == [] and a URL_ADDED_TO_UTUB
+        metric carrying tag_count_bucket == "0".
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+        initial_utub_url_tags = Utub_Url_Tags.query.count()
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: [],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    add_url_json_response = add_url_response.json
+    assert add_url_json_response[MODEL_STRS.APPLIED_TAGS] == []
+    assert add_url_json_response[MODEL_STRS.URL][MODEL_STRS.URL_TAG_IDS] == []
+
+    url_added_counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_ADDED_TO_UTUB
+    )
+    assert parse_dims(url_added_counter_keys[0])["tag_count_bucket"] == "0"
+
+    with app.app_context():
+        assert Utub_Url_Tags.query.count() == initial_utub_url_tags
+
+
+def test_add_url_with_two_new_tags_creates_vocab_and_associations(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub
+    WHEN they POST a valid URL with two brand-new tag strings
+    THEN the response is 200, two new Utub_Tags vocab rows and two Utub_Url_Tags
+        association rows exist, appliedTags has length 2, the URL_ADDED_TO_UTUB
+        metric carries tag_count_bucket == "2-5", and TAG_APPLIED was emitted twice.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    fresh_tags = ["brandnewtagalpha", "brandnewtagbeta"]
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+        initial_vocab_count = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id_to_add_to
+        ).count()
+        initial_assoc_count = Utub_Url_Tags.query.count()
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: fresh_tags,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    add_url_json_response = add_url_response.json
+    applied_tags = add_url_json_response[MODEL_STRS.APPLIED_TAGS]
+    assert len(applied_tags) == 2
+    assert {tag[MODEL_STRS.TAG_STRING] for tag in applied_tags} == set(fresh_tags)
+    assert len(add_url_json_response[MODEL_STRS.URL][MODEL_STRS.URL_TAG_IDS]) == 2
+
+    url_added_counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_ADDED_TO_UTUB
+    )
+    assert parse_dims(url_added_counter_keys[0])["tag_count_bucket"] == "2-5"
+    assert sum_counter_values(provide_metrics_redis, EventName.TAG_APPLIED) == 2
+
+    with app.app_context():
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_add_to).count()
+            == initial_vocab_count + 2
+        )
+        assert Utub_Url_Tags.query.count() == initial_assoc_count + 2
+
+
+def test_add_url_with_existing_vocab_tags_creates_no_new_vocab(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub that already has a tag in its vocabulary
+    WHEN they POST a valid URL with that existing tag string
+    THEN the tag is applied to the new URL without creating a new vocab row.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    existing_tag_string = "reusedexistingtag"
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        utub_id_to_add_to = current_utub_member_of.id
+        existing_tag = Utub_Tags(
+            utub_id=utub_id_to_add_to,
+            tag_string=existing_tag_string,
+            created_by=current_user.id,
+        )
+        db.session.add(existing_tag)
+        db.session.commit()
+        existing_tag_id = existing_tag.id
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        url_title_to_add = f"This is {url_string_to_add}"
+        initial_vocab_count = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id_to_add_to
+        ).count()
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: [existing_tag_string],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    applied_tags = add_url_response.json[MODEL_STRS.APPLIED_TAGS]
+    assert len(applied_tags) == 1
+    assert applied_tags[0][MODEL_STRS.TAG_STRING] == existing_tag_string
+
+    with app.app_context():
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_add_to).count()
+            == initial_vocab_count
+        )
+        applied_tag_id = applied_tags[0]["id"]
+        assert applied_tag_id == existing_tag_id
+
+
+def test_add_url_with_mix_of_new_and_existing_tags(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub that already has one tag in its vocabulary
+    WHEN they POST a valid URL with that existing tag plus a brand-new tag
+    THEN both tags are applied and exactly one new vocab row is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    existing_tag_string = "mixexistingtag"
+    fresh_tag_string = "mixfreshtag"
+
+    with app.app_context():
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        utub_id_to_add_to = current_utub_member_of.id
+        existing_tag = Utub_Tags(
+            utub_id=utub_id_to_add_to,
+            tag_string=existing_tag_string,
+            created_by=current_user.id,
+        )
+        db.session.add(existing_tag)
+        db.session.commit()
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        url_title_to_add = f"This is {url_string_to_add}"
+        initial_vocab_count = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id_to_add_to
+        ).count()
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: [existing_tag_string, fresh_tag_string],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    applied_tags = add_url_response.json[MODEL_STRS.APPLIED_TAGS]
+    assert len(applied_tags) == 2
+    assert {tag[MODEL_STRS.TAG_STRING] for tag in applied_tags} == {
+        existing_tag_string,
+        fresh_tag_string,
+    }
+
+    with app.app_context():
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == utub_id_to_add_to).count()
+            == initial_vocab_count + 1
+        )
+
+
+def test_add_url_with_tags_mid_apply_exception_leaves_zero_rows(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub
+    WHEN _add_url_tag raises mid-apply while creating the URL with tags
+    THEN zero Utub_Urls rows AND zero Utub_Url_Tags rows land for that URL —
+        the URL and its tags commit together or not at all.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+        initial_utub_urls = Utub_Urls.query.count()
+        initial_utub_url_tags = Utub_Url_Tags.query.count()
+
+    call_count = {"value": 0}
+
+    def failing_add_url_tag(utub_url: Utub_Urls, utub_tag: Utub_Tags) -> Utub_Url_Tags:
+        call_count["value"] += 1
+        if call_count["value"] == 2:
+            raise RuntimeError("simulated mid-apply failure")
+        new_association = Utub_Url_Tags(
+            utub_id=utub_url.utub_id,
+            utub_url_id=utub_url.id,
+            utub_tag_id=utub_tag.id,
+        )
+        db.session.add(new_association)
+        return new_association
+
+    with mock.patch(
+        "backend.tags.services.create_url_tag._add_url_tag",
+        side_effect=failing_add_url_tag,
+    ):
+        with pytest.raises(RuntimeError, match="simulated mid-apply failure"):
+            client.post(
+                url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+                json={
+                    URL_FORM.URL_STRING: url_string_to_add,
+                    URL_FORM.URL_TITLE: url_title_to_add,
+                    TAG_STRINGS_FIELD: ["rollbacktaga", "rollbacktagb"],
+                },
+                headers={"X-CSRFToken": csrf_token},
+            )
+
+    with app.app_context():
+        assert Utub_Urls.query.count() == initial_utub_urls
+        assert Utub_Url_Tags.query.count() == initial_utub_url_tags
+
+
+def test_add_url_with_too_many_tags_rejected_by_schema(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in member of a UTub
+    WHEN they POST a valid URL with more than MAX_URL_TAGS tag strings
+    THEN the schema rejects the request with 400 and zero rows are written.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    too_many_tags = [
+        f"limittag{index}" for index in range(TAG_CONSTANTS.MAX_URL_TAGS + 1)
+    ]
+
+    with app.app_context():
+        utub_id_to_add_to, url_string_to_add, url_title_to_add = (
+            _member_utub_and_fresh_url()
+        )
+        initial_utub_urls = Utub_Urls.query.count()
+        initial_utub_url_tags = Utub_Url_Tags.query.count()
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+            TAG_STRINGS_FIELD: too_many_tags,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 400
+
+    with app.app_context():
+        assert Utub_Urls.query.count() == initial_utub_urls
+        assert Utub_Url_Tags.query.count() == initial_utub_url_tags
 
 
 @mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")

@@ -23,7 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from backend.metrics.events import EventCategory, EventName
-from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS
+from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS, URL_TAG_COUNT_BUCKETS
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 
@@ -124,6 +124,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.URL_ADDED_TO_UTUB: EventRegistryEntry(
         description="URL associated with a UTub (new or existing URL row)",
         category=EventCategory.DOMAIN,
+        dimensions={"tag_count_bucket": URL_TAG_COUNT_BUCKETS},
     ),
     EventName.URL_CREATE_REJECTED: EventRegistryEntry(
         description=(

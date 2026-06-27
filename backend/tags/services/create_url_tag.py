@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from flask_login import current_user
 from sqlalchemy import func
 
@@ -26,6 +28,20 @@ from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 
+@dataclass
+class TagApplyResult:
+    """Outcome of a non-committing tag-apply core run.
+
+    Cross-module data model shared between the batch-tag wrapper and the
+    create-URL service. `over_limit` signals that applying the requested tags
+    would exceed the per-URL tag limit (no rows were staged); `to_apply` holds
+    the freshly-staged tags that callers should treat as newly applied.
+    """
+
+    over_limit: bool
+    to_apply: list[Utub_Tags]
+
+
 def add_tag_to_url_if_valid(
     tag_string: str, utub: Utubs, utub_url: Utub_Urls
 ) -> FlaskResponse:
@@ -48,7 +64,7 @@ def add_tag_to_url_if_valid(
     tag_to_add = tag_string.strip()
 
     if _url_is_at_url_tag_limit(utub, utub_url):
-        return _build_url_at_tag_limit_response(utub_url)
+        return build_url_at_tag_limit_response(utub_url.id)
 
     utub_tag = _get_or_create_utub_tag(tag_to_add, utub)
 
@@ -87,15 +103,16 @@ def add_tag_to_url_if_valid(
     ).to_response()
 
 
-def add_batch_tags_to_existing_url(
+def apply_tags_core(
     tag_strings: list[str], utub: Utubs, utub_url: Utub_Urls
-) -> FlaskResponse:
+) -> TagApplyResult:
     """
-    Applies a batch of tags to a URL atomically — either every net-new tag is
-    applied or none are. Tags already on the URL (or duplicated within the
-    payload) are silently de-duplicated and skipped. If applying the net-new
-    tags would push the URL past the per-URL tag limit, the whole batch is
-    rejected and zero rows are written.
+    Non-committing core of the tag-apply flow, shared by the batch-tag wrapper
+    and the create-URL service. Performs service-side exact-string de-dup, a
+    read-only limit pre-check, and flush-only vocabulary creation + association
+    writes — but never commits, rolls back, bumps `set_last_updated()`, emits a
+    metric, or builds a FlaskResponse. Each caller owns its own commit,
+    rollback, last-updated bump, and response.
 
     Args:
         tag_strings (list[str]): The tag strings to apply to the URL
@@ -103,11 +120,12 @@ def add_batch_tags_to_existing_url(
         utub_url (Utub_Urls): The URL having tags applied to it
 
     Returns:
-        tuple[Response, int]:
-        - Response: JSON response with success or error details.
-        - int: HTTP status code
-            200 (success — including the all-already-applied no-op case)
-            400 (applying the batch would exceed the per-URL tag limit)
+        TagApplyResult:
+        - over_limit (bool): True if applying the net-new tags would exceed the
+          per-URL tag limit. When True, no rows were staged.
+        - to_apply (list[Utub_Tags]): The freshly-staged tags the caller should
+          treat as newly applied (empty when every requested tag was already on
+          the URL).
     """
     # Service-side de-dup (exact string / case-sensitive), preserving first-seen
     # order so the service can be called directly in tests without routing
@@ -119,9 +137,9 @@ def add_batch_tags_to_existing_url(
         if not (tag_string in seen or seen.add(tag_string))
     ]
 
-    # Pass 1 — read-only limit pre-check. No DB writes occur here, so a
-    # rejection guarantees zero vocabulary (Utub_Tags) and zero association
-    # (Utub_Url_Tags) rows are written.
+    # Pass 1 — read-only limit pre-check. No DB writes occur here, so an
+    # over-limit signal guarantees zero vocabulary (Utub_Tags) and zero
+    # association (Utub_Url_Tags) rows are written.
     already_present_ids = set(utub_url.associated_tag_ids)
     existing_vocab_ids_by_string: dict[str, int] = {
         tag.tag_string: tag.id
@@ -135,48 +153,86 @@ def add_batch_tags_to_existing_url(
             net_new_count += 1
 
     if len(already_present_ids) + net_new_count > TAG_CONSTANTS.MAX_URL_TAGS:
-        return _build_url_at_tag_limit_response(utub_url)
+        return TagApplyResult(over_limit=True, to_apply=[])
 
-    # Pass 2 — vocabulary creation (flush-only) + association writes. All writes
-    # land in a single final commit so the batch is all-or-nothing. The explicit
-    # rollback guarantees that a mid-batch exception discards both the flushed
-    # vocabulary rows and any association writes, rather than relying on the
-    # request-teardown rollback (which the test harness's SAVEPOINT does not
-    # trigger on a propagated exception).
+    # Pass 2 — vocabulary creation (flush-only) + association writes. The core
+    # does not commit; the caller flushes these writes into its own single final
+    # commit so the batch (and, in the create-URL flow, the URL row too) is
+    # all-or-nothing.
+    staged_tags: list[Utub_Tags] = []
+    for tag_string in deduped_strings:
+        tag_to_add = tag_string.strip()
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub.id, Utub_Tags.tag_string == tag_to_add
+        ).first()
+        if not utub_tag:
+            utub_tag = Utub_Tags(
+                utub_id=utub.id, tag_string=tag_to_add, created_by=current_user.id
+            )
+            db.session.add(utub_tag)
+            # flush assigns a DB-generated id without committing, keeping all
+            # Pass 2 writes inside the caller's single final commit.
+            db.session.flush()
+        staged_tags.append(utub_tag)
+
+    to_apply = [tag for tag in staged_tags if tag.id not in already_present_ids]
+
+    for utub_tag in to_apply:
+        _add_url_tag(utub_url, utub_tag)
+
+    return TagApplyResult(over_limit=False, to_apply=to_apply)
+
+
+def add_batch_tags_to_existing_url(
+    tag_strings: list[str], utub: Utubs, utub_url: Utub_Urls
+) -> FlaskResponse:
+    """
+    Applies a batch of tags to a URL atomically — either every net-new tag is
+    applied or none are. Tags already on the URL (or duplicated within the
+    payload) are silently de-duplicated and skipped. If applying the net-new
+    tags would push the URL past the per-URL tag limit, the whole batch is
+    rejected and zero rows are written.
+
+    Thin committing wrapper around `apply_tags_core`: the core stages the
+    flush-only writes; this wrapper owns the single final commit, the explicit
+    rollback-on-exception guard, and its own `set_last_updated()` bump.
+
+    Args:
+        tag_strings (list[str]): The tag strings to apply to the URL
+        utub (Utubs): The UTub containing the URL and tags
+        utub_url (Utub_Urls): The URL having tags applied to it
+
+    Returns:
+        tuple[Response, int]:
+        - Response: JSON response with success or error details.
+        - int: HTTP status code
+            200 (success — including the all-already-applied no-op case)
+            400 (applying the batch would exceed the per-URL tag limit)
+    """
+    # The explicit rollback guarantees that a mid-batch exception discards both
+    # the flushed vocabulary rows and any association writes, rather than relying
+    # on the request-teardown rollback (which the test harness's SAVEPOINT does
+    # not trigger on a propagated exception).
     try:
-        staged_tags: list[Utub_Tags] = []
-        for tag_string in deduped_strings:
-            tag_to_add = tag_string.strip()
-            utub_tag: Utub_Tags = Utub_Tags.query.filter(
-                Utub_Tags.utub_id == utub.id, Utub_Tags.tag_string == tag_to_add
-            ).first()
-            if not utub_tag:
-                utub_tag = Utub_Tags(
-                    utub_id=utub.id, tag_string=tag_to_add, created_by=current_user.id
-                )
-                db.session.add(utub_tag)
-                # flush assigns a DB-generated id without committing, keeping all
-                # Pass 2 writes inside the single final commit below.
-                db.session.flush()
-            staged_tags.append(utub_tag)
+        result = apply_tags_core(tag_strings, utub, utub_url)
+        if result.over_limit:
+            return build_url_at_tag_limit_response(utub_url.id)
 
-        to_apply = [tag for tag in staged_tags if tag.id not in already_present_ids]
-
-        for utub_tag in to_apply:
-            _add_url_tag(utub_url, utub_tag)
-
-        if to_apply:
+        if result.to_apply:
             # Only bump the UTub modification time when at least one new tag is
-            # actually applied; an all-already-applied batch is a no-op.
+            # actually applied; an all-already-applied batch is a no-op. Each
+            # caller owns its own last-updated bump.
             utub.set_last_updated()
         db.session.commit()
     except Exception as exc:
         db.session.rollback()
         warning_log(
             f"Batch tag-apply failed | UTub.id={utub.id} | UTubURL.id={utub_url.id} "
-            f"| RequestedCount={len(deduped_strings)} | error_type={type(exc).__name__}"
+            f"| RequestedCount={len(tag_strings)} | error_type={type(exc).__name__}"
         )
         raise
+
+    to_apply = result.to_apply
 
     if not to_apply:
         # Every requested tag was already on the URL — no rows written, no
@@ -206,19 +262,7 @@ def add_batch_tags_to_existing_url(
         dimensions={"batch_size_bucket": bucket_tags_batch_size(len(to_apply))},
     )
 
-    # Single bulk count query (avoids N+1 per applied tag).
-    count_rows = (
-        db.session.query(
-            Utub_Url_Tags.utub_tag_id, func.count(Utub_Url_Tags.utub_tag_id)
-        )
-        .filter(
-            Utub_Url_Tags.utub_id == utub.id,
-            Utub_Url_Tags.utub_tag_id.in_([tag.id for tag in to_apply]),
-        )
-        .group_by(Utub_Url_Tags.utub_tag_id)
-        .all()
-    )
-    tag_counts: dict[int, int] = {tag_id: count for tag_id, count in count_rows}
+    tag_counts = get_tag_applied_counts(utub.id, [tag.id for tag in to_apply])
 
     applied_tags = [
         UtubTagSchema(
@@ -256,12 +300,14 @@ def _url_is_at_url_tag_limit(utub: Utubs, utub_url: Utub_Urls) -> bool:
     return len(tags_already_on_this_url) >= TAG_CONSTANTS.MAX_URL_TAGS
 
 
-def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
+def build_url_at_tag_limit_response(utub_url_id: int) -> FlaskResponse:
     """
         Builds JSON response for when a URL is at the tag limit
 
         Args:
-            utub_url (Utub_Urls): The URL at the tag limit
+            utub_url_id (int): The id of the URL at the tag limit. Accepts a plain
+                int (not the ORM object) so callers can pass an id captured before
+                a rollback, avoiding detached-instance attribute access.
 
     Returns:
             tuple[Response, int]:
@@ -269,7 +315,7 @@ def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
             - int: HTTP status code 400
     """
     warning_log(
-        f"User={current_user.id} tried adding tag to UTubURL.id={utub_url.id} but tag limited"
+        f"User={current_user.id} tried adding tag to UTubURL.id={utub_url_id} but tag limited"
     )
     return build_message_error_response(
         message=TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(
@@ -375,3 +421,41 @@ def get_count_of_url_tag_in_utub(utub_tag: Utub_Tags) -> int:
         Utub_Url_Tags.utub_id == utub_tag.utub_id,
         Utub_Url_Tags.utub_tag_id == utub_tag.id,
     ).count()
+
+
+def get_tag_applied_counts(utub_id: int, tag_ids: list[int]) -> dict[int, int]:
+    """
+    Counts, per tag, how many URLs in a UTub the tag is applied to, in a single
+    bulk query (avoids an N+1 of per-tag count queries).
+
+    Args:
+        utub_id (int): The UTub whose tag applications are being counted
+        tag_ids (list[int]): The tag ids to count applications for
+
+    Returns:
+        dict[int, int]: A mapping of tag id to its UTub-wide applied count. Tag
+        ids with zero applications are absent from the mapping.
+
+    Examples:
+        >>> get_tag_applied_counts(utub_id=1, tag_ids=[])
+        {}
+        >>> get_tag_applied_counts(utub_id=1, tag_ids=[7])
+        {7: 3}
+        >>> get_tag_applied_counts(utub_id=1, tag_ids=[7, 9])
+        {7: 3, 9: 1}
+    """
+    if not tag_ids:
+        return {}
+
+    count_rows = (
+        db.session.query(
+            Utub_Url_Tags.utub_tag_id, func.count(Utub_Url_Tags.utub_tag_id)
+        )
+        .filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_tag_id.in_(tag_ids),
+        )
+        .group_by(Utub_Url_Tags.utub_tag_id)
+        .all()
+    )
+    return {tag_id: count for tag_id, count in count_rows}

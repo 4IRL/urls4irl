@@ -322,6 +322,32 @@ def add_tag_to_utub_user_created(
         return Utub_Tags.query.filter(Utub_Tags.tag_string == tag_string).first()
 
 
+def add_tag_to_single_url_in_utub(
+    app: Flask, utub_id: int, user_id: int, tag_string: str
+) -> Utub_Tags:
+    """
+    Creates a tag in the UTub and applies it to one existing URL so the tag
+    appears as a filterable entry in the tag deck. Returns the created tag.
+    """
+    with app.app_context():
+        new_tag = Utub_Tags(utub_id=utub_id, tag_string=tag_string, created_by=user_id)
+        db.session.add(new_tag)
+        db.session.flush()
+
+        existing_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).first()
+        url_tag = Utub_Url_Tags(
+            utub_id=utub_id, utub_url_id=existing_url.id, utub_tag_id=new_tag.id
+        )
+        db.session.add(url_tag)
+        db.session.commit()
+
+        return Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id, Utub_Tags.tag_string == tag_string
+        ).first()
+
+
 def add_two_tags_across_urls_in_utub(
     app: Flask, utub_id: int, first_tag_id: int, second_tag_id: int
 ) -> Tuple[int, int, int]:

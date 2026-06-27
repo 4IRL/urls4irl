@@ -9,7 +9,9 @@ export type UrlTagError = Schema<"ErrorResponse_URLTagErrorCodes">;
 /**
  * Returns the UTub tags whose label matches the query (case-insensitive
  * substring), excluding any tag already applied to the URL or already staged
- * as a chip.
+ * as a chip. An empty or whitespace-only query yields no suggestions (filter-
+ * only behavior): the user must type at least one non-whitespace character
+ * before any tags are surfaced.
  */
 export function filterTagSuggestions({
   query,
@@ -21,6 +23,8 @@ export function filterTagSuggestions({
   stagedTagStrings: string[];
 }): UtubTag[] {
   const normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.length === 0) return [];
+
   const appliedIdSet = new Set(appliedTagIds);
   const stagedSet = new Set(
     stagedTagStrings.map((stagedString) => stagedString.toLowerCase()),

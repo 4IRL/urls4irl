@@ -6,7 +6,7 @@
 
 When a plan instructs inserting code into an existing function, read the full function body — not just the lines the plan cites. This surfaces: (a) existing imports the new code depends on, (b) established defensive patterns already in use nearby, (c) variable names or parameter types the new code must match.
 
-**Replacement code block diff (required):** When a plan provides a code block that is a *replacement specification* for an existing function (not an insertion), read the full source function and perform a line-by-line diff against the plan's code block. Check specifically for:
+**Grounding Rule — replacement code block diff (required, canonical checklist):** When a plan provides a code block that is a *replacement specification* for an existing function (not an insertion), read the full source function and perform a line-by-line diff against the plan's code block. Check specifically for:
 - Outer guards dropped (status checks, `hasOwnProperty` guards, `responseJSON` presence checks, HTML-response early-returns)
 - Else-branches silently removed (fallback error banners, redirect calls)
 - Side-effect calls omitted (cleanup DOM mutations, secondary helper calls)

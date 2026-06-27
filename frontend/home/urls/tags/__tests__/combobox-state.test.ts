@@ -59,7 +59,19 @@ describe("combobox-state", () => {
       expect(results.map((tag) => tag.id)).toEqual([PYTEST_TAG.id]);
     });
 
-    it("returns all non-excluded tags for an empty query", () => {
+    it("returns no suggestions for an empty query (filter-only)", () => {
+      seedTags([PYTHON_TAG, WEB_TAG]);
+
+      const results = filterTagSuggestions({
+        query: "",
+        appliedTagIds: [],
+        stagedTagStrings: [],
+      });
+
+      expect(results).toEqual([]);
+    });
+
+    it("returns no suggestions for a whitespace-only query (filter-only)", () => {
       seedTags([PYTHON_TAG, WEB_TAG]);
 
       const results = filterTagSuggestions({
@@ -68,7 +80,7 @@ describe("combobox-state", () => {
         stagedTagStrings: [],
       });
 
-      expect(results.map((tag) => tag.id)).toEqual([PYTHON_TAG.id, WEB_TAG.id]);
+      expect(results).toEqual([]);
     });
   });
 

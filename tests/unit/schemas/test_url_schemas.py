@@ -2,6 +2,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.schemas.requests.urls import CreateURLRequest, UpdateURLTitleRequest
+from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.model_strs import MODELS as M
 
 pytestmark = pytest.mark.unit
@@ -130,6 +131,70 @@ class TestCreateURLRequestWhitespaceStripping:
     def test_all_whitespace_title_raises_validation_error(self):
         with pytest.raises(ValidationError):
             CreateURLRequest(urlString="https://example.com", urlTitle="   ")
+
+
+class TestCreateURLRequestTagStrings:
+    """Tests that CreateURLRequest accepts an optional, validated tagStrings list."""
+
+    def test_tag_strings_absent_defaults_to_empty_list(self):
+        request = CreateURLRequest(urlString="https://example.com", urlTitle="title")
+        assert request.tagStrings == []
+
+    def test_tag_strings_empty_list_allowed(self):
+        request = CreateURLRequest(
+            urlString="https://example.com", urlTitle="title", tagStrings=[]
+        )
+        assert request.tagStrings == []
+
+    def test_single_tag_string(self):
+        request = CreateURLRequest(
+            urlString="https://example.com",
+            urlTitle="title",
+            tagStrings=["python"],
+        )
+        assert request.tagStrings == ["python"]
+
+    def test_several_tag_strings(self):
+        request = CreateURLRequest(
+            urlString="https://example.com",
+            urlTitle="title",
+            tagStrings=["python", "web", "flask"],
+        )
+        assert request.tagStrings == ["python", "web", "flask"]
+
+    def test_case_insensitive_dedup_keeps_first_casing(self):
+        request = CreateURLRequest(
+            urlString="https://example.com",
+            urlTitle="title",
+            tagStrings=["Python", "python", "web"],
+        )
+        assert request.tagStrings == ["Python", "web"]
+
+    def test_whitespace_only_element_rejected(self):
+        with pytest.raises(ValidationError):
+            CreateURLRequest(
+                urlString="https://example.com",
+                urlTitle="title",
+                tagStrings=["   "],
+            )
+
+    def test_per_string_over_max_length_rejected(self):
+        too_long = "a" * (TAG_CONSTANTS.MAX_TAG_LENGTH + 1)
+        with pytest.raises(ValidationError):
+            CreateURLRequest(
+                urlString="https://example.com",
+                urlTitle="title",
+                tagStrings=[too_long],
+            )
+
+    def test_list_over_max_url_tags_rejected(self):
+        too_many = [f"tag{index}" for index in range(TAG_CONSTANTS.MAX_URL_TAGS + 1)]
+        with pytest.raises(ValidationError):
+            CreateURLRequest(
+                urlString="https://example.com",
+                urlTitle="title",
+                tagStrings=too_many,
+            )
 
 
 class TestUpdateURLTitleRequestWhitespaceStripping:

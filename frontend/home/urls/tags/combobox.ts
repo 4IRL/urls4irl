@@ -18,13 +18,8 @@ import {
   HOME_FORM,
   TAG_SCOPE,
 } from "../../../types/metrics-dim-values.js";
+import { filterTagSuggestions, hasExactTagMatch } from "./combobox-state.js";
 import {
-  filterTagSuggestions,
-  hasExactTagMatch,
-  mergeAppliedTagsIntoStore,
-} from "./combobox-state.js";
-import {
-  createTagBadgeInURL,
   createTagDeleteIcon,
   disableTagRemovalInURLCard,
   enableTagRemovalInURLCard,
@@ -50,9 +45,7 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { createAddTagIcon } from "../cards/options/tag-btn.js";
-import { isTagInUTubTagDeck } from "../../tags/utils.js";
-import { buildTagFilterInDeck } from "../../tags/tags.js";
-import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
+import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import { getState, setState } from "../../../store/app-store.js";
 
 const SUBMIT_FIELD_NAMES = ["tagStrings"] as const;
@@ -66,13 +59,48 @@ function isSubmitFieldName(key: string): key is SubmitFieldName {
 const FILTER_DEBOUNCE_MS = 200;
 const OPTION_ID_PREFIX = "urlTagOption";
 const TOOLTIP_STORE_KEY = "urlTagComboboxTooltip";
-const STAGED_RESET_KEY = "urlTagComboboxResetStaged";
+export const STAGED_RESET_KEY = "urlTagComboboxResetStaged";
+export const STAGED_GET_KEY = "urlTagComboboxGetStaged";
 const LIMIT_SYNC_KEY = "urlTagComboboxSyncLimit";
+
+/**
+ * The two modes the combobox can be mounted in. `URL` mounts on an existing URL
+ * card and batch-applies tags; `CREATE` stages tags inline in the Create URL
+ * form. Used as the discriminant of `ComboboxBlockArgs`.
+ */
+export const ComboboxMode = Object.freeze({
+  URL: "url",
+  CREATE: "create",
+} as const);
+export type ComboboxMode = (typeof ComboboxMode)[keyof typeof ComboboxMode];
 
 let comboboxIdCounter = 0;
 
+/**
+ * Discriminated union of arguments for `createTagComboboxBlock`. `url`-mode
+ * mounts on an existing URL card and owns a `utubUrlID` for the batch-apply
+ * endpoint. `create`-mode is staging-only inside the Create URL form: there is
+ * no `utubUrlID` yet (the URL does not exist), no card to read applied tags
+ * from, and the batch-submit path is suppressed in favor of folding staged tags
+ * into the create request.
+ */
+type ComboboxBlockArgs =
+  | {
+      mode: typeof ComboboxMode.URL;
+      urlCard: JQuery;
+      utubID: number;
+      utubUrlID: number;
+    }
+  | {
+      mode: typeof ComboboxMode.CREATE;
+      urlCard: null;
+      utubID: number;
+      onSecondEscape?: () => void;
+    };
+
 interface ComboboxRefs {
-  urlCard: JQuery;
+  mode: ComboboxMode;
+  urlCard: JQuery | null;
   utubID: number;
   utubUrlID: number;
   wrap: JQuery;
@@ -84,6 +112,7 @@ interface ComboboxRefs {
   listboxId: string;
   stagedStrings: string[];
   debounceTimer: ReturnType<typeof setTimeout> | null;
+  onSecondEscape?: () => void;
 }
 
 /**
@@ -92,7 +121,8 @@ interface ComboboxRefs {
  *
  * Example: `data-utub-url-tag-ids="3,7"` → 2.
  */
-function getAppliedTagCount(urlCard: JQuery): number {
+function getAppliedTagCount(urlCard: JQuery | null): number {
+  if (urlCard === null) return 0;
   const raw = (urlCard.attr("data-utub-url-tag-ids") || "").trim();
   if (!raw) return 0;
   return raw.split(",").filter((part) => part.trim().length > 0).length;
@@ -102,7 +132,8 @@ function getAppliedTagCount(urlCard: JQuery): number {
  * Reads the set of tag IDs already applied to this URL from the card's
  * `data-utub-url-tag-ids` attribute.
  */
-function getAppliedTagIds(urlCard: JQuery): number[] {
+function getAppliedTagIds(urlCard: JQuery | null): number[] {
+  if (urlCard === null) return [];
   const raw = (urlCard.attr("data-utub-url-tag-ids") || "").trim();
   if (!raw) return [];
   return raw
@@ -117,15 +148,11 @@ function getAppliedTagIds(urlCard: JQuery): number[] {
  * `createTagInputBlock` is mounted at card-build time. The open-time lifecycle
  * lives in `showTagCombobox`.
  */
-export function createTagComboboxBlock({
-  urlCard,
-  utubID,
-  utubUrlID,
-}: {
-  urlCard: JQuery;
-  utubID: number;
-  utubUrlID: number;
-}): JQuery<HTMLElement> {
+export function createTagComboboxBlock(
+  args: ComboboxBlockArgs,
+): JQuery<HTMLElement> {
+  const { mode, urlCard, utubID } = args;
+  const isCreateMode = mode === ComboboxMode.CREATE;
   const listboxId = `${OPTION_ID_PREFIX}Listbox-${++comboboxIdCounter}`;
 
   const wrap = $(document.createElement("div")).addClass(
@@ -136,20 +163,35 @@ export function createTagComboboxBlock({
     "urlTagCombobox flex-row flex-start",
   );
 
+  const inputId = `${listboxId}-input`;
   const input = $(document.createElement("input"))
     .addClass("urlTagComboboxInput")
     .attr({
       type: "text",
+      id: inputId,
       role: "combobox",
       "aria-expanded": "false",
       "aria-controls": listboxId,
       "aria-autocomplete": "list",
-      "aria-label": "Add tags",
       placeholder: APP_CONFIG.strings.ADD_TAGS_PLACEHOLDER,
       minLength: APP_CONFIG.constants.TAGS_MIN_LENGTH,
       maxLength: APP_CONFIG.constants.TAGS_MAX_LENGTH,
     })
     .css("font-size", "16px");
+
+  // Create-mode shows a visible "Tags (optional)" sub-label tied to the input
+  // via `for=`; url-mode keeps the existing `aria-label="Add tags"` (no visible
+  // label in the URL card). A `<label for=>` takes precedence for screen readers,
+  // so the `aria-label` is omitted in create-mode to avoid a conflicting name.
+  if (isCreateMode) {
+    const label = $(document.createElement("label"))
+      .addClass("urlTagComboboxLabel")
+      .attr({ for: inputId })
+      .text(APP_CONFIG.strings.TAGS_OPTIONAL_LABEL);
+    wrap.append(label);
+  } else {
+    input.attr("aria-label", APP_CONFIG.strings.ADD_TAGS_ARIA_LABEL);
+  }
 
   combobox.append(input);
 
@@ -166,21 +208,30 @@ export function createTagComboboxBlock({
     .attr({ type: "button" })
     .text(APP_CONFIG.strings.ADD_TAGS_SUBMIT);
 
+  const actions = $(document.createElement("div")).addClass(
+    "urlTagComboboxActions flex-row gap-5p",
+  );
+
+  // Create-mode has no internal submit button: staged tags are folded into the
+  // create-URL request, so the batch-apply submit button is omitted entirely.
+  if (!isCreateMode) {
+    actions.append(submitBtn);
+  }
+
   const footer = $(document.createElement("div"))
     .addClass("urlTagComboboxFooter")
     .append(message)
-    .append(
-      $(document.createElement("div"))
-        .addClass("urlTagComboboxActions flex-row gap-5p")
-        .append(submitBtn),
-    );
+    .append(actions);
 
   wrap.append(combobox).append(listbox).append(footer);
 
   const refs: ComboboxRefs = {
+    mode,
     urlCard,
     utubID,
-    utubUrlID,
+    // url-mode owns a real `utubUrlID`; create-mode has none yet (the URL does
+    // not exist) and never reaches the batch-submit path that reads it.
+    utubUrlID: args.mode === ComboboxMode.URL ? args.utubUrlID : -1,
     wrap,
     combobox,
     input,
@@ -190,6 +241,8 @@ export function createTagComboboxBlock({
     listboxId,
     stagedStrings: [],
     debounceTimer: null,
+    onSecondEscape:
+      args.mode === ComboboxMode.CREATE ? args.onSecondEscape : undefined,
   };
 
   // Expose a staged-state reset so the close/reset lifecycle (which only has the
@@ -198,6 +251,11 @@ export function createTagComboboxBlock({
   wrap.data(STAGED_RESET_KEY, () => {
     refs.stagedStrings = [];
   });
+
+  // Exposes the current staged strings to the create-URL form (which only has the
+  // wrap DOM, not this closure) so they can be folded into the create request.
+  // Returns a defensive copy so callers cannot mutate the backing array.
+  wrap.data(STAGED_GET_KEY, () => [...refs.stagedStrings]);
 
   // Lets the open-time lifecycle (which only has `urlCard`, not this closure)
   // reflect the URL's tag count immediately on open: at the cap, show the
@@ -239,6 +297,12 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
     handleInputKeydown(refs, keydownEvent),
   );
 
+  // Create-mode has no batch-submit button and no `urlCard`/`utubUrlID`; staged
+  // tags are folded into the create-URL request instead, so the batch-apply
+  // click handler is never wired.
+  if (refs.urlCard === null) return;
+  const submitUrlCard = refs.urlCard;
+
   submitBtn.on("click.urlTagCombobox", () => {
     if (refs.stagedStrings.length === 0) return;
     emit({
@@ -248,7 +312,7 @@ function bindComboboxBehavior(refs: ComboboxRefs): void {
     });
     clearOpenForm();
     void submitStagedTags({
-      urlCard: refs.urlCard,
+      urlCard: submitUrlCard,
       utubID: refs.utubID,
       utubUrlID: refs.utubUrlID,
       stagedStrings: [...refs.stagedStrings],
@@ -349,8 +413,14 @@ function renderListbox(refs: ComboboxRefs): void {
       activateOption(refs, createNewOption);
     }
     announceMatchCount(refs, suggestions.length);
-  } else {
+  } else if (trimmedQuery.length > 0) {
     announce(refs, APP_CONFIG.strings.TAGS_NO_MATCHES);
+  } else {
+    // An empty query yields no suggestions by design (filter-only behavior), so
+    // the dropdown closes silently — no "no matches" announcement. This path is
+    // hit e.g. right after staging a chip clears the input and re-renders; clear
+    // any lingering match-count text from the prior keystroke.
+    announce(refs, "");
   }
 
   updateSubmitState(refs);
@@ -594,6 +664,11 @@ function handleInputKeydown(
         refs.stagedStrings.length > 0 &&
         activeOption.length === 0;
       if (canSubmit) {
+        // Create-mode has no batch-submit path: Enter with only staged tags is a
+        // no-op so it never folds into a batch AJAX call. Users Tab to (or click)
+        // the form's "Add URL" button, which folds staged tags into the create
+        // request instead.
+        if (refs.urlCard === null) break;
         emit({
           event: UI_EVENTS.UI_FORM_SUBMIT,
           form: HOME_FORM.TAG_CREATE,
@@ -615,7 +690,9 @@ function handleInputKeydown(
       if (activeOption.length > 0) {
         keydownEvent.preventDefault();
         stageActiveOrQuery(refs, query, activeOption);
-        if (remainingCapacity(refs) <= 0) {
+        // In create-mode `urlCard` is null and there is no internal submit button
+        // to focus; Tab propagates naturally to the form's "Add URL" button.
+        if (remainingCapacity(refs) <= 0 && refs.urlCard !== null) {
           refs.submitBtn.trigger("focus");
         }
       }
@@ -643,8 +720,18 @@ function handleInputKeydown(
           form: HOME_FORM.TAG_CREATE,
           trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
         });
-        clearOpenForm();
-        hideAndResetTagCombobox(refs.urlCard);
+        if (refs.urlCard === null) {
+          // Create-mode: the combobox is a sub-control of the create-URL form. It
+          // does not own the form lifecycle, but the open-form token
+          // (`HOME_FORM.URL_CREATE`) must still be cleared here before delegating
+          // dismissal to the create form's hide handler — never skip
+          // `clearOpenForm()`.
+          clearOpenForm();
+          refs.onSecondEscape?.();
+        } else {
+          clearOpenForm();
+          hideAndResetTagCombobox(refs.urlCard);
+        }
       }
       break;
     default:
@@ -884,19 +971,9 @@ export function submitStagedTagsSuccess({
     emit({ event: UI_EVENTS.UI_TAG_APPLY });
   }
 
-  // Snapshot which applied tags already existed in the deck BEFORE merging the
-  // response into the store. `mergeAppliedTagsIntoStore` appends brand-new tags
-  // to `getState().tags`, which would otherwise make `isTagInUTubTagDeck` report
-  // every applied tag (including brand-new ones) as already-present, so their
-  // deck filter would never be built.
-  const tagIdsAlreadyInDeck = new Set(
-    response.appliedTags
-      .filter((appliedTag) => isTagInUTubTagDeck(appliedTag.id))
-      .map((appliedTag) => appliedTag.id),
-  );
-
-  mergeAppliedTagsIntoStore({ appliedTags: response.appliedTags });
-
+  // Caller-owned store patch: update the existing URL entry's tag-ID slice. This
+  // stays here (not inside `renderAppliedTagsForUrl`) because the helper is a
+  // pure render+DOM+deck-sync utility — only the tag-vocab merge runs inside it.
   const urlID = parseInt(urlCard.attr("utuburlid") as string);
   setState({
     urls: getState().urls.map((existingUrl: UtubUrlItem) =>
@@ -906,48 +983,12 @@ export function submitStagedTagsSuccess({
     ),
   });
 
-  const tagsContainer = urlCard.find(".urlTagsContainer");
-  response.appliedTags.forEach((appliedTag) => {
-    tagsContainer.append(
-      createTagBadgeInURL(appliedTag.id, appliedTag.tagString, urlCard, utubID),
-    );
+  renderAppliedTagsForUrl({
+    appliedTags: response.appliedTags,
+    utubUrlTagIDs: response.utubUrlTagIDs,
+    urlCard,
+    utubID,
   });
-
-  urlCard.attr("data-utub-url-tag-ids", response.utubUrlTagIDs.join(","));
-
-  if (response.appliedTags.length > 0) {
-    $("#unselectAllTagFilters").showClassNormal();
-  }
-
-  let builtNewDeckFilter = false;
-  response.appliedTags.forEach((appliedTag) => {
-    if (!tagIdsAlreadyInDeck.has(appliedTag.id)) {
-      const newTag = buildTagFilterInDeck(
-        utubID,
-        appliedTag.id,
-        appliedTag.tagString,
-        appliedTag.tagApplied,
-      );
-      if (
-        $(".tagFilter.selected").length ===
-        APP_CONFIG.constants.TAGS_MAX_ON_URLS
-      ) {
-        newTag.addClass("disabled").off(".tagFilterSelected");
-      }
-      $("#listTags").append(newTag);
-      builtNewDeckFilter = true;
-    } else {
-      updateTagFilterCount(
-        appliedTag.id,
-        appliedTag.tagApplied,
-        TagCountOperation.INCREMENT,
-      );
-    }
-  });
-
-  if (builtNewDeckFilter) {
-    $("#utubTagBtnUpdateAllOpen").showClassNormal();
-  }
 
   hideAndResetTagCombobox(urlCard);
 }

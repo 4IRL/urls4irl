@@ -40,6 +40,7 @@ vi.mock("../../tags/tags.js", () => ({
   ),
 }));
 vi.mock("../../tags/combobox.js", () => ({
+  ComboboxMode: { URL: "url", CREATE: "create" },
   createTagComboboxBlock: vi.fn(() =>
     window.jQuery('<div class="urlTagComboboxWrap"></div>'),
   ),

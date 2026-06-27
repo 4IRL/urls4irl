@@ -23,14 +23,22 @@ from backend.extensions.url_validation.url_validator import (
     URLWithCredentialsError,
 )
 from backend.metrics.events import EventName
+from backend.metrics.tag_batch import bucket_url_tag_count
 from backend.models.urls import Urls
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import (
     build_detail_error_response,
     build_url_conflict_error_response,
 )
+from backend.schemas.tags import UtubTagSchema
 from backend.schemas.urls import UrlCreatedItemSchema, UrlCreatedResponseSchema
+from backend.tags.services.create_url_tag import (
+    apply_tags_core,
+    build_url_at_tag_limit_response,
+    get_tag_applied_counts,
+)
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
@@ -40,6 +48,7 @@ def create_url_in_utub(
     url_string: str,
     url_title: str,
     current_utub: Utubs,
+    tag_strings: list[str] | None = None,
 ) -> FlaskResponse:
     """
     Creates a new URL in a UTub.
@@ -48,12 +57,15 @@ def create_url_in_utub(
         url_string (str): The URL string to add
         url_title (str): The title for this URL in the UTub
         current_utub (Utubs): The UTub object containing the UTub_Urls
+        tag_strings (list[str]): Optional tags to apply to the URL on creation
 
     Returns:
         tuple[Response, int]:
         - Response: JSON response on create
         - int: HTTP status code 200 (Success)
     """
+    if tag_strings is None:
+        tag_strings = []
     validated_new_url = validate_new_url_for_utub(url_string, current_utub.id)
     if (
         validated_new_url.url_state == URLState.INVALID_URL_STRING
@@ -84,6 +96,7 @@ def create_url_in_utub(
         url_title=url_title,
         url_string=url.url_string,
         url_state=url_state,
+        tag_strings=tag_strings,
     )
 
 
@@ -387,12 +400,15 @@ def _associate_url_with_utub(
     url_title: str,
     url_string: str,
     url_state: URLState,
+    tag_strings: list[str] | None = None,
 ) -> FlaskResponse:
     """
-    Create an association between a URL and a UTub, adding the URL to the UTub.
+    Create an association between a URL and a UTub, adding the URL to the UTub,
+    and atomically apply any requested tags.
 
     Creates a new Utub_Urls entry linking the URL to the UTub with the specified title,
-    updates the UTub's last modified timestamp, and commits the changes to the database.
+    updates the UTub's last modified timestamp, applies the requested tags, and commits
+    the URL row and its tags together so the addition is all-or-nothing.
 
     Args:
         current_utub (Utubs): The UTub object to associate the URL with.
@@ -400,23 +416,58 @@ def _associate_url_with_utub(
         url_title (str): The title to display for this URL in the UTub.
         url_string (str): The URL string for the success response.
         url_state (URLState): Whether this is a newly created or existing URL.
+        tag_strings (list[str]): Optional tags to apply to the URL on creation.
 
     Returns:
         tuple[Response, int]: A tuple containing:
         - Response: JSON response with success message and URL details
-        - int: HTTP status code 200
+        - int: HTTP status code 200 (success) or 400 (applying the tags would
+          exceed the per-URL tag limit)
     """
+    if tag_strings is None:
+        tag_strings = []
     url_utub_user_add = Utub_Urls(
         utub_id=current_utub.id,
         url_id=url_id,
         user_id=current_user.id,
         url_title=url_title,
     )
-    db.session.add(url_utub_user_add)
-    current_utub.set_last_updated()
-    db.session.commit()
 
-    record_event(EventName.URL_ADDED_TO_UTUB)
+    # The flush assigns url_utub_user_add.id before tags are associated; the
+    # explicit rollback guarantees that an invalid tag discards the URL row too,
+    # so the URL and its tags commit together or not at all.
+    try:
+        db.session.add(url_utub_user_add)
+        db.session.flush()
+        current_utub.set_last_updated()
+
+        applied: list[Utub_Tags] = []
+        if tag_strings:
+            result = apply_tags_core(tag_strings, current_utub, url_utub_user_add)
+            if result.over_limit:
+                # Capture the id before the rollback detaches the instance; the
+                # response builder must not access ORM attributes post-rollback.
+                url_utub_user_add_id = url_utub_user_add.id
+                db.session.rollback()
+                return build_url_at_tag_limit_response(url_utub_user_add_id)
+            applied = result.to_apply
+
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        warning_log(
+            f"URL-with-tags create failed | UTub.id={current_utub.id} "
+            f"| URL.id={url_id} | RequestedTagCount={len(tag_strings)} "
+            f"| error_type={type(exc).__name__}"
+        )
+        raise
+
+    record_event(
+        EventName.URL_ADDED_TO_UTUB,
+        dimensions={"tag_count_bucket": bucket_url_tag_count(len(applied))},
+    )
+    for _utub_tag in applied:
+        record_event(EventName.TAG_APPLIED)
 
     # Successfully added a URL, and associated it to a UTub
     safe_add_many_logs(
@@ -427,6 +478,18 @@ def _associate_url_with_utub(
     if url_state == URLState.FRESH_URL:
         message = URL_SUCCESS.URL_CREATED_ADDED
 
+    tag_counts = get_tag_applied_counts(
+        current_utub.id, [utub_tag.id for utub_tag in applied]
+    )
+    applied_tags = [
+        UtubTagSchema(
+            id=utub_tag.id,
+            tag_string=utub_tag.tag_string,
+            tag_applied=tag_counts.get(utub_tag.id, 0),
+        )
+        for utub_tag in applied
+    ]
+
     return APIResponse(
         message=message,
         data=UrlCreatedResponseSchema(
@@ -436,6 +499,8 @@ def _associate_url_with_utub(
                 utub_url_id=url_utub_user_add.id,
                 url_string=url_string,
                 url_title=url_title,
+                utub_url_tag_ids=url_utub_user_add.associated_tag_ids,
             ),
+            applied_tags=applied_tags,
         ),
     ).to_response()

@@ -1,4 +1,8 @@
-import { createTagComboboxBlock, showTagCombobox } from "../combobox.js";
+import {
+  ComboboxMode,
+  createTagComboboxBlock,
+  showTagCombobox,
+} from "../combobox.js";
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -114,7 +118,12 @@ const URL_CARD_HTML = `
 function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
-  const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
+  const block = createTagComboboxBlock({
+    mode: ComboboxMode.URL,
+    urlCard,
+    utubID: 1,
+    utubUrlID: 1,
+  });
   urlCard.find(".tagsAndTagCreateWrap").append(block);
   urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
   return urlCard;

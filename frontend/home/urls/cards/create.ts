@@ -18,6 +18,14 @@ import {
 } from "./cards.js";
 import { selectURLCard } from "./selection.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
+import { updateURLsAndTagSubheaderWhenTagSelected } from "./filtering.js";
+import {
+  ComboboxMode,
+  createTagComboboxBlock,
+  STAGED_GET_KEY,
+  STAGED_RESET_KEY,
+} from "../tags/combobox.js";
+import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -91,7 +99,16 @@ export function resetNewURLForm(): void {
   $("#urlStringCreate").val("");
   $("#createURLWrap").hideClass();
   newURLInputRemoveEventListeners();
+  resetCreateURLTagCombobox();
   $("#urlBtnCreate").showClassNormal();
+}
+
+// Clears the staged-tags backing state (via the combobox's exposed reset
+// callback) and removes the mounted block from the create form.
+function resetCreateURLTagCombobox(): void {
+  const comboboxWrap = $("#createURLWrap").find(".urlTagComboboxWrap");
+  (comboboxWrap.data(STAGED_RESET_KEY) as (() => void) | undefined)?.();
+  comboboxWrap.remove();
 }
 // Displays new URL input prompt
 export function createURLHideInput(): void {
@@ -113,9 +130,29 @@ export function createURLShowInput(utubID: number): void {
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
+  mountCreateURLTagCombobox(utubID);
+  // Keep initial focus on the URL Title input — the combobox must NOT steal focus
+  // on form-open (it is a staging-only sub-control of the create form).
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
   temporarilyHideSearchForEdit();
+}
+
+// Mounts the staging-only tag combobox inline in the Create URL form, between
+// the URL-string container and the action row, matching the mockup. Removes any
+// stale block first so re-opening the form does not stack duplicates.
+function mountCreateURLTagCombobox(utubID: number): void {
+  const createURLInputForm = $("#createURLWrap");
+  createURLInputForm.find(".urlTagComboboxWrap").remove();
+  const comboboxWrap = createTagComboboxBlock({
+    mode: ComboboxMode.CREATE,
+    urlCard: null,
+    utubID,
+    onSecondEscape: createURLHideInput,
+  });
+  comboboxWrap.removeClass("hidden");
+  // Inject before the action row (the row holding the submit button).
+  $("#urlSubmitBtnCreate").closest(".flex-row").before(comboboxWrap);
 }
 
 // Prepares post request inputs for addition of a new URL
@@ -130,9 +167,19 @@ function createURLSetup(
   // Assemble submission data
   const urlTitle = getInputValue(createURLTitleInput);
   const urlString = getInputValue(createURLInput);
+
+  // Fold any staged tags from the inline combobox into the create request. The
+  // getter returns a defensive copy; defaults to [] when the combobox is absent.
+  const comboboxWrap = $("#createURLWrap").find(".urlTagComboboxWrap");
+  const getStaged = comboboxWrap.data(STAGED_GET_KEY) as
+    | (() => string[])
+    | undefined;
+  const tagStrings = getStaged ? getStaged() : [];
+
   const data: CreateUrlRequest = {
     urlString,
     urlTitle,
+    tagStrings,
   };
 
   return [postURL, data];
@@ -192,23 +239,27 @@ export function createURL(
 
 // Displays changes related to a successful addition of a new URL
 function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
+  // Resets and hides the form and combobox (clears staged tags via STAGED_RESET_KEY)
   resetNewURLForm();
   const url = response.URL;
+  const utubUrlTagIDs = url.utubUrlTagIDs ?? [];
 
   const newUrl: UtubUrlItem = {
     utubUrlID: url.utubUrlID,
     urlString: url.urlString,
     urlTitle: url.urlTitle,
-    utubUrlTagIDs: [],
+    utubUrlTagIDs,
     canDelete: true,
   };
 
+  // Capture visible-URL count BEFORE DOM insertion (drives alternating stripes).
+  const currentNumOfURLs = getNumOfVisibleURLs();
+
+  // Single combined store append with the complete entry (incl. tag IDs).
   setState({
     urls: [...getState().urls, newUrl],
   });
 
-  // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
-  const currentNumOfURLs = getNumOfVisibleURLs();
   const newUrlCard = createURLBlock(
     newUrl,
     [], // Mimics an empty array of tags to match against
@@ -221,11 +272,21 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
     updateColorOfFollowingURLCardsAfterURLCreated();
   }
 
-  // Only select the URL when no tags are selected
-  // If a tag is selected, new URLs have no Tags associated, so they should be hidden after added
-  if (isATagSelected()) {
-    newUrlCard.attr({ filterable: false });
-  } else {
+  // Render any tags applied at creation onto the now-attached card and sync the
+  // tag deck (badges, deck filters, #unselectAllTagFilters, #utubTagBtnUpdateAllOpen).
+  renderAppliedTagsForUrl({
+    appliedTags: response.appliedTags ?? [],
+    utubUrlTagIDs,
+    urlCard: newUrlCard,
+    utubID,
+  });
+
+  // Re-evaluate visibility for all URLs (incl. the new one): a URL created with
+  // tags matching the active filter stays visible; non-matching ones are hidden.
+  updateURLsAndTagSubheaderWhenTagSelected();
+
+  // Auto-select the new card only when no filter would suppress it.
+  if (!isATagSelected()) {
     selectURLCard(newUrlCard);
   }
 
@@ -246,10 +307,10 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
       $("body").html(xhr.responseText);
       return;
     }
-    displayCreateUrlFailErrors(
-      "urlString",
-      "Server timed out while validating URL. Try again later.",
-    );
+    displayCreateUrlFailErrors({
+      key: "urlString",
+      errorMessage: "Server timed out while validating URL. Try again later.",
+    });
     return;
   }
   const responseJSON = xhr.responseJSON as CreateUrlError;
@@ -257,22 +318,40 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
     case 400:
       if (responseJSON.message) {
         if (responseJSON.errors) {
+          const errors = responseJSON.errors as Partial<
+            Record<string, string[]>
+          >;
+          // `tagStrings` has no `#tagStringsCreate` input — route its error to
+          // the inline combobox message element instead, then strip it before
+          // the field-name dispatch loop handles the remaining errors.
+          if (errors.tagStrings) {
+            displayCreateUrlFailErrors({
+              key: "tagStrings",
+              errorMessage: errors.tagStrings[0],
+              domTarget: $(
+                ".urlTagComboboxWrap .urlTagComboboxMsg",
+                "#createURLWrap",
+              ),
+            });
+            delete errors.tagStrings;
+          }
           createURLShowFormErrors(
-            responseJSON.errors as Partial<
-              Record<CreateUrlFieldName, string[]>
-            >,
+            errors as Partial<Record<CreateUrlFieldName, string[]>>,
           );
         } else {
-          displayCreateUrlFailErrors(
-            "urlString",
-            responseJSON.message as string,
-          );
+          displayCreateUrlFailErrors({
+            key: "urlString",
+            errorMessage: responseJSON.message as string,
+          });
         }
       }
       break;
     case 409:
       checkForStaleDataOn409(responseJSON, utubID);
-      displayCreateUrlFailErrors("urlString", responseJSON.message as string);
+      displayCreateUrlFailErrors({
+        key: "urlString",
+        errorMessage: responseJSON.message as string,
+      });
       break;
     case 403:
     case 404:
@@ -287,13 +366,27 @@ function createURLShowFormErrors(
   for (const key in errors) {
     if (isCreateUrlFieldName(key)) {
       const errorMessage = errors[key]![0];
-      displayCreateUrlFailErrors(key, errorMessage);
+      displayCreateUrlFailErrors({ key, errorMessage });
     }
   }
 }
 
-// Show the error message and highlight the input box border red on error of field
-function displayCreateUrlFailErrors(key: string, errorMessage: string): void {
+// Show the error message and highlight the input box border red on error of field.
+// When `domTarget` is provided (e.g. the combobox message element for tagStrings),
+// the error is written there instead of the per-field `#<key>Create-error` element.
+function displayCreateUrlFailErrors({
+  key,
+  errorMessage,
+  domTarget,
+}: {
+  key: string;
+  errorMessage: string;
+  domTarget?: JQuery;
+}): void {
+  if (domTarget) {
+    domTarget.addClass("warn").text(errorMessage);
+    return;
+  }
   $("#" + key + "Create-error")
     .addClass("visible")
     .text(errorMessage);
@@ -306,4 +399,9 @@ export function resetCreateURLFailErrors(): void {
     $("#" + fieldName + "Create").removeClass("invalid-field");
     $("#" + fieldName + "Create-error").removeClass("visible");
   });
+  // Clear any stale tagStrings error rendered in the inline combobox message
+  // (mirrors the combobox message reset in hideAndResetTagCombobox).
+  $("#createURLWrap .urlTagComboboxWrap .urlTagComboboxMsg")
+    .text("")
+    .removeClass("warn");
 }
