@@ -7,6 +7,40 @@ from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.schemas.requests._sanitize import SanitizedStr
 
+TagStringItem = Annotated[
+    SanitizedStr,
+    Field(
+        min_length=TAG_CONSTANTS.MIN_TAG_LENGTH,
+        max_length=TAG_CONSTANTS.MAX_TAG_LENGTH,
+    ),
+]
+
+
+def validate_tag_strings(tag_strings: list[str]) -> list[str]:
+    """Strip, reject empties, and case-insensitively dedup a list of tag strings.
+
+    Dedup is first-seen: the first casing encountered for a given lowercased
+    value is kept, later differently-cased duplicates are dropped.
+
+    Examples:
+        >>> validate_tag_strings(["python", "Python", "web"])
+        ['python', 'web']
+        >>> validate_tag_strings(["  spaced  ", "Web"])
+        ['spaced', 'Web']
+    """
+    deduplicated: list[str] = []
+    seen_lowercased: set[str] = set()
+    for tag_string in tag_strings:
+        stripped = tag_string.strip()
+        if stripped == "":
+            raise ValueError(TAGS_FAILURE.TAG_EMPTY)
+        lowercased = stripped.lower()
+        if lowercased in seen_lowercased:
+            continue
+        seen_lowercased.add(lowercased)
+        deduplicated.append(stripped)
+    return deduplicated
+
 
 class AddTagRequest(BaseModel):
     tagString: SanitizedStr = Field(
@@ -25,15 +59,7 @@ class AddTagRequest(BaseModel):
 
 
 class AddTagsRequest(BaseModel):
-    tagStrings: list[
-        Annotated[
-            SanitizedStr,
-            Field(
-                min_length=TAG_CONSTANTS.MIN_TAG_LENGTH,
-                max_length=TAG_CONSTANTS.MAX_TAG_LENGTH,
-            ),
-        ]
-    ] = Field(
+    tagStrings: list[TagStringItem] = Field(
         min_length=1,
         max_length=TAG_CONSTANTS.MAX_URL_TAGS,
         description="Tags to apply to the URL",
@@ -43,15 +69,4 @@ class AddTagsRequest(BaseModel):
     @field_validator("tagStrings", mode="after")
     @classmethod
     def tag_strings_valid(cls, tag_strings: list[str]) -> list[str]:
-        deduplicated: list[str] = []
-        seen_lowercased: set[str] = set()
-        for tag_string in tag_strings:
-            stripped = tag_string.strip()
-            if stripped == "":
-                raise ValueError(TAGS_FAILURE.TAG_EMPTY)
-            lowercased = stripped.lower()
-            if lowercased in seen_lowercased:
-                continue
-            seen_lowercased.add(lowercased)
-            deduplicated.append(stripped)
-        return deduplicated
+        return validate_tag_strings(tag_strings)

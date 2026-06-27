@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from pydantic import ConfigDict, Field
 
 from backend.schemas.base import BaseSchema
-from backend.schemas.tags import UtubTagOnAddDeleteSchema
+from backend.schemas.tags import UtubTagOnAddDeleteSchema, UtubTagSchema
 from backend.utils.strings.model_strs import ADDED_BY, TAG_COUNTS_MODIFIED
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.utub_strs import UTUB_ID, UTUB_NAME
@@ -84,9 +84,15 @@ class UtubUrlDeleteSchema(BaseSchema):
 
 
 class UrlCreatedItemSchema(UtubUrlDeleteSchema):
-    """URL item shape for creation responses (same fields as UtubUrlDeleteSchema)."""
+    """URL item shape for creation responses (UtubUrlDeleteSchema fields + tag IDs)."""
 
     model_config = ConfigDict(title="UrlCreatedItemSchema")
+
+    utub_url_tag_ids: list[int] = Field(
+        default_factory=list,
+        alias=M.URL_TAG_IDS,
+        description="Tag IDs applied to the URL on creation",
+    )
 
 
 class UrlCreatedResponseSchema(BaseSchema):
@@ -98,6 +104,11 @@ class UrlCreatedResponseSchema(BaseSchema):
     )
     url: UrlCreatedItemSchema = Field(
         alias=M.URL, description="URL item that was created"
+    )
+    applied_tags: list[UtubTagSchema] = Field(
+        default_factory=list,
+        alias=M.APPLIED_TAGS,
+        description="Tags applied to the URL on creation, with UTub-wide counts",
     )
 
 
