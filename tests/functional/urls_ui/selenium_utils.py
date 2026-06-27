@@ -1,3 +1,4 @@
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -46,7 +47,12 @@ def focus_url_search_input(browser: WebDriver):
     wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
 
 
-def create_url(browser: WebDriver, url_title: str, url_string: str):
+def create_url(
+    browser: WebDriver,
+    url_title: str,
+    url_string: str,
+    tag_strings: list[str] | None = None,
+):
     """
     Streamlines actions required to create a URL in the selected UTub.
 
@@ -54,14 +60,21 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
         WebDriver open to a selected UTub
         URL title
         URL
+        Optional list of tag strings to stage as chips in the inline create-form
+            combobox before submitting (URL + tags are created atomically).
     """
-    fill_create_url_form(browser, url_title, url_string)
+    fill_create_url_form(browser, url_title, url_string, tag_strings)
 
     # Submit
     wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
 
 
-def fill_create_url_form(browser: WebDriver, url_title: str, url_string: str):
+def fill_create_url_form(
+    browser: WebDriver,
+    url_title: str,
+    url_string: str,
+    tag_strings: list[str] | None = None,
+):
     """
     Streamlines actions required to create a URL in the selected UTub.
 
@@ -69,6 +82,8 @@ def fill_create_url_form(browser: WebDriver, url_title: str, url_string: str):
         WebDriver open to a selected UTub
         URL title
         URL
+        Optional list of tag strings to stage as chips in the inline create-form
+            combobox before the form is submitted.
     """
 
     # Select createURL button
@@ -86,6 +101,105 @@ def fill_create_url_form(browser: WebDriver, url_title: str, url_string: str):
     url_string_input_field = wait_then_get_element(browser, HPL.INPUT_URL_STRING_CREATE)
     assert url_string_input_field is not None
     clear_then_send_keys(url_string_input_field, url_string)
+
+    # Stage any requested tags as chips in the inline create-form combobox.
+    for tag_string in tag_strings or []:
+        stage_new_tag_in_create_form(browser, tag_string)
+
+
+def _count_staged_chips_in_create_form(browser: WebDriver) -> int:
+    return len(browser.find_elements(By.CSS_SELECTOR, HPL.CREATE_FORM_TAG_STAGED_CHIP))
+
+
+def _wait_for_staged_chip_count_in_create_form(
+    browser: WebDriver, expected_count: int
+) -> None:
+    """
+    Confirms a chip was staged in the create form by waiting for the chip count
+    to reach `expected_count`. A count delta (rather than a
+    `[data-staged-tag-string]` attribute selector) is robust for any tag text.
+    """
+    WebDriverWait(browser, 3).until(
+        lambda _: _count_staged_chips_in_create_form(browser) == expected_count
+    )
+
+
+def type_in_create_form_tag_combobox(browser: WebDriver, text: str) -> WebElement:
+    """
+    Types into the create-form combobox input (scoped to `#createURLWrap`).
+    Clicking an option to stage a chip moves focus off the input, so this clicks
+    the input first to deterministically restore focus before sending keys.
+    """
+    combobox_input_selector = HPL.CREATE_FORM_TAG_COMBOBOX_INPUT
+    wait_then_click_element(browser, combobox_input_selector, time=3)
+    wait_until_in_focus(browser, combobox_input_selector, timeout=3)
+    combobox_input = browser.find_element(By.CSS_SELECTOR, combobox_input_selector)
+    assert combobox_input.is_displayed()
+    clear_then_send_keys(combobox_input, text)
+    return combobox_input
+
+
+def _click_matching_create_form_option(
+    browser: WebDriver, options_selector: str, target_text: str
+) -> bool:
+    """
+    Re-finds the option whose label text matches `target_text` and clicks it,
+    atomically (find + click in one call) so the 200ms debounce re-render of the
+    listbox cannot make the element stale. Returns False (so the WebDriverWait
+    poll retries) if the option is not yet present or goes stale mid-click.
+    """
+    try:
+        options = browser.find_elements(By.CSS_SELECTOR, options_selector)
+        matching_option = next(
+            (
+                option
+                for option in options
+                if option.text.strip() == target_text.strip()
+            ),
+            None,
+        )
+        if matching_option is None or not matching_option.is_displayed():
+            return False
+        matching_option.click()
+        return True
+    except StaleElementReferenceException:
+        return False
+
+
+def stage_tag_suggestion_in_create_form(browser: WebDriver, tag_text: str) -> None:
+    """
+    Types `tag_text` to filter the existing-tag suggestions in the create-form
+    combobox, then stages the suggestion whose label matches exactly (an existing
+    UTub tag becomes a chip).
+    """
+    chips_before = _count_staged_chips_in_create_form(browser)
+    type_in_create_form_tag_combobox(browser, tag_text)
+
+    options_selector = (
+        f"{HPL.CREATE_FORM_TAG_COMBOBOX_OPTION} {HPL.TAG_COMBOBOX_OPTION_LABEL}"
+    )
+    wait_then_get_element(browser, options_selector, time=3)
+    WebDriverWait(browser, 3).until(
+        lambda _: _click_matching_create_form_option(
+            browser, options_selector, tag_text
+        )
+    )
+    _wait_for_staged_chip_count_in_create_form(browser, chips_before + 1)
+
+
+def stage_new_tag_in_create_form(browser: WebDriver, text: str) -> None:
+    """
+    Types `text` into the create-form combobox and stages it via the "Create tag"
+    option (a brand-new tag that does not yet exist in the UTub becomes a chip).
+    """
+    chips_before = _count_staged_chips_in_create_form(browser)
+    type_in_create_form_tag_combobox(browser, text)
+
+    create_new_label_selector = (
+        f"{HPL.CREATE_FORM_TAG_COMBOBOX_CREATE_NEW} " f"{HPL.TAG_COMBOBOX_OPTION_LABEL}"
+    )
+    wait_then_click_element(browser, create_new_label_selector, time=3)
+    _wait_for_staged_chip_count_in_create_form(browser, chips_before + 1)
 
 
 def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):

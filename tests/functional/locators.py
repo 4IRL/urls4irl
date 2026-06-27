@@ -207,6 +207,7 @@ class HomePageLocators(GenericPageLocator):
     # current built UI instead of the removed single input.
     INPUT_TAG_COMBOBOX = ".urlTagComboboxInput"
     TAG_COMBOBOX_OPTION = ".urlTagOption"
+    TAG_COMBOBOX_OPTION_LABEL = ".urlTagOptionLabel"
     TAG_COMBOBOX_CREATE_NEW = ".urlTagOptionCreateNew"
     TAG_STAGED_CHIP = ".urlTagStagedChip"
     TAG_STAGED_CHIP_REMOVE = ".urlTagStagedChip button"
@@ -218,6 +219,16 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_TAG_SUBMIT_CREATE = BUTTON_TAGS_SUBMIT_BATCH
     BUTTON_TAG_CANCEL_CREATE = BUTTON_TAGS_CANCEL_BATCH
     ERROR_TAG_CREATE = TAG_COMBOBOX_MSG
+
+    # Create-URL-form tag combobox (staging-only). The combobox mounts inside
+    # `#createURLWrap` (not inside a URL card), so its selectors are scoped to
+    # the create wrap rather than `ROW_SELECTED_URL`. The create-mode combobox
+    # does NOT render the batch submit button.
+    CREATE_FORM_TAG_COMBOBOX_INPUT = f"{WRAP_URL_CREATE} {INPUT_TAG_COMBOBOX}"
+    CREATE_FORM_TAG_COMBOBOX_OPTION = f"{WRAP_URL_CREATE} {TAG_COMBOBOX_OPTION}"
+    CREATE_FORM_TAG_COMBOBOX_CREATE_NEW = f"{WRAP_URL_CREATE} {TAG_COMBOBOX_CREATE_NEW}"
+    CREATE_FORM_TAG_STAGED_CHIP = f"{WRAP_URL_CREATE} {TAG_STAGED_CHIP}"
+    CREATE_FORM_TAG_COMBOBOX_MSG = f"{WRAP_URL_CREATE} {TAG_COMBOBOX_MSG}"
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
