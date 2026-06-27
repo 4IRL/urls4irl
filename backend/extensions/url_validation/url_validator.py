@@ -248,6 +248,8 @@ class UrlValidator:
                 self._is_tracking_param(key)
                 for key, _ in ada_url.URLSearchParams(search.lstrip("?")).items()
             )
+        # Broad catch is intentional: this produces a best-effort metric signal
+        # only and must never raise into the request path.
         except Exception:
             return False
 
