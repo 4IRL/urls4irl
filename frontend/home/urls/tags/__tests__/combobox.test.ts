@@ -1,4 +1,5 @@
 import {
+  ComboboxMode,
   createTagComboboxBlock,
   hideAndResetTagCombobox,
   showTagCombobox,
@@ -93,7 +94,7 @@ function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
   const block = createTagComboboxBlock({
-    mode: "url",
+    mode: ComboboxMode.URL,
     urlCard,
     utubID: 1,
     utubUrlID: 1,
@@ -281,7 +282,7 @@ describe("combobox — at-cap", () => {
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
     const block = createTagComboboxBlock({
-      mode: "url",
+      mode: ComboboxMode.URL,
       urlCard,
       utubID: 1,
       utubUrlID: 1,
@@ -309,7 +310,7 @@ describe("combobox — at-cap", () => {
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
     const block = createTagComboboxBlock({
-      mode: "url",
+      mode: ComboboxMode.URL,
       urlCard,
       utubID: 1,
       utubUrlID: 1,
@@ -424,7 +425,7 @@ const CREATE_FORM_HTML = `
 function mountCreateModeCombobox(onSecondEscape?: () => void): JQuery {
   document.body.innerHTML = CREATE_FORM_HTML;
   const block = createTagComboboxBlock({
-    mode: "create",
+    mode: ComboboxMode.CREATE,
     urlCard: null,
     utubID: 1,
     onSecondEscape,

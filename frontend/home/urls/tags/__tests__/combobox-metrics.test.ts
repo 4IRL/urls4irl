@@ -1,4 +1,8 @@
-import { createTagComboboxBlock, showTagCombobox } from "../combobox.js";
+import {
+  ComboboxMode,
+  createTagComboboxBlock,
+  showTagCombobox,
+} from "../combobox.js";
 import { UI_EVENTS } from "../../../../types/metrics-events.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -115,7 +119,7 @@ function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
   const block = createTagComboboxBlock({
-    mode: "url",
+    mode: ComboboxMode.URL,
     urlCard,
     utubID: 1,
     utubUrlID: 1,

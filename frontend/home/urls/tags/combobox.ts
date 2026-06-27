@@ -63,6 +63,17 @@ export const STAGED_RESET_KEY = "urlTagComboboxResetStaged";
 export const STAGED_GET_KEY = "urlTagComboboxGetStaged";
 const LIMIT_SYNC_KEY = "urlTagComboboxSyncLimit";
 
+/**
+ * The two modes the combobox can be mounted in. `URL` mounts on an existing URL
+ * card and batch-applies tags; `CREATE` stages tags inline in the Create URL
+ * form. Used as the discriminant of `ComboboxBlockArgs`.
+ */
+export const ComboboxMode = Object.freeze({
+  URL: "url",
+  CREATE: "create",
+} as const);
+export type ComboboxMode = (typeof ComboboxMode)[keyof typeof ComboboxMode];
+
 let comboboxIdCounter = 0;
 
 /**
@@ -74,16 +85,21 @@ let comboboxIdCounter = 0;
  * into the create request.
  */
 type ComboboxBlockArgs =
-  | { mode: "url"; urlCard: JQuery; utubID: number; utubUrlID: number }
   | {
-      mode: "create";
+      mode: typeof ComboboxMode.URL;
+      urlCard: JQuery;
+      utubID: number;
+      utubUrlID: number;
+    }
+  | {
+      mode: typeof ComboboxMode.CREATE;
       urlCard: null;
       utubID: number;
       onSecondEscape?: () => void;
     };
 
 interface ComboboxRefs {
-  mode: "url" | "create";
+  mode: ComboboxMode;
   urlCard: JQuery | null;
   utubID: number;
   utubUrlID: number;
@@ -136,7 +152,7 @@ export function createTagComboboxBlock(
   args: ComboboxBlockArgs,
 ): JQuery<HTMLElement> {
   const { mode, urlCard, utubID } = args;
-  const isCreateMode = mode === "create";
+  const isCreateMode = mode === ComboboxMode.CREATE;
   const listboxId = `${OPTION_ID_PREFIX}Listbox-${++comboboxIdCounter}`;
 
   const wrap = $(document.createElement("div")).addClass(
@@ -215,7 +231,7 @@ export function createTagComboboxBlock(
     utubID,
     // url-mode owns a real `utubUrlID`; create-mode has none yet (the URL does
     // not exist) and never reaches the batch-submit path that reads it.
-    utubUrlID: args.mode === "url" ? args.utubUrlID : -1,
+    utubUrlID: args.mode === ComboboxMode.URL ? args.utubUrlID : -1,
     wrap,
     combobox,
     input,
@@ -225,7 +241,8 @@ export function createTagComboboxBlock(
     listboxId,
     stagedStrings: [],
     debounceTimer: null,
-    onSecondEscape: args.mode === "create" ? args.onSecondEscape : undefined,
+    onSecondEscape:
+      args.mode === ComboboxMode.CREATE ? args.onSecondEscape : undefined,
   };
 
   // Expose a staged-state reset so the close/reset lifecycle (which only has the

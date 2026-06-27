@@ -20,6 +20,7 @@ import { selectURLCard } from "./selection.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "./filtering.js";
 import {
+  ComboboxMode,
   createTagComboboxBlock,
   STAGED_GET_KEY,
   STAGED_RESET_KEY,
@@ -144,7 +145,7 @@ function mountCreateURLTagCombobox(utubID: number): void {
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.find(".urlTagComboboxWrap").remove();
   const comboboxWrap = createTagComboboxBlock({
-    mode: "create",
+    mode: ComboboxMode.CREATE,
     urlCard: null,
     utubID,
     onSecondEscape: createURLHideInput,
