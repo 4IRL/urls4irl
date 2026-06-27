@@ -445,8 +445,11 @@ def _associate_url_with_utub(
         if tag_strings:
             result = apply_tags_core(tag_strings, current_utub, url_utub_user_add)
             if result.over_limit:
+                # Capture the id before the rollback detaches the instance; the
+                # response builder must not access ORM attributes post-rollback.
+                url_utub_user_add_id = url_utub_user_add.id
                 db.session.rollback()
-                return build_url_at_tag_limit_response(url_utub_user_add)
+                return build_url_at_tag_limit_response(url_utub_user_add_id)
             applied = result.to_apply
 
         db.session.commit()

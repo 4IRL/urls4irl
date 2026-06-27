@@ -20,12 +20,12 @@
 
 - **Cleanup**: Does the plan handle cleanup of temp files, test fixtures, orphaned imports?
 
-- **Pre-existing path collision**: When a plan says "Create directory/file X", read the filesystem to check if X already exists. If it does, flag that the plan should acknowledge pre-existing contents and specify merge/overwrite behavior.
+- **Grounding Rule — pre-existing path collision**: When a plan says "Create directory/file X", read the filesystem to check if X already exists. If it does, flag that the plan should acknowledge pre-existing contents and specify merge/overwrite behavior.
 
 - **Config file scope correctness (required when a plan creates a shared config file):** When a plan proposes a new tsconfig.json, jest.config, or similar config that applies to all source files, check whether any types, globals, plugins, or include entries expose test-only APIs (e.g., vitest/globals, @types/jest) to production code. If so, flag the missing scope boundary (e.g., a separate tsconfig.test.json) as **Minor** and note the trade-off.
 
 - **Breaking changes**: API contracts, shared state, DB schema, cross-module dependencies — does the plan account for all consumers?
 
-- **Single-instance conversion completeness (required):** When a plan fixes only one known instance of a broader pattern (e.g., 'convert this one raw int to an enum'), grep the codebase for all call sites of the same pattern and verify no other instances exist. If others are found, flag as **Major** — the plan must either convert all instances or explicitly acknowledge the remaining ones as intentional.
+- **Grounding Rule — single-instance conversion completeness (required):** When a plan fixes only one known instance of a broader pattern (e.g., 'convert this one raw int to an enum'), grep the codebase for all call sites of the same pattern and verify no other instances exist. If others are found, flag as **Major** — the plan must either convert all instances or explicitly acknowledge the remaining ones as intentional.
 
 - **Fragility-pattern sweep (required when reviewing shell scripts / smoke-test files):** When a finding identifies a *fragility pattern* in a specific location — a flat `sleep N` settle, an unquoted variable, a missing readiness wait, a bare `docker exec` without a quoting guard — scan the same file for all other occurrences of that identical pattern. If the plan's fix resolves only the named occurrence while sibling occurrences in the same file share the same fragility, flag as **Major** and require the fix to sweep all siblings. This rule fires regardless of whether the siblings were named in the original finding.

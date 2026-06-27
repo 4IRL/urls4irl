@@ -64,7 +64,7 @@ def add_tag_to_url_if_valid(
     tag_to_add = tag_string.strip()
 
     if _url_is_at_url_tag_limit(utub, utub_url):
-        return build_url_at_tag_limit_response(utub_url)
+        return build_url_at_tag_limit_response(utub_url.id)
 
     utub_tag = _get_or_create_utub_tag(tag_to_add, utub)
 
@@ -216,7 +216,7 @@ def add_batch_tags_to_existing_url(
     try:
         result = apply_tags_core(tag_strings, utub, utub_url)
         if result.over_limit:
-            return build_url_at_tag_limit_response(utub_url)
+            return build_url_at_tag_limit_response(utub_url.id)
 
         if result.to_apply:
             # Only bump the UTub modification time when at least one new tag is
@@ -300,12 +300,14 @@ def _url_is_at_url_tag_limit(utub: Utubs, utub_url: Utub_Urls) -> bool:
     return len(tags_already_on_this_url) >= TAG_CONSTANTS.MAX_URL_TAGS
 
 
-def build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
+def build_url_at_tag_limit_response(utub_url_id: int) -> FlaskResponse:
     """
         Builds JSON response for when a URL is at the tag limit
 
         Args:
-            utub_url (Utub_Urls): The URL at the tag limit
+            utub_url_id (int): The id of the URL at the tag limit. Accepts a plain
+                int (not the ORM object) so callers can pass an id captured before
+                a rollback, avoiding detached-instance attribute access.
 
     Returns:
             tuple[Response, int]:
@@ -313,7 +315,7 @@ def build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
             - int: HTTP status code 400
     """
     warning_log(
-        f"User={current_user.id} tried adding tag to UTubURL.id={utub_url.id} but tag limited"
+        f"User={current_user.id} tried adding tag to UTubURL.id={utub_url_id} but tag limited"
     )
     return build_message_error_response(
         message=TAGS_FAILURE.MAX_URL_TAGS_REACHED.format(
