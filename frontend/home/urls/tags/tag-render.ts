@@ -48,16 +48,14 @@ export function renderAppliedTagsForUrl({
   mergeAppliedTagsIntoStore({ appliedTags });
 
   const tagsContainer = urlCard.find(".urlTagsContainer");
-  appliedTags.forEach((appliedTag) => {
-    tagsContainer.append(
-      createTagBadgeInURL(appliedTag.id, appliedTag.tagString, urlCard, utubID),
-    );
-  });
-
   urlCard.attr("data-utub-url-tag-ids", utubUrlTagIDs.join(","));
 
   let builtNewDeckFilter = false;
   appliedTags.forEach((appliedTag) => {
+    tagsContainer.append(
+      createTagBadgeInURL(appliedTag.id, appliedTag.tagString, urlCard, utubID),
+    );
+
     if (!tagIdsAlreadyInDeck.has(appliedTag.id)) {
       const newTag = buildTagFilterInDeck(
         utubID,
