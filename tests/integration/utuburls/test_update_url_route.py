@@ -2800,10 +2800,7 @@ def test_update_url_unknown_exception_sends_notification(
 
 @pytest.mark.parametrize(
     "expected_stripped,input_url",
-    [
-        (expected_stripped, input_url)
-        for (expected_stripped, input_url) in FLATTENED_TRACKING_PARAM_URLS
-    ],
+    FLATTENED_TRACKING_PARAM_URLS,
 )
 def test_update_url_strips_tracking_params(
     add_one_url_and_all_users_to_each_utub_with_all_tags,
