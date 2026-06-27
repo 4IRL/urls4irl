@@ -65,6 +65,9 @@ UNABLE_TO_DELETE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."
 UNABLE_TO_VALIDATE_THIS_URL = "This is not a valid URL."
 URL_IN_UTUB = "URL already in UTub."
+URL_IN_UTUB_TRACKING_PARAMS_STRIPPED = (
+    "URL already in UTub (tracking parameters were removed before checking)."
+)
 UNABLE_TO_ADD_URL_FORM = "Unable to add this URL, please check inputs."
 UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
 UNABLE_TO_MODIFY_URL = "Unable to modify this URL."
@@ -80,6 +83,7 @@ class URL_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_ADD_URL = UNABLE_TO_ADD_URL
     UNABLE_TO_DELETE_URL = UNABLE_TO_DELETE_URL
     URL_IN_UTUB = URL_IN_UTUB
+    URL_IN_UTUB_TRACKING_PARAMS_STRIPPED = URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
     UNABLE_TO_ADD_URL_FORM = UNABLE_TO_ADD_URL_FORM
     UNABLE_TO_MODIFY_URL = UNABLE_TO_MODIFY_URL
     UNABLE_TO_RETRIEVE_URL = UNABLE_TO_RETRIEVE_URL

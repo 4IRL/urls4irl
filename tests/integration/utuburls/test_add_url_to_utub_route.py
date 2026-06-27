@@ -7,6 +7,10 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.extensions.url_validation.constants import (
+    TRACKING_QUERY_PARAM_PREFIXES,
+    TRACKING_QUERY_PARAMS,
+)
 from backend.extensions.url_validation.url_validator import InvalidURLError
 from backend.metrics.events import EventName
 from backend.models.urls import Urls
@@ -38,6 +42,7 @@ from tests.integration.system.metrics_helpers import (
 )
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
+    FLATTENED_TRACKING_PARAM_URLS,
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
     INVALID_URLS_TO_VALIDATE,
 )
@@ -1345,6 +1350,170 @@ def test_add_fresh_url_to_utub(
         assert urls_in_utub[0].url_title == url_title_to_add
 
         assert Utub_Urls.query.count() == initial_utub_urls + 1
+
+
+def _url_string_contains_tracking_token(url_string: str) -> bool:
+    """True if `url_string` contains any blocklisted tracking param name/prefix."""
+    lowered = url_string.lower()
+    if any(prefix in lowered for prefix in TRACKING_QUERY_PARAM_PREFIXES):
+        return True
+    return any(tracking_param in lowered for tracking_param in TRACKING_QUERY_PARAMS)
+
+
+@pytest.mark.parametrize(
+    "expected_stripped,input_url",
+    [
+        (expected_stripped, input_url)
+        for (expected_stripped, input_url) in FLATTENED_TRACKING_PARAM_URLS
+    ],
+)
+def test_add_url_strips_tracking_params(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+    expected_stripped,
+    input_url,
+):
+    """
+    GIVEN a logged-in creator of a UTub with no URLs yet
+    WHEN they POST a tracking-laden URL to "/utubs/<utub_id>/urls"
+    THEN the server responds 200, the echoed url_string equals the stripped
+        canonical form, exactly one Urls row exists for the stripped string,
+        and no Urls row in this UTub carries a blocklisted tracking token.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+        # Before-state: the stripped URL is absent from the Urls table
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 0
+
+    url_title_to_add = f"This is {expected_stripped}"
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={URL_FORM.URL_STRING: input_url, URL_FORM.URL_TITLE: url_title_to_add},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+
+    add_url_json_response = add_url_response.json
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert (
+        add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_STRING]
+        == expected_stripped
+    )
+
+    with app.app_context():
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 1
+
+        # No URL associated with this UTub carries a blocklisted tracking token
+        urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+        ).all()
+        for utub_url in urls_in_utub:
+            assert not _url_string_contains_tracking_token(
+                utub_url.standalone_url.url_string
+            )
+
+
+def test_add_tracking_param_variants_collapse_to_one_row(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with no URLs yet
+    WHEN they POST two URLs that differ only in their tracking params
+        (".../p?utm_source=a" then ".../p?gclid=b") to the same UTub
+    THEN the first creates exactly one Urls row, and the second resolves to
+        that same row (no new Urls row) returning a 409 EXISTING_URL_IN_UTUB.
+        This collapse onto a single shared row is the intended dedup behavior.
+        Exactly one URL_CREATE_REJECTED event with reason=url_already_in_utub
+        is emitted on the second POST.
+    """
+    expected_stripped = "https://example.com/p"
+    first_tracking_url = "https://example.com/p?utm_source=a"
+    second_tracking_url = "https://example.com/p?gclid=b"
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+        # Before-state: stripped URL absent and zero rejection events
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 0
+        initial_urls = Urls.query.count()
+
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_CREATE_REJECTED) == 0
+
+    first_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: first_tracking_url,
+            URL_FORM.URL_TITLE: "First tracking variant",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert first_response.status_code == 200
+    assert (
+        first_response.json[MODEL_STRS.URL][URL_SUCCESS.URL_STRING] == expected_stripped
+    )
+
+    with app.app_context():
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 1
+        assert Urls.query.count() == initial_urls + 1
+        url_id_after_first = (
+            Urls.query.filter(Urls.url_string == expected_stripped).first().id
+        )
+
+    second_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: second_tracking_url,
+            URL_FORM.URL_TITLE: "Second tracking variant",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert second_response.status_code == 409
+    add_url_json_response = second_response.json
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+    assert add_url_json_response[URL_FAILURE.URL_STRING] == expected_stripped
+    # The collision message is the generic URL_IN_UTUB until the create service
+    # threads whether the input carried tracking params; the informative
+    # URL_IN_UTUB_TRACKING_PARAMS_STRIPPED variant is asserted by
+    # test_add_tracking_param_collision_returns_informative_message.
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+
+    with app.app_context():
+        # No new Urls row was created: both variants resolved onto one shared row
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 1
+        assert Urls.query.count() == initial_urls + 1
+        assert (
+            Urls.query.filter(Urls.url_string == expected_stripped).first().id
+            == url_id_after_first
+        )
+
+    rejection_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_CREATE_REJECTED
+    )
+    assert len(rejection_keys) == 1
+    assert (
+        parse_dims(rejection_keys[0])[REJECTION_REASON_DIM_KEY] == "url_already_in_utub"
+    )
 
 
 @pytest.mark.parametrize(
