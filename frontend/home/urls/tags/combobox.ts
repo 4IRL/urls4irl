@@ -174,7 +174,7 @@ export function createTagComboboxBlock(
       .text(APP_CONFIG.strings.TAGS_OPTIONAL_LABEL);
     wrap.append(label);
   } else {
-    input.attr("aria-label", "Add tags");
+    input.attr("aria-label", APP_CONFIG.strings.ADD_TAGS_ARIA_LABEL);
   }
 
   combobox.append(input);

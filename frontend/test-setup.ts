@@ -119,6 +119,7 @@ const appConfig = {
     TAG_FILTER_NO_RESULTS: "No URLs match selected tags",
     ADD_TAGS_PLACEHOLDER: "Type to search or create tags…",
     ADD_TAGS_SUBMIT: "Add tags",
+    ADD_TAGS_ARIA_LABEL: "Add tags",
     TAGS_OPTIONAL_LABEL: "Tags (optional)",
     TAG_CREATE_NEW: "Create tag",
     TAGS_LIMIT_REACHED: "Maximum {max} tags reached — remove a tag to add more",
