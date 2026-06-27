@@ -206,7 +206,12 @@ function createTagsAndOptionsForUrlBlock(
   tagsAndTagCreateWrap.append(tagBadgesWrap);
 
   tagsAndTagCreateWrap.append(
-    createTagComboboxBlock({ urlCard, utubID, utubUrlID: url.utubUrlID }),
+    createTagComboboxBlock({
+      mode: "url",
+      urlCard,
+      utubID,
+      utubUrlID: url.utubUrlID,
+    }),
   );
 
   tagsAndButtonsWrap.append(createURLOptionsButtons(url, urlCard, utubID));

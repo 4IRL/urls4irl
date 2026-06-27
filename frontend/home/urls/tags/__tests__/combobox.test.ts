@@ -2,8 +2,15 @@ import {
   createTagComboboxBlock,
   hideAndResetTagCombobox,
   showTagCombobox,
+  STAGED_GET_KEY,
 } from "../combobox.js";
+import { ajaxCall } from "../../../../lib/ajax.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+
+vi.mock("../../../../lib/ajax.js", () => ({
+  ajaxCall: vi.fn(),
+  is429Handled: vi.fn(() => false),
+}));
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -85,7 +92,12 @@ function setTags(
 function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
-  const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
+  const block = createTagComboboxBlock({
+    mode: "url",
+    urlCard,
+    utubID: 1,
+    utubUrlID: 1,
+  });
   urlCard.find(".tagsAndTagCreateWrap").append(block);
   // Reveal so input events behave consistently.
   urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
@@ -206,7 +218,12 @@ describe("combobox — at-cap", () => {
       (_, i) => i + 1,
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
-    const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
+    const block = createTagComboboxBlock({
+      mode: "url",
+      urlCard,
+      utubID: 1,
+      utubUrlID: 1,
+    });
     urlCard.find(".tagsAndTagCreateWrap").append(block);
     urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
 
@@ -229,7 +246,12 @@ describe("combobox — at-cap", () => {
       (_, index) => index + 1,
     ).join(",");
     urlCard.attr("data-utub-url-tag-ids", appliedIds);
-    const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
+    const block = createTagComboboxBlock({
+      mode: "url",
+      urlCard,
+      utubID: 1,
+      utubUrlID: 1,
+    });
     urlCard.find(".tagsAndTagCreateWrap").append(block);
 
     // Open the combobox without typing a single character.
@@ -324,5 +346,91 @@ describe("hideAndResetTagCombobox", () => {
 
     expect(urlCard.find(".urlTagStagedChip").length).toBe(0);
     expect(urlCard.find(".urlTagComboboxWrap").hasClass("hidden")).toBe(true);
+  });
+});
+
+const CREATE_FORM_HTML = `
+  <div id="createURLWrap">
+    <div class="text-input-container"></div>
+    <div class="flex-row flex-start">
+      <button id="urlSubmitBtnCreate" type="button">Add URL</button>
+      <button id="urlCancelBtnCreate" type="button">Cancel</button>
+    </div>
+  </div>
+`;
+
+function mountCreateModeCombobox(onSecondEscape?: () => void): JQuery {
+  document.body.innerHTML = CREATE_FORM_HTML;
+  const block = createTagComboboxBlock({
+    mode: "create",
+    urlCard: null,
+    utubID: 1,
+    onSecondEscape,
+  });
+  block.removeClass("hidden");
+  $("#urlSubmitBtnCreate").closest(".flex-row").before(block);
+  return $("#createURLWrap").find(".urlTagComboboxWrap");
+}
+
+function typeInCreateInput(wrap: JQuery, value: string): void {
+  const input = wrap.find(".urlTagComboboxInput");
+  input.val(value).trigger("input");
+  vi.runAllTimers();
+}
+
+describe("combobox — create mode", () => {
+  it("mounts inside #createURLWrap with no internal submit button", () => {
+    const wrap = mountCreateModeCombobox();
+
+    expect($("#createURLWrap").find(".urlTagComboboxWrap").length).toBe(1);
+    expect(wrap.find(".urlTagComboboxSubmitBtn").length).toBe(0);
+  });
+
+  it("renders a visible 'Tags (optional)' label tied to the input and no aria-label", () => {
+    const wrap = mountCreateModeCombobox();
+
+    const label = wrap.find("label.urlTagComboboxLabel");
+    const input = wrap.find(".urlTagComboboxInput");
+    expect(label.text()).toBe(APP_CONFIG.strings.TAGS_OPTIONAL_LABEL);
+    expect(label.attr("for")).toBe(input.attr("id"));
+    expect(input.attr("aria-label")).toBeUndefined();
+  });
+
+  it("exposes staged strings via the STAGED_GET_KEY getter", () => {
+    const wrap = mountCreateModeCombobox();
+    typeInCreateInput(wrap, "py");
+    wrap.find(".urlTagOptionCreateNew").trigger("click");
+
+    const getStaged = wrap.data(STAGED_GET_KEY) as () => string[];
+    expect(getStaged()).toEqual(["py"]);
+  });
+
+  it("does NOT trigger a batch AJAX call when Enter is pressed with staged tags", () => {
+    const wrap = mountCreateModeCombobox();
+    typeInCreateInput(wrap, "py");
+    wrap.find(".urlTagOptionCreateNew").trigger("click");
+    expect((wrap.data(STAGED_GET_KEY) as () => string[])()).toEqual(["py"]);
+
+    const input = wrap.find(".urlTagComboboxInput");
+    // Close the dropdown so the Enter lands on the (suppressed) batch-submit path.
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    input.trigger($.Event("keydown", { key: "Enter" }));
+
+    expect(ajaxCall).not.toHaveBeenCalled();
+  });
+
+  it("second Escape delegates dismissal to onSecondEscape", () => {
+    const onSecondEscape = vi.fn();
+    const wrap = mountCreateModeCombobox(onSecondEscape);
+    typeInCreateInput(wrap, "py");
+
+    const input = wrap.find(".urlTagComboboxInput");
+    // First Escape closes only the dropdown.
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    expect(onSecondEscape).not.toHaveBeenCalled();
+
+    // Second Escape (dropdown closed) delegates to onSecondEscape.
+    input.trigger($.Event("keydown", { key: "Escape" }));
+    expect(onSecondEscape).toHaveBeenCalledTimes(1);
   });
 });

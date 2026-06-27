@@ -18,6 +18,7 @@ import {
 } from "./cards.js";
 import { selectURLCard } from "./selection.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
+import { createTagComboboxBlock, STAGED_RESET_KEY } from "../tags/combobox.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -91,7 +92,16 @@ export function resetNewURLForm(): void {
   $("#urlStringCreate").val("");
   $("#createURLWrap").hideClass();
   newURLInputRemoveEventListeners();
+  resetCreateURLTagCombobox();
   $("#urlBtnCreate").showClassNormal();
+}
+
+// Clears the staged-tags backing state (via the combobox's exposed reset
+// callback) and removes the mounted block from the create form.
+function resetCreateURLTagCombobox(): void {
+  const comboboxWrap = $("#createURLWrap").find(".urlTagComboboxWrap");
+  (comboboxWrap.data(STAGED_RESET_KEY) as (() => void) | undefined)?.();
+  comboboxWrap.remove();
 }
 // Displays new URL input prompt
 export function createURLHideInput(): void {
@@ -113,9 +123,29 @@ export function createURLShowInput(utubID: number): void {
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm, utubID);
+  mountCreateURLTagCombobox(utubID);
+  // Keep initial focus on the URL Title input — the combobox must NOT steal focus
+  // on form-open (it is a staging-only sub-control of the create form).
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
   temporarilyHideSearchForEdit();
+}
+
+// Mounts the staging-only tag combobox inline in the Create URL form, between
+// the URL-string container and the action row, matching the mockup. Removes any
+// stale block first so re-opening the form does not stack duplicates.
+function mountCreateURLTagCombobox(utubID: number): void {
+  const createURLInputForm = $("#createURLWrap");
+  createURLInputForm.find(".urlTagComboboxWrap").remove();
+  const comboboxWrap = createTagComboboxBlock({
+    mode: "create",
+    urlCard: null,
+    utubID,
+    onSecondEscape: createURLHideInput,
+  });
+  comboboxWrap.removeClass("hidden");
+  // Inject before the action row (the row holding the submit button).
+  $("#urlSubmitBtnCreate").closest(".flex-row").before(comboboxWrap);
 }
 
 // Prepares post request inputs for addition of a new URL

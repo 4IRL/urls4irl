@@ -114,7 +114,12 @@ const URL_CARD_HTML = `
 function mountCombobox(): JQuery {
   document.body.innerHTML = URL_CARD_HTML;
   const urlCard = $(".urlRow");
-  const block = createTagComboboxBlock({ urlCard, utubID: 1, utubUrlID: 1 });
+  const block = createTagComboboxBlock({
+    mode: "url",
+    urlCard,
+    utubID: 1,
+    utubUrlID: 1,
+  });
   urlCard.find(".tagsAndTagCreateWrap").append(block);
   urlCard.find(".urlTagComboboxWrap").removeClass("hidden");
   return urlCard;
