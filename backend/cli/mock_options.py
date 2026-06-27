@@ -238,7 +238,7 @@ def _add_tracking_seed_urls(db: SQLAlchemy):
             "seeding tracking-param URLs without tags"
         )
 
-    for tracking_url, _expected_stripped in MOCK_TRACKING_SEED_URL_PAIRS:
+    for tracking_url, _ in MOCK_TRACKING_SEED_URL_PAIRS:
         url_to_add: Urls = Urls.query.filter(Urls.url_string == tracking_url).first()
         if url_to_add is None:
             url_to_add = Urls(
