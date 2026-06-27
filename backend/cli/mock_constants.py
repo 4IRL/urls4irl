@@ -23,9 +23,7 @@ MOCK_URL_STRINGS = (
 
 MOCK_TEST_URL_STRINGS = [f"https://www.u4i.test/{idx}" for idx in range(8)]
 
-MOCK_URL_WITH_TRACKING_PARAMS = (
-    "https://www.example.com/p?utm_source=google&gclid=abc123"
-)
+MOCK_URL_WITH_TRACKING_PARAMS = "https://www.example.com/p?utm_source=google&gclid=abc123"  # fmt: skip
 MOCK_URL_TRACKING_STRIPPED = "https://www.example.com/p"
 
 # Tuples of (tracking_url, expected_stripped) seeded ONLY for the migration
