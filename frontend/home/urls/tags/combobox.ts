@@ -396,8 +396,14 @@ function renderListbox(refs: ComboboxRefs): void {
       activateOption(refs, createNewOption);
     }
     announceMatchCount(refs, suggestions.length);
-  } else {
+  } else if (trimmedQuery.length > 0) {
     announce(refs, APP_CONFIG.strings.TAGS_NO_MATCHES);
+  } else {
+    // An empty query yields no suggestions by design (filter-only behavior), so
+    // the dropdown closes silently — no "no matches" announcement. This path is
+    // hit e.g. right after staging a chip clears the input and re-renders; clear
+    // any lingering match-count text from the prior keystroke.
+    announce(refs, "");
   }
 
   updateSubmitState(refs);

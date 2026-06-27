@@ -184,6 +184,68 @@ describe("combobox — sad path", () => {
     expect(urlCard.find(".urlTagOptionCreateNew").length).toBe(0);
   });
 
+  it("keeps the listbox closed with no options for an empty query (filter-only)", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "");
+
+    const listbox = urlCard.find(".urlTagListbox");
+    const input = urlCard.find(".urlTagComboboxInput");
+    expect(listbox.hasClass("hidden")).toBe(true);
+    expect(input.attr("aria-expanded")).toBe("false");
+    expect(urlCard.find(".urlTagOption").length).toBe(0);
+  });
+
+  it("keeps the listbox closed with no options for a whitespace-only query (filter-only)", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "   ");
+
+    const listbox = urlCard.find(".urlTagListbox");
+    const input = urlCard.find(".urlTagComboboxInput");
+    expect(listbox.hasClass("hidden")).toBe(true);
+    expect(input.attr("aria-expanded")).toBe("false");
+    expect(urlCard.find(".urlTagOption").length).toBe(0);
+  });
+
+  it("opens the listbox with matching options once a query is typed", () => {
+    const urlCard = mountCombobox();
+
+    // Empty first: dropdown closed, no options.
+    typeInInput(urlCard, "");
+    expect(urlCard.find(".urlTagOption").length).toBe(0);
+
+    // Typing a matching substring surfaces option rows and opens the dropdown.
+    typeInInput(urlCard, "py");
+
+    const listbox = urlCard.find(".urlTagListbox");
+    const input = urlCard.find(".urlTagComboboxInput");
+    expect(listbox.hasClass("hidden")).toBe(false);
+    expect(input.attr("aria-expanded")).toBe("true");
+    expect(urlCard.find(".urlTagOption").length).toBeGreaterThan(0);
+  });
+
+  it("does NOT announce 'no matches' on an empty query (e.g. after staging a chip)", () => {
+    const urlCard = mountCombobox();
+    typeInInput(urlCard, "py");
+    // Staging a chip clears the input and re-renders with an empty query.
+    urlCard.find(".urlTagOptionCreateNew").trigger("click");
+
+    expect(urlCard.find(".urlTagComboboxMsg").text()).not.toBe(
+      APP_CONFIG.strings.TAGS_NO_MATCHES,
+    );
+    expect(urlCard.find(".urlTagListbox").hasClass("hidden")).toBe(true);
+  });
+
+  it("surfaces no existing-tag option rows when a typed query matches nothing", () => {
+    const urlCard = mountCombobox();
+    setTags([{ id: 1, tagString: "python", tagApplied: 5 }]);
+    typeInInput(urlCard, "zzzqqq");
+
+    // No existing-tag substring matches; only the create-new row may appear.
+    expect(
+      urlCard.find(".urlTagOption:not(.urlTagOptionCreateNew)").length,
+    ).toBe(0);
+  });
+
   it("does NOT create a chip from a whitespace-only query on Enter (no active option)", () => {
     const urlCard = mountCombobox();
     typeInInput(urlCard, "   ");
