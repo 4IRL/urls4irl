@@ -7,11 +7,10 @@ from flask_login import current_user
 import pytest
 
 from backend import db
-from backend.extensions.url_validation.constants import (
-    TRACKING_QUERY_PARAM_PREFIXES,
-    TRACKING_QUERY_PARAMS,
+from backend.extensions.url_validation.url_validator import (
+    InvalidURLError,
+    UrlValidator,
 )
-from backend.extensions.url_validation.url_validator import InvalidURLError
 from backend.metrics.events import EventName
 from backend.models.urls import Urls
 from backend.models.utubs import Utubs
@@ -1354,11 +1353,17 @@ def test_add_fresh_url_to_utub(
 
 
 def _url_string_contains_tracking_token(url_string: str) -> bool:
-    """True if `url_string` contains any blocklisted tracking param name/prefix."""
-    lowered = url_string.lower()
-    if any(prefix in lowered for prefix in TRACKING_QUERY_PARAM_PREFIXES):
-        return True
-    return any(tracking_param in lowered for tracking_param in TRACKING_QUERY_PARAMS)
+    """True if any query-param NAME in `url_string` is a blocklisted tracking param.
+
+    Parses the query string with ada_url and checks each param name via the
+    production `UrlValidator._is_tracking_param`, rather than a raw substring
+    search over the whole URL (which would false-positive on path/value text).
+    """
+    search = ada_url.URL(url_string).search
+    return any(
+        UrlValidator._is_tracking_param(key)
+        for key, _ in ada_url.URLSearchParams(search.lstrip("?")).items()
+    )
 
 
 @pytest.mark.parametrize(
