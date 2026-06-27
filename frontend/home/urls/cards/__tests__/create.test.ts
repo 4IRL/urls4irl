@@ -143,6 +143,20 @@ describe("createURL - client-side validation", () => {
       expect($("#urlStringCreate").hasClass("invalid-field")).toBe(false);
       expect($("#urlStringCreate-error").hasClass("visible")).toBe(false);
     });
+
+    it("clears the inline combobox message text and warn class", () => {
+      $("#createURLWrap").html(
+        '<div class="urlTagComboboxWrap"><div class="urlTagComboboxMsg warn">stale tag error</div></div>',
+      );
+      const comboboxMsg = $(
+        "#createURLWrap .urlTagComboboxWrap .urlTagComboboxMsg",
+      );
+
+      resetCreateURLFailErrors();
+
+      expect(comboboxMsg.text()).toBe("");
+      expect(comboboxMsg.hasClass("warn")).toBe(false);
+    });
   });
 
   describe("createURLHideInput — empty-state branches", () => {
