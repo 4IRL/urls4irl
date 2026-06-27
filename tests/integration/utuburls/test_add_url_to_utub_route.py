@@ -1363,10 +1363,7 @@ def _url_string_contains_tracking_token(url_string: str) -> bool:
 
 @pytest.mark.parametrize(
     "expected_stripped,input_url",
-    [
-        (expected_stripped, input_url)
-        for (expected_stripped, input_url) in FLATTENED_TRACKING_PARAM_URLS
-    ],
+    FLATTENED_TRACKING_PARAM_URLS,
 )
 def test_add_url_strips_tracking_params(
     every_user_makes_a_unique_utub,
