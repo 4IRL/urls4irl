@@ -584,3 +584,37 @@ def test_normalize_urls_invalid(invalid_url: str):
 )
 def test_is_tracking_param(param_name: str, expected: bool):
     assert UrlValidator._is_tracking_param(param_name) is expected
+
+
+@pytest.mark.parametrize(
+    "href,expected",
+    [
+        ("https://x.com/p", "https://x.com/p"),
+        ("https://x.com/p?q=1&sort=date", "https://x.com/p?q=1&sort=date"),
+        ("https://x.com/p?utm_source=g&gclid=z", "https://x.com/p"),
+        ("https://x.com/p?utm_source=g&q=1&fbclid=z", "https://x.com/p?q=1"),
+        ("https://x.com/p?UTM_SOURCE=g&q=1", "https://x.com/p?q=1"),
+        ("https://x.com/p?utm_campaign=a&utm_medium=b", "https://x.com/p"),
+        ("https://x.com/p?q=1&q=2&utm_source=g", "https://x.com/p?q=1&q=2"),
+    ],
+)
+def test_strip_tracking_params(href: str, expected: str):
+    url_validator = UrlValidator(skip_logs=True)
+    assert url_validator._strip_tracking_params(href) == expected
+
+
+@pytest.mark.parametrize(
+    "url,expected",
+    [
+        ("https://x.com/p", False),
+        ("https://x.com/p?q=1&sort=date", False),
+        ("https://x.com/p?utm_source=g", True),
+        ("https://x.com/p?q=1&fbclid=z", True),
+        ("https://x.com/p?GCLID=z", True),
+        ("https://x.com/p?utm_campaign=a", True),
+        ("", False),
+    ],
+)
+def test_contains_tracking_params(url: str, expected: bool):
+    url_validator = UrlValidator(skip_logs=True)
+    assert url_validator.contains_tracking_params(url) is expected

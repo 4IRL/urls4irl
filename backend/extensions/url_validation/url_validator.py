@@ -202,6 +202,47 @@ class UrlValidator:
             TRACKING_QUERY_PARAM_PREFIXES
         )
 
+    def _strip_tracking_params(self, href: str) -> str:
+        """
+        Removes known marketing/advertising tracking query params from a URL,
+        preserving all non-tracking params and their original order/repeats.
+
+        Example:
+            "https://x.com/p?utm_source=g&q=1&fbclid=z" -> "https://x.com/p?q=1"
+        """
+        search = ada_url.URL(href).search
+        if not search:
+            return href
+
+        params = ada_url.URLSearchParams(search.lstrip("?"))
+        tracking_keys = [
+            key for key, _ in params.items() if self._is_tracking_param(key)
+        ]
+        for key in tracking_keys:
+            params.delete(key)
+
+        new_search = str(params)
+        return ada_url.replace_url(href, search=new_search)
+
+    def contains_tracking_params(self, url: str) -> bool:
+        """
+        Returns True if a URL contains any known marketing/advertising tracking
+        query param. Best-effort metric signal only: never raises — any parse
+        failure yields False.
+
+        Example:
+            "https://x.com/p?utm_source=g" -> True
+            "https://x.com/p?q=1"          -> False
+        """
+        try:
+            search = ada_url.URL(url).search
+            return any(
+                self._is_tracking_param(key)
+                for key, _ in ada_url.URLSearchParams(search.lstrip("?")).items()
+            )
+        except Exception:
+            return False
+
     def _has_user_pass_type_url(self, normalized_url: str) -> bool:
         """
         To prevent user's leaked credentials, block any type of user:pass@example.com URLs.
