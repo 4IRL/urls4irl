@@ -18,13 +18,8 @@ import {
   HOME_FORM,
   TAG_SCOPE,
 } from "../../../types/metrics-dim-values.js";
+import { filterTagSuggestions, hasExactTagMatch } from "./combobox-state.js";
 import {
-  filterTagSuggestions,
-  hasExactTagMatch,
-  mergeAppliedTagsIntoStore,
-} from "./combobox-state.js";
-import {
-  createTagBadgeInURL,
   createTagDeleteIcon,
   disableTagRemovalInURLCard,
   enableTagRemovalInURLCard,
@@ -50,9 +45,7 @@ import {
   disableTabbableChildElements,
 } from "../../../lib/jquery-plugins.js";
 import { createAddTagIcon } from "../cards/options/tag-btn.js";
-import { isTagInUTubTagDeck } from "../../tags/utils.js";
-import { buildTagFilterInDeck } from "../../tags/tags.js";
-import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
+import { renderAppliedTagsForUrl } from "../tags/tag-render.js";
 import { getState, setState } from "../../../store/app-store.js";
 
 const SUBMIT_FIELD_NAMES = ["tagStrings"] as const;
@@ -955,19 +948,9 @@ export function submitStagedTagsSuccess({
     emit({ event: UI_EVENTS.UI_TAG_APPLY });
   }
 
-  // Snapshot which applied tags already existed in the deck BEFORE merging the
-  // response into the store. `mergeAppliedTagsIntoStore` appends brand-new tags
-  // to `getState().tags`, which would otherwise make `isTagInUTubTagDeck` report
-  // every applied tag (including brand-new ones) as already-present, so their
-  // deck filter would never be built.
-  const tagIdsAlreadyInDeck = new Set(
-    response.appliedTags
-      .filter((appliedTag) => isTagInUTubTagDeck(appliedTag.id))
-      .map((appliedTag) => appliedTag.id),
-  );
-
-  mergeAppliedTagsIntoStore({ appliedTags: response.appliedTags });
-
+  // Caller-owned store patch: update the existing URL entry's tag-ID slice. This
+  // stays here (not inside `renderAppliedTagsForUrl`) because the helper is a
+  // pure render+DOM+deck-sync utility — only the tag-vocab merge runs inside it.
   const urlID = parseInt(urlCard.attr("utuburlid") as string);
   setState({
     urls: getState().urls.map((existingUrl: UtubUrlItem) =>
@@ -977,48 +960,12 @@ export function submitStagedTagsSuccess({
     ),
   });
 
-  const tagsContainer = urlCard.find(".urlTagsContainer");
-  response.appliedTags.forEach((appliedTag) => {
-    tagsContainer.append(
-      createTagBadgeInURL(appliedTag.id, appliedTag.tagString, urlCard, utubID),
-    );
+  renderAppliedTagsForUrl({
+    appliedTags: response.appliedTags,
+    utubUrlTagIDs: response.utubUrlTagIDs,
+    urlCard,
+    utubID,
   });
-
-  urlCard.attr("data-utub-url-tag-ids", response.utubUrlTagIDs.join(","));
-
-  if (response.appliedTags.length > 0) {
-    $("#unselectAllTagFilters").showClassNormal();
-  }
-
-  let builtNewDeckFilter = false;
-  response.appliedTags.forEach((appliedTag) => {
-    if (!tagIdsAlreadyInDeck.has(appliedTag.id)) {
-      const newTag = buildTagFilterInDeck(
-        utubID,
-        appliedTag.id,
-        appliedTag.tagString,
-        appliedTag.tagApplied,
-      );
-      if (
-        $(".tagFilter.selected").length ===
-        APP_CONFIG.constants.TAGS_MAX_ON_URLS
-      ) {
-        newTag.addClass("disabled").off(".tagFilterSelected");
-      }
-      $("#listTags").append(newTag);
-      builtNewDeckFilter = true;
-    } else {
-      updateTagFilterCount(
-        appliedTag.id,
-        appliedTag.tagApplied,
-        TagCountOperation.INCREMENT,
-      );
-    }
-  });
-
-  if (builtNewDeckFilter) {
-    $("#utubTagBtnUpdateAllOpen").showClassNormal();
-  }
 
   hideAndResetTagCombobox(urlCard);
 }

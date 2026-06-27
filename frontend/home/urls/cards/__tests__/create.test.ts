@@ -4,6 +4,8 @@ import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import { getNumOfURLs } from "../../utils.js";
 import { showURLSearchIcon } from "../../search.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../../empty-state.js";
+import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
+import { STAGED_GET_KEY } from "../../tags/combobox.js";
 import {
   createURL,
   createURLHideInput,
@@ -58,6 +60,22 @@ vi.mock("../utils.js", () => ({
 vi.mock("../../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ urls: [] })),
   setState: vi.fn(),
+}));
+
+vi.mock("../../tags/combobox.js", () => ({
+  createTagComboboxBlock: vi.fn(() =>
+    window.jQuery('<div class="urlTagComboboxWrap"></div>'),
+  ),
+  STAGED_GET_KEY: "urlTagComboboxGetStaged",
+  STAGED_RESET_KEY: "urlTagComboboxResetStaged",
+}));
+
+vi.mock("../../tags/tag-render.js", () => ({
+  renderAppliedTagsForUrl: vi.fn(),
+}));
+
+vi.mock("../filtering.js", () => ({
+  updateURLsAndTagSubheaderWhenTagSelected: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -185,6 +203,117 @@ describe("createURL - client-side validation", () => {
 
       expect(checkForStaleDataOn409).toHaveBeenCalledTimes(1);
       expect(checkForStaleDataOn409).toHaveBeenCalledWith(responseJSON, 99);
+    });
+  });
+
+  describe("createURL - staged tags folded into request", () => {
+    it("includes tagStrings from the combobox getter in the POST body", () => {
+      $("#createURLWrap").append('<div class="urlTagComboboxWrap"></div>');
+      const wrap = $("#createURLWrap").find(".urlTagComboboxWrap");
+      wrap.data(STAGED_GET_KEY, () => ["python", "web"]);
+      urlStringInput.val("https://example.com");
+      urlTitleInput.val("Example");
+
+      const chainable = createMockJqXHRChainable();
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL(urlTitleInput, urlStringInput, 1);
+
+      expect(ajaxCall).toHaveBeenCalledTimes(1);
+      const postData = vi.mocked(ajaxCall).mock.calls[0][2] as {
+        urlString: string;
+        urlTitle: string;
+        tagStrings: string[];
+      };
+      expect(postData.tagStrings).toEqual(["python", "web"]);
+    });
+
+    it("defaults tagStrings to [] when no combobox is mounted", () => {
+      urlStringInput.val("https://example.com");
+      urlTitleInput.val("Example");
+
+      const chainable = createMockJqXHRChainable();
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL(urlTitleInput, urlStringInput, 1);
+
+      const postData = vi.mocked(ajaxCall).mock.calls[0][2] as {
+        tagStrings: string[];
+      };
+      expect(postData.tagStrings).toEqual([]);
+    });
+  });
+
+  describe("createURLSuccess - renders applied tags", () => {
+    it("merges the new URL into the store and delegates tag rendering on 200", () => {
+      urlStringInput.val("https://example.com");
+      urlTitleInput.val("Example");
+
+      const response = {
+        utubID: 1,
+        addedByUserID: 1,
+        URL: {
+          utubUrlID: 42,
+          urlString: "https://example.com",
+          urlTitle: "Example",
+          utubUrlTagIDs: [5, 6],
+        },
+        appliedTags: [
+          { id: 5, tagString: "python", tagApplied: 1 },
+          { id: 6, tagString: "web", tagApplied: 1 },
+        ],
+      };
+      const xhr = { status: 200 } as JQuery.jqXHR;
+
+      const chainable = createMockJqXHRChainable({
+        done: (callback: unknown) =>
+          (callback as (r: unknown, t: unknown, x: unknown) => void)(
+            response,
+            "success",
+            xhr,
+          ),
+      });
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL(urlTitleInput, urlStringInput, 1);
+
+      expect(renderAppliedTagsForUrl).toHaveBeenCalledTimes(1);
+      const renderArgs = vi.mocked(renderAppliedTagsForUrl).mock.calls[0][0];
+      expect(renderArgs.appliedTags).toEqual(response.appliedTags);
+      expect(renderArgs.utubUrlTagIDs).toEqual([5, 6]);
+      expect(renderArgs.utubID).toBe(1);
+    });
+  });
+
+  describe("createURLFail - tagStrings error routes to combobox message", () => {
+    it("writes the tagStrings error into the inline combobox message element", () => {
+      $("#createURLWrap").append(
+        '<div class="urlTagComboboxWrap"><div class="urlTagComboboxMsg"></div></div>',
+      );
+      urlStringInput.val("https://example.com");
+      urlTitleInput.val("Example");
+
+      const responseJSON = {
+        status: "Failure",
+        message: "Validation failed",
+        errors: { tagStrings: ["Tag is too long"] },
+      };
+      const xhr = {
+        status: 400,
+        responseJSON,
+      } as unknown as JQuery.jqXHR;
+
+      const chainable = createMockJqXHRChainable({
+        fail: (callback: unknown) =>
+          (callback as (xhrArg: JQuery.jqXHR) => void)(xhr),
+      });
+      vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+      createURL(urlTitleInput, urlStringInput, 1);
+
+      const msg = $("#createURLWrap .urlTagComboboxMsg");
+      expect(msg.text()).toBe("Tag is too long");
+      expect(msg.hasClass("warn")).toBe(true);
     });
   });
 });
