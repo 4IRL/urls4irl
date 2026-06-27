@@ -1,5 +1,6 @@
 from backend.cli.mock_constants import (
     MOCK_TAGS,
+    MOCK_TRACKING_SEED_URL_PAIRS,
     MOCK_URL_STRINGS,
     TEST_USER_COUNT,
     USERNAME_BASE,
@@ -11,6 +12,10 @@ from backend.models.users import Users
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+
+TRACKING_SEED_URL_STRINGS: frozenset[str] = frozenset(
+    tracking_url for tracking_url, _expected_stripped in MOCK_TRACKING_SEED_URL_PAIRS
+)
 
 
 def verify_users_added():
@@ -65,13 +70,21 @@ def verify_custom_url_in_database(url: str):
 
 
 def verify_urls_added_to_all_utubs():
-    """Verifies all mock URLs are added to each UTub"""
+    """Verifies all mock URLs are added to each UTub.
+
+    The tracking-param seed URLs (added only to the first UTub by
+    ``_add_tracking_seed_urls``) are excluded so this assertion still pins the
+    standard ``MOCK_URL_STRINGS`` set per UTub.
+    """
     all_utubs: list[Utubs] = Utubs.query.all()
     for utub in all_utubs:
         urls_in_utub: list[Utub_Urls] = utub.utub_urls
-        assert sorted(
-            [url.standalone_url.url_string for url in urls_in_utub]
-        ) == sorted(MOCK_URL_STRINGS)
+        non_tracking_url_strings = [
+            url.standalone_url.url_string
+            for url in urls_in_utub
+            if url.standalone_url.url_string not in TRACKING_SEED_URL_STRINGS
+        ]
+        assert sorted(non_tracking_url_strings) == sorted(MOCK_URL_STRINGS)
 
 
 def verify_custom_url_added_to_all_utubs(url: str):
@@ -93,11 +106,17 @@ def verify_tags_in_utubs():
 
 
 def verify_tags_added_to_all_urls_in_utubs():
-    """Verifies all mock tags are associated with each URL in each UTub"""
+    """Verifies all mock tags are associated with each URL in each UTub.
+
+    The tracking-param seed URLs carry only a single seed tag (not the full
+    ``MOCK_TAGS`` set), so they are excluded from this exact-set assertion.
+    """
     all_utubs: list[Utubs] = Utubs.query.all()
     for utub in all_utubs:
         urls_in_utub: list[Utub_Urls] = utub.utub_urls
         for url_in_utub in urls_in_utub:
+            if url_in_utub.standalone_url.url_string in TRACKING_SEED_URL_STRINGS:
+                continue
             tags_on_url: list[Utub_Url_Tags] = url_in_utub.url_tags
             assert sorted(
                 [tag.utub_tag_item.tag_string for tag in tags_on_url]
