@@ -27,9 +27,15 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
-from tests.integration.system.metrics_helpers import count_counter_keys
+from tests.integration.system.metrics_helpers import (
+    count_counter_keys,
+    find_counter_keys,
+    parse_dims,
+    STRIPPED_DIM_KEY,
+)
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
+    FLATTENED_TRACKING_PARAM_URLS,
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
     INVALID_URLS_TO_VALIDATE,
 )
@@ -2408,11 +2414,13 @@ def test_update_valid_url_with_same_url_log(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with the same URL via a PATCH to
+    WHEN the creator attempts to modify the URL with the same URL (with the scheme
+        omitted from the input, which normalizes back to the stored URL) via a PATCH to
         "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             "csrf_token": String containing CSRF token for validation
             "urlString": String of URL to add
-    THEN verify the server sends back a 409 HTTP status code, and the logs are valid
+    THEN verify the server sends back a 200 HTTP status code (no-change, since the
+        validated input is equivalent to the stored URL), and the logs are valid
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 
@@ -2426,7 +2434,7 @@ def test_update_valid_url_with_same_url_log(
             Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         url_string = url_in_this_utub.standalone_url.url_string
-        url_id = url_in_this_utub.url_id
+        utub_url_id = url_in_this_utub.id
 
     url_to_change_to = url_string.replace("https://", "")
     update_url_string_form = client.patch(
@@ -2439,17 +2447,18 @@ def test_update_valid_url_with_same_url_log(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert update_url_string_form.status_code == 409
+    assert update_url_string_form.status_code == 200
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
+
     assert is_string_in_logs(
         f"Finished checks for url_string='{url_to_change_to}'", caplog.records
     )
     assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
 
     assert is_string_in_logs(
-        f"URL already exists in U4I, URL.id={url_id}", caplog.records
-    )
-    assert is_string_in_logs(
-        f"User={user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_creator_of.id}",
+        f"User={user.id} tried changing UTubURL.id={utub_url_id} to the same URL",
         caplog.records,
     )
 
@@ -2461,11 +2470,13 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with a URL not in database but after normalization is already in the database via a PATCH to
+    WHEN the creator attempts to modify the URL with a URL not in database but after
+        normalization is equivalent to the stored URL, via a PATCH to
         "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             "csrf_token": String containing CSRF token for validation
             "urlString": String of URL to add
-    THEN verify the server sends back a 409 HTTP status code, and the logs are valid
+    THEN verify the server sends back a 200 HTTP status code (no-change, since the
+        validated input is equivalent to the stored URL), and the logs are valid
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 
@@ -2479,7 +2490,7 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
             Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         url_string = url_in_this_utub.standalone_url.url_string
-        url_id = url_in_this_utub.url_id
+        utub_url_id = url_in_this_utub.id
         url_string_before_normalize = url_string.replace("https://", "")
 
     update_url_string_form = client.patch(
@@ -2492,7 +2503,11 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    assert update_url_string_form.status_code == 409
+    assert update_url_string_form.status_code == 200
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
+
     assert is_string_in_logs(
         f"Finished checks for url_string='{url_string_before_normalize}'",
         caplog.records,
@@ -2500,10 +2515,7 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
     assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
 
     assert is_string_in_logs(
-        f"URL already exists in U4I, URL.id={url_id}", caplog.records
-    )
-    assert is_string_in_logs(
-        f"User={user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_creator_of.id}",
+        f"User={user.id} tried changing UTubURL.id={utub_url_id} to the same URL",
         caplog.records,
     )
 
@@ -2784,3 +2796,265 @@ def test_update_url_unknown_exception_sends_notification(
     assert update_url_string_form.status_code == 400
 
     mock_request_post.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "expected_stripped,input_url",
+    [
+        (expected_stripped, input_url)
+        for (expected_stripped, input_url) in FLATTENED_TRACKING_PARAM_URLS
+    ],
+)
+def test_update_url_strips_tracking_params(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    expected_stripped,
+    input_url,
+):
+    """
+    GIVEN a valid creator of a UTub that has a single URL with tags
+    WHEN the creator updates that URL to a fresh, tracking-laden URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN verify the stored URL row and echoed response both contain the stripped
+        canonical form (tracking params removed).
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_url_id = url_in_this_utub.id
+
+        # Assert before-state: stripped URL not yet present
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 0
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=utub_url_id,
+        ),
+        json={URL_FORM.URL_STRING: input_url},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_string_form.status_code == 200
+
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == expected_stripped
+
+    with app.app_context():
+        assert Urls.query.filter(Urls.url_string == expected_stripped).count() == 1
+
+
+def test_update_url_same_target_with_tracking_params_is_no_change(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub with a single stored URL (no tracking params)
+    WHEN the creator PATCHes that same URL with tracking params appended (which
+        strip back to the stored value)
+    THEN verify the response is the clean no-change response (URL_NOT_MODIFIED),
+        NOT a 409 conflict.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        id_of_url_in_utub = url_already_in_utub.id
+        url_in_utub_string: str = url_already_in_utub.standalone_url.url_string
+
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    tracking_variant = url_in_utub_string + "?utm_source=x"
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=id_of_url_in_utub,
+        ),
+        json={URL_FORM.URL_STRING: tracking_variant},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_string_form.status_code == 200
+
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == id_of_url_in_utub
+    )
+
+    with app.app_context():
+        # No new rows created on a no-change update
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+
+def test_update_url_tracking_param_collision_returns_informative_message(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub containing multiple distinct stored URLs
+    WHEN the creator PATCHes one URL to the tracking-laden variant of another URL
+        already in the UTub (which strips back to that other URL's stored value)
+    THEN verify the server responds with a 409 conflict and the informative
+        tracking-params-stripped message.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # The canonical target URL already in the UTub (stored, no tracking params)
+        target_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id
+        ).first()
+        target_url_id = target_url_in_utub.url_id
+        target_url_string: str = target_url_in_utub.standalone_url.url_string
+
+        # A different URL in the same UTub that we will try to update
+        other_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id,
+            Utub_Urls.url_id != target_url_id,
+        ).first()
+        other_utub_url_id_to_update = other_url_in_utub.id
+
+    tracking_variant = target_url_string + "?utm_source=x"
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_member_of.id,
+            utub_url_id=other_utub_url_id_to_update,
+        ),
+        json={URL_FORM.URL_STRING: tracking_variant},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_string_form.status_code == 409
+
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    )
+    assert json_response[STD_JSON.ERROR_CODE] == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+
+
+def test_update_url_string_records_tracking_params_stripped_true(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with a URL and metrics enabled
+    WHEN they PATCH that URL to a fresh tracking-laden URL string
+    THEN exactly one URL_TRACKING_PARAMS_STRIPPED counter is written with the
+        stripped dimension set to "true", alongside exactly one
+        URL_STRING_UPDATED event.
+    """
+    tracking_url = "https://example.com/page?utm_source=a&gclid=x"
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_id = utub_creator_of.id
+        utub_url_id = url_in_this_utub.id
+
+    # Before-state: no tracking-params-stripped counter exists yet
+    assert (
+        count_counter_keys(
+            provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+        )
+        == 0
+    )
+
+    update_response = client.patch(
+        url_for(ROUTES.URLS.UPDATE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+        json={URL_FORM.URL_STRING: tracking_url},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_response.status_code == 200
+    stripped_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+    )
+    assert len(stripped_keys) == 1
+    assert parse_dims(stripped_keys[0])[STRIPPED_DIM_KEY] == "true"
+    assert count_counter_keys(provide_metrics_redis, EventName.URL_STRING_UPDATED) == 1
+
+
+def test_update_url_string_records_tracking_params_stripped_false(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with a URL and metrics enabled
+    WHEN they PATCH that URL to a fresh clean URL string (no tracking params)
+    THEN exactly one URL_TRACKING_PARAMS_STRIPPED counter is written with the
+        stripped dimension set to "false".
+    """
+    clean_url = "https://example.com/page?q=search&sort=date"
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_id = utub_creator_of.id
+        utub_url_id = url_in_this_utub.id
+
+    # Before-state: no tracking-params-stripped counter exists yet
+    assert (
+        count_counter_keys(
+            provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+        )
+        == 0
+    )
+
+    update_response = client.patch(
+        url_for(ROUTES.URLS.UPDATE_URL, utub_id=utub_id, utub_url_id=utub_url_id),
+        json={URL_FORM.URL_STRING: clean_url},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_response.status_code == 200
+    stripped_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+    )
+    assert len(stripped_keys) == 1
+    assert parse_dims(stripped_keys[0])[STRIPPED_DIM_KEY] == "false"

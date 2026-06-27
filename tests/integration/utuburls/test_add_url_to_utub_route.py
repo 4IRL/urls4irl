@@ -38,6 +38,7 @@ from tests.integration.system.metrics_helpers import (
     find_counter_keys,
     parse_dims,
     REJECTION_REASON_DIM_KEY,
+    STRIPPED_DIM_KEY,
     sum_counter_values,
 )
 from tests.unit.test_url_validation import (
@@ -1492,11 +1493,12 @@ def test_add_tracking_param_variants_collapse_to_one_row(
         == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
     )
     assert add_url_json_response[URL_FAILURE.URL_STRING] == expected_stripped
-    # The collision message is the generic URL_IN_UTUB until the create service
-    # threads whether the input carried tracking params; the informative
-    # URL_IN_UTUB_TRACKING_PARAMS_STRIPPED variant is asserted by
-    # test_add_tracking_param_collision_returns_informative_message.
-    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    # The second variant carries the gclid tracking param, so the collision
+    # message is the informative variant noting tracking params were stripped.
+    assert (
+        add_url_json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    )
 
     with app.app_context():
         # No new Urls row was created: both variants resolved onto one shared row
@@ -1514,6 +1516,150 @@ def test_add_tracking_param_variants_collapse_to_one_row(
     assert (
         parse_dims(rejection_keys[0])[REJECTION_REASON_DIM_KEY] == "url_already_in_utub"
     )
+
+
+def test_add_tracking_param_collision_returns_informative_message(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub that already holds the stripped
+        canonical form of a URL
+    WHEN they POST a tracking-laden URL that resolves to the same canonical form
+    THEN the server responds 409 with error_code URL_ALREADY_IN_UTUB_ERROR and
+        the informative URL_IN_UTUB_TRACKING_PARAMS_STRIPPED message, signalling
+        that tracking params were removed before the collision check.
+    """
+    stripped_url = "https://example.com/page"
+    tracking_url = stripped_url + "?utm_source=x"
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+    seed_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: stripped_url,
+            URL_FORM.URL_TITLE: "Seed canonical URL",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+    assert seed_response.status_code == 200
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: tracking_url,
+            URL_FORM.URL_TITLE: "Tracking variant",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 409
+    add_url_json_response = add_url_response.json
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
+    assert (
+        add_url_json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    )
+
+
+def test_add_url_records_tracking_params_stripped_true(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with metrics enabled
+    WHEN they POST a tracking-laden URL
+    THEN exactly one URL_TRACKING_PARAMS_STRIPPED counter is written with the
+        stripped dimension set to "true".
+    """
+    tracking_url = "https://example.com/page?utm_source=a&gclid=x"
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+    assert (
+        count_counter_keys(
+            provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+        )
+        == 0
+    )
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: tracking_url,
+            URL_FORM.URL_TITLE: "Tracking URL",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    stripped_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+    )
+    assert len(stripped_keys) == 1
+    assert parse_dims(stripped_keys[0])[STRIPPED_DIM_KEY] == "true"
+
+
+def test_add_url_records_tracking_params_stripped_false(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a logged-in creator of a UTub with metrics enabled
+    WHEN they POST a clean URL with no tracking params
+    THEN exactly one URL_TRACKING_PARAMS_STRIPPED counter is written with the
+        stripped dimension set to "false".
+    """
+    clean_url = "https://example.com/page?q=search&sort=date"
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+    assert (
+        count_counter_keys(
+            provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+        )
+        == 0
+    )
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        json={
+            URL_FORM.URL_STRING: clean_url,
+            URL_FORM.URL_TITLE: "Clean URL",
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 200
+    stripped_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_TRACKING_PARAMS_STRIPPED
+    )
+    assert len(stripped_keys) == 1
+    assert parse_dims(stripped_keys[0])[STRIPPED_DIM_KEY] == "false"
 
 
 @pytest.mark.parametrize(
