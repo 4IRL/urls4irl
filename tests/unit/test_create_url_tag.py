@@ -4,7 +4,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.tags.services.create_url_tag import get_tag_applied_counts
+from backend.tags.services.create_url_tag import apply_tags_core, get_tag_applied_counts
+from backend.utils.constants import TAG_CONSTANTS
 
 pytestmark = pytest.mark.unit
 
@@ -54,3 +55,30 @@ def test_get_tag_applied_counts_multiple_tags_map_each_id_to_its_count():
         result = get_tag_applied_counts(utub_id=1, tag_ids=[7, 9])
 
     assert result == {7: 3, 9: 1}
+
+
+def test_apply_tags_core_over_limit_when_url_already_at_max_tags():
+    """A URL already holding MAX_URL_TAGS tags reports over_limit for one more.
+
+    The integration route cannot reach this branch for a brand-new URL (the
+    schema rejects the oversized list first), so the limit pre-check inside
+    `apply_tags_core` is exercised directly here against a URL whose
+    `associated_tag_ids` is already saturated.
+    """
+    utub = MagicMock()
+    utub.id = 1
+    utub_url = MagicMock()
+    utub_url.associated_tag_ids = list(range(TAG_CONSTANTS.MAX_URL_TAGS))
+
+    existing_vocab_query = MagicMock()
+    existing_vocab_query.filter.return_value = existing_vocab_query
+    existing_vocab_query.all.return_value = []
+
+    with patch(
+        "backend.tags.services.create_url_tag.Utub_Tags"
+    ) as mock_utub_tags_model:
+        mock_utub_tags_model.query.filter.return_value.all.return_value = []
+        result = apply_tags_core(["a-brand-new-tag"], utub, utub_url)
+
+    assert result.over_limit
+    assert result.to_apply == []

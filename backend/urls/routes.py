@@ -67,6 +67,7 @@ def create_url(
         url_string=create_url_request.urlString,
         url_title=create_url_request.urlTitle,
         current_utub=current_utub,
+        tag_strings=create_url_request.tagStrings,
     )
 
 
