@@ -81,3 +81,37 @@ DEV_URLS = (
     "127.0.0.1",
     "0.0.0.0",
 )
+
+TRACKING_QUERY_PARAMS: frozenset[str] = frozenset(
+    {
+        "gclid",
+        "gclsrc",
+        "dclid",
+        "gbraid",
+        "wbraid",
+        "gad_source",
+        "gad_campaignid",
+        "fbclid",
+        "msclkid",
+        "mc_cid",
+        "mc_eid",
+        "_hsenc",
+        "_hsmi",
+        "__hssc",
+        "__hstc",
+        "__hsfp",
+        "hsctatracking",
+        "igshid",
+        "ttclid",
+        "twclid",
+        "yclid",
+        "mkt_tok",
+        "s_kwcid",
+        "vero_id",
+        "oly_anon_id",
+        "oly_enc_id",
+        "wickedid",
+    }
+)
+
+TRACKING_QUERY_PARAM_PREFIXES: tuple[str, ...] = ("utm_",)

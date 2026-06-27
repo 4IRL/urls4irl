@@ -564,3 +564,23 @@ def test_normalize_urls_invalid(invalid_url: str):
     url_validator = UrlValidator()
     with pytest.raises(InvalidURLError):
         url_validator.normalize_url(invalid_url)
+
+
+@pytest.mark.parametrize(
+    "param_name,expected",
+    [
+        ("utm_source", True),
+        ("UTM_CAMPAIGN", True),
+        ("gclid", True),
+        ("GCLID", True),
+        ("fbclid", True),
+        ("gbraid", True),
+        ("q", False),
+        ("id", False),
+        ("sort", False),
+        ("page", False),
+        ("ref", False),
+    ],
+)
+def test_is_tracking_param(param_name: str, expected: bool):
+    assert UrlValidator._is_tracking_param(param_name) is expected

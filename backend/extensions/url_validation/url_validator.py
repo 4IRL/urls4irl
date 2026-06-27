@@ -49,6 +49,8 @@ if __name__ == "__main__":
         INVALID_SCHEME_PREFIXES,
         OTHER_VALID_SCHEMES,
         PROTOCOL,
+        TRACKING_QUERY_PARAMS,
+        TRACKING_QUERY_PARAM_PREFIXES,
     )
 
 else:
@@ -64,6 +66,8 @@ else:
         INVALID_SCHEME_PREFIXES,
         OTHER_VALID_SCHEMES,
         PROTOCOL,
+        TRACKING_QUERY_PARAMS,
+        TRACKING_QUERY_PARAM_PREFIXES,
     )
 
 
@@ -177,6 +181,26 @@ class UrlValidator:
             raise URLWithCredentialsError("URLs with credentials not allowed")
 
         return normalized_url
+
+    @staticmethod
+    def _is_tracking_param(param_name: str) -> bool:
+        """
+        Returns True if a query-parameter name is a known marketing/advertising
+        tracking parameter that is safe to strip from a URL.
+
+        Matching is case-insensitive and covers both the exact-name blocklist
+        (`TRACKING_QUERY_PARAMS`) and the open-ended prefix families
+        (`TRACKING_QUERY_PARAM_PREFIXES`, e.g. the `utm_*` family).
+
+        Examples:
+            "utm_source" -> True
+            "GCLID"      -> True
+            "q"          -> False
+        """
+        lowered = param_name.lower()
+        return lowered in TRACKING_QUERY_PARAMS or lowered.startswith(
+            TRACKING_QUERY_PARAM_PREFIXES
+        )
 
     def _has_user_pass_type_url(self, normalized_url: str) -> bool:
         """
