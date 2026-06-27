@@ -19,6 +19,7 @@
   - **Import discipline in test prose (required):** Scan ALL test sub-step bullets (not just code blocks) for wording implying local imports: 'dynamically import', 'import inside the test', 'import at call time', `importlib.import_module`. Any such phrasing violates the top-level-imports-only rule. Flag as **Minor** and specify the replacement wording ('reference the top-level import', 'use the module-level import').
 
 - **Import ordering**: Three groups (stdlib, third-party, project), each alphabetized internally, separated by blank lines.
+  - **Import name-collision check (required for shared files):** When a plan adds a new import into a shared file (conftest.py, a shared utilities module, a shared init file), read the file's full existing import block and confirm that no other import already binds the same bare name from a different source module. A bare re-import of an already-bound name silently shadows the original at module scope — a runtime error no linter catches. If a collision exists, flag as **Major** and require one import to use an alias.
 
 - **Package additions** (if applicable):
   - Use exact pin (`==`) not ranges (`>=`, `~=`, `<`)

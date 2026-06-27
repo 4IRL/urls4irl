@@ -25,7 +25,7 @@
 
 /* Slim horizontal rule between consecutive LHS decks. */
 .deck + .deck {
-    border-top: 1px solid var(--borderColor);
+    border-top: 2px solid var(--borderColor);
 }
 
 /* Small muted total rendered inline INSIDE the deck title, e.g. "Members (5)".
@@ -42,8 +42,21 @@
 .deck#MemberDeck.collapsed,
 .deck#TagDeck.collapsed {
     flex: 0 0 48px;
-    padding-top: 0.15rem;
+    /* Header stays at flex-start (top) so the deck's bottom edge slides cleanly
+       up to meet it as the content collapses. NOT justify-content:center — that
+       re-centers the header in the deck's *animating* height, making it float in
+       mid-deck during the collapse/expand. The 44px band nearly fills the 48px
+       deck; padding-top supplies the small remaining inset to center it. */
+    padding-top: 2px;
     padding-bottom: 0;
+}
+
+/* Member/Tag carry a 2px top separator border (`.deck + .deck`) that already
+   supplies part of the centering inset, so they need 1px less top padding than
+   the borderless first-in-column UTub deck. */
+.deck#MemberDeck.collapsed,
+.deck#TagDeck.collapsed {
+    padding-top: 1px;
 }
 
 .content {
@@ -66,10 +79,15 @@
 .deck.collapsed .content,
 .deck.collapsed .titleElement:nth-of-type(2) {
     opacity: 0;
-    flex-shrink: 0;
     height: 0;
     min-height: 0;
     overflow: hidden;
+    /* Collapse to a true 0px so the deck shrinks to just its header band — the
+       content's normal flex-grow:1 would otherwise keep it filling the deck.
+       Border + vertical padding zeroed so no invisible flex space remains. */
+    flex: 0 0 0;
+    border-top-width: 0;
+    padding-block: 0;
 }
 
 /* Suppress the collapse/expand animation for programmatic (auto) minimize and
@@ -126,6 +144,23 @@
 #TagDeck .titleElement:first-child {
     height: 44px;
     padding-block: 0;
+}
+
+/* The UTub deck was excluded from the symmetric header sizing above, so its
+   title sat higher than the Member/Tag titles. Its search input is a separate
+   subheader band, so the header band can adopt the siblings' fixed 44px height
+   in both states. Desktop-only: mobile keeps the min-height:38px sizing (the
+   always-visible search subheader's spacing, and the decks don't collapse there).
+   The expanded deck drops its top inset; the collapsed inset is set above. */
+@media (min-width: 992px) {
+    .deck#UTubDeck:not(.collapsed) {
+        padding-top: 0;
+    }
+
+    #UTubDeck .titleElement:first-child {
+        height: 44px;
+        padding-block: 0;
+    }
 }
 
 .titleElement.dynamic-subheader {
