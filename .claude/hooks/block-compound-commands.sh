@@ -30,6 +30,13 @@ cmd=$(jq -r '.tool_input.command // empty')
 EXEMPT_PATTERNS=(
   # pytest inside the Docker web container (CLAUDE.md documented test invocation)
   'source /code/venv/bin/activate[[:space:]]*&&[[:space:]]*(python3?[[:space:]]+-m[[:space:]]+)?pytest'
+  # flask CLI inside the Docker web container (CLAUDE.md documented migration/CLI invocation).
+  # The trailing [^&|;]*$ anchors the exemption so any further chain operator
+  # (&&/||/;) after the flask command falls through to the block (no shelter).
+  'source /code/venv/bin/activate[[:space:]]*&&[[:space:]]*flask[[:space:]][^&|;]*$'
+  # one-off python verification scripts inside the Docker web container (migration
+  # testing). Same trailing anchor so no chained command can hide behind it.
+  'source /code/venv/bin/activate[[:space:]]*&&[[:space:]]*python3?[[:space:]]+/(tmp|code)/[^&|;]*$'
   # GitHub App token prefix for gh / authenticated git push (command substitution)
   '^GH_TOKEN=\$\('
   # branch capture used by the push flow
