@@ -189,7 +189,7 @@ def test_add_url_to_utub_records_metric(
 TAG_STRINGS_FIELD = "tagStrings"
 
 
-def _member_utub_and_fresh_url(app):
+def _member_utub_and_fresh_url() -> tuple[int, str, str]:
     """Returns (utub_id, url_string, url_title) for a URL not yet in a member UTub."""
     current_utub_member_of: Utubs = Utubs.query.filter(
         Utubs.utub_creator != current_user.id
@@ -220,7 +220,7 @@ def test_add_url_with_zero_tags_returns_empty_applied_tags(
 
     with app.app_context():
         utub_id_to_add_to, url_string_to_add, url_title_to_add = (
-            _member_utub_and_fresh_url(app)
+            _member_utub_and_fresh_url()
         )
         initial_utub_url_tags = Utub_Url_Tags.query.count()
 
@@ -267,7 +267,7 @@ def test_add_url_with_two_new_tags_creates_vocab_and_associations(
 
     with app.app_context():
         utub_id_to_add_to, url_string_to_add, url_title_to_add = (
-            _member_utub_and_fresh_url(app)
+            _member_utub_and_fresh_url()
         )
         initial_vocab_count = Utub_Tags.query.filter(
             Utub_Tags.utub_id == utub_id_to_add_to
@@ -435,7 +435,7 @@ def test_add_url_with_tags_mid_apply_exception_leaves_zero_rows(
 
     with app.app_context():
         utub_id_to_add_to, url_string_to_add, url_title_to_add = (
-            _member_utub_and_fresh_url(app)
+            _member_utub_and_fresh_url()
         )
         initial_utub_urls = Utub_Urls.query.count()
         initial_utub_url_tags = Utub_Url_Tags.query.count()
@@ -491,7 +491,7 @@ def test_add_url_with_too_many_tags_rejected_by_schema(
 
     with app.app_context():
         utub_id_to_add_to, url_string_to_add, url_title_to_add = (
-            _member_utub_and_fresh_url(app)
+            _member_utub_and_fresh_url()
         )
         initial_utub_urls = Utub_Urls.query.count()
         initial_utub_url_tags = Utub_Url_Tags.query.count()
