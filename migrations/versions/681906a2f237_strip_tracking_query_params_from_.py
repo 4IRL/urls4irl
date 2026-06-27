@@ -159,7 +159,7 @@ def upgrade():
                 {"dup_id": dup_id},
             ).fetchall()
 
-            for uu_id, utub_id in dup_associations:
+            for utub_url_id, utub_id in dup_associations:
                 survivor_assoc_row = connection.execute(
                     text(
                         'SELECT "id" FROM "UtubUrls" '
@@ -173,9 +173,9 @@ def upgrade():
                     # Safe under unique_url_per_utub since no (utub, survivor) row exists.
                     connection.execute(
                         text(
-                            'UPDATE "UtubUrls" SET "urlID" = :survivor_id WHERE "id" = :uu_id'
+                            'UPDATE "UtubUrls" SET "urlID" = :survivor_id WHERE "id" = :utub_url_id'
                         ),
-                        {"survivor_id": survivor_id, "uu_id": uu_id},
+                        {"survivor_id": survivor_id, "utub_url_id": utub_url_id},
                     )
                 else:
                     # Within-UTub collision: merge tags onto the survivor's
@@ -185,9 +185,9 @@ def upgrade():
                     dup_tag_rows = connection.execute(
                         text(
                             'SELECT "id", "utubTagID" FROM "UtubUrlTags" '
-                            'WHERE "utubUrlID" = :uu_id'
+                            'WHERE "utubUrlID" = :utub_url_id'
                         ),
-                        {"uu_id": uu_id},
+                        {"utub_url_id": utub_url_id},
                     ).fetchall()
 
                     for tagrow_id, utub_tag_id in dup_tag_rows:
@@ -226,8 +226,8 @@ def upgrade():
                             )
 
                     connection.execute(
-                        text('DELETE FROM "UtubUrls" WHERE "id" = :uu_id'),
-                        {"uu_id": uu_id},
+                        text('DELETE FROM "UtubUrls" WHERE "id" = :utub_url_id'),
+                        {"utub_url_id": utub_url_id},
                     )
 
             # Delete the now-orphaned duplicate Urls row.
