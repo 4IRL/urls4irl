@@ -1,4 +1,7 @@
+from typing import Tuple
+
 from flask import Flask
+from flask.testing import FlaskCliRunner
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -8,6 +11,8 @@ from selenium.webdriver.remote.webelement import WebElement
 from backend.cli.mock_constants import (
     MOCK_URL_TITLES,
     MOCK_URL_STRINGS,
+    MOCK_URL_TRACKING_STRIPPED,
+    MOCK_URL_WITH_TRACKING_PARAMS,
 )
 from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
@@ -24,6 +29,7 @@ from tests.functional.assert_utils import (
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
+    add_mock_urls,
     add_tag_to_single_url_in_utub,
     add_tag_to_utub_user_created,
     count_urls_with_tag_applied_by_tag_string,
@@ -1191,3 +1197,131 @@ def test_create_url_with_non_matching_filter_tag_is_hidden(
     new_url_row = browser.find_element(By.CSS_SELECTOR, new_url_selector)
     assert new_url_row.get_attribute("filterable") == "false"
     assert_not_visible_css_selector(browser, new_url_selector)
+
+
+def test_create_url_strips_tracking_params(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests that creating a URL with tracking query params renders the stripped,
+    canonical URL in the URL deck.
+
+    GIVEN a user and selected UTub
+    WHEN they create a URL containing tracking params (utm_source, gclid)
+    THEN the rendered card's link text and href show the stripped URL
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    url_title = MOCK_URL_TITLES[0]
+
+    fill_create_url_form(browser, url_title, MOCK_URL_WITH_TRACKING_PARAMS)
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
+    url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
+    assert not url_creation_row.is_displayed()
+
+    # The DB stores the stripped canonical form; look the row up by that value.
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, MOCK_URL_TRACKING_STRIPPED
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string = url_row_string_elem.text
+    url_row_href = url_row_string_elem.get_attribute(HPL.URL_STRING_IN_DATA)
+
+    expected_visible = MOCK_URL_TRACKING_STRIPPED
+    expected_visible = expected_visible.removeprefix("https://")
+    expected_visible = expected_visible.removeprefix("http://")
+    expected_visible = expected_visible.removeprefix("www.")
+
+    assert url_row_string == expected_visible
+    assert url_row_href == MOCK_URL_TRACKING_STRIPPED
+
+
+def test_create_url_preserves_non_tracking_params(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests that creating a URL with legitimate (non-tracking) query params keeps
+    those params intact in the rendered card.
+
+    GIVEN a user and selected UTub
+    WHEN they create a URL containing ?q=search&sort=date
+    THEN the rendered card's link text and href preserve the query string
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    url_with_legit_params = UTS.URL_WITH_NON_TRACKING_PARAMS
+    url_title = MOCK_URL_TITLES[0]
+
+    fill_create_url_form(browser, url_title, url_with_legit_params)
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
+
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, url_with_legit_params
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string = url_row_string_elem.text
+    url_row_href = url_row_string_elem.get_attribute(HPL.URL_STRING_IN_DATA)
+
+    expected_visible = url_with_legit_params
+    expected_visible = expected_visible.removeprefix("https://")
+    expected_visible = expected_visible.removeprefix("http://")
+    expected_visible = expected_visible.removeprefix("www.")
+
+    assert url_row_string == expected_visible
+    assert url_row_href == url_with_legit_params
+
+
+def test_create_url_tracking_params_collision_shows_error(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests that creating a tracking-laden URL whose stripped canonical form is
+    already in the UTub surfaces the informative collision error.
+
+    GIVEN a UTub that already contains the stripped canonical URL
+    WHEN the user submits the same URL with tracking params appended
+    THEN the create-form error shows the tracking-params-stripped collision message
+    """
+    _, cli_runner = runner
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    add_mock_urls(cli_runner, [MOCK_URL_TRACKING_STRIPPED])
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    create_url(browser, url_title="Testing", url_string=MOCK_URL_WITH_TRACKING_PARAMS)
+
+    invalid_url_string_error = wait_then_get_element(
+        browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_url_string_error is not None
+    assert invalid_url_string_error.text == UTS.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED

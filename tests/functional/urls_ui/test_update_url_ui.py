@@ -12,6 +12,8 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
+    MOCK_URL_TRACKING_STRIPPED,
+    MOCK_URL_WITH_TRACKING_PARAMS,
 )
 from backend.models.users import Users
 from backend.models.utub_urls import Utub_Urls
@@ -979,6 +981,97 @@ def test_update_url_title_invalid_csrf_token(
         browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
 
     assert_login_with_username(browser, user.username)
+
+
+def test_update_url_strips_tracking_params(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests that updating a URL to a tracking-laden URL renders the stripped,
+    canonical URL in the URL row.
+
+    GIVEN a user with access to an existing URL
+    WHEN they update the URL to one containing tracking params (utm_source, gclid)
+    THEN the rendered row's link text and href show the stripped URL
+    """
+    _, cli_runner = runner
+    app = provide_app
+    random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
+    add_mock_urls(cli_runner, [random_url_to_add])
+
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+    )
+
+    url_row = get_selected_url(browser)
+    update_url_string(browser, url_row, MOCK_URL_WITH_TRACKING_PARAMS)
+    assert_update_url_state_is_shown(browser, url_row)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
+
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row)
+
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_display = url_row_string_elem.text
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
+
+    # The update path sets `.text(updatedURLString)` directly (no prefix
+    # stripping), so text and href both equal the full stripped URL.
+    assert url_row_data_attrib == MOCK_URL_TRACKING_STRIPPED
+    assert url_row_string_display == MOCK_URL_TRACKING_STRIPPED
+
+
+def test_update_url_preserves_non_tracking_params(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests that updating a URL to one with legitimate (non-tracking) query params
+    keeps those params intact in the rendered row.
+
+    GIVEN a user with access to an existing URL
+    WHEN they update the URL to one containing ?q=search&sort=date
+    THEN the rendered row's link text and href preserve the query string
+    """
+    _, cli_runner = runner
+    app = provide_app
+    random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
+    add_mock_urls(cli_runner, [random_url_to_add])
+
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+    )
+
+    url_with_legit_params = UTS.URL_WITH_NON_TRACKING_PARAMS
+    url_row = get_selected_url(browser)
+    update_url_string(browser, url_row, url_with_legit_params)
+    assert_update_url_state_is_shown(browser, url_row)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
+
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row)
+
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_display = url_row_string_elem.text
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
+
+    assert url_row_data_attrib == url_with_legit_params
+    assert url_row_string_display == url_with_legit_params
 
 
 def test_update_url_string_invalid_csrf_token(
