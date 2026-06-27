@@ -48,7 +48,7 @@ def create_url_in_utub(
     url_string: str,
     url_title: str,
     current_utub: Utubs,
-    tag_strings: list[str] = [],
+    tag_strings: list[str] | None = None,
 ) -> FlaskResponse:
     """
     Creates a new URL in a UTub.
@@ -64,6 +64,8 @@ def create_url_in_utub(
         - Response: JSON response on create
         - int: HTTP status code 200 (Success)
     """
+    if tag_strings is None:
+        tag_strings = []
     validated_new_url = validate_new_url_for_utub(url_string, current_utub.id)
     if (
         validated_new_url.url_state == URLState.INVALID_URL_STRING
@@ -398,7 +400,7 @@ def _associate_url_with_utub(
     url_title: str,
     url_string: str,
     url_state: URLState,
-    tag_strings: list[str] = [],
+    tag_strings: list[str] | None = None,
 ) -> FlaskResponse:
     """
     Create an association between a URL and a UTub, adding the URL to the UTub,
@@ -422,6 +424,8 @@ def _associate_url_with_utub(
         - int: HTTP status code 200 (success) or 400 (applying the tags would
           exceed the per-URL tag limit)
     """
+    if tag_strings is None:
+        tag_strings = []
     url_utub_user_add = Utub_Urls(
         utub_id=current_utub.id,
         url_id=url_id,

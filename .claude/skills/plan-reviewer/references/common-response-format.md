@@ -19,13 +19,24 @@ Each subagent receives the plan file path and must independently read the plan a
       "category": "correctness | full-stack-trace | ordering | integration | verification | completeness | ux-accessibility",
       "fix_type": "mechanical | design_decision",
       "fix_description": "Exact edit to make (for mechanical) or description of the decision needed (for design_decision)",
-      "design_options": ["option A", "option B"]
+      "design_options": ["option A", "option B"],
+      "evidence": "<file>:<line> you actually read (absence claim: '<file> (grep:<pattern> → 0)'); REQUIRED for any finding referencing a named code entity — see Grounding Rule"
     }
   ],
   "files_read": ["list of files actually read during review"],
   "summary": "One-line summary of the review"
 }
 ```
+
+## Grounding Rule (all subagents — the single rule the per-area checklists apply)
+
+A **named code entity** is any symbol, function, helper, fixture, constant, type/union member, class, attribute, route/endpoint, import binding, file path, directory, package version, config field, or established code pattern that a finding asserts something about — that it **exists, is absent, was preserved, was dropped, conflicts, or differs from a convention**.
+
+1. **Read before claiming.** Before writing any finding that references a named code entity, Read or Grep the actual file. Never assert presence, absence, location, or behavior from plan prose (including rationale prose), another reviewer's claim, memory, or inference.
+2. **Cite the evidence.** Every such finding MUST populate `evidence` with what you actually read: `"<file>:<line>"`, or for an absence claim the grep that returned zero — `"<file> (grep:<pattern> → 0)"`.
+3. **Uncited = unverified.** A finding that references a named entity with no `evidence` may NOT be `mechanical`. Cap it at `minor`, set `fix_type: "design_decision"`, and the coordinator routes it as a conflict — never as an auto-applied fix.
+
+The per-subagent checklists name the *specific triggers* for this rule in each area (function calls, replacement blocks, imports, test helpers, paths, single-instance sweeps, use-site traces). They are applications of this one rule — apply it to any named entity, not only the enumerated triggers.
 
 ### fix_type Classification Rules
 
@@ -68,9 +79,7 @@ Rules:
 - `PASS` if only `minor` findings or none
 - Every finding must cite a specific step number and file path where applicable
 - Do not fabricate findings — if the plan is clean for your area, return PASS with empty findings
-- **Verify before writing.** If you are about to write "the fix is X," read the file X touches first. A fix stated from memory or reasoning alone can introduce a new error worse than the original.
-- **Do not trust plan assertions — including explanatory prose.** For any plan assertion about the current state of a file, directory, or package manifest, the reviewing subagent MUST read the actual file/directory to confirm. Never accept state assertions from plan prose alone. This applies to: file/directory existence, package versions, config field values, and import paths. Plans also embed factual claims in rationale prose ("only X does Y," "no route uses Z"). For every such claim — whether it appears as a precondition or as justification for a design decision — trace it to the source file and verify it holds. A wrong prose claim will mislead implementers even if the code spec is correct.
-- **Verify anchors in source files, not just plan text.** When confirming a mechanical fix has been applied, do not stop at verifying plan text. For any fix that references a specific anchor in a source or reference file (import block, function body, registry row, config section), read that file and verify the anchor exists before accepting the fix as resolved.
+- **Grounding Rule applies to every state claim** (see above): file/directory existence, package versions, config field values, import paths, anchors in reference docs (import blocks, function bodies, registry rows, config sections), and rationale-prose claims ("only X does Y", "no route uses Z") all require reading the source file — cited in `evidence` — never accepted from plan prose. This holds both when raising a finding and when confirming a mechanical fix was applied (verify the anchor in the source file, not just that the plan text changed).
 
 **Fix verification rule (all subagents, Pass 2+):** When confirming a prior-pass fix has been applied:
 1. Read the plan file and confirm the specific *old text* the fix required removing is no longer present — not just that the new text is present. "The plan now says X" is not sufficient if the old contradictory text still appears elsewhere in the same section.
