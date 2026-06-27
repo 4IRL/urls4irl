@@ -11,6 +11,7 @@ the registry tuple and the Pydantic `Literal[...]` can never drift.
 from __future__ import annotations
 
 TAGS_BATCH_SIZE_BUCKETS: tuple[str, ...] = ("1", "2-5", "6-10", "11-15", "16-20")
+URL_TAG_COUNT_BUCKETS: tuple[str, ...] = ("0", "1", "2-5", "6-10", "11-15", "16-20")
 
 
 def bucket_tags_batch_size(applied_count: int) -> str:
@@ -36,5 +37,36 @@ def bucket_tags_batch_size(applied_count: int) -> str:
     if applied_count <= 10:
         return "6-10"
     if applied_count <= 15:
+        return "11-15"
+    return "16-20"
+
+
+def bucket_url_tag_count(count: int) -> str:
+    """Map a URL's at-creation tag count to its closed-set size bucket.
+
+    Mirrors `URL_TAG_COUNT_BUCKETS`. Unlike `bucket_tags_batch_size`, this
+    bucketer carries an explicit "0" bucket because a URL is commonly created
+    with no tags — the create flow always emits a bucket, so the empty case is a
+    first-class value rather than a do-not-emit guard. Above 0, the buckets match
+    `bucket_tags_batch_size` and span the valid 1..MAX_URL_TAGS (20) range, with
+    the top split (11-15 / 16-20) so near-cap usage stays visible.
+
+    Examples:
+        bucket_url_tag_count(0)  -> "0"
+        bucket_url_tag_count(1)  -> "1"
+        bucket_url_tag_count(3)  -> "2-5"
+        bucket_url_tag_count(7)  -> "6-10"
+        bucket_url_tag_count(13) -> "11-15"
+        bucket_url_tag_count(20) -> "16-20"
+    """
+    if count == 0:
+        return "0"
+    if count <= 1:
+        return "1"
+    if count <= 5:
+        return "2-5"
+    if count <= 10:
+        return "6-10"
+    if count <= 15:
         return "11-15"
     return "16-20"

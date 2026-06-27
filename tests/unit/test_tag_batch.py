@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.metrics.tag_batch import bucket_tags_batch_size
+from backend.metrics.tag_batch import bucket_tags_batch_size, bucket_url_tag_count
 
 pytestmark = pytest.mark.unit
 
@@ -30,3 +30,26 @@ def test_bucket_tags_batch_size_boundary_cases(
     spanning the valid 1..MAX_URL_TAGS (20) range.
     """
     assert bucket_tags_batch_size(applied_count) == expected_bucket
+
+
+@pytest.mark.parametrize(
+    "tag_count, expected_bucket",
+    [
+        (0, "0"),
+        (1, "1"),
+        (3, "2-5"),
+        (7, "6-10"),
+        (13, "11-15"),
+        (18, "16-20"),
+        (20, "16-20"),
+    ],
+)
+def test_bucket_url_tag_count_boundary_cases(tag_count: int, expected_bucket: str):
+    """`bucket_url_tag_count` maps an at-creation tag count to its closed-set label.
+
+    Unlike `bucket_tags_batch_size`, this bucketer carries an explicit "0" bucket
+    because a URL is commonly created with no tags. Covers the dedicated 0 case
+    plus a representative point in each upper bucket spanning the 0..MAX_URL_TAGS
+    (20) range.
+    """
+    assert bucket_url_tag_count(tag_count) == expected_bucket

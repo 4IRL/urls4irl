@@ -175,6 +175,10 @@ def test_add_url_to_utub_records_metric(
 
     assert add_url_response.status_code == 200
     assert count_counter_keys(provide_metrics_redis, EventName.URL_ADDED_TO_UTUB) == 1
+    url_added_counter_keys = find_counter_keys(
+        provide_metrics_redis, EventName.URL_ADDED_TO_UTUB
+    )
+    assert parse_dims(url_added_counter_keys[0])["tag_count_bucket"] == "0"
 
 
 @mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")

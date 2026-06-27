@@ -23,6 +23,7 @@ from backend.extensions.url_validation.url_validator import (
     URLWithCredentialsError,
 )
 from backend.metrics.events import EventName
+from backend.metrics.tag_batch import bucket_url_tag_count
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
@@ -416,7 +417,10 @@ def _associate_url_with_utub(
     current_utub.set_last_updated()
     db.session.commit()
 
-    record_event(EventName.URL_ADDED_TO_UTUB)
+    record_event(
+        EventName.URL_ADDED_TO_UTUB,
+        dimensions={"tag_count_bucket": bucket_url_tag_count(0)},
+    )
 
     # Successfully added a URL, and associated it to a UTub
     safe_add_many_logs(

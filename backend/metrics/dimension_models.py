@@ -10,7 +10,7 @@ from backend.metrics.events import (
     EventCategory,
     EventName,
 )
-from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS
+from backend.metrics.tag_batch import TAGS_BATCH_SIZE_BUCKETS, URL_TAG_COUNT_BUCKETS
 from backend.search.constants import SEARCH_FIELD_ORDER_VALUES
 
 # ---------------------------------------------------------------------------
@@ -320,6 +320,15 @@ class _DimTagsAppliedBatch(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUrlAddedToUtub(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    # Closed set sourced from the same `URL_TAG_COUNT_BUCKETS` constant fed to
+    # the registry, so the audit set-compare between this Literal and the
+    # registry tuple can never drift.
+    tag_count_bucket: Literal[URL_TAG_COUNT_BUCKETS]  # type: ignore[valid-type]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimCrossUtubSearchPerformed(BaseModel):
     model_config = ConfigDict(extra="forbid")
     has_results: Literal["true", "false"]
@@ -380,7 +389,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.TAG_DELETED: _DimDeviceOnly,
     EventName.TAG_REMOVED: _DimDeviceOnly,
     EventName.URL_ACCESSED: _DimDeviceOnly,
-    EventName.URL_ADDED_TO_UTUB: _DimDeviceOnly,
+    EventName.URL_ADDED_TO_UTUB: _DimUrlAddedToUtub,
     EventName.URL_CREATE_REJECTED: _DimUrlCreateRejected,
     EventName.URL_REMOVED_FROM_UTUB: _DimDeviceOnly,
     EventName.URL_STRING_UPDATED: _DimDeviceOnly,
