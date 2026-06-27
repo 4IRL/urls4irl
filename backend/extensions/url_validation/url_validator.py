@@ -51,6 +51,7 @@ if __name__ == "__main__":
         PROTOCOL,
         TRACKING_QUERY_PARAMS,
         TRACKING_QUERY_PARAM_PREFIXES,
+        WEB_SCHEMES_FOR_TRACKING_STRIP,
     )
 
 else:
@@ -68,6 +69,7 @@ else:
         PROTOCOL,
         TRACKING_QUERY_PARAMS,
         TRACKING_QUERY_PARAM_PREFIXES,
+        WEB_SCHEMES_FOR_TRACKING_STRIP,
     )
 
 
@@ -218,6 +220,12 @@ class UrlValidator:
         tracking_keys = [
             key for key, _ in params.items() if self._is_tracking_param(key)
         ]
+        # No tracking params present: return the href untouched so that the
+        # original query-string encoding (e.g. "%20" vs "+", literal "://") is
+        # preserved rather than being re-serialized by URLSearchParams.
+        if not tracking_keys:
+            return href
+
         for key in tracking_keys:
             params.delete(key)
 
@@ -368,6 +376,10 @@ class UrlValidator:
             if validated_ada_url.host
             else validated_ada_url_href
         )
+
+        if scheme.rstrip(":") in WEB_SCHEMES_FOR_TRACKING_STRIP:
+            final_ada_url = self._strip_tracking_params(final_ada_url)
+
         return final_ada_url
 
 

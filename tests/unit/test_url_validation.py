@@ -335,6 +335,9 @@ URLS_WITH_DIFFERENT_PATH = {
     ],
 }
 
+# After Step 3, validate_url strips tracking params from http/https URLs. All
+# http/https keys in VALID_MOCK_URLS_FOR_NORMALIZE must remain tracking-param-free;
+# use URLS_WITH_TRACKING_PARAMS for stripping test cases.
 VALID_MOCK_URLS_FOR_VALIDATE = VALID_MOCK_URLS_FOR_NORMALIZE.keys()
 
 FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = [
@@ -347,6 +350,33 @@ FLATTENED_URLS_WITH_DIFFERENT_PATH = [
     (lowercase_url, valid_url)
     for lowercase_url, urls in URLS_WITH_DIFFERENT_PATH.items()
     for valid_url in urls
+]
+
+# Maps the expected stripped canonical URL to inputs that carry tracking params.
+# validate_url must collapse each input to its key for http/https schemes.
+URLS_WITH_TRACKING_PARAMS = {
+    "https://example.com/p": [
+        "https://example.com/p?utm_source=google&utm_medium=cpc",
+        "https://example.com/p?gclid=Cj0KCQiA9t3KBhCQ",
+    ],
+    "https://example.com/p?q=1": [
+        "https://example.com/p?utm_source=g&q=1&fbclid=z",
+    ],
+    "https://www.cybex-online.com/en/us/gold-gazelle-s.html": [
+        "https://www.cybex-online.com/en/us/gold-gazelle-s.html"
+        "?utm_source=google&utm_medium=cpc"
+        "&utm_campaign=US_en_Search_03_Brand_Kinderwagen_Cybex"
+        "&utm_content=brand&gad_source=1&gad_campaignid=16557935901"
+        "&gbraid=0AAAAABuIWqs5KTD6k3ZyhvjHFqKnUpEpv"
+        "&gclid=Cj0KCQiA9t3KBhCQARIsAJOcR7wDIsvuJQoJgk_cGeqGxi8z6W3KvkS"
+        "-BHa2UMG2VDD0tEXQSzPsGiIaAluDEALw_wcB",
+    ],
+}
+
+FLATTENED_TRACKING_PARAM_URLS = [
+    (expected_stripped, input_with_tracking)
+    for expected_stripped, inputs in URLS_WITH_TRACKING_PARAMS.items()
+    for input_with_tracking in inputs
 ]
 
 INVALID_MOCK_URLS_FOR_NORMALIZED = (
@@ -502,6 +532,32 @@ def test_validate_urls_with_different_paths(url_to_validate: str):
                 continue
 
             assert validated_url != original_url
+
+
+@pytest.mark.parametrize(
+    "expected_stripped,input_url",
+    FLATTENED_TRACKING_PARAM_URLS,
+)
+def test_validate_urls_strips_tracking_params(expected_stripped: str, input_url: str):
+    url_validator = UrlValidator()
+    normalized_url = url_validator.normalize_url(input_url)
+    assert url_validator.validate_url(normalized_url) == expected_stripped
+
+
+@pytest.mark.parametrize(
+    "url_with_non_tracking_params",
+    [
+        "https://example.com/search?q=hello%20world",
+        "https://example.com/p?q=1&sort=date",
+        "https://example.com/?continue=https://gogle.cm",
+    ],
+)
+def test_validate_urls_preserves_non_tracking_query_encoding(
+    url_with_non_tracking_params: str,
+):
+    url_validator = UrlValidator()
+    normalized_url = url_validator.normalize_url(url_with_non_tracking_params)
+    assert url_validator.validate_url(normalized_url) == url_with_non_tracking_params
 
 
 @pytest.mark.parametrize(

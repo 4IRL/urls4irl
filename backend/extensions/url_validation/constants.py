@@ -115,3 +115,5 @@ TRACKING_QUERY_PARAMS: frozenset[str] = frozenset(
 )
 
 TRACKING_QUERY_PARAM_PREFIXES: tuple[str, ...] = ("utm_",)
+
+WEB_SCHEMES_FOR_TRACKING_STRIP: frozenset[str] = frozenset({"http", "https"})
