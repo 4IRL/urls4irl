@@ -442,7 +442,7 @@ def test_add_url_with_tags_mid_apply_exception_leaves_zero_rows(
 
     call_count = {"value": 0}
 
-    def failing_add_url_tag(utub_url, utub_tag):
+    def failing_add_url_tag(utub_url: Utub_Urls, utub_tag: Utub_Tags) -> Utub_Url_Tags:
         call_count["value"] += 1
         if call_count["value"] == 2:
             raise RuntimeError("simulated mid-apply failure")
