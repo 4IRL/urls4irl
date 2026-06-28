@@ -153,7 +153,7 @@ export function reapplyTagFilter(): void {
 
 export function openTagNameFilter(): void {
   $("#TagDeck").addClass("tag-search-open");
-  $("#tagNameFilterBtn").addClass("hidden").attr("aria-expanded", "true");
+  $("#tagNameFilterBtn").addClass("hidden");
   $("#tagNameFilterBtnClose").removeClass("hidden");
   $("#TagNameSearch").trigger("focus");
 }
@@ -166,7 +166,7 @@ export function closeTagNameFilter(): void {
   const wasOpen = $("#TagDeck").hasClass("tag-search-open");
   $("#TagDeck").removeClass("tag-search-open");
   $("#tagNameFilterBtnClose").addClass("hidden");
-  $("#tagNameFilterBtn").removeClass("hidden").attr("aria-expanded", "false");
+  $("#tagNameFilterBtn").removeClass("hidden");
   if (wasOpen) {
     emit({
       event: UI_EVENTS.UI_TAG_SEARCH_CLOSE,

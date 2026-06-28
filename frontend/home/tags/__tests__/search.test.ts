@@ -21,7 +21,7 @@ const $ = window.jQuery;
 
 const FILTER_HTML = `
   <div id="TagDeck">
-    <button id="tagNameFilterBtn" aria-expanded="false"></button>
+    <button id="tagNameFilterBtn"></button>
     <button id="tagNameFilterBtnClose" class="hidden"></button>
     <div id="SearchTagWrap">
       <div class="text-input-inner-container">
@@ -192,14 +192,6 @@ describe("Tag Filter", () => {
       expect($("#tagNameFilterBtnClose").hasClass("hidden")).toBe(false);
     });
 
-    it("openTagNameFilter sets aria-expanded='true' on the funnel toggle", () => {
-      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("false");
-
-      openTagNameFilter();
-
-      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("true");
-    });
-
     it("closeTagNameFilter collapses the filter and resets the search", () => {
       vi.mocked(filterTagsByName).mockReturnValue([2]);
       openTagNameFilter();
@@ -217,15 +209,6 @@ describe("Tag Filter", () => {
       $(".tagFilter").each(function () {
         expect($(this).hasClass("hidden")).toBe(false);
       });
-    });
-
-    it("closeTagNameFilter sets aria-expanded='false' on the funnel toggle", () => {
-      openTagNameFilter();
-      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("true");
-
-      closeTagNameFilter();
-
-      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("false");
     });
 
     it("setTagNameFilterToggleListeners wires the funnel and close buttons", () => {

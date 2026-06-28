@@ -24,7 +24,7 @@ const $ = window.jQuery;
 
 const FILTER_HTML = `
   <div id="TagDeck">
-    <button id="tagNameFilterBtn" aria-expanded="false"></button>
+    <button id="tagNameFilterBtn"></button>
     <button id="tagNameFilterBtnClose" class="hidden"></button>
     <div id="SearchTagWrap">
       <input id="TagNameSearch" type="search" value="" />
