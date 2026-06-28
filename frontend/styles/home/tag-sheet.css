@@ -2,10 +2,20 @@
    overlaid on the URL deck, with a peeking handle and a dimming backdrop.
    Desktop (>=992px) never shows any of these elements. */
 
-/* Desktop default — fully hidden regardless of JS state. */
+/* Peek (collapsed header) height. Defined on :root so both the sheet (slide
+   transform) and the JS drag math (_collapsedPeekPx reads it) share one source.
+   The sheet/backdrop anchor inside #mainPanel (between nav and footer), so the
+   footer's Privacy/Terms/Contact bar stays visible in both collapsed and open
+   states without a separate footer-height token. */
+:root {
+    --tag-sheet-peek: 3rem;
+}
+
+/* Desktop default — fully hidden regardless of JS state. The handle now lives
+   inside #tagDeckSheet, so hiding the sheet hides it too. */
+#tagSheetViewport,
 #tagDeckSheet,
-#tagSheetBackdrop,
-#tagSheetHandle {
+#tagSheetBackdrop {
     display: none;
 }
 
@@ -16,34 +26,50 @@
         position: relative;
     }
 
-    /* The handle is positioned against #URLDeck, not <main>; without this it
-       would escape to #mainPanel and float at the wrong position. */
-    #URLDeck {
+    /* Header / peek lip — the sheet's first child and the single drag target.
+       In-flow flex header (no absolute positioning); its height equals the peek
+       so the collapsed sheet shows exactly this lip. `position: relative` anchors
+       the absolutely-positioned grabber bar to the header, not the sheet. The
+       sheet's own chrome (background, border, radius, shadow) renders behind it,
+       so the header is transparent. */
+    #tagDeckSheet .tag-sheet-handle {
         position: relative;
-    }
-
-    /* Peeking handle — shown via JS removing .hidden. The ID is included so this
-       rule matches the desktop-default `#tagSheetHandle { display: none }`
-       specificity (1-0-0); a bare `.tag-sheet-handle` class (0-1-0) would lose
-       to the ID rule regardless of source order and the handle would stay
-       hidden on mobile. The `.hidden` toggle still gates visibility (see below). */
-    #tagSheetHandle.tag-sheet-handle {
-        position: absolute;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        height: 3rem;
-        background: var(--panelBackgroundColor);
-        border-top: 2px solid var(--contentTopBorder);
+        width: 100%;
+        height: var(--tag-sheet-peek);
+        flex: 0 0 auto;
+        margin: 0;
+        padding: 0;
+        /* Match the sheet's rounded top corners so the header's focus-visible
+           outline (and any top edge) curves around the drawer's corners instead
+           of cutting square across them. */
         border-radius: 1.25rem 1.25rem 0 0;
-        box-shadow: var(--shadow-lg);
+        background: transparent;
+        border: none;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
         color: var(--deckSelectionGreen);
         font-weight: 700;
-        z-index: 30;
+        cursor: grab;
+        touch-action: none;      /* stream pointermove for the drag instead of scrolling */
+        user-select: none;       /* no text selection on long-press / slow drag */
+        transition: height 0.2s ease;   /* smooth the slim/grow at open/close commit */
+    }
+
+    /* Expanded: the relocated "Tags (N/M)" deck header below is the title, so the
+       handle collapses to just its grab bar — hide the funnel/label/count and
+       shrink it to reclaim the vertical space the full peek label would waste.
+       The collapsed peek keeps the full label. The drag math reads the collapsed
+       peek from --tag-sheet-peek (not this slimmed height), so close-drag travel
+       stays correct. */
+    #tagDeckSheet.tag-sheet-open .tag-sheet-handle {
+        height: 1.5rem;
+    }
+    #tagDeckSheet.tag-sheet-open .tag-sheet-handle > svg,
+    #tagDeckSheet.tag-sheet-open .tag-sheet-handle-label,
+    #tagDeckSheet.tag-sheet-open #tagSheetHandleCount {
+        display: none;
     }
 
     .tag-sheet-handle:focus-visible {
@@ -70,22 +96,42 @@
         padding: 1px 9px;
     }
 
-    /* The sheet itself — slides up from the bottom of <main>. The ID is included
-       so this `display: flex` matches the desktop-default `#tagDeckSheet
-       { display: none }` specificity (1-0-0); otherwise the ID rule wins and the
-       sheet never renders on mobile. */
+    /* Clipping viewport for the sheet — fills #mainPanel (navbar-bottom to
+       footer-top, since #mainPanel sits between the nav and footer in the flex
+       column). The sheet slides WITHIN it via transform; anything translated
+       below the footer line is clipped (overflow:hidden), so the footer bar stays
+       visible whether the sheet is collapsed (only its peek shows above the
+       footer) or open. Positioned `absolute` against #mainPanel (which is
+       position:relative) rather than fixed so the drawer rides WITH the page
+       during mobile-browser overscroll/pull-to-refresh, instead of staying
+       pinned while everything in flow bounces. pointer-events:none so the empty
+       (clipped) area passes taps through to the URL deck; the sheet re-enables
+       them. z-index 30 sits below .navbar-backdrop (1040) so the peek is dimmed
+       by the navbar dropdown; raised to 1040 only when the sheet is open/dragging
+       (via :has) so it clears the sheet's own backdrop (1039). */
+    #tagSheetViewport {
+        position: absolute;
+        display: block;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: hidden;
+        pointer-events: none;
+        z-index: 30;
+    }
+    #tagSheetViewport:has(.tag-sheet-open),
+    #tagSheetViewport:has(.tag-sheet-dragging) {
+        z-index: 1040;
+    }
+
+    /* The sheet — absolutely positioned against the clipping viewport, resting at
+       its bottom (the footer top). The ID is included so this `display: flex`
+       matches the desktop-default `#tagDeckSheet { display: none }` specificity
+       (1-0-0); otherwise the ID rule wins and the sheet never renders on mobile.
+       `62dvh` keeps the intended ~62% height across engines. */
     #tagDeckSheet.tag-deck-sheet {
-        /* Anchored to the VIEWPORT, not #mainPanel. Anchoring to #mainPanel
-           (position: absolute) is fragile on iOS Safari: #mainPanel is
-           `flex: 1` inside a `min-height: 100dvh` body, and iOS lets it grow
-           taller than the visible viewport (dynamic toolbar + content), so a
-           `bottom: 0` sheet landed below the fold and the page scrolled — the
-           sheet appeared full-height with its content pinned to the top and the
-           grabber/backdrop unreachable (impossible to close). `position: fixed`
-           pins the sheet to the visual viewport, immune to #mainPanel's height
-           and any page scroll. `62dvh` (dynamic viewport height) keeps the
-           intended ~62% proportion across engines. */
-        position: fixed;
+        position: absolute;
         left: 0;
         right: 0;
         bottom: 0;
@@ -94,28 +140,48 @@
         border-top: 2px solid var(--contentTopBorder);
         border-radius: 1.25rem 1.25rem 0 0;
         box-shadow: var(--shadow-lg);
-        z-index: 1040;
+        pointer-events: auto;
         display: flex;
         flex-direction: column;
-        transform: translateY(100%);
-        transition:
-            transform 0.3s ease,
-            visibility 0s linear 0.3s;
-        visibility: hidden;
+        /* Rests peeking: translated down by (height - peek), leaving only the
+           header lip above the footer (the overhang is clipped by the viewport).
+           Slides to translateY(0) when open. */
+        transform: translateY(calc(100% - var(--tag-sheet-peek)));
+        transition: transform 0.3s ease;
     }
 
-    /* Open state — slide in, flip visibility discretely so the sheet is visible
-       immediately on open and hidden only after the slide-down completes. The ID
-       is included so this rule (1-2-0) outranks the base `#tagDeckSheet
-       .tag-deck-sheet` rule (1-1-0); a bare `.tag-deck-sheet.tag-sheet-open`
-       (0-2-0) would lose to the ID-scoped base rule and the sheet would stay
-       hidden/translated when opened. */
+    /* Open state — slide fully in. The ID is included so this rule (1-2-0)
+       outranks the base `#tagDeckSheet .tag-deck-sheet` rule (1-1-0); a bare
+       `.tag-deck-sheet.tag-sheet-open` (0-2-0) would lose to the ID-scoped base
+       rule and the sheet would stay at the peek when opened. */
     #tagDeckSheet.tag-deck-sheet.tag-sheet-open {
         transform: translateY(0);
-        visibility: visible;
-        transition:
-            transform 0.3s ease,
-            visibility 0s linear 0s;
+    }
+
+    /* Drag state — applied while a finger is actively dragging the sheet. Nulls
+       the snap transition so the sheet tracks the finger 1:1. The ID is included
+       so this rule (1-2-0) matches the open rule's specificity. */
+    #tagDeckSheet.tag-deck-sheet.tag-sheet-dragging {
+        transition: none;        /* sheet tracks the finger 1:1 during drag */
+    }
+
+    /* Change the header cursor to grabbing during an active drag, matching the
+       pane-resizer .is-resizing pattern. */
+    #tagDeckSheet.tag-sheet-dragging .tag-sheet-handle {
+        cursor: grabbing;
+    }
+
+    /* While the sheet is expanded (or being dragged) its dark panel butts
+       directly against the dark footer; #mainPanel's own bottom divider is
+       covered by the sheet, so give the footer a matching top line to
+       distinguish it. An inset box-shadow (not border-top) draws the line
+       without growing the footer's box — a 1px border would shift the footer up
+       under the sheet's bottom edge and the line would be covered. Scoped via
+       :has so it only shows when the sheet is up; collapsed keeps the footer's
+       flush edge. */
+    #mainPanel:has(#tagDeckSheet.tag-sheet-open) ~ footer,
+    #mainPanel:has(#tagDeckSheet.tag-sheet-dragging) ~ footer {
+        box-shadow: inset 0 1px 0 var(--borderColor);
     }
 
     /* Backdrop — visibility governed entirely by opacity + the show class;
@@ -124,19 +190,18 @@
        (specificity 1-0-0); the element stays in the DOM at opacity 0 when closed
        (pointer-events: none) and fades in only via the show class. */
     #tagSheetBackdrop.tag-sheet-backdrop {
-        /* Fixed to the viewport for the same reason as the sheet — covers the
-           visible content area regardless of #mainPanel height or scroll, so the
-           dimmed area always matches what the user sees and the tap-to-close
-           region is always reachable. Starts at `top: 3rem` (the navbar height)
-           so it never overlays the navbar: the navbar is a <body> sibling, not a
-           #mainPanel child, so it stays interactive while the sheet is open
-           (tapping a navbar deck-nav item closes the sheet via
-           MOBILE_DECK_SWITCHED). Covering the navbar would intercept the
-           toggler/dropdown clicks. The navbar dropdown (z-index 1050) still
-           renders above this backdrop (z-index 1039). */
-        position: fixed;
+        /* Absolute within #mainPanel (like the sheet's viewport) so it rides with
+           the page during overscroll and fills the content area between nav and
+           footer. #mainPanel sits below the navbar (a <body> sibling) and above
+           the footer, so `top:0`/`bottom:0` already exclude both: the navbar stays
+           interactive (tapping a deck-nav item closes the sheet via
+           MOBILE_DECK_SWITCHED; covering it would intercept toggler/dropdown
+           clicks) and the persistent footer bar stays visible. The navbar
+           dropdown (z-index 1050) still renders above this backdrop (z-index
+           1039). */
+        position: absolute;
         display: block;
-        top: 3rem;
+        top: 0;
         left: 0;
         right: 0;
         bottom: 0;
@@ -155,25 +220,9 @@
         pointer-events: auto;
     }
 
-    /* In-sheet close bar at the top of the sheet. */
-    .tag-sheet-grabber {
-        width: 38px;
-        height: 4px;
-        border-radius: 2px;
-        background: #5a6565;
-        margin: 9px auto 4px;
-        border: none;
-        flex: 0 0 auto;
-    }
-
-    .tag-sheet-grabber:focus-visible {
-        outline: 2px solid var(--deckHeaderGreen);
-        outline-offset: 2px;
-    }
-
     /* Enlarge the close tap target: inside the sheet, the left half of the tag
        deck's title row (the "Tags (N/M)" group) doubles as a close affordance —
-       the lone grabber bar is too small/unintuitive on touch. Capped at 50% so
+       the header lip alone is too small/unintuitive on touch. Capped at 50% so
        the action buttons (add/edit/funnel) on the right half stay tappable. The
        click-to-close handler lives in sheet.ts; this only sizes the hit area. */
     #tagSheetBody #TagDeckTitleGroup {
@@ -182,12 +231,23 @@
     }
 
     /* Host the relocated #TagDeck so it fills the sheet body; its inner
-       .content already scrolls (decks.css). */
+       .content already scrolls (decks.css). The body is visibility:hidden while
+       the sheet is collapsed so the off-screen tag list is hidden from screen
+       readers AND from Selenium visibility checks (only the header lip peeks);
+       the delayed hide keeps it visible through the 0.3s close slide. It is
+       revealed immediately when open or while dragging (below). */
     #tagSheetBody {
         flex: 1 1 auto;
         overflow: hidden;
         display: flex;
         flex-direction: column;
+        visibility: hidden;
+        transition: visibility 0s linear 0.3s;
+    }
+    #tagDeckSheet.tag-sheet-open #tagSheetBody,
+    #tagDeckSheet.tag-sheet-dragging #tagSheetBody {
+        visibility: visible;
+        transition: visibility 0s linear 0s;
     }
 
     /* On mobile, layout.css hides `.deck#TagDeck` with `display: none` and only
@@ -201,9 +261,9 @@
         flex: 1 1 auto;
     }
 
-    /* Keep the last URL card clear of the 3rem handle bar when scrolled. */
+    /* Keep the last URL card clear of the peeking header lip when scrolled. */
     #URLDeck .flex-column.content {
-        padding-bottom: 3rem;
+        padding-bottom: var(--tag-sheet-peek);
     }
 }
 
@@ -215,7 +275,8 @@
        rules that define the transitions; a bare class selector (0-1-0) would
        lose and the transitions would not actually be disabled. */
     #tagDeckSheet.tag-deck-sheet,
-    #tagSheetBackdrop.tag-sheet-backdrop {
+    #tagSheetBackdrop.tag-sheet-backdrop,
+    #tagSheetBody {
         transition: none;
     }
 }

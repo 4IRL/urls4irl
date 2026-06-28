@@ -7,7 +7,7 @@ PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-backup-pipeline test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-backup-pipeline test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -32,6 +32,20 @@ build: ## Rebuild images without starting
 
 restart: ## Restart a specific container: make restart c=<service>
 	$(COMPOSE) restart $(c)
+
+tunnel: ## Force the built stack up (mobile-ready assets, no localhost:5173 dependency) + start an on-demand public Cloudflare tunnel and print its URL
+	$(COMPOSE_BUILT) up --build --remove-orphans -d --wait
+	$(COMPOSE_BUILT) --profile tunnel up -d --no-recreate cloudflared
+	@echo "Waiting for Cloudflare quick-tunnel URL (~5-10s)..."
+	@for i in $$(seq 1 30); do \
+		url=$$($(COMPOSE_BUILT) logs cloudflared 2>&1 | grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' | head -1); \
+		if [ -n "$$url" ]; then echo "TUNNEL URL: $$url"; exit 0; fi; \
+		sleep 1; \
+	done; \
+	echo "URL not ready yet — check: $(COMPOSE_BUILT) logs cloudflared"
+
+tunnel-stop: ## Stop and remove the Cloudflare tunnel (leaves the rest of the stack running)
+	$(COMPOSE) --profile tunnel rm -sf cloudflared
 
 test-integration: ## Run all integration (non-UI) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'not splash_ui and not home_ui and not utubs_ui and not members_ui and not urls_ui and not create_urls_ui and not update_urls_ui and not tags_ui and not mobile_ui and not metrics_ui and not settings_ui and not search_ui' -v"

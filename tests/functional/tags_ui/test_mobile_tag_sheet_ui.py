@@ -23,13 +23,17 @@ from tests.functional.login_utils import login_user_and_select_utub_by_utubid_mo
 from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
-    wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_click_element,
-    wait_until_hidden,
     wait_until_in_focus,
-    wait_until_visible_css_selector,
 )
-from tests.functional.tags_ui.selenium_utils import apply_tag_filter_based_on_id
+from tests.functional.tags_ui.selenium_utils import (
+    apply_tag_filter_based_on_id,
+    swipe_tag_sheet_closed,
+    swipe_tag_sheet_open,
+    swipe_tag_sheet_up_below_threshold,
+    wait_until_tag_sheet_collapsed,
+    wait_until_tag_sheet_open,
+)
 
 pytestmark = [pytest.mark.tags_ui, pytest.mark.mobile_ui]
 
@@ -95,7 +99,7 @@ def test_tag_sheet_happy_path_open_filter_close(
     """
     GIVEN a logged-in mobile user on the URL deck of a UTub with tagged URLs
     WHEN they tap the peeking handle to open the tag sheet, apply a tag filter,
-        then close the sheet via the grabber
+        then tap the handle again to close it
     THEN the sheet and URL deck show simultaneously, URL rows filter live behind
         the sheet, the handle count badge shows "1", and the filter persists after
         the sheet closes
@@ -112,35 +116,34 @@ def test_tag_sheet_happy_path_open_filter_close(
     )
     assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
 
-    # Before-state: sheet closed, handle peeks in the URL-showing state.
-    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
+    # Before-state: sheet collapsed to its peek (header lip visible) on the URL deck.
+    wait_until_tag_sheet_collapsed(browser)
     assert_visible_css_selector(browser, HPL.TAG_SHEET_HANDLE)
 
-    # Tap the handle to open the sheet, then wait for the slide-up to finish:
-    # `visibility_of_element_located` returns mid-transform, and tapping a tag
-    # filter row while the sheet is still sliding lands the click on a moving
-    # target (the tag never toggles), so gate on the sheet position settling.
+    # Tap the handle to open the sheet; wait_until_tag_sheet_open gates on the
+    # open class AND the slide settling, so a following tag-row tap does not land
+    # on a still-moving target.
     wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
-    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
-    wait_for_animation_to_end_check_top_lhs_corner(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_open(browser)
 
-    # Sheet overlays the URL deck — both visible simultaneously (NOT a single deck).
-    assert_visible_css_selector(browser, HPL.TAG_SHEET)
+    # Sheet overlays the URL deck — the URL deck stays visible behind it.
     assert_visible_css_selector(browser, HPL.URL_DECK)
 
-    # Apply a tag filter; URL rows filter live and the handle count shows "1".
+    # Apply a tag filter; URL rows filter live behind the open sheet.
     apply_tag_filter_based_on_id(browser, tag_id)
     _wait_until_visible_url_count(browser, num_urls_tagged)
     assert len(_visible_url_rows(browser)) == num_urls_tagged
 
+    # Tap the handle again to close (toggle); sheet collapses, filter persists.
+    wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
+    wait_until_tag_sheet_collapsed(browser)
+
+    # The handle's count badge surfaces the active-filter count on the collapsed
+    # peek (it is hidden on the slimmed handle while the sheet is open, so it is
+    # asserted here, after collapse).
     handle_count = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE_COUNT)
     assert HIDDEN_CLASS not in (handle_count.get_attribute("class") or "")
     assert handle_count.text == EXPECTED_SINGLE_FILTER_COUNT_TEXT
-
-    # Close via the grabber; sheet hides and the filter persists.
-    wait_then_click_element(browser, HPL.TAG_SHEET_GRABBER)
-    wait_until_hidden(browser, HPL.TAG_SHEET)
-    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
 
     _wait_until_visible_url_count(browser, num_urls_tagged)
     assert len(_visible_url_rows(browser)) == num_urls_tagged
@@ -172,8 +175,7 @@ def test_tag_sheet_opens_over_url_deck_from_member_deck(
     wait_then_click_element(browser, HPL.NAVBAR_TAGS_DECK)
 
     # The sheet opens over the URL deck, not the Member deck.
-    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
-    assert_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_open(browser)
     assert_visible_css_selector(browser, HPL.URL_DECK)
     assert_not_visible_css_selector(browser, HPL.MEMBER_DECK)
 
@@ -195,9 +197,9 @@ def test_tag_sheet_close_via_backdrop(
     )
     assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_collapsed(browser)
     wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
-    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_open(browser)
 
     # The backdrop spans all of <main> but the sheet overlays its bottom 62%, so a
     # default pointer click at the element center would land on the sheet, and
@@ -207,8 +209,7 @@ def test_tag_sheet_close_via_backdrop(
     backdrop = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_BACKDROP)
     browser.execute_script("arguments[0].click();", backdrop)
 
-    wait_until_hidden(browser, HPL.TAG_SHEET)
-    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_collapsed(browser)
 
 
 def test_tag_sheet_handle_count_hidden_with_no_selection(
@@ -237,7 +238,7 @@ def test_tag_sheet_close_via_escape(
     browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
-    GIVEN the tag sheet is open on mobile with focus on the grabber
+    GIVEN the tag sheet is open on mobile with focus on the handle
     WHEN the user presses Escape
     THEN the sheet closes and focus returns to the handle that opened it
     """
@@ -250,17 +251,16 @@ def test_tag_sheet_close_via_escape(
     )
     assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_collapsed(browser)
     wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
-    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_open(browser)
 
-    # Focus moves to the grabber on open; wait for it before sending ESC so the
+    # Focus moves to the handle on open; wait for it before sending ESC so the
     # keydown lands on a focused element (per the flake-hardening rule).
-    wait_until_in_focus(browser, HPL.TAG_SHEET_GRABBER)
+    wait_until_in_focus(browser, HPL.TAG_SHEET_HANDLE)
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    wait_until_hidden(browser, HPL.TAG_SHEET)
-    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_collapsed(browser)
 
     # Opener-based focus restore (WCAG 2.4.3): focus returns to the handle.
     wait_until_in_focus(browser, HPL.TAG_SHEET_HANDLE)
@@ -284,6 +284,68 @@ def test_tag_sheet_empty_state_no_tags(
     assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
 
     wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
-    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_until_tag_sheet_open(browser)
 
     assert_visible_css_selector(browser, HPL.TAG_SHEET_EMPTY)
+
+
+def test_tag_sheet_swipe_open_and_close(
+    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a logged-in mobile user on the URL deck with the tag sheet closed
+    WHEN they swipe up from the peeking handle, then swipe down from the handle
+    THEN the sheet opens on the upward swipe and closes on the downward swipe,
+        proving the real browser commits the drag gesture end-to-end
+    """
+    browser = browser_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+
+    # Before-state: sheet collapsed to its peek, handle ready to be dragged up.
+    wait_until_tag_sheet_collapsed(browser)
+    assert_visible_css_selector(browser, HPL.TAG_SHEET_HANDLE)
+
+    # Swipe up from the handle to commit the open gesture.
+    swipe_tag_sheet_open(browser)
+    wait_until_tag_sheet_open(browser)
+
+    # Swipe down from the handle to commit the close gesture.
+    swipe_tag_sheet_closed(browser)
+    wait_until_tag_sheet_collapsed(browser)
+
+
+def test_tag_sheet_swipe_below_threshold_snaps_back_closed(
+    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a logged-in mobile user on the URL deck with the tag sheet collapsed
+    WHEN they swipe up from the peeking handle by a small amount well below the
+        ~35% commit threshold (sub-threshold drag)
+    THEN the sheet snaps back to its collapsed peek and does not open, proving the
+        real browser only commits the open gesture once the threshold is crossed
+    """
+    browser = browser_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+
+    # Before-state: sheet collapsed to its peek, handle ready to be dragged up.
+    wait_until_tag_sheet_collapsed(browser)
+    assert_visible_css_selector(browser, HPL.TAG_SHEET_HANDLE)
+
+    # Swipe up only a short distance (below the commit threshold).
+    swipe_tag_sheet_up_below_threshold(browser)
+
+    # The sheet must snap back to collapsed; it must NOT open. Asserting the
+    # collapsed wait passes (open class absent + slide settled) confirms snap-back.
+    wait_until_tag_sheet_collapsed(browser)

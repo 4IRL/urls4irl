@@ -139,13 +139,14 @@ class HomePageLocators(GenericPageLocator):
     UTUB_TAG_COUNT_WRAP = ".tagCountWrap"
     BUTTON_UTUB_TAG_DELETE = ".utubTagBtnDelete"
 
-    # Mobile Tag filter bottom sheet
+    # Mobile Tag filter bottom sheet. The handle is the sheet's header/peek lip
+    # (first child of #tagDeckSheet) and the single drag target for open + close.
     TAG_SHEET = "#tagDeckSheet"
     TAG_SHEET_HANDLE = "#tagSheetHandle"
     TAG_SHEET_BACKDROP = "#tagSheetBackdrop"
-    TAG_SHEET_GRABBER = "#tagSheetGrabber"
     TAG_SHEET_HANDLE_COUNT = "#tagSheetHandleCount"
     TAG_SHEET_EMPTY = "#tagSheetEmpty"
+    TAG_SHEET_OPEN_CLASS = "tag-sheet-open"
 
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"

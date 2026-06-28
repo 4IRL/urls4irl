@@ -1258,3 +1258,130 @@ def add_cookie_banner_cookie(browser: WebDriver):
     browser.add_cookie(cookie)
     browser.refresh()
     wait_for_page_complete_and_dom_stable(browser)
+
+
+def dispatch_pointer_drag(
+    browser: WebDriver,
+    css_selector: str,
+    *,
+    start_y: float,
+    end_y: float,
+    steps: int = 6,
+    step_delay_ms: int = 0,
+) -> None:
+    """
+    Drives a synthetic vertical pointer drag on the element matched by
+    ``css_selector`` by dispatching a ``pointerdown`` at ``start_y``, ``steps``
+    interpolated ``pointermove`` events from ``start_y`` toward ``end_y``, and a
+    final ``pointerup`` at ``end_y``.
+
+    Every event is constructed as a real ``PointerEvent`` (``pointerType: "touch"``,
+    primary ``button: 0``, ``pointerId: 1``) and dispatched **directly on the
+    target element** — never on ``document`` — because the gesture listeners are
+    bound via ``element.addEventListener``; synthetic events dispatched on
+    ``document`` never reach element-level handlers. With ``bubbles: true`` they
+    still propagate upward naturally.
+
+    ``step_delay_ms`` inserts a real wall-clock pause between consecutive
+    ``pointermove`` events. The default (``0``) dispatches every event in a single
+    synchronous turn, which is fine for distance-threshold gestures. For a
+    sub-threshold drag that must NOT fling-commit, pass a non-zero delay so the
+    handler's ``deltaY / elapsedMs`` velocity sample stays below the fling
+    threshold — an instantaneous synthetic drag otherwise computes a huge velocity
+    and commits regardless of distance.
+
+    Viewport-agnostic and reusable for any drawer/sheet drag target.
+
+    @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=780, end_y=560)
+        # drags the handle 220px up (open gesture)
+    @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=420, end_y=640)
+        # drags the handle 220px down (close gesture)
+    @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=780, end_y=720,
+        step_delay_ms=40)  # slow 60px up drag, sub-threshold, no fling-commit
+    """
+    if step_delay_ms <= 0:
+        browser.execute_script(
+            """
+            const element = document.querySelector(arguments[0]);
+            if (!element) {
+                throw new Error('No element found for selector "' + arguments[0] + '"');
+            }
+            const startY = arguments[1];
+            const endY = arguments[2];
+            const steps = arguments[3];
+            const clientX = 0;
+
+            function dispatchPointer(type, clientY) {
+                const event = new PointerEvent(type, {
+                    bubbles: true,
+                    cancelable: true,
+                    pointerId: 1,
+                    pointerType: "touch",
+                    button: 0,
+                    clientX: clientX,
+                    clientY: clientY,
+                });
+                element.dispatchEvent(event);
+            }
+
+            dispatchPointer("pointerdown", startY);
+            for (let step = 1; step <= steps; step++) {
+                const interpolatedY = startY + ((endY - startY) * step) / steps;
+                dispatchPointer("pointermove", interpolatedY);
+            }
+            dispatchPointer("pointerup", endY);
+            """,
+            css_selector,
+            start_y,
+            end_y,
+            steps,
+        )
+        return
+
+    browser.execute_async_script(
+        """
+        const element = document.querySelector(arguments[0]);
+        const done = arguments[5];
+        if (!element) {
+            throw new Error('No element found for selector "' + arguments[0] + '"');
+        }
+        const startY = arguments[1];
+        const endY = arguments[2];
+        const steps = arguments[3];
+        const stepDelayMs = arguments[4];
+        const clientX = 0;
+
+        function dispatchPointer(type, clientY) {
+            const event = new PointerEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                pointerId: 1,
+                pointerType: "touch",
+                button: 0,
+                clientX: clientX,
+                clientY: clientY,
+            });
+            element.dispatchEvent(event);
+        }
+
+        dispatchPointer("pointerdown", startY);
+        let step = 0;
+        function nextMove() {
+            step += 1;
+            if (step > steps) {
+                dispatchPointer("pointerup", endY);
+                done();
+                return;
+            }
+            const interpolatedY = startY + ((endY - startY) * step) / steps;
+            dispatchPointer("pointermove", interpolatedY);
+            setTimeout(nextMove, stepDelayMs);
+        }
+        setTimeout(nextMove, stepDelayMs);
+        """,
+        css_selector,
+        start_y,
+        end_y,
+        steps,
+        step_delay_ms,
+    )
