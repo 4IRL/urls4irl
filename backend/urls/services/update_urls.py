@@ -87,6 +87,7 @@ def update_url_in_utub(
         ).to_response()
 
     if validated_new_url.url_state == URLState.EXISTING_URL_IN_UTUB:
+        assert validated_new_url.url is not None
         warning_log(
             f"User={current_user.id} tried adding URL.id={validated_new_url.url.id} but already exists in UTub.id={current_utub.id}"
         )
