@@ -72,9 +72,17 @@
         display: none;
     }
 
+    /* Focus highlight: tint the drawer's own curved top border green (plus an
+       upward green glow) rather than drawing a full box outline around the slim
+       grab handle. The box outline's bottom edge cut a stray horizontal green
+       line across the sheet just below the handle; tinting the top border keeps
+       the highlight on the curved top edge alone, with nothing below it. */
     .tag-sheet-handle:focus-visible {
-        outline: 2px solid var(--deckHeaderGreen);
-        outline-offset: 2px;
+        outline: none;
+    }
+    #tagDeckSheet:has(.tag-sheet-handle:focus-visible) {
+        border-top-color: var(--deckHeaderGreen);
+        box-shadow: var(--shadow-lg), 0 -3px 10px rgba(36, 167, 69, 0.45);
     }
 
     /* Grabber pseudo-bar pinned top-center of the handle. */
