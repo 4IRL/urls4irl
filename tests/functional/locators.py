@@ -122,6 +122,16 @@ class HomePageLocators(GenericPageLocator):
     TAG_DECK_COUNT = "#TagDeckCount"
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
+    # Togglable funnel filter on the Tag Deck (mirrors the UTub name filter).
+    TAG_SEARCH_INPUT = "#TagNameSearch"
+    TAG_SEARCH_WRAP = "#SearchTagWrap"
+    # Tag-deck filter "No tags found" message. NOT the URL-deck TAG_FILTER_NO_RESULTS
+    # ("#URLTagFilterNoResults") message above, which is the "no URLs match" message.
+    TAG_SEARCH_NO_RESULTS = "#TagSearchNoResults"
+    BUTTON_TAG_NAME_FILTER = "#tagNameFilterBtn"
+    BUTTON_TAG_NAME_FILTER_CLOSE = "#tagNameFilterBtnClose"
+    # Zero-tags empty state shown when a selected UTub has no tags.
+    TAG_DECK_EMPTY_STATE = "#noTagsEmptyState"
     TAG_COUNT = ".tagAppliedToUrlsCount"
     BUTTON_UNSELECT_ALL = "#unselectAllTagFilters"
     BUTTON_UTUB_TAG_CREATE = "#utubTagBtnCreate"

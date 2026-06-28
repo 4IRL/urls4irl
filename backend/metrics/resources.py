@@ -111,6 +111,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.UI_CROSS_UTUB_SEARCH_CLOSE: Resource.SEARCH,
     EventName.UI_CROSS_UTUB_SEARCH_REFRESH: Resource.SEARCH,
     EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: Resource.SEARCH,
+    EventName.UI_TAG_SEARCH_OPEN: Resource.SEARCH,
+    EventName.UI_TAG_SEARCH_CLOSE: Resource.SEARCH,
     # UI — Tags
     EventName.UI_TAG_APPLY: Resource.TAG,
     EventName.UI_TAG_REMOVE: Resource.TAG,

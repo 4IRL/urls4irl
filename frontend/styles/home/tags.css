@@ -458,3 +458,65 @@
         transition: none;
     }
 }
+
+/* Tag name filter box. The filter input lives in its own subheader band
+   (#TagDeckSearchSubheader, mirroring the UTub/URL search subheader) between the
+   title row and the scrollable list, NOT inside the list body. Unlike the UTub
+   name filter (desktop-only), the tag filter is togglable on all viewports, so
+   this ID-scoped reveal gate carries NO media query. Gating the whole subheader
+   band (not just #SearchTagWrap) collapses the dynamic-subheader min-height strip
+   when closed, leaving no empty gap. This is the sole visibility controller —
+   no .hidden class in markup, no JS addClass/removeClass on the band. */
+#TagDeck:not(.tag-search-open) #TagDeckSearchSubheader {
+    display: none;
+}
+
+#SearchTagWrap {
+    /* Span the full panel width like the UTub search (#UTubDeckSubheaderWrap is
+       width:100%). As a flex-row child of #TagDeckSearchSubheader, the wrap would
+       otherwise shrink to its content's main-axis size; width:100% makes the input
+       (itself width:100%) fill the panel. */
+    width: 100%;
+    padding-block: 4px;
+}
+
+#TagSearchNoResults {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
+#noTagsEmptyState {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#noTagsSubheader {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    margin: 0;
+    padding: 0 1rem 0.25rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
+/* Touch targets: meet the 44px minimum on coarse pointers (mirrors .urlTagOption). */
+@media (any-pointer: coarse) {
+
+    #tagNameFilterBtn,
+    #tagNameFilterBtnClose {
+        min-height: 2.75rem;
+    }
+}

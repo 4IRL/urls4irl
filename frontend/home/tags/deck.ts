@@ -12,6 +12,15 @@ import {
   resetNewUTubTagForm,
   setupOpenCreateUTubTagEventListeners,
 } from "./create.js";
+import {
+  hideTagFilterBar,
+  reapplyTagFilter,
+  resetTagFilter,
+  setTagNameFilterToggleListeners,
+  setTagSelectorSearchEventListener,
+  showTagFilterBar,
+} from "./search.js";
+import { hideTagDeckEmptyState, showTagDeckEmptyState } from "./empty-state.js";
 import { buildTagFilterInDeck } from "./tags.js";
 import {
   closeUTubTagBtnMenuOnUTubTags,
@@ -41,6 +50,9 @@ export function setTagDeckOnUTubSelected(
     unselectAllBtn.showClassNormal();
     unselectAllBtn.addClass("red-icon-disabled");
     $("#utubTagBtnUpdateAllOpen").showClassNormal();
+    hideTagDeckEmptyState();
+  } else {
+    showTagDeckEmptyState();
   }
 
   // Loop through all tags and provide checkbox input for filtering
@@ -54,6 +66,10 @@ export function setTagDeckOnUTubSelected(
       ),
     );
   }
+
+  setTagSelectorSearchEventListener();
+  setTagNameFilterToggleListeners();
+  showTagFilterBar();
 
   _tagFilterChangedOff = on(
     AppEvents.TAG_FILTER_CHANGED,
@@ -80,6 +96,9 @@ export function resetTagDeck(): void {
   createUTubTagHideInput();
   closeUTubTagBtnMenuOnUTubTags();
   setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+  hideTagDeckEmptyState();
+  resetTagFilter();
+  hideTagFilterBar();
 }
 
 export function resetTagDeckIfNoUTubSelected(): void {
@@ -92,6 +111,9 @@ export function resetTagDeckIfNoUTubSelected(): void {
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
+  hideTagDeckEmptyState();
+  resetTagFilter();
+  hideTagFilterBar();
 }
 
 // Update tags in LH panel based on asynchronous updates or stale data
@@ -108,6 +130,13 @@ export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
       );
     },
   });
+
+  reapplyTagFilter();
+  if (updatedTags.length === 0) {
+    showTagDeckEmptyState();
+  } else {
+    hideTagDeckEmptyState();
+  }
 }
 
 export function setTagDeckSubheaderWhenNoUTubSelected(): void {

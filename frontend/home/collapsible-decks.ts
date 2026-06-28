@@ -5,6 +5,7 @@ import { UI_EVENTS } from "../types/metrics-events.js";
 import { isMobile } from "./mobile.js";
 import { isUTubSelected } from "./utubs/utils.js";
 import { resetUTubSearch } from "./utubs/search.js";
+import { closeTagNameFilter } from "./tags/search.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { createMemberHideInput } from "./members/create.js";
 import { createUTubTagHideInput } from "./tags/create.js";
@@ -180,6 +181,7 @@ function setupTagHeaderForMaximizeMinimize() {
     caret.addClass("closed");
     $(UTUB_TAG_DECK_CSS_SELECTOR).addClass("collapsed");
 
+    closeTagNameFilter();
     if (isUTubSelected()) createUTubTagHideInput();
     $("#TagDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 

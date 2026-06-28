@@ -14,6 +14,7 @@ vi.mock("../../lib/metrics-client.js", () => mockMetricsClient());
 
 vi.mock("../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
 vi.mock("../utubs/search.js", () => ({ closeUTubNameFilter: vi.fn() }));
+vi.mock("../tags/search.js", () => ({ closeTagNameFilter: vi.fn() }));
 
 const $ = window.jQuery;
 
@@ -121,6 +122,41 @@ describe("Left Panel Toggle", () => {
       setSearchModeActive({ active: false });
 
       expect(emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("filter close on collapse", () => {
+    it("collapsing the LHS closes the UTub name filter", async () => {
+      const { closeUTubNameFilter } = await import("../utubs/search.js");
+
+      setUserCollapsedLHS({
+        collapsed: true,
+        source: LHS_COLLAPSE_SOURCE.SEAM,
+      });
+
+      expect(closeUTubNameFilter).toHaveBeenCalledTimes(1);
+    });
+
+    it("collapsing the LHS closes the tag name filter", async () => {
+      const { closeTagNameFilter } = await import("../tags/search.js");
+
+      setUserCollapsedLHS({
+        collapsed: true,
+        source: LHS_COLLAPSE_SOURCE.SEAM,
+      });
+
+      expect(closeTagNameFilter).toHaveBeenCalledTimes(1);
+    });
+
+    it("expanding the LHS does not close the tag name filter", async () => {
+      const { closeTagNameFilter } = await import("../tags/search.js");
+
+      setUserCollapsedLHS({
+        collapsed: false,
+        source: LHS_COLLAPSE_SOURCE.SEAM,
+      });
+
+      expect(closeTagNameFilter).not.toHaveBeenCalled();
     });
   });
 

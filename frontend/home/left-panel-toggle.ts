@@ -4,6 +4,7 @@ import { UI_EVENTS } from "../types/metrics-events.js";
 import { LHS_COLLAPSE_SOURCE } from "../types/metrics-dim-values.js";
 import { isMobile } from "./mobile.js";
 import { closeUTubNameFilter } from "./utubs/search.js";
+import { closeTagNameFilter } from "./tags/search.js";
 
 type LhsToggleSource =
   (typeof LHS_COLLAPSE_SOURCE)[keyof typeof LHS_COLLAPSE_SOURCE];
@@ -47,7 +48,10 @@ export function setUserCollapsedLHS({
   if (isMobile()) return;
   userCollapsedLHS = collapsed;
   applyLeftPanelVisibility();
-  if (collapsed) closeUTubNameFilter();
+  if (collapsed) {
+    closeUTubNameFilter();
+    closeTagNameFilter();
+  }
   emit({
     event: collapsed ? UI_EVENTS.UI_LHS_COLLAPSE : UI_EVENTS.UI_LHS_EXPAND,
     source,

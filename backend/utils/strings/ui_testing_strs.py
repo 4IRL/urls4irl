@@ -9,7 +9,11 @@ from backend.cli.mock_constants import (
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
-from backend.utils.strings.tag_strs import TAG_FILTER_NO_RESULTS
+from backend.utils.strings.tag_strs import (
+    TAG_DECK_NO_TAGS as _TAG_DECK_NO_TAGS,
+    TAG_FILTER_NO_RESULTS,
+    TAG_SEARCH_NO_RESULTS as _TAG_SEARCH_NO_RESULTS,
+)
 from backend.utils.strings.url_strs import (
     ADD_URL_BUTTON,
     URL_IN_UTUB_TRACKING_PARAMS_STRIPPED,
@@ -135,6 +139,8 @@ class UI_TEST_STRINGS:
     CROSS_SEARCH_NO_RESULTS_TEXT = CROSS_SEARCH_NO_RESULTS
 
     TAG_FILTER_NO_URLS = TAG_FILTER_NO_RESULTS
+    TAG_SEARCH_NO_TAGS = _TAG_SEARCH_NO_RESULTS  # intentional: attribute name follows TAG_FILTER_NO_URLS convention (describes test condition — "no tags found" — not the backend constant name TAG_SEARCH_NO_RESULTS)
+    TAG_DECK_NO_TAGS = _TAG_DECK_NO_TAGS
     URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
     UTUB_SEARCH_NO_UTUBS = UTUB_SEARCH_NO_RESULTS
     UTUB_NO_URLS = UTUB_NO_URLS

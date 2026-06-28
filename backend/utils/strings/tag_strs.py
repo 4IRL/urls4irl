@@ -19,6 +19,10 @@ DELETE_UTUB_TAG_WARNING = (
     "This will remove {{ tag_string }} from all associated URLs in this UTub!"
 )
 TAG_FILTER_NO_RESULTS = "No URLs match selected tags"
+TAG_SEARCH_NO_RESULTS = "No tags found"
+TAG_SEARCH_PLACEHOLDER = "Filter tags"
+TAG_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} tags shown"
+TAG_DECK_NO_TAGS = "This UTub has no tags yet"
 
 # Combobox (multi-tag apply) strings — read dynamically by production TypeScript
 # via APP_CONFIG.strings, so they go through the full APP_CONFIG bridge

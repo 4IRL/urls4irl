@@ -26,11 +26,14 @@ When sub-plan mode is active, Branch Guard and Step 1 use the overrides below; o
 
 ## Branch Guard
 
+> **Never change branches without explicit user confirmation — including from `main`.** A concurrent agent may be running `/run-plan` in the same shared working tree; a surprise branch switch would corrupt its in-progress state. Every `gmas`, `git checkout`, or `git checkout -b` in this section must be gated behind an `AskUserQuestion` the user approves first.
+
 **Default behavior** (not sub-plan mode):
 1. If on `main` or `master`:
-   - Run `gmas` to ensure main is up to date with remote
-   - Create and switch to a suggested feature branch based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`) — do NOT ask for confirmation, just do it
-   - Inform the user which branch was created, then proceed
+   - Use `AskUserQuestion` to confirm before doing anything: propose a feature branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`) and offer:
+     - **Create the proposed branch** — run `gmas` to update main, then create and switch to the suggested branch
+     - **Stay on main** — proceed with plan creation without switching
+   - Only after approval, run `gmas` and create the branch; inform the user which branch was created.
 2. If on a different branch:
    - Use `AskUserQuestion` to ask whether to:
      - **Switch to main first** — run `gmas` to switch to main and pull latest from remote, then create a new feature branch from there
@@ -39,7 +42,7 @@ When sub-plan mode is active, Branch Guard and Step 1 use the overrides below; o
 
 **Sub-plan mode override** (when Step 0 set `<sub-plan-mode>=true`):
 1. If already on `<target-branch>`: stay — proceed.
-2. If on `main`/`master`: run `gmas`, then `git checkout -b <target-branch>`. No confirmation needed.
+2. If on `main`/`master`: use `AskUserQuestion` to confirm — "Switch to `<target-branch>` (run `gmas`, then `git checkout -b <target-branch>`), or stay on main?" Only switch after approval.
 3. If on a different branch: use `AskUserQuestion` — "Switch to `<target-branch>` (checkout from main), or stay on current branch?"
 
 ## Step 1: Determine Topic Folder

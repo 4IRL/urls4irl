@@ -5,6 +5,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { mergeAppliedTagsIntoStore } from "./combobox-state.js";
 import { createTagBadgeInURL } from "./tags.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
+import { reapplyTagFilter } from "../../tags/search.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 
@@ -70,6 +71,7 @@ export function renderAppliedTagsForUrl({
         newTag.addClass("disabled").off(".tagFilterSelected");
       }
       $("#listTags").append(newTag);
+      reapplyTagFilter();
       builtNewDeckFilter = true;
     } else {
       updateTagFilterCount(

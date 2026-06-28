@@ -343,6 +343,16 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "trigger": ("url_text", "corner_button"),
         },
     ),
+    EventName.UI_TAG_SEARCH_OPEN: EventRegistryEntry(
+        description="Tag search box opened",
+        category=EventCategory.UI,
+        dimensions={"target": ("tags",)},
+    ),
+    EventName.UI_TAG_SEARCH_CLOSE: EventRegistryEntry(
+        description="Tag search box closed",
+        category=EventCategory.UI,
+        dimensions={"target": ("tags",)},
+    ),
     EventName.UI_TAG_APPLY: EventRegistryEntry(
         description="Tag applied from picker",
         category=EventCategory.UI,

@@ -8,6 +8,7 @@ import { modifyURLStringForDisplay } from "./url-string.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { removeTagFromTagDeckGivenTagID } from "../../tags/deck.js";
+import { reapplyTagFilter } from "../../tags/search.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
 import { showURLDeckBannerError } from "../deck.js";
@@ -144,6 +145,7 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
             receivedTag.tagString,
           ),
         );
+        reapplyTagFilter();
       }
     }
   }
