@@ -1,3 +1,6 @@
+from flask import Flask
+from flask.testing import FlaskCliRunner
+
 from backend.cli.mock_constants import (
     MOCK_TAGS,
     MOCK_TRACKING_SEED_URL_PAIRS,
@@ -121,3 +124,64 @@ def verify_tags_added_to_all_urls_in_utubs():
             assert sorted(
                 [tag.utub_tag_item.tag_string for tag in tags_on_url]
             ) == sorted(MOCK_TAGS)
+
+
+def verify_tracking_seed_urls_added(app: Flask, cli_runner: FlaskCliRunner):
+    """Verifies the tracking-param seed URLs are added to the first UTub.
+
+    Asserts that every raw tracking URL in ``MOCK_TRACKING_SEED_URL_PAIRS``
+    exists in the ``Urls`` table, that each is associated with the first UTub
+    along with the first UTub's seed tag, and that a second ``flask addmock
+    all`` invocation adds no duplicate rows (idempotency).
+
+    Args:
+        app (Flask): The Flask application providing the app context
+        cli_runner (FlaskCliRunner): Runner used to re-invoke `addmock all`
+    """
+    with app.app_context():
+        first_utub: Utubs = Utubs.query.order_by(Utubs.id).first()
+        seed_tag: Utub_Tags = (
+            Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub.id)
+            .order_by(Utub_Tags.id)
+            .first()
+        )
+
+        url_row_count_before = Urls.query.count()
+        utub_url_count_before = Utub_Urls.query.count()
+        utub_url_tag_count_before = Utub_Url_Tags.query.count()
+
+        for tracking_url in TRACKING_SEED_URL_STRINGS:
+            assert Urls.query.filter(Urls.url_string == tracking_url).count() == 1
+
+            seed_url: Urls = Urls.query.filter(Urls.url_string == tracking_url).first()
+            utub_url: Utub_Urls = Utub_Urls.query.filter(
+                Utub_Urls.utub_id == first_utub.id,
+                Utub_Urls.url_id == seed_url.id,
+            ).first()
+            assert utub_url is not None
+            assert (
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_url_id == utub_url.id,
+                    Utub_Url_Tags.utub_tag_id == seed_tag.id,
+                ).count()
+                == 1
+            )
+
+    cli_runner.invoke(args=["addmock", "all"])
+
+    with app.app_context():
+        assert Urls.query.count() == url_row_count_before
+        assert Utub_Urls.query.count() == utub_url_count_before
+        assert Utub_Url_Tags.query.count() == utub_url_tag_count_before
+
+        for tracking_url in TRACKING_SEED_URL_STRINGS:
+            assert Urls.query.filter(Urls.url_string == tracking_url).count() == 1
+
+            seed_url: Urls = Urls.query.filter(Urls.url_string == tracking_url).first()
+            assert (
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == first_utub.id,
+                    Utub_Urls.url_id == seed_url.id,
+                ).count()
+                == 1
+            )
