@@ -30,6 +30,7 @@ from tests.functional.tags_ui.selenium_utils import (
     apply_tag_filter_based_on_id,
     swipe_tag_sheet_closed,
     swipe_tag_sheet_open,
+    swipe_tag_sheet_up_below_threshold,
     wait_until_tag_sheet_collapsed,
     wait_until_tag_sheet_open,
 )
@@ -316,4 +317,35 @@ def test_tag_sheet_swipe_open_and_close(
 
     # Swipe down from the handle to commit the close gesture.
     swipe_tag_sheet_closed(browser)
+    wait_until_tag_sheet_collapsed(browser)
+
+
+def test_tag_sheet_swipe_below_threshold_snaps_back_closed(
+    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a logged-in mobile user on the URL deck with the tag sheet collapsed
+    WHEN they swipe up from the peeking handle by a small amount well below the
+        ~35% commit threshold (sub-threshold drag)
+    THEN the sheet snaps back to its collapsed peek and does not open, proving the
+        real browser only commits the open gesture once the threshold is crossed
+    """
+    browser = browser_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+
+    # Before-state: sheet collapsed to its peek, handle ready to be dragged up.
+    wait_until_tag_sheet_collapsed(browser)
+    assert_visible_css_selector(browser, HPL.TAG_SHEET_HANDLE)
+
+    # Swipe up only a short distance (below the commit threshold).
+    swipe_tag_sheet_up_below_threshold(browser)
+
+    # The sheet must snap back to collapsed; it must NOT open. Asserting the
+    # collapsed wait passes (open class absent + slide settled) confirms snap-back.
     wait_until_tag_sheet_collapsed(browser)

@@ -34,6 +34,19 @@ from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_s
 # margin widens on taller viewports (subtracting the fixed peek), so 220 is safe.
 SWIPE_COMMIT_PX = 220
 
+# Drag distance (px) chosen to stay well below the 35% commit threshold so the
+# gesture snaps back to its prior state instead of committing. At the 900px-tall
+# browser_mobile_portrait fixture the threshold is ~178px (see SWIPE_COMMIT_PX),
+# so 60px is comfortably sub-threshold and the sheet must snap back closed.
+SWIPE_SNAP_BACK_PX = 60
+
+# Per-pointermove pause (ms) for the sub-threshold drag. The release-snap also
+# commits on a fast fling (velocity >= 0.5 px/ms), so an instantaneous synthetic
+# drag would fling-commit even at 60px. Spacing the 6 moves 40ms apart keeps each
+# 10px sample at ~0.25 px/ms — below the fling threshold — so only the (uncrossed)
+# distance threshold governs, and the sheet correctly snaps back.
+SWIPE_SNAP_BACK_STEP_DELAY_MS = 40
+
 
 def open_tag_combobox(browser: WebDriver, url_id: int) -> None:
     """
@@ -232,6 +245,25 @@ def swipe_tag_sheet_open(browser: WebDriver) -> None:
     start_y = rect["y"] + rect["height"] / 2
     end_y = start_y - SWIPE_COMMIT_PX
     dispatch_pointer_drag(browser, HPL.TAG_SHEET_HANDLE, start_y=start_y, end_y=end_y)
+
+
+def swipe_tag_sheet_up_below_threshold(browser: WebDriver) -> None:
+    """
+    Drags the peeking handle upward by ``SWIPE_SNAP_BACK_PX`` — well below the 35%
+    commit threshold — so the sheet snaps back to its collapsed peek rather than
+    opening. Mirrors ``swipe_tag_sheet_open`` but with a sub-threshold distance.
+    """
+    handle = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE)
+    rect = handle.rect
+    start_y = rect["y"] + rect["height"] / 2
+    end_y = start_y - SWIPE_SNAP_BACK_PX
+    dispatch_pointer_drag(
+        browser,
+        HPL.TAG_SHEET_HANDLE,
+        start_y=start_y,
+        end_y=end_y,
+        step_delay_ms=SWIPE_SNAP_BACK_STEP_DELAY_MS,
+    )
 
 
 def swipe_tag_sheet_closed(browser: WebDriver) -> None:
