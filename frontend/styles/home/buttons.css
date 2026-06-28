@@ -40,13 +40,15 @@
 }
 
 #URLSearchFilterIcon>svg,
-#utubNameFilterBtn>svg {
+#utubNameFilterBtn>svg,
+#tagNameFilterBtn>svg {
     fill: var(--grayBadgeSelection);
     transition: fill 0.15s ease;
 }
 
 #URLSearchFilterIconClose>svg,
-#utubNameFilterBtnClose>svg {
+#utubNameFilterBtnClose>svg,
+#tagNameFilterBtnClose>svg {
     fill: var(--spanRemoveColor);
     transition: fill 0.15s ease;
 }
@@ -92,12 +94,14 @@
     }
 
     #URLSearchFilterIcon:hover>svg,
-    #utubNameFilterBtn:hover>svg {
+    #utubNameFilterBtn:hover>svg,
+    #tagNameFilterBtn:hover>svg {
         fill: var(--deckSelectionGreenHover);
     }
 
     #URLSearchFilterIconClose:hover>svg,
-    #utubNameFilterBtnClose:hover>svg {
+    #utubNameFilterBtnClose:hover>svg,
+    #tagNameFilterBtnClose:hover>svg {
         fill: var(--spanRemoveColorHover);
     }
 
