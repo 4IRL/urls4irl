@@ -7,6 +7,7 @@ import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
+import { reapplyTagFilter } from "../../tags/search.js";
 import { createTagBadgeInURL } from "./tags.js";
 import {
   disableTagRemovalInURLCard,
@@ -275,6 +276,7 @@ export function createURLTagSuccess(
       newTag.addClass("disabled").off(".tagFilterSelected");
     }
     $("#listTags").append(newTag);
+    reapplyTagFilter();
     $("#utubTagBtnUpdateAllOpen").showClassNormal();
   } else {
     // Update tag filter in Tag Deck

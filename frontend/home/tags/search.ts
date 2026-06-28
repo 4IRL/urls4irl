@@ -144,7 +144,10 @@ export function resetTagFilter(): void {
 // Re-apply the active filter term after a #listTags append so newly-added rows
 // obey the current filter. Identical logic to the input handler's path.
 export function reapplyTagFilter(): void {
-  const searchTerm = getInputValue($("#TagNameSearch")).toLowerCase();
+  // Append sites call this from contexts where #TagNameSearch may not be in the
+  // DOM (e.g. URL-tag renders before the tag deck is built); a missing input
+  // yields no value, which means "no active filter" — show all rows.
+  const searchTerm = (getInputValue($("#TagNameSearch")) ?? "").toLowerCase();
   applyTagFilterForTerm(searchTerm);
 }
 

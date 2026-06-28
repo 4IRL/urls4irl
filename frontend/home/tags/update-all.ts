@@ -5,6 +5,7 @@ import {
   enableTabbableChildElements,
 } from "../../lib/jquery-plugins.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
+import { closeTagNameFilter } from "./search.js";
 
 export function initUpdateAllTags(): void {
   const utubTagBtnUnselectAll = $("#utubTagBtnUpdateAllOpen");
@@ -107,6 +108,7 @@ export function setTagDeckBtnsOnUpdateAllUTubTagsClosed(): void {
 }
 
 export function openUTubTagBtnMenuOnUTubTags(): void {
+  closeTagNameFilter();
   $(".tagCountWrap").hideClass();
   $(".tagMenuWrap").showClassNormal();
   $(".tagFilter").addClass("disabled").disableTab();
