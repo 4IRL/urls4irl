@@ -2,14 +2,13 @@
    overlaid on the URL deck, with a peeking handle and a dimming backdrop.
    Desktop (>=992px) never shows any of these elements. */
 
-/* Peek (collapsed header) height + the persistent footer's height. Defined on
-   :root so the sheet/backdrop (which anchor their bottom edge ABOVE the footer so
-   the footer's Privacy/Terms/Contact bar stays visible in both the collapsed and
-   open states) and the handle can all read them. --footer-height matches the
-   rendered footer height on mobile (single non-wrapping row, ~44px). */
+/* Peek (collapsed header) height. Defined on :root so both the sheet (slide
+   transform) and the JS drag math (_collapsedPeekPx reads it) share one source.
+   The sheet/backdrop anchor inside #mainPanel (between nav and footer), so the
+   footer's Privacy/Terms/Contact bar stays visible in both collapsed and open
+   states without a separate footer-height token. */
 :root {
     --tag-sheet-peek: 3rem;
-    --footer-height: 2.75rem;
 }
 
 /* Desktop default — fully hidden regardless of JS state. The handle now lives
@@ -97,24 +96,26 @@
         padding: 1px 9px;
     }
 
-    /* Clipping viewport for the sheet — a fixed layer spanning navbar-bottom to
-       footer-top. The sheet slides WITHIN it via transform; anything translated
+    /* Clipping viewport for the sheet — fills #mainPanel (navbar-bottom to
+       footer-top, since #mainPanel sits between the nav and footer in the flex
+       column). The sheet slides WITHIN it via transform; anything translated
        below the footer line is clipped (overflow:hidden), so the footer bar stays
        visible whether the sheet is collapsed (only its peek shows above the
-       footer) or open. Fixed (not absolute on #mainPanel) for iOS Safari: a
-       #mainPanel-anchored layer landed below the fold when iOS grew #mainPanel
-       past the visual viewport. pointer-events:none so the empty (clipped) area
-       passes taps through to the URL deck; the sheet re-enables them. z-index 30
-       sits below .navbar-backdrop (1040) so the peek is dimmed by the navbar
-       dropdown; raised to 1040 only when the sheet is open/dragging (via :has) so
-       it clears the sheet's own backdrop (1039). */
+       footer) or open. Positioned `absolute` against #mainPanel (which is
+       position:relative) rather than fixed so the drawer rides WITH the page
+       during mobile-browser overscroll/pull-to-refresh, instead of staying
+       pinned while everything in flow bounces. pointer-events:none so the empty
+       (clipped) area passes taps through to the URL deck; the sheet re-enables
+       them. z-index 30 sits below .navbar-backdrop (1040) so the peek is dimmed
+       by the navbar dropdown; raised to 1040 only when the sheet is open/dragging
+       (via :has) so it clears the sheet's own backdrop (1039). */
     #tagSheetViewport {
-        position: fixed;
+        position: absolute;
         display: block;
-        top: 3rem;
+        top: 0;
         left: 0;
         right: 0;
-        bottom: var(--footer-height);
+        bottom: 0;
         overflow: hidden;
         pointer-events: none;
         z-index: 30;
@@ -175,9 +176,9 @@
        covered by the sheet, so give the footer a matching top line to
        distinguish it. An inset box-shadow (not border-top) draws the line
        without growing the footer's box — a 1px border would shift the footer up
-       under the sheet's bottom edge (which anchors to --footer-height) and the
-       line would be covered. Scoped via :has so it only shows when the sheet is
-       up; collapsed keeps the footer's flush edge. */
+       under the sheet's bottom edge and the line would be covered. Scoped via
+       :has so it only shows when the sheet is up; collapsed keeps the footer's
+       flush edge. */
     #mainPanel:has(#tagDeckSheet.tag-sheet-open) ~ footer,
     #mainPanel:has(#tagDeckSheet.tag-sheet-dragging) ~ footer {
         box-shadow: inset 0 1px 0 var(--borderColor);
@@ -189,24 +190,21 @@
        (specificity 1-0-0); the element stays in the DOM at opacity 0 when closed
        (pointer-events: none) and fades in only via the show class. */
     #tagSheetBackdrop.tag-sheet-backdrop {
-        /* Fixed to the viewport for the same reason as the sheet — covers the
-           visible content area regardless of #mainPanel height or scroll, so the
-           dimmed area always matches what the user sees and the tap-to-close
-           region is always reachable. Starts at `top: 3rem` (the navbar height)
-           so it never overlays the navbar: the navbar is a <body> sibling, not a
-           #mainPanel child, so it stays interactive while the sheet is open
-           (tapping a navbar deck-nav item closes the sheet via
-           MOBILE_DECK_SWITCHED). Covering the navbar would intercept the
-           toggler/dropdown clicks. The navbar dropdown (z-index 1050) still
-           renders above this backdrop (z-index 1039). Stops at the footer
-           (`bottom: var(--footer-height)`) so the persistent footer bar stays
-           visible and interactive while the sheet is open. */
-        position: fixed;
+        /* Absolute within #mainPanel (like the sheet's viewport) so it rides with
+           the page during overscroll and fills the content area between nav and
+           footer. #mainPanel sits below the navbar (a <body> sibling) and above
+           the footer, so `top:0`/`bottom:0` already exclude both: the navbar stays
+           interactive (tapping a deck-nav item closes the sheet via
+           MOBILE_DECK_SWITCHED; covering it would intercept toggler/dropdown
+           clicks) and the persistent footer bar stays visible. The navbar
+           dropdown (z-index 1050) still renders above this backdrop (z-index
+           1039). */
+        position: absolute;
         display: block;
-        top: 3rem;
+        top: 0;
         left: 0;
         right: 0;
-        bottom: var(--footer-height);
+        bottom: 0;
         background: #000;
         opacity: 0;
         pointer-events: none;
