@@ -15,6 +15,20 @@
 			</button>
 		</div>
 		<div id="utubTagStandardBtns" class="flex-row button-container gap-2p">
+			<!-- Filter tag names (togglable on all viewports). Plain funnel = open the
+			     text filter; distinct from #unselectAllTagFilters' funnel-with-X (clear). -->
+			<button id="tagNameFilterBtn" class="ms-1 hidden" tabindex="0" aria-label="Filter tag names" aria-expanded="false">
+				<svg xmlns="http://www.w3.org/2000/svg" height="30" width="30" viewBox="0 0 16 16">
+					<path
+						d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
+				</svg>
+			</button>
+			<button id="tagNameFilterBtnClose" class="ms-1 hidden" tabindex="0" aria-label="Close tag name filter">
+				<svg xmlns="http://www.w3.org/2000/svg" height="30" width="30" viewBox="0 0 16 16">
+					<path
+						d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8z" />
+				</svg>
+			</button>
 			<!-- Add tag button -->
 			<button id="utubTagBtnCreate"class="green-clickable ms-1 hidden" tabindex="0">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill" width="30"
@@ -49,8 +63,34 @@
 		<!-- Create UTub Tag Form -->
 		{% include 'components/home/TagsDeck/CreateUTubTagForm.html' %}
 
+		<!-- Tag name filter input (visibility CSS-gated by #TagDeck.tag-search-open) -->
+		<div id="SearchTagWrap" class="input-text-holder flex-column">
+			<div class="text-input-container">
+				<div class="text-input-inner-container">
+					<svg class="tag-search-prefix-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+						height="14" width="14"
+						viewBox="0 0 16 16" aria-hidden="true">
+						<path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
+					</svg>
+					<input class="text-input search-input" type="search" id="TagNameSearch"
+						aria-label="Filter tags" autocorrect="off" autocapitalize="off"
+						minlength={{CONSTANTS.TAGS.MIN_TAG_LENGTH}} maxlength={{CONSTANTS.TAGS.MAX_TAG_LENGTH}} required tabindex="0"
+						placeholder="{{ CONSTANTS.STRINGS.TAG_SEARCH_PLACEHOLDER }}">
+					<label class="text-input-label search-input-label top-50perc left-10p font-size-16p"
+						for="TagNameSearch">{{ CONSTANTS.STRINGS.TAG_SEARCH_PLACEHOLDER }}</label>
+				</div>
+			</div>
+		</div>
+		<p id="TagSearchNoResults" class="hidden"></p>
+		<span id="TagSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
+
 		<div class="flex-column flex-start pad-in-15p" id="listTags">
 			<!-- Tags -->
+		</div>
+
+		<!-- Zero-tags empty state; text injected by TS from TAG_DECK_NO_TAGS -->
+		<div id="noTagsEmptyState" class="hidden flex-column align-center">
+			<p id="noTagsSubheader"></p>
 		</div>
 	</div>
 </div>
