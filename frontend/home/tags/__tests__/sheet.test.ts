@@ -6,6 +6,7 @@ import {
   relocateTagDeckForViewport,
   refreshTagSheetHandleVisibility,
   isTagSheetOpen,
+  _resetTagSheetGestureForTests,
 } from "../sheet.js";
 import { TAG_SHEET_TOGGLE_ACTION } from "../../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
@@ -589,6 +590,265 @@ describe("Tag Sheet Controller", () => {
       seedTagFilter();
       openTagSheet();
       expect($("#tagSheetEmpty").hasClass(HIDDEN_CLASS)).toBe(true);
+    });
+  });
+
+  describe("swipe gesture", () => {
+    const DRAGGING_CLASS = "tag-sheet-dragging";
+    const SHEET_RECT = {
+      height: 400,
+      top: 400,
+      bottom: 800,
+      left: 0,
+      right: 390,
+      width: 390,
+      x: 0,
+      y: 400,
+      toJSON: () => ({}),
+    } as DOMRect;
+
+    function stubSheetRect(): HTMLElement {
+      const sheet = document.getElementById("tagDeckSheet")!;
+      sheet.getBoundingClientRect = (): DOMRect => SHEET_RECT;
+      return sheet;
+    }
+
+    function dispatchPointer({
+      target,
+      type,
+      clientY,
+      pointerType = "touch",
+    }: {
+      target: HTMLElement;
+      type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel";
+      clientY: number;
+      pointerType?: string;
+    }): void {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, "button", { value: 0 });
+      Object.defineProperty(event, "pointerId", { value: 1 });
+      Object.defineProperty(event, "clientX", { value: 0 });
+      Object.defineProperty(event, "clientY", { value: clientY });
+      Object.defineProperty(event, "pointerType", { value: pointerType });
+      target.dispatchEvent(event);
+    }
+
+    afterEach(() => {
+      _resetTagSheetGestureForTests();
+    });
+
+    it("opens the sheet on an upward drag from the handle past the threshold", async () => {
+      vi.useFakeTimers();
+      try {
+        stubSheetRect();
+        await setIsMobile(true);
+        initTagSheet();
+        const { emit } = await import("../../../lib/metrics-client.js");
+        expect(isTagSheetOpen()).toBe(false);
+
+        const handle = document.getElementById("tagSheetHandle")!;
+        dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
+        dispatchPointer({ target: handle, type: "pointermove", clientY: 600 });
+        dispatchPointer({ target: handle, type: "pointerup", clientY: 600 });
+        vi.runAllTimers();
+
+        expect(isTagSheetOpen()).toBe(true);
+        expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(true);
+        expect(emit).toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+          action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("closes the sheet on a downward drag from the grabber past the threshold", async () => {
+      stubSheetRect();
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+      const { emit } = await import("../../../lib/metrics-client.js");
+      (emit as ReturnType<typeof vi.fn>).mockClear();
+
+      const grabber = document.getElementById("tagSheetGrabber")!;
+      dispatchPointer({ target: grabber, type: "pointerdown", clientY: 420 });
+      dispatchPointer({ target: grabber, type: "pointermove", clientY: 640 });
+      dispatchPointer({ target: grabber, type: "pointerup", clientY: 640 });
+
+      expect(isTagSheetOpen()).toBe(false);
+      expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
+      expect(emit).toHaveBeenCalledTimes(1);
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+        action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+      });
+    });
+
+    it("does not open via the gesture on desktop (gesture early-returns)", async () => {
+      stubSheetRect();
+      await setIsMobile(false);
+      initTagSheet();
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      const handle = document.getElementById("tagSheetHandle")!;
+      dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
+      dispatchPointer({ target: handle, type: "pointermove", clientY: 600 });
+      dispatchPointer({ target: handle, type: "pointerup", clientY: 600 });
+
+      expect(isTagSheetOpen()).toBe(false);
+      expect(emit).not.toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+        action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+      });
+    });
+
+    it("snaps back (does not open) when the upward drag is below the threshold", async () => {
+      // Fake timers freeze performance.now() so velocity sampling is
+      // deterministic (same-tick events => dt 0 => velocity stays 0); otherwise
+      // a sub-millisecond real dt inflates velocity into a spurious fling commit.
+      vi.useFakeTimers();
+      try {
+        stubSheetRect();
+        await setIsMobile(true);
+        initTagSheet();
+        const { emit } = await import("../../../lib/metrics-client.js");
+
+        const handle = document.getElementById("tagSheetHandle")!;
+        // ~40px up < 35% of 400 (140px) and below fling velocity.
+        dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
+        dispatchPointer({ target: handle, type: "pointermove", clientY: 740 });
+        dispatchPointer({ target: handle, type: "pointerup", clientY: 740 });
+
+        expect(isTagSheetOpen()).toBe(false);
+        expect(emit).not.toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+          action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("cancels an in-flight drag when a force-close event fires mid-drag", async () => {
+      stubSheetRect();
+      await setIsMobile(true);
+      initTagSheet();
+      // A force-close routes through closeTagSheet(), whose force-close
+      // subscribers act only when the sheet is open — so the realistic mid-drag
+      // cancellation is during a CLOSE drag (sheet open). _cancelDrag at the top
+      // of closeTagSheet() then tears down the live drag.
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+
+      const grabber = document.getElementById("tagSheetGrabber")!;
+      dispatchPointer({ target: grabber, type: "pointerdown", clientY: 420 });
+      dispatchPointer({ target: grabber, type: "pointermove", clientY: 500 });
+      // Mid-drag: dragging class present, sheet has an inline transform.
+      expect($("#tagDeckSheet").hasClass(DRAGGING_CLASS)).toBe(true);
+
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.UTUB_SELECTED, {
+        utubID: 1,
+        utubName: "Test UTub",
+        urls: [],
+        tags: [],
+        members: [],
+        utubOwnerID: 1,
+        isCurrentUserOwner: true,
+        currentUserID: 1,
+      });
+
+      expect($("#tagDeckSheet").hasClass(DRAGGING_CLASS)).toBe(false);
+      expect(
+        (document.querySelector("#tagDeckSheet") as HTMLElement).style
+          .transform,
+      ).toBe("");
+      expect(
+        (document.querySelector("#tagSheetBackdrop") as HTMLElement).style
+          .opacity,
+      ).toBe("");
+    });
+
+    it("treats a sub-slop press-release as a tap so the click toggle still fires", async () => {
+      stubSheetRect();
+      await setIsMobile(true);
+      initTagSheet();
+
+      const handle = document.getElementById("tagSheetHandle")!;
+      // Movement < TAP_SLOP_PX (8px): no drag, no suppression flag.
+      dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
+      dispatchPointer({ target: handle, type: "pointermove", clientY: 776 });
+      dispatchPointer({ target: handle, type: "pointerup", clientY: 776 });
+
+      // The native click that a real tap would fire still toggles the sheet open.
+      handle.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+
+      expect(isTagSheetOpen()).toBe(true);
+    });
+
+    it("suppresses the click that follows a committed open drag", async () => {
+      vi.useFakeTimers();
+      try {
+        stubSheetRect();
+        await setIsMobile(true);
+        initTagSheet();
+        const { emit } = await import("../../../lib/metrics-client.js");
+
+        const handle = document.getElementById("tagSheetHandle")!;
+        dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
+        dispatchPointer({ target: handle, type: "pointermove", clientY: 600 });
+        dispatchPointer({ target: handle, type: "pointerup", clientY: 600 });
+        vi.runAllTimers();
+        expect(isTagSheetOpen()).toBe(true);
+
+        // jQuery .trigger invokes the .on("click") handler directly, exercising
+        // the suppression wrapper regardless of native event propagation.
+        $(handle).trigger("click");
+
+        // Sheet stays open: toggleTagSheet was suppressed (would have closed it).
+        expect(isTagSheetOpen()).toBe(true);
+        expect(emit).not.toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+          action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("ignores a mouse-pointer drag on mobile (touch/pen only)", async () => {
+      stubSheetRect();
+      await setIsMobile(true);
+      initTagSheet();
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      const handle = document.getElementById("tagSheetHandle")!;
+      dispatchPointer({
+        target: handle,
+        type: "pointerdown",
+        clientY: 780,
+        pointerType: "mouse",
+      });
+      dispatchPointer({
+        target: handle,
+        type: "pointermove",
+        clientY: 600,
+        pointerType: "mouse",
+      });
+      dispatchPointer({
+        target: handle,
+        type: "pointerup",
+        clientY: 600,
+        pointerType: "mouse",
+      });
+
+      expect(isTagSheetOpen()).toBe(false);
+      expect(emit).not.toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+        action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+      });
     });
   });
 });
