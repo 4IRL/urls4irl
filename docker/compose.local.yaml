@@ -198,6 +198,19 @@ services:
       timeout: 5s
       retries: 3
 
+  # On-demand public tunnel for remote testing (e.g. checking the mobile layout
+  # from a phone). Dormant unless explicitly started via the "tunnel" profile
+  # (`make tunnel`). Cloudflare quick tunnels need no account or token and print
+  # an ephemeral https://<random>.trycloudflare.com URL to their logs.
+  cloudflared:
+    image: cloudflare/cloudflared:2026.6.1
+    container_name: u4i-local-cloudflared
+    profiles: ["tunnel"]
+    command: tunnel --no-autoupdate --url http://web:5000
+    depends_on:
+      - web
+    restart: "no"
+
 volumes:
   pgdata:
   redisdata:
