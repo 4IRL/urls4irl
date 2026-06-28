@@ -233,6 +233,27 @@ def apply_tag_filter_based_on_id(browser: WebDriver, utub_tag_id: int):
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
 
+def open_tag_name_filter(browser: WebDriver) -> WebElement:
+    """
+    The tag name filter input is hidden behind the funnel toggle on all viewports.
+    Click the funnel to reveal the input, wait for it to become visible and focused
+    (the open handler focuses it), then return the now-ready element.
+
+    Waiting for focus before any keys are sent hardens the root cause of the
+    focus/send_keys race rather than padding a timeout.
+
+    Args:
+        WebDriver open to the U4I Home Page with a UTub-with-tags selected
+
+    Returns:
+        The visible, focused #TagNameSearch input element
+    """
+    wait_then_click_element(browser, HPL.BUTTON_TAG_NAME_FILTER, time=3)
+    wait_until_visible_css_selector(browser, HPL.TAG_SEARCH_INPUT, timeout=3)
+    wait_until_in_focus(browser, HPL.TAG_SEARCH_INPUT, timeout=3)
+    return wait_then_get_element(browser, HPL.TAG_SEARCH_INPUT, time=3)
+
+
 def swipe_tag_sheet_open(browser: WebDriver) -> None:
     """
     Drags the peeking handle upward by ``SWIPE_COMMIT_PX`` to commit the
