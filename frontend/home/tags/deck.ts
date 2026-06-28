@@ -96,8 +96,6 @@ export function resetTagDeck(): void {
   createUTubTagHideInput();
   closeUTubTagBtnMenuOnUTubTags();
   setTagDeckBtnsOnUpdateAllUTubTagsClosed();
-  $("#TagSearchNoResults").addClass("hidden").text("");
-  $("#TagSearchAnnouncement").text("");
   hideTagDeckEmptyState();
   resetTagFilter();
   hideTagFilterBar();
@@ -113,8 +111,6 @@ export function resetTagDeckIfNoUTubSelected(): void {
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
-  $("#TagSearchNoResults").addClass("hidden").text("");
-  $("#TagSearchAnnouncement").text("");
   hideTagDeckEmptyState();
   resetTagFilter();
   hideTagFilterBar();
