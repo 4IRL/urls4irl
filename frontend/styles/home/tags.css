@@ -472,6 +472,11 @@
 }
 
 #SearchTagWrap {
+    /* Span the full panel width like the UTub search (#UTubDeckSubheaderWrap is
+       width:100%). As a flex-row child of #TagDeckSearchSubheader, the wrap would
+       otherwise shrink to its content's main-axis size; width:100% makes the input
+       (itself width:100%) fill the panel. */
+    width: 100%;
     padding-block: 4px;
 }
 
