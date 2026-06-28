@@ -1029,6 +1029,49 @@ def test_update_url_strips_tracking_params(
     assert url_row_string_display == MOCK_URL_TRACKING_STRIPPED
 
 
+def test_update_url_tracking_params_collision_shows_error(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests that updating a URL to a tracking-laden variant whose stripped canonical
+    form already exists in the UTub surfaces the informative collision error.
+
+    GIVEN a UTub that already contains the stripped canonical URL plus a
+        separate URL the user is editing
+    WHEN the user updates the separate URL to a tracking-laden variant that
+        strips to the already-present canonical URL
+    THEN the update-form error shows the tracking-params-stripped collision message
+    """
+    _, cli_runner = runner
+    app = provide_app
+    url_to_edit = MOCK_URL_STRINGS[0]
+    add_mock_urls(cli_runner, [MOCK_URL_TRACKING_STRIPPED, url_to_edit])
+
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, url_to_edit
+    )
+
+    url_row = get_selected_url(browser)
+    update_url_string(browser, url_row, MOCK_URL_WITH_TRACKING_PARAMS)
+
+    wait_then_click_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+    )
+
+    error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
+    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+
+    invalid_url_string_error = wait_then_get_element(
+        browser, error_css_selector, time=3
+    )
+    assert invalid_url_string_error is not None
+    assert invalid_url_string_error.text == UTS.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+
+
 def test_update_url_preserves_non_tracking_params(
     browser: WebDriver,
     create_test_utubs,
