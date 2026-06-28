@@ -459,12 +459,15 @@
     }
 }
 
-/* Tag name filter box. Unlike the UTub name filter (desktop-only), the tag
-   filter is togglable on all viewports, so this ID-scoped reveal gate carries
-   NO media query. The bare-class selector for #SearchTagWrap can't beat the
-   #TagDeck-scoped specificity here, so this is the sole visibility controller —
-   no .hidden class in markup, no JS addClass/removeClass on #SearchTagWrap. */
-#TagDeck:not(.tag-search-open) #SearchTagWrap {
+/* Tag name filter box. The filter input lives in its own subheader band
+   (#TagDeckSearchSubheader, mirroring the UTub/URL search subheader) between the
+   title row and the scrollable list, NOT inside the list body. Unlike the UTub
+   name filter (desktop-only), the tag filter is togglable on all viewports, so
+   this ID-scoped reveal gate carries NO media query. Gating the whole subheader
+   band (not just #SearchTagWrap) collapses the dynamic-subheader min-height strip
+   when closed, leaving no empty gap. This is the sole visibility controller —
+   no .hidden class in markup, no JS addClass/removeClass on the band. */
+#TagDeck:not(.tag-search-open) #TagDeckSearchSubheader {
     display: none;
 }
 
