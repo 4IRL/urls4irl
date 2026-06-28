@@ -138,7 +138,8 @@ Base path: `/utubs` (some routes served at `/home`)
 | **Service**    | `backend/utubs/services/home_page.py:render_home_page`                                                                             |
 | **Template**   | `pages/home.html`                                                                                                                  |
 | **JS Module**  | `frontend/home/` (entire module tree)                                                                                              |
-| **Tests**      | `tests/integration/utubs/test_get_home_route.py` (marker: `utubs`), `tests/functional/home_ui/test_home_ui.py` (marker: `home_ui`) |
+| **JS Module (tag deck, no route)** | `frontend/home/tags/search.ts` (tag-name filter box: funnel toggle, text filter, no-results, `UI_TAG_SEARCH_OPEN/CLOSE` emits), `frontend/logic/tag-search.ts` (DOM-free `filterTagsByName` pure filter), `frontend/home/tags/empty-state.ts` (`showTagDeckEmptyState`/`hideTagDeckEmptyState` for the zero-tag UTub state) — client-only modules, no associated route (tags already loaded on `UTUB_SELECTED`) |
+| **Tests**      | `tests/integration/utubs/test_get_home_route.py` (marker: `utubs`), `tests/functional/home_ui/test_home_ui.py` (marker: `home_ui`), `frontend/logic/__tests__/tag-search.test.ts` + `frontend/home/tags/__tests__/search.test.ts` / `search-metrics.test.ts` / `empty-state.test.ts` (vitest), `tests/functional/tags_ui/test_tag_search_ui.py` + `test_tag_deck_empty_state_ui.py` (marker: `tags_ui`) |
 
 ### POST /utubs
 
