@@ -1,6 +1,10 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from backend.cli.mock_constants import MOCK_TAGS, TEST_USER_COUNT
+from backend.cli.mock_constants import (
+    MOCK_TAGS,
+    MOCK_TRACKING_SEED_URL_STRINGS,
+    TEST_USER_COUNT,
+)
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -40,6 +44,11 @@ def generate_mock_tags(db: SQLAlchemy):
         urls_in_utub: list[Utub_Urls] = utub.utub_urls
 
         for url in urls_in_utub:
+            if url.standalone_url.url_string in MOCK_TRACKING_SEED_URL_STRINGS:
+                # Tracking-seed URLs are deliberately single-tagged by
+                # _add_tracking_seed_urls; skip them so re-runs stay idempotent.
+                continue
+
             if len(url.url_tags) == len(MOCK_TAGS):
                 print(
                     f"{url.standalone_url.url_string} in {utub.name}, ID={utub.id} has {len(MOCK_TAGS)} tags"

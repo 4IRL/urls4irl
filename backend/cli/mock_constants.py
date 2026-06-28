@@ -39,6 +39,13 @@ MOCK_TRACKING_SEED_URL_PAIRS: tuple[tuple[str, str], ...] = (
     ("https://www.other.com/page?utm_medium=b", "https://www.other.com/page"),
 )
 
+# Raw tracking-seed URL strings, as stored before stripping. Used to exclude
+# these intentionally single-tagged URLs from the general mock-tag re-tagging
+# pass, so repeated `addmock all` runs stay idempotent.
+MOCK_TRACKING_SEED_URL_STRINGS: frozenset[str] = frozenset(
+    raw_url for raw_url, _stripped_url in MOCK_TRACKING_SEED_URL_PAIRS
+)
+
 MOCK_TAGS = (
     "Great",
     "Funny",
