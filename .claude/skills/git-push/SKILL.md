@@ -187,8 +187,8 @@ Parse:
 
 Evaluate:
 
-- **ALL PASS, no findings at all**: Proceed to Step 8 (push).
-- **ALL PASS, only minor findings**: Write findings (Step 5), classify. If any findings exist (mechanical or design), proceed to Step 6. Otherwise proceed to Step 8 (push).
+- **ALL PASS, no findings at all**: Proceed to Step 7d (test gate), then Step 8 (push).
+- **ALL PASS, only minor findings**: Write findings (Step 5), classify. If any findings exist (mechanical or design), proceed to Step 6. Otherwise proceed to Step 7d (test gate), then Step 8 (push).
 - **ANY FAIL**: Write findings (Step 5), classify, proceed to Step 6.
 
 Partition all findings into two lists:
@@ -437,11 +437,46 @@ the issue still exists in the current code.
 Write results to the same `<tmp-dir>/<role>.md` files.
 
 Evaluate re-review results:
-- **All now PASS**: Update review file verdict to `**RESOLVED — PUSHED**`. Proceed to Step 8 (push).
+- **All now PASS**: Update review file verdict to `**RESOLVED — PUSHED**`. Proceed to Step 7d (test gate), then Step 8 (push).
 - **Still FAIL with new findings**:
   - Increment `fix_round`
   - If `fix_round <= 2`: Write new findings to review file (append as next `## Review N+1` section), classify into mechanical/design, loop back to Step 6 for mechanical fixes / Step 7a for design decisions
   - If `fix_round > 2`: **BLOCK**. Update review file verdict to `**BLOCKED**`. Inform user with review file path. Do NOT push.
+
+### 7d. Mandatory Test Verification Gate (NEVER SKIP)
+
+**This gate runs on every `/git-push` before Step 8 — in BOTH the no-findings path and the post-fix path. It runs in the orchestrator via synchronous Bash and NEVER accepts a subagent's self-reported test result as evidence.** A subagent's "N passed" is a claim; this gate is the proof. The orchestrator runs the suites itself and reads the summary line.
+
+Rationale: `/git-push` mutates code (mechanical fixes in Step 6, design-decision implementations in Step 7b) — frequently *adding new test code*. The moment it does, any upstream green run (from `/run-plan` or a prior commit) is stale and cannot have covered the new code. This gate re-establishes green over the actual pushed tree.
+
+**1. Determine scope** from the full-branch changed files:
+
+```bash
+git diff origin/main...HEAD --name-only
+```
+
+Map paths to suites using this table. **When in doubt, run the FULL suite for that layer — never under-scope.**
+
+| A changed path matches… | Run (synchronous Bash, `dangerouslyDisableSandbox: true`) |
+|---|---|
+| `backend/**`, `migrations/**`, `tests/integration/**`, `tests/unit/**`, `tests/conftest.py`, `tests/models_for_test.py`, `tests/functional/**/selenium_utils.py`, `tests/functional/db_utils.py` | **Full integration suite**: `make test-integration-parallel n=8` |
+| `frontend/**`, any `*.ts`, any `*.js` | **Full JS**: `make test-js` |
+| Shared frontend infra — `frontend/test-setup.ts`, `frontend/lib/**`, `frontend/store/**`, `backend/templates/base*.html`, any global/shared CSS | **Full built UI suite**: `make test-ui-parallel-built n=8` |
+| A specific UI feature only (a `frontend/<feature>/**` dir + its own `*_ui` tests, nothing shared) | **Affected built UI marker(s)**: `make test-marker-parallel-built m=<marker> n=8` |
+
+Notes:
+- Write each run's output to `/tmp/claude/gate-<suite>.txt`; read the summary line yourself.
+- Run integration and UI suites **sequentially, never concurrently** (shared DB/Redis) — per CLAUDE.md.
+- `backend/cli/**` (mock data), validators, models, conftest, and shared test utils are blast-radius paths → they fall under the full integration row above by design.
+- If the branch touches nothing in any row (e.g. docs/`.claude/` only), record "Test gate: N/A (no test-bearing paths changed)" and proceed.
+
+**2. Evaluate** — a suite passes only if its summary shows `0 failed` and `0 errored`:
+
+- **All green** → record `Test gate: PASS` with each suite + counts in the review file, then proceed to Step 8 (Push).
+- **Any red** → **do NOT push.** Append the failing tests to the review file as a new `## Review N+1` section, classify into mechanical/design (Step 4b rules), increment `fix_round`, and:
+  - `fix_round <= 2`: loop back to Step 6 (mechanical) / Step 7a (design) to fix, then **re-run this gate**.
+  - `fix_round > 2`: **BLOCK** — set verdict `**BLOCKED**`, tell the user the review path and the failing test names, do not push.
+- **A suite cannot run** (containers down, infra error, timeout) → STOP and tell the user. Never push on an unrun gate. (Check `docker compose ps`; restart `selenium`/`web`/`test-db` as CLAUDE.md prescribes, then retry once.)
 
 ### 8. Push
 
@@ -632,7 +667,7 @@ Output:
 
 ## Important Notes
 
-- **All test suites have passed before commit** — code reaching this workflow has already passed all relevant test suites (integration, UI, unit, JS). Subagents should NOT flag "tests might fail" or "untested at runtime." The Test Coverage reviewer focuses on whether the diff includes sufficient test code for new/changed behavior, not whether existing tests pass.
+- **Reviewers assume tests passed; the orchestrator re-verifies.** Review *subagents* should still not flag "tests might fail" or "untested at runtime" — they review code quality, not runtime. The Test Coverage reviewer focuses on whether the diff includes sufficient test code for new/changed behavior, not whether existing tests pass. BUT the assumption that "all test suites passed before commit" is **not** trusted as the push gate: because `/git-push` itself mutates code (Step 6/7b) and often adds tests, the orchestrator's **Step 7d gate** independently re-runs the affected suites before pushing. A subagent's "passed" is never the push gate; the Step 7d run is.
 - Never push to `main` or `master` — warn the user and abort
 - Never force-push
 - If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code
@@ -640,6 +675,6 @@ Output:
 - All subagent launches must be in a single message for true parallelism
 - If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error
 - **All design decisions must be resolved before pushing.** The skill blocks until the user has answered every DD via `AskUserQuestion`. There is no "skip" or "defer" option.
-- **Max 2 fix-review rounds.** After fixes are applied (Step 6 + 7b), a re-review runs (Step 7c). If new issues appear, the cycle repeats up to 2 times total. After 2 rounds, the skill blocks.
+- **Max 2 fix-review rounds.** After fixes are applied (Step 6 + 7b), a re-review runs (Step 7c) and then the **Step 7d test gate** runs. If either surfaces new issues, the cycle repeats up to 2 times total (the `fix_round` counter is shared across re-review and gate failures). After 2 rounds, the skill blocks. The Step 7d gate must pass before any push — no push happens on an unrun or red gate.
 - **`/run-review` is launched as a subagent** for both mechanical fixes (Step 6) and design decision fixes (Step 7b). It runs the full `/next-step-taker` pipeline per item (validate, review, test, commit). The main `/git-push` agent orchestrates but never directly edits source files.
 - **The coordinator subagent (Step 4a) guarantees non-contradictory mechanical fix items.** Any finding where two reviewers suggest incompatible changes to the same code is escalated to a design decision before `/run-review` runs — so `/run-review` never receives items that would conflict with each other.
