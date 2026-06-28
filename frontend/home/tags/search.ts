@@ -38,14 +38,14 @@ export function updatedTagFilterDisplay(filteredTagIDsToHide: number[]): void {
   const hideSet = new Set(filteredTagIDsToHide);
   const tagFilters = $(".tagFilter");
 
-  for (let index = 0; index < tagFilters.length; index++) {
-    const tagID = Number($(tagFilters[index]).attr("data-utub-tag-id"));
+  tagFilters.each(function () {
+    const tagID = Number($(this).attr("data-utub-tag-id"));
     if (hideSet.has(tagID)) {
-      $(tagFilters[index]).addClass("hidden");
+      $(this).addClass("hidden");
     } else {
-      $(tagFilters[index]).removeClass("hidden");
+      $(this).removeClass("hidden");
     }
-  }
+  });
 }
 
 export function showTagSearchNoResults(): void {
