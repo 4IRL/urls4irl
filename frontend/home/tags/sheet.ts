@@ -45,6 +45,7 @@ function _consumeClickSuppression(): boolean {
 }
 
 const SHEET_SELECTOR = "#tagDeckSheet";
+const SHEET_VIEWPORT_SELECTOR = "#tagSheetViewport";
 const SHEET_BODY_SELECTOR = "#tagSheetBody";
 const BACKDROP_SELECTOR = "#tagSheetBackdrop";
 const HANDLE_ID = "tagSheetHandle";
@@ -68,9 +69,10 @@ const ESCAPE_KEYDOWN_NAMESPACE = "keydown.tagSheetEscape";
 const TAP_SLOP_PX = 8;
 // Idempotency marker so re-running initTagSheet() never double-binds the drag.
 const GESTURE_BOUND_ATTR = "data-tag-sheet-gesture-bound";
-// Siblings of these two are made inert while the sheet is open; the pair is
-// excluded so the sheet and its backdrop remain interactive.
-const INERT_EXCLUDE_SELECTOR = `${SHEET_SELECTOR}, ${BACKDROP_SELECTOR}`;
+// #mainPanel children other than these are made inert while the sheet is open.
+// The sheet's clipping viewport (which contains the sheet) and the backdrop are
+// excluded so they remain interactive.
+const INERT_EXCLUDE_SELECTOR = `${SHEET_VIEWPORT_SELECTOR}, ${BACKDROP_SELECTOR}`;
 
 /**
  * Toggle the inline empty-state message based on the current `#listTags` child

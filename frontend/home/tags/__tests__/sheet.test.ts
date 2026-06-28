@@ -91,15 +91,17 @@ const SHEET_HTML = `
       <div id="URLDeck" class="deck"></div>
     </div>
     <div id="tagSheetBackdrop" class="tag-sheet-backdrop"></div>
-    <section id="tagDeckSheet" class="tag-deck-sheet hidden" role="dialog" aria-label="Filter URLs by tag">
-      <button id="tagSheetHandle" class="tag-sheet-handle" type="button" aria-expanded="false" aria-controls="tagSheetBody">
-        <span class="tag-sheet-handle-grabber"></span>
-        <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden"></span>
-      </button>
-      <div id="tagSheetBody" class="tag-sheet-body" inert aria-hidden="true">
-        <p id="tagSheetEmpty" class="hidden">No tags in this UTub.</p>
-      </div>
-    </section>
+    <div id="tagSheetViewport" class="tag-sheet-viewport">
+      <section id="tagDeckSheet" class="tag-deck-sheet hidden" role="dialog" aria-label="Filter URLs by tag">
+        <button id="tagSheetHandle" class="tag-sheet-handle" type="button" aria-expanded="false" aria-controls="tagSheetBody">
+          <span class="tag-sheet-handle-grabber"></span>
+          <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden"></span>
+        </button>
+        <div id="tagSheetBody" class="tag-sheet-body" inert aria-hidden="true">
+          <p id="tagSheetEmpty" class="hidden">No tags in this UTub.</p>
+        </div>
+      </section>
+    </div>
     <button id="${OPENER_ID}" type="button"></button>
   </main>
 `;
