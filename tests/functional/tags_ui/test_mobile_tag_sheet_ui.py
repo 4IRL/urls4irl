@@ -29,7 +29,11 @@ from tests.functional.selenium_utils import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
-from tests.functional.tags_ui.selenium_utils import apply_tag_filter_based_on_id
+from tests.functional.tags_ui.selenium_utils import (
+    apply_tag_filter_based_on_id,
+    swipe_tag_sheet_closed,
+    swipe_tag_sheet_open,
+)
 
 pytestmark = [pytest.mark.tags_ui, pytest.mark.mobile_ui]
 
@@ -287,3 +291,37 @@ def test_tag_sheet_empty_state_no_tags(
     wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
 
     assert_visible_css_selector(browser, HPL.TAG_SHEET_EMPTY)
+
+
+def test_tag_sheet_swipe_open_and_close(
+    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a logged-in mobile user on the URL deck with the tag sheet closed
+    WHEN they swipe up from the peeking handle, then swipe down from the grabber
+    THEN the sheet opens on the upward swipe and closes on the downward swipe,
+        proving the real browser commits the drag gesture end-to-end
+    """
+    browser = browser_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+
+    # Before-state: sheet closed, handle peeking and ready to be dragged up.
+    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)
+    assert_visible_css_selector(browser, HPL.TAG_SHEET_HANDLE)
+
+    # Swipe up from the handle to commit the open gesture.
+    swipe_tag_sheet_open(browser)
+    wait_until_visible_css_selector(browser, HPL.TAG_SHEET)
+    wait_for_animation_to_end_check_top_lhs_corner(browser, HPL.TAG_SHEET)
+    assert_visible_css_selector(browser, HPL.TAG_SHEET)
+
+    # Swipe down from the grabber to commit the close gesture.
+    swipe_tag_sheet_closed(browser)
+    wait_until_hidden(browser, HPL.TAG_SHEET)
+    assert_not_visible_css_selector(browser, HPL.TAG_SHEET)

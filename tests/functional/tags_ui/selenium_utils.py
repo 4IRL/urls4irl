@@ -15,6 +15,7 @@ from tests.functional.assert_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
+    dispatch_pointer_drag,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -24,6 +25,13 @@ from tests.functional.selenium_utils import (
     wait_until_visible_css_selector,
 )
 from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_shown
+
+# Drag distance (px) chosen to clear the 35% commit threshold of the sheet
+# height (62dvh). 220px exceeds 35% of the sheet for any viewport shorter than
+# ~1013px tall (0.62 * height <= ~628px), which covers the 900px-tall
+# browser_mobile_portrait fixture, ensuring the swipe commits rather than
+# snapping back.
+SWIPE_COMMIT_PX = 220
 
 
 def open_tag_combobox(browser: WebDriver, url_id: int) -> None:
@@ -209,6 +217,34 @@ def get_utub_tag_filter_selector(utub_tag_id: int) -> str:
 def apply_tag_filter_based_on_id(browser: WebDriver, utub_tag_id: int):
     utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
+
+
+def swipe_tag_sheet_open(browser: WebDriver) -> None:
+    """
+    Drags the peeking handle upward by ``SWIPE_COMMIT_PX`` to commit the
+    open-sheet gesture. The drag starts at the handle's vertical center and ends
+    ``SWIPE_COMMIT_PX`` above it, exceeding the snap threshold so the sheet opens
+    rather than snapping back closed.
+    """
+    handle = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE)
+    rect = handle.rect
+    start_y = rect["y"] + rect["height"] / 2
+    end_y = start_y - SWIPE_COMMIT_PX
+    dispatch_pointer_drag(browser, HPL.TAG_SHEET_HANDLE, start_y=start_y, end_y=end_y)
+
+
+def swipe_tag_sheet_closed(browser: WebDriver) -> None:
+    """
+    Drags the grabber bar downward by ``SWIPE_COMMIT_PX`` to commit the
+    close-sheet gesture. The drag starts at the grabber's vertical center and
+    ends ``SWIPE_COMMIT_PX`` below it, exceeding the snap threshold so the sheet
+    closes rather than snapping back open.
+    """
+    grabber = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_GRABBER)
+    rect = grabber.rect
+    start_y = rect["y"] + rect["height"] / 2
+    end_y = start_y + SWIPE_COMMIT_PX
+    dispatch_pointer_drag(browser, HPL.TAG_SHEET_GRABBER, start_y=start_y, end_y=end_y)
 
 
 def apply_tag_filter_by_id_and_get_shown_urls(
