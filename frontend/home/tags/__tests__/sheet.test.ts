@@ -756,6 +756,40 @@ describe("Tag Sheet Controller", () => {
       }
     });
 
+    it("snaps back (stays open) when the downward close drag is below the threshold", async () => {
+      // Fake timers freeze performance.now() so velocity sampling is
+      // deterministic (same-tick events => dt 0 => velocity stays 0); otherwise
+      // a sub-millisecond real dt inflates velocity into a spurious fling commit
+      // that would close the sheet.
+      vi.useFakeTimers();
+      try {
+        stubSheetRect();
+        await setIsMobile(true);
+        initTagSheet();
+        // Sheet open => the handle pointerdown derives mode "close".
+        openTagSheet();
+        vi.runAllTimers();
+        expect(isTagSheetOpen()).toBe(true);
+        const { emit } = await import("../../../lib/metrics-client.js");
+        (emit as ReturnType<typeof vi.fn>).mockClear();
+
+        const handle = document.getElementById("tagSheetHandle")!;
+        // ~40px down < 35% of travel 352 (~123px) and below fling velocity.
+        dispatchPointer({ target: handle, type: "pointerdown", clientY: 420 });
+        dispatchPointer({ target: handle, type: "pointermove", clientY: 460 });
+        dispatchPointer({ target: handle, type: "pointerup", clientY: 460 });
+
+        expect(isTagSheetOpen()).toBe(true);
+        expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(true);
+        expect(emit).not.toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+          action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
     it("cancels an in-flight drag when a force-close event fires mid-drag", async () => {
       stubSheetRect();
       await setIsMobile(true);
