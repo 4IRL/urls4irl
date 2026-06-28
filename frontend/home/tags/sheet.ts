@@ -369,7 +369,7 @@ function _onDragMove(event: PointerEvent): void {
       ) as HTMLElement | null;
       if (backdrop) {
         backdrop.style.opacity = String(
-          Math.min(progress / _dragState.travel, 1),
+          Math.min(Math.max(progress / _dragState.travel, 0), 1),
         );
       }
     }
