@@ -149,6 +149,13 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description=("URL string changed on a UTub URL (distinct from title update)"),
         category=EventCategory.DOMAIN,
     ),
+    EventName.URL_TRACKING_PARAMS_STRIPPED: EventRegistryEntry(
+        description=(
+            "URL saved; tagged with whether tracking query params were stripped"
+        ),
+        category=EventCategory.DOMAIN,
+        dimensions={"stripped": ("true", "false")},
+    ),
     EventName.UTUB_TAG_CREATED: EventRegistryEntry(
         description=("New tag vocabulary added to a UTub (distinct from TAG_APPLIED)"),
         category=EventCategory.DOMAIN,

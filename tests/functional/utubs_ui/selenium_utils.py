@@ -8,6 +8,7 @@ from tests.functional.selenium_utils import (
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -120,6 +121,13 @@ def delete_utub_as_creator(browser: WebDriver, utub_to_delete: Utubs):
 
     css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_delete.id}"]'
     utub_selector = wait_then_get_element(browser, css_selector, time=3)
+
+    # The confirmation modal fades in via a Bootstrap transition. Submitting while
+    # that fade-in is still running causes Bootstrap to drop the subsequent
+    # modal("hide") call (it ignores show/hide requests mid-transition), so the
+    # modal never becomes invisible. Gate the submit click on the modal being
+    # fully settled (opacity == 1) so the later hide is honored deterministically.
+    wait_until_css_property(browser, HPL.HOME_MODAL, "opacity", "1")
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 

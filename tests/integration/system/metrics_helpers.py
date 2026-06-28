@@ -23,6 +23,7 @@ WINDOWS_CHROME_UA = (
 )
 
 REJECTION_REASON_DIM_KEY = "reason"
+STRIPPED_DIM_KEY = "stripped"
 
 
 DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
@@ -32,6 +33,7 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.URL_ADDED_TO_UTUB,
         EventName.URL_REMOVED_FROM_UTUB,
         EventName.URL_STRING_UPDATED,
+        EventName.URL_TRACKING_PARAMS_STRIPPED,
         EventName.UTUB_TAG_CREATED,
         EventName.TAGS_APPLIED_BATCH,
         EventName.REGISTER_SUCCESS,
@@ -57,7 +59,9 @@ drives — each has its own per-cause emit test under
 tests/integration/splash/ and tests/integration/utuburls/.
 CROSS_UTUB_SEARCH_PERFORMED fires only from the /search service flow, which the
 shared seed does not exercise; its per-dimension emit test lives under
-tests/integration/search/. TAGS_APPLIED_BATCH fires only from the batch
+tests/integration/search/. URL_TRACKING_PARAMS_STRIPPED fires only from the URL
+create/update service flows, not the shared seed; its per-dimension emit tests
+live under tests/integration/utuburls/. TAGS_APPLIED_BATCH fires only from the batch
 tag-apply service flow, which the shared seed does not exercise; its per-batch
 emit test lives under tests/integration/utubtags/. Each excluded event
 has its own per-route emit test under tests/integration/<feature>/ and flushes

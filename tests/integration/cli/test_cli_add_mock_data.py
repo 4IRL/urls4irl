@@ -21,6 +21,7 @@ from tests.integration.cli.utils import (
     verify_urls_added_to_all_utubs,
     verify_tags_in_utubs,
     verify_tags_added_to_all_urls_in_utubs,
+    verify_tracking_seed_urls_added,
 )
 
 pytestmark = pytest.mark.cli
@@ -373,6 +374,8 @@ def test_add_all_mock_data_with_utub_duplicates(runner):
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
 
+    verify_tracking_seed_urls_added(app, cli_runner)
+
 
 def test_add_all_mock_data_with_no_utub_duplicates(runner):
     """
@@ -397,6 +400,8 @@ def test_add_all_mock_data_with_no_utub_duplicates(runner):
             verify_urls_added_to_all_utubs()
             verify_tags_in_utubs()
             verify_tags_added_to_all_urls_in_utubs()
+
+    verify_tracking_seed_urls_added(app, cli_runner)
 
 
 def test_seed_uniform_test_data_writes_expected_rows_and_is_idempotent(runner):

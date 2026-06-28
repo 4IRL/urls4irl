@@ -23,6 +23,29 @@ MOCK_URL_STRINGS = (
 
 MOCK_TEST_URL_STRINGS = [f"https://www.u4i.test/{idx}" for idx in range(8)]
 
+MOCK_URL_WITH_TRACKING_PARAMS = "https://www.example.com/p?utm_source=google&gclid=abc123"  # fmt: skip
+MOCK_URL_TRACKING_STRIPPED = "https://www.example.com/p"
+
+# Tuples of (tracking_url, expected_stripped) seeded ONLY for the migration
+# test and the collapse/UI tests — kept out of the default clean seed sets so
+# unrelated suites are unperturbed. The first two collapse to the same stripped
+# URL, exercising the migration's row-merge path.
+MOCK_TRACKING_SEED_URL_PAIRS: tuple[tuple[str, str], ...] = (
+    (
+        "https://www.example.com/page?utm_source=a&gclid=x",
+        "https://www.example.com/page",
+    ),
+    ("https://www.example.com/page?fbclid=y", "https://www.example.com/page"),
+    ("https://www.other.com/page?utm_medium=b", "https://www.other.com/page"),
+)
+
+# Raw tracking-seed URL strings, as stored before stripping. Used to exclude
+# these intentionally single-tagged URLs from the general mock-tag re-tagging
+# pass, so repeated `addmock all` runs stay idempotent.
+MOCK_TRACKING_SEED_URL_STRINGS: frozenset[str] = frozenset(
+    raw_url for raw_url, _stripped_url in MOCK_TRACKING_SEED_URL_PAIRS
+)
+
 MOCK_TAGS = (
     "Great",
     "Funny",

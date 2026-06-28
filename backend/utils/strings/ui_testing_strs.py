@@ -4,12 +4,15 @@ from backend.cli.mock_constants import (
     MOCK_UTUB_NAME_BASE,
     EMAIL_SUFFIX,
     MOCK_URL_STRINGS,
+    MOCK_URL_TRACKING_STRIPPED,
+    MOCK_URL_WITH_TRACKING_PARAMS,
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.tag_strs import TAG_FILTER_NO_RESULTS
 from backend.utils.strings.url_strs import (
     ADD_URL_BUTTON,
+    URL_IN_UTUB_TRACKING_PARAMS_STRIPPED,
     URL_SEARCH_NO_RESULTS,
     UTUB_NO_URLS,
 )
@@ -69,6 +72,15 @@ class UI_TEST_STRINGS:
     TEST_URL_STRING_CREATE = MOCK_URL_STRINGS[0]
     TEST_URL_TITLE_1 = "This is " + MOCK_URL_STRINGS[0] + "."
     TEST_URL_TITLE_UPDATE = "MS Support"
+
+    # Tracking-param stripping (mirror backend mock constants + the user-facing
+    # collision message; never duplicate the literals).
+    URL_WITH_TRACKING_PARAMS = MOCK_URL_WITH_TRACKING_PARAMS
+    URL_TRACKING_STRIPPED = MOCK_URL_TRACKING_STRIPPED
+    URL_IN_UTUB_TRACKING_PARAMS_STRIPPED = URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    # A URL with legitimate (non-tracking) query params, used by the create/update
+    # "preserve non-tracking params" UI tests to assert the query string survives.
+    URL_WITH_NON_TRACKING_PARAMS = "https://www.example.com/p?q=search&sort=date"
 
     UTUB_SEARCH_NAMES = (
         "A1",

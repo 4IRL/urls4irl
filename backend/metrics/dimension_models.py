@@ -302,9 +302,10 @@ class _DimApiMetricsIngestBatch(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Domain dimension models — only LOGIN_FAILURE carries a non-empty dim shape
-# (closed-set `reason` literal). All other new domain events ride on the
-# shared `_DimDeviceOnly` class with device_type auto-injected by the writer.
+# Domain dimension models — domain events with a closed-set non-device_type
+# dim use a dedicated BaseModel (e.g. _DimLoginFailure,
+# _DimUrlTrackingParamsStripped); all others use _DimDeviceOnly with
+# device_type auto-injected by the writer.
 # ---------------------------------------------------------------------------
 
 
@@ -356,6 +357,12 @@ class _DimUrlCreateRejected(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimUrlTrackingParamsStripped(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    stripped: Literal["true", "false"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimRegisterRejected(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Literal["email_taken", "username_taken", "unvalidated_email"]
@@ -394,6 +401,7 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.URL_REMOVED_FROM_UTUB: _DimDeviceOnly,
     EventName.URL_STRING_UPDATED: _DimDeviceOnly,
     EventName.URL_TITLE_UPDATED: _DimDeviceOnly,
+    EventName.URL_TRACKING_PARAMS_STRIPPED: _DimUrlTrackingParamsStripped,
     EventName.UTUB_CREATED: _DimDeviceOnly,
     EventName.UTUB_DELETED: _DimDeviceOnly,
     EventName.UTUB_DESC_UPDATED: _DimDeviceOnly,

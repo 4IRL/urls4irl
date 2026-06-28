@@ -10,7 +10,7 @@ from sqlalchemy.exc import ProgrammingError
 
 from backend.utils.db_table_names import TABLE_NAMES
 from backend.db import db
-from backend.cli.mock_constants import TEST_USER_COUNT
+from backend.cli.mock_constants import MOCK_TRACKING_SEED_URL_PAIRS, TEST_USER_COUNT
 from backend.cli.mock_data.tags import generate_mock_tags
 from backend.cli.mock_data.urls import generate_mock_urls, generate_custom_mock_url
 from backend.cli.mock_data.users import generate_mock_users
@@ -24,7 +24,12 @@ from backend.models.anonymous_gauges import Anonymous_Gauges
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.urls import Urls
 from backend.models.users import Users
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.utils.datetime_utils import utc_now
 
 SEED_TEST_DATA_HOUR_OFFSETS: tuple[int, ...] = (0, 1, 2)
@@ -193,6 +198,7 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     generate_mock_utubmembers(db)
     generate_mock_urls(db)
     generate_mock_tags(db)
+    _add_tracking_seed_urls(db)
     rows_written = _seed_uniform_test_data()
     print(
         f"\n--- Seeded {rows_written} AnonymousMetrics + AnonymousGauges + "
@@ -201,6 +207,84 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     print(
         "\n--- Finished adding all mock users, UTubs, members, urls, tags, and metrics ---\n\n"
     )
+
+
+def _add_tracking_seed_urls(db: SQLAlchemy):
+    """Seed tracking-laden URLs (raw, bypassing the validator) into UTub 1.
+
+    Inserts each tracking URL from ``MOCK_TRACKING_SEED_URL_PAIRS`` into UTub 1
+    owned by user 1, with one tag each. These rows deliberately retain their
+    tracking query params (mock inserts skip the validator), so the
+    strip_tracking_query_params migration (681906a2f237) has rows to strip and
+    collapse. Kept out of the default clean seed
+    sets to avoid perturbing unrelated suites. Idempotent on
+    ``Urls.url_string`` and the ``(utub, url)`` association. Requires an active
+    Flask app context.
+    """
+    first_utub: Utubs = Utubs.query.order_by(Utubs.id).first()
+    if first_utub is None:
+        print("addmock: no UTubs present; skipped tracking-param seeding")
+        return
+
+    creator_user_id: int = first_utub.utub_creator
+    seed_tag: Utub_Tags = (
+        Utub_Tags.query.filter(Utub_Tags.utub_id == first_utub.id)
+        .order_by(Utub_Tags.id)
+        .first()
+    )
+    if seed_tag is None:
+        print(
+            f"addmock: {first_utub.name}, ID={first_utub.id} has no tags; "
+            "seeding tracking-param URLs without tags"
+        )
+
+    for tracking_url, _ in MOCK_TRACKING_SEED_URL_PAIRS:
+        url_to_add: Urls = Urls.query.filter(Urls.url_string == tracking_url).first()
+        if url_to_add is None:
+            url_to_add = Urls(
+                normalized_url=tracking_url,
+                current_user_id=creator_user_id,
+            )
+            db.session.add(url_to_add)
+            db.session.flush()
+            print(f"Adding tracking-param URL {tracking_url} to database")
+        else:
+            print(f"Already added tracking-param URL {tracking_url} to database")
+
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == first_utub.id,
+            Utub_Urls.url_id == url_to_add.id,
+        ).first()
+        if utub_url is None:
+            utub_url = Utub_Urls()
+            utub_url.utub_id = first_utub.id
+            utub_url.user_id = creator_user_id
+            utub_url.url_id = url_to_add.id
+            utub_url.url_title = f"This is {tracking_url}."
+            db.session.add(utub_url)
+            db.session.flush()
+        else:
+            print(
+                f"Already added tracking-param URL {tracking_url} to "
+                f"{first_utub.name}, ID={first_utub.id}"
+            )
+
+        # Insert the tag association independently of whether the URL
+        # association was just created, so an interrupted prior run that
+        # committed the URL but not its tag is repaired on re-run.
+        if seed_tag is not None:
+            existing_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_url_id == utub_url.id,
+                Utub_Url_Tags.utub_tag_id == seed_tag.id,
+            ).first()
+            if existing_tag is None:
+                new_utub_url_tag = Utub_Url_Tags()
+                new_utub_url_tag.utub_id = first_utub.id
+                new_utub_url_tag.utub_url_id = utub_url.id
+                new_utub_url_tag.utub_tag_id = seed_tag.id
+                db.session.add(new_utub_url_tag)
+
+    db.session.commit()
 
 
 @mocks_cli.command(

@@ -66,6 +66,9 @@ def create_url_in_utub(
     """
     if tag_strings is None:
         tag_strings = []
+    had_tracking: bool = safe_get_url_validator(current_app).contains_tracking_params(
+        url_string
+    )
     validated_new_url = validate_new_url_for_utub(url_string, current_utub.id)
     if (
         validated_new_url.url_state == URLState.INVALID_URL_STRING
@@ -81,8 +84,13 @@ def create_url_in_utub(
             EventName.URL_CREATE_REJECTED,
             dimensions={"reason": "url_already_in_utub"},
         )
+        message = (
+            URL_FAILURE.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+            if had_tracking
+            else URL_FAILURE.URL_IN_UTUB
+        )
         return build_url_conflict_error_response(
-            message=URL_FAILURE.URL_IN_UTUB,
+            message=message,
             url_string=validated_new_url.url.url_string,
             error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
         )
@@ -97,6 +105,7 @@ def create_url_in_utub(
         url_string=url.url_string,
         url_state=url_state,
         tag_strings=tag_strings,
+        had_tracking=had_tracking,
     )
 
 
@@ -401,6 +410,7 @@ def _associate_url_with_utub(
     url_string: str,
     url_state: URLState,
     tag_strings: list[str] | None = None,
+    had_tracking: bool = False,
 ) -> FlaskResponse:
     """
     Create an association between a URL and a UTub, adding the URL to the UTub,
@@ -417,6 +427,9 @@ def _associate_url_with_utub(
         url_string (str): The URL string for the success response.
         url_state (URLState): Whether this is a newly created or existing URL.
         tag_strings (list[str]): Optional tags to apply to the URL on creation.
+        had_tracking (bool): Whether the raw input URL carried tracking query
+            params that were stripped before storage. Recorded as the
+            `stripped` dimension on the URL_TRACKING_PARAMS_STRIPPED event.
 
     Returns:
         tuple[Response, int]: A tuple containing:
@@ -465,6 +478,10 @@ def _associate_url_with_utub(
     record_event(
         EventName.URL_ADDED_TO_UTUB,
         dimensions={"tag_count_bucket": bucket_url_tag_count(len(applied))},
+    )
+    record_event(
+        EventName.URL_TRACKING_PARAMS_STRIPPED,
+        dimensions={"stripped": "true" if had_tracking else "false"},
     )
     for _utub_tag in applied:
         record_event(EventName.TAG_APPLIED)
