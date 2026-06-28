@@ -830,6 +830,39 @@ describe("Tag Sheet Controller", () => {
       ).toBe("");
     });
 
+    it("cancels an in-flight drag when MOBILE_DECK_SWITCHED fires mid-drag", async () => {
+      stubSheetRect();
+      await setIsMobile(true);
+      initTagSheet();
+      // The MOBILE_DECK_SWITCHED subscriber routes any non-"desktop" target
+      // through closeTagSheet({ returnFocus: false }) (the "desktop" target
+      // returns early to relocate instead). closeTagSheet's leading _cancelDrag
+      // then tears down a live drag. The realistic mid-drag cancellation is
+      // during a CLOSE drag (sheet open).
+      openTagSheet();
+      expect(isTagSheetOpen()).toBe(true);
+
+      const handle = document.getElementById("tagSheetHandle")!;
+      dispatchPointer({ target: handle, type: "pointerdown", clientY: 420 });
+      dispatchPointer({ target: handle, type: "pointermove", clientY: 500 });
+      // Mid-drag: dragging class present, sheet has an inline transform.
+      expect($("#tagDeckSheet").hasClass(DRAGGING_CLASS)).toBe(true);
+
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "url-deck" });
+
+      expect(isTagSheetOpen()).toBe(false);
+      expect($("#tagDeckSheet").hasClass(DRAGGING_CLASS)).toBe(false);
+      expect(
+        (document.querySelector("#tagDeckSheet") as HTMLElement).style
+          .transform,
+      ).toBe("");
+      expect(
+        (document.querySelector("#tagSheetBackdrop") as HTMLElement).style
+          .opacity,
+      ).toBe("");
+    });
+
     it("treats a sub-slop press-release as a tap so the click toggle still fires", async () => {
       stubSheetRect();
       await setIsMobile(true);
