@@ -236,6 +236,37 @@ export function isTagSheetOpen(): boolean {
 }
 
 /**
+ * Resolve the collapsed peek height (px) from the `--tag-sheet-peek` CSS var so
+ * the drag math is independent of the handle's rendered height (which shrinks in
+ * the open state). Supports rem/px var units; falls back to the given element's
+ * measured height when the var is unavailable (e.g. happy-dom unit tests stub the
+ * handle's getBoundingClientRect).
+ *
+ * @example _collapsedPeekPx({ sheet, fallback: handle }) === 48  // "3rem" @ 16px root
+ */
+function _collapsedPeekPx({
+  sheet,
+  fallback,
+}: {
+  sheet: HTMLElement;
+  fallback: HTMLElement;
+}): number {
+  const raw = getComputedStyle(sheet)
+    .getPropertyValue("--tag-sheet-peek")
+    .trim();
+  if (raw.endsWith("rem")) {
+    const rootFontPx =
+      parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+    const peekPx = parseFloat(raw) * rootFontPx;
+    if (Number.isFinite(peekPx) && peekPx > 0) return peekPx;
+  } else if (raw.endsWith("px")) {
+    const peekPx = parseFloat(raw);
+    if (Number.isFinite(peekPx) && peekPx > 0) return peekPx;
+  }
+  return fallback.getBoundingClientRect().height;
+}
+
+/**
  * Begin a swipe gesture from the handle (drag up opens, down closes). Captures
  * the sheet element and pointer once, then streams move/up/cancel on the target.
  */
@@ -262,10 +293,11 @@ function _beginDrag({
   const sheet = document.querySelector(SHEET_SELECTOR) as HTMLElement | null;
   if (sheet === null) return;
   const target = event.currentTarget as HTMLElement;
-  // The sheet travels by (height - peek): the peeking header (the drag target)
-  // stays on screen in the collapsed detent. Read the peek from the target's
-  // own height so it can never drift from the CSS --tag-sheet-peek value.
-  const peek = target.getBoundingClientRect().height;
+  // The sheet travels by (height - peek): the peeking header stays on screen in
+  // the collapsed detent. Peek is read from the --tag-sheet-peek CSS var, not the
+  // handle's current height, because the handle is slimmed in the open state — a
+  // close-drag must still measure travel against the full collapsed peek.
+  const peek = _collapsedPeekPx({ sheet, fallback: target });
   const travel = sheet.getBoundingClientRect().height - peek;
   // A non-positive travel (sheet not laid out, or peek >= height) would make
   // every fraction/velocity division degenerate (Infinity/NaN). Treat that

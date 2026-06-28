@@ -55,6 +55,22 @@
         cursor: grab;
         touch-action: none;      /* stream pointermove for the drag instead of scrolling */
         user-select: none;       /* no text selection on long-press / slow drag */
+        transition: height 0.2s ease;   /* smooth the slim/grow at open/close commit */
+    }
+
+    /* Expanded: the relocated "Tags (N/M)" deck header below is the title, so the
+       handle collapses to just its grab bar — hide the funnel/label/count and
+       shrink it to reclaim the vertical space the full peek label would waste.
+       The collapsed peek keeps the full label. The drag math reads the collapsed
+       peek from --tag-sheet-peek (not this slimmed height), so close-drag travel
+       stays correct. */
+    #tagDeckSheet.tag-sheet-open .tag-sheet-handle {
+        height: 1.5rem;
+    }
+    #tagDeckSheet.tag-sheet-open .tag-sheet-handle > svg,
+    #tagDeckSheet.tag-sheet-open .tag-sheet-handle-label,
+    #tagDeckSheet.tag-sheet-open #tagSheetHandleCount {
+        display: none;
     }
 
     .tag-sheet-handle:focus-visible {
@@ -152,6 +168,19 @@
        pane-resizer .is-resizing pattern. */
     #tagDeckSheet.tag-sheet-dragging .tag-sheet-handle {
         cursor: grabbing;
+    }
+
+    /* While the sheet is expanded (or being dragged) its dark panel butts
+       directly against the dark footer; #mainPanel's own bottom divider is
+       covered by the sheet, so give the footer a matching top line to
+       distinguish it. An inset box-shadow (not border-top) draws the line
+       without growing the footer's box — a 1px border would shift the footer up
+       under the sheet's bottom edge (which anchors to --footer-height) and the
+       line would be covered. Scoped via :has so it only shows when the sheet is
+       up; collapsed keeps the footer's flush edge. */
+    #mainPanel:has(#tagDeckSheet.tag-sheet-open) ~ footer,
+    #mainPanel:has(#tagDeckSheet.tag-sheet-dragging) ~ footer {
+        box-shadow: inset 0 1px 0 var(--borderColor);
     }
 
     /* Backdrop — visibility governed entirely by opacity + the show class;

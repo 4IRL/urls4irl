@@ -128,18 +128,21 @@ def test_tag_sheet_happy_path_open_filter_close(
     # Sheet overlays the URL deck — the URL deck stays visible behind it.
     assert_visible_css_selector(browser, HPL.URL_DECK)
 
-    # Apply a tag filter; URL rows filter live and the handle count shows "1".
+    # Apply a tag filter; URL rows filter live behind the open sheet.
     apply_tag_filter_based_on_id(browser, tag_id)
     _wait_until_visible_url_count(browser, num_urls_tagged)
     assert len(_visible_url_rows(browser)) == num_urls_tagged
 
-    handle_count = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE_COUNT)
-    assert HIDDEN_CLASS not in (handle_count.get_attribute("class") or "")
-    assert handle_count.text == EXPECTED_SINGLE_FILTER_COUNT_TEXT
-
     # Tap the handle again to close (toggle); sheet collapses, filter persists.
     wait_then_click_element(browser, HPL.TAG_SHEET_HANDLE)
     wait_until_tag_sheet_collapsed(browser)
+
+    # The handle's count badge surfaces the active-filter count on the collapsed
+    # peek (it is hidden on the slimmed handle while the sheet is open, so it is
+    # asserted here, after collapse).
+    handle_count = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE_COUNT)
+    assert HIDDEN_CLASS not in (handle_count.get_attribute("class") or "")
+    assert handle_count.text == EXPECTED_SINGLE_FILTER_COUNT_TEXT
 
     _wait_until_visible_url_count(browser, num_urls_tagged)
     assert len(_visible_url_rows(browser)) == num_urls_tagged
