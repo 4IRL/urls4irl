@@ -186,6 +186,14 @@ class _DimCrossUtubSearchResultAccess(UIBaseDimensions):
     trigger: Literal["url_text", "corner_button"]
 
 
+class _DimTagSearchOpen(UIBaseDimensions):
+    target: Literal["tags"]
+
+
+class _DimTagSearchClose(UIBaseDimensions):
+    target: Literal["tags"]
+
+
 class _DimTagCreateOpen(UIBaseDimensions):
     scope: TagScope
 
@@ -437,6 +445,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_CROSS_UTUB_SEARCH_CLOSE: _DimCrossUtubSearchClose,
     EventName.UI_CROSS_UTUB_SEARCH_REFRESH: _DimCrossUtubSearchRefresh,
     EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: _DimCrossUtubSearchResultAccess,
+    EventName.UI_TAG_SEARCH_OPEN: _DimTagSearchOpen,
+    EventName.UI_TAG_SEARCH_CLOSE: _DimTagSearchClose,
     # UI — Tags
     EventName.UI_TAG_APPLY: _DimDeviceOnly,
     EventName.UI_TAG_REMOVE: _DimDeviceOnly,

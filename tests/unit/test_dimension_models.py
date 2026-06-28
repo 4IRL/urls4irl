@@ -121,6 +121,14 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
             "device_type": DeviceType.DESKTOP,
         },
     ),
+    (
+        EventName.UI_TAG_SEARCH_OPEN,
+        {"target": "tags", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_TAG_SEARCH_CLOSE,
+        {"target": "tags", "device_type": DeviceType.DESKTOP},
+    ),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
     (EventName.UI_TAG_CREATE_OPEN, {"scope": "url", "device_type": DeviceType.DESKTOP}),
     (EventName.UI_TAG_DELETE_OPEN, {"scope": "utub", "device_type": DeviceType.MOBILE}),
@@ -422,6 +430,24 @@ def test_utub_search_models_reject_url_target():
         with pytest.raises(ValidationError):
             DIMENSION_MODELS[event_name].model_validate(
                 {"target": "urls", "device_type": DeviceType.MOBILE}
+            )
+
+
+def test_tag_search_models_reject_non_tags_target():
+    """`_DimTagSearchOpen`/`Close` restrict `target` to `Literal["tags"]`.
+
+    Mirrors `test_utub_search_models_reject_url_target`: a payload tagged
+    with the tag search event but carrying a non-`tags` target must be
+    rejected at validation time, proving the literal narrowing is actually
+    narrow.
+    """
+    for event_name in (
+        EventName.UI_TAG_SEARCH_OPEN,
+        EventName.UI_TAG_SEARCH_CLOSE,
+    ):
+        with pytest.raises(ValidationError):
+            DIMENSION_MODELS[event_name].model_validate(
+                {"target": "utubs", "device_type": DeviceType.MOBILE}
             )
 
 

@@ -147,6 +147,12 @@ export const MOBILE_NAV_TARGET = {
   TAGS: "tags",
 } as const;
 
+export const TAG_SEARCH_CLOSE_TARGET = {
+  TAGS: "tags",
+} as const;
+
+export const TAG_SEARCH_OPEN_TARGET = TAG_SEARCH_CLOSE_TARGET;
+
 export const TAG_SHEET_TOGGLE_ACTION = {
   OPEN: "open",
   CLOSE: "close",
