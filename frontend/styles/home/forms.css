@@ -43,13 +43,15 @@
    (#utubNameFilterBtnClose / #URLSearchFilterIconClose). Mirrors the same
    suppression already applied to #crossUtubSearchInput. */
 #UTubNameSearch::-webkit-search-cancel-button,
-#URLContentSearch::-webkit-search-cancel-button {
+#URLContentSearch::-webkit-search-cancel-button,
+#TagNameSearch::-webkit-search-cancel-button {
     -webkit-appearance: none;
     appearance: none;
 }
 
 .url-search-prefix-icon,
-.utub-search-prefix-icon {
+.utub-search-prefix-icon,
+.tag-search-prefix-icon {
     position: absolute;
     left: 10px;
     top: 50%;
@@ -60,11 +62,13 @@
 }
 
 #URLContentSearch.search-input.text-input[type="search"],
-#UTubNameSearch.search-input.text-input[type="search"] {
+#UTubNameSearch.search-input.text-input[type="search"],
+#TagNameSearch.search-input.text-input[type="search"] {
     padding-left: 32px;
 }
 
-#UTubNameSearch.search-input.text-input[type="search"] {
+#UTubNameSearch.search-input.text-input[type="search"],
+#TagNameSearch.search-input.text-input[type="search"] {
     width: 100%;
     opacity: 1;
     /* Always full-width (no expand animation like the URL filter), so it appears
@@ -75,6 +79,10 @@
 #UTubNameSearch+.text-input-label {
     background: var(--searchInputBackgroundColor);
     color: #c6c6c6;
+    display: none;
+}
+
+#TagNameSearch+.text-input-label {
     display: none;
 }
 

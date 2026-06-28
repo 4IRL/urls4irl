@@ -458,3 +458,57 @@
         transition: none;
     }
 }
+
+/* Tag name filter box. Unlike the UTub name filter (desktop-only), the tag
+   filter is togglable on all viewports, so this ID-scoped reveal gate carries
+   NO media query. The bare-class selector for #SearchTagWrap can't beat the
+   #TagDeck-scoped specificity here, so this is the sole visibility controller —
+   no .hidden class in markup, no JS addClass/removeClass on #SearchTagWrap. */
+#TagDeck:not(.tag-search-open) #SearchTagWrap {
+    display: none;
+}
+
+#SearchTagWrap {
+    padding-block: 4px;
+}
+
+#TagSearchNoResults {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
+#noTagsEmptyState {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+#noTagsSubheader {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    margin: 0;
+    padding: 0 1rem 0.25rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
+/* Touch targets: meet the 44px minimum on coarse pointers (mirrors .urlTagOption). */
+@media (any-pointer: coarse) {
+
+    #tagNameFilterBtn,
+    #tagNameFilterBtnClose {
+        min-height: 2.75rem;
+    }
+}
