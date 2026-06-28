@@ -843,6 +843,65 @@ describe("Tag Sheet Controller", () => {
       }
     });
 
+    it("computes travel from the --tag-sheet-peek CSS var, not the getBoundingClientRect fallback", async () => {
+      // Drive travel from a CSS-var peek that differs from the handle's measured
+      // fallback height, then pick a drag distance that only commits under the
+      // CSS-var-derived travel — proving the var branch (not the fallback) ran.
+      //
+      //   CSS-var peek 200px  => travel 400-200 = 200 => 35% threshold ≈ 70px
+      //   fallback peek  48px => travel 400-48  = 352 => 35% threshold ≈ 123px
+      //
+      // A 90px upward drag (fraction 0.45 of 200, but only 0.256 of 352) commits
+      // under the CSS var and snaps back under the fallback.
+      vi.useFakeTimers();
+      const CSS_VAR_PEEK_PX = 200;
+      const realGetComputedStyle = window.getComputedStyle.bind(window);
+      const getComputedStyleSpy = vi
+        .spyOn(window, "getComputedStyle")
+        .mockImplementation(
+          (element: Element, pseudoElement?: string | null) => {
+            const computed = realGetComputedStyle(element, pseudoElement);
+            if (element === document.getElementById("tagDeckSheet")) {
+              return {
+                ...computed,
+                getPropertyValue: (property: string): string =>
+                  property === "--tag-sheet-peek"
+                    ? `${CSS_VAR_PEEK_PX}px`
+                    : computed.getPropertyValue(property),
+              } as CSSStyleDeclaration;
+            }
+            return computed;
+          },
+        );
+      try {
+        stubSheetRect();
+        await setIsMobile(true);
+        initTagSheet();
+        const { emit } = await import("../../../lib/metrics-client.js");
+        expect(isTagSheetOpen()).toBe(false);
+
+        // 90px upward drag: commits against CSS-var travel (200), would snap back
+        // against the fallback travel (352). Fake timers freeze velocity at 0, so
+        // the commit is purely distance-based and isolates the travel computation.
+        const handle = document.getElementById("tagSheetHandle")!;
+        dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
+        dispatchPointer({ target: handle, type: "pointermove", clientY: 690 });
+        dispatchPointer({ target: handle, type: "pointerup", clientY: 690 });
+        vi.runAllTimers();
+
+        expect(getComputedStyleSpy).toHaveBeenCalled();
+        expect(isTagSheetOpen()).toBe(true);
+        expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(true);
+        expect(emit).toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+          action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        });
+      } finally {
+        getComputedStyleSpy.mockRestore();
+        vi.useRealTimers();
+      }
+    });
+
     it("ignores a mouse-pointer drag on mobile (touch/pen only)", async () => {
       stubSheetRect();
       await setIsMobile(true);
