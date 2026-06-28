@@ -144,11 +144,7 @@ export function openTagSheet(): void {
   // clear any inline opacity set mid-drag so the committed-open gesture does not
   // flash the backdrop down to its CSS base before the class transition runs.
   setTimeout(() => {
-    $(BACKDROP_SELECTOR).addClass(BACKDROP_SHOW_CLASS);
-    const backdrop = document.querySelector(
-      BACKDROP_SELECTOR,
-    ) as HTMLElement | null;
-    if (backdrop) backdrop.style.opacity = "";
+    $(BACKDROP_SELECTOR).addClass(BACKDROP_SHOW_CLASS).css("opacity", "");
   }, 0);
   $(HANDLE_SELECTOR).attr("aria-expanded", "true");
   sheetOpen = true;
