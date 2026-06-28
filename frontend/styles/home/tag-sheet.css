@@ -44,6 +44,8 @@
         color: var(--deckSelectionGreen);
         font-weight: 700;
         z-index: 30;
+        touch-action: none;      /* stream pointermove for the open drag instead of scrolling */
+        user-select: none;       /* no text selection on long-press / slow drag */
     }
 
     .tag-sheet-handle:focus-visible {
@@ -118,6 +120,21 @@
             visibility 0s linear 0s;
     }
 
+    /* Drag state — applied while a finger is actively dragging the sheet. Nulls
+       the snap transition so the sheet tracks the finger 1:1, and forces
+       visibility so an upward open-drag reveals the sheet before it commits. The
+       ID is included so this rule (1-2-0) matches the open rule's specificity. */
+    #tagDeckSheet.tag-deck-sheet.tag-sheet-dragging {
+        transition: none;        /* sheet tracks the finger 1:1 during drag */
+        visibility: visible;     /* show the sheet while opening via an upward drag */
+    }
+
+    /* Change the grabber cursor to grabbing during an active drag, matching the
+       pane-resizer .is-resizing pattern. */
+    #tagDeckSheet.tag-sheet-dragging .tag-sheet-grabber {
+        cursor: grabbing;
+    }
+
     /* Backdrop — visibility governed entirely by opacity + the show class;
        never carries a `hidden` attribute. The ID is included so `display: block`
        overrides the desktop-default `#tagSheetBackdrop { display: none }`
@@ -155,15 +172,31 @@
         pointer-events: auto;
     }
 
-    /* In-sheet close bar at the top of the sheet. */
-    .tag-sheet-grabber {
+    /* In-sheet close bar at the top of the sheet. The button is a full-width
+       44px band (the touch-target minimum) so the close drag/tap is reliably
+       hittable; the visible 38x4 bar is rendered via ::before. The ID prefix
+       outranks any bare-class default. */
+    #tagDeckSheet .tag-sheet-grabber {
+        width: 100%;
+        min-height: 2.75rem;     /* 44px touch target (matches decks.css / tags.css convention) */
+        margin: 0;
+        padding: 0;
+        background: transparent;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        touch-action: none;
+        user-select: none;
+        cursor: grab;
+    }
+    #tagDeckSheet .tag-sheet-grabber::before {
+        content: "";
         width: 38px;
         height: 4px;
         border-radius: 2px;
-        background: #5a6565;
-        margin: 9px auto 4px;
-        border: none;
-        flex: 0 0 auto;
+        background: #5a6565;       /* unchanged literal bar color */
     }
 
     .tag-sheet-grabber:focus-visible {
