@@ -1285,8 +1285,8 @@ def dispatch_pointer_drag(
 
     @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=780, end_y=560)
         # drags the handle 220px up (open gesture)
-    @example dispatch_pointer_drag(browser, "#tagSheetGrabber", start_y=420, end_y=640)
-        # drags the grabber 220px down (close gesture)
+    @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=420, end_y=640)
+        # drags the handle 220px down (close gesture)
     """
     browser.execute_script(
         """

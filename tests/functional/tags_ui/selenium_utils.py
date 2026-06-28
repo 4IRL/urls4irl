@@ -16,6 +16,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
     dispatch_pointer_drag,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -26,11 +27,11 @@ from tests.functional.selenium_utils import (
 )
 from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_shown
 
-# Drag distance (px) chosen to clear the 35% commit threshold of the sheet
-# height (62dvh). 220px exceeds 35% of the sheet for any viewport shorter than
-# ~1013px tall (0.62 * height <= ~628px), which covers the 900px-tall
-# browser_mobile_portrait fixture, ensuring the swipe commits rather than
-# snapping back.
+# Drag distance (px) chosen to clear the 35% commit threshold of the sheet's
+# travel (the open<->peek distance = 0.62 * viewport_height - 48px peek). At the
+# 900px-tall browser_mobile_portrait fixture that travel is ~510px, so the 35%
+# threshold is ~178px; 220px commits with margin rather than snapping back. The
+# margin widens on taller viewports (subtracting the fixed peek), so 220 is safe.
 SWIPE_COMMIT_PX = 220
 
 
@@ -235,16 +236,46 @@ def swipe_tag_sheet_open(browser: WebDriver) -> None:
 
 def swipe_tag_sheet_closed(browser: WebDriver) -> None:
     """
-    Drags the grabber bar downward by ``SWIPE_COMMIT_PX`` to commit the
-    close-sheet gesture. The drag starts at the grabber's vertical center and
-    ends ``SWIPE_COMMIT_PX`` below it, exceeding the snap threshold so the sheet
-    closes rather than snapping back open.
+    Drags the handle (the sheet's header lip, now at the top of the open sheet)
+    downward by ``SWIPE_COMMIT_PX`` to commit the close-sheet gesture. The drag
+    starts at the handle's vertical center and ends ``SWIPE_COMMIT_PX`` below it,
+    exceeding the snap threshold so the sheet closes rather than snapping back open.
     """
-    grabber = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_GRABBER)
-    rect = grabber.rect
+    handle = browser.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET_HANDLE)
+    rect = handle.rect
     start_y = rect["y"] + rect["height"] / 2
     end_y = start_y + SWIPE_COMMIT_PX
-    dispatch_pointer_drag(browser, HPL.TAG_SHEET_GRABBER, start_y=start_y, end_y=end_y)
+    dispatch_pointer_drag(browser, HPL.TAG_SHEET_HANDLE, start_y=start_y, end_y=end_y)
+
+
+def wait_until_tag_sheet_open(browser: WebDriver, timeout: int = 10) -> None:
+    """
+    Wait until the bottom sheet is expanded: the ``tag-sheet-open`` class is
+    present AND the sheet has stopped sliding. The sheet now peeks when collapsed
+    (it is always ``is_displayed()``), so open/closed must be detected by class
+    state, not Selenium visibility.
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda driver: HPL.TAG_SHEET_OPEN_CLASS
+        in driver.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET).get_attribute("class")
+    )
+    wait_for_animation_to_end_check_top_lhs_corner(browser, HPL.TAG_SHEET)
+
+
+def wait_until_tag_sheet_collapsed(browser: WebDriver, timeout: int = 10) -> None:
+    """
+    Wait until the bottom sheet is collapsed to its peek: the ``tag-sheet-open``
+    class is absent AND the sheet has stopped sliding. Replaces the old
+    ``wait_until_hidden`` check, which no longer holds because the collapsed sheet
+    is visible (peeking) rather than display-hidden.
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda driver: HPL.TAG_SHEET_OPEN_CLASS
+        not in driver.find_element(By.CSS_SELECTOR, HPL.TAG_SHEET).get_attribute(
+            "class"
+        )
+    )
+    wait_for_animation_to_end_check_top_lhs_corner(browser, HPL.TAG_SHEET)
 
 
 def apply_tag_filter_by_id_and_get_shown_urls(

@@ -27,7 +27,10 @@ let _dragState: {
   velocity: number;
   moved: boolean;
   mode: "open" | "close";
-  sheetHeight: number;
+  // Distance the sheet travels between the collapsed-peek and fully-open
+  // detents: sheet height minus the peeking header height. All drag fractions
+  // and clamps are relative to this, not the full sheet height.
+  travel: number;
   sheet: HTMLElement;
   target: HTMLElement;
 } | null = null;
@@ -47,10 +50,8 @@ const BACKDROP_SELECTOR = "#tagSheetBackdrop";
 const HANDLE_ID = "tagSheetHandle";
 const HANDLE_SELECTOR = `#${HANDLE_ID}`;
 const HANDLE_COUNT_SELECTOR = "#tagSheetHandleCount";
-const GRABBER_ID = "tagSheetGrabber";
-const GRABBER_SELECTOR = `#${GRABBER_ID}`;
 // Left half of the tag deck's title row — a secondary, larger close target
-// (the grabber bar alone is an awkward touch target). Sized to 50% width in
+// (the header lip alone is an awkward touch target). Sized to 50% width in
 // tag-sheet.css so the action buttons on the right half stay tappable.
 const TITLE_GROUP_SELECTOR = "#TagDeckTitleGroup";
 const EMPTY_STATE_SELECTOR = "#tagSheetEmpty";
@@ -84,16 +85,17 @@ function _updateEmptyState(): void {
 }
 
 /**
- * The handle shows only when mobile + a UTub is selected + the URL deck is
- * showing + cross-search is not open. Exported so mobile-state subscribers can
- * re-sync it after a deck transition.
+ * The whole sheet (its peeking header included) is present only when mobile + a
+ * UTub is selected + the URL deck is showing + cross-search is not open;
+ * otherwise it is fully hidden via `.hidden`. Exported so mobile-state
+ * subscribers can re-sync it after a deck transition.
  */
-export function refreshTagSheetHandleVisibility(): void {
+export function refreshTagSheetAvailability(): void {
   const utubSelected = $(".UTubSelector.active").length > 0;
   const urlDeckShowing = $(".panel#centerPanel").hasClass("visible-flex");
   const shouldShow =
     isMobile() && utubSelected && urlDeckShowing && !isCrossUtubSearchActive();
-  $(HANDLE_SELECTOR).toggleClass(HIDDEN_CLASS, !shouldShow);
+  $(SHEET_SELECTOR).toggleClass(HIDDEN_CLASS, !shouldShow);
 }
 
 /**
@@ -116,10 +118,10 @@ export function relocateTagDeckForViewport(): void {
 
   if (tagDeckInSheet) {
     $(TAG_DECK_SELECTOR).insertAfter("#leftPanel #MemberDeck");
-    // Close first (the handle's JS hidden-state must also reset), then refresh
-    // handle visibility so a later return to mobile re-shows it correctly.
+    // Close first (the sheet's open/inert state must reset), then refresh
+    // availability so a later return to mobile re-shows the peek correctly.
     closeTagSheet({ returnFocus: false });
-    refreshTagSheetHandleVisibility();
+    refreshTagSheetAvailability();
   }
 }
 
@@ -130,7 +132,12 @@ export function openTagSheet(): void {
   // it on close (covers both #toTags and #tagSheetHandle openers; WCAG 2.4.3).
   _opener = document.activeElement as HTMLElement | null;
 
-  $(SHEET_SELECTOR).addClass(SHEET_OPEN_CLASS).attr("aria-hidden", "false");
+  // The section is never aria-hidden: the handle (now the sheet's header/peek
+  // lip) must stay reachable when collapsed. Modal semantics live on the body
+  // instead — aria-modal is set only while open, and the body's inert/aria-hidden
+  // are cleared here.
+  $(SHEET_SELECTOR).addClass(SHEET_OPEN_CLASS).attr("aria-modal", "true");
+  $(SHEET_BODY_SELECTOR).prop("inert", false).attr("aria-hidden", "false");
   // Defer the backdrop class one tick so the CSS opacity transition fires. Also
   // clear any inline opacity set mid-drag so the committed-open gesture does not
   // flash the backdrop down to its CSS base before the class transition runs.
@@ -152,7 +159,7 @@ export function openTagSheet(): void {
     .not(INERT_EXCLUDE_SELECTOR)
     .prop("inert", true);
 
-  document.getElementById(GRABBER_ID)?.focus();
+  document.getElementById(HANDLE_ID)?.focus();
 
   $(document).on(ESCAPE_KEYDOWN_NAMESPACE, (event: JQuery.TriggeredEvent) => {
     if (event.key !== KEYS.ESCAPE) return;
@@ -182,7 +189,8 @@ export function closeTagSheet({
   // inflate close counts with no matching open.
   const wasOpen = sheetOpen;
 
-  $(SHEET_SELECTOR).removeClass(SHEET_OPEN_CLASS).attr("aria-hidden", "true");
+  $(SHEET_SELECTOR).removeClass(SHEET_OPEN_CLASS).removeAttr("aria-modal");
+  $(SHEET_BODY_SELECTOR).prop("inert", true).attr("aria-hidden", "true");
   $(BACKDROP_SELECTOR).removeClass(BACKDROP_SHOW_CLASS);
   $(document).off(ESCAPE_KEYDOWN_NAMESPACE);
 
@@ -226,8 +234,8 @@ export function isTagSheetOpen(): boolean {
 }
 
 /**
- * Begin a swipe gesture from the handle (open) or grabber (close). Captures the
- * sheet element and pointer once, then streams move/up/cancel on the target.
+ * Begin a swipe gesture from the handle (drag up opens, down closes). Captures
+ * the sheet element and pointer once, then streams move/up/cancel on the target.
  */
 function _beginDrag({
   event,
@@ -247,15 +255,20 @@ function _beginDrag({
 
   _suppressClickAfterDrag = false;
 
-  // currentTarget is the handle/grabber (a child of the sheet). The sheet itself
-  // is a separate element captured here, never from the event.
+  // currentTarget is the handle (the sheet's header lip). The sheet itself is
+  // the ancestor element captured here, never from the event.
   const sheet = document.querySelector(SHEET_SELECTOR) as HTMLElement | null;
   if (sheet === null) return;
   const target = event.currentTarget as HTMLElement;
-  const sheetHeight = sheet.getBoundingClientRect().height;
-  // A zero-height sheet (not laid out) would make every fraction/velocity
-  // division degenerate (Infinity/NaN). Treat that press as a tap, not a drag.
-  if (sheetHeight <= 0) return;
+  // The sheet travels by (height - peek): the peeking header (the drag target)
+  // stays on screen in the collapsed detent. Read the peek from the target's
+  // own height so it can never drift from the CSS --tag-sheet-peek value.
+  const peek = target.getBoundingClientRect().height;
+  const travel = sheet.getBoundingClientRect().height - peek;
+  // A non-positive travel (sheet not laid out, or peek >= height) would make
+  // every fraction/velocity division degenerate (Infinity/NaN). Treat that
+  // press as a tap, not a drag.
+  if (travel <= 0) return;
 
   _dragState = {
     pointerId: event.pointerId,
@@ -265,7 +278,7 @@ function _beginDrag({
     velocity: 0,
     moved: false,
     mode,
-    sheetHeight,
+    travel,
     sheet,
     target,
   };
@@ -305,14 +318,14 @@ function _onDragMove(event: PointerEvent): void {
     const offset =
       _dragState.mode === "open"
         ? clamp({
-            value: _dragState.sheetHeight - Math.max(progress, 0),
+            value: _dragState.travel - Math.max(progress, 0),
             min: 0,
-            max: _dragState.sheetHeight,
+            max: _dragState.travel,
           })
         : clamp({
             value: Math.max(progress, 0),
             min: 0,
-            max: _dragState.sheetHeight,
+            max: _dragState.travel,
           });
     _dragState.sheet.style.transform = `translateY(${offset}px)`;
 
@@ -322,7 +335,7 @@ function _onDragMove(event: PointerEvent): void {
       ) as HTMLElement | null;
       if (backdrop) {
         backdrop.style.opacity = String(
-          Math.min(progress / _dragState.sheetHeight, 1),
+          Math.min(progress / _dragState.travel, 1),
         );
       }
     }
@@ -380,7 +393,7 @@ function _endDrag(event: PointerEvent): void {
 
   const finalProgress = mode === "open" ? startY - lastY : lastY - startY;
   const draggedFraction = clamp({
-    value: Math.max(finalProgress, 0) / state.sheetHeight,
+    value: Math.max(finalProgress, 0) / state.travel,
     min: 0,
     max: 1,
   });
@@ -460,35 +473,27 @@ export function initTagSheet(): void {
   // crossings are owned by initMobileLayout's matchMedia listener in mobile.ts).
   relocateTagDeckForViewport();
 
+  // The handle is the sheet's header/peek lip: tapping it toggles, and it is the
+  // single drag target for both directions (drag up to open, down to close).
   $(HANDLE_SELECTOR).on("click", () => {
     if (_consumeClickSuppression()) return;
     toggleTagSheet();
   });
-  $(GRABBER_SELECTOR).on("click", () => {
-    if (_consumeClickSuppression()) return;
-    closeTagSheet();
-  });
   $(BACKDROP_SELECTOR).on("click", () => closeTagSheet());
 
-  // Native pointer-drag: up from the handle opens, down from the grabber closes.
-  // Guarded by GESTURE_BOUND_ATTR so re-init never double-binds.
+  // Native pointer-drag bound once on the handle; the direction is derived from
+  // the current open state at press time. Guarded by GESTURE_BOUND_ATTR so
+  // re-init never double-binds.
   const handle = document.getElementById(HANDLE_ID);
   if (handle && !handle.hasAttribute(GESTURE_BOUND_ATTR)) {
     handle.setAttribute(GESTURE_BOUND_ATTR, "true");
     handle.addEventListener("pointerdown", (event: PointerEvent) => {
-      _beginDrag({ event, mode: "open" });
-    });
-  }
-  const grabber = document.getElementById(GRABBER_ID);
-  if (grabber && !grabber.hasAttribute(GESTURE_BOUND_ATTR)) {
-    grabber.setAttribute(GESTURE_BOUND_ATTR, "true");
-    grabber.addEventListener("pointerdown", (event: PointerEvent) => {
-      _beginDrag({ event, mode: "close" });
+      _beginDrag({ event, mode: isTagSheetOpen() ? "close" : "open" });
     });
   }
 
   // Tapping the title group (left half of the tag deck header) closes the sheet
-  // — a larger touch target than the grabber. Mobile + open only: on desktop the
+  // — a larger touch target than the header lip. Mobile + open only: on desktop the
   // same element drives the caret collapse (collapsible-decks.ts), which already
   // no-ops on mobile, so the two handlers never conflict.
   $(TITLE_GROUP_SELECTOR).on("click", () => {
@@ -497,18 +502,18 @@ export function initTagSheet(): void {
 
   on(AppEvents.UTUB_SELECTED, () => {
     if (sheetOpen) closeTagSheet({ returnFocus: false });
-    refreshTagSheetHandleVisibility();
+    refreshTagSheetAvailability();
     _updateEmptyState();
   });
 
   on(AppEvents.UTUB_DELETED, () => {
     if (sheetOpen) closeTagSheet({ returnFocus: false });
-    refreshTagSheetHandleVisibility();
+    refreshTagSheetAvailability();
   });
 
   on(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, ({ active }) => {
     if (active) closeTagSheet({ returnFocus: false });
-    refreshTagSheetHandleVisibility();
+    refreshTagSheetAvailability();
   });
 
   on(AppEvents.MOBILE_DECK_SWITCHED, ({ target }) => {
@@ -522,7 +527,7 @@ export function initTagSheet(): void {
     // the url-deck target is no longer special-cased: leaving it open would keep
     // #mainPanel siblings inert and break navbar re-open over the URL deck.
     closeTagSheet({ returnFocus: false });
-    refreshTagSheetHandleVisibility();
+    refreshTagSheetAvailability();
   });
 
   // Stateless show/hide of the handle's count badge from selectedTagIDs.length.

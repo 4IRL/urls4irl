@@ -38,10 +38,21 @@
 
     <!-- Mobile Tag filter bottom sheet (mobile-only; #TagDeck relocated into the body by JS) -->
     <div id="tagSheetBackdrop" class="tag-sheet-backdrop"></div>
-    <section id="tagDeckSheet" class="tag-deck-sheet" role="dialog" aria-modal="true"
-        aria-label="Filter URLs by tag" aria-hidden="true">
-        <button id="tagSheetGrabber" class="tag-sheet-grabber" type="button" aria-label="Close tag filter"></button>
-        <div id="tagSheetBody" class="tag-sheet-body">
+    <section id="tagDeckSheet" class="tag-deck-sheet hidden" role="dialog"
+        aria-label="Filter URLs by tag">
+        <!-- Header / peek lip: visible when collapsed, drag up to open / down to close. -->
+        <button id="tagSheetHandle" class="tag-sheet-handle" type="button" aria-expanded="false"
+            aria-controls="tagSheetBody" aria-label="Filter URLs by tag">
+            <span class="tag-sheet-handle-grabber" aria-hidden="true"></span>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" height="20" width="20" viewBox="0 0 16 16"
+                aria-hidden="true">
+                <path
+                    d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
+            </svg>
+            <span class="tag-sheet-handle-label">Filter by tag</span>
+            <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden" aria-live="polite"></span>
+        </button>
+        <div id="tagSheetBody" class="tag-sheet-body" inert aria-hidden="true">
             <p id="tagSheetEmpty" class="hidden">No tags in this UTub.</p>
         </div>
     </section>

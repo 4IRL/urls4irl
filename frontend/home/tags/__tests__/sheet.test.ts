@@ -4,7 +4,7 @@ import {
   closeTagSheet,
   toggleTagSheet,
   relocateTagDeckForViewport,
-  refreshTagSheetHandleVisibility,
+  refreshTagSheetAvailability,
   isTagSheetOpen,
   _resetTagSheetGestureForTests,
 } from "../sheet.js";
@@ -66,7 +66,8 @@ const OPENER_ID = "fakeOpener";
 const TAG_FILTER_MARKUP = '<div class="tagFilter"></div>';
 
 // Mirrors the actual template nesting: backdrop + sheet are siblings of
-// #centerPanel inside #mainPanel; the handle is a direct child of #URLDeck.
+// #centerPanel inside #mainPanel; the handle is the sheet's header/peek lip
+// (first child of #tagDeckSheet), and #tagSheetBody starts inert + aria-hidden.
 const SHEET_HTML = `
   <main id="mainPanel">
     <div id="leftPanel" class="panel">
@@ -87,16 +88,15 @@ const SHEET_HTML = `
       </div>
     </div>
     <div id="centerPanel" class="panel visible-flex">
-      <div id="URLDeck" class="deck">
-        <button id="tagSheetHandle" class="tag-sheet-handle hidden" type="button" aria-expanded="false">
-          <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden"></span>
-        </button>
-      </div>
+      <div id="URLDeck" class="deck"></div>
     </div>
     <div id="tagSheetBackdrop" class="tag-sheet-backdrop"></div>
-    <section id="tagDeckSheet" class="tag-deck-sheet" role="dialog" aria-modal="true" aria-hidden="true">
-      <button id="tagSheetGrabber" class="tag-sheet-grabber" type="button"></button>
-      <div id="tagSheetBody" class="tag-sheet-body">
+    <section id="tagDeckSheet" class="tag-deck-sheet hidden" role="dialog" aria-label="Filter URLs by tag">
+      <button id="tagSheetHandle" class="tag-sheet-handle" type="button" aria-expanded="false" aria-controls="tagSheetBody">
+        <span class="tag-sheet-handle-grabber"></span>
+        <span id="tagSheetHandleCount" class="tag-sheet-handle-count hidden"></span>
+      </button>
+      <div id="tagSheetBody" class="tag-sheet-body" inert aria-hidden="true">
         <p id="tagSheetEmpty" class="hidden">No tags in this UTub.</p>
       </div>
     </section>
@@ -179,7 +179,10 @@ describe("Tag Sheet Controller", () => {
         openTagSheet();
 
         expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(true);
-        expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("false");
+        // The section is never aria-hidden; modal semantics live on the body.
+        expect($("#tagDeckSheet").attr("aria-modal")).toBe("true");
+        expect($("#tagSheetBody").prop("inert")).toBe(false);
+        expect($("#tagSheetBody").attr(ARIA_HIDDEN)).toBe("false");
         expect($("#tagSheetHandle").attr(ARIA_EXPANDED)).toBe("true");
         expect(isTagSheetOpen()).toBe(true);
         expect($("#centerPanel").prop("inert")).toBe(true);
@@ -205,7 +208,9 @@ describe("Tag Sheet Controller", () => {
 
       expect(document.activeElement).toBe(opener);
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
-      expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("true");
+      expect($("#tagDeckSheet").attr("aria-modal")).toBeUndefined();
+      expect($("#tagSheetBody").prop("inert")).toBe(true);
+      expect($("#tagSheetBody").attr(ARIA_HIDDEN)).toBe("true");
       expect(isTagSheetOpen()).toBe(false);
       expect($("#centerPanel").prop("inert")).toBe(false);
     });
@@ -265,13 +270,13 @@ describe("Tag Sheet Controller", () => {
       expect(isTagSheetOpen()).toBe(false);
     });
 
-    it("clicking the grabber closes the sheet", async () => {
+    it("clicking the handle while open closes the sheet (toggle)", async () => {
       await setIsMobile(true);
       initTagSheet();
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      $("#tagSheetGrabber").trigger("click");
+      $("#tagSheetHandle").trigger("click");
 
       expect(isTagSheetOpen()).toBe(false);
     });
@@ -380,12 +385,11 @@ describe("Tag Sheet Controller", () => {
   });
 
   describe("cross-utub search subscription", () => {
-    it("closes the sheet when cross-search becomes active and only refreshes the handle when inactive", async () => {
+    it("closes the sheet when cross-search becomes active and only refreshes availability when inactive", async () => {
       await setIsMobile(true);
-      // Seed an active UTub selector so refreshTagSheetHandleVisibility() would
-      // SHOW the handle when cross-search is inactive — this makes the
-      // "hidden while cross-search active" assertion below load-bearing rather
-      // than always-true.
+      // Seed an active UTub selector so refreshTagSheetAvailability() would SHOW
+      // the sheet when cross-search is inactive — this makes the "hidden while
+      // cross-search active" assertion below load-bearing rather than always-true.
       $("#centerPanel").append('<div class="UTubSelector active"></div>');
       initTagSheet();
       openTagSheet();
@@ -395,17 +399,17 @@ describe("Tag Sheet Controller", () => {
       await setCrossSearchActive(true);
       emit(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, { active: true });
       expect(isTagSheetOpen()).toBe(false);
-      // While cross-search is active the handle is hidden despite an active UTub.
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+      // While cross-search is active the sheet is hidden despite an active UTub.
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(true);
 
-      // Reopen, then signal inactive: sheet stays open and the handle re-shows
+      // Reopen, then signal inactive: sheet stays open and re-shows
       // (active UTub + URL deck visible + cross-search inactive).
       await setCrossSearchActive(false);
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
       emit(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, { active: false });
       expect(isTagSheetOpen()).toBe(true);
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(false);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(false);
     });
   });
 
@@ -431,7 +435,7 @@ describe("Tag Sheet Controller", () => {
       });
 
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
-      expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("true");
+      expect($("#tagSheetBody").attr(ARIA_HIDDEN)).toBe("true");
       expect(isTagSheetOpen()).toBe(false);
     });
 
@@ -445,7 +449,7 @@ describe("Tag Sheet Controller", () => {
       emit(AppEvents.UTUB_DELETED, { utubID: 1 });
 
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
-      expect($("#tagDeckSheet").attr(ARIA_HIDDEN)).toBe("true");
+      expect($("#tagSheetBody").attr(ARIA_HIDDEN)).toBe("true");
       expect(isTagSheetOpen()).toBe(false);
     });
   });
@@ -517,64 +521,64 @@ describe("Tag Sheet Controller", () => {
     });
   });
 
-  describe("refreshTagSheetHandleVisibility", () => {
+  describe("refreshTagSheetAvailability", () => {
     // Each case starts from the all-guards-satisfied baseline and flips exactly
-    // one guard, isolating that guard as the sole cause of the handle hiding.
+    // one guard, isolating that guard as the sole cause of the sheet hiding.
     function seedActiveUtubSelector(): void {
       $("#centerPanel").append('<div class="UTubSelector active"></div>');
     }
 
-    it("shows the handle when every guard is satisfied", async () => {
+    it("shows the sheet when every guard is satisfied", async () => {
       await setIsMobile(true);
       seedActiveUtubSelector();
       // The SHEET_HTML fixture already gives #centerPanel the visible-flex class.
       expect($("#centerPanel").hasClass("visible-flex")).toBe(true);
       await setCrossSearchActive(false);
 
-      refreshTagSheetHandleVisibility();
+      refreshTagSheetAvailability();
 
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(false);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(false);
     });
 
-    it("hides the handle when not mobile", async () => {
+    it("hides the sheet when not mobile", async () => {
       await setIsMobile(false);
       seedActiveUtubSelector();
       await setCrossSearchActive(false);
 
-      refreshTagSheetHandleVisibility();
+      refreshTagSheetAvailability();
 
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(true);
     });
 
-    it("hides the handle when no UTub is selected", async () => {
+    it("hides the sheet when no UTub is selected", async () => {
       await setIsMobile(true);
       // No active .UTubSelector seeded — the utub-selected guard fails.
       await setCrossSearchActive(false);
 
-      refreshTagSheetHandleVisibility();
+      refreshTagSheetAvailability();
 
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(true);
     });
 
-    it("hides the handle when the URL deck is not showing", async () => {
+    it("hides the sheet when the URL deck is not showing", async () => {
       await setIsMobile(true);
       seedActiveUtubSelector();
       $("#centerPanel").removeClass("visible-flex");
       await setCrossSearchActive(false);
 
-      refreshTagSheetHandleVisibility();
+      refreshTagSheetAvailability();
 
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(true);
     });
 
-    it("hides the handle when cross-utub search is active", async () => {
+    it("hides the sheet when cross-utub search is active", async () => {
       await setIsMobile(true);
       seedActiveUtubSelector();
       await setCrossSearchActive(true);
 
-      refreshTagSheetHandleVisibility();
+      refreshTagSheetAvailability();
 
-      expect($("#tagSheetHandle").hasClass(HIDDEN_CLASS)).toBe(true);
+      expect($("#tagDeckSheet").hasClass(HIDDEN_CLASS)).toBe(true);
     });
   });
 
@@ -606,10 +610,27 @@ describe("Tag Sheet Controller", () => {
       y: 400,
       toJSON: () => ({}),
     } as DOMRect;
+    // Peek (header) height — happy-dom returns a zero rect by default, so without
+    // this stub the drag's `travel = sheetHeight - peek` would degenerate to the
+    // full sheet height and the travel-based math would never be exercised.
+    const HANDLE_RECT = {
+      height: 48,
+      top: 400,
+      bottom: 448,
+      left: 0,
+      right: 390,
+      width: 390,
+      x: 0,
+      y: 400,
+      toJSON: () => ({}),
+    } as DOMRect;
+    // travel = 400 - 48 = 352; 35% commit threshold ≈ 123px.
 
     function stubSheetRect(): HTMLElement {
       const sheet = document.getElementById("tagDeckSheet")!;
       sheet.getBoundingClientRect = (): DOMRect => SHEET_RECT;
+      const handle = document.getElementById("tagSheetHandle")!;
+      handle.getBoundingClientRect = (): DOMRect => HANDLE_RECT;
       return sheet;
     }
 
@@ -663,7 +684,7 @@ describe("Tag Sheet Controller", () => {
       }
     });
 
-    it("closes the sheet on a downward drag from the grabber past the threshold", async () => {
+    it("closes the sheet on a downward drag from the handle past the threshold", async () => {
       stubSheetRect();
       await setIsMobile(true);
       initTagSheet();
@@ -672,10 +693,12 @@ describe("Tag Sheet Controller", () => {
       const { emit } = await import("../../../lib/metrics-client.js");
       (emit as ReturnType<typeof vi.fn>).mockClear();
 
-      const grabber = document.getElementById("tagSheetGrabber")!;
-      dispatchPointer({ target: grabber, type: "pointerdown", clientY: 420 });
-      dispatchPointer({ target: grabber, type: "pointermove", clientY: 640 });
-      dispatchPointer({ target: grabber, type: "pointerup", clientY: 640 });
+      // Sheet open => the handle pointerdown derives mode "close". 220px down
+      // clears 35% of travel (352).
+      const handle = document.getElementById("tagSheetHandle")!;
+      dispatchPointer({ target: handle, type: "pointerdown", clientY: 420 });
+      dispatchPointer({ target: handle, type: "pointermove", clientY: 640 });
+      dispatchPointer({ target: handle, type: "pointerup", clientY: 640 });
 
       expect(isTagSheetOpen()).toBe(false);
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
@@ -716,7 +739,7 @@ describe("Tag Sheet Controller", () => {
         const { emit } = await import("../../../lib/metrics-client.js");
 
         const handle = document.getElementById("tagSheetHandle")!;
-        // ~40px up < 35% of 400 (140px) and below fling velocity.
+        // ~40px up < 35% of travel 352 (~123px) and below fling velocity.
         dispatchPointer({ target: handle, type: "pointerdown", clientY: 780 });
         dispatchPointer({ target: handle, type: "pointermove", clientY: 740 });
         dispatchPointer({ target: handle, type: "pointerup", clientY: 740 });
@@ -742,9 +765,9 @@ describe("Tag Sheet Controller", () => {
       openTagSheet();
       expect(isTagSheetOpen()).toBe(true);
 
-      const grabber = document.getElementById("tagSheetGrabber")!;
-      dispatchPointer({ target: grabber, type: "pointerdown", clientY: 420 });
-      dispatchPointer({ target: grabber, type: "pointermove", clientY: 500 });
+      const handle = document.getElementById("tagSheetHandle")!;
+      dispatchPointer({ target: handle, type: "pointerdown", clientY: 420 });
+      dispatchPointer({ target: handle, type: "pointermove", clientY: 500 });
       // Mid-drag: dragging class present, sheet has an inline transform.
       expect($("#tagDeckSheet").hasClass(DRAGGING_CLASS)).toBe(true);
 
