@@ -272,6 +272,13 @@ class HomePageLocators(GenericPageLocator):
     BADGES_MEMBERS = ".member"
     BADGE_OWNER = "#UTubOwner > .member"
 
+    DISPLAY_MEMBER_WRAP = "#displayMemberWrap"
+    MEMBER_SEARCH_INPUT = "#MemberNameSearch"
+    MEMBER_SEARCH_WRAP = "#SearchMemberWrap"
+    MEMBER_SEARCH_NO_RESULTS = "#MemberSearchNoResults"
+    BUTTON_MEMBER_NAME_FILTER = "#memberNameFilterBtn"
+    BUTTON_MEMBER_NAME_FILTER_CLOSE = "#memberNameFilterBtnClose"
+
     # Modal
     HOME_MODAL = "#confirmModal"
     HEADER_MODAL = "#confirmModalTitle"

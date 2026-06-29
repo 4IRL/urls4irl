@@ -152,6 +152,9 @@ const appConfig = {
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",
     UTUB_SEARCH_PLACEHOLDER: "Filter UTubs",
     UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",
+    MEMBER_SEARCH_NO_RESULTS: "No members found",
+    MEMBER_SEARCH_PLACEHOLDER: "Filter members",
+    MEMBER_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} members shown",
     UTUB_CREATE_MSG: "Create a UTub",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;

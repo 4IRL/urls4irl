@@ -41,14 +41,16 @@
 
 #URLSearchFilterIcon>svg,
 #utubNameFilterBtn>svg,
-#tagNameFilterBtn>svg {
+#tagNameFilterBtn>svg,
+#memberNameFilterBtn>svg {
     fill: var(--grayBadgeSelection);
     transition: fill 0.15s ease;
 }
 
 #URLSearchFilterIconClose>svg,
 #utubNameFilterBtnClose>svg,
-#tagNameFilterBtnClose>svg {
+#tagNameFilterBtnClose>svg,
+#memberNameFilterBtnClose>svg {
     fill: var(--spanRemoveColor);
     transition: fill 0.15s ease;
 }
@@ -95,13 +97,15 @@
 
     #URLSearchFilterIcon:hover>svg,
     #utubNameFilterBtn:hover>svg,
-    #tagNameFilterBtn:hover>svg {
+    #tagNameFilterBtn:hover>svg,
+    #memberNameFilterBtn:hover>svg {
         fill: var(--deckSelectionGreenHover);
     }
 
     #URLSearchFilterIconClose:hover>svg,
     #utubNameFilterBtnClose:hover>svg,
-    #tagNameFilterBtnClose:hover>svg {
+    #tagNameFilterBtnClose:hover>svg,
+    #memberNameFilterBtnClose:hover>svg {
         fill: var(--spanRemoveColorHover);
     }
 

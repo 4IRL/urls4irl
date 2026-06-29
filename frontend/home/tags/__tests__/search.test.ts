@@ -1,4 +1,5 @@
 import {
+  applyAlternatingTagBackground,
   closeTagNameFilter,
   hideTagFilterBar,
   isTagFilterActive,
@@ -21,7 +22,7 @@ const $ = window.jQuery;
 
 const FILTER_HTML = `
   <div id="TagDeck">
-    <button id="tagNameFilterBtn"></button>
+    <button id="tagNameFilterBtn" aria-expanded="false"></button>
     <button id="tagNameFilterBtnClose" class="hidden"></button>
     <div id="SearchTagWrap">
       <div class="text-input-inner-container">
@@ -166,6 +167,39 @@ describe("Tag Filter", () => {
     });
   });
 
+  describe("applyAlternatingTagBackground (re-stripe)", () => {
+    it("stripes every other visible row by position with all rows shown", () => {
+      applyAlternatingTagBackground();
+
+      // Visible indices 0,1,2 -> only index 1 (id=2) is striped.
+      expect($('.tagFilter[data-utub-tag-id="1"]').hasClass("tag-stripe")).toBe(
+        false,
+      );
+      expect($('.tagFilter[data-utub-tag-id="2"]').hasClass("tag-stripe")).toBe(
+        true,
+      );
+      expect($('.tagFilter[data-utub-tag-id="3"]').hasClass("tag-stripe")).toBe(
+        false,
+      );
+    });
+
+    it("re-indexes stripes over the visible subset when a filter hides a row", () => {
+      vi.mocked(filterTagsByName).mockReturnValue([1]);
+
+      $("#TagNameSearch").val("eta").trigger("input");
+
+      // id=1 hidden; remaining visible: id=2 (index 0 -> not striped),
+      // id=3 (index 1 -> striped). The :nth-child rule would have left id=2
+      // unstriped (DOM position 2) and misaligned the visible pair.
+      expect($('.tagFilter[data-utub-tag-id="2"]').hasClass("tag-stripe")).toBe(
+        false,
+      );
+      expect($('.tagFilter[data-utub-tag-id="3"]').hasClass("tag-stripe")).toBe(
+        true,
+      );
+    });
+  });
+
   describe("pressing Escape", () => {
     it("clears the input and shows all tag rows", () => {
       vi.mocked(filterTagsByName).mockReturnValue([1, 2, 3]);
@@ -189,6 +223,7 @@ describe("Tag Filter", () => {
 
       expect($("#TagDeck").hasClass("tag-search-open")).toBe(true);
       expect($("#tagNameFilterBtn").hasClass("hidden")).toBe(true);
+      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("true");
       expect($("#tagNameFilterBtnClose").hasClass("hidden")).toBe(false);
     });
 
@@ -205,6 +240,7 @@ describe("Tag Filter", () => {
       expect($("#TagDeck").hasClass("tag-search-open")).toBe(false);
       expect($("#tagNameFilterBtnClose").hasClass("hidden")).toBe(true);
       expect($("#tagNameFilterBtn").hasClass("hidden")).toBe(false);
+      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("false");
       expect($("#TagNameSearch").val()).toBe("");
       $(".tagFilter").each(function () {
         expect($(this).hasClass("hidden")).toBe(false);

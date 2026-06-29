@@ -33,6 +33,7 @@ from tests.functional.selenium_utils import (
     force_next_delete_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -128,7 +129,7 @@ def test_dismiss_delete_member_modal_x(
 
     delete_member_active_utub(browser, member_name)
 
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_for_modal_ready(browser, HPL.HOME_MODAL)
     home_modal = browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL)
     x_btn = home_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_X_CLOSE)
     assert x_btn.is_displayed()
@@ -410,6 +411,13 @@ def test_delete_member_submit_button_enabled_on_second_modal_open(
 
     # Delete the first member
     delete_member_active_utub(browser, first_member_user.username)
+
+    # Gate on the modal being fully shown (fade-in transition settled) before clicking
+    # submit. Clicking while Bootstrap's show-transition is still running causes the
+    # subsequent modal("hide") issued by removeMemberSuccess to be dropped as an
+    # overlapping transition, which leaves the modal visible and races wait_until_hidden.
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for the first member's badge to be removed from the DOM

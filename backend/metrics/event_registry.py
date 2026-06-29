@@ -353,6 +353,16 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.UI,
         dimensions={"target": ("tags",)},
     ),
+    EventName.UI_MEMBER_SEARCH_OPEN: EventRegistryEntry(
+        description="Member search box opened",
+        category=EventCategory.UI,
+        dimensions={"target": ("members",)},
+    ),
+    EventName.UI_MEMBER_SEARCH_CLOSE: EventRegistryEntry(
+        description="Member search box closed",
+        category=EventCategory.UI,
+        dimensions={"target": ("members",)},
+    ),
     EventName.UI_TAG_APPLY: EventRegistryEntry(
         description="Tag applied from picker",
         category=EventCategory.UI,

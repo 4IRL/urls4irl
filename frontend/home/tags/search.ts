@@ -27,12 +27,27 @@ export function readTagsFromDOM(): TagSelectorEntry[] {
   }));
 }
 
+// Re-stripe the VISIBLE tag rows with the `.tag-stripe` class. The filter hides
+// non-matching rows via `.hidden`; a CSS `:nth-child` rule would still count those
+// hidden rows and misalign the stripes among the visible subset, so the visible
+// rows are re-indexed here. The `.tag-stripe` class only paints under `.unselected`
+// rows (selected/disabled keep their state background) — mirroring the prior
+// nth-child rule, which alternated by row position regardless of state.
+export function applyAlternatingTagBackground(): void {
+  $("#listTags > .tagFilter")
+    .not(".hidden")
+    .each((visibleIndex, tagElem) => {
+      $(tagElem).toggleClass("tag-stripe", visibleIndex % 2 === 1);
+    });
+}
+
 // Toggle `.hidden` on tag rows by id. This is purely a text-visibility filter —
 // it must NOT touch `.selected`/`.unselected`/`.disabled` or emit
 // TAG_FILTER_CHANGED; a hidden row keeps its URL-filter contribution.
 export function updatedTagFilterDisplay(filteredTagIDsToHide: number[]): void {
   if (filteredTagIDsToHide.length === 0) {
     $(".tagFilter").removeClass("hidden");
+    applyAlternatingTagBackground();
     return;
   }
   const hideSet = new Set(filteredTagIDsToHide);
@@ -46,6 +61,7 @@ export function updatedTagFilterDisplay(filteredTagIDsToHide: number[]): void {
       $(this).removeClass("hidden");
     }
   });
+  applyAlternatingTagBackground();
 }
 
 export function showTagSearchNoResults(): void {
@@ -138,6 +154,7 @@ export function resetTagFilter(): void {
   searchInput.val("");
   searchInput.off("keydown.searchInputEsc");
   $(".tagFilter").removeClass("hidden");
+  applyAlternatingTagBackground();
   hideTagSearchNoResults();
 }
 
@@ -153,7 +170,7 @@ export function reapplyTagFilter(): void {
 
 export function openTagNameFilter(): void {
   $("#TagDeck").addClass("tag-search-open");
-  $("#tagNameFilterBtn").addClass("hidden");
+  $("#tagNameFilterBtn").addClass("hidden").attr("aria-expanded", "true");
   $("#tagNameFilterBtnClose").removeClass("hidden");
   $("#TagNameSearch").trigger("focus");
 }
@@ -166,7 +183,7 @@ export function closeTagNameFilter(): void {
   const wasOpen = $("#TagDeck").hasClass("tag-search-open");
   $("#TagDeck").removeClass("tag-search-open");
   $("#tagNameFilterBtnClose").addClass("hidden");
-  $("#tagNameFilterBtn").removeClass("hidden");
+  $("#tagNameFilterBtn").removeClass("hidden").attr("aria-expanded", "false");
   if (wasOpen) {
     emit({
       event: UI_EVENTS.UI_TAG_SEARCH_CLOSE,

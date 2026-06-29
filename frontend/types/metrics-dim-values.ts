@@ -140,6 +140,12 @@ export const LHS_COLLAPSE_SOURCE = {
 
 export const LHS_EXPAND_SOURCE = LHS_COLLAPSE_SOURCE;
 
+export const MEMBER_SEARCH_CLOSE_TARGET = {
+  MEMBERS: "members",
+} as const;
+
+export const MEMBER_SEARCH_OPEN_TARGET = MEMBER_SEARCH_CLOSE_TARGET;
+
 export const MOBILE_NAV_TARGET = {
   UTUBS: "utubs",
   URLS: "urls",

@@ -7,11 +7,24 @@ import { on, AppEvents } from "../../lib/event-bus.js";
 import { createMemberBadge, createOwnerBadge } from "./members.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
+import {
+  setMemberSelectorSearchEventListener,
+  setMemberNameFilterToggleListeners,
+  showMemberFilterBar,
+  hideMemberFilterBar,
+  resetMemberFilter,
+  reapplyMemberFilter,
+  applyAlternatingMemberBackground,
+} from "./search.js";
 
 // Clear the Member Deck
 export function resetMemberDeck(): void {
   $("#UTubOwner").empty();
   $("#listMembers").empty();
+  $("#MemberSearchNoResults").addClass("hidden").text("");
+  $("#MemberSearchAnnouncement").text("");
+  resetMemberFilter();
+  hideMemberFilterBar();
 }
 
 // Update member deck on asynchronous update, either due to stale data or refresh
@@ -37,6 +50,8 @@ export function updateMemberDeck(
       );
     },
   });
+
+  reapplyMemberFilter();
 }
 
 // Build center panel URL list for selectedUTub
@@ -79,6 +94,13 @@ export function setMemberDeckOnUTubSelected(
   if (!isCurrentUserOwner) {
     createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID, utubID);
   }
+
+  // Stripe the freshly-built rows, (re)bind the filter listeners for this UTub,
+  // and reveal the funnel toggle (the box starts collapsed).
+  applyAlternatingMemberBackground();
+  setMemberSelectorSearchEventListener();
+  setMemberNameFilterToggleListeners();
+  showMemberFilterBar();
 
   // Subheader prompt
   setMemberDeckForUTub(isCurrentUserOwner);

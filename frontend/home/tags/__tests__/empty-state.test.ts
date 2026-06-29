@@ -31,6 +31,7 @@ vi.mock("../unselect-all.js", () => ({
 }));
 
 vi.mock("../search.js", () => ({
+  applyAlternatingTagBackground: vi.fn(),
   setTagSelectorSearchEventListener: vi.fn(),
   setTagNameFilterToggleListeners: vi.fn(),
   showTagFilterBar: vi.fn(),

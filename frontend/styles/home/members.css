@@ -45,14 +45,49 @@
 }
 
 /* Zebra-stripe members (mirrors the URL list). The owner row (#UTubOwner) keeps
-   the base card shade, so #listMembers odd rows take the panel shade to continue
-   the alternation unbroken across the owner→members boundary. */
-#listMembers .member:nth-child(odd) {
+   the base card shade; #listMembers rows that take the panel shade continue the
+   alternation unbroken across the owner→members boundary. The stripe is assigned
+   in JS (applyAlternatingMemberBackground) over *visible* rows, so the alternation
+   stays correct when an active filter hides rows — a :nth-child rule would count
+   hidden rows and misalign. */
+#listMembers .member.member-stripe {
     background-color: var(--panelBackgroundColor);
 }
 
 #MemberDeck .button-container {
     align-items: center;
+}
+
+/* The member name-filter box lives in its own subheader band
+   (#MemberDeckSearchSubheader, mirroring the UTub/Tag search subheader) between the
+   title row and the scrollable list, NOT inside the list body. It is revealed only
+   once the funnel toggle activates it (adds .member-search-open to #MemberDeck).
+   Gating the whole band (not just #SearchMemberWrap) collapses the dynamic-subheader
+   min-height strip when closed, leaving no empty gap. Togglable on all viewports —
+   no media guard. */
+#MemberDeck:not(.member-search-open) #MemberDeckSearchSubheader {
+    display: none;
+}
+
+/* Span the full panel width like the Tag/UTub search wraps, and add vertical
+   breathing room around the revealed input. Mirrors #SearchTagWrap. */
+#SearchMemberWrap {
+    width: 100%;
+    padding-block: 4px;
+}
+
+#MemberSearchNoResults {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
 }
 
 @media not all and (any-pointer: coarse) {
@@ -62,5 +97,15 @@
 
     .memberOtherBtnDelete:hover {
         color: red;
+    }
+}
+
+/* WCAG 2.5.5 touch-target sizing (44px) for the member filter toggle buttons on
+   coarse-pointer (touch) devices. */
+@media (any-pointer: coarse) {
+
+    #memberNameFilterBtn,
+    #memberNameFilterBtnClose {
+        min-height: 2.75rem;
     }
 }

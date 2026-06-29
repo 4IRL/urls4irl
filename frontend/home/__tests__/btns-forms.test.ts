@@ -274,5 +274,22 @@ describe("btns-forms", () => {
 
       expect(label.style.display).toBe("none");
     });
+
+    it("does not run float-label logic for MemberNameSearch input", () => {
+      document.body.innerHTML = `
+        <input id="MemberNameSearch" type="search" value="" />
+        <label style="display:none;">Filter members</label>
+      `;
+      const input = document.getElementById(
+        "MemberNameSearch",
+      ) as HTMLInputElement;
+      const label = input.nextElementSibling as HTMLElement;
+      label.style.display = "none";
+
+      const fakeEvent = { target: input } as unknown as JQuery.TriggeredEvent;
+      handleSearchInputBlur(fakeEvent);
+
+      expect(label.style.display).toBe("none");
+    });
   });
 });
