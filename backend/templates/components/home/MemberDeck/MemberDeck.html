@@ -7,6 +7,26 @@
 		<!-- Create Member Form -->
 		{% include 'components/home/MemberDeck/CreateMemberForm.html' %}
 
+		<div id="SearchMemberWrap" class="input-text-holder flex-column">
+			<div class="text-input-container">
+				<div class="text-input-inner-container">
+					<svg class="member-search-prefix-icon" xmlns="http://www.w3.org/2000/svg" fill="currentColor"
+						height="14" width="14"
+						viewBox="0 0 16 16" aria-hidden="true">
+						<path d="M1.5 1.5A.5.5 0 0 1 2 1h12a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.128.334L10 8.692V13.5a.5.5 0 0 1-.342.474l-3 1A.5.5 0 0 1 6 14.5V8.692L1.628 3.834A.5.5 0 0 1 1.5 3.5z" />
+					</svg>
+					<input placeholder="{{ CONSTANTS.STRINGS.MEMBER_SEARCH_PLACEHOLDER }}" class="text-input search-input" type="search"
+						   id="MemberNameSearch"
+						   aria-label="Filter members"
+						   autocorrect="off" autocapitalize="off"
+						   minlength="{{CONSTANTS.USERS.MIN_USERNAME_LENGTH}}" maxlength="{{ CONSTANTS.USERS.MAX_USERNAME_LENGTH }}" tabindex="0">
+					<label class="text-input-label search-input-label top-50perc left-10p font-size-16p" for="MemberNameSearch">{{ CONSTANTS.STRINGS.MEMBER_SEARCH_PLACEHOLDER }}</label>
+				</div>
+			</div>
+		</div>
+		<p id="MemberSearchNoResults" class="hidden"></p>
+		<span id="MemberSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
+
 		<!-- Member Deck Content. The owner sits at the top (#UTubOwner) marked with
 		     a diamond icon; remaining members follow in #listMembers. No section
 		     labels — the icon conveys who the owner is. -->
