@@ -12,6 +12,7 @@ import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
+import { reapplyMemberFilter, closeMemberNameFilter } from "./search.js";
 import { getState, setState } from "../../store/app-store.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -135,6 +136,7 @@ function resetNewMemberForm(): void {
 
 // Shows new Member input fields
 function createMemberShowInput(utubID: number): void {
+  closeMemberNameFilter();
   emit({ event: UI_EVENTS.UI_MEMBER_INVITE_OPEN });
   setOpenForm(HOME_FORM.MEMBER_INVITE);
   $("#createMemberWrap").showClassFlex();
@@ -219,6 +221,7 @@ function createMemberSuccess(
 
   createMemberHideInput();
   setMemberDeckForUTub(true);
+  reapplyMemberFilter();
 }
 
 function createMemberFail(xhr: JQuery.jqXHR): void {

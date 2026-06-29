@@ -12,6 +12,7 @@ vi.mock("../utubs/search.js", () => ({
 }));
 vi.mock("../utubs/create.js", () => ({ createUTubHideInput: vi.fn() }));
 vi.mock("../members/create.js", () => ({ createMemberHideInput: vi.fn() }));
+vi.mock("../members/search.js", () => ({ closeMemberNameFilter: vi.fn() }));
 vi.mock("../tags/create.js", () => ({ createUTubTagHideInput: vi.fn() }));
 vi.mock("../tags/search.js", () => ({ closeTagNameFilter: vi.fn() }));
 
@@ -137,6 +138,38 @@ describe("Collapsible Decks", () => {
 
       expect($(".deck#TagDeck").hasClass("collapsed")).toBe(false);
       expect(closeTagNameFilter).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("member filter close on collapse", () => {
+    // Collapsing the Member deck requires a selected UTub (otherwise the header
+    // is inert and the collapse branch never runs).
+    beforeEach(async () => {
+      const { isUTubSelected } = await import("../utubs/utils.js");
+      (isUTubSelected as ReturnType<typeof vi.fn>).mockReturnValue(true);
+      vi.clearAllMocks();
+    });
+
+    it("collapsing the Member deck closes the member name filter", async () => {
+      const { closeMemberNameFilter } = await import("../members/search.js");
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(true);
+      expect(closeMemberNameFilter).toHaveBeenCalledTimes(1);
+    });
+
+    it("expanding the Member deck does not close the member name filter", async () => {
+      const { closeMemberNameFilter } = await import("../members/search.js");
+
+      // Collapse first, then clear mocks so only the expand call is observed.
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+      vi.clearAllMocks();
+
+      $("#MemberDeckHeaderAndCaret").trigger("click");
+
+      expect($(".deck#MemberDeck").hasClass("collapsed")).toBe(false);
+      expect(closeMemberNameFilter).not.toHaveBeenCalled();
     });
   });
 

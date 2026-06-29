@@ -45,9 +45,12 @@
 }
 
 /* Zebra-stripe members (mirrors the URL list). The owner row (#UTubOwner) keeps
-   the base card shade, so #listMembers odd rows take the panel shade to continue
-   the alternation unbroken across the owner→members boundary. */
-#listMembers .member:nth-child(odd) {
+   the base card shade; #listMembers rows that take the panel shade continue the
+   alternation unbroken across the owner→members boundary. The stripe is assigned
+   in JS (applyAlternatingMemberBackground) over *visible* rows, so the alternation
+   stays correct when an active filter hides rows — a :nth-child rule would count
+   hidden rows and misalign. */
+#listMembers .member.member-stripe {
     background-color: var(--panelBackgroundColor);
 }
 
@@ -62,6 +65,27 @@
     display: none;
 }
 
+/* Vertical breathing room around the revealed member filter input. Lives on the
+   wrap (not the band) so it only takes space when open — the wrap is display:none
+   while collapsed (gate rule above). Mirrors #SearchUTubWrap. */
+#SearchMemberWrap {
+    padding-block: 4px;
+}
+
+#MemberSearchNoResults {
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    padding: 1rem;
+    font-size: 1.1rem;
+    font-style: italic;
+    letter-spacing: 0.025em;
+}
+
 @media not all and (any-pointer: coarse) {
     .member:hover>.memberOtherBtnDelete {
         opacity: 1;
@@ -69,5 +93,15 @@
 
     .memberOtherBtnDelete:hover {
         color: red;
+    }
+}
+
+/* WCAG 2.5.5 touch-target sizing (44px) for the member filter toggle buttons on
+   coarse-pointer (touch) devices. */
+@media (any-pointer: coarse) {
+
+    #memberNameFilterBtn,
+    #memberNameFilterBtnClose {
+        min-height: 2.75rem;
     }
 }
