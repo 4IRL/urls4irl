@@ -22,7 +22,7 @@ const $ = window.jQuery;
 
 const SEARCH_HTML = `
   <div id="UTubDeck">
-    <button id="utubNameFilterBtn"></button>
+    <button id="utubNameFilterBtn" aria-expanded="false"></button>
     <button id="utubNameFilterBtnClose" class="hidden"></button>
     <div id="UTubDeckSubheader" class="hidden">Create a UTub</div>
     <div id="SearchUTubWrap">
@@ -299,6 +299,7 @@ describe("UTub Search", () => {
 
       expect($("#UTubDeck").hasClass("utub-search-open")).toBe(true);
       expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(true);
+      expect($("#utubNameFilterBtn").attr("aria-expanded")).toBe("true");
       expect($("#utubNameFilterBtnClose").hasClass("hidden")).toBe(false);
     });
 
@@ -313,6 +314,7 @@ describe("UTub Search", () => {
       expect($("#UTubDeck").hasClass("utub-search-open")).toBe(false);
       expect($("#utubNameFilterBtnClose").hasClass("hidden")).toBe(true);
       expect($("#utubNameFilterBtn").hasClass("hidden")).toBe(false);
+      expect($("#utubNameFilterBtn").attr("aria-expanded")).toBe("false");
       expect($("#UTubNameSearch").val()).toBe("");
       $(".UTubSelector").each(function () {
         expect($(this).hasClass("hidden")).toBe(false);

@@ -164,7 +164,7 @@ export function resetUTubSearch(): void {
 // practice. Focus emits UI_UTUB_SEARCH_OPEN via the input's focus handler.
 export function openUTubNameFilter(): void {
   $("#UTubDeck").addClass("utub-search-open");
-  $("#utubNameFilterBtn").addClass("hidden");
+  $("#utubNameFilterBtn").addClass("hidden").attr("aria-expanded", "true");
   $("#utubNameFilterBtnClose").removeClass("hidden");
   $("#UTubNameSearch").trigger("focus");
 }
@@ -178,7 +178,7 @@ export function closeUTubNameFilter(): void {
   const wasOpen = $("#UTubDeck").hasClass("utub-search-open");
   $("#UTubDeck").removeClass("utub-search-open");
   $("#utubNameFilterBtnClose").addClass("hidden");
-  $("#utubNameFilterBtn").removeClass("hidden");
+  $("#utubNameFilterBtn").removeClass("hidden").attr("aria-expanded", "false");
   if (wasOpen) {
     emit({
       event: UI_EVENTS.UI_UTUB_SEARCH_CLOSE,

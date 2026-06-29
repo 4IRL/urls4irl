@@ -21,7 +21,7 @@ const $ = window.jQuery;
 
 const FILTER_HTML = `
   <div id="TagDeck">
-    <button id="tagNameFilterBtn"></button>
+    <button id="tagNameFilterBtn" aria-expanded="false"></button>
     <button id="tagNameFilterBtnClose" class="hidden"></button>
     <div id="SearchTagWrap">
       <div class="text-input-inner-container">
@@ -189,6 +189,7 @@ describe("Tag Filter", () => {
 
       expect($("#TagDeck").hasClass("tag-search-open")).toBe(true);
       expect($("#tagNameFilterBtn").hasClass("hidden")).toBe(true);
+      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("true");
       expect($("#tagNameFilterBtnClose").hasClass("hidden")).toBe(false);
     });
 
@@ -205,6 +206,7 @@ describe("Tag Filter", () => {
       expect($("#TagDeck").hasClass("tag-search-open")).toBe(false);
       expect($("#tagNameFilterBtnClose").hasClass("hidden")).toBe(true);
       expect($("#tagNameFilterBtn").hasClass("hidden")).toBe(false);
+      expect($("#tagNameFilterBtn").attr("aria-expanded")).toBe("false");
       expect($("#TagNameSearch").val()).toBe("");
       $(".tagFilter").each(function () {
         expect($(this).hasClass("hidden")).toBe(false);
