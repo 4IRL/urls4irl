@@ -52,13 +52,13 @@ export function applyAlternatingMemberBackground(): void {
 }
 
 // Toggle `.hidden` on member rows across both containers by memberid.
-export function updatedMemberDisplay(idsToHide: number[]): void {
-  if (idsToHide.length === 0) {
+export function updatedMemberFilterDisplay(memberIdsToHide: number[]): void {
+  if (memberIdsToHide.length === 0) {
     $(MEMBER_ROW_SELECTOR).removeClass("hidden");
     applyAlternatingMemberBackground();
     return;
   }
-  const hideSet = new Set(idsToHide);
+  const hideSet = new Set(memberIdsToHide);
   const memberRows = $(MEMBER_ROW_SELECTOR);
 
   memberRows.each(function () {
@@ -88,12 +88,12 @@ export function hideMemberSearchNoResults(): void {
 
 function applyMemberFilterForTerm(searchTerm: string): void {
   if (!isMemberFilterActive(searchTerm)) {
-    updatedMemberDisplay([]);
+    updatedMemberFilterDisplay([]);
     hideMemberSearchNoResults();
     return;
   }
-  const idsToHide = filterMembersByName(readMembersFromDOM(), searchTerm);
-  updatedMemberDisplay(idsToHide);
+  const memberIdsToHide = filterMembersByName(readMembersFromDOM(), searchTerm);
+  updatedMemberFilterDisplay(memberIdsToHide);
   const visibleCount = $(MEMBER_ROW_SELECTOR).not(".hidden").length;
   if (visibleCount === 0) {
     showMemberSearchNoResults();
