@@ -58,17 +58,21 @@
     align-items: center;
 }
 
-/* The member name-filter box is revealed only once the funnel toggle activates it
-   (adds .member-search-open to #MemberDeck). ID-scoped so this default cannot lose
-   to other #MemberDeck-scoped rules. Togglable on all viewports — no media guard. */
-#MemberDeck:not(.member-search-open) #SearchMemberWrap {
+/* The member name-filter box lives in its own subheader band
+   (#MemberDeckSearchSubheader, mirroring the UTub/Tag search subheader) between the
+   title row and the scrollable list, NOT inside the list body. It is revealed only
+   once the funnel toggle activates it (adds .member-search-open to #MemberDeck).
+   Gating the whole band (not just #SearchMemberWrap) collapses the dynamic-subheader
+   min-height strip when closed, leaving no empty gap. Togglable on all viewports —
+   no media guard. */
+#MemberDeck:not(.member-search-open) #MemberDeckSearchSubheader {
     display: none;
 }
 
-/* Vertical breathing room around the revealed member filter input. Lives on the
-   wrap (not the band) so it only takes space when open — the wrap is display:none
-   while collapsed (gate rule above). Mirrors #SearchUTubWrap. */
+/* Span the full panel width like the Tag/UTub search wraps, and add vertical
+   breathing room around the revealed input. Mirrors #SearchTagWrap. */
 #SearchMemberWrap {
+    width: 100%;
     padding-block: 4px;
 }
 

@@ -29,7 +29,16 @@ function handleBlur(event: JQuery.TriggeredEvent): void {
 // Handle blur for the search text input boxes
 function handleSearchInputBlur(event: JQuery.TriggeredEvent): void {
   const input = event.target as HTMLInputElement;
-  if (input.id === "URLContentSearch" || input.id === "UTubNameSearch") return;
+  // These search inputs use a placeholder and a permanently CSS-hidden label
+  // (#<id>+.text-input-label { display: none }), so the legacy show-label-on-blur
+  // behavior must not run — calling .show() would set an inline display:block that
+  // overrides the CSS and float the label over the input.
+  if (
+    input.id === "URLContentSearch" ||
+    input.id === "UTubNameSearch" ||
+    input.id === "MemberNameSearch"
+  )
+    return;
   const label = input.nextElementSibling;
   if (input.value === "") {
     $(label!).show();

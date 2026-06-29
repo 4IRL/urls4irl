@@ -3,10 +3,12 @@
 	<!-- Headers -->
 	{% include 'components/home/MemberDeck/MemberDeckHeaders.html' %}
 
-	<div class="flex-column content">
-		<!-- Create Member Form -->
-		{% include 'components/home/MemberDeck/CreateMemberForm.html' %}
-
+	<!-- Subheader: member name filter input. Header band mirroring the UTub/Tag
+	     search subheader (sits below the title row, above the scrollable list)
+	     instead of inside the list body. The whole band is CSS-gated by
+	     #MemberDeck.member-search-open so it fully collapses when the filter is
+	     closed. -->
+	<div id="MemberDeckSearchSubheader" class="titleElement pad-in-15p dynamic-subheader">
 		<div id="SearchMemberWrap" class="input-text-holder flex-column">
 			<div class="text-input-container">
 				<div class="text-input-inner-container">
@@ -24,6 +26,12 @@
 				</div>
 			</div>
 		</div>
+	</div>
+
+	<div class="flex-column content">
+		<!-- Create Member Form -->
+		{% include 'components/home/MemberDeck/CreateMemberForm.html' %}
+
 		<p id="MemberSearchNoResults" class="hidden"></p>
 		<span id="MemberSearchAnnouncement" class="visually-hidden" aria-live="polite"></span>
 
