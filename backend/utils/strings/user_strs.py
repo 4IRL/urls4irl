@@ -18,6 +18,9 @@ MEMBER_DELETE_WARNING = (
     "This member will no longer have access to the URLs in this UTub."
 )
 MEMBER_LEAVE_WARNING = "You will no longer have access to the URLs in this UTub."
+MEMBER_SEARCH_NO_RESULTS = "No members found"
+MEMBER_SEARCH_PLACEHOLDER = "Filter members"
+MEMBER_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} members shown"
 
 
 class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):

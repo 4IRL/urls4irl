@@ -21,7 +21,10 @@ from backend.utils.strings.url_strs import (
     UTUB_NO_URLS,
 )
 from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
-from backend.utils.strings.user_strs import COOKIE_BANNER_SEEN
+from backend.utils.strings.user_strs import (
+    COOKIE_BANNER_SEEN,
+    MEMBER_SEARCH_NO_RESULTS,
+)
 from backend.utils.strings.utub_strs import UTUB_SEARCH_NO_RESULTS
 
 
@@ -143,6 +146,7 @@ class UI_TEST_STRINGS:
     TAG_DECK_NO_TAGS = _TAG_DECK_NO_TAGS
     URL_SEARCH_NO_URLS = URL_SEARCH_NO_RESULTS
     UTUB_SEARCH_NO_UTUBS = UTUB_SEARCH_NO_RESULTS
+    MEMBER_SEARCH_NO_MEMBERS = MEMBER_SEARCH_NO_RESULTS
     UTUB_NO_URLS = UTUB_NO_URLS
     ADD_URL_BUTTON = ADD_URL_BUTTON
 
