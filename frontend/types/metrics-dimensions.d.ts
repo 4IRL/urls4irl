@@ -112,6 +112,16 @@ export type DimTagSearchClose = {
   target: "tags";
 };
 
+export type DimMemberSearchOpen = {
+  device_type: DeviceType;
+  target: "members";
+};
+
+export type DimMemberSearchClose = {
+  device_type: DeviceType;
+  target: "members";
+};
+
 export type DimTagCreateOpen = {
   device_type: DeviceType;
   scope: TagScope;
@@ -229,6 +239,8 @@ export type UIEventDimensions = {
   ui_cross_utub_search_result_access: DimCrossUtubSearchResultAccess;
   ui_tag_search_open: DimTagSearchOpen;
   ui_tag_search_close: DimTagSearchClose;
+  ui_member_search_open: DimMemberSearchOpen;
+  ui_member_search_close: DimMemberSearchClose;
   ui_tag_apply: DimDeviceOnly;
   ui_tag_remove: DimDeviceOnly;
   ui_tag_create_open: DimTagCreateOpen;

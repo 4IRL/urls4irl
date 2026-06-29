@@ -194,6 +194,14 @@ class _DimTagSearchClose(UIBaseDimensions):
     target: Literal["tags"]
 
 
+class _DimMemberSearchOpen(UIBaseDimensions):
+    target: Literal["members"]
+
+
+class _DimMemberSearchClose(UIBaseDimensions):
+    target: Literal["members"]
+
+
 class _DimTagCreateOpen(UIBaseDimensions):
     scope: TagScope
 
@@ -447,6 +455,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.UI_CROSS_UTUB_SEARCH_RESULT_ACCESS: _DimCrossUtubSearchResultAccess,
     EventName.UI_TAG_SEARCH_OPEN: _DimTagSearchOpen,
     EventName.UI_TAG_SEARCH_CLOSE: _DimTagSearchClose,
+    EventName.UI_MEMBER_SEARCH_OPEN: _DimMemberSearchOpen,
+    EventName.UI_MEMBER_SEARCH_CLOSE: _DimMemberSearchClose,
     # UI — Tags
     EventName.UI_TAG_APPLY: _DimDeviceOnly,
     EventName.UI_TAG_REMOVE: _DimDeviceOnly,
