@@ -33,6 +33,7 @@ from tests.functional.selenium_utils import (
     force_next_delete_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -128,7 +129,7 @@ def test_dismiss_delete_member_modal_x(
 
     delete_member_active_utub(browser, member_name)
 
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_for_modal_ready(browser, HPL.HOME_MODAL)
     home_modal = browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL)
     x_btn = home_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_X_CLOSE)
     assert x_btn.is_displayed()
