@@ -17,6 +17,7 @@ from tests.functional.selenium_utils import (
     clear_then_send_keys,
     dispatch_pointer_drag,
     wait_for_animation_to_end_check_top_lhs_corner,
+    wait_for_element_presence,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -430,6 +431,6 @@ def delete_utub_tag_elem(browser: WebDriver, tag_id: str, app):
     delete_utub_tag_css_selector = (
         f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
     )
-    utub_tag_elem = browser.find_element(By.CSS_SELECTOR, delete_utub_tag_css_selector)
+    utub_tag_elem = wait_for_element_presence(browser, delete_utub_tag_css_selector)
     wait_until_hidden(browser, HPL.HOME_MODAL)
     wait_for_element_to_be_removed(browser, utub_tag_elem)
