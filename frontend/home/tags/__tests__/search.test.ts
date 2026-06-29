@@ -1,4 +1,5 @@
 import {
+  applyAlternatingTagBackground,
   closeTagNameFilter,
   hideTagFilterBar,
   isTagFilterActive,
@@ -162,6 +163,39 @@ describe("Tag Filter", () => {
 
       expect($("#TagSearchAnnouncement").text()).toBe(
         APP_CONFIG.strings.TAG_SEARCH_NO_RESULTS,
+      );
+    });
+  });
+
+  describe("applyAlternatingTagBackground (re-stripe)", () => {
+    it("stripes every other visible row by position with all rows shown", () => {
+      applyAlternatingTagBackground();
+
+      // Visible indices 0,1,2 -> only index 1 (id=2) is striped.
+      expect($('.tagFilter[data-utub-tag-id="1"]').hasClass("tag-stripe")).toBe(
+        false,
+      );
+      expect($('.tagFilter[data-utub-tag-id="2"]').hasClass("tag-stripe")).toBe(
+        true,
+      );
+      expect($('.tagFilter[data-utub-tag-id="3"]').hasClass("tag-stripe")).toBe(
+        false,
+      );
+    });
+
+    it("re-indexes stripes over the visible subset when a filter hides a row", () => {
+      vi.mocked(filterTagsByName).mockReturnValue([1]);
+
+      $("#TagNameSearch").val("eta").trigger("input");
+
+      // id=1 hidden; remaining visible: id=2 (index 0 -> not striped),
+      // id=3 (index 1 -> striped). The :nth-child rule would have left id=2
+      // unstriped (DOM position 2) and misaligned the visible pair.
+      expect($('.tagFilter[data-utub-tag-id="2"]').hasClass("tag-stripe")).toBe(
+        false,
+      );
+      expect($('.tagFilter[data-utub-tag-id="3"]').hasClass("tag-stripe")).toBe(
+        true,
       );
     });
   });

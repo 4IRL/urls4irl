@@ -13,6 +13,7 @@ import {
   setupOpenCreateUTubTagEventListeners,
 } from "./create.js";
 import {
+  applyAlternatingTagBackground,
   hideTagFilterBar,
   reapplyTagFilter,
   resetTagFilter,
@@ -66,6 +67,9 @@ export function setTagDeckOnUTubSelected(
       ),
     );
   }
+
+  // Stripe the freshly-built rows (mirrors the member deck build).
+  applyAlternatingTagBackground();
 
   setTagSelectorSearchEventListener();
   setTagNameFilterToggleListeners();

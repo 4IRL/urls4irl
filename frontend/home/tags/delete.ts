@@ -7,6 +7,7 @@ import { $ } from "../../lib/globals.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getState, setState } from "../../store/app-store.js";
+import { applyAlternatingTagBackground } from "./search.js";
 import { TAG_SCOPE } from "../../types/metrics-dim-values.js";
 
 type DeleteUtubTagResponse = SuccessResponse<"deleteUtubTag">;
@@ -135,6 +136,10 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
     urlTagBadges.remove();
 
     utubTagSelector.remove();
+
+    // Removing a row shifts the visible parity, so re-stripe the survivors (this
+    // path bypasses reapplyTagFilter, which handles striping on add/update).
+    applyAlternatingTagBackground();
 
     // If no tags are left then reset back to only showing Create UTub Tag Button
     if ($(".tagFilter").length === 0) {

@@ -94,8 +94,11 @@
 
 /* Zebra-stripe the unselected (default) tag rows like the UTub/member lists.
    Selected tags keep their uniform highlight so the filter state still reads —
-   the stripe rides underneath the state, never replaces it. */
-#listTags .tagFilter.unselected:nth-child(even) {
+   the stripe rides underneath the state, never replaces it. The stripe class is
+   assigned in JS (applyAlternatingTagBackground) over *visible* rows, so the
+   alternation stays correct when an active filter hides rows — a :nth-child rule
+   would count hidden rows and misalign the visible subset. */
+#listTags .tagFilter.unselected.tag-stripe {
     background-color: var(--panelBackgroundColor);
 }
 
