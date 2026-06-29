@@ -5,8 +5,10 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.ui import WebDriverWait
 
+from backend import db
+from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
@@ -19,12 +21,16 @@ from tests.functional.login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid_mobile,
 )
-from tests.functional.members_ui.selenium_utils import open_member_name_filter
+from tests.functional.members_ui.selenium_utils import (
+    create_member_active_utub,
+    open_member_name_filter,
+)
 from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
     wait_for_class_to_be_removed,
     wait_then_click_element,
+    wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
@@ -53,6 +59,26 @@ def _get_owner_and_other_member(
 
 def _member_badge_selector(member_id: int) -> str:
     return f"{HPL.BADGES_MEMBERS}[memberid='{member_id}']"
+
+
+def _add_existing_user_as_member(
+    app: Flask, utub_id: int, username: str
+) -> tuple[int, str]:
+    """
+    Adds the existing U4I user with ``username`` to ``utub_id`` as a regular
+    member (not creator). Used to seed a second member so an active filter has a
+    non-owner row to keep visible while the owner is filtered out. Returns the
+    (user_id, username) as primitives so callers do not hold a detached ORM row.
+    """
+    with app.app_context():
+        user: Users = Users.query.filter(Users.username == username).first()
+        membership = Utub_Members()
+        membership.utub_id = utub_id
+        membership.user_id = user.id
+        membership.member_role = Member_Role.MEMBER
+        db.session.add(membership)
+        db.session.commit()
+        return user.id, user.username
 
 
 def _unique_username_substring(target: Users, others: list[Users]) -> str:
@@ -365,3 +391,84 @@ def test_filter_resets_on_add_member_form_open(
         )
     )
     assert_not_visible_css_selector(browser, HPL.DISPLAY_MEMBER_WRAP, time=3)
+
+
+def test_member_filter_reapplied_after_successful_add(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a UTub owner has a filter term active that hides the owner row while a
+          seeded non-owner member stays visible
+    WHEN they open the add-member form (which collapses the filter and clears the
+         term) and successfully add a NEW member
+    THEN createMemberSuccess -> reapplyMemberFilter re-evaluates the refreshed
+         #listMembers against the now-empty term: every row (the previously hidden
+         owner, the seeded member, and the newly appended member) is visible. This
+         proves reapplyMemberFilter ran on the create-success path rather than the
+         new badge merely being appended while stale `.hidden` state persisted on
+         the owner row.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    # Seed a second (non-owner) member BEFORE selecting the UTub so the member deck
+    # renders it on the initial load (a re-select of the already-active UTub would
+    # not re-fetch the member list).
+    seeded_username = USERNAME_BASE + "3"
+    seeded_member_id, seeded_member_username = _add_existing_user_as_member(
+        app, utub_user_created.id, seeded_username
+    )
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    new_member_username = USERNAME_BASE + "2"
+    with app.app_context():
+        owner: Users = Users.query.get(user_id)
+        owner_id = owner.id
+        owner_username = owner.username
+        new_member: Users = Users.query.filter(
+            Users.username == new_member_username
+        ).first()
+        new_member_id = new_member.id
+
+    # A term unique to the seeded member, so the owner does not match and is hidden.
+    filter_term = next(
+        seeded_member_username[-length:]
+        for length in range(1, len(seeded_member_username) + 1)
+        if seeded_member_username[-length:] not in owner_username
+    )
+
+    owner_selector = _member_badge_selector(owner_id)
+    seeded_selector = _member_badge_selector(seeded_member_id)
+    new_member_selector = _member_badge_selector(new_member_id)
+
+    # Gate on the member deck finishing its render before targeting a specific
+    # badge (mirrors the sibling filter tests): the deck repaints just after UTub
+    # select, so wait for any member badge first to avoid racing the render.
+    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(browser, seeded_selector, timeout=3)
+
+    # Before adding: owner and seeded member are both visible.
+    assert_visible_css_selector(browser, owner_selector, time=3)
+    assert_visible_css_selector(browser, seeded_selector, time=3)
+
+    # Apply the filter: the owner row is hidden, the seeded member stays visible.
+    input_elem = open_member_name_filter(browser)
+    input_elem.send_keys(filter_term)
+    assert_not_visible_css_selector(browser, owner_selector, time=3)
+    assert_visible_css_selector(browser, seeded_selector, time=3)
+
+    # Add a brand-new member (opening the form collapses the filter and clears the
+    # term; on success reapplyMemberFilter runs against the empty term).
+    create_member_active_utub(browser, new_member_username)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE, time=3)
+    wait_until_hidden(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE, timeout=3)
+
+    # After the add: reapplyMemberFilter re-evaluated every row against the cleared
+    # term, so the previously hidden owner is visible again and the newly appended
+    # member is visible alongside the seeded member.
+    wait_until_visible_css_selector(browser, new_member_selector, timeout=3)
+    assert_visible_css_selector(browser, owner_selector, time=3)
+    assert_visible_css_selector(browser, seeded_selector, time=3)
+    assert_visible_css_selector(browser, new_member_selector, time=3)
