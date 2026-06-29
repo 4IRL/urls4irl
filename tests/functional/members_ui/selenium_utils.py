@@ -12,7 +12,30 @@ from tests.functional.selenium_utils import (
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
+    wait_until_in_focus,
+    wait_until_visible_css_selector,
 )
+
+
+def open_member_name_filter(browser: WebDriver) -> WebElement:
+    """
+    The member name filter input is hidden behind the funnel toggle on all viewports.
+    Click the funnel to reveal the input, wait for it to become visible and focused
+    (the open handler focuses it), then return the now-ready element.
+
+    Waiting for focus before any keys are sent hardens the root cause of the
+    focus/send_keys race rather than padding a timeout.
+
+    Args:
+        WebDriver open to the U4I Home Page with a UTub selected
+
+    Returns:
+        The visible, focused #MemberNameSearch input element
+    """
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_NAME_FILTER, time=3)
+    wait_until_visible_css_selector(browser, HPL.MEMBER_SEARCH_INPUT, timeout=3)
+    wait_until_in_focus(browser, HPL.MEMBER_SEARCH_INPUT, timeout=3)
+    return wait_then_get_element(browser, HPL.MEMBER_SEARCH_INPUT, time=3)
 
 
 def get_all_member_badges(browser: WebDriver) -> list[WebElement]:
