@@ -1,5 +1,7 @@
-from flask import url_for
+from flask import Flask, url_for
+from flask.testing import FlaskClient
 import pytest
+from werkzeug.test import TestResponse
 
 from backend import db
 from backend.models.forgot_passwords import Forgot_Passwords
@@ -18,7 +20,7 @@ _OAUTH_ONLY_USERNAME = "oauthforgotuser"
 _OAUTH_ONLY_EMAIL = "oauthforgotuser@example.com"
 
 
-def _make_oauth_only_user(app, *, with_identity: bool) -> str:
+def _make_oauth_only_user(app: Flask, *, with_identity: bool) -> str:
     """Create and commit an email-validated, password-less user, optionally with one
     linked OAuth identity. Returns the user's email address.
 
@@ -46,7 +48,9 @@ def _make_oauth_only_user(app, *, with_identity: bool) -> str:
         return user.email
 
 
-def _post_forgot_password(client, csrf_token, email):
+def _post_forgot_password(
+    client: FlaskClient, csrf_token: str, email: str
+) -> TestResponse:
     return client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         json={FORGOT_PASSWORD.EMAIL: email},
