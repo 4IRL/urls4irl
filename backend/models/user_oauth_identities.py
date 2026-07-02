@@ -61,7 +61,9 @@ class UserOAuthIdentity(db.Model):
 
     user: Users = db.relationship("Users", back_populates="oauth_identities")
 
-    def __init__(self, provider: str, provider_subject: str, email: str | None = None):
+    def __init__(
+        self, provider: str, provider_subject: str, email: str | None = None
+    ) -> None:
         self.provider = provider
         self.provider_subject = provider_subject
         self.email = email
