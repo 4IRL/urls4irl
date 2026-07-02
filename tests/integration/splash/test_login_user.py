@@ -1,5 +1,5 @@
 from copy import deepcopy
-from flask import url_for, request
+from flask import Flask, request, url_for
 from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
@@ -32,7 +32,7 @@ _OAUTH_ONLY_EMAIL = "oauthonlyuser@example.com"
 pytestmark = pytest.mark.splash
 
 
-def _make_oauth_only_user(app, email_validated: bool = True) -> Users:
+def _make_oauth_only_user(app: Flask, email_validated: bool = True) -> Users:
     """Create and commit a password-less user with one linked OAuth identity,
     returning the persisted Users instance. The email-validation state is
     configurable so tests can exercise both the validated and unvalidated
