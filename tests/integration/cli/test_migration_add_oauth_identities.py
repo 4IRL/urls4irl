@@ -5,6 +5,7 @@ from alembic import command
 from alembic.config import Config
 import pytest
 from sqlalchemy import inspect, text
+from sqlalchemy.engine import Connection
 
 from backend import db, migrate
 from backend.models.user_oauth_identities import UserOAuthIdentity  # noqa: F401
@@ -16,6 +17,8 @@ _PRE_OAUTH_REVISION = "681906a2f237"
 _OAUTH_REVISION = "1c458837fe0c"
 
 _OAUTH_TABLE = "UserOAuthIdentities"
+_USERS_TABLE = "Users"
+_ALEMBIC_VERSION_TABLE = "alembic_version"
 _EXPECTED_OAUTH_COLUMNS = {
     "id",
     "userID",
@@ -30,10 +33,9 @@ _EXPECTED_OAUTH_UNIQUE_CONSTRAINTS = {
 }
 _OAUTH_INDEX = "idx_oauth_identity_user"
 
-_SEED_USERNAME = "oauth_migration_user"
-_SEED_EMAIL = "oauth_migration_user@example.com"
-_SEED_PASSWORD = "hashed-placeholder"
-_SEED_UTUB_NAME = "OAuth Migration UTub"
+_MANAGEDB_DROP_ARGS = ["managedb", "drop", "test"]
+_ADDMOCK_ALL_ARGS = ["addmock", "all"]
+
 _SEED_TIMESTAMP = datetime(2026, 6, 14, 11, 0, 0, tzinfo=timezone.utc)
 
 _NULL_PASSWORD_USERNAME = "oauth_null_password_user"
@@ -47,41 +49,7 @@ def _build_alembic_config() -> Config:
     return alembic_config
 
 
-def _seed_user(connection) -> int:
-    return connection.execute(
-        text(
-            'INSERT INTO "Users" '
-            '(username, email, password, "createdAt", role, "emailValidated") '
-            "VALUES (:username, :email, :password, :created_at, 'USER', true) "
-            "RETURNING id"
-        ),
-        {
-            "username": _SEED_USERNAME,
-            "email": _SEED_EMAIL,
-            "password": _SEED_PASSWORD,
-            "created_at": _SEED_TIMESTAMP,
-        },
-    ).scalar_one()
-
-
-def _seed_utub(connection, creator_id: int) -> int:
-    return connection.execute(
-        text(
-            'INSERT INTO "Utubs" '
-            '("utubName", "utubCreator", "createdAt", "lastUpdated") '
-            "VALUES (:name, :creator, :created_at, :last_updated) "
-            "RETURNING id"
-        ),
-        {
-            "name": _SEED_UTUB_NAME,
-            "creator": creator_id,
-            "created_at": _SEED_TIMESTAMP,
-            "last_updated": _SEED_TIMESTAMP,
-        },
-    ).scalar_one()
-
-
-def _seed_null_password_user(connection) -> int:
+def _seed_null_password_user(connection: Connection) -> int:
     return connection.execute(
         text(
             'INSERT INTO "Users" '
@@ -97,6 +65,25 @@ def _seed_null_password_user(connection) -> int:
     ).scalar_one()
 
 
+def _capture_row_counts(connection: Connection) -> dict[str, int]:
+    """Return a per-table row count for every persisted table except the
+    Alembic bookkeeping table, keyed by table name.
+
+    Used to prove the OAuth migration up/down roundtrip preserves the mock
+    dataset seeded by ``flask addmock all`` (drift-proof row-count equality,
+    per CLAUDE.md — never hardcode counts).
+    """
+    inspector = inspect(connection)
+    row_counts: dict[str, int] = {}
+    for table_name in inspector.get_table_names():
+        if table_name == _ALEMBIC_VERSION_TABLE:
+            continue
+        row_counts[table_name] = connection.execute(
+            text(f'SELECT COUNT(*) FROM "{table_name}"')
+        ).scalar_one()
+    return row_counts
+
+
 def _password_column_is_nullable() -> bool:
     columns = inspect(db.engine).get_columns("Users")
     password_column = next(column for column in columns if column["name"] == "password")
@@ -105,15 +92,16 @@ def _password_column_is_nullable() -> bool:
 
 def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
     """
-    GIVEN a database at revision 681906a2f237 (pre-OAuth) seeded with one
-        Users row and one Utubs row
+    GIVEN a database at revision 681906a2f237 (pre-OAuth) seeded with the full
+        mock dataset via ``flask addmock all``
     WHEN the 1c458837fe0c migration is applied, reverted, and re-applied
     THEN the UserOAuthIdentities table, its columns, unique constraints, and
-        index are created on upgrade; Users.password flips to nullable; the
-        pre-existing rows survive; a null-password Users row can be inserted
-        while the table is migrated; the table is dropped and password reverts
-        to NOT NULL on downgrade; and the re-apply is idempotent — confirming
-        the migration is reversible against real seeded data (per CLAUDE.md).
+        index are created on upgrade; Users.password flips to nullable; every
+        seeded row survives the up/down roundtrip (row-count equality); a
+        null-password Users row can be inserted while the table is migrated; the
+        table is dropped and password reverts to NOT NULL on downgrade; and the
+        re-apply is idempotent — confirming the migration is reversible against
+        the real seeded dataset (per CLAUDE.md).
 
     Args:
         runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
@@ -122,7 +110,7 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
     app, cli_runner = runner
     migrate.init_app(app)
 
-    cli_runner.invoke(args=["managedb", "drop", "test"])
+    cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
 
     with app.app_context():
         command.upgrade(_build_alembic_config(), _PRE_OAUTH_REVISION)
@@ -131,9 +119,11 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
         assert not inspector.has_table(_OAUTH_TABLE)
         assert not _password_column_is_nullable()
 
-        with db.engine.begin() as connection:
-            seeded_user_id = _seed_user(connection)
-            _seed_utub(connection, seeded_user_id)
+        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+
+        with db.engine.connect() as connection:
+            row_counts_before_roundtrip = _capture_row_counts(connection)
+        assert row_counts_before_roundtrip[_USERS_TABLE] > 0
 
         command.upgrade(_build_alembic_config(), "head")
 
@@ -171,6 +161,10 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
         assert not inspector.has_table(_OAUTH_TABLE)
         assert not _password_column_is_nullable()
 
+        with db.engine.connect() as connection:
+            row_counts_after_roundtrip = _capture_row_counts(connection)
+        assert row_counts_after_roundtrip == row_counts_before_roundtrip
+
         command.upgrade(_build_alembic_config(), "head")
 
         inspector = inspect(db.engine)
@@ -186,11 +180,13 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
 
 def test_add_oauth_identities_migration_downgrade_blocked_by_null_password(runner):
     """
-    GIVEN the OAuth migration applied to head with a null-password Users row
+    GIVEN the OAuth migration applied to head over the full ``flask addmock all``
+        dataset, plus a null-password Users row
     WHEN the migration is downgraded (which re-applies NOT NULL to password)
     THEN the downgrade raises — proving the irreversibility note in the
         migration docstring is accurate — and a clean downgrade succeeds once
-        the null-password row is removed.
+        the null-password row is removed, preserving every seeded row
+        (row-count equality).
 
     Args:
         runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
@@ -199,9 +195,17 @@ def test_add_oauth_identities_migration_downgrade_blocked_by_null_password(runne
     app, cli_runner = runner
     migrate.init_app(app)
 
-    cli_runner.invoke(args=["managedb", "drop", "test"])
+    cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
 
     with app.app_context():
+        command.upgrade(_build_alembic_config(), _PRE_OAUTH_REVISION)
+
+        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+
+        with db.engine.connect() as connection:
+            row_counts_before_roundtrip = _capture_row_counts(connection)
+        assert row_counts_before_roundtrip[_USERS_TABLE] > 0
+
         command.upgrade(_build_alembic_config(), "head")
 
         with db.engine.begin() as connection:
@@ -218,6 +222,10 @@ def test_add_oauth_identities_migration_downgrade_blocked_by_null_password(runne
         inspector = inspect(db.engine)
         assert not inspector.has_table(_OAUTH_TABLE)
         assert not _password_column_is_nullable()
+
+        with db.engine.connect() as connection:
+            row_counts_after_roundtrip = _capture_row_counts(connection)
+        assert row_counts_after_roundtrip == row_counts_before_roundtrip
 
         command.upgrade(_build_alembic_config(), "head")
         db.create_all()
