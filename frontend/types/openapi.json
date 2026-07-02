@@ -4359,10 +4359,11 @@
       },
       "LoginErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
+        "enum": [1, 2, 3],
         "x-enum-varnames": [
           "ACCOUNT_NOT_EMAIL_VALIDATED",
-          "INVALID_FORM_INPUT"
+          "INVALID_FORM_INPUT",
+          "OAUTH_ONLY_ACCOUNT"
         ],
         "description": "Error codes for LoginErrorCodes"
       },

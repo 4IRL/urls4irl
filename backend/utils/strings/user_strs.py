@@ -45,6 +45,9 @@ EMAIL_TAKEN = "That email address is already in use."
 USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
 INVALID_PASSWORD = "Invalid password."
+OAUTH_ONLY_ACCOUNT = (
+    "This account uses a third-party sign-in and does not have a password."
+)
 ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
 INVALID_EMAIL = "Email is not valid."
 
@@ -57,6 +60,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     USER_NOT_EXIST = USER_NOT_EXIST
     ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     INVALID_PASSWORD = INVALID_PASSWORD
+    OAUTH_ONLY_ACCOUNT = OAUTH_ONLY_ACCOUNT
     INVALID_EMAIL = INVALID_EMAIL
 
 

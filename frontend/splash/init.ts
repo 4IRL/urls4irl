@@ -150,6 +150,10 @@ export function resetModalFormState($modal: JQuery): void {
   $modal.find(".invalid-feedback").remove();
   $modal.find(".form-control").removeClass("is-invalid");
   $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
+  // Re-show the Forgot-Password link in case a prior OAuth-only login error
+  // (errorCode 3) hid it — the login modal is a reused instance, so state
+  // must be reset each time it is shown. No-op on modals lacking the element.
+  $modal.find("#ForgotPasswordLink").show();
   hideSplashModalAlertBanner($modal);
 }
 

@@ -4,7 +4,9 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
@@ -24,7 +26,28 @@ from tests.utils_for_test import get_csrf_token, is_string_in_logs
 
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
 
+_OAUTH_ONLY_USERNAME = "oauthonlyuser"
+_OAUTH_ONLY_EMAIL = "oauthonlyuser@example.com"
+
 pytestmark = pytest.mark.splash
+
+
+def _make_oauth_only_user(app) -> Users:
+    """Create and commit an email-validated, password-less user with one linked
+    OAuth identity, returning the persisted Users instance."""
+    with app.app_context():
+        user = Users(
+            username=_OAUTH_ONLY_USERNAME,
+            email=_OAUTH_ONLY_EMAIL,
+            plaintext_password=None,
+        )
+        user.oauth_identities.append(
+            UserOAuthIdentity(provider="google", provider_subject="sub_123")
+        )
+        user.email_validated = True
+        db.session.add(user)
+        db.session.commit()
+        return user
 
 
 def test_login_registered_and_logged_in_user(login_first_user_with_register):
@@ -195,6 +218,50 @@ def test_login_failure_email_unverified_records_metric_with_reason(
     assert (
         parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "email_unverified"
     )
+
+
+def test_login_failure_oauth_only_account_records_metric_with_reason(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    load_login_page,
+):
+    """
+    GIVEN an email-validated, password-less user with one linked OAuth identity
+    WHEN they POST to "/login" attempting a form (password) login
+    THEN the request returns HTTP 400 with the OAUTH_ONLY_ACCOUNT error attached
+        to the password field AND exactly one LOGIN_FAILURE counter key is
+        written with reason="oauth_only".
+    """
+    client, csrf_token_str = load_login_page
+    user = _make_oauth_only_user(metrics_enabled_app)
+
+    # Before-state: password-less user with exactly one linked identity, and no
+    # LOGIN_FAILURE counter yet.
+    with metrics_enabled_app.app_context():
+        persisted_user = Users.query.filter(Users.username == user.username).first()
+        assert persisted_user.password is None
+        assert len(persisted_user.oauth_identities) == 1
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: _OAUTH_ONLY_USERNAME,
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 400
+    response_data = response.json
+    assert response_data[STD_JSON.ERRORS]["password"] == [
+        USER_FAILURE.OAUTH_ONLY_ACCOUNT
+    ]
+    assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.OAUTH_ONLY_ACCOUNT
+
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
+    assert len(counter_keys) == 1
+    assert parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "oauth_only"
 
 
 def test_login_unregistered_user(load_login_page):

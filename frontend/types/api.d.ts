@@ -1270,7 +1270,7 @@ export interface components {
      * @description Error codes for LoginErrorCodes
      * @enum {integer}
      */
-    LoginErrorCodes: 1 | 2;
+    LoginErrorCodes: 1 | 2 | 3;
     EmailValidationResponseSchema: {
       /**
        * @description Response status: Success, Failure, or No change

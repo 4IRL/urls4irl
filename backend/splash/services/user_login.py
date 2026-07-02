@@ -20,6 +20,7 @@ from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 _LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
 _LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
 _LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"
+_LOGIN_FAILURE_REASON_OAUTH_ONLY = "oauth_only"
 
 
 def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
@@ -35,6 +36,18 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
             error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+        )
+
+    if user.password is None:
+        warning_log("OAuth-only user attempted password login")
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_ONLY},
+        )
+        return build_field_error_response(
+            message=USER_FAILURE.UNABLE_TO_LOGIN,
+            errors={"password": [USER_FAILURE.OAUTH_ONLY_ACCOUNT]},
+            error_code=LoginErrorCodes.OAUTH_ONLY_ACCOUNT,
         )
 
     if not user.is_password_correct(password):

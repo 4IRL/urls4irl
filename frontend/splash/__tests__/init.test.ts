@@ -673,6 +673,20 @@ describe("resetModalFormState", () => {
     expect($modal.find("#submit").attr("disabled")).toBeUndefined();
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
   });
+
+  it("re-shows a #ForgotPasswordLink hidden by a prior OAuth-only error", () => {
+    // The login modal is a reused instance; an OAuth-only login error
+    // (errorCode 3) hides the link, so resetModalFormState must restore it on
+    // the next show so a later password login sees the link.
+    const $modal = $(
+      '<div><div id="ForgotPasswordLink" style="display: none;"></div></div>',
+    );
+    expect($modal.find("#ForgotPasswordLink").css("display")).toBe("none");
+
+    resetModalFormState($modal);
+
+    expect($modal.find("#ForgotPasswordLink").css("display")).not.toBe("none");
+  });
 });
 
 describe("initEmailValidationForm", () => {

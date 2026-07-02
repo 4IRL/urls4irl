@@ -123,6 +123,14 @@ function handleLoginFailure(
         $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }
+      case 3: {
+        // OAuth-only account: surface the password-field error and hide the
+        // "Forgot your password?" link — there is no password to reset.
+        handleImproperFormErrors($modal, errorJson);
+        $modal.find("#ForgotPasswordLink").hide();
+        $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
+        break;
+      }
     }
   } else {
     showSplashModalAlertBanner(

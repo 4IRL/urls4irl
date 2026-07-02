@@ -358,7 +358,7 @@ class _DimCrossUtubSearchPerformed(BaseModel):
 
 class _DimLoginFailure(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    reason: Literal["unknown_user", "bad_password", "email_unverified"]
+    reason: Literal["unknown_user", "bad_password", "email_unverified", "oauth_only"]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 

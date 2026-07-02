@@ -185,7 +185,12 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         description=("Login attempt rejected, tagged with closed-set failure reason"),
         category=EventCategory.DOMAIN,
         dimensions={
-            "reason": ("unknown_user", "bad_password", "email_unverified"),
+            "reason": (
+                "unknown_user",
+                "bad_password",
+                "email_unverified",
+                "oauth_only",
+            ),
         },
     ),
     EventName.EMAIL_VERIFIED: EventRegistryEntry(
