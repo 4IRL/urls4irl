@@ -50,7 +50,9 @@ class UserOAuthIdentity(db.Model):
         nullable=False,
         name="userID",
     )
-    provider: str = Column(String(50), nullable=False, name="provider")
+    provider: str = Column(
+        String(50), ForeignKey("Providers.key"), nullable=False, name="provider"
+    )
     provider_subject: str = Column(String(255), nullable=False, name="providerSubject")
     email: str | None = Column(
         String(USER_CONSTANTS.MAX_EMAIL_LENGTH), nullable=True, name="email"

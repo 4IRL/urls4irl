@@ -11,11 +11,12 @@ from backend.splash.services.oauth.account_service import (
     find_or_create_oauth_user,
     generate_unique_username_from_email,
 )
+from backend.splash.services.oauth.constants import Provider
 from backend.utils.constants import USER_CONSTANTS
 
 pytestmark = pytest.mark.unit
 
-_PROVIDER = "google"
+_PROVIDER = Provider.GOOGLE
 _SUBJECT = "google-subject-123"
 _EMAIL = "john.doe@example.com"
 _LOCAL_PART = "john.doe"

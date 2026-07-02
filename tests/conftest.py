@@ -27,6 +27,7 @@ from backend.config import (
 )
 from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.models.providers import Providers
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import User_Role, Users
@@ -38,6 +39,7 @@ from backend.utils.strings import model_strs
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
+    OAUTH_PROVIDER_SEED_ROWS,
     valid_user_1,
     valid_user_2,
     valid_user_3,
@@ -199,6 +201,24 @@ def _get_worker_num(worker_id: str) -> Optional[int]:
     return int(worker_id.replace("gw", ""))
 
 
+def _seed_providers_reference_data() -> None:
+    """Seed the Providers reference table so create_all() DBs satisfy the FK.
+
+    ``db.create_all()`` builds the empty Providers table but never runs the
+    migration seed, so any UserOAuthIdentity insert would FK-fail. These rows
+    mirror the migration's seed (the DB is the source of truth for valid
+    providers); the Provider enum deliberately does not drive this list. The
+    commit keeps the rows outside each test's rolled-back SAVEPOINT. Safe to
+    re-run: only missing keys are inserted.
+    """
+    existing_keys = {provider_row.key for provider_row in Providers.query.all()}
+    for provider_key, provider_display_name in OAUTH_PROVIDER_SEED_ROWS:
+        if provider_key in existing_keys:
+            continue
+        db.session.add(Providers(key=provider_key, display_name=provider_display_name))
+    db.session.commit()
+
+
 @pytest.fixture(scope="session")
 def ignore_deprecation_warning():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -354,6 +374,7 @@ def build_app(
     with app_for_test.app_context():
         db.init_app(app_for_test)
         db.create_all()
+        _seed_providers_reference_data()
 
     yield app_for_test, config
 

@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.splash.services.oauth.constants import Provider
 from backend.utils.constants import USER_CONSTANTS
 
 
@@ -16,7 +17,7 @@ class EmailAlreadyRegisteredError(Exception):
     can render an actionable message to the user.
     """
 
-    def __init__(self, *, email: str, provider: str) -> None:
+    def __init__(self, *, email: str, provider: Provider) -> None:
         self.email = email
         self.provider = provider
         super().__init__(
@@ -91,7 +92,7 @@ def generate_unique_username_from_email(email: str) -> str:
 
 def find_or_create_oauth_user(
     *,
-    provider: str,
+    provider: Provider,
     subject: str,
     email: str,
     preferred_username: str | None = None,
@@ -105,7 +106,10 @@ def find_or_create_oauth_user(
     3. Else create a new password-less user with a freshly linked identity.
 
     Args:
-        provider: The OAuth provider key (e.g. ``"google"``, ``"github"``).
+        provider: The OAuth provider whose branch is being handled. Must
+            reference a seeded row in the ``Providers`` table; an unknown value
+            fails the ``provider`` foreign key at commit (surfaced as
+            ``IntegrityError``). Validity is enforced by the DB, not this enum.
         subject: The provider's stable subject identifier for the account.
         email: The email reported by the provider.
         preferred_username: An optional provider-supplied username to seed the
@@ -119,7 +123,8 @@ def find_or_create_oauth_user(
             local account.
         IntegrityError: If the commit conflicts on a constraint other than the
             ``(provider, provider_subject)`` identity (e.g. an email/username
-            collision with no matching identity to fall back to).
+            collision, or an unknown provider that fails the foreign key, with
+            no matching identity to fall back to).
     """
     existing_identity: UserOAuthIdentity | None = UserOAuthIdentity.query.filter_by(
         provider=provider, provider_subject=subject

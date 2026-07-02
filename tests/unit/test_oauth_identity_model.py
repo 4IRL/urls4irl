@@ -3,12 +3,13 @@ import pytest
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.splash.services.oauth.constants import Provider
 
 pytestmark = pytest.mark.unit
 
 _USERNAME = "oauthonly"
 _EMAIL = "oauthonly@example.com"
-_PROVIDER = "google"
+_PROVIDER = Provider.GOOGLE
 _PROVIDER_SUBJECT = "google-subject-123"
 
 

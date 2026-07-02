@@ -25,9 +25,11 @@ from backend.config import (
 )
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.providers import Providers
 from backend.models.users import Users
 from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.models_for_test import OAUTH_PROVIDER_SEED_ROWS
 from tests.functional.db_utils import add_mock_urls
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
@@ -58,6 +60,24 @@ def _get_worker_num(worker_id: str) -> Optional[int]:
     if worker_id == "master":
         return None
     return int(worker_id.replace("gw", ""))
+
+
+def _seed_providers_reference_data() -> None:
+    """Seed the Providers reference table so create_all() DBs satisfy the FK.
+
+    ``db.create_all()`` builds the empty Providers table but never runs the
+    migration seed, so any UserOAuthIdentity insert would FK-fail. These rows
+    mirror the migration's seed (the DB is the source of truth for valid
+    providers); the Provider enum deliberately does not drive this list. The
+    commit keeps the rows outside each test's rolled-back SAVEPOINT. Safe to
+    re-run: only missing keys are inserted.
+    """
+    existing_keys = {provider_row.key for provider_row in Providers.query.all()}
+    for provider_key, provider_display_name in OAUTH_PROVIDER_SEED_ROWS:
+        if provider_key in existing_keys:
+            continue
+        db.session.add(Providers(key=provider_key, display_name=provider_display_name))
+    db.session.commit()
 
 
 @pytest.fixture(scope="session")
@@ -179,6 +199,7 @@ def build_app(
     with app_for_test.app_context():
         db.init_app(app_for_test)
         db.create_all()
+        _seed_providers_reference_data()
 
     yield app_for_test, worker_config
 
