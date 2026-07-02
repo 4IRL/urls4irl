@@ -228,9 +228,10 @@ def test_login_failure_oauth_only_account_records_metric_with_reason(
     """
     GIVEN an email-validated, password-less user with one linked OAuth identity
     WHEN they POST to "/login" attempting a form (password) login
-    THEN the request returns HTTP 400 with the OAUTH_ONLY_ACCOUNT error attached
-        to the password field AND exactly one LOGIN_FAILURE counter key is
-        written with reason="oauth_only".
+    THEN the request returns the anti-enumeration bad-password contract (HTTP 400,
+        INVALID_PASSWORD on the password field, errorCode INVALID_FORM_INPUT) so
+        the account cannot be fingerprinted AND exactly one LOGIN_FAILURE counter
+        key is written with reason="oauth_only".
     """
     client, csrf_token_str = load_login_page
     user = _make_oauth_only_user(metrics_enabled_app)
@@ -254,14 +255,47 @@ def test_login_failure_oauth_only_account_records_metric_with_reason(
 
     assert response.status_code == 400
     response_data = response.json
-    assert response_data[STD_JSON.ERRORS]["password"] == [
-        USER_FAILURE.OAUTH_ONLY_ACCOUNT
-    ]
-    assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.OAUTH_ONLY_ACCOUNT
+    assert response_data[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.INVALID_FORM_INPUT
 
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
     assert len(counter_keys) == 1
     assert parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "oauth_only"
+
+
+def test_login_oauth_only_response_identical_to_wrong_password(
+    register_first_user, load_login_page, app
+):
+    """
+    GIVEN a normal password user and a password-less (OAuth-only) user
+    WHEN each POSTs "/login" with a wrong password
+    THEN both responses are byte-identical (same HTTP status, same JSON body) so
+        an attacker cannot fingerprint OAuth-only accounts from the login response.
+    """
+    client, csrf_token_str = load_login_page
+    normal_user = deepcopy(valid_user_1)
+    _make_oauth_only_user(app)
+
+    wrong_password_response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: normal_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "definitely-wrong-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    oauth_only_response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: _OAUTH_ONLY_USERNAME,
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert oauth_only_response.status_code == wrong_password_response.status_code
+    assert oauth_only_response.get_data() == wrong_password_response.get_data()
 
 
 def test_login_unregistered_user(load_login_page):

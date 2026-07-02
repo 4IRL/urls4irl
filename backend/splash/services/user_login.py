@@ -44,10 +44,14 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_ONLY},
         )
+        # Return a response byte-identical to a genuine wrong-password attempt so
+        # an attacker cannot fingerprint password-less (OAuth-only) accounts. The
+        # OAuth steer lives in the shared INVALID_PASSWORD message every failed
+        # login sees; only the internal metrics reason distinguishes this case.
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"password": [USER_FAILURE.OAUTH_ONLY_ACCOUNT]},
-            error_code=LoginErrorCodes.OAUTH_ONLY_ACCOUNT,
+            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
+            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
         )
 
     if not user.is_password_correct(password):

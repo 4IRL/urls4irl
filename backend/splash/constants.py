@@ -18,7 +18,6 @@ class ForgotPasswordErrorCodes(IntEnum):
 class LoginErrorCodes(IntEnum):
     ACCOUNT_NOT_EMAIL_VALIDATED = 1
     INVALID_FORM_INPUT = 2
-    OAUTH_ONLY_ACCOUNT = 3
 
 
 class RegisterErrorCodes(IntEnum):
