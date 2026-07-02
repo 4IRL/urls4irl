@@ -100,6 +100,11 @@ def test_dismiss_delete_member_modal_btn(
 
     delete_member_active_utub(browser, member_name)
 
+    # Gate on the show-transition being fully settled (_isTransitioning === false)
+    # before clicking dismiss. Clicking while Bootstrap's fade-in is still running
+    # causes the modal("hide") to be dropped as an overlapping transition, leaving
+    # the modal visible and racing wait_until_hidden.
+    wait_for_modal_ready(browser, HPL.HOME_MODAL)
     wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
 
     create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
