@@ -233,3 +233,38 @@ def test_second_identity_same_user_provider_raises_integrity_error(app):
             db.session.commit()
 
         db.session.rollback()
+
+
+def test_unique_provider_subject_constraint(app):
+    """
+    GIVEN two distinct users, one already linked to a (provider, subject)
+    WHEN a second user is linked to the SAME (provider, subject)
+    THEN the UNIQUE(provider, providerSubject) constraint raises IntegrityError
+
+    Uses two different users so the (userID, provider) pair differs; only the
+    globally-unique (provider, providerSubject) constraint can fire here.
+    """
+    with app.app_context():
+        first_user = Users(username="provsubuser1", email="provsub1@example.com")
+        first_user.oauth_identities.append(
+            UserOAuthIdentity(
+                provider=_PROVIDER, provider_subject=_SUBJECT, email=_EMAIL
+            )
+        )
+        db.session.add(first_user)
+        db.session.commit()
+
+        second_user = Users(username="provsubuser2", email="provsub2@example.com")
+        db.session.add(second_user)
+        db.session.commit()
+
+        conflicting_identity = UserOAuthIdentity(
+            provider=_PROVIDER, provider_subject=_SUBJECT, email=_EMAIL
+        )
+        conflicting_identity.user_id = second_user.id
+        db.session.add(conflicting_identity)
+
+        with pytest.raises(IntegrityError):
+            db.session.commit()
+
+        db.session.rollback()
