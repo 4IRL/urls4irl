@@ -3,7 +3,7 @@
 Cross-layer navigation map for every route in the application. Each entry traces:
 **Route → Handler → Service → Template → JS Module → Tests**
 
-Last updated: 2026-06-07
+Last updated: 2026-07-01
 
 ---
 
@@ -122,6 +122,58 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **JS Module**  | `frontend/splash/reset-password-form.ts` — `JSON.stringify`, `application/json`                                                                                                                                                                                                     |
 | **CSRF**       | Meta tag                                                                                                                                                                                                                                                                            |
 | **Tests**      | `tests/integration/splash/test_reset_password.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_reset_password_ui.py` (marker: `splash_ui`)                                                         |
+
+---
+
+## OAuth Blueprint (planned — routes not yet implemented)
+
+Base path: `/oauth`. These rows are stubs for routes landing in later phases of the OAuth initiative (see `plans/oauth/oauth-integration-master.md`). The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) already exist as of Phase 1, but carry no route.
+
+**CSRF pattern (planned):** the forthcoming OAuth callback routes will stack the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route` above `@api_route`, as at `backend/metrics/routes.py:ingest`). No new decorator or helper is introduced — the established exemption pattern is reused. OAuth state/CSRF is handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
+
+### GET /oauth/google/login
+
+| Layer          | Location                          |
+| -------------- | --------------------------------- |
+| **Handler**    | Phase 2 — not yet implemented.    |
+| **Decorators** | Phase 2 — not yet implemented.    |
+| **Service**    | Phase 2 — not yet implemented.    |
+| **Template**   | Phase 2 — not yet implemented.    |
+| **JS Module**  | Phase 2 — not yet implemented.    |
+| **Tests**      | Phase 2 — not yet implemented.    |
+
+### GET /oauth/google/callback
+
+| Layer          | Location                          |
+| -------------- | --------------------------------- |
+| **Handler**    | Phase 2 — not yet implemented.    |
+| **Decorators** | Phase 2 — not yet implemented.    |
+| **Service**    | Phase 2 — not yet implemented.    |
+| **Template**   | Phase 2 — not yet implemented.    |
+| **JS Module**  | Phase 2 — not yet implemented.    |
+| **Tests**      | Phase 2 — not yet implemented.    |
+
+### GET /oauth/github/login
+
+| Layer          | Location                          |
+| -------------- | --------------------------------- |
+| **Handler**    | Phase 3 — not yet implemented.    |
+| **Decorators** | Phase 3 — not yet implemented.    |
+| **Service**    | Phase 3 — not yet implemented.    |
+| **Template**   | Phase 3 — not yet implemented.    |
+| **JS Module**  | Phase 3 — not yet implemented.    |
+| **Tests**      | Phase 3 — not yet implemented.    |
+
+### GET /oauth/github/callback
+
+| Layer          | Location                          |
+| -------------- | --------------------------------- |
+| **Handler**    | Phase 3 — not yet implemented.    |
+| **Decorators** | Phase 3 — not yet implemented.    |
+| **Service**    | Phase 3 — not yet implemented.    |
+| **Template**   | Phase 3 — not yet implemented.    |
+| **JS Module**  | Phase 3 — not yet implemented.    |
+| **Tests**      | Phase 3 — not yet implemented.    |
 
 ---
 
