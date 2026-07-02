@@ -1,6 +1,7 @@
 from urllib.parse import parse_qs, urlencode, urlparse
 from flask import request, url_for
 from flask_login import current_user, login_user
+from werkzeug.security import check_password_hash, generate_password_hash
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event
@@ -16,6 +17,8 @@ from backend.splash.constants import LoginErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+
+_DUMMY_HASH = generate_password_hash("__dummy__")
 
 _LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
 _LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
@@ -48,6 +51,10 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         # an attacker cannot fingerprint password-less (OAuth-only) accounts. The
         # OAuth steer lives in the shared INVALID_PASSWORD message every failed
         # login sees; only the internal metrics reason distinguishes this case.
+        # Spend the same bcrypt time the wrong-password branch does so the two
+        # branches are indistinguishable by wall-clock latency as well as bytes.
+        # The result is intentionally discarded — only the elapsed time matters.
+        check_password_hash(_DUMMY_HASH, password)
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
