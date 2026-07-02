@@ -46,6 +46,8 @@ def generate_unique_username_from_email(email: str) -> str:
         physical length limit.
 
     Raises:
+        ValueError: If the email has an empty local-part (e.g. ``@example.com``)
+            and no username can be derived.
         RuntimeError: If every suffix from 1 to 99999 is already taken.
 
     Examples:
@@ -60,6 +62,11 @@ def generate_unique_username_from_email(email: str) -> str:
         'john.doe1'                      # collision -> base + numeric suffix
     """
     base_candidate = email.split("@", 1)[0]
+    if not base_candidate:
+        raise ValueError(
+            "Cannot derive a username from an email with an empty local-part "
+            f"(before '@'): '{email}'."
+        )
 
     no_collision_candidate = base_candidate[: USER_CONSTANTS.MAX_USERNAME_LENGTH_ACTUAL]
     if Users.query.filter(Users.username == no_collision_candidate).first() is None:

@@ -91,6 +91,17 @@ def test_generate_username_collision_shrinks_over_length_base(app):
         assert result.endswith("1")
 
 
+def test_generate_unique_username_raises_on_empty_local_part(app):
+    """
+    GIVEN an email with an empty local-part (e.g. '@example.com')
+    WHEN generate_unique_username_from_email is called
+    THEN it raises ValueError rather than producing an empty username
+    """
+    with app.app_context():
+        with pytest.raises(ValueError):
+            generate_unique_username_from_email("@example.com")
+
+
 # ---------------------------------------------------------------------------
 # find_or_create_oauth_user
 # ---------------------------------------------------------------------------
