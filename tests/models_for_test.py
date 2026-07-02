@@ -2,16 +2,6 @@ from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 
-# Reference-data seed for the Providers table, mirroring the migration's own
-# seed. The DB is the source of truth for valid OAuth providers; the Provider
-# enum deliberately does not drive this list, so a create_all() test DB is seeded
-# from the same literals prod's migration uses (and an enum member added without a
-# matching row FK-fails its test).
-OAUTH_PROVIDER_SEED_ROWS: tuple[tuple[str, str], ...] = (
-    ("google", "Google"),
-    ("github", "GitHub"),
-)
-
 """
 Users used for testing logging in correctly
 Models follow what is on a valid registration form

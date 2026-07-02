@@ -164,6 +164,25 @@ def test_find_or_create_raises_when_email_already_registered(app):
         assert UserOAuthIdentity.query.count() == identities_before
 
 
+def test_find_or_create_rejects_unknown_provider(app):
+    """
+    GIVEN a provider value outside the supported Provider set
+    WHEN find_or_create_oauth_user is called with it
+    THEN it raises ValueError before any query and creates no user or identity
+    """
+    with app.app_context():
+        users_before = Users.query.count()
+        identities_before = UserOAuthIdentity.query.count()
+
+        with pytest.raises(ValueError):
+            find_or_create_oauth_user(
+                provider="not-a-real-provider", subject=_SUBJECT, email=_EMAIL
+            )
+
+        assert Users.query.count() == users_before
+        assert UserOAuthIdentity.query.count() == identities_before
+
+
 def test_find_or_create_creates_new_user_and_identity(app):
     """
     GIVEN no existing identity and no user owning the email

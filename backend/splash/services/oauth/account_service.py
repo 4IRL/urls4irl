@@ -106,10 +106,9 @@ def find_or_create_oauth_user(
     3. Else create a new password-less user with a freshly linked identity.
 
     Args:
-        provider: The OAuth provider whose branch is being handled. Must
-            reference a seeded row in the ``Providers`` table; an unknown value
-            fails the ``provider`` foreign key at commit (surfaced as
-            ``IntegrityError``). Validity is enforced by the DB, not this enum.
+        provider: The OAuth provider whose branch is being handled. Accepts a
+            ``Provider`` member or its string value; any value outside the
+            supported set raises ``ValueError`` before any query runs.
         subject: The provider's stable subject identifier for the account.
         email: The email reported by the provider.
         preferred_username: An optional provider-supplied username to seed the
@@ -119,13 +118,15 @@ def find_or_create_oauth_user(
         The resolved (existing or newly created) Users instance.
 
     Raises:
+        ValueError: If ``provider`` is not a supported ``Provider``.
         EmailAlreadyRegisteredError: If the email belongs to an unlinked
             local account.
         IntegrityError: If the commit conflicts on a constraint other than the
             ``(provider, provider_subject)`` identity (e.g. an email/username
-            collision, or an unknown provider that fails the foreign key, with
-            no matching identity to fall back to).
+            collision with no matching identity to fall back to).
     """
+    provider = Provider(provider)
+
     existing_identity: UserOAuthIdentity | None = UserOAuthIdentity.query.filter_by(
         provider=provider, provider_subject=subject
     ).first()

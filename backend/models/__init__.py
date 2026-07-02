@@ -7,4 +7,3 @@ from backend.models.anonymous_latency_samples import (  # noqa: F401
 )
 from backend.models.anonymous_metrics import Anonymous_Metrics  # noqa: F401
 from backend.models.event_registry import Event_Registry  # noqa: F401
-from backend.models.providers import Providers  # noqa: F401

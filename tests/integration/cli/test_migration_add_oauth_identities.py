@@ -6,7 +6,6 @@ from alembic.config import Config
 import pytest
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
-from sqlalchemy.exc import IntegrityError
 
 from backend import db, migrate
 from backend.models.user_oauth_identities import UserOAuthIdentity  # noqa: F401
@@ -18,13 +17,8 @@ _PRE_OAUTH_REVISION = "681906a2f237"
 _OAUTH_REVISION = "1c458837fe0c"
 
 _OAUTH_TABLE = "UserOAuthIdentities"
-_PROVIDERS_TABLE = "Providers"
 _USERS_TABLE = "Users"
 _ALEMBIC_VERSION_TABLE = "alembic_version"
-
-_EXPECTED_PROVIDER_KEYS = {"google", "github"}
-_SEEDED_PROVIDER = "google"
-_UNSEEDED_PROVIDER = "not_a_real_provider"
 _EXPECTED_OAUTH_COLUMNS = {
     "id",
     "userID",
@@ -96,29 +90,6 @@ def _password_column_is_nullable() -> bool:
     return password_column["nullable"]
 
 
-def _fetch_provider_keys(connection: Connection) -> set[str]:
-    return {
-        row[0]
-        for row in connection.execute(text('SELECT "key" FROM "Providers"')).fetchall()
-    }
-
-
-def _insert_oauth_identity(connection: Connection, user_id: int, provider: str) -> None:
-    connection.execute(
-        text(
-            'INSERT INTO "UserOAuthIdentities" '
-            '("userID", provider, "providerSubject", "linkedAt") '
-            "VALUES (:user_id, :provider, :subject, :linked_at)"
-        ),
-        {
-            "user_id": user_id,
-            "provider": provider,
-            "subject": f"{provider}-subject-fk-check",
-            "linked_at": _SEED_TIMESTAMP,
-        },
-    )
-
-
 def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
     """
     GIVEN a database at revision 681906a2f237 (pre-OAuth) seeded with the full
@@ -173,26 +144,6 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
         )
         assert _password_column_is_nullable()
 
-        # The Providers reference table is created and seeded with exactly the
-        # supported provider keys by the same migration.
-        assert inspector.has_table(_PROVIDERS_TABLE)
-        with db.engine.connect() as connection:
-            assert _fetch_provider_keys(connection) == _EXPECTED_PROVIDER_KEYS
-
-        # The provider FK is the validity gate: an identity referencing an
-        # unseeded provider is rejected, a seeded provider is accepted.
-        with db.engine.connect() as connection:
-            some_user_id = connection.execute(
-                text('SELECT id FROM "Users" LIMIT 1')
-            ).scalar_one()
-        with pytest.raises(IntegrityError):
-            with db.engine.begin() as connection:
-                _insert_oauth_identity(connection, some_user_id, _UNSEEDED_PROVIDER)
-        with db.engine.begin() as connection:
-            _insert_oauth_identity(connection, some_user_id, _SEEDED_PROVIDER)
-        with db.engine.begin() as connection:
-            connection.execute(text('DELETE FROM "UserOAuthIdentities"'))
-
         # Behavioral proof of the nullable contract: a null-password Users row
         # inserts cleanly while the schema is migrated. Remove it before the
         # downgrade so the NOT NULL re-apply is not blocked.
@@ -208,7 +159,6 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
 
         inspector = inspect(db.engine)
         assert not inspector.has_table(_OAUTH_TABLE)
-        assert not inspector.has_table(_PROVIDERS_TABLE)
         assert not _password_column_is_nullable()
 
         with db.engine.connect() as connection:

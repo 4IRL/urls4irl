@@ -5,7 +5,6 @@ import sqlalchemy
 
 from backend.config import ConfigTest
 from backend.models.utub_url_tags import Utub_Url_Tags
-from tests.models_for_test import OAUTH_PROVIDER_SEED_ROWS
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
@@ -43,24 +42,6 @@ def clear_database(test_config: ConfigTest):
     meta.reflect()
     meta.drop_all()
     meta.create_all()
-
-    # drop_all/create_all wipes the Providers reference data, which the
-    # UserOAuthIdentities.provider foreign key depends on. Restore it here (from
-    # the same literals the migration and conftest seeds use) so OAuth-identity
-    # inserts in subsequent tests still resolve.
-    providers_table = meta.tables["Providers"]
-    with engine.begin() as connection:
-        connection.execute(
-            providers_table.insert(),
-            [
-                {
-                    "key": provider_key,
-                    "displayName": provider_display_name,
-                    "enabled": True,
-                }
-                for provider_key, provider_display_name in OAUTH_PROVIDER_SEED_ROWS
-            ],
-        )
 
 
 def trim_and_parse_logs(logs: list[LogRecord]) -> list[str]:
