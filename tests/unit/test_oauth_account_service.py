@@ -168,6 +168,7 @@ def test_find_or_create_creates_new_user_and_identity(app):
         assert Users.query.count() == users_before + 1
         assert UserOAuthIdentity.query.count() == identities_before + 1
         assert result.password is None
+        assert result.email_validated
         assert result.email == _EMAIL.lower()
         assert result.username == _LOCAL_PART
         assert len(result.oauth_identities) == 1

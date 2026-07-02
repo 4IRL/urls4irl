@@ -126,6 +126,7 @@ def find_or_create_oauth_user(
     new_user.oauth_identities.append(
         UserOAuthIdentity(provider=provider, provider_subject=subject, email=email)
     )
+    new_user.validate_email()
     db.session.add(new_user)
     db.session.commit()
     return new_user
