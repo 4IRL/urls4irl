@@ -69,6 +69,7 @@ class Users(db.Model, UserMixin):
         "UserOAuthIdentity",
         back_populates="user",
         cascade="all, delete-orphan",
+        lazy="select",
     )
 
     def __init__(
