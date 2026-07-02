@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from sqlalchemy.exc import IntegrityError
 
@@ -231,6 +233,86 @@ def test_second_identity_same_user_provider_raises_integrity_error(app):
 
         with pytest.raises(IntegrityError):
             db.session.commit()
+
+        db.session.rollback()
+
+
+def test_find_or_create_returns_existing_winner_on_concurrent_insert(app):
+    """
+    GIVEN a concurrent login committed an identity for (provider, subject)
+        after this call's initial lookup found none
+    WHEN find_or_create_oauth_user commits and the
+        UNIQUE(provider, provider_subject) constraint raises IntegrityError
+    THEN it rolls back, re-queries the identity, and returns the concurrent
+        winner's user rather than propagating the error
+
+    The race is simulated by patching the identity lookup so the *initial*
+    check sees None (as if the winner had not committed yet) while the except
+    branch's re-query returns the already-committed winner.
+    """
+    with app.app_context():
+        winner = Users(username="racewinner", email="winner@example.com")
+        winner.oauth_identities.append(
+            UserOAuthIdentity(
+                provider=_PROVIDER,
+                provider_subject=_SUBJECT,
+                email="winner@example.com",
+            )
+        )
+        db.session.add(winner)
+        db.session.commit()
+        winner_id = winner.id
+        winner_identity = winner.oauth_identities[0]
+
+        users_before = Users.query.count()
+
+        patched_query = MagicMock()
+        patched_query.filter_by.return_value.first.side_effect = [
+            None,
+            winner_identity,
+        ]
+
+        with patch.object(UserOAuthIdentity, "query", patched_query):
+            result = find_or_create_oauth_user(
+                provider=_PROVIDER, subject=_SUBJECT, email=_EMAIL
+            )
+
+        assert result.id == winner_id
+        # The losing insert was rolled back; no extra user survived.
+        assert Users.query.count() == users_before
+
+
+def test_find_or_create_reraises_non_identity_integrity_error(app):
+    """
+    GIVEN a commit conflict that is NOT the (provider, subject) identity race
+        (here, a username collision) and no matching identity to fall back to
+    WHEN find_or_create_oauth_user hits IntegrityError on commit
+    THEN it re-raises rather than swallowing the error, because the except
+        branch's re-query finds no winning identity
+    """
+    with app.app_context():
+        taken_username = "takenname"
+        assert Users.query.filter(Users.username == taken_username).first() is None
+        existing = Users(username=taken_username, email="taken@example.com")
+        db.session.add(existing)
+        db.session.commit()
+
+        assert (
+            UserOAuthIdentity.query.filter_by(
+                provider=_PROVIDER, provider_subject=_SUBJECT
+            ).first()
+            is None
+        )
+
+        with patch(
+            "backend.splash.services.oauth.account_service."
+            "generate_unique_username_from_email",
+            return_value=taken_username,
+        ):
+            with pytest.raises(IntegrityError):
+                find_or_create_oauth_user(
+                    provider=_PROVIDER, subject=_SUBJECT, email=_EMAIL
+                )
 
         db.session.rollback()
 

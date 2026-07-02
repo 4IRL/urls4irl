@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from sqlalchemy.exc import IntegrityError
+
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
@@ -115,6 +117,9 @@ def find_or_create_oauth_user(
     Raises:
         EmailAlreadyRegisteredError: If the email belongs to an unlinked
             local account.
+        IntegrityError: If the commit conflicts on a constraint other than the
+            ``(provider, provider_subject)`` identity (e.g. an email/username
+            collision with no matching identity to fall back to).
     """
     existing_identity: UserOAuthIdentity | None = UserOAuthIdentity.query.filter_by(
         provider=provider, provider_subject=subject
@@ -135,5 +140,21 @@ def find_or_create_oauth_user(
     )
     new_user.validate_email()
     db.session.add(new_user)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError as integrity_error:
+        # A concurrent login for the same (provider, subject) can pass the
+        # check-then-act guards above and commit first, so this insert loses
+        # the race on the UNIQUE(provider, provider_subject) constraint.
+        db.session.rollback()
+        concurrent_winner_identity: UserOAuthIdentity | None = (
+            UserOAuthIdentity.query.filter_by(
+                provider=provider, provider_subject=subject
+            ).first()
+        )
+        if concurrent_winner_identity is not None:
+            return concurrent_winner_identity.user
+        # No matching identity means the conflict was an email/username
+        # collision, not the race we handle — surface it to the caller.
+        raise integrity_error
     return new_user
