@@ -32,9 +32,11 @@ _OAUTH_ONLY_EMAIL = "oauthonlyuser@example.com"
 pytestmark = pytest.mark.splash
 
 
-def _make_oauth_only_user(app) -> Users:
-    """Create and commit an email-validated, password-less user with one linked
-    OAuth identity, returning the persisted Users instance."""
+def _make_oauth_only_user(app, email_validated: bool = True) -> Users:
+    """Create and commit a password-less user with one linked OAuth identity,
+    returning the persisted Users instance. The email-validation state is
+    configurable so tests can exercise both the validated and unvalidated
+    OAuth-only login paths."""
     with app.app_context():
         user = Users(
             username=_OAUTH_ONLY_USERNAME,
@@ -44,7 +46,7 @@ def _make_oauth_only_user(app) -> Users:
         user.oauth_identities.append(
             UserOAuthIdentity(provider="google", provider_subject="sub_123")
         )
-        user.email_validated = True
+        user.email_validated = email_validated
         db.session.add(user)
         db.session.commit()
         return user
@@ -296,6 +298,54 @@ def test_login_oauth_only_response_identical_to_wrong_password(
 
     assert oauth_only_response.status_code == wrong_password_response.status_code
     assert oauth_only_response.get_data() == wrong_password_response.get_data()
+
+
+def test_login_oauth_only_unverified_returns_invalid_password_not_unvalidated(
+    load_login_page, app
+):
+    """
+    GIVEN an UNVERIFIED (email_validated=False), password-less OAuth-only user
+    WHEN they POST to "/login" attempting a form (password) login
+    THEN the `password is None` short-circuit fires BEFORE the email-validation
+        check, so the response is the anti-enumeration bad-password contract
+        (HTTP 400, INVALID_PASSWORD on the password field, INVALID_FORM_INPUT)
+        and NOT the email-unvalidated contract (HTTP 401,
+        ACCOUNT_NOT_EMAIL_VALIDATED). This proves the guard ordering.
+    """
+    client, csrf_token_str = load_login_page
+    user = _make_oauth_only_user(app, email_validated=False)
+
+    # Before-state: password-less, unverified user with exactly one identity.
+    with app.app_context():
+        persisted_user = Users.query.filter(Users.username == user.username).first()
+        assert persisted_user.password is None
+        assert persisted_user.email_validated is False
+        assert len(persisted_user.oauth_identities) == 1
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: _OAUTH_ONLY_USERNAME,
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    # The bad-password short-circuit wins: HTTP 400, not the 401 unvalidated path.
+    assert response.status_code == 400
+    response_data = response.json
+    assert response_data[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.INVALID_FORM_INPUT
+
+    # The email-validation error must be absent, confirming that check never ran.
+    assert (
+        response_data[STD_JSON.MESSAGE]
+        != USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    )
+    assert (
+        int(response_data[STD_JSON.ERROR_CODE])
+        != LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    )
 
 
 def test_login_unregistered_user(load_login_page):
