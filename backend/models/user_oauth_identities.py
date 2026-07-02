@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Column,
@@ -15,6 +16,9 @@ from sqlalchemy import (
 from backend import db
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
+
+if TYPE_CHECKING:
+    from backend.models.users import Users
 
 
 class UserOAuthIdentity(db.Model):
@@ -55,7 +59,7 @@ class UserOAuthIdentity(db.Model):
         DateTime(timezone=True), nullable=False, default=utc_now, name="linkedAt"
     )
 
-    user = db.relationship("Users", back_populates="oauth_identities")
+    user: Users = db.relationship("Users", back_populates="oauth_identities")
 
     def __init__(self, provider: str, provider_subject: str, email: str | None = None):
         self.provider = provider
