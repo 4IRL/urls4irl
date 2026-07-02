@@ -45,6 +45,11 @@ def send_forgot_password_email_to_user(
             message=FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
         ).to_response()
 
+    if user_with_email.password is None:
+        return APIResponse(
+            message=FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
+        ).to_response()
+
     # Check if user has already tried to reset their password before
     prev_forgot_password: Forgot_Passwords = user_with_email.forgot_password
     forgot_password_obj = _create_or_reset_forgot_password_object_for_user(

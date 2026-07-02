@@ -1,7 +1,7 @@
 ---
 name: plan-reviewer
 description: Review a plan file using up to 3 iterative passes of up to 7 parallel subagents with specialized expertise (Correctness, Full-Stack Trace, Ordering/Dependencies, Codebase Integration, Verification/Test Coverage, Completeness/Risk, UX/Accessibility/Edge Cases). Each pass auto-applies mechanical fixes, presents design decisions as interactive questions via AskUserQuestion, applies user choices, then loops into the next pass. Exits early if a pass finds 0 critical + 0 major. After Pass 3, remaining issues are tagged "resolve during implementation." The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in reviews/.
-argument-hint: Plan-name
+argument-hint: Plan-name [scope]
 ---
 
 # Plan Review with Parallel Subagents (Up to 3 Passes)
@@ -59,6 +59,16 @@ If a master plan is found, store `<master-plan-path>` for Step 2. If no master e
 
 If the plan appears to be a sub-plan (lives in a folder referenced by `**Sub-plan:**` from any master) but no master plan is detected by either signal, flag this to the user as a skill setup warning — the reviewers will miss cross-phase context.
 
+### Step 1d: Detect Scope Directive (optional)
+
+Some invocations target a narrow re-review (e.g., "only re-review the metrics dimension changes, skip the auth flow") rather than a full re-evaluation of the plan. Detect this once, before Pass 1:
+
+1. Step 1's plan lookup fuzzy-matches **$0** against plan filenames. If the invocation's raw arguments contain additional free text beyond what matched the plan filename, treat that remaining text verbatim as `<scope>`.
+2. If no extra text is present, `<scope>` is null and every pass reviews the full plan (current behavior — unchanged).
+3. If `<scope>` is set, it applies to **every pass** of this invocation (Step 2's reviewer subagents only — see Step 2's scope-conditional line). It is fixed for the whole invocation: it is not re-derived per pass and is not narrowed or widened by Pass 2+ prior-fix data or DD resolutions.
+
+Store `<scope>` (or null) for use in Step 2. It does not affect Step 2a (Prior-Fix Verifier), which always re-checks every prior fix regardless of scope.
+
 ### Step 2: Launch 6 Parallel Review Subagents
 
 Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI changes) using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from individual reference files — the orchestrator does NOT inline the full checklist or response format.
@@ -75,6 +85,7 @@ Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI c
 >
 > **Do not defer any dimension to a follow-up pass.** Every checklist item must be evaluated.
 > <Pass 2+ only: "This is Pass N. Do not re-flag issues already fixed. Prior fixes: [concise bullet list of fix titles from earlier passes]">
+> <If scope present (Step 1d): "This review is SCOPED to: <scope>. Constrain your SOURCE FILE reads to files/areas within this scope — you must still read the full plan file (step 3 above) for structural understanding, but do not read or flag source files outside the scope. If your checklist dimension has nothing in-scope to evaluate, return verdict PASS with an empty findings array; do not flag out-of-scope areas.">
 
 **Key rules:**
 - Each subagent reads source files independently — the main agent does NOT pre-read files
@@ -82,6 +93,7 @@ Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI c
 - Use `model: sonnet` for all review subagents
 - Skip Subagent #7 (UX, Accessibility & Edge Cases) if the plan has no UI/frontend changes — it adds no value for backend-only plans
 - NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool. Omit `subagent_type` (defaults to general-purpose)
+- If a `<scope>` directive is set (Step 1d), it constrains subagents' SOURCE FILE reads only — every subagent still reads the full plan file and evaluates every checklist item, returning PASS + empty findings where nothing in-scope applies
 
 Subagents (all launched in a single message):
 
@@ -97,15 +109,17 @@ Subagents (all launched in a single message):
 
 ### Step 2a: Prior-Fix Verifier (Pass 2+ only)
 
-On Pass 2 and Pass 3, launch a 7th subagent **in the same single message** as the 6 reviewers. This subagent reads the review file's prior passes, extracts every `[x]` item (mechanical fixes and `**Chosen:**` DD resolutions), and re-verifies each is actually present in the current plan text and resolves the originally-flagged root cause.
+On Pass 2 and Pass 3, launch a 7th subagent **in the same single message** as the 6 reviewers. This subagent reads the fix manifest (`plans/<topic>/tmp/fix-manifest.md`) — NOT the full review file — to get every applied mechanical fix and resolved DD from prior passes, and re-verifies each is actually present in the current plan text and resolves the originally-flagged root cause.
+
+**Note:** A `<scope>` directive (Step 1d), if set, does NOT apply here — the Prior-Fix Verifier always re-verifies ALL prior fixes regardless of the current pass's scope, since a regression could occur outside the newly scoped area and the manifest read is already cheap.
 
 Prompt template:
 
 > You are the Prior-Fix Verifier for a Pass N review.
 >
-> 1. Read the review file at `plans/<topic>/reviews/<plan-name>-review.md`.
-> 2. Extract every `[x]` item from prior passes' Mechanical Fixes checklists AND every filled `**Chosen:**` field from prior DDs.
-> 3. For each item, re-read the current plan (`plans/<topic>/<plan-name>.md`) and confirm the fix is present and correctly addresses the root cause described in the original finding. For any prior fix that updated a line-number reference, re-read the source file and verify the new number is still accurate before marking the fix resolved.
+> 1. Read the fix manifest at `plans/<topic>/tmp/fix-manifest.md`. Do NOT read the full review file — the manifest already contains everything you need from prior passes.
+> 2. Collect every `applied_mechanical_fixes` entry (title + root_cause) and every `resolved_dds` entry (id, title, chosen) from ALL prior passes' entries in the manifest's `passes` array.
+> 3. For each item, re-read the current plan (`plans/<topic>/<plan-name>.md`) and confirm the fix is present and correctly addresses the root cause (mechanical) or matches the chosen option (DD). For any prior fix that updated a line-number reference, re-read the source file and verify the new number is still accurate before marking the fix resolved.
 > 4. Write a JSON response to `plans/<topic>/tmp/prior-fix-regressions.md` listing ANY regressions as critical findings. Each regression has: `{ id, prior_pass, fix_type (mechanical|dd), title, expected, actual, severity: "critical" }`. Empty array if none.
 >
 > Use the Write tool — NEVER cat <<EOF, python3 << 'EOF', cat >, tee, printf >, echo >, or any Bash heredoc/redirect.
@@ -122,45 +136,51 @@ For each file:
 
 ### Step 3b: Launch Coordinator Subagent
 
-After confirming all 6 files are present, launch a **single coordinator subagent** to deduplicate, conflict-detect, and produce two output files.
+After confirming all 6 files are present, launch a **single coordinator subagent** to deduplicate, conflict-detect, and produce the output files.
 
 The coordinator subagent prompt:
 
-> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/` — specifically: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`. Follow the coordinator workflow, then write TWO files:
+> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/` — specifically: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`. Follow the coordinator workflow, then write:
 >
 > 1. **`plans/<topic>/tmp/coordinator.md`** — the full JSON output (verdicts, summaries, files_read, findings) as specified in the reference file.
 > 2. **`plans/<topic>/tmp/coordinator-summary.md`** — a short summary for the orchestrator containing ONLY:
 >    - `verdicts`: one-line per reviewer (`correctness: PASS/FAIL`, etc.)
 >    - `counts`: `{critical: N, major: N, minor: N}` (deduplicated totals)
->    - `mechanical_count`: number of findings with `fix_type: "mechanical"`
+>    - `mechanical_count`: number of findings with `fix_type: "mechanical"` (computed AFTER merging any Pass 2+ prior-fix regressions — see below)
 >    - `design_decision_count`: number of findings with `fix_type: "design_decision"`
 >    - `design_decision_titles`: list of DD finding titles (one line each) — the orchestrator needs these for AskUserQuestion prompts
 >    - `design_decision_options`: **REQUIRED** — map of DD title → array of option strings (e.g., `{"DD title 1": ["Option A: description", "Option B: description"]}`). The orchestrator uses this to present DDs without reading the full coordinator file.
+> 3. **`plans/<topic>/tmp/fix-batch-1.md`, `fix-batch-2.md`, ...** — the mechanical-fix_type findings ONLY, pre-split into fixed-size batches of **6**, in the same order they appear in `coordinator.md`'s `findings` array. Batch count = `ceil(mechanical_count / 6)`. Every mechanical finding — including any merged from `prior-fix-regressions.md` — appears in exactly one batch file; the last batch may have fewer than 6. Each batch file:
+>    ```json
+>    { "batch": N, "findings": [ { "index": <1-based index across ALL mechanical findings>, "title": "...", "step": "Step N", "file": "path/to/file (if applicable)", "fix_description": "...", "evidence": "... (if present on the finding)" } ] }
+>    ```
 >
-> **On Pass 2+:** Also read `plans/<topic>/tmp/prior-fix-regressions.md` (if it exists). Merge each regression listed there into the `findings` array as a critical finding with `sources: ["Prior-Fix Verifier"]` and `fix_type: "mechanical"`. If the file does not exist (Pass 1 or verifier failed), skip this merge silently.
+> **On Pass 2+:** Also read `plans/<topic>/tmp/prior-fix-regressions.md` (if it exists). Merge each regression listed there into the `findings` array as a critical finding with `sources: ["Prior-Fix Verifier"]` and `fix_type: "mechanical"` **before** computing `mechanical_count` and writing the fix-batch files, so regressions get their own batch slot. If the file does not exist (Pass 1 or verifier failed), skip this merge silently.
 >
-> Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summary.md`
+> Return only: `Written to plans/<topic>/tmp/coordinator.md, coordinator-summary.md, and N fix-batch file(s)` (state the actual N).
 
 - Uses `model: sonnet` for speed
-- The orchestrator reads ONLY `coordinator-summary.md` — never `coordinator.md` directly. The full findings file is consumed by the fixing subagents (Step 4) and the writer subagent (Step 7).
+- The orchestrator reads ONLY `coordinator-summary.md` — never `coordinator.md` directly. The fixing subagents (Step 4) read only their assigned `fix-batch-N.md`; the full `coordinator.md` is consumed only by the writer subagent (Step 7).
 
 ### Step 4: Auto-Apply Mechanical Fixes
 
-Read `plans/<topic>/tmp/coordinator-summary.md` to get the count and titles of mechanical findings. Then launch **one or more fixing subagents** in parallel. Each fixing subagent reads `plans/<topic>/tmp/coordinator.md` directly to get its assigned findings.
+Read `plans/<topic>/tmp/coordinator-summary.md` to get `mechanical_count`. If `mechanical_count` is 0, skip this step entirely (no fixer subagents to launch). Otherwise compute `batch_count = ceil(mechanical_count / 6)` — this is exactly the number of `fix-batch-N.md` files the coordinator (Step 3b) wrote.
 
-**Batching strategy:** Group mechanical findings into batches of ~5-8 per subagent (rather than one subagent per finding) to reduce subagent overhead. Each batch subagent:
+Before launching, use **`Glob(pattern: "plans/<topic>/tmp/fix-batch-*.md")`** to confirm the file count matches `batch_count`. If it doesn't, treat this as a coordinator error: fall back to having one fixer subagent read `coordinator.md` directly for this pass only, and note the discrepancy in the Step 8a pass summary.
 
-1. Reads `plans/<topic>/tmp/coordinator.md` to extract its assigned findings (by title or index range)
+Launch **one fixing subagent per batch file** (`batch_count` subagents total, all in a single message for true parallelism). Each fixing subagent reads ONLY its own `plans/<topic>/tmp/fix-batch-<N>.md` — never `coordinator.md`. Each fixing subagent:
+
+1. Reads `plans/<topic>/tmp/fix-batch-<N>.md` (its assigned findings — already scoped, no self-filtering needed)
 2. Reads the plan file
 3. Applies each mechanical fix (edits to plan text only — never source files)
 4. After each edit, verifies surrounding plan text is coherent
-5. Returns a JSON summary of applied/skipped fixes
+5. Returns a JSON summary of applied/skipped fixes (include each finding's `title` and `index`)
 
 **All fixing subagents launch in a single message** for true parallelism. After all return, collect results into `applied` and `skipped` lists.
 
 **Skipped items**: If a fixing subagent discovers that its "mechanical" fix actually requires a design choice, it MUST skip it and explain why. Skipped items are promoted to design decisions.
 
-**The orchestrator NEVER reads `coordinator.md` directly.** The full findings are consumed by the fixing subagents and, later, the writer subagent (Step 7).
+**The orchestrator NEVER reads `coordinator.md` or any `fix-batch-N.md` directly.** These are consumed only by the fixing subagents. The writer subagent (Step 7) separately reads the full `coordinator.md`.
 
 **Do NOT apply any changes to source files — only the plan document.**
 
@@ -217,6 +237,12 @@ The writer subagent prompt:
 >
 > **Resolved DDs:** The following DD choices were applied before you ran: [list from Step 6 summary]. Fill in the `**Chosen:**` field for each.
 >
+> **Update the fix manifest:** After writing the review document, also update `plans/<topic>/tmp/fix-manifest.md`. If it doesn't exist yet (Pass 1), create it with `{"passes": []}` first, then read it (it's small), and append a new entry to `passes` for this pass:
+> ```json
+> { "pass": N, "applied_mechanical_fixes": [{ "title": "...", "root_cause": "..." }], "resolved_dds": [{ "id": "DD-N", "title": "...", "chosen": "..." }], "unresolved": [{ "title": "...", "reason": "..." }] }
+> ```
+> This is the same applied/resolved/unresolved data you're already rendering into the review document — it costs nothing extra to compute. Write the full updated manifest with the Write tool.
+>
 > **Document structure:** Use `classification` and `sources` from each finding for attribution: `duplicate` → append `*(flagged by: Subagent A, Subagent B)*`; `conflict` → render as a design decision naming disagreeing subagents.
 >
 > **Coverage checklist mapping:** Mark `[x]` if the primary subagent for that area reported reading relevant files (check `files_read`):
@@ -228,10 +254,12 @@ The writer subagent prompt:
 >
 > **`### Resolve During Implementation` section:** Include ONLY items that are genuinely unresolved after Steps 4-6 (i.e., skipped mechanicals that could not be applied, or DDs where no option was chosen). If all mechanicals and DDs were resolved, omit this section entirely or write "None."
 >
+> **Count integrity (required):** Immediately before writing the Summary prose and the Subagent Results table, build the final deduplicated findings array you are about to render (after merging any Pass 2+ prior-fix regressions) and count it directly by severity. Every count you state anywhere in the document (Summary prose, e.g. "N criticals, N majors"; the Subagent Results table's per-reviewer finding counts; any heading counts in the Findings section) MUST equal the actual number of items enumerated below it — never a number recalled from earlier reasoning or estimated. If you write "twelve majors" in prose, there must be exactly 12 items under the Major heading. Re-count after any last-minute change to the findings list before finalizing prose.
+>
 > Write the review section using this structure:
 > ```
 > ### Summary — 2-3 sentences
-> ### Subagent Results — table with verdicts and finding counts
+> ### Subagent Results — table with verdicts and per-reviewer finding counts (counted from the findings array — see Count Integrity rule above)
 > ### Findings — grouped by Critical/Major/Minor (omit empty categories)
 > ### Verification Gaps — steps lacking verification
 > ### To-Do: Mechanical Fixes — checklist ([x] _(applied)_ for applied; [ ] with reason for skipped)
@@ -240,7 +268,7 @@ The writer subagent prompt:
 > ### Coverage Checklist — 7-area table
 > ```
 >
-> Return only: `Written to <review-file-path>`
+> Return only: `Written to <review-file-path> and plans/<topic>/tmp/fix-manifest.md`
 
 - Uses `model: sonnet` for speed
 - The orchestrator reads ONLY `coordinator-summary.md` (from Step 3b) — never the full coordinator output or the review file
@@ -263,25 +291,25 @@ Present a concise summary using data from `coordinator-summary.md` and fix subag
 After the writer completes, evaluate:
 
 1. **Early exit check**: Did this pass produce 0 critical + 0 major findings?
-   - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension, e.g. `openapi-type-generation-pipeline`). Delete all files in `plans/<topic>/tmp/`. Proceed to Step 9.
+   - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension, e.g. `openapi-type-generation-pipeline`). Proceed to Step 9. (`plans/<topic>/tmp/` is NOT deleted yet — Step 9 needs `fix-manifest.md`; deletion happens at the end of Step 9.)
    - **No** → Continue to next pass.
 
 2. **Hard cap check**: Is this Pass 3?
-   - **Yes** → Stop reviewing. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension). Delete all files in `plans/<topic>/tmp/`. Proceed to Step 9.
+   - **Yes** → Stop reviewing. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension). Proceed to Step 9. (Same deferred deletion as above.)
    - **No** → Print: "Pass N complete. Starting Pass N+1..." and loop back to **Step 2**.
 
 ### Step 9: Post-Loop Coherence Check
 
-After the loop exits (early exit OR Pass 3 hard cap), launch one final lightweight subagent to verify the review document is internally consistent with the plan:
+After the loop exits (early exit OR Pass 3 hard cap), launch one final lightweight subagent to verify the review document is internally consistent with the plan. `plans/<topic>/tmp/` is still present at this point — Step 8b intentionally deferred its deletion until after this step.
 
 Prompt template:
 
 > You are the Post-Loop Coherence Verifier.
 >
-> 1. Read the review at `plans/<topic>/reviews/<plan-name>-review.md` (full file).
-> 2. For every `**Chosen:**` field in every pass's Design Decisions section, identify what the chosen option says should change in the plan.
+> 1. Read the fix manifest at `plans/<topic>/tmp/fix-manifest.md`. Collect every `resolved_dds` entry (id, title, chosen) across ALL entries in `passes`, and the `unresolved` array from ONLY the LAST entry in `passes` (earlier passes' unresolved items are superseded and not authoritative). Do NOT read the full review file.
+> 2. For every resolved DD collected in step 1, identify what the chosen option says should change in the plan.
 > 3. Read `plans/<topic>/<plan-name>.md` and verify each Chosen decision has a corresponding instruction in the plan text (fuzzy match on key phrases — exact wording not required).
-> 4. Check the `### Resolve During Implementation` section (if present) does NOT list items that have a filled `**Chosen:**` field elsewhere in the review.
+> 4. Check that the LAST pass's `unresolved` list does NOT contain any title that also appears in the `resolved_dds` collected in step 1 (a stale carryover item).
 > 5. Report any inconsistencies as a bullet list. If all coherent, return exactly "Coherent".
 >
 > Return the bullet list or "Coherent" directly (this subagent does NOT write a file — it returns findings inline).
@@ -292,6 +320,8 @@ If the subagent returns "Coherent", proceed to Steps 10-11 / finish. If it retur
 - **Show details** — print the full list and re-ask
 
 This check runs regardless of early exit vs. hard cap. It is cheap (one subagent, ~1 min) and catches the class of bugs where the writer ran before DDs were resolved.
+
+**Cleanup:** Once this step fully completes (including any Auto-fix corrector round), delete all files in `plans/<topic>/tmp/`, including `fix-manifest.md` — its data now lives in the review document and is no longer needed.
 
 ### Steps 10-11: Root-Cause Analysis & Skill Self-Improvement (conditional)
 

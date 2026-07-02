@@ -42,6 +42,7 @@ const LOGIN_MODAL_HTML = `
   <div class="modal fade" id="LoginModal">
     <div id="ToRegisterFromLogin"></div>
     <div class="to-forgot-password"></div>
+    <div class="form-group" id="ForgotPasswordLink"></div>
     <input id="username" class="form-control" value="testuser" />
     <input id="password" class="form-control" value="testpass" />
     <button id="submit" type="submit"></button>

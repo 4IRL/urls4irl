@@ -1,6 +1,7 @@
 from urllib.parse import parse_qs, urlencode, urlparse
 from flask import request, url_for
 from flask_login import current_user, login_user
+from werkzeug.security import check_password_hash, generate_password_hash
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event
@@ -17,9 +18,12 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
+_DUMMY_HASH = generate_password_hash("__dummy__")
+
 _LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
 _LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
 _LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"
+_LOGIN_FAILURE_REASON_OAUTH_ONLY = "oauth_only"
 
 
 def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
@@ -34,6 +38,26 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
+            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+        )
+
+    if user.password is None:
+        warning_log("OAuth-only user attempted password login")
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_ONLY},
+        )
+        # Return a response byte-identical to a genuine wrong-password attempt so
+        # an attacker cannot fingerprint password-less (OAuth-only) accounts. The
+        # OAuth steer lives in the shared INVALID_PASSWORD message every failed
+        # login sees; only the internal metrics reason distinguishes this case.
+        # Spend the same bcrypt time the wrong-password branch does so the two
+        # branches are indistinguishable by wall-clock latency as well as bytes.
+        # The result is intentionally discarded — only the elapsed time matters.
+        check_password_hash(_DUMMY_HASH, password)
+        return build_field_error_response(
+            message=USER_FAILURE.UNABLE_TO_LOGIN,
+            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
             error_code=LoginErrorCodes.INVALID_FORM_INPUT,
         )
 

@@ -3,6 +3,7 @@ import json
 import secrets
 from typing import Mapping, NotRequired, TypedDict
 
+from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, abort, current_app, g, request, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -88,6 +89,8 @@ notification_sender = NotificationSender()
 
 metrics_writer = MetricsWriter()
 
+oauth = OAuth()
+
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["20/second", "100/minute"],
@@ -125,6 +128,7 @@ def create_app(
     csrf.init_app(app)
     metrics_writer.init_app(app)
     login_manager.init_app(app)
+    oauth.init_app(app)
 
     # Configure limiter with app-specific settings
     storage_options: Mapping = {"socket_connect_timeout": 30}

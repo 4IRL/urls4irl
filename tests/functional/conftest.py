@@ -271,7 +271,7 @@ def build_driver(
         pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def build_driver_mobile_portrait(
     provide_port: int, parallelize_app, turn_off_headless
 ) -> Generator[WebDriver, None, None]:

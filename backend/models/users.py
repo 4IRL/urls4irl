@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from datetime import datetime
 from enum import Enum
 
@@ -10,6 +12,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from backend import db
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.utub_members import Utub_Members
 from backend.utils.constants import EMAIL_CONSTANTS, USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
@@ -27,8 +30,6 @@ class User_Role(Enum):
 class Users(db.Model, UserMixin):
     """Class represents a User, with their username, email, and hashed password."""
 
-    # TODO - Ensure if user signs in with Oauth, their username is local part of their email
-    # TODO - Verify that username is less than length of max username, else add numbers to end up to 99999
     # TODO - Verify email cannot be used as password
 
     __tablename__ = "Users"
@@ -39,7 +40,9 @@ class Users(db.Model, UserMixin):
     email: str = Column(
         String(USER_CONSTANTS.MAX_EMAIL_LENGTH), unique=True, nullable=False
     )
-    password: str = Column(String(USER_CONSTANTS.MAX_PASSWORD_LENGTH), nullable=False)
+    password: str | None = Column(
+        String(USER_CONSTANTS.MAX_PASSWORD_LENGTH), nullable=True
+    )
     created_at = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
@@ -56,27 +59,47 @@ class Users(db.Model, UserMixin):
     forgot_password: Forgot_Passwords = db.relationship(
         "Forgot_Passwords", uselist=False, back_populates="user"
     )
+    # Default lazy="select" (not "selectin"): selectin would fire a companion
+    # SELECT against UserOAuthIdentities on *every* Users query, which breaks
+    # any code path running against a migration revision before that table
+    # exists (e.g. the pre-strip-revision seed in the migration roundtrip
+    # tests). Identities are loaded on access, which is all Phase 1 needs;
+    # a future hot path can opt in per-query via selectinload(...).
+    oauth_identities: list[UserOAuthIdentity] = db.relationship(
+        "UserOAuthIdentity",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     def __init__(
         self,
         username: str,
         email: str,
-        plaintext_password: str,
-    ):
+        *,
+        plaintext_password: str | None = None,
+    ) -> None:
         """
         Create new user object per the following parameters
 
         Args:
             username (str): Username from user input
             email (str): Email from user input
-            plaintext_password (str): Plaintext password to be hashed
+            plaintext_password (str | None): Plaintext password to be hashed;
+                None for OAuth-only accounts that never set a local password
         """
         self.username = username
         self.email: str = email.lower()
-        self.password = generate_password_hash(plaintext_password)
+        self.password = (
+            generate_password_hash(plaintext_password)
+            if plaintext_password is not None
+            else None
+        )
         self._email_confirmed = False
 
     def is_password_correct(self, plaintext_password: str) -> bool:
+        if self.password is None:
+            return False
         return check_password_hash(self.password, plaintext_password)
 
     def is_admin(self) -> bool:

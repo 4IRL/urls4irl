@@ -45,6 +45,21 @@ METRICS_BATCH_NONCE_TTL_SECONDS = int(
     environ.get(ENV.METRICS_BATCH_NONCE_TTL_SECONDS, default="120")
 )
 
+# OAuth provider credentials (Google + GitHub). All four keys are soft-optional:
+# they default to None so unconfigured environments (local without OAuth apps, CI,
+# any env that has not registered provider clients) still boot. No ValueError guard
+# is added in Config.__init__ for these — a missing key simply leaves the provider
+# unconfigured. OAuth is wired in later phases.
+#
+# Callback URLs are built in code via url_for(<callback endpoint>, _external=True) —
+# the same convention the password-reset and email-validation flows already use —
+# which resolves the public scheme + host through the ProxyFix middleware configured
+# in create_app(). Each resulting URL must be registered in the provider's console.
+GOOGLE_OAUTH_CLIENT_ID = environ.get(ENV.GOOGLE_OAUTH_CLIENT_ID, default=None)
+GOOGLE_OAUTH_CLIENT_SECRET = environ.get(ENV.GOOGLE_OAUTH_CLIENT_SECRET, default=None)
+GITHUB_OAUTH_CLIENT_ID = environ.get(ENV.GITHUB_OAUTH_CLIENT_ID, default=None)
+GITHUB_OAUTH_CLIENT_SECRET = environ.get(ENV.GITHUB_OAUTH_CLIENT_SECRET, default=None)
+
 DEV_DB_URI = build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
@@ -149,6 +164,10 @@ class Config:
     METRICS_BUCKET_SECONDS = METRICS_BUCKET_SECONDS
     METRICS_REDIS_URI = METRICS_REDIS_URI
     METRICS_BATCH_NONCE_TTL_SECONDS = METRICS_BATCH_NONCE_TTL_SECONDS
+    GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID
+    GOOGLE_OAUTH_CLIENT_SECRET = GOOGLE_OAUTH_CLIENT_SECRET
+    GITHUB_OAUTH_CLIENT_ID = GITHUB_OAUTH_CLIENT_ID
+    GITHUB_OAUTH_CLIENT_SECRET = GITHUB_OAUTH_CLIENT_SECRET
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

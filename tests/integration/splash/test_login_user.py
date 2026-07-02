@@ -1,10 +1,12 @@
 from copy import deepcopy
-from flask import url_for, request
+from flask import Flask, request, url_for
 from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
@@ -24,7 +26,30 @@ from tests.utils_for_test import get_csrf_token, is_string_in_logs
 
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
 
+_OAUTH_ONLY_USERNAME = "oauthonlyuser"
+_OAUTH_ONLY_EMAIL = "oauthonlyuser@example.com"
+
 pytestmark = pytest.mark.splash
+
+
+def _make_oauth_only_user(app: Flask, email_validated: bool = True) -> Users:
+    """Create and commit a password-less user with one linked OAuth identity,
+    returning the persisted Users instance. The email-validation state is
+    configurable so tests can exercise both the validated and unvalidated
+    OAuth-only login paths."""
+    with app.app_context():
+        user = Users(
+            username=_OAUTH_ONLY_USERNAME,
+            email=_OAUTH_ONLY_EMAIL,
+            plaintext_password=None,
+        )
+        user.oauth_identities.append(
+            UserOAuthIdentity(provider="google", provider_subject="sub_123")
+        )
+        user.email_validated = email_validated
+        db.session.add(user)
+        db.session.commit()
+        return user
 
 
 def test_login_registered_and_logged_in_user(login_first_user_with_register):
@@ -194,6 +219,132 @@ def test_login_failure_email_unverified_records_metric_with_reason(
     assert len(counter_keys) == 1
     assert (
         parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "email_unverified"
+    )
+
+
+def test_login_failure_oauth_only_account_records_metric_with_reason(
+    metrics_enabled_app,
+    provide_metrics_redis,
+    load_login_page,
+):
+    """
+    GIVEN an email-validated, password-less user with one linked OAuth identity
+    WHEN they POST to "/login" attempting a form (password) login
+    THEN the request returns the anti-enumeration bad-password contract (HTTP 400,
+        INVALID_PASSWORD on the password field, errorCode INVALID_FORM_INPUT) so
+        the account cannot be fingerprinted AND exactly one LOGIN_FAILURE counter
+        key is written with reason="oauth_only".
+    """
+    client, csrf_token_str = load_login_page
+    user = _make_oauth_only_user(metrics_enabled_app)
+
+    # Before-state: password-less user with exactly one linked identity, and no
+    # LOGIN_FAILURE counter yet.
+    with metrics_enabled_app.app_context():
+        persisted_user = Users.query.filter(Users.username == user.username).first()
+        assert persisted_user.password is None
+        assert len(persisted_user.oauth_identities) == 1
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: _OAUTH_ONLY_USERNAME,
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert response.status_code == 400
+    response_data = response.json
+    assert response_data[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.INVALID_FORM_INPUT
+
+    counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
+    assert len(counter_keys) == 1
+    assert parse_dims(counter_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY] == "oauth_only"
+
+
+def test_login_oauth_only_response_identical_to_wrong_password(
+    register_first_user, load_login_page, app
+):
+    """
+    GIVEN a normal password user and a password-less (OAuth-only) user
+    WHEN each POSTs "/login" with a wrong password
+    THEN both responses are byte-identical (same HTTP status, same JSON body) so
+        an attacker cannot fingerprint OAuth-only accounts from the login response.
+    """
+    client, csrf_token_str = load_login_page
+    normal_user = deepcopy(valid_user_1)
+    _make_oauth_only_user(app)
+
+    wrong_password_response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: normal_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "definitely-wrong-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    oauth_only_response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: _OAUTH_ONLY_USERNAME,
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert oauth_only_response.status_code == wrong_password_response.status_code
+    assert oauth_only_response.get_data() == wrong_password_response.get_data()
+
+
+def test_login_oauth_only_unverified_returns_invalid_password_not_unvalidated(
+    load_login_page, app
+):
+    """
+    GIVEN an UNVERIFIED (email_validated=False), password-less OAuth-only user
+    WHEN they POST to "/login" attempting a form (password) login
+    THEN the `password is None` short-circuit fires BEFORE the email-validation
+        check, so the response is the anti-enumeration bad-password contract
+        (HTTP 400, INVALID_PASSWORD on the password field, INVALID_FORM_INPUT)
+        and NOT the email-unvalidated contract (HTTP 401,
+        ACCOUNT_NOT_EMAIL_VALIDATED). This proves the guard ordering.
+    """
+    client, csrf_token_str = load_login_page
+    user = _make_oauth_only_user(app, email_validated=False)
+
+    # Before-state: password-less, unverified user with exactly one identity.
+    with app.app_context():
+        persisted_user = Users.query.filter(Users.username == user.username).first()
+        assert persisted_user.password is None
+        assert persisted_user.email_validated is False
+        assert len(persisted_user.oauth_identities) == 1
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: _OAUTH_ONLY_USERNAME,
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    # The bad-password short-circuit wins: HTTP 400, not the 401 unvalidated path.
+    assert response.status_code == 400
+    response_data = response.json
+    assert response_data[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.INVALID_FORM_INPUT
+
+    # The email-validation error must be absent, confirming that check never ran.
+    assert (
+        response_data[STD_JSON.MESSAGE]
+        != USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    )
+    assert (
+        int(response_data[STD_JSON.ERROR_CODE])
+        != LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
     )
 
 
