@@ -44,6 +44,10 @@ services:
       - METRICS_BUCKET_SECONDS=3600
       - METRICS_REDIS_URI=redis://redis-metrics:6379/0
       - METRICS_BATCH_NONCE_TTL_SECONDS=120
+      # OAuth callback origin for local dev. Client id/secret are secrets and come
+      # from .env (env_file above); this non-secret base URL is set inline. Callback
+      # URLs are computed as f"{OAUTH_REDIRECT_BASE_URL}/oauth/{provider}/callback".
+      - OAUTH_REDIRECT_BASE_URL=${OAUTH_REDIRECT_BASE_URL:-http://127.0.0.1:8659}
     volumes:
       - ./run.py:/code/u4i/run.py
       - ./pytest.ini:/code/u4i/pytest.ini

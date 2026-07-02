@@ -45,6 +45,24 @@ METRICS_BATCH_NONCE_TTL_SECONDS = int(
     environ.get(ENV.METRICS_BATCH_NONCE_TTL_SECONDS, default="120")
 )
 
+# OAuth provider credentials (Google + GitHub). All five keys are soft-optional:
+# they default to None so unconfigured environments (local without OAuth apps, CI,
+# any env that has not registered provider clients) still boot. No ValueError guard
+# is added in Config.__init__ for these — a missing key simply leaves the provider
+# unconfigured. OAuth is wired in later phases.
+#
+# HARD CONSTRAINT: OAuth callback URLs MUST be computed as
+#   f"{OAUTH_REDIRECT_BASE_URL}/oauth/{provider}/callback"
+# never via url_for(..., _external=True). The web container is bound behind a
+# TLS-terminating reverse proxy and does not know its own public hostname at boot;
+# url_for(_external=True) would depend on fragile X-Forwarded-Host / X-Forwarded-Proto
+# proxy headers. OAUTH_REDIRECT_BASE_URL is the single source of truth for the origin.
+GOOGLE_OAUTH_CLIENT_ID = environ.get(ENV.GOOGLE_OAUTH_CLIENT_ID, default=None)
+GOOGLE_OAUTH_CLIENT_SECRET = environ.get(ENV.GOOGLE_OAUTH_CLIENT_SECRET, default=None)
+GITHUB_OAUTH_CLIENT_ID = environ.get(ENV.GITHUB_OAUTH_CLIENT_ID, default=None)
+GITHUB_OAUTH_CLIENT_SECRET = environ.get(ENV.GITHUB_OAUTH_CLIENT_SECRET, default=None)
+OAUTH_REDIRECT_BASE_URL = environ.get(ENV.OAUTH_REDIRECT_BASE_URL, default=None)
+
 DEV_DB_URI = build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
@@ -149,6 +167,11 @@ class Config:
     METRICS_BUCKET_SECONDS = METRICS_BUCKET_SECONDS
     METRICS_REDIS_URI = METRICS_REDIS_URI
     METRICS_BATCH_NONCE_TTL_SECONDS = METRICS_BATCH_NONCE_TTL_SECONDS
+    GOOGLE_OAUTH_CLIENT_ID = GOOGLE_OAUTH_CLIENT_ID
+    GOOGLE_OAUTH_CLIENT_SECRET = GOOGLE_OAUTH_CLIENT_SECRET
+    GITHUB_OAUTH_CLIENT_ID = GITHUB_OAUTH_CLIENT_ID
+    GITHUB_OAUTH_CLIENT_SECRET = GITHUB_OAUTH_CLIENT_SECRET
+    OAUTH_REDIRECT_BASE_URL = OAUTH_REDIRECT_BASE_URL
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:
