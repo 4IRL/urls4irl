@@ -1,6 +1,4 @@
-cffi==2.0.0
 cfgv==3.4.0
-cryptography==46.0.6
 distlib==0.3.7
 filelock==3.20.3
 identify==2.5.29

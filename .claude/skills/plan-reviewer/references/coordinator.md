@@ -38,7 +38,7 @@ Single findings with no co-located finding from another reviewer on the same ste
 
 ## Step 4 — Write output
 
-Write TWO files **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this.
+Write these files **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Two fixed files (`coordinator.md`, `coordinator-summary.md`) plus one pre-split `fix-batch-N.md` file per ~6 mechanical findings.
 
 ### File 1: `plans/<topic>/tmp/coordinator.md` (full findings)
 
@@ -129,9 +129,24 @@ Write a short summary JSON that the orchestrator reads instead of the full findi
 
 **`design_decision_options` is REQUIRED.** The orchestrator presents DDs to the user via AskUserQuestion using only `coordinator-summary.md` — it never reads `coordinator.md` directly. Every DD title in `design_decision_titles` must have a corresponding entry in `design_decision_options`.
 
-**On Pass 2+: Merge prior-fix regressions.** If `plans/<topic>/tmp/prior-fix-regressions.md` exists, read it and merge each regression into the `findings` array of `coordinator.md` as a critical finding with `sources: ["Prior-Fix Verifier"]` and `fix_type: "mechanical"`. Update the `counts.critical` in both output files accordingly. If the file does not exist (Pass 1 or verifier failed), skip this merge silently.
+**On Pass 2+: Merge prior-fix regressions.** If `plans/<topic>/tmp/prior-fix-regressions.md` exists, read it and merge each regression into the `findings` array of `coordinator.md` as a critical finding with `sources: ["Prior-Fix Verifier"]` and `fix_type: "mechanical"` **before** computing `mechanical_count` and the fix-batch files below, so regressions get their own batch slot. Update the `counts.critical` in both output files accordingly. If the file does not exist (Pass 1 or verifier failed), skip this merge silently.
 
-Return only: `Written to plans/<topic>/tmp/coordinator.md and coordinator-summary.md`
+### File 3+: `plans/<topic>/tmp/fix-batch-N.md` (pre-split mechanical fixes)
+
+After computing the final `findings` array (including any Pass 2+ merged regressions), filter to `fix_type: "mechanical"` only, preserving array order. Split into fixed-size groups of 6. Write one file per group:
+
+```json
+{
+  "batch": 1,
+  "findings": [
+    { "index": 1, "title": "...", "step": "Step N", "file": "path/to/file", "fix_description": "...", "evidence": "..." }
+  ]
+}
+```
+
+Every mechanical finding appears in exactly one batch file, in the same relative order as in `coordinator.md`. The last batch may be smaller than 6. Number files `fix-batch-1.md`, `fix-batch-2.md`, ... with no gaps. If there are zero mechanical findings, write no batch files.
+
+Return only: `Written to plans/<topic>/tmp/coordinator.md, coordinator-summary.md, and N fix-batch file(s)` (state the actual N, or "0 fix-batch files" if there were no mechanical findings).
 
 **Rules:**
 - Do not invent findings. Only work with what the reviewer files contain.
