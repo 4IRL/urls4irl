@@ -1,17 +1,19 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { checkForStaleDataOn409 } from "../conflict-handler.js";
-import { getNumOfURLs } from "../../utils.js";
-import { showURLSearchIcon } from "../../search.js";
 import { showURLsEmptyState, hideURLsEmptyState } from "../../empty-state.js";
-import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
+import { showURLSearchIcon } from "../../search.js";
 import { STAGED_GET_KEY } from "../../tags/combobox.js";
+import { renderAppliedTagsForUrl } from "../../tags/tag-render.js";
+import { getNumOfURLs } from "../../utils.js";
+import { createURLBlock } from "../cards.js";
+import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   createURL,
   createURLHideInput,
   createURLShowInput,
   resetCreateURLFailErrors,
 } from "../create.js";
+import { triggerURLSwipeNudgeIfEligible } from "../swipe.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -22,6 +24,10 @@ vi.mock("../cards.js", () => ({
   createURLBlock: vi.fn(() => window.jQuery('<div class="urlRow"></div>')),
   newURLInputAddEventListeners: vi.fn(),
   newURLInputRemoveEventListeners: vi.fn(),
+}));
+
+vi.mock("../swipe.js", () => ({
+  triggerURLSwipeNudgeIfEligible: vi.fn(),
 }));
 
 vi.mock("../selection.js", () => ({
@@ -297,6 +303,15 @@ describe("createURL - client-side validation", () => {
       expect(renderArgs.appliedTags).toEqual(response.appliedTags);
       expect(renderArgs.utubUrlTagIDs).toEqual([5, 6]);
       expect(renderArgs.utubID).toBe(1);
+
+      expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledTimes(
+        1,
+      );
+      const createdRow = vi.mocked(createURLBlock).mock.results[0]
+        .value as JQuery;
+      expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledWith({
+        urlRow: createdRow,
+      });
     });
   });
 
