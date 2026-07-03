@@ -1,9 +1,14 @@
 /**
  * Left-swipe-to-delete gesture for `.urlRow` (mobile/touch only). Mirrors
- * `frontend/home/tags/sheet.ts`'s pointer-drag structure: a single module-local
- * `_dragState` (only one row can be mid-drag at a time), dynamic
- * pointermove/pointerup/pointercancel binding on the drag target, and a
- * consume-once click-suppression flag for the trailing click after a commit.
+ * `frontend/home/tags/sheet.ts`'s pointer-drag structure for most of the
+ * gesture: a single module-local `_dragState` (only one row can be mid-drag
+ * at a time), dynamic pointermove/pointerup/pointercancel binding on the drag
+ * target, and a consume-once click-suppression flag for the trailing click
+ * after a commit. Release handling intentionally deviates from `sheet.ts`:
+ * `sheet.ts` binds one handler to both pointerup/pointercancel and branches
+ * internally on `event.type`, whereas this module binds pointerup to
+ * `_endDrag` and pointercancel to a separate `_cancelDrag`, sharing teardown
+ * logic via `_teardownDragListeners` — both are functionally equivalent.
  * Commit-threshold math is pure and lives in `logic/url-swipe-snap.ts`; this
  * module owns only DOM binding and reuses the existing `deleteURLShowModal`
  * confirm flow as the sole commit action — no new AJAX/CSRF logic here.
