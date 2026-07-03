@@ -245,6 +245,33 @@ describe("swipe gesture", () => {
     }
   });
 
+  it("a primarily-vertical drag locks to native scroll: no transform is applied and swipe-dragging is never added", () => {
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    // deltaY (60px) dominates deltaX (20px), so the vertical-lock ratio
+    // check (|deltaX| <= 1.5 * |deltaY|) locks the gesture to native scroll
+    // instead of treating it as a horizontal swipe.
+    dispatchPointer({
+      target: rowElement,
+      type: "pointerdown",
+      clientX: 100,
+      clientY: 100,
+    });
+    dispatchPointer({
+      target: rowElement,
+      type: "pointermove",
+      clientX: 120,
+      clientY: 160,
+    });
+
+    expect((row.find(".urlRowContent")[0] as HTMLElement).style.transform).toBe(
+      "",
+    );
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+  });
+
   it("pointercancel mid-drag resets state without calling deleteURLShowModal", () => {
     const row = mountURLRow();
     const rowElement = row[0];
