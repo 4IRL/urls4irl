@@ -8,6 +8,7 @@ from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
+    dispatch_pointer_drag,
     open_update_url_title,
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_page_complete_and_dom_stable,
@@ -16,6 +17,29 @@ from tests.functional.selenium_utils import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+
+# Drag distance (px) chosen to exceed the 35% commit threshold. At the 420px-wide
+# browser_mobile_portrait fixture, .urlRow (and its .urlRowSwipeReveal backing
+# panel) render edge-to-edge at 420px, so the threshold is ~147px; 300px commits
+# with a safe margin while staying within the row's [0, 420] drag range.
+SWIPE_COMMIT_PX = 300
+
+# Drag distance (px) chosen to stay well below the 35% commit threshold so the
+# gesture snaps back to its prior state instead of committing. At the 420px-wide
+# browser_mobile_portrait fixture the threshold is ~147px (see SWIPE_COMMIT_PX),
+# so 60px is comfortably sub-threshold and the row must snap back closed.
+SWIPE_SNAP_BACK_PX = 60
+
+# Non-zero per-step delay (ms) so the sub-threshold drag doesn't also commit via
+# velocity (FLING_VELOCITY_PX_PER_MS = 0.5 px/ms). Spreading 60px over 6 steps at
+# 40ms/step is ~0.25 px/ms — below the fling threshold — so only the (uncrossed)
+# distance threshold governs, and the row correctly snaps back.
+SWIPE_SNAP_BACK_STEP_DELAY_MS = 40
+
+
+def get_url_row_selector(utub_url_id: int) -> str:
+    """Builds the CSS selector for the URL row with the given ``utuburlid``."""
+    return f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
 
 
 def open_url_search_box(browser: WebDriver):
@@ -570,3 +594,78 @@ def wait_for_url_search_filter_applied(browser: WebDriver, timeout: int = 3):
         return all(row.get_attribute("searchable") is not None for row in rows)
 
     WebDriverWait(browser, timeout).until(all_filterable_rows_have_searchable_attr)
+
+
+def swipe_url_card_delete(browser: WebDriver, url_row_selector: str) -> None:
+    """
+    Drags the given URL row leftward by ``SWIPE_COMMIT_PX`` to commit the
+    swipe-to-delete gesture. The drag starts near the row's right edge and ends
+    ``SWIPE_COMMIT_PX`` to the left of it, exceeding the snap threshold so the
+    row commits (revealing the delete panel and opening the confirm modal)
+    rather than snapping back closed.
+    """
+    row = browser.find_element(By.CSS_SELECTOR, url_row_selector)
+    rect = row.rect
+    start_x = rect["x"] + rect["width"] - 5
+    start_y = rect["y"] + rect["height"] / 2
+    end_x = start_x - SWIPE_COMMIT_PX
+    dispatch_pointer_drag(
+        browser,
+        url_row_selector,
+        start_x=start_x,
+        end_x=end_x,
+        start_y=start_y,
+        end_y=start_y,
+    )
+
+
+def swipe_url_card_below_threshold(browser: WebDriver, url_row_selector: str) -> None:
+    """
+    Drags the given URL row leftward by ``SWIPE_SNAP_BACK_PX`` — well below the
+    35% commit threshold — so the row snaps back to its resting position rather
+    than committing the swipe-to-delete gesture.
+    """
+    row = browser.find_element(By.CSS_SELECTOR, url_row_selector)
+    rect = row.rect
+    start_x = rect["x"] + rect["width"] - 5
+    start_y = rect["y"] + rect["height"] / 2
+    end_x = start_x - SWIPE_SNAP_BACK_PX
+    dispatch_pointer_drag(
+        browser,
+        url_row_selector,
+        start_x=start_x,
+        end_x=end_x,
+        start_y=start_y,
+        end_y=start_y,
+        step_delay_ms=SWIPE_SNAP_BACK_STEP_DELAY_MS,
+    )
+
+
+def wait_until_url_card_swipe_committed(browser: WebDriver, timeout: int = 10) -> None:
+    """
+    Waits until a ``.urlRow`` carries the ``swipe-committed`` class, confirming
+    the swipe-to-delete gesture has committed. Only one row can be mid-gesture at
+    a time (the drag state is a single module-local object in ``swipe.ts``), so
+    this checks across all rows rather than a specific selector.
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda driver: any(
+            "swipe-committed" in (row.get_attribute("class") or "")
+            for row in driver.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+        )
+    )
+
+
+def wait_until_url_card_swipe_reset(browser: WebDriver, timeout: int = 10) -> None:
+    """
+    Waits until no ``.urlRow`` carries the ``swipe-dragging`` or
+    ``swipe-committed`` class, confirming the swipe gesture has fully reset
+    (either snapped back below threshold, or its confirm modal was dismissed).
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda driver: all(
+            "swipe-dragging" not in (row.get_attribute("class") or "")
+            and "swipe-committed" not in (row.get_attribute("class") or "")
+            for row in driver.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+        )
+    )

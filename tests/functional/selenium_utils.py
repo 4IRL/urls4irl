@@ -1266,14 +1266,22 @@ def dispatch_pointer_drag(
     *,
     start_y: float,
     end_y: float,
+    start_x: float | None = None,
+    end_x: float | None = None,
     steps: int = 6,
     step_delay_ms: int = 0,
 ) -> None:
     """
-    Drives a synthetic vertical pointer drag on the element matched by
-    ``css_selector`` by dispatching a ``pointerdown`` at ``start_y``, ``steps``
-    interpolated ``pointermove`` events from ``start_y`` toward ``end_y``, and a
-    final ``pointerup`` at ``end_y``.
+    Drives a synthetic pointer drag on the element matched by ``css_selector``
+    by dispatching a ``pointerdown`` at ``(start_x, start_y)``, ``steps``
+    interpolated ``pointermove`` events toward ``(end_x, end_y)``, and a final
+    ``pointerup`` at ``(end_x, end_y)``.
+
+    ``start_x``/``end_x`` are optional. When omitted, ``clientX`` stays fixed at
+    ``0`` for every event (a purely vertical drag), matching this function's
+    original behavior for existing vertical tag-sheet callers. Passing both
+    produces a horizontal drag (``start_y == end_y``) or a diagonal one
+    (``start_y != end_y``).
 
     Every event is constructed as a real ``PointerEvent`` (``pointerType: "touch"``,
     primary ``button: 0``, ``pointerId: 1``) and dispatched **directly on the
@@ -1286,32 +1294,34 @@ def dispatch_pointer_drag(
     ``pointermove`` events. The default (``0``) dispatches every event in a single
     synchronous turn, which is fine for distance-threshold gestures. For a
     sub-threshold drag that must NOT fling-commit, pass a non-zero delay so the
-    handler's ``deltaY / elapsedMs`` velocity sample stays below the fling
-    threshold — an instantaneous synthetic drag otherwise computes a huge velocity
-    and commits regardless of distance.
+    handler's velocity sample (``deltaY / elapsedMs`` or ``deltaX / elapsedMs``)
+    stays below the fling threshold — an instantaneous synthetic drag otherwise
+    computes a huge velocity and commits regardless of distance.
 
-    Viewport-agnostic and reusable for any drawer/sheet drag target.
+    Viewport-agnostic and reusable for any drawer/sheet/row drag target.
 
     @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=780, end_y=560)
-        # drags the handle 220px up (open gesture)
+        # drags the handle 220px up (open gesture), clientX fixed at 0
     @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=420, end_y=640)
-        # drags the handle 220px down (close gesture)
+        # drags the handle 220px down (close gesture), clientX fixed at 0
     @example dispatch_pointer_drag(browser, "#tagSheetHandle", start_y=780, end_y=720,
         step_delay_ms=40)  # slow 60px up drag, sub-threshold, no fling-commit
+    @example dispatch_pointer_drag(browser, ".urlRow", start_x=415, end_x=115,
+        start_y=450, end_y=450)  # drags the row 300px left (horizontal commit)
     """
+    resolved_start_x = start_x if start_x is not None else 0
+    resolved_end_x = end_x if end_x is not None else 0
+
     if step_delay_ms <= 0:
         browser.execute_script(
             """
-            const element = document.querySelector(arguments[0]);
+            const { cssSelector, startX, startY, endX, endY, steps } = arguments[0];
+            const element = document.querySelector(cssSelector);
             if (!element) {
-                throw new Error('No element found for selector "' + arguments[0] + '"');
+                throw new Error('No element found for selector "' + cssSelector + '"');
             }
-            const startY = arguments[1];
-            const endY = arguments[2];
-            const steps = arguments[3];
-            const clientX = 0;
 
-            function dispatchPointer(type, clientY) {
+            function dispatchPointer(type, clientX, clientY) {
                 const event = new PointerEvent(type, {
                     bubbles: true,
                     cancelable: true,
@@ -1324,34 +1334,36 @@ def dispatch_pointer_drag(
                 element.dispatchEvent(event);
             }
 
-            dispatchPointer("pointerdown", startY);
+            dispatchPointer("pointerdown", startX, startY);
             for (let step = 1; step <= steps; step++) {
+                const interpolatedX = startX + ((endX - startX) * step) / steps;
                 const interpolatedY = startY + ((endY - startY) * step) / steps;
-                dispatchPointer("pointermove", interpolatedY);
+                dispatchPointer("pointermove", interpolatedX, interpolatedY);
             }
-            dispatchPointer("pointerup", endY);
+            dispatchPointer("pointerup", endX, endY);
             """,
-            css_selector,
-            start_y,
-            end_y,
-            steps,
+            {
+                "cssSelector": css_selector,
+                "startX": resolved_start_x,
+                "startY": start_y,
+                "endX": resolved_end_x,
+                "endY": end_y,
+                "steps": steps,
+            },
         )
         return
 
     browser.execute_async_script(
         """
-        const element = document.querySelector(arguments[0]);
-        const done = arguments[5];
+        const params = arguments[0];
+        const done = arguments[1];
+        const { cssSelector, startX, startY, endX, endY, steps, stepDelayMs } = params;
+        const element = document.querySelector(cssSelector);
         if (!element) {
-            throw new Error('No element found for selector "' + arguments[0] + '"');
+            throw new Error('No element found for selector "' + cssSelector + '"');
         }
-        const startY = arguments[1];
-        const endY = arguments[2];
-        const steps = arguments[3];
-        const stepDelayMs = arguments[4];
-        const clientX = 0;
 
-        function dispatchPointer(type, clientY) {
+        function dispatchPointer(type, clientX, clientY) {
             const event = new PointerEvent(type, {
                 bubbles: true,
                 cancelable: true,
@@ -1364,24 +1376,29 @@ def dispatch_pointer_drag(
             element.dispatchEvent(event);
         }
 
-        dispatchPointer("pointerdown", startY);
+        dispatchPointer("pointerdown", startX, startY);
         let step = 0;
         function nextMove() {
             step += 1;
             if (step > steps) {
-                dispatchPointer("pointerup", endY);
+                dispatchPointer("pointerup", endX, endY);
                 done();
                 return;
             }
+            const interpolatedX = startX + ((endX - startX) * step) / steps;
             const interpolatedY = startY + ((endY - startY) * step) / steps;
-            dispatchPointer("pointermove", interpolatedY);
+            dispatchPointer("pointermove", interpolatedX, interpolatedY);
             setTimeout(nextMove, stepDelayMs);
         }
         setTimeout(nextMove, stepDelayMs);
         """,
-        css_selector,
-        start_y,
-        end_y,
-        steps,
-        step_delay_ms,
+        {
+            "cssSelector": css_selector,
+            "startX": resolved_start_x,
+            "startY": start_y,
+            "endX": resolved_end_x,
+            "endY": end_y,
+            "steps": steps,
+            "stepDelayMs": step_delay_ms,
+        },
     )
