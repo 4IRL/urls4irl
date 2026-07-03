@@ -10,7 +10,6 @@
 // independently, so the duplication is deliberate rather than accidental drift.
 export const SNAP_DISTANCE_FRACTION = 0.35;
 export const FLING_VELOCITY_PX_PER_MS = 0.5;
-export const TAP_SLOP_PX = 8;
 
 /**
  * Clamp `value` to the range [min, max].

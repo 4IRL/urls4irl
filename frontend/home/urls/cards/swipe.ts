@@ -12,7 +12,6 @@ import { $ } from "../../../lib/globals.js";
 import {
   clamp,
   shouldCommitSwipeGesture,
-  TAP_SLOP_PX,
 } from "../../../logic/url-swipe-snap.js";
 import { isCoarsePointer, isMobile } from "../../mobile.js";
 import { deleteURLShowModal } from "./delete.js";
@@ -47,6 +46,8 @@ const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
 // urlSelected="true" on a row the user never tapped to select.
 const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
 const SWIPE_FOCUS_RETURN_NAMESPACE = "blur.swipeFocusReturn";
+// Movement (px) below which a press-release is treated as a tap, not a drag.
+const TAP_SLOP_PX = 8;
 // A drag is treated as vertical/ambiguous (native scroll wins) once the
 // vertical component is at least this fraction of the horizontal component.
 const VERTICAL_LOCK_RATIO = 1.5;
