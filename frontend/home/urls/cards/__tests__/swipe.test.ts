@@ -1,0 +1,335 @@
+import {
+  bindURLRowSwipeGesture,
+  triggerURLSwipeNudgeIfEligible,
+  _consumeSwipeClickSuppression,
+  _resetURLSwipeGestureForTests,
+} from "../swipe.js";
+import { deleteURLShowModal } from "../delete.js";
+import { isMobile, isCoarsePointer } from "../../../mobile.js";
+
+vi.mock("../delete.js", () => ({ deleteURLShowModal: vi.fn() }));
+vi.mock("../../../mobile.js", () => ({
+  isMobile: vi.fn(() => true),
+  isCoarsePointer: vi.fn(() => true),
+}));
+
+const $ = window.jQuery;
+
+const UTUB_URL_ID = 42;
+const UTUB_ID = 7;
+// 84px mirrors the --url-swipe-reveal-width fallback in styles/home/urls.css;
+// 35% of it (~29.4px) is the distance-commit threshold.
+const REVEAL_WIDTH_PX = 84;
+const NUDGE_SESSION_STORAGE_KEY = "u4i:urlSwipeNudgeShown";
+
+const SWIPE_IGNORE_SELECTORS = [
+  ".tagBadge",
+  ".urlOptions",
+  ".urlTagCombobox",
+  ".urlTitleBtnUpdate",
+  ".urlStringBtnUpdate",
+  ".updateUrlTitleWrap",
+  ".updateUrlStringWrap",
+  ".goToUrlIcon",
+];
+
+const URL_ROW_HTML = `
+  <div class="urlRow" utuburlid="${UTUB_URL_ID}">
+    <div class="urlRowSwipeReveal"></div>
+    <div class="urlRowContent">
+      <span class="tagBadge"></span>
+      <div class="urlOptions"></div>
+      <div class="urlTagCombobox"></div>
+      <button class="urlTitleBtnUpdate"></button>
+      <button class="urlStringBtnUpdate"></button>
+      <div class="updateUrlTitleWrap"></div>
+      <div class="updateUrlStringWrap"></div>
+      <span class="goToUrlIcon"></span>
+    </div>
+  </div>
+`;
+
+function stubRevealWidth({ row, width }: { row: JQuery; width: number }): void {
+  const revealElement = row.find(".urlRowSwipeReveal")[0] as HTMLElement;
+  revealElement.getBoundingClientRect = (): DOMRect =>
+    ({
+      width,
+      height: 44,
+      top: 0,
+      bottom: 44,
+      left: 0,
+      right: width,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    }) as DOMRect;
+}
+
+// Builds and attaches a `.urlRow` fixture, stubs the reveal panel's measured
+// width (happy-dom returns a zero rect by default), and binds the gesture —
+// mirroring how createURLBlock() wires bindURLRowSwipeGesture in production.
+function mountURLRow(): JQuery {
+  const row = $(URL_ROW_HTML);
+  $(document.body).append(row);
+  stubRevealWidth({ row, width: REVEAL_WIDTH_PX });
+  bindURLRowSwipeGesture({
+    urlRow: row,
+    utubUrlID: UTUB_URL_ID,
+    utubID: UTUB_ID,
+  });
+  return row;
+}
+
+function dispatchPointer({
+  target,
+  type,
+  clientX,
+  clientY = 0,
+  pointerId = 1,
+  pointerType = "touch",
+}: {
+  target: HTMLElement;
+  type: "pointerdown" | "pointermove" | "pointerup" | "pointercancel";
+  clientX: number;
+  clientY?: number;
+  pointerId?: number;
+  pointerType?: string;
+}): void {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, "button", { value: 0 });
+  Object.defineProperty(event, "pointerId", { value: pointerId });
+  Object.defineProperty(event, "clientX", { value: clientX });
+  Object.defineProperty(event, "clientY", { value: clientY });
+  Object.defineProperty(event, "pointerType", { value: pointerType });
+  target.dispatchEvent(event);
+}
+
+// Mirrors splash/scroll-reveal.test.ts's matchMedia-mocking convention.
+function setReducedMotion({ reduce }: { reduce: boolean }): void {
+  window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+    matches: reduce,
+    media: query,
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })) as unknown as typeof window.matchMedia;
+}
+
+describe("swipe gesture", () => {
+  beforeEach(() => {
+    document.body.innerHTML = "";
+    vi.clearAllMocks();
+    _resetURLSwipeGestureForTests();
+    sessionStorage.removeItem(NUDGE_SESSION_STORAGE_KEY);
+    vi.mocked(isMobile).mockReturnValue(true);
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+  });
+
+  it("a tap (pointerdown + pointerup with no move) does not call deleteURLShowModal or add drag classes", () => {
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 100 });
+
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect(row.hasClass("swipe-committed")).toBe(false);
+  });
+
+  it("a drag past the commit threshold calls deleteURLShowModal once with (utubUrlID, urlRow, utubID) and marks the row swipe-committed", () => {
+    vi.useFakeTimers();
+    try {
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      // 40px left of 84px reveal width => fraction ~0.476, past the 0.35
+      // distance-commit threshold regardless of velocity.
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+
+      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
+      const [calledUtubUrlID, calledUrlRow, calledUtubID] =
+        vi.mocked(deleteURLShowModal).mock.calls[0];
+      expect(calledUtubUrlID).toBe(UTUB_URL_ID);
+      expect(calledUrlRow).toBe(row);
+      expect(calledUtubID).toBe(UTUB_ID);
+      expect(row.hasClass("swipe-committed")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a drag past the commit threshold arms swipe-click suppression, and consuming it is one-shot", () => {
+    vi.useFakeTimers();
+    try {
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+
+      expect(_consumeSwipeClickSuppression()).toBe(true);
+      expect(_consumeSwipeClickSuppression()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a drag below the commit threshold does not call deleteURLShowModal and removes swipe-dragging on release (snap-back)", () => {
+    // Fake timers freeze performance.now() so velocity sampling is
+    // deterministic (same-tick events => dt 0 => velocity stays 0), isolating
+    // the distance-only threshold check.
+    vi.useFakeTimers();
+    try {
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      // 15px left of 84px reveal width => fraction ~0.179, below the 0.35
+      // distance-commit threshold.
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 85 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 85 });
+
+      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(row.hasClass("swipe-dragging")).toBe(false);
+      expect(row.hasClass("swipe-committed")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("pointercancel mid-drag resets state without calling deleteURLShowModal", () => {
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 50 });
+    expect(row.hasClass("swipe-dragging")).toBe(true);
+
+    dispatchPointer({ target: rowElement, type: "pointercancel", clientX: 50 });
+
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect(row.hasClass("swipe-committed")).toBe(false);
+    expect((row.find(".urlRowContent")[0] as HTMLElement).style.transform).toBe(
+      "",
+    );
+  });
+
+  it.each(SWIPE_IGNORE_SELECTORS)(
+    "ignores a pointerdown whose target is inside %s (no drag state, no transform on a subsequent move)",
+    (ignoredSelector) => {
+      const row = mountURLRow();
+      const ignoredTargetJQuery = row.find(ignoredSelector);
+      expect(ignoredTargetJQuery.length).toBe(1);
+      const ignoredTarget = ignoredTargetJQuery[0] as HTMLElement;
+
+      dispatchPointer({
+        target: ignoredTarget,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({
+        target: ignoredTarget,
+        type: "pointermove",
+        clientX: 20,
+      });
+
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      expect(row.hasClass("swipe-dragging")).toBe(false);
+      expect(deleteURLShowModal).not.toHaveBeenCalled();
+    },
+  );
+
+  it("ignores a pointerType: 'mouse' pointerdown (desktop/mouse users unaffected)", () => {
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({
+      target: rowElement,
+      type: "pointerdown",
+      clientX: 100,
+      pointerType: "mouse",
+    });
+    dispatchPointer({
+      target: rowElement,
+      type: "pointermove",
+      clientX: 60,
+      pointerType: "mouse",
+    });
+    dispatchPointer({
+      target: rowElement,
+      type: "pointerup",
+      clientX: 60,
+      pointerType: "mouse",
+    });
+
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+  });
+
+  describe("triggerURLSwipeNudgeIfEligible", () => {
+    it("on first eligible call, peeks .urlRowContent and sets the session flag", () => {
+      vi.useFakeTimers();
+      try {
+        setReducedMotion({ reduce: false });
+        const row = mountURLRow();
+
+        expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+
+        triggerURLSwipeNudgeIfEligible({ urlRow: row });
+
+        expect(
+          (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+        ).toBe("translateX(-12px)");
+        expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBe("true");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("does not retrigger the peek animation once the session flag is already set", () => {
+      setReducedMotion({ reduce: false });
+      const row = mountURLRow();
+      sessionStorage.setItem(NUDGE_SESSION_STORAGE_KEY, "true");
+
+      triggerURLSwipeNudgeIfEligible({ urlRow: row });
+
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+    });
+
+    it("skips the peek animation under prefers-reduced-motion but still sets the session flag", () => {
+      setReducedMotion({ reduce: true });
+      const row = mountURLRow();
+
+      triggerURLSwipeNudgeIfEligible({ urlRow: row });
+
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBe("true");
+    });
+  });
+});

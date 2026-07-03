@@ -28,6 +28,14 @@ vi.mock("../utils.js", () => ({
 vi.mock("../../../mobile.js", () => ({
   isCoarsePointer: vi.fn(() => false),
 }));
+// swipe.js imports deleteURLShowModal from delete.js, which transitively
+// imports search.js — search.js's module-level
+// on(AppEvents.URL_TAG_FILTER_APPLIED, reapplyURLSearchFilter) subscription
+// would otherwise fire against this suite's minimal DOM fixtures (no
+// #URLContentSearch input) whenever a test emits URL_TAG_FILTER_APPLIED.
+vi.mock("../delete.js", () => ({
+  deleteURLShowModal: vi.fn(),
+}));
 
 const $ = window.jQuery;
 
