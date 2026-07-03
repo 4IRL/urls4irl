@@ -28,6 +28,11 @@ def get_url_in_utub(app: Flask, utub_id: int) -> Utub_Urls:
         return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first()
 
 
+def get_urls_in_utub(app: Flask, utub_id: int) -> list[Utub_Urls]:
+    with app.app_context():
+        return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).all()
+
+
 def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
     args = (
         ["addmock", "url"]

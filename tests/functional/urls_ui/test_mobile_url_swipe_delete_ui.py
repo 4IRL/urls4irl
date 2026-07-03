@@ -12,6 +12,7 @@ from tests.functional.assert_utils import (
 )
 from tests.functional.db_utils import (
     get_url_in_utub,
+    get_urls_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
@@ -152,6 +153,55 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
     wait_until_css_property(
         browser, row_selector, "border-bottom-color", NEUTRAL_ROW_BORDER_COLOR
     )
+
+
+def test_url_swipe_dismiss_twice_then_blur_leaves_no_stuck_goto_icon(
+    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN two rows that each committed a swipe-to-delete gesture and had the
+        confirm modal dismissed
+    WHEN focus subsequently leaves a dismissed row (e.g. the user taps
+        elsewhere)
+    THEN that row's .goToUrlIcon is not left permanently visible (regression
+        coverage for a leaked `visible-on-focus` class: the pre-existing
+        keyboard-focus handler in cards.ts only clears that class when the
+        icon itself blurs — a check designed for real Tab navigation that
+        never matches when the swipe module's WCAG focus-return blurs the
+        row directly, so the class leaked forever once focus moved on)
+    """
+    browser = browser_mobile_portrait
+    app = provide_app
+    utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
+    utub_urls = get_urls_in_utub(app, utub.id)
+    assert len(utub_urls) >= 2, "Test premise violated: need 2+ URLs in the UTub"
+    first_url, second_url = utub_urls[0], utub_urls[1]
+
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+
+    first_row_selector = get_url_row_selector(first_url.id)
+    second_row_selector = get_url_row_selector(second_url.id)
+
+    for row_selector in (first_row_selector, second_row_selector):
+        swipe_url_card_delete(browser, row_selector)
+        wait_until_url_card_swipe_committed(browser)
+        assert_visible_css_selector(browser, ML.ELEMENT_MODAL)
+        wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
+        wait_until_hidden(browser, HPL.HOME_MODAL)
+        wait_until_url_card_swipe_reset(browser)
+
+    # A tap elsewhere blurs whichever row the WCAG focus-return trigger last
+    # focused, the same way a real user would move on after dismissing.
+    wait_then_click_element(browser, HPL.MAIN_PANEL)
+
+    for row_selector in (first_row_selector, second_row_selector):
+        icon_selector = f"{row_selector} {HPL.GO_TO_URL_ICON}"
+        assert_not_visible_css_selector(browser, icon_selector)
+        icon = browser.find_element(By.CSS_SELECTOR, icon_selector)
+        assert "visible-on-focus" not in (icon.get_attribute("class") or "")
 
 
 def test_url_swipe_below_threshold_snaps_back_no_op(

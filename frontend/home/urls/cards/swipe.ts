@@ -51,6 +51,13 @@ const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
 // urlSelected="true" on a row the user never tapped to select.
 const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
 const SWIPE_FOCUS_RETURN_NAMESPACE = "blur.swipeFocusReturn";
+// setFocusEventListenersOnURLCard (cards.ts) adds this to .goToUrlIcon on
+// .urlRow focus and only removes it when the *icon itself* blurs (the real
+// keyboard-Tab path: row -> icon -> away). The WCAG focus-return trigger()
+// above focuses/blurs the row directly, never the icon, so that cleanup
+// condition never matches — strip it here to avoid leaking it permanently.
+const GO_TO_URL_ICON_SELECTOR = ".goToUrlIcon";
+const VISIBLE_ON_FOCUS_CLASS = "visible-on-focus";
 // Movement (px) below which a press-release is treated as a tap, not a drag.
 const TAP_SLOP_PX = 8;
 // A drag is treated as vertical/ambiguous (native scroll wins) once the
@@ -308,6 +315,7 @@ function _armFocusReturnSuppression(urlRow: JQuery): void {
     .off(SWIPE_FOCUS_RETURN_NAMESPACE)
     .one(SWIPE_FOCUS_RETURN_NAMESPACE, () => {
       urlRow.removeClass(SWIPE_FOCUS_RETURN_CLASS);
+      urlRow.find(GO_TO_URL_ICON_SELECTOR).removeClass(VISIBLE_ON_FOCUS_CLASS);
     });
 }
 
