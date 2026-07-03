@@ -158,6 +158,9 @@ describe("createURLBlock", () => {
     it("renders .urlRowSwipeReveal when canDelete is true", () => {
       const el = createURLBlock({ ...baseURL, canDelete: true }, [], 10);
       expect(el.find(".urlRowSwipeReveal").length).toBe(1);
+      const icon = el.find(".urlRowSwipeRevealIcon");
+      expect(icon.length).toBe(1);
+      expect(icon.find("svg").length).toBe(1);
     });
 
     it("does not render .urlRowSwipeReveal when canDelete is false", () => {
