@@ -28,7 +28,7 @@
     border-bottom: 1px solid var(--borderColor);
     border-top: 1px solid var(--borderColor);
     transition: background-color 0.15s ease;
-    touch-action: pan-y;
+    touch-action: manipulation;
     position: relative;
     overflow: hidden;
     /* Opaque base ("odd" rows previously had no background-color of their own
@@ -47,6 +47,17 @@
        it at rest. Padding must live on the box that visually covers the
        reveal, i.e. .urlRowContent. */
     padding: 0;
+}
+
+/* Only delete-capable rows render a .urlRowSwipeReveal child (see
+   createURLBlock in cards.ts), so its presence doubles as the CSS hook for
+   "this row has an active swipe gesture bound to it" — restrict pan-y (which
+   frees native horizontal touch handling for the JS drag) to those rows.
+   Non-deletable rows keep the base .urlRow touch-action: manipulation above,
+   preserving the double-tap-zoom/tap-delay suppression they had before swipe
+   was introduced. */
+.urlRow:has(.urlRowSwipeReveal) {
+    touch-action: pan-y;
 }
 
 /* Swipe-to-delete reveal panel — sits behind .urlRowContent, exposed as the
