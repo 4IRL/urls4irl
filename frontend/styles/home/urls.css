@@ -195,14 +195,14 @@
    the visual focus ring — it is otherwise nearly indistinguishable from the
    urlSelected="true" look and falsely reads as "this row is selected" even
    though the user never tapped to select it. */
-.urlRow.swipe-focus-return:focus,
-.urlRow.swipe-focus-return:focus-visible {
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus,
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus-visible {
     border-top: 1px solid var(--borderColor) !important;
     border-bottom: 1px solid var(--borderColor) !important;
 }
 
-.urlRow.swipe-focus-return:focus .goToUrlIcon,
-.urlRow.swipe-focus-return:focus-visible .goToUrlIcon {
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus .goToUrlIcon,
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus-visible .goToUrlIcon {
     visibility: hidden !important;
 }
 

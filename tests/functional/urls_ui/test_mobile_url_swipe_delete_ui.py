@@ -24,6 +24,7 @@ from tests.functional.selenium_utils import (
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
+    wait_until_css_property,
     wait_until_hidden,
 )
 from tests.functional.urls_ui.selenium_utils import (
@@ -39,6 +40,8 @@ pytestmark = [pytest.mark.urls_ui, pytest.mark.mobile_ui]
 USER_ID_FOR_TEST = 1
 SWIPE_COMMITTED_CLASS = "swipe-committed"
 SWIPE_DRAGGING_CLASS = "swipe-dragging"
+# --borderColor (frontend/styles/tokens.css), as a browser-normalized rgb() string.
+NEUTRAL_ROW_BORDER_COLOR = "rgb(52, 60, 61)"
 
 
 def test_url_swipe_commit_opens_confirm_modal(
@@ -112,8 +115,12 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
     """
     GIVEN a committed swipe-to-delete gesture with the confirm modal open
     WHEN the user dismisses the modal instead of confirming
-    THEN the URL is not deleted and the row resets to a clean state with no
-        leftover swipe-committed/swipe-dragging class
+    THEN the URL is not deleted, the row resets to a clean state with no
+        leftover swipe-committed/swipe-dragging class, and the WCAG
+        focus-return suppression actually renders a neutral border rather
+        than the focus-ring green (regression coverage for a CSS-specificity
+        bug where the suppression rule lost the cascade to the pre-existing
+        focus-ring rule despite the suppression class being correctly applied)
     """
     browser = browser_mobile_portrait
     app = provide_app
@@ -141,6 +148,10 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
     assert SWIPE_COMMITTED_CLASS not in row_class
     assert SWIPE_DRAGGING_CLASS not in row_class
     assert init_num_url_rows == get_num_url_rows(browser)
+
+    wait_until_css_property(
+        browser, row_selector, "border-bottom-color", NEUTRAL_ROW_BORDER_COLOR
+    )
 
 
 def test_url_swipe_below_threshold_snaps_back_no_op(
