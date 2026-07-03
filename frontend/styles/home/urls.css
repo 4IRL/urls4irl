@@ -27,9 +27,91 @@
 .urlRow {
     border-bottom: 1px solid var(--borderColor);
     border-top: 1px solid var(--borderColor);
-    transition: background-color 0.15s ease, padding 0.2s ease-in-out;
-    padding: 5px 15px;
+    transition: background-color 0.15s ease;
     touch-action: manipulation;
+    position: relative;
+    overflow: hidden;
+    /* Opaque base ("odd" rows previously had no background-color of their own
+       and just showed the ambient #pageContent/main background through). Now
+       that .urlRowSwipeReveal sits behind .urlRowContent inside this element,
+       .urlRowContent needs a real (non-transparent) color to inherit so the
+       reveal panel stays fully hidden at rest — see .urlRowContent below. The
+       even-row rule above overrides this with --cardBackgroundColor. */
+    background-color: var(--defaultPageBackgroundColor);
+    /* Padding lives on .urlRowContent, not here. .urlRowSwipeReveal is an
+       absolutely-positioned child with inset:0, which is relative to this
+       element's padding box — it fills edge-to-edge regardless of any
+       padding declared here. If .urlRow itself carried padding, .urlRowContent
+       (a normal-flow child that respects that padding) would sit inset from
+       the edges, leaving the reveal panel visible as a border/gutter around
+       it at rest. Padding must live on the box that visually covers the
+       reveal, i.e. .urlRowContent. */
+    padding: 0;
+}
+
+/* Only delete-capable rows render a .urlRowSwipeReveal child (see
+   createURLBlock in cards.ts), so its presence doubles as the CSS hook for
+   "this row has an active swipe gesture bound to it" — restrict pan-y (which
+   frees native horizontal touch handling for the JS drag) to those rows.
+   Non-deletable rows keep the base .urlRow touch-action: manipulation above,
+   preserving the double-tap-zoom/tap-delay suppression they had before swipe
+   was introduced. */
+.urlRow:has(.urlRowSwipeReveal) {
+    touch-action: pan-y;
+}
+
+/* Swipe-to-delete reveal panel — sits behind .urlRowContent, exposed as the
+   content layer translates left. Purely decorative (aria-hidden); the
+   delete action fires on gesture commit or via the existing .urlBtnDelete,
+   never by tapping this panel. */
+.urlRowSwipeReveal {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    background: var(--removeIconColor);
+    z-index: 0;
+}
+
+.urlRowSwipeRevealIcon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+}
+
+.urlRowContent {
+    position: relative;
+    z-index: 1;
+    background-color: inherit;
+    padding: 5px 15px;
+    transition: transform 0.3s ease, padding 0.2s ease-in-out;
+}
+
+/* Drag state — nulls the snap transition so the row tracks the finger 1:1,
+   mirroring .tag-sheet-dragging in tag-sheet.css. */
+.urlRow.swipe-dragging .urlRowContent {
+    transition: none;
+}
+
+/* Committed state — content layer slides fully behind the reveal panel.
+   --url-swipe-reveal-width is set inline by swipe.ts at drag-start from the
+   reveal panel's measured width; the var(...) fallback only applies to the
+   practically-unreachable case where this class is applied before any drag
+   has ever set the property. */
+.urlRow.swipe-committed .urlRowContent {
+    transform: translateX(calc(-1 * var(--url-swipe-reveal-width, 84px)));
+}
+
+/* Defensive: while the one-time onboarding nudge is peeking, suppress hover
+   entirely so a coincidental cursor position (e.g. a desktop viewport resized
+   to mobile width for QA/testing, not true touch emulation) can never read as
+   row selection/hover during the peek. */
+.urlRow.swipe-nudge-peeking {
+    pointer-events: none;
 }
 
 .urlTitle {
@@ -108,6 +190,22 @@
     border-bottom: 1px solid var(--focusedUrlBorder) !important;
 }
 
+/* Defensive: while focus is being programmatically returned to a row after a
+   swipe-to-delete gesture's confirm modal opens/closes (WCAG 2.4.3), suppress
+   the visual focus ring — it is otherwise nearly indistinguishable from the
+   urlSelected="true" look and falsely reads as "this row is selected" even
+   though the user never tapped to select it. */
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus,
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus-visible {
+    border-top: 1px solid var(--borderColor) !important;
+    border-bottom: 1px solid var(--borderColor) !important;
+}
+
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus .goToUrlIcon,
+.urlRow[filterable="true"][urlSelected="false"].swipe-focus-return:focus-visible .goToUrlIcon {
+    visibility: hidden !important;
+}
+
 .urlRow[filterable="true"]:not([urlSelected="true"]) {
     cursor: pointer;
 }
@@ -116,6 +214,9 @@
     border-top: 1px solid var(--selectedUrlBorder);
     border-bottom: 1px solid var(--selectedUrlBorder) !important;
     cursor: auto;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlRowContent {
     padding-top: 15px;
     padding-bottom: 20px;
 }
@@ -497,5 +598,14 @@ a.urlString {
     #URLDeckSubheaderCreateDescription:hover {
         cursor: pointer;
         text-decoration: underline;
+    }
+}
+
+/* Reduced-motion: disable the swipe-reveal transition. Placed AFTER the
+   swipe rules above so it wins the source-order tiebreak at equal
+   specificity, matching tag-sheet.css's convention. */
+@media (prefers-reduced-motion: reduce) {
+    .urlRowContent {
+        transition: none;
     }
 }

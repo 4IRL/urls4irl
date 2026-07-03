@@ -14,6 +14,7 @@ import { hideAndResetTagCombobox } from "../tags/combobox.js";
 import { setFocusEventListenersOnURLCard } from "./cards.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { _consumeSwipeClickSuppression } from "./swipe.js";
 
 // Touch devices have no hover to reveal a tag's delete "×", so tapping a tag
 // toggles this class on it (one tag at a time) to slide the "×" out. The
@@ -144,6 +145,15 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
   urlCard.offAndOn(
     "click.urlSelected",
     function (event: JQuery.TriggeredEvent) {
+      // stopImmediatePropagation() here also intentionally suppresses the
+      // sibling click.deselectURL handler (enableClickOnSelectedURLCardToHide)
+      // for the synthetic trailing click after a swipe commit — both handlers
+      // are bound to the same "click" event on the same element.
+      if (_consumeSwipeClickSuppression()) {
+        event.stopImmediatePropagation();
+        return;
+      }
+
       if (!$(event.target).closest(".urlRow").length) return;
 
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")

@@ -1,12 +1,12 @@
-import type { UtubUrlItem, UtubTag } from "../../../types/url.js";
-
-import { updateURLDeck } from "../deck.js";
 import { applyDeckDiff } from "../../../logic/apply-deck-diff.js";
 import { getState } from "../../../store/app-store.js";
+import type { UtubUrlItem, UtubTag } from "../../../types/url.js";
 import {
   createURLBlock,
   updateURLAfterFindingStaleData,
 } from "../cards/cards.js";
+import { triggerURLSwipeNudgeIfEligible } from "../cards/swipe.js";
+import { updateURLDeck, setURLDeckOnUTubSelected } from "../deck.js";
 import { reapplyURLSearchFilter } from "../search.js";
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
@@ -73,6 +73,10 @@ vi.mock("../../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ urls: [] })),
   setState: vi.fn(),
   resetStore: vi.fn(),
+}));
+
+vi.mock("../cards/swipe.js", () => ({
+  triggerURLSwipeNudgeIfEligible: vi.fn(),
 }));
 
 const $ = window.jQuery;
@@ -169,6 +173,9 @@ describe("updateURLDeck", () => {
       document.querySelector('#listURLs .urlRow[utuburlid="2"]'),
     ).not.toBeNull();
     expect(document.querySelector('#listURLs [utuburlid="2"]')).not.toBeNull();
+    expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledWith({
+      urlRow: newURLBlock,
+    });
   });
 
   it("delegates updateElement to refreshURLBlock for the matching URL", () => {
@@ -218,5 +225,40 @@ describe("updateURLDeck", () => {
     updateURLDeck([SAMPLE_URL_1], SAMPLE_TAGS, 42);
 
     expect(vi.mocked(reapplyURLSearchFilter)).not.toHaveBeenCalled();
+  });
+});
+
+describe("setURLDeckOnUTubSelected", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = `
+      <div id="SearchURLWrap"></div>
+      <div id="listURLs"></div>
+    `;
+    vi.mocked(getState).mockReturnValue({
+      urls: [],
+    } as unknown as ReturnType<typeof getState>);
+  });
+
+  it("calls triggerURLSwipeNudgeIfEligible once per row in the initial-load loop", () => {
+    setURLDeckOnUTubSelected(
+      42,
+      "Test UTub",
+      [SAMPLE_URL_1, SAMPLE_URL_2],
+      SAMPLE_TAGS,
+    );
+
+    expect(vi.mocked(createURLBlock)).toHaveBeenCalledTimes(2);
+    expect(vi.mocked(triggerURLSwipeNudgeIfEligible)).toHaveBeenCalledTimes(2);
+
+    const createdRows = vi
+      .mocked(createURLBlock)
+      .mock.results.map((result) => result.value as JQuery);
+    expect(
+      vi.mocked(triggerURLSwipeNudgeIfEligible).mock.calls[0][0].urlRow,
+    ).toBe(createdRows[0]);
+    expect(
+      vi.mocked(triggerURLSwipeNudgeIfEligible).mock.calls[1][0].urlRow,
+    ).toBe(createdRows[1]);
   });
 });

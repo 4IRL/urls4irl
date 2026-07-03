@@ -80,12 +80,22 @@ describe("createURLBlock", () => {
       expect(el.hasClass("urlRow")).toBe(true);
     });
 
-    it("has flex-column, full-width, pad-in-15p, pointerable classes", () => {
+    it("has flex-column, full-width, pointerable classes", () => {
       const el = createURLBlock(baseURL, [], 10);
       expect(el.hasClass("flex-column")).toBe(true);
       expect(el.hasClass("full-width")).toBe(true);
-      expect(el.hasClass("pad-in-15p")).toBe(true);
       expect(el.hasClass("pointerable")).toBe(true);
+    });
+
+    it("has urlRowContent wrapping the row's content", () => {
+      const el = createURLBlock(baseURL, [], 10);
+      const content = el.find("> .urlRowContent");
+      expect(content.length).toBe(1);
+      expect(content.hasClass("flex-column")).toBe(true);
+      expect(content.hasClass("full-width")).toBe(true);
+      expect(content.find(".urlString").length).toBe(1);
+      expect(content.find(".urlTagsContainer").length).toBe(1);
+      expect(content.find(".urlOptions").length).toBe(1);
     });
   });
 
@@ -143,6 +153,19 @@ describe("createURLBlock", () => {
       createURLBlock({ ...baseURL, canDelete: true }, [], 10);
       expect(vi.mocked(createURLStringAndUpdateBlock)).toHaveBeenCalledOnce();
       expect(vi.mocked(createURLString)).not.toHaveBeenCalled();
+    });
+
+    it("renders .urlRowSwipeReveal when canDelete is true", () => {
+      const el = createURLBlock({ ...baseURL, canDelete: true }, [], 10);
+      expect(el.find(".urlRowSwipeReveal").length).toBe(1);
+      const icon = el.find(".urlRowSwipeRevealIcon");
+      expect(icon.length).toBe(1);
+      expect(icon.find("svg").length).toBe(1);
+    });
+
+    it("does not render .urlRowSwipeReveal when canDelete is false", () => {
+      const el = createURLBlock({ ...baseURL, canDelete: false }, [], 10);
+      expect(el.find(".urlRowSwipeReveal").length).toBe(0);
     });
   });
 

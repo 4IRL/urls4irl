@@ -17,6 +17,7 @@ import {
   newURLInputAddEventListeners,
 } from "./cards.js";
 import { selectURLCard } from "./selection.js";
+import { triggerURLSwipeNudgeIfEligible } from "./swipe.js";
 import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "./filtering.js";
 import {
@@ -267,6 +268,7 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   ).addClass("even");
 
   newUrlCard.insertAfter($("#createURLWrap"));
+  triggerURLSwipeNudgeIfEligible({ urlRow: newUrlCard });
 
   if (currentNumOfURLs !== 0) {
     updateColorOfFollowingURLCardsAfterURLCreated();

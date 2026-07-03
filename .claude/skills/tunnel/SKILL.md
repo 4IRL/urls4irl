@@ -17,6 +17,8 @@ If genuinely ambiguous, ask via `AskUserQuestion` (start vs stop). Otherwise pro
 
 ## Start
 
+**MANDATORY — never send a tunnel URL without the credentials block in the same message.** This holds even if `make tunnel` was run directly via Bash instead of through this skill (e.g. mid-conversation, outside a dedicated skill invocation) — the URL and the login block are not separable outputs.
+
 1. Run the start target (synchronous `Bash`, `dangerouslyDisableSandbox: true` — it's a `make`/`docker` command). It rebuilds into built mode (~1–2 min on first run), starts the tunnel, and prints a `TUNNEL URL: https://<random>.trycloudflare.com` line:
    ```
    make tunnel

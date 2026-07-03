@@ -18,6 +18,8 @@ import {
 import { createTagBadgeInURL, createTagBadgesAndWrap } from "../tags/tags.js";
 import { ComboboxMode, createTagComboboxBlock } from "../tags/combobox.js";
 import { createURLOptionsButtons } from "./options/btns.js";
+import { createDeleteURLIcon } from "./options/delete-btn.js";
+import { bindURLRowSwipeGesture } from "./swipe.js";
 import {
   createURL,
   createURLHideInput,
@@ -101,8 +103,12 @@ export function createURLBlock(
   utubID: number,
 ): JQuery<HTMLElement> {
   const urlCard = $(document.createElement("div"))
-    .addClass("urlRow flex-column full-width pad-in-15p pointerable")
+    .addClass("urlRow flex-column full-width pointerable")
     .enableTab(); // Holds everything in the URL
+
+  const urlRowContent = $(document.createElement("div")).addClass(
+    "urlRowContent flex-column full-width",
+  );
 
   const urlTitleGoToURLWrap = $(document.createElement("div")).addClass(
     "flex-row full-width align-center jc-sb",
@@ -119,7 +125,8 @@ export function createURLBlock(
 
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
-  urlCard.append(urlTitleGoToURLWrap).attr({
+  urlRowContent.append(urlTitleGoToURLWrap);
+  urlCard.attr({
     utubUrlID: url.utubUrlID,
     urlSelected: false,
     filterable: true,
@@ -128,21 +135,53 @@ export function createURLBlock(
 
   // Append update URL form if user can edit the URL
   if (url.canDelete) {
-    urlCard.append(
+    urlRowContent.append(
       createURLStringAndUpdateBlock(url.urlString, urlCard, utubID),
     );
   } else {
-    urlCard.append(createURLString(url.urlString));
+    urlRowContent.append(createURLString(url.urlString));
   }
 
-  urlCard.append(
+  urlRowContent.append(
     createTagsAndOptionsForUrlBlock(url, dictTags, urlCard, utubID),
   );
+
+  if (url.canDelete) {
+    urlCard.append(createURLRowSwipeReveal());
+  }
+  urlCard.append(urlRowContent);
 
   setURLCardSelectionEventListener(urlCard);
   setFocusEventListenersOnURLCard(urlCard);
 
+  if (url.canDelete) {
+    bindURLRowSwipeGesture({
+      urlRow: urlCard,
+      utubUrlID: url.utubUrlID,
+      utubID,
+    });
+  }
+
   return urlCard;
+}
+
+// Absolutely-positioned red delete affordance revealed behind .urlRowContent
+// as the row is swiped left. Purely decorative: the delete action is
+// triggered by completing the swipe gesture or the existing .urlBtnDelete,
+// never by tapping this panel directly.
+function createURLRowSwipeReveal(): JQuery<HTMLElement> {
+  const swipeReveal = $(document.createElement("div")).addClass(
+    "urlRowSwipeReveal",
+  );
+
+  const swipeRevealIcon = $(document.createElement("div"))
+    .addClass("urlRowSwipeRevealIcon")
+    .attr({ "aria-hidden": "true" })
+    .append(createDeleteURLIcon());
+
+  swipeReveal.append(swipeRevealIcon);
+
+  return swipeReveal;
 }
 
 // Add focus and blur on URL card when tabbing through URLs

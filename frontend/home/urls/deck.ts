@@ -21,6 +21,7 @@ import {
   newURLInputRemoveEventListeners,
 } from "./cards/cards.js";
 import { resetNewURLForm } from "./cards/create.js";
+import { triggerURLSwipeNudgeIfEligible } from "./cards/swipe.js";
 import {
   showURLSearchIcon,
   hideURLSearchIcon,
@@ -78,7 +79,9 @@ export function updateURLDeck(
       });
     },
     addElement: (url) => {
-      $("#listURLs").append(createURLBlock(url, updatedUTubTags, utubID));
+      const urlBlock = createURLBlock(url, updatedUTubTags, utubID);
+      $("#listURLs").append(urlBlock);
+      triggerURLSwipeNudgeIfEligible({ urlRow: urlBlock });
     },
     updateElement: (urlID, url) => {
       const urlCard = $(".urlRow[utuburlid=" + urlID + "]");
@@ -111,11 +114,13 @@ export function setURLDeckOnUTubSelected(
   if (numOfURLs !== 0) {
     // Instantiate deck with list of URLs stored in current UTub
     for (let urlIndex = 0; urlIndex < dictURLs.length; urlIndex++) {
-      parent.append(
-        createURLBlock(dictURLs[urlIndex], dictTags, utubID).addClass(
-          urlIndex % 2 === 0 ? "even" : "odd",
-        ),
-      );
+      const urlBlock = createURLBlock(
+        dictURLs[urlIndex],
+        dictTags,
+        utubID,
+      ).addClass(urlIndex % 2 === 0 ? "even" : "odd");
+      parent.append(urlBlock);
+      triggerURLSwipeNudgeIfEligible({ urlRow: urlBlock });
     }
 
     hideURLsEmptyState();
