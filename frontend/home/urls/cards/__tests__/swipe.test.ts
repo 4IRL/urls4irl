@@ -290,6 +290,81 @@ describe("swipe gesture", () => {
     );
   });
 
+  it("a second pointerdown with a different pointerId mid-drag never starts a second drag, and stray move/release events for it are ignored", () => {
+    vi.useFakeTimers();
+    try {
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+        pointerId: 1,
+      });
+      dispatchPointer({
+        target: rowElement,
+        type: "pointermove",
+        clientX: 70,
+        pointerId: 1,
+      });
+      expect(row.hasClass("swipe-dragging")).toBe(true);
+
+      // A second finger touches down mid-drag on the same row. _dragState is
+      // already owned by pointerId 1, so _beginDrag's `_dragState !== null`
+      // guard rejects it outright — no second drag begins.
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+        pointerId: 2,
+      });
+
+      // Move/up/cancel events "from" the rejected second pointer must be
+      // ignored too (the `event.pointerId !== _dragState.pointerId` guards
+      // in _onDragMove/_endDrag/_cancelDrag), so none of them can perturb or
+      // end the first drag.
+      dispatchPointer({
+        target: rowElement,
+        type: "pointermove",
+        clientX: 10,
+        pointerId: 2,
+      });
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerup",
+        clientX: 10,
+        pointerId: 2,
+      });
+      dispatchPointer({
+        target: rowElement,
+        type: "pointercancel",
+        clientX: 10,
+        pointerId: 2,
+      });
+
+      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("translateX(-30px)");
+      expect(row.hasClass("swipe-dragging")).toBe(true);
+
+      // The original drag (pointerId 1) completes normally past the commit
+      // threshold, proving its state was never touched by the second pointer.
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerup",
+        clientX: 60,
+        pointerId: 1,
+      });
+
+      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
+      expect(row.hasClass("swipe-committed")).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it.each(SWIPE_IGNORE_SELECTORS)(
     "ignores a pointerdown whose target is inside %s (no drag state, no transform on a subsequent move)",
     (ignoredSelector) => {
