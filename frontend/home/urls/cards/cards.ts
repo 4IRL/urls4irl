@@ -19,6 +19,7 @@ import { createTagBadgeInURL, createTagBadgesAndWrap } from "../tags/tags.js";
 import { ComboboxMode, createTagComboboxBlock } from "../tags/combobox.js";
 import { createURLOptionsButtons } from "./options/btns.js";
 import { createDeleteURLIcon } from "./options/delete-btn.js";
+import { bindURLRowSwipeGesture } from "./swipe.js";
 import {
   createURL,
   createURLHideInput,
@@ -152,6 +153,14 @@ export function createURLBlock(
 
   setURLCardSelectionEventListener(urlCard);
   setFocusEventListenersOnURLCard(urlCard);
+
+  if (url.canDelete) {
+    bindURLRowSwipeGesture({
+      urlRow: urlCard,
+      utubUrlID: url.utubUrlID,
+      utubID,
+    });
+  }
 
   return urlCard;
 }
