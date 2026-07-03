@@ -47,9 +47,6 @@ const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
 // urlSelected="true" on a row the user never tapped to select.
 const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
 const SWIPE_FOCUS_RETURN_NAMESPACE = "blur.swipeFocusReturn";
-// Idempotency marker so a defensive re-bind (e.g. re-render) never double-binds
-// the pointerdown listener on the same row.
-const SWIPE_GESTURE_BOUND_ATTR = "data-url-swipe-gesture-bound";
 // A drag is treated as vertical/ambiguous (native scroll wins) once the
 // vertical component is at least this fraction of the horizontal component.
 const VERTICAL_LOCK_RATIO = 1.5;
@@ -330,11 +327,9 @@ function _cancelDrag(event: PointerEvent): void {
 }
 
 /**
- * Bind the swipe gesture to a single `.urlRow`. Idempotent via
- * `SWIPE_GESTURE_BOUND_ATTR` (defensive re-render safety even though each
- * `.urlRow` is normally a fresh DOM node). Only `pointerdown` is bound here;
- * `pointermove`/`pointerup`/`pointercancel` are added/removed dynamically per
- * drag in `_beginDrag`/`_endDrag`/`_cancelDrag`.
+ * Bind the swipe gesture to a single `.urlRow`. Only `pointerdown` is bound
+ * here; `pointermove`/`pointerup`/`pointercancel` are added/removed
+ * dynamically per drag in `_beginDrag`/`_endDrag`/`_cancelDrag`.
  */
 export function bindURLRowSwipeGesture({
   urlRow,
@@ -346,8 +341,7 @@ export function bindURLRowSwipeGesture({
   utubID: number;
 }): void {
   const rowElement = urlRow[0];
-  if (!rowElement || rowElement.hasAttribute(SWIPE_GESTURE_BOUND_ATTR)) return;
-  rowElement.setAttribute(SWIPE_GESTURE_BOUND_ATTR, "true");
+  if (!rowElement) return;
 
   rowElement.addEventListener("pointerdown", (event: PointerEvent) => {
     _beginDrag({ event, urlRow, utubUrlID, utubID });
