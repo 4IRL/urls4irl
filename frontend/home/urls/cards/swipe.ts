@@ -280,22 +280,32 @@ function _endDrag(event: PointerEvent): void {
     .one(CONFIRM_MODAL_HIDDEN_NAMESPACE, () => {
       urlRow.removeClass(`${SWIPE_COMMITTED_CLASS} ${SWIPE_DRAGGING_CLASS}`);
       urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
-      urlRow.addClass(SWIPE_FOCUS_RETURN_CLASS);
+      _armFocusReturnSuppression(urlRow);
       urlRow.trigger("focus");
     });
 
   // Focus the row before the modal opens so it already has focus (WCAG 2.4.3).
-  // SWIPE_FOCUS_RETURN_CLASS suppresses the visual focus ring for this
-  // programmatic focus-return only, so it never reads as "selected" — see
-  // frontend/styles/home/urls.css.
+  _armFocusReturnSuppression(urlRow);
+  urlRow.trigger("focus");
+  deleteURLShowModal(utubUrlID, urlRow, utubID);
+}
+
+/**
+ * Arm the WCAG 2.4.3 focus-return suppression: add `SWIPE_FOCUS_RETURN_CLASS`
+ * so the programmatic focus-return never reads as "selected" (see
+ * frontend/styles/home/urls.css), and (re)bind a one-shot blur listener that
+ * removes it. Must be called every time the class is added — including after
+ * the confirm modal re-adds it on close — because the one-shot listener
+ * self-consumes on the first blur (e.g. the modal stealing focus) and is
+ * never implicitly re-armed.
+ */
+function _armFocusReturnSuppression(urlRow: JQuery): void {
   urlRow.addClass(SWIPE_FOCUS_RETURN_CLASS);
   urlRow
     .off(SWIPE_FOCUS_RETURN_NAMESPACE)
     .one(SWIPE_FOCUS_RETURN_NAMESPACE, () => {
       urlRow.removeClass(SWIPE_FOCUS_RETURN_CLASS);
     });
-  urlRow.trigger("focus");
-  deleteURLShowModal(utubUrlID, urlRow, utubID);
 }
 
 /**

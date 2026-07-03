@@ -368,6 +368,21 @@ describe("swipe gesture", () => {
 
       expect(row.hasClass("swipe-focus-return")).toBe(false);
     });
+
+    it("re-arms the blur listener on modal-hidden so a second blur removes swipe-focus-return again", () => {
+      const modal = mountConfirmModal();
+      const row = mountURLRow();
+
+      commitSwipe(row[0]);
+      row.trigger("blur");
+      expect(row.hasClass("swipe-focus-return")).toBe(false);
+
+      modal.trigger("hidden.bs.modal");
+      expect(row.hasClass("swipe-focus-return")).toBe(true);
+
+      row.trigger("blur");
+      expect(row.hasClass("swipe-focus-return")).toBe(false);
+    });
   });
 
   describe("triggerURLSwipeNudgeIfEligible", () => {
