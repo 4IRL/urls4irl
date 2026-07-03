@@ -5,6 +5,9 @@
  * in home/urls/cards/swipe.ts.
  */
 
+// These thresholds and clamp() intentionally mirror frontend/logic/tag-sheet-snap.ts.
+// The two gestures (URL-row swipe-to-delete vs. tag-filter bottom-sheet) are tuned
+// independently, so the duplication is deliberate rather than accidental drift.
 export const SNAP_DISTANCE_FRACTION = 0.35;
 export const FLING_VELOCITY_PX_PER_MS = 0.5;
 export const TAP_SLOP_PX = 8;
