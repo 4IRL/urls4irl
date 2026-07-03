@@ -289,7 +289,7 @@ describe("swipe gesture", () => {
   });
 
   describe("triggerURLSwipeNudgeIfEligible", () => {
-    it("on first eligible call, peeks .urlRowContent and sets the session flag", () => {
+    it("on first eligible call, peeks .urlRowContent, adds swipe-nudge-peeking, and sets the session flag", () => {
       vi.useFakeTimers();
       try {
         setReducedMotion({ reduce: false });
@@ -302,7 +302,28 @@ describe("swipe gesture", () => {
         expect(
           (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
         ).toBe("translateX(-12px)");
+        expect(row.hasClass("swipe-nudge-peeking")).toBe(true);
         expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBe("true");
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it("removes swipe-nudge-peeking once the peek duration elapses", () => {
+      vi.useFakeTimers();
+      try {
+        setReducedMotion({ reduce: false });
+        const row = mountURLRow();
+
+        triggerURLSwipeNudgeIfEligible({ urlRow: row });
+        expect(row.hasClass("swipe-nudge-peeking")).toBe(true);
+
+        vi.advanceTimersByTime(400);
+
+        expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
+        expect(
+          (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+        ).toBe("");
       } finally {
         vi.useRealTimers();
       }
@@ -320,7 +341,7 @@ describe("swipe gesture", () => {
       ).toBe("");
     });
 
-    it("skips the peek animation under prefers-reduced-motion but still sets the session flag", () => {
+    it("skips the peek animation and swipe-nudge-peeking class under prefers-reduced-motion but still sets the session flag", () => {
       setReducedMotion({ reduce: true });
       const row = mountURLRow();
 
@@ -329,6 +350,7 @@ describe("swipe gesture", () => {
       expect(
         (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
       ).toBe("");
+      expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
       expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBe("true");
     });
   });

@@ -95,6 +95,14 @@
     transform: translateX(calc(-1 * var(--url-swipe-reveal-width, 84px)));
 }
 
+/* Defensive: while the one-time onboarding nudge is peeking, suppress hover
+   entirely so a coincidental cursor position (e.g. a desktop viewport resized
+   to mobile width for QA/testing, not true touch emulation) can never read as
+   row selection/hover during the peek. */
+.urlRow.swipe-nudge-peeking {
+    pointer-events: none;
+}
+
 .urlTitle {
     margin: 0;
     font-weight: bold;

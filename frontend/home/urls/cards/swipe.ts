@@ -36,6 +36,11 @@ const URL_ROW_SWIPE_REVEAL_SELECTOR = ".urlRowSwipeReveal";
 const URL_ROW_SWIPE_REVEAL_WIDTH_VAR = "--url-swipe-reveal-width";
 const SWIPE_DRAGGING_CLASS = "swipe-dragging";
 const SWIPE_COMMITTED_CLASS = "swipe-committed";
+// Applied only while the onboarding nudge's peek transform is live; suppresses
+// hover (see urls.css) so a coincidental cursor position — e.g. a desktop
+// browser resized to mobile width for QA, not true touch emulation — can
+// never read as row hover/selection during the ~400ms peek.
+const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
 // Idempotency marker so a defensive re-bind (e.g. re-render) never double-binds
 // the pointerdown listener on the same row.
 const SWIPE_GESTURE_BOUND_ATTR = "data-url-swipe-gesture-bound";
@@ -357,9 +362,11 @@ export function triggerURLSwipeNudgeIfEligible({
   ).matches;
   if (!reducedMotion) {
     const content = urlRow.find(URL_ROW_CONTENT_SELECTOR);
+    urlRow.addClass(SWIPE_NUDGE_PEEKING_CLASS);
     content.css("transform", `translateX(-${NUDGE_PEEK_PX}px)`);
     setTimeout(() => {
       content.css("transform", "");
+      urlRow.removeClass(SWIPE_NUDGE_PEEKING_CLASS);
     }, NUDGE_PEEK_DURATION_MS);
   }
 
