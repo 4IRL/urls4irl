@@ -21,6 +21,10 @@ const UTUB_ID = 7;
 // 35% of it (~29.4px) is the distance-commit threshold.
 const REVEAL_WIDTH_PX = 84;
 const NUDGE_SESSION_STORAGE_KEY = "u4i:urlSwipeNudgeShown";
+// Generous ceiling for spinUntilRealElapsed's busy-wait — far more than the
+// few ms it ever actually needs, so it only trips if performance.now() is
+// frozen or non-monotonic.
+const SPIN_UNTIL_REAL_ELAPSED_SAFETY_CEILING_MS = 1000;
 
 const SWIPE_IGNORE_SELECTORS = [
   ".tagBadge",
@@ -102,6 +106,31 @@ function dispatchPointer({
   Object.defineProperty(event, "clientY", { value: clientY });
   Object.defineProperty(event, "pointerType", { value: pointerType });
   target.dispatchEvent(event);
+}
+
+// Spins on the real clock (no `vi.useFakeTimers()`) until at least
+// `minElapsedMs` of genuine wall-clock time has passed. Guarantees
+// `_onDragMove`'s internal `elapsedMs` is never the degenerate same-tick 0
+// (which would leave velocity frozen at its initial value), so a fast,
+// small-distance flick reliably reads a nonzero velocity regardless of how
+// fast the two synchronous dispatches themselves execute.
+function spinUntilRealElapsed({
+  minElapsedMs,
+}: {
+  minElapsedMs: number;
+}): void {
+  const startTimestamp = performance.now();
+  while (performance.now() - startTimestamp < minElapsedMs) {
+    // Busy-wait; timers are real here, so this genuinely blocks briefly.
+    if (
+      performance.now() - startTimestamp >
+      SPIN_UNTIL_REAL_ELAPSED_SAFETY_CEILING_MS
+    ) {
+      throw new Error(
+        `spinUntilRealElapsed exceeded its ${SPIN_UNTIL_REAL_ELAPSED_SAFETY_CEILING_MS}ms safety ceiling while waiting for ${minElapsedMs}ms; performance.now() appears frozen or non-monotonic.`,
+      );
+    }
+  }
 }
 
 // Mirrors splash/scroll-reveal.test.ts's matchMedia-mocking convention.
@@ -243,6 +272,38 @@ describe("swipe gesture", () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("a fast small-distance flick commits via the velocity/fling path rather than the distance threshold, using real elapsed time", () => {
+    // Deliberately no vi.useFakeTimers() here: fake timers freeze
+    // performance.now(), which would zero velocity and only exercise the
+    // distance-only branch (see the "below the commit threshold" test
+    // above). This test proves the fling branch commits through the real
+    // _onDragMove -> _endDrag wiring, not just in url-swipe-snap.test.ts's
+    // pure-function isolation.
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    // Guarantee at least 2ms of real elapsed time before the move so
+    // elapsedMs can never land on the degenerate same-tick 0. A 15px move
+    // over this window clears the 0.5 px/ms fling threshold up to ~30ms
+    // elapsed (15 / 0.5); a tight busy-wait's real-world overshoot is
+    // sub-millisecond, leaving comfortable margin below that bound.
+    spinUntilRealElapsed({ minElapsedMs: 2 });
+    // 15px left of the 84px reveal width => fraction ~0.179, well under the
+    // 0.35 distance-commit threshold, so a commit here can only come from
+    // the velocity/fling branch, never the distance branch.
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 85 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 85 });
+
+    expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
+    const [calledUtubUrlID, calledUrlRow, calledUtubID] =
+      vi.mocked(deleteURLShowModal).mock.calls[0];
+    expect(calledUtubUrlID).toBe(UTUB_URL_ID);
+    expect(calledUrlRow).toBe(row);
+    expect(calledUtubID).toBe(UTUB_ID);
+    expect(row.hasClass("swipe-committed")).toBe(true);
   });
 
   it("a primarily-vertical drag locks to native scroll: no transform is applied and swipe-dragging is never added", () => {
