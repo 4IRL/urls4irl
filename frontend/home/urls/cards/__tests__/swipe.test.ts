@@ -477,5 +477,74 @@ describe("swipe gesture", () => {
       expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
       expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBe("true");
     });
+
+    it("does not peek or record the session flag when isMobile is false", () => {
+      setReducedMotion({ reduce: false });
+
+      vi.mocked(isMobile).mockReturnValue(false);
+      const nonMobileRow = mountURLRow();
+      triggerURLSwipeNudgeIfEligible({ urlRow: nonMobileRow });
+      expect(
+        (nonMobileRow.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      expect(nonMobileRow.hasClass("swipe-nudge-peeking")).toBe(false);
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+    });
+
+    it("does not peek or record the session flag when isCoarsePointer is false", () => {
+      setReducedMotion({ reduce: false });
+
+      vi.mocked(isCoarsePointer).mockReturnValue(false);
+      const finePointerRow = mountURLRow();
+      triggerURLSwipeNudgeIfEligible({ urlRow: finePointerRow });
+      expect(
+        (finePointerRow.find(".urlRowContent")[0] as HTMLElement).style
+          .transform,
+      ).toBe("");
+      expect(finePointerRow.hasClass("swipe-nudge-peeking")).toBe(false);
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+    });
+
+    it("returns early when the row has no .urlRowSwipeReveal child", () => {
+      setReducedMotion({ reduce: false });
+      const row = $(
+        `<div class="urlRow" utuburlid="${UTUB_URL_ID}"><div class="urlRowContent"></div></div>`,
+      );
+      $(document.body).append(row);
+
+      triggerURLSwipeNudgeIfEligible({ urlRow: row });
+
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+    });
+
+    it("returns early when the row is below the fold (top >= window.innerHeight)", () => {
+      setReducedMotion({ reduce: false });
+      const row = mountURLRow();
+      const rowElement = row[0] as HTMLElement;
+      rowElement.getBoundingClientRect = (): DOMRect =>
+        ({
+          width: REVEAL_WIDTH_PX,
+          height: 44,
+          top: window.innerHeight,
+          bottom: window.innerHeight + 44,
+          left: 0,
+          right: REVEAL_WIDTH_PX,
+          x: 0,
+          y: window.innerHeight,
+          toJSON: () => ({}),
+        }) as DOMRect;
+
+      triggerURLSwipeNudgeIfEligible({ urlRow: row });
+
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
+      expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+    });
   });
 });
