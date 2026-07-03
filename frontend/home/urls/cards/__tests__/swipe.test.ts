@@ -344,6 +344,21 @@ describe("swipe gesture", () => {
     expect(row.hasClass("swipe-dragging")).toBe(false);
   });
 
+  it("a zero-width reveal panel (not yet laid out) never enters drag state: no transform is applied and swipe-dragging is never added", () => {
+    const row = mountURLRow();
+    stubRevealWidth({ row, width: 0 });
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+
+    expect((row.find(".urlRowContent")[0] as HTMLElement).style.transform).toBe(
+      "",
+    );
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+  });
+
   describe("swipe-focus-return suppresses the visual focus ring on programmatic focus-return", () => {
     // #confirmModal must exist before the commit's pointerup fires, since the
     // modal-hidden listener is bound (not delegated) to the element(s)
