@@ -41,6 +41,12 @@ const SWIPE_COMMITTED_CLASS = "swipe-committed";
 // browser resized to mobile width for QA, not true touch emulation — can
 // never read as row hover/selection during the ~400ms peek.
 const SWIPE_NUDGE_PEEKING_CLASS = "swipe-nudge-peeking";
+// Applied only while focus is being programmatically returned to a row around
+// the swipe-to-delete confirm modal (WCAG 2.4.3); suppresses the visual focus
+// ring (see urls.css) so this native-focus side effect never reads as
+// urlSelected="true" on a row the user never tapped to select.
+const SWIPE_FOCUS_RETURN_CLASS = "swipe-focus-return";
+const SWIPE_FOCUS_RETURN_NAMESPACE = "blur.swipeFocusReturn";
 // Idempotency marker so a defensive re-bind (e.g. re-render) never double-binds
 // the pointerdown listener on the same row.
 const SWIPE_GESTURE_BOUND_ATTR = "data-url-swipe-gesture-bound";
@@ -268,10 +274,20 @@ function _endDrag(event: PointerEvent): void {
     .one(CONFIRM_MODAL_HIDDEN_NAMESPACE, () => {
       urlRow.removeClass(`${SWIPE_COMMITTED_CLASS} ${SWIPE_DRAGGING_CLASS}`);
       urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
+      urlRow.addClass(SWIPE_FOCUS_RETURN_CLASS);
       urlRow.trigger("focus");
     });
 
   // Focus the row before the modal opens so it already has focus (WCAG 2.4.3).
+  // SWIPE_FOCUS_RETURN_CLASS suppresses the visual focus ring for this
+  // programmatic focus-return only, so it never reads as "selected" — see
+  // frontend/styles/home/urls.css.
+  urlRow.addClass(SWIPE_FOCUS_RETURN_CLASS);
+  urlRow
+    .off(SWIPE_FOCUS_RETURN_NAMESPACE)
+    .one(SWIPE_FOCUS_RETURN_NAMESPACE, () => {
+      urlRow.removeClass(SWIPE_FOCUS_RETURN_CLASS);
+    });
   urlRow.trigger("focus");
   deleteURLShowModal(utubUrlID, urlRow, utubID);
 }

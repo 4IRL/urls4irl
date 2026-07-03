@@ -179,6 +179,22 @@
     border-bottom: 1px solid var(--focusedUrlBorder) !important;
 }
 
+/* Defensive: while focus is being programmatically returned to a row after a
+   swipe-to-delete gesture's confirm modal opens/closes (WCAG 2.4.3), suppress
+   the visual focus ring — it is otherwise nearly indistinguishable from the
+   urlSelected="true" look and falsely reads as "this row is selected" even
+   though the user never tapped to select it. */
+.urlRow.swipe-focus-return:focus,
+.urlRow.swipe-focus-return:focus-visible {
+    border-top: 1px solid var(--borderColor) !important;
+    border-bottom: 1px solid var(--borderColor) !important;
+}
+
+.urlRow.swipe-focus-return:focus .goToUrlIcon,
+.urlRow.swipe-focus-return:focus-visible .goToUrlIcon {
+    visibility: hidden !important;
+}
+
 .urlRow[filterable="true"]:not([urlSelected="true"]) {
     cursor: pointer;
 }

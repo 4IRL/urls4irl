@@ -288,6 +288,59 @@ describe("swipe gesture", () => {
     expect(row.hasClass("swipe-dragging")).toBe(false);
   });
 
+  describe("swipe-focus-return suppresses the visual focus ring on programmatic focus-return", () => {
+    // #confirmModal must exist before the commit's pointerup fires, since the
+    // modal-hidden listener is bound (not delegated) to the element(s)
+    // matched by $(CONFIRM_MODAL_SELECTOR) at that moment.
+    function mountConfirmModal(): JQuery {
+      const modal = $('<div id="confirmModal"></div>');
+      $(document.body).append(modal);
+      return modal;
+    }
+
+    function commitSwipe(rowElement: HTMLElement): void {
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+    }
+
+    it("adds swipe-focus-return to the row immediately after a committed swipe, before the modal-hidden event fires", () => {
+      mountConfirmModal();
+      const row = mountURLRow();
+
+      commitSwipe(row[0]);
+
+      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
+      expect(row.hasClass("swipe-focus-return")).toBe(true);
+    });
+
+    it("keeps swipe-focus-return present after the modal-hidden event fires and focus is re-triggered", () => {
+      const modal = mountConfirmModal();
+      const row = mountURLRow();
+
+      commitSwipe(row[0]);
+      modal.trigger("hidden.bs.modal");
+
+      expect(row.hasClass("swipe-focus-return")).toBe(true);
+    });
+
+    it("removes swipe-focus-return once the row is genuinely blurred", () => {
+      mountConfirmModal();
+      const row = mountURLRow();
+
+      commitSwipe(row[0]);
+      expect(row.hasClass("swipe-focus-return")).toBe(true);
+
+      row.trigger("blur");
+
+      expect(row.hasClass("swipe-focus-return")).toBe(false);
+    });
+  });
+
   describe("triggerURLSwipeNudgeIfEligible", () => {
     it("on first eligible call, peeks .urlRowContent, adds swipe-nudge-peeking, and sets the session flag", () => {
       vi.useFakeTimers();
