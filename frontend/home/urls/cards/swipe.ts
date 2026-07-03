@@ -247,7 +247,13 @@ function _endDrag(event: PointerEvent): void {
   const { startX, lastX, revealWidth, velocity, urlRow, utubUrlID, utubID } =
     state;
   const deltaX = lastX - startX;
-  const draggedFraction = Math.abs(deltaX) / revealWidth;
+  // Only a leftward drag can reveal the delete panel (transform is clamped to
+  // [-revealWidth, 0]); a net-rightward release must never satisfy the
+  // distance-threshold branch even if it moved far enough in the wrong direction.
+  const draggedFraction =
+    deltaX < 0
+      ? clamp({ value: Math.abs(deltaX) / revealWidth, min: 0, max: 1 })
+      : 0;
   const commit = shouldCommitSwipeGesture({ draggedFraction, velocity });
 
   // Null BEFORE routing so a re-entrant force-close/reset never operates on

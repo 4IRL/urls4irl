@@ -216,6 +216,35 @@ describe("swipe gesture", () => {
     }
   });
 
+  it("a rightward drag exceeding the threshold distance does not call deleteURLShowModal since only leftward movement can commit", () => {
+    vi.useFakeTimers();
+    try {
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      // 40px right of the press origin => |deltaX| / 84 ~= 0.476, past the
+      // 0.35 distance-commit threshold in magnitude, but a net-rightward
+      // release must never commit since only the leftward branch of
+      // draggedFraction is nonzero.
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({
+        target: rowElement,
+        type: "pointermove",
+        clientX: 140,
+      });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 140 });
+
+      expect(deleteURLShowModal).not.toHaveBeenCalled();
+      expect(row.hasClass("swipe-committed")).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("pointercancel mid-drag resets state without calling deleteURLShowModal", () => {
     const row = mountURLRow();
     const rowElement = row[0];
