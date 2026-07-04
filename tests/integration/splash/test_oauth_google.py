@@ -25,11 +25,11 @@ from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
-from backend.splash.services.user_login import (
-    _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED,
-    _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
-    _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
-    _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
+from backend.splash.constants import (
+    LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED,
+    LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
+    LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
+    LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
 )
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
@@ -644,7 +644,7 @@ def test_google_callback_records_login_metrics_across_scenarios(
     assert response.status_code == 200
 
     _assert_single_login_failure_reason(
-        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION
+        provide_metrics_redis, LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION
     )
 
 
@@ -665,7 +665,7 @@ def test_google_callback_consent_declined_records_login_failure_metric(
 
     assert response.status_code == 200
     _assert_single_login_failure_reason(
-        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED
+        provide_metrics_redis, LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED
     )
 
 
@@ -692,7 +692,7 @@ def test_google_callback_token_exchange_failure_records_login_failure_metric(
     assert response.status_code == 200
     mock_authorize_access_token.assert_called_once()
     _assert_single_login_failure_reason(
-        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE
+        provide_metrics_redis, LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE
     )
 
 
@@ -721,7 +721,7 @@ def test_google_callback_unverified_email_records_login_failure_metric(
     assert response.status_code == 200
     mock_authorize_access_token.assert_called_once()
     _assert_single_login_failure_reason(
-        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL
+        provide_metrics_redis, LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL
     )
 
 
@@ -749,5 +749,5 @@ def test_google_callback_missing_claims_records_login_failure_metric(
     assert response.status_code == 200
     mock_authorize_access_token.assert_called_once()
     _assert_single_login_failure_reason(
-        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE
+        provide_metrics_redis, LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE
     )

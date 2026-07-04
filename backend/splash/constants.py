@@ -1,5 +1,14 @@
 from enum import IntEnum
 
+LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
+LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
+LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"
+LOGIN_FAILURE_REASON_OAUTH_ONLY = "oauth_only"
+LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION = "oauth_email_collision"
+LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED = "oauth_consent_declined"
+LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE = "oauth_generic_failure"
+LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL = "oauth_unverified_email"
+
 
 class EmailValidationErrorCodes(IntEnum):
     UNKNOWN_EXCEPTION = 0

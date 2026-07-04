@@ -15,19 +15,19 @@ from backend.api_common.responses import FlaskResponse
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.schemas.requests.splash import GoogleOAuthCallbackQuerySchema
-from backend.splash.constants import OAuthErrorCodes
+from backend.splash.constants import (
+    LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED,
+    LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
+    LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
+    LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
+    OAuthErrorCodes,
+)
 from backend.splash.services.oauth.account_service import (
     EmailAlreadyRegisteredError,
     find_or_create_oauth_user,
 )
 from backend.splash.services.oauth.constants import Provider
-from backend.splash.services.user_login import (
-    _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED,
-    _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
-    _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
-    _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
-    _verify_and_provide_next_page,
-)
+from backend.splash.services.user_login import _verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
@@ -85,7 +85,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     if parsed.error is not None:
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED},
+            dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED},
         )
         return render_template(
             "pages/splash.html",
@@ -98,7 +98,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     except OAuthError:
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
+            dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
         return render_template(
             "pages/splash.html",
@@ -116,7 +116,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     if userinfo.get("email_verified") is not True:
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL},
+            dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL},
         )
         return render_template(
             "pages/splash.html",
@@ -129,7 +129,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     if subject is None or email is None:
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
+            dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
         return render_template(
             "pages/splash.html",
@@ -151,7 +151,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     except EmailAlreadyRegisteredError:
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION},
+            dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION},
         )
         return render_template(
             "pages/splash.html",
