@@ -1,10 +1,13 @@
 from dataclasses import dataclass
 import re
+from urllib.parse import urlsplit
 
+from flask import Flask
 from playwright.sync_api import BrowserContext, Page, expect
 
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import GenericPageLocator
+from tests.functional.login_utils import create_user_session_and_provide_session_id
 
 # Baseline auto-retrying assertion timeout for all Playwright `expect()` calls.
 # Matches the existing Selenium `wait_for_element_presence(timeout=10)` baseline
@@ -74,6 +77,42 @@ def clear_then_send_keys(*, locator, input_text: str) -> None:
 
 def wait_until_in_focus(*, page: Page, css_selector: str) -> None:
     expect(page.locator(css_selector)).to_be_focused()
+
+
+def wait_until_visible_css_selector(*, page: Page, css_selector: str) -> None:
+    expect(page.locator(css_selector).first).to_be_visible()
+
+
+def wait_until_hidden(*, page: Page, css_selector: str) -> None:
+    """Wait until the selector's first match is hidden. Passes when the
+    element is invisible OR absent from the DOM (mirrors the Selenium
+    invisibility semantics)."""
+    expect(page.locator(css_selector).first).to_be_hidden()
+
+
+def current_base_url(*, page: Page) -> str:
+    """Return the scheme://host:port origin of the page's current URL —
+    Playwright twin of deriving the app origin from `browser.current_url`
+    (the fixtures land every page on the app's splash path first)."""
+    split_url = urlsplit(page.url)
+    return f"{split_url.scheme}://{split_url.netloc}"
+
+
+def login_user_to_home_page(*, app: Flask, page: Page, user_id: int) -> None:
+    """Log `user_id` in via a pre-built server-side session cookie, then
+    navigate to the authenticated home page.
+
+    The Selenium version relied on the driver already sitting on the app
+    domain and refreshed to trigger the splash->home redirect; here the
+    origin is derived from the page's current URL and the navigation goes
+    straight to /home.
+    """
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    base_url = current_base_url(page=page)
+    login_user_with_cookie_from_session(
+        context=page.context, session_id=session_id, base_url=base_url
+    )
+    page.goto(f"{base_url}/home")
 
 
 def click_on_navbar(*, page: Page) -> None:

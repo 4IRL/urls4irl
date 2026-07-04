@@ -360,9 +360,10 @@ def page_without_cookie_banner_cookie(
     context.set_default_timeout(10_000)
     context.set_default_navigation_timeout(30_000)
 
-    clear_db(runner, debug_strings)
-
     page: Page = context.new_page()
+    page.goto(base_url + "/")
+
+    clear_db(runner, debug_strings)
 
     yield PageBundle(page=page, context=context, base_url=base_url)
 
@@ -373,11 +374,17 @@ def page_without_cookie_banner_cookie(
 def page(
     page_without_cookie_banner_cookie: PageBundle,
 ) -> Generator[Page, None, None]:
-    """Desktop Playwright page with the cookie-banner consent cookie set."""
+    """Desktop Playwright page with the cookie-banner consent cookie set.
+
+    Reloads after installing the consent cookie so the already-rendered
+    splash page drops its banner (mirrors the Selenium fixture's refresh) —
+    tests start on the splash page with no banner overlay.
+    """
     bundle = page_without_cookie_banner_cookie
     add_playwright_cookie_banner_cookie(
         context=bundle.context, base_url=bundle.base_url
     )
+    bundle.page.reload()
     yield bundle.page
 
 
@@ -407,9 +414,10 @@ def page_mobile_portrait_without_cookie_banner_cookie(
     context.set_default_timeout(10_000)
     context.set_default_navigation_timeout(30_000)
 
-    clear_db(runner, debug_strings)
-
     page: Page = context.new_page()
+    page.goto(base_url + "/")
+
+    clear_db(runner, debug_strings)
 
     yield PageBundle(page=page, context=context, base_url=base_url)
 
@@ -420,11 +428,16 @@ def page_mobile_portrait_without_cookie_banner_cookie(
 def page_mobile_portrait(
     page_mobile_portrait_without_cookie_banner_cookie: PageBundle,
 ) -> Generator[Page, None, None]:
-    """Mobile-portrait Playwright page with the cookie-banner cookie set."""
+    """Mobile-portrait Playwright page with the cookie-banner cookie set.
+
+    Reloads after installing the consent cookie so the already-rendered
+    splash page drops its banner (mirrors the Selenium fixture's refresh).
+    """
     bundle = page_mobile_portrait_without_cookie_banner_cookie
     add_playwright_cookie_banner_cookie(
         context=bundle.context, base_url=bundle.base_url
     )
+    bundle.page.reload()
     yield bundle.page
 
 
