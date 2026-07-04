@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from flask import Flask
 from playwright.sync_api import BrowserContext, Locator, Page, expect
@@ -11,6 +11,7 @@ from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import GenericPageLocator
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.login_utils import create_user_session_and_provide_session_id
 
 # Baseline auto-retrying assertion timeout for all Playwright `expect()` calls.
@@ -299,6 +300,104 @@ def dismiss_modal_with_click_out(
     the dialog box — to dismiss the modal (twin of the Selenium
     ActionChains offset click)."""
     page.locator(modal_selector).click(position={"x": 15, "y": 15})
+
+
+def wait_for_element_visible(*, page: Page, css_selector: str) -> None:
+    expect(page.locator(css_selector).first).to_be_visible()
+
+
+def wait_for_web_element_and_click(*, locator: Locator) -> None:
+    """Wait for an already-located element to be visible and enabled, then
+    click it (Playwright's click auto-waits for actionability)."""
+    expect(locator).to_be_visible()
+    expect(locator).to_be_enabled()
+    locator.click()
+
+
+# Splash login/register flows
+def login_user_ui(
+    *,
+    page: Page,
+    username: str = UTS.TEST_USERNAME_1,
+    password: str = UTS.TEST_PASSWORD_1,
+) -> Locator:
+    """Open the login modal from the splash page and fill in credentials.
+
+    Returns the password input locator so callers can press Enter on it.
+    """
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+
+    wait_for_element_presence(page=page, css_selector=SPL.LOGIN_INPUT_USERNAME)
+    wait_until_visible_css_selector(page=page, css_selector=SPL.LOGIN_INPUT_USERNAME)
+
+    return input_login_fields(page=page, username=username, password=password)
+
+
+def input_login_fields(
+    *,
+    page: Page,
+    username: str = UTS.TEST_USERNAME_1,
+    password: str = UTS.TEST_PASSWORD_1,
+) -> Locator:
+    username_input = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_INPUT_USERNAME
+    )
+    clear_then_send_keys(locator=username_input, input_text=username)
+
+    password_input = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_INPUT_PASSWORD
+    )
+    clear_then_send_keys(locator=password_input, input_text=password)
+
+    return password_input
+
+
+def login_with_google_ui(
+    *,
+    page: Page,
+    subject: str = UTS.OAUTH_RETURNING_USER_SUBJECT,
+    email: str = UTS.OAUTH_RETURNING_USER_EMAIL,
+    name: str = UTS.OAUTH_RETURNING_USER_NAME,
+    from_register: bool = False,
+) -> None:
+    """Sign in (or register) via the fake Google OAuth provider
+    (backend/testing/fake_oauth_provider.py).
+
+    Seeding the identity is its own navigation (the fake provider has no
+    session-shared way to receive it otherwise), so return to the splash
+    page afterward before opening the login/register modal.
+    """
+    splash_url = page.url
+    split_splash_url = urlsplit(splash_url)
+    set_identity_url = urlunsplit(
+        (
+            split_splash_url.scheme,
+            split_splash_url.netloc,
+            "/fake-oauth/set-identity",
+            urlencode({"subject": subject, "email": email, "name": name}),
+            "",
+        )
+    )
+
+    page.goto(set_identity_url)
+    page.goto(splash_url)
+
+    if from_register:
+        wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
+        wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
+        wait_then_click_element(
+            page=page, css_selector=SPL.REGISTER_BUTTON_GOOGLE_OAUTH
+        )
+    else:
+        wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+        wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+        wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_GOOGLE_OAUTH)
+
+
+def invalidate_csrf_token_in_form(*, page: Page) -> None:
+    invalidate_csrf_token_on_page(page=page)
 
 
 # UTub Deck

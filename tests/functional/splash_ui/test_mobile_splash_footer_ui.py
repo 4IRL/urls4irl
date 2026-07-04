@@ -1,11 +1,11 @@
-import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
+from __future__ import annotations
 
-from tests.functional.assert_utils import (
-    assert_visible_css_selector,
-)
+import pytest
+from playwright.sync_api import Page
+
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import assert_visible_css_selector
+from tests.functional.playwright_utils import (
     click_on_navbar,
     visit_privacy_page,
     visit_terms_page,
@@ -15,7 +15,7 @@ from tests.functional.selenium_utils import (
 pytestmark = pytest.mark.splash_ui
 
 
-def test_privacy_policy(browser_mobile_portrait: WebDriver):
+def test_privacy_policy(page_mobile_portrait: Page):
     """
     Tests a mobile non-logged in user's ability to visit the privacy page from the home page.
 
@@ -23,12 +23,12 @@ def test_privacy_policy(browser_mobile_portrait: WebDriver):
     WHEN user clicks the privacy button in the footer
     THEN ensure the U4I Privacy Policy is displayed
     """
-    visit_privacy_page(browser_mobile_portrait)
+    visit_privacy_page(page=page_mobile_portrait)
 
 
 @pytest.mark.parametrize("splash_btn_css_selector", [SPL.U4I_LOGO, SPL.BACK_SPLASH_BTN])
 def test_privacy_policy_return_home(
-    browser_mobile_portrait: WebDriver, splash_btn_css_selector: str
+    page_mobile_portrait: Page, splash_btn_css_selector: str
 ):
     """
     Tests a mobile non-logged in user's ability to visit the privacy page and then return to home page.
@@ -37,18 +37,19 @@ def test_privacy_policy_return_home(
     WHEN user clicks the privacy button in the footer and then tries to go home via the buttons
     THEN ensure the home page is displayed
     """
-    visit_privacy_page(browser_mobile_portrait)
+    visit_privacy_page(page=page_mobile_portrait)
 
-    (
-        click_on_navbar(browser_mobile_portrait)
-        if splash_btn_css_selector == SPL.BACK_SPLASH_BTN
-        else None
+    if splash_btn_css_selector == SPL.BACK_SPLASH_BTN:
+        click_on_navbar(page=page_mobile_portrait)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=splash_btn_css_selector
     )
-    wait_then_click_element(browser_mobile_portrait, splash_btn_css_selector, time=3)
-    assert_visible_css_selector(browser_mobile_portrait, SPL.WELCOME_TEXT)
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.WELCOME_TEXT
+    )
 
 
-def test_terms_page(browser_mobile_portrait: WebDriver):
+def test_terms_page(page_mobile_portrait: Page):
     """
     Tests a mobile non-logged in user's ability to visit the terms page from the home page.
 
@@ -56,13 +57,11 @@ def test_terms_page(browser_mobile_portrait: WebDriver):
     WHEN user clicks the terms button in the footer
     THEN ensure the U4I Terms & Conditions are displayed
     """
-    visit_terms_page(browser_mobile_portrait)
+    visit_terms_page(page=page_mobile_portrait)
 
 
 @pytest.mark.parametrize("splash_btn_css_selector", [SPL.U4I_LOGO, SPL.BACK_SPLASH_BTN])
-def test_terms_return_home(
-    browser_mobile_portrait: WebDriver, splash_btn_css_selector: str
-):
+def test_terms_return_home(page_mobile_portrait: Page, splash_btn_css_selector: str):
     """
     Tests a mobile non-logged in user's ability to visit the terms page and then return to home page.
 
@@ -70,11 +69,12 @@ def test_terms_return_home(
     WHEN user clicks the terms button in the footer and then tries to go home via the buttons
     THEN ensure the home page is displayed
     """
-    visit_terms_page(browser_mobile_portrait)
-    (
-        click_on_navbar(browser_mobile_portrait)
-        if splash_btn_css_selector == SPL.BACK_SPLASH_BTN
-        else None
+    visit_terms_page(page=page_mobile_portrait)
+    if splash_btn_css_selector == SPL.BACK_SPLASH_BTN:
+        click_on_navbar(page=page_mobile_portrait)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=splash_btn_css_selector
     )
-    wait_then_click_element(browser_mobile_portrait, splash_btn_css_selector, time=3)
-    assert_visible_css_selector(browser_mobile_portrait, SPL.WELCOME_TEXT)
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.WELCOME_TEXT
+    )
