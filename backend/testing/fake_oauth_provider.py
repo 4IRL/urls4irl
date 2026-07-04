@@ -6,7 +6,12 @@ from typing import Any
 from flask import Blueprint, current_app, jsonify, redirect, request, session
 from itsdangerous import BadSignature, URLSafeSerializer
 
-from backend import csrf
+from backend import (
+    _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL,
+    _FAKE_GOOGLE_OAUTH_AUTHORIZE_URL,
+    _FAKE_GOOGLE_OAUTH_USERINFO_URL,
+    csrf,
+)
 
 # Registered only when `UI_TESTING` is set (see `should_register_google_oauth`
 # branching in `backend/__init__.py`). Mimics just enough of Google's OIDC
@@ -49,7 +54,7 @@ def set_identity() -> tuple[str, int]:
     return "OK", 200
 
 
-@fake_oauth.route("/fake-oauth/authorize", methods=["GET"])
+@fake_oauth.route(_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL, methods=["GET"])
 def authorize():
     """Mimics Google's authorization endpoint.
 
@@ -77,7 +82,7 @@ def authorize():
     return redirect(f"{redirect_uri}{separator}code={code}&state={state}")
 
 
-@fake_oauth.route("/fake-oauth/token", methods=["POST"])
+@fake_oauth.route(_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL, methods=["POST"])
 @csrf.exempt
 def token():
     """Mimics Google's token endpoint.
@@ -122,7 +127,7 @@ def token():
     )
 
 
-@fake_oauth.route("/fake-oauth/userinfo", methods=["GET"])
+@fake_oauth.route(_FAKE_GOOGLE_OAUTH_USERINFO_URL, methods=["GET"])
 def userinfo():
     """Mimics Google's userinfo endpoint.
 
