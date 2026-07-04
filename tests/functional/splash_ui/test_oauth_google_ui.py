@@ -32,13 +32,6 @@ from tests.functional.splash_ui.selenium_utils import open_forgot_password_modal
 
 pytestmark = pytest.mark.splash_ui
 
-# Mirrors `tests/integration/splash/test_oauth_google.py`'s convention of
-# locally re-declaring the provider's user-facing reject copy rather than
-# importing an underscore-prefixed constant across modules.
-_EMAIL_COLLISION_MESSAGE = (
-    "Email already registered — log in with your password instead."
-)
-
 
 def _seed_oauth_user(app: Flask, *, subject: str, email: str, username: str) -> None:
     """Creates and commits a password-less user with one linked google
@@ -167,7 +160,7 @@ def test_google_login_email_collision_shows_reject_message(
 
     modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
     assert modal_alert is not None
-    assert modal_alert.text == _EMAIL_COLLISION_MESSAGE
+    assert modal_alert.text == UTS.OAUTH_EMAIL_COLLISION_MESSAGE
 
     with provide_app.app_context():
         assert Users.query.count() == 1

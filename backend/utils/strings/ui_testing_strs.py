@@ -8,6 +8,7 @@ from backend.cli.mock_constants import (
     MOCK_URL_WITH_TRACKING_PARAMS,
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
+from backend.utils.strings.oauth_strs import EMAIL_COLLISION_MESSAGE
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.splash_form_strs import (
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT,
@@ -47,6 +48,11 @@ class UI_TEST_STRINGS:
     # DOM text against the same backend source the templates render.
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT = GOOGLE_OAUTH_LOGIN_BUTTON_TEXT
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = GOOGLE_OAUTH_REGISTER_BUTTON_TEXT
+
+    # Google OAuth — reject-page copy re-exported so UI tests assert the
+    # rendered banner text against the same backend source
+    # (backend/splash/services/oauth/google_service.py) that renders it.
+    OAUTH_EMAIL_COLLISION_MESSAGE = EMAIL_COLLISION_MESSAGE
 
     # Google OAuth — deterministic per-scenario identities fed to the fake
     # provider (backend/testing/fake_oauth_provider.py) via `set-identity`,

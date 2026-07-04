@@ -25,6 +25,12 @@ from backend.models.users import Users
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
+from backend.utils.strings.oauth_strs import (
+    CONSENT_DECLINED_MESSAGE as _CONSENT_DECLINED_MESSAGE,
+    EMAIL_COLLISION_MESSAGE as _EMAIL_COLLISION_MESSAGE,
+    GENERIC_FAILURE_MESSAGE as _GENERIC_FAILURE_MESSAGE,
+    UNVERIFIED_EMAIL_MESSAGE as _UNVERIFIED_EMAIL_MESSAGE,
+)
 from tests.conftest import TEST_GOOGLE_OAUTH_CLIENT_ID, TEST_GOOGLE_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
@@ -64,16 +70,6 @@ _METRICS_COLLISION_SUBJECT = "sub_metrics_collision"
 _METRICS_COLLISION_USERNAME = "metricscollisionuser"
 _METRICS_COLLISION_EMAIL = "metricscollisionuser@example.com"
 _METRICS_COLLISION_PASSWORD = "P@ssword123!"
-
-_GENERIC_FAILURE_MESSAGE = "Sign-in failed, please try again."
-_UNVERIFIED_EMAIL_MESSAGE = (
-    "Google has not verified this email address — please verify it with "
-    "Google and try again."
-)
-_EMAIL_COLLISION_MESSAGE = (
-    "Email already registered — log in with your password instead."
-)
-_CONSENT_DECLINED_MESSAGE = "Sign-in was cancelled."
 
 _LOGIN_SUCCESS_METHOD_DIM_KEY = "method"
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"

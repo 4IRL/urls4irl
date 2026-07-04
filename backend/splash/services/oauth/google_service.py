@@ -25,17 +25,13 @@ from backend.splash.services.user_login import (
     _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
 )
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
-
-_GENERIC_FAILURE_MESSAGE = "Sign-in failed, please try again."
-_UNVERIFIED_EMAIL_MESSAGE = (
-    "Google has not verified this email address — please verify it with "
-    "Google and try again."
+from backend.utils.strings.oauth_strs import (
+    CONSENT_DECLINED_MESSAGE,
+    EMAIL_COLLISION_MESSAGE,
+    GENERIC_FAILURE_MESSAGE,
+    INVALID_CALLBACK_QUERY_MESSAGE,
+    UNVERIFIED_EMAIL_MESSAGE,
 )
-_EMAIL_COLLISION_MESSAGE = (
-    "Email already registered — log in with your password instead."
-)
-_CONSENT_DECLINED_MESSAGE = "Sign-in was cancelled."
-_INVALID_CALLBACK_QUERY_MESSAGE = "Invalid Google OAuth callback request."
 
 
 def initiate_google_login() -> WerkzeugResponse:
@@ -54,7 +50,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     """
     parsed = parse_query_args(
         GoogleOAuthCallbackQuerySchema,
-        message=_INVALID_CALLBACK_QUERY_MESSAGE,
+        message=INVALID_CALLBACK_QUERY_MESSAGE,
         error_code=OAuthErrorCodes.INVALID_FORM_INPUT,
     )
     if not isinstance(parsed, BaseModel):
@@ -64,7 +60,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return render_template(
             "pages/splash.html",
             oauth_consent_declined=True,
-            oauth_reject_message=_CONSENT_DECLINED_MESSAGE,
+            oauth_reject_message=CONSENT_DECLINED_MESSAGE,
         )
 
     try:
@@ -73,7 +69,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
-            oauth_reject_message=_GENERIC_FAILURE_MESSAGE,
+            oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
 
     userinfo: dict[str, Any] | None = token.get("userinfo")
@@ -87,7 +83,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return render_template(
             "pages/splash.html",
             oauth_unverified_email=True,
-            oauth_reject_message=_UNVERIFIED_EMAIL_MESSAGE,
+            oauth_reject_message=UNVERIFIED_EMAIL_MESSAGE,
         )
 
     subject: str | None = userinfo.get("sub")
@@ -96,7 +92,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
-            oauth_reject_message=_GENERIC_FAILURE_MESSAGE,
+            oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
 
     preferred_username = _resolve_preferred_username(
@@ -118,7 +114,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return render_template(
             "pages/splash.html",
             oauth_email_collision=True,
-            oauth_reject_message=_EMAIL_COLLISION_MESSAGE,
+            oauth_reject_message=EMAIL_COLLISION_MESSAGE,
         )
 
     login_user(resolved_user)
