@@ -44,7 +44,7 @@ function initEmailValidationIfPresent(): void {
   }
 }
 
-function initOAuthRejectIfPresent(): void {
+export function initOAuthRejectIfPresent(): void {
   const modalForm = $("#ModalForm[data-modal-context='oauth-reject']");
   if (modalForm.length) {
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
