@@ -48,6 +48,9 @@ from tests.models_for_test import (
     maximum_tags,
 )
 
+TEST_GOOGLE_OAUTH_CLIENT_ID = "test-google-client-id"
+TEST_GOOGLE_OAUTH_CLIENT_SECRET = "test-google-client-secret"
+
 # Per-worker metrics Redis DB index base on the dedicated `redis-metrics`
 # container. Each xdist worker is assigned `_METRICS_REDIS_DB_BASE + worker_num`
 # to keep counter keys isolated across parallel test runs. With the n=8 worker
@@ -328,6 +331,8 @@ def build_app(
     worker_metrics_redis_uri: str,
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
+    config.GOOGLE_OAUTH_CLIENT_ID = TEST_GOOGLE_OAUTH_CLIENT_ID
+    config.GOOGLE_OAUTH_CLIENT_SECRET = TEST_GOOGLE_OAUTH_CLIENT_SECRET
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     if worker_metrics_redis_uri and worker_metrics_redis_uri != "memory://":

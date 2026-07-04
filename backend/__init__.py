@@ -97,6 +97,23 @@ limiter = Limiter(
     application_limits=["20000/hour", "5000/15minutes"],
 )
 
+# The not-yet-built test-only blueprint `backend/testing/fake_oauth_provider.py`
+# registers at these exact paths, gated behind UI_TESTING, so Selenium can
+# round-trip a real OAuth exchange without reaching Google. Kept as named
+# constants rather than inline literals since they are a contract this module
+# shares with that blueprint.
+_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL = "/fake-oauth/authorize"
+_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL = "/fake-oauth/token"
+_FAKE_GOOGLE_OAUTH_USERINFO_URL = "/fake-oauth/userinfo"
+
+
+def should_register_google_oauth(
+    client_id: str | None, client_secret: str | None
+) -> bool:
+    """Whether both Google OAuth credentials are present, so `oauth.register(...)`
+    can be safely called without Authlib raising on a `None` client_id/secret."""
+    return bool(client_id) and bool(client_secret)
+
 
 def create_app(
     config_class: type[Config] = Config, show_test_logs: bool = False
@@ -129,6 +146,34 @@ def create_app(
     metrics_writer.init_app(app)
     login_manager.init_app(app)
     oauth.init_app(app)
+
+    if should_register_google_oauth(
+        app.config.get("GOOGLE_OAUTH_CLIENT_ID"),
+        app.config.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+    ):
+        if app.config.get("UI_TESTING", False):
+            # Selenium test server only, against the test-only fake OAuth provider
+            # blueprint. Explicit endpoints bypass OIDC discovery, and the reduced
+            # scope (no `openid`) makes Authlib take the plain-OAuth2 path instead
+            # of id_token/JWT parsing, sidestepping JWT signing/JWKS verification
+            # entirely.
+            oauth.register(
+                name="google",
+                authorize_url=_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL,
+                access_token_url=_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL,
+                userinfo_endpoint=_FAKE_GOOGLE_OAUTH_USERINFO_URL,
+                client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
+                client_secret=app.config["GOOGLE_OAUTH_CLIENT_SECRET"],
+                client_kwargs={"scope": "email profile"},
+            )
+        else:
+            oauth.register(
+                name="google",
+                server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+                client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
+                client_secret=app.config["GOOGLE_OAUTH_CLIENT_SECRET"],
+                client_kwargs={"scope": "openid email profile"},
+            )
 
     # Configure limiter with app-specific settings
     storage_options: Mapping = {"socket_connect_timeout": 30}
