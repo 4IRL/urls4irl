@@ -35,7 +35,16 @@ from backend.utils.strings.oauth_strs import (
 
 
 def initiate_google_login() -> WerkzeugResponse:
-    """Kicks off the Google OAuth consent redirect."""
+    """Kicks off the Google OAuth consent redirect.
+
+    Assumes Google OAuth credentials are configured (`oauth.google` is
+    registered in `create_app`). The splash templates only render the button
+    that links here when `google_oauth_enabled` is `True`
+    (`should_register_google_oauth`, surfaced via
+    `backend.utils.constants.provide_config_for_constants`), so this route is
+    reachable in an unconfigured deployment only via a direct/bookmarked
+    request, not through normal UI navigation.
+    """
     redirect_uri = url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -47,6 +56,9 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     either logs the user in (creating an account on first sign-in) or renders
     a reject page for every failure branch (declined consent, token-exchange
     failure, unverified email, missing claims, email collision).
+
+    Assumes Google OAuth credentials are configured; see the note on
+    `initiate_google_login` above.
     """
     parsed = parse_query_args(
         GoogleOAuthCallbackQuerySchema,

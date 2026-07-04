@@ -1,3 +1,4 @@
+from flask import current_app
 from flask_login import current_user
 
 from backend.metrics.dimension_models import get_all_dimension_keys
@@ -6,6 +7,7 @@ from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
 from backend.utils.datetime_utils import utc_now
+from backend.utils.oauth_config import should_register_google_oauth
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.email_validation_strs import (
     VALIDATE_MY_EMAIL,
@@ -700,6 +702,8 @@ def provide_config_for_constants() -> dict:
     Provides configuration to templates:
     - CONSTANTS: Python objects for Jinja template rendering
     - CONFIG: JSON-serializable dict for JavaScript
+    - google_oauth_enabled: whether the Google OAuth button/routes should be
+      exposed to the user, per whether credentials are configured
     """
     routes = generate_routes_js()
     if current_user.is_authenticated and current_user.is_admin():
@@ -712,4 +716,8 @@ def provide_config_for_constants() -> dict:
             strings=generate_strings_js(),
         ),
         current_year=utc_now().year,
+        google_oauth_enabled=should_register_google_oauth(
+            current_app.config.get("GOOGLE_OAUTH_CLIENT_ID"),
+            current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+        ),
     )

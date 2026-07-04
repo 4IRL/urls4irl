@@ -37,6 +37,7 @@ from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
 from backend.models.users import User_Role
+from backend.utils.oauth_config import should_register_google_oauth
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 
@@ -106,14 +107,6 @@ limiter = Limiter(
 _FAKE_GOOGLE_OAUTH_AUTHORIZE_URL = "/fake-oauth/authorize"
 _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL = "/fake-oauth/token"
 _FAKE_GOOGLE_OAUTH_USERINFO_URL = "/fake-oauth/userinfo"
-
-
-def should_register_google_oauth(
-    client_id: str | None, client_secret: str | None
-) -> bool:
-    """Whether both Google OAuth credentials are present, so `oauth.register(...)`
-    can be safely called without Authlib raising on a `None` client_id/secret."""
-    return bool(client_id) and bool(client_secret)
 
 
 def create_app(
