@@ -22,7 +22,10 @@ from backend.splash.services.oauth.account_service import (
 )
 from backend.splash.services.oauth.constants import Provider
 from backend.splash.services.user_login import (
+    _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED,
     _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
+    _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
+    _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
     _verify_and_provide_next_page,
 )
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
@@ -80,6 +83,10 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return parsed
 
     if parsed.error is not None:
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED},
+        )
         return render_template(
             "pages/splash.html",
             oauth_consent_declined=True,
@@ -89,6 +96,10 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     try:
         token = oauth.google.authorize_access_token()
     except OAuthError:
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
+        )
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
@@ -103,6 +114,10 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         userinfo = oauth.google.userinfo(token=token)
 
     if userinfo.get("email_verified") is not True:
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL},
+        )
         return render_template(
             "pages/splash.html",
             oauth_unverified_email=True,
@@ -112,6 +127,10 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     subject: str | None = userinfo.get("sub")
     email: str | None = userinfo.get("email")
     if subject is None or email is None:
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
+        )
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,

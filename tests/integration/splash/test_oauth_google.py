@@ -17,6 +17,7 @@ from authlib.integrations.base_client.errors import OAuthError
 from flask import Flask, redirect, url_for
 from flask_login import current_user
 import pytest
+from redis import Redis
 
 from backend import db
 from backend.metrics.events import EventName
@@ -24,6 +25,12 @@ from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
+from backend.splash.services.user_login import (
+    _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED,
+    _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
+    _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
+    _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
+)
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
@@ -106,6 +113,21 @@ def _build_mocked_token(
 
 def _callback_url(**query_args: str) -> str:
     return url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, **query_args)
+
+
+def _assert_single_login_failure_reason(
+    metrics_redis: Redis, expected_reason: str
+) -> None:
+    """Asserts exactly one LOGIN_FAILURE counter key exists and carries
+    `reason=expected_reason`, matching the assertion shape already used by
+    `test_google_callback_records_login_metrics_across_scenarios`'s
+    email-collision scenario."""
+    assert count_counter_keys(metrics_redis, EventName.LOGIN_FAILURE) == 1
+    login_failure_keys = find_counter_keys(metrics_redis, EventName.LOGIN_FAILURE)
+    assert (
+        parse_dims(login_failure_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY]
+        == expected_reason
+    )
 
 
 def _seed_existing_oauth_user(
@@ -621,11 +643,111 @@ def test_google_callback_records_login_metrics_across_scenarios(
         mock_authorize_access_token.assert_called_once()
     assert response.status_code == 200
 
-    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 1
-    login_failure_keys = find_counter_keys(
-        provide_metrics_redis, EventName.LOGIN_FAILURE
+    _assert_single_login_failure_reason(
+        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION
     )
-    assert (
-        parse_dims(login_failure_keys[0])[_LOGIN_FAILURE_REASON_DIM_KEY]
-        == "oauth_email_collision"
+
+
+def test_google_callback_consent_declined_records_login_failure_metric(
+    metrics_enabled_app: Flask, provide_metrics_redis, load_login_page
+):
+    """
+    GIVEN metrics enabled for the shared app
+    WHEN the callback is hit with `error=access_denied` (declined consent)
+    THEN LOGIN_FAILURE records once with reason="oauth_consent_declined"
+    """
+    client, _ = load_login_page
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.get(
+        _callback_url(error="access_denied", state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    _assert_single_login_failure_reason(
+        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED
+    )
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_google_callback_token_exchange_failure_records_login_failure_metric(
+    mock_authorize_access_token: mock.MagicMock,
+    metrics_enabled_app: Flask,
+    provide_metrics_redis,
+    load_login_page,
+):
+    """
+    GIVEN metrics enabled for the shared app
+    WHEN Authlib's token exchange raises OAuthError
+    THEN LOGIN_FAILURE records once with reason="oauth_generic_failure"
+    """
+    mock_authorize_access_token.side_effect = OAuthError("invalid_grant", "bad token")
+    client, _ = load_login_page
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    mock_authorize_access_token.assert_called_once()
+    _assert_single_login_failure_reason(
+        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE
+    )
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_google_callback_unverified_email_records_login_failure_metric(
+    mock_authorize_access_token: mock.MagicMock,
+    metrics_enabled_app: Flask,
+    provide_metrics_redis,
+    load_login_page,
+):
+    """
+    GIVEN metrics enabled for the shared app
+    WHEN the mocked userinfo reports `email_verified: False`
+    THEN LOGIN_FAILURE records once with reason="oauth_unverified_email"
+    """
+    mock_authorize_access_token.return_value = _build_mocked_token(
+        subject=_UNVERIFIED_SUBJECT, email=_UNVERIFIED_EMAIL, email_verified=False
+    )
+    client, _ = load_login_page
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    mock_authorize_access_token.assert_called_once()
+    _assert_single_login_failure_reason(
+        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL
+    )
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_google_callback_missing_claims_records_login_failure_metric(
+    mock_authorize_access_token: mock.MagicMock,
+    metrics_enabled_app: Flask,
+    provide_metrics_redis,
+    load_login_page,
+):
+    """
+    GIVEN metrics enabled for the shared app
+    WHEN the mocked userinfo has `email_verified: True` but omits both the
+        `sub` and `email` OIDC claims
+    THEN LOGIN_FAILURE records once with reason="oauth_generic_failure"
+    """
+    mock_authorize_access_token.return_value = {"userinfo": {"email_verified": True}}
+    client, _ = load_login_page
+    assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    mock_authorize_access_token.assert_called_once()
+    _assert_single_login_failure_reason(
+        provide_metrics_redis, _LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE
     )

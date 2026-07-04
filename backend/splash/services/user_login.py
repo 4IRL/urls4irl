@@ -25,6 +25,9 @@ _LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
 _LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"
 _LOGIN_FAILURE_REASON_OAUTH_ONLY = "oauth_only"
 _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION = "oauth_email_collision"
+_LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED = "oauth_consent_declined"
+_LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE = "oauth_generic_failure"
+_LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL = "oauth_unverified_email"
 
 
 def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
