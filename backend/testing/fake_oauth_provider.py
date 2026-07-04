@@ -3,7 +3,7 @@ from __future__ import annotations
 import hmac
 from typing import Any
 
-from flask import Blueprint, current_app, jsonify, redirect, request, session
+from flask import Blueprint, Response, current_app, jsonify, redirect, request, session
 from itsdangerous import BadSignature, URLSafeSerializer
 
 from backend import (
@@ -55,7 +55,7 @@ def set_identity() -> tuple[str, int]:
 
 
 @fake_oauth.route(_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL, methods=["GET"])
-def authorize():
+def authorize() -> Response | tuple[Response, int]:
     """Mimics Google's authorization endpoint.
 
     Browser-driven: reads the pending identity stashed via `set_identity` from
@@ -84,7 +84,7 @@ def authorize():
 
 @fake_oauth.route(_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL, methods=["POST"])
 @csrf.exempt
-def token():
+def token() -> Response | tuple[Response, int]:
     """Mimics Google's token endpoint.
 
     Called server-to-server by Authlib's own OAuth2 client (no browser
@@ -128,7 +128,7 @@ def token():
 
 
 @fake_oauth.route(_FAKE_GOOGLE_OAUTH_USERINFO_URL, methods=["GET"])
-def userinfo():
+def userinfo() -> Response | tuple[Response, int]:
     """Mimics Google's userinfo endpoint.
 
     Called server-to-server by Authlib's plain-OAuth2 fallback
