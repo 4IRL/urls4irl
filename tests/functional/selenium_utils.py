@@ -21,6 +21,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from backend.config import ConfigTest
+from backend.models.utubs import Utubs
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
@@ -1452,3 +1453,40 @@ def dispatch_pointer_drag(
             "stepDelayMs": step_delay_ms,
         },
     )
+
+
+def open_cross_search_via_trigger(browser: WebDriver) -> None:
+    """
+    Opens cross-UTub search mode by clicking the navbar trigger.
+
+    The trigger is a standalone icon button inline next to the hamburger, so it is
+    directly clickable on every viewport without first opening the navbar menu.
+
+    Args:
+        browser (WebDriver): WebDriver open to the U4I Home Page
+    """
+    wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_TRIGGER)
+    wait_then_click_element(browser, HPL.CROSS_SEARCH_TRIGGER)
+    wait_until_visible_css_selector(browser, HPL.CROSS_SEARCH_INPUT)
+    wait_until_in_focus(browser, HPL.CROSS_SEARCH_INPUT)
+
+
+def leave_utub_as_member(browser: WebDriver, utub_to_leave: Utubs) -> None:
+    """
+    Performs actions to leave a UTub as a UTub Member.
+
+    Args:
+        browser (WebDriver): WebDriver open to a selected UTub
+        utub_to_leave (Utubs): UTub to leave
+    """
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
+    assert warning_modal_body is not None
+
+    utub_css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_leave.id}"]'
+    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(browser, utub_selector)

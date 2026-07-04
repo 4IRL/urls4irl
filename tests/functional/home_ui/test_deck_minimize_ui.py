@@ -12,8 +12,10 @@ from tests.functional.login_utils import (
     login_user_and_select_utub_by_name,
     login_user_to_home_page,
 )
-from tests.functional.members_ui.selenium_utils import leave_utub_as_member
-from tests.functional.selenium_utils import wait_then_click_element
+from tests.functional.selenium_utils import (
+    leave_utub_as_member,
+    wait_then_click_element,
+)
 from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 
 pytestmark = pytest.mark.home_ui

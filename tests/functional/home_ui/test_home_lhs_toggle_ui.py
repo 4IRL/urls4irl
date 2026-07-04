@@ -24,9 +24,9 @@ from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid_mobile,
     login_user_to_home_page,
 )
-from tests.functional.members_ui.selenium_utils import leave_utub_as_member
-from tests.functional.search_ui.selenium_utils import open_cross_search_via_trigger
 from tests.functional.selenium_utils import (
+    leave_utub_as_member,
+    open_cross_search_via_trigger,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_in_focus,

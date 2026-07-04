@@ -19,8 +19,8 @@ from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid,
     login_user_select_utub_by_id_and_url_by_id,
 )
-from tests.functional.members_ui.selenium_utils import leave_utub_as_member
 from tests.functional.selenium_utils import (
+    leave_utub_as_member,
     select_utub_by_id,
     wait_then_click_element,
 )

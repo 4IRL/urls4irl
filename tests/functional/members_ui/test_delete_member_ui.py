@@ -1,39 +1,34 @@
 from flask import Flask
 import pytest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import WebDriverWait
+from playwright.sync_api import Page, expect
 
-from locators import HomePageLocators as HPL
+from tests.functional.locators import HomePageLocators as HPL
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.strings.user_strs import MEMBER_DELETE_WARNING
-from tests.functional.assert_utils import (
-    assert_active_utub,
-    assert_login_with_username,
-    assert_on_429_page,
-    assert_visited_403_on_invalid_csrf_and_reload,
-)
 from tests.functional.db_utils import (
     get_other_member_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
-from tests.functional.login_utils import login_user_and_select_utub_by_name
-from tests.functional.members_ui.selenium_utils import (
+from tests.functional.members_ui.playwright_utils import (
     delete_member_active_utub,
     get_all_member_usernames,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import (
+    assert_active_utub,
+    assert_login_with_username,
+    assert_on_429_page,
+    assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     force_next_delete_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
-    wait_for_element_to_be_removed,
     wait_for_modal_ready,
+    wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -45,7 +40,7 @@ pytestmark = pytest.mark.members_ui
 
 
 def test_open_delete_member_modal(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -58,29 +53,23 @@ def test_open_delete_member_modal(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
+    delete_member_active_utub(page=page, member_name=member_name)
 
-    delete_member_active_utub(browser, member_name)
+    warning_modal = wait_then_get_element(page=page, css_selector=HPL.HOME_MODAL)
+    expect(warning_modal).to_be_visible()
 
-    warning_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
-    assert warning_modal is not None
-
-    assert warning_modal.is_displayed()
-
-    warning_modal_body = warning_modal.find_element(By.CSS_SELECTOR, HPL.BODY_MODAL)
-    confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
-
-    member_delete_check_text = MEMBER_DELETE_WARNING
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == member_delete_check_text
+    warning_modal_body = page.locator(HPL.BODY_MODAL)
+    expect(warning_modal_body).to_have_text(MEMBER_DELETE_WARNING)
 
 
 def test_dismiss_delete_member_modal_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -93,28 +82,25 @@ def test_dismiss_delete_member_modal_btn(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
-
-    delete_member_active_utub(browser, member_name)
+    delete_member_active_utub(page=page, member_name=member_name)
 
     # Gate on the show-transition being fully settled (_isTransitioning === false)
     # before clicking dismiss. Clicking while Bootstrap's fade-in is still running
     # causes the modal("hide") to be dropped as an overlapping transition, leaving
     # the modal visible and racing wait_until_hidden.
-    wait_for_modal_ready(browser, HPL.HOME_MODAL)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
-
-    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not create_member_input.is_displayed()
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_dismiss_delete_member_modal_x(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -127,27 +113,23 @@ def test_dismiss_delete_member_modal_x(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
+    delete_member_active_utub(page=page, member_name=member_name)
 
-    delete_member_active_utub(browser, member_name)
-
-    wait_for_modal_ready(browser, HPL.HOME_MODAL)
-    home_modal = browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL)
-    x_btn = home_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_X_CLOSE)
-    assert x_btn.is_displayed()
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    x_btn = page.locator(HPL.HOME_MODAL).locator(HPL.BUTTON_X_CLOSE).first
+    expect(x_btn).to_be_visible()
     x_btn.click()
-
-    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not create_member_input.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_dismiss_delete_member_modal_click_outside_modal(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -160,24 +142,22 @@ def test_dismiss_delete_member_modal_click_outside_modal(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
+    delete_member_active_utub(page=page, member_name=member_name)
 
-    delete_member_active_utub(browser, member_name)
-
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
-    dismiss_modal_with_click_out(browser)
-
-    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not create_member_input.is_displayed()
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    dismiss_modal_with_click_out(page=page, modal_selector=HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_dismiss_delete_member_modal_key(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -190,25 +170,22 @@ def test_dismiss_delete_member_modal_key(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
-    delete_member_active_utub(browser, member_name)
+    delete_member_active_utub(page=page, member_name=member_name)
 
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
-    wait_until_in_focus(browser, HPL.HOME_MODAL, timeout=3)
-
-    browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL).send_keys(Keys.ESCAPE)
-
-    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not create_member_input.is_displayed()
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_in_focus(page=page, css_selector=HPL.HOME_MODAL)
+    page.keyboard.press("Escape")
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_delete_member_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -221,38 +198,36 @@ def test_delete_member_btn(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
-    delete_member_active_utub(browser, other_member.username)
+    delete_member_active_utub(page=page, member_name=other_member.username)
 
     # Gate on the modal being fully shown (fade-in transition settled) before clicking
     # submit. Clicking while Bootstrap's show-transition is still running causes the
     # subsequent modal("hide") issued by removeMemberSuccess to be dropped as an
     # overlapping transition, which leaves the modal visible and races wait_until_hidden.
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Assert submit button is disabled immediately after click to prevent double-submit
-    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
-    assert modal_submit_btn.get_property("disabled") is True
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_disabled()
 
-    # Wait for DELETE request
+    # Wait for DELETE request and member removal
     member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"]'
-    member_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
-    wait_for_element_to_be_removed(browser, member_elem)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_selector_to_be_removed(page=page, css_selector=member_selector)
 
-    member_usernames = get_all_member_usernames(browser)
-
-    # Assert member no longer exists
+    member_usernames = get_all_member_usernames(page=page)
     assert member_name not in member_usernames
 
 
 def test_delete_member_rate_limits(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -265,18 +240,20 @@ def test_delete_member_rate_limits(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
-    delete_member_active_utub(browser, other_member.username)
+    delete_member_active_utub(page=page, member_name=other_member.username)
 
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    assert_on_429_page(browser)
+    add_forced_rate_limit_header(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    assert_on_429_page(page=page)
 
 
 def test_open_delete_member_modal_fails_as_member(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -289,7 +266,9 @@ def test_open_delete_member_modal_fails_as_member(
 
     user_id = 1
     utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_member_of.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_member_of.name
+    )
 
     with app.app_context():
         other_member: Utub_Members = Utub_Members.query.filter(
@@ -300,20 +279,15 @@ def test_open_delete_member_modal_fails_as_member(
         other_user = other_member.to_user
 
     member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{other_user.id}"]'
-
-    other_member_element = wait_then_get_element(browser, member_selector, time=3)
-    assert other_member_element is not None
-
-    actions = ActionChains(browser)
-    actions.move_to_element(other_member_element).perform()
-    actions.pause(1).perform()
-
-    with pytest.raises(NoSuchElementException):
-        other_member_element.find_element(By.CSS_SELECTOR, HPL.BUTTON_MEMBER_DELETE)
+    other_member_element = wait_then_get_element(
+        page=page, css_selector=member_selector
+    )
+    other_member_element.hover()
+    assert other_member_element.locator(HPL.BUTTON_MEMBER_DELETE).count() == 0
 
 
 def test_delete_member_invalid_csrf_token(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -329,31 +303,25 @@ def test_delete_member_invalid_csrf_token(
         user: Users = Users.query.get(user_id)
         username = user.username
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
-    delete_member_active_utub(browser, member_name)
+    delete_member_active_utub(page=page, member_name=member_name)
 
-    invalidate_csrf_token_on_page(browser)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    invalidate_csrf_token_on_page(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
-
-    # Page reloads after user clicks button in CSRF 403 error page
-    assert_login_with_username(browser, username)
-
-    # Reload will bring user back to the UTub they were in before
-    assert_active_utub(browser, utub_user_created.name)
-
-    delete_utub_submit_btn_modal = wait_until_hidden(
-        browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
-    )
-    assert not delete_utub_submit_btn_modal.is_displayed()
+    assert_login_with_username(page=page, username=username)
+    assert_active_utub(page=page, utub_name=utub_user_created.name)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
 
 def test_delete_member_submit_button_reenables_on_server_error(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -368,26 +336,21 @@ def test_delete_member_submit_button_reenables_on_server_error(
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
-    delete_member_active_utub(browser, other_member.username)
+    delete_member_active_utub(page=page, member_name=other_member.username)
 
-    # Force the next DELETE ajax call to fail (with early return to prevent navigation)
-    force_next_delete_ajax_failure_no_navigate(browser)
+    force_next_delete_ajax_failure_no_navigate(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-
-    # Poll until the async failure handler re-enables the submit button
-    WebDriverWait(browser, 5).until(
-        lambda driver: not driver.find_element(
-            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
-        ).get_property("disabled")
-    )
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
 
 
 def test_delete_member_submit_button_enabled_on_second_modal_open(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -412,35 +375,31 @@ def test_delete_member_submit_button_enabled_on_second_modal_open(
         first_member_user = other_members[0].to_user
         second_member_user = other_members[1].to_user
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     # Delete the first member
-    delete_member_active_utub(browser, first_member_user.username)
+    delete_member_active_utub(page=page, member_name=first_member_user.username)
 
     # Gate on the modal being fully shown (fade-in transition settled) before clicking
     # submit. Clicking while Bootstrap's show-transition is still running causes the
     # subsequent modal("hide") issued by removeMemberSuccess to be dropped as an
     # overlapping transition, which leaves the modal visible and races wait_until_hidden.
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
-
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for the first member's badge to be removed from the DOM
     first_member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{first_member_user.id}"]'
-    first_member_elem = browser.find_element(By.CSS_SELECTOR, first_member_selector)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
-    wait_for_element_to_be_removed(browser, first_member_elem)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_selector_to_be_removed(page=page, css_selector=first_member_selector)
 
     # Open the delete modal for the second member
-    delete_member_active_utub(browser, second_member_user.username)
+    delete_member_active_utub(page=page, member_name=second_member_user.username)
 
     # Gate on the modal being fully rendered before asserting on its submit button,
     # so the button-enabled check is not raced against modal render under parallel load
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
 
     # Assert the submit button is NOT disabled when the modal opens for the second member
-    WebDriverWait(browser, 5).until(
-        lambda driver: not driver.find_element(
-            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
-        ).get_property("disabled")
-    )
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()

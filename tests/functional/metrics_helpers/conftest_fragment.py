@@ -244,6 +244,68 @@ def clear_metrics_state_mobile(
 
 
 @pytest.fixture
+def clear_metrics_state_playwright(
+    provide_app: Flask,
+    metrics_redis_client: Redis,
+    metrics_registry_synced: Flask,
+    runner: Tuple[Flask, FlaskCliRunner],
+    page_without_cookie_banner_cookie: Any,
+) -> Generator[None, None, None]:
+    """Playwright-ordered variant of `clear_metrics_state`.
+
+    Identical behavior, but anchors the wipe-then-sync ordering on the
+    Playwright `page_without_cookie_banner_cookie` chain (whose setup calls
+    `clear_db`) instead of the Selenium chain — so a Playwright metrics test
+    never spins up a WebDriver, and the EventRegistry re-sync cannot be
+    wiped by a clear_db that runs after it. Selenium-driven metrics tests
+    keep using `clear_metrics_state` until their directory is ported; this
+    variant replaces it entirely once Selenium is removed.
+    """
+    _reset_metrics_state_for_test(provide_app, metrics_redis_client)
+    yield
+
+
+@pytest.fixture
+def clear_metrics_state_playwright_mobile(
+    provide_app: Flask,
+    metrics_redis_client: Redis,
+    metrics_registry_synced: Flask,
+    runner: Tuple[Flask, FlaskCliRunner],
+    page_mobile_portrait_without_cookie_banner_cookie: Any,
+) -> Generator[None, None, None]:
+    """Mobile-viewport Playwright variant of `clear_metrics_state`."""
+    _reset_metrics_state_for_test(provide_app, metrics_redis_client)
+    yield
+
+
+@pytest.fixture
+def pg_conn_for_metrics_playwright(
+    provide_app: Flask,
+    clear_metrics_state_playwright: None,
+) -> Generator[Any, None, None]:
+    """Playwright-ordered variant of `pg_conn_for_metrics` (see its
+    docstring) — ordered after `clear_metrics_state_playwright`."""
+    pg_conn = _build_pg_conn(provide_app)
+    try:
+        yield pg_conn
+    finally:
+        pg_conn.close()
+
+
+@pytest.fixture
+def pg_conn_for_metrics_playwright_mobile(
+    provide_app: Flask,
+    clear_metrics_state_playwright_mobile: None,
+) -> Generator[Any, None, None]:
+    """Mobile-viewport Playwright variant of `pg_conn_for_metrics`."""
+    pg_conn = _build_pg_conn(provide_app)
+    try:
+        yield pg_conn
+    finally:
+        pg_conn.close()
+
+
+@pytest.fixture
 def pg_conn_for_metrics(
     provide_app: Flask,
     clear_metrics_state: None,
