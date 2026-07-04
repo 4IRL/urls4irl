@@ -1,45 +1,42 @@
+from __future__ import annotations
+
 from flask import Flask
 import pytest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support import expected_conditions as EC
+from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from tests.functional.assert_utils import (
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.playwright_assert_utils import (
     assert_login,
     assert_no_utub_selected,
     assert_not_visible_css_selector,
     assert_utub_icon,
     assert_utub_selected,
 )
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.login_utils import (
-    create_user_session_and_provide_session_id,
-    login_user_and_select_utub_by_name,
-    login_user_with_cookie_from_session,
-)
-from tests.functional.selenium_utils import (
-    ChromeRemoteWebDriver,
+from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
+from tests.functional.playwright_utils import (
+    clear_then_send_keys,
     click_on_navbar,
-    login_user_ui,
+    current_base_url,
+    login_user_to_home_page,
     select_utub_by_id,
-    wait_for_element_to_be_removed,
+    wait_for_modal_ready,
+    wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_utub_name_appears,
 )
-from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 
 pytestmark = pytest.mark.home_ui
 
 
-def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
+def test_logout(page: Page, create_test_users, provide_app: Flask):
     """
     Tests a user's ability to logout.
 
@@ -49,32 +46,20 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     """
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    # Logout now lives inside the always-collapsed navbar dropdown.
-    click_on_navbar(browser)
-    logout_btn = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
-    assert logout_btn is not None
+    click_on_navbar(page=page)
+    logout_btn = wait_then_get_element(page=page, css_selector=HPL.BUTTON_LOGOUT)
     logout_btn.click()
 
-    assert EC.staleness_of(logout_btn)
+    expect(page.locator(SPL.WELCOME_TEXT).first).to_have_text(IDENTIFIERS.SPLASH_PAGE)
 
-    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT)
-    assert welcome_text is not None
-
-    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE
-
-    navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
-    assert navbar is not None
-
-    login_btn = navbar.find_element(By.CSS_SELECTOR, SPL.NAVBAR_LOGIN)
-
-    assert login_btn.is_displayed()
+    login_btn = page.locator(SPL.NAVBAR_LOGIN).first
+    expect(login_btn).to_be_visible()
 
 
 def test_navbar_hamburger_desktop_regular_member(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     Tests the desktop navbar hamburger dropdown for a non-admin member.
@@ -87,37 +72,38 @@ def test_navbar_hamburger_desktop_regular_member(
     app = provide_app
     # User 1 is seeded as the admin; user 2 is a regular member.
     user_id = 2
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
     # Username sits inline on the desktop bar (not in the dropdown).
-    inline_username = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_DESKTOP)
-    assert inline_username is not None
-    assert inline_username.text == "Logged in as " + USERNAME_BASE + "2"
+    inline_username = wait_then_get_element(
+        page=page, css_selector=HPL.LOGGED_IN_USERNAME_DESKTOP
+    )
+    expect(inline_username).to_have_text("Logged in as " + USERNAME_BASE + "2")
 
-    click_on_navbar(browser)
+    click_on_navbar(page=page)
 
     # The dropdown-copy username is suppressed on desktop by the
     # #NavbarDropdownsHome .nav-item.user { display:none } rule at >=992px.
-    assert_not_visible_css_selector(browser, HPL.LOGGED_IN_USERNAME_READ)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.LOGGED_IN_USERNAME_READ)
 
-    logout_btn = wait_then_get_element(browser, HPL.NAVBAR_LOGOUT)
-    assert logout_btn is not None
+    wait_then_get_element(page=page, css_selector=HPL.NAVBAR_LOGOUT)
 
     # On desktop the dropdown is a compact panel anchored under the hamburger,
     # not a full-width overlay (the full-bleed layout is mobile-only). Guard the
     # >=992px width constraint so a regression to full-width is caught.
-    dropdown = wait_then_get_element(browser, HPL.NAVBAR_DROPDOWN)
-    assert dropdown is not None
-    viewport_width = browser.execute_script("return window.innerWidth")
-    assert dropdown.size["width"] < viewport_width / 2
+    dropdown = page.locator(HPL.NAVBAR_DROPDOWN).first
+    expect(dropdown).to_be_visible()
+    dropdown_box = dropdown.bounding_box()
+    assert dropdown_box is not None
+    viewport_width = page.evaluate("() => window.innerWidth")
+    assert dropdown_box["width"] < viewport_width / 2
 
     # A non-admin never renders the Admin · Metrics entry.
-    assert not browser.find_elements(By.CSS_SELECTOR, HPL.NAVBAR_ADMIN_METRICS)
+    assert page.locator(HPL.NAVBAR_ADMIN_METRICS).count() == 0
 
 
 def test_navbar_hamburger_desktop_admin_member(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     Tests the desktop navbar hamburger dropdown for an admin member.
@@ -129,28 +115,23 @@ def test_navbar_hamburger_desktop_admin_member(
     app = provide_app
     # User 1 is seeded with the ADMIN role.
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    click_on_navbar(browser)
+    click_on_navbar(page=page)
 
-    admin_metrics = wait_then_get_element(browser, HPL.NAVBAR_ADMIN_METRICS)
-    assert admin_metrics is not None
-
-    logout_btn = wait_then_get_element(browser, HPL.NAVBAR_LOGOUT)
-    assert logout_btn is not None
+    wait_then_get_element(page=page, css_selector=HPL.NAVBAR_ADMIN_METRICS)
+    wait_then_get_element(page=page, css_selector=HPL.NAVBAR_LOGOUT)
 
 
-def _navbar_item_border_top_width(browser: WebDriver, locator: str) -> str:
-    element = wait_then_get_element(browser, locator)
-    assert element is not None
-    return browser.execute_script(
-        "return window.getComputedStyle(arguments[0]).borderTopWidth;", element
+def _navbar_item_border_top_width(page: Page, locator: str) -> str:
+    element = wait_then_get_element(page=page, css_selector=locator)
+    return element.evaluate(
+        "element => window.getComputedStyle(element).borderTopWidth"
     )
 
 
 def test_navbar_dropdown_dividers_non_admin(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     Guards the desktop dropdown dividers for a non-admin member (issue #634).
@@ -163,17 +144,16 @@ def test_navbar_dropdown_dividers_non_admin(
     app = provide_app
     # User 1 is seeded as the admin; user 2 is a regular member.
     user_id = 2
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    click_on_navbar(browser)
+    click_on_navbar(page=page)
 
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) == "0px"
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) == "1px"
+    assert _navbar_item_border_top_width(page, HPL.NAVBAR_USER_SETTINGS) == "0px"
+    assert _navbar_item_border_top_width(page, HPL.NAVBAR_LOGOUT) == "1px"
 
 
 def test_navbar_dropdown_dividers_admin(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     Guards the desktop dropdown dividers for an admin member (issue #634).
@@ -186,17 +166,16 @@ def test_navbar_dropdown_dividers_admin(
     app = provide_app
     # User 1 is seeded with the ADMIN role.
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    click_on_navbar(browser)
+    click_on_navbar(page=page)
 
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_ADMIN_METRICS) == "0px"
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_USER_SETTINGS) == "1px"
-    assert _navbar_item_border_top_width(browser, HPL.NAVBAR_LOGOUT) == "1px"
+    assert _navbar_item_border_top_width(page, HPL.NAVBAR_ADMIN_METRICS) == "0px"
+    assert _navbar_item_border_top_width(page, HPL.NAVBAR_USER_SETTINGS) == "1px"
+    assert _navbar_item_border_top_width(page, HPL.NAVBAR_LOGOUT) == "1px"
 
 
-def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask):
+def test_refresh_logo(page: Page, create_test_utubs, provide_app: Flask):
     """
     Tests a user's ability to refresh the U4I Home page by clicking the upper LHS logo.
 
@@ -204,22 +183,20 @@ def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask)
     WHEN user clicks upper LHS logo
     THEN ensure the Home page is re-displayed with nothing selected
     """
-
     app = provide_app
     user_id = 1
-    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=UTS.TEST_UTUB_NAME_1
+    )
 
-    wait_then_click_element(browser, HPL.U4I_LOGO)
+    wait_then_click_element(page=page, css_selector=HPL.U4I_LOGO)
 
-    assert_login(browser)
+    assert_login(page=page)
 
-    active_utubs = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB, time=3)
-    assert active_utubs is None
+    assert page.locator(HPL.SELECTOR_SELECTED_UTUB).count() == 0
 
 
-def test_back_and_forward_history(
-    browser: WebDriver, create_test_tags, provide_app: Flask
-):
+def test_back_and_forward_history(page: Page, create_test_tags, provide_app: Flask):
     """
     GIVEN a set of UTubs with URLs, member, and tags within that UTub
     WHEN the user selects each UTub 1 by 1, then uses browser back and then forward history
@@ -227,8 +204,7 @@ def test_back_and_forward_history(
     """
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
     with app.app_context():
         utub_members_with_user: list[Utub_Members] = Utub_Members.query.filter(
@@ -239,30 +215,30 @@ def test_back_and_forward_history(
         ]
 
     for utub_id in utub_ids:
-        select_utub_by_id(browser, utub_id)
+        select_utub_by_id(page=page, utub_id=utub_id)
 
     # Go backwards
     for idx in range(len(utub_ids)):
         utub_idx = len(utub_ids) - idx - 1
         utub_id = utub_ids[utub_idx]
 
-        assert_utub_selected(browser, app, utub_id)
-        assert_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(page=page, app=app, utub_id=utub_id)
+        assert_utub_icon(page=page, app=app, user_id=user_id, utub_id=utub_id)
 
-        browser.back()
+        page.go_back()
 
-    assert_no_utub_selected(browser)
+    assert_no_utub_selected(page=page)
 
     # Go forwards
     for utub_id in utub_ids:
-        browser.forward()
+        page.go_forward()
 
-        assert_utub_selected(browser, app, utub_id)
-        assert_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(page=page, app=app, utub_id=utub_id)
+        assert_utub_icon(page=page, app=app, user_id=user_id, utub_id=utub_id)
 
 
 def test_back_and_forward_history_with_one_utub_deleted(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     GIVEN a set of UTubs with URLs, member, and tags within that UTub
@@ -272,8 +248,7 @@ def test_back_and_forward_history_with_one_utub_deleted(
     """
     app = provide_app
     user_id = 3
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
     with app.app_context():
         utub_members_with_user: list[Utub_Members] = Utub_Members.query.filter(
@@ -290,64 +265,58 @@ def test_back_and_forward_history_with_one_utub_deleted(
     # Sort the UTubIDs so the 3rd UTub (the one this user created) is right in the middle
     utub_ids.sort()
     for utub_id in utub_ids:
-        select_utub_by_id(browser, utub_id)
+        select_utub_by_id(page=page, utub_id=utub_id)
 
-    select_utub_by_id(browser, utub_id_to_delete)
+    select_utub_by_id(page=page, utub_id=utub_id_to_delete)
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
-
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
-    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id_to_delete}"]'
+    wait_for_selector_to_be_removed(page=page, css_selector=css_selector)
 
-    wait_until_hidden(browser, css_selector, timeout=3)
-
-    # Assert UTub selector no longer exists
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, css_selector)
-
-    assert_no_utub_selected(browser)
+    assert_no_utub_selected(page=page)
 
     # Start at the end of the selected UTubs again
     utub_ids.append(utub_id_to_delete)
 
     # Go backwards
     for idx in range(len(utub_ids)):
-        browser.back()
+        page.go_back()
         utub_idx = -1 - idx
         utub_id = utub_ids[utub_idx]
 
         if utub_id == utub_id_to_delete:
-            assert_no_utub_selected(browser)
+            assert_no_utub_selected(page=page)
             continue
 
         with app.app_context():
             utub: Utubs = Utubs.query.get(utub_id)
-            wait_until_utub_name_appears(browser, utub.name)
+            wait_until_utub_name_appears(page=page, utub_name=utub.name)
 
-        assert_utub_selected(browser, app, utub_id)
-        assert_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(page=page, app=app, utub_id=utub_id)
+        assert_utub_icon(page=page, app=app, user_id=user_id, utub_id=utub_id)
 
     # Go back to the home page when no UTubs were selected
-    browser.back()
-    assert_no_utub_selected(browser)
+    page.go_back()
+    assert_no_utub_selected(page=page)
 
     # Go forwards
     for utub_id in utub_ids:
-        browser.forward()
+        page.go_forward()
 
         if utub_id == utub_id_to_delete:
-            assert_no_utub_selected(browser)
+            assert_no_utub_selected(page=page)
             continue
 
-        assert_utub_selected(browser, app, utub_id)
-        assert_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(page=page, app=app, utub_id=utub_id)
+        assert_utub_icon(page=page, app=app, user_id=user_id, utub_id=utub_id)
 
 
 def test_back_and_forward_history_with_leaving_one_utub(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     GIVEN a set of UTubs with URLs, member, and tags within that UTub
@@ -356,8 +325,7 @@ def test_back_and_forward_history_with_leaving_one_utub(
     """
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
     with app.app_context():
         utub_members_with_user: list[Utub_Members] = Utub_Members.query.filter(
@@ -372,65 +340,59 @@ def test_back_and_forward_history_with_leaving_one_utub(
     # Sort the UTubIDs so the 3rd UTub (the one this user is a member of) is right in the middle
     utub_ids.sort()
     for utub_id in utub_ids:
-        select_utub_by_id(browser, utub_id)
+        select_utub_by_id(page=page, utub_id=utub_id)
 
-    select_utub_by_id(browser, utub_id_to_delete)
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
-    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
-    assert warning_modal_body is not None
+    select_utub_by_id(page=page, utub_id=utub_id_to_delete)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_LEAVE)
+    expect(page.locator(HPL.BODY_MODAL)).to_be_visible()
 
     utub_css_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id_to_delete}']"
-    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
 
     # Wait for DELETE request
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
-    wait_for_element_to_be_removed(browser, utub_selector)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_selector_to_be_removed(page=page, css_selector=utub_css_selector)
 
-    # Assert UTub selector no longer exists
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, utub_css_selector)
-
-    assert_no_utub_selected(browser)
+    assert_no_utub_selected(page=page)
 
     # Start at the end of the selected UTubs again
     utub_ids.append(utub_id_to_delete)
 
     # Go backwards
     for idx in range(len(utub_ids)):
-        browser.back()
+        page.go_back()
         utub_idx = -1 - idx
         utub_id = utub_ids[utub_idx]
 
         if utub_id == utub_id_to_delete:
-            assert_no_utub_selected(browser)
+            assert_no_utub_selected(page=page)
             continue
 
         with app.app_context():
             utub: Utubs = Utubs.query.get(utub_id)
-            wait_until_utub_name_appears(browser, utub.name)
+            wait_until_utub_name_appears(page=page, utub_name=utub.name)
 
-        assert_utub_selected(browser, app, utub_id)
-        assert_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(page=page, app=app, utub_id=utub_id)
+        assert_utub_icon(page=page, app=app, user_id=user_id, utub_id=utub_id)
 
     # Go back to the home page when no UTubs were selected
-    browser.back()
-    assert_no_utub_selected(browser)
+    page.go_back()
+    assert_no_utub_selected(page=page)
 
     # Go forwards
     for utub_id in utub_ids:
-        browser.forward()
+        page.go_forward()
 
         if utub_id == utub_id_to_delete:
-            assert_no_utub_selected(browser)
+            assert_no_utub_selected(page=page)
             continue
 
-        assert_utub_selected(browser, app, utub_id)
-        assert_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(page=page, app=app, utub_id=utub_id)
+        assert_utub_icon(page=page, app=app, user_id=user_id, utub_id=utub_id)
 
 
 def test_access_utub_id_via_url_logged_in(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     GIVEN a set of UTubs with URLs, member, and tags within that UTub, and the user has previously logged in
@@ -440,8 +402,7 @@ def test_access_utub_id_via_url_logged_in(
     """
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
     with app.app_context():
         utub_not_creator_of: Utubs = Utubs.query.filter(
@@ -450,14 +411,14 @@ def test_access_utub_id_via_url_logged_in(
         utub_id_to_select = utub_not_creator_of.id
         utub_name_to_select = utub_not_creator_of.name
 
-    utub_url = f"{browser.current_url}?UTubID={utub_id_to_select}"
-    browser.get(utub_url)
-    wait_until_utub_name_appears(browser, utub_name_to_select)
-    assert_utub_selected(browser, app, utub_id_to_select)
+    utub_url = f"{page.url}?UTubID={utub_id_to_select}"
+    page.goto(utub_url)
+    wait_until_utub_name_appears(page=page, utub_name=utub_name_to_select)
+    assert_utub_selected(page=page, app=app, utub_id=utub_id_to_select)
 
 
 def test_access_utub_id_via_url_logged_out(
-    browser: ChromeRemoteWebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     GIVEN a set of UTubs with URLs, member, and tags within that UTub, and the user has no session cookie
@@ -473,15 +434,25 @@ def test_access_utub_id_via_url_logged_out(
         utub_id_to_select = utub_not_creator_of.id
         utub_name_to_select = utub_not_creator_of.name
 
-    utub_url = f"{browser.current_url}home?UTubID={utub_id_to_select}"
-    browser.get(utub_url)
-    login_user_ui(browser)
+    base_url = current_base_url(page=page)
+    utub_url = f"{base_url}/home?UTubID={utub_id_to_select}"
+    page.goto(utub_url)
 
-    # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-    wait_until_utub_name_appears(browser, utub_name_to_select)
+    # Log in via the UI form (no session cookie was pre-set)
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    username_input = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_INPUT_USERNAME
+    )
+    clear_then_send_keys(locator=username_input, input_text=UTS.TEST_USERNAME_1)
+    password_input = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_INPUT_PASSWORD
+    )
+    clear_then_send_keys(locator=password_input, input_text=UTS.TEST_PASSWORD_1)
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_SUBMIT)
 
-    assert_utub_selected(browser, app, utub_id_to_select)
+    wait_until_utub_name_appears(page=page, utub_name=utub_name_to_select)
+    assert_utub_selected(page=page, app=app, utub_id=utub_id_to_select)
 
 
 # TODO: test async addition of component by 2nd test user in a shared UTub, then confirm 1st test user can see the update upon refresh

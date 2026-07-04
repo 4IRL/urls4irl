@@ -6,6 +6,7 @@ from urllib.parse import urlsplit
 from flask import Flask
 from playwright.sync_api import BrowserContext, Locator, Page, expect
 
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import GenericPageLocator
 from tests.functional.locators import HomePageLocators as HPL
@@ -166,6 +167,101 @@ def wait_until_css_property(
         },
     )
     return page.locator(css_selector).first
+
+
+def wait_for_animation_to_end_check_height(*, page: Page, css_selector: str) -> None:
+    """Wait until an element's rendered height is identical across two
+    consecutive animation-frame polls (the element has stopped animating)."""
+    page.wait_for_function(
+        """(cssSelector) => {
+            const element = document.querySelector(cssSelector);
+            if (!element) return false;
+            const currentHeight = element.getBoundingClientRect().height;
+            const previousHeight = element.__u4iPreviousHeight;
+            element.__u4iPreviousHeight = currentHeight;
+            return previousHeight !== undefined && previousHeight === currentHeight;
+        }""",
+        arg=css_selector,
+    )
+
+
+def wait_for_animation_to_end_check_top_lhs_corner(
+    *, page: Page, css_selector: str
+) -> None:
+    """Wait until an element's top-left corner is identical across two
+    consecutive animation-frame polls (the element has stopped moving)."""
+    page.wait_for_function(
+        """(cssSelector) => {
+            const element = document.querySelector(cssSelector);
+            if (!element) return false;
+            const boundingRect = element.getBoundingClientRect();
+            const currentCorner = boundingRect.left + "," + boundingRect.top;
+            const previousCorner = element.__u4iPreviousCorner;
+            element.__u4iPreviousCorner = currentCorner;
+            return previousCorner !== undefined && previousCorner === currentCorner;
+        }""",
+        arg=css_selector,
+    )
+
+
+def wait_for_page_complete_and_dom_stable(*, page: Page) -> None:
+    """Twin of the Selenium page-complete + jQuery-idle + no-animation gate.
+
+    Playwright auto-waits for most interactions, but some tests still need
+    an explicit barrier for in-flight jQuery XHRs/animations after a
+    navigation or refresh."""
+    page.wait_for_load_state("load")
+    page.wait_for_function(
+        "() => (typeof jQuery !== 'undefined') ? jQuery.active === 0 : true"
+    )
+    page.wait_for_function(
+        "() => (typeof jQuery !== 'undefined') ? jQuery(':animated').length === 0 : true"
+    )
+
+
+# Splash footer pages
+def scroll_footer_link_into_view(*, page: Page, css_selector: str) -> Locator:
+    """Scroll a below-the-fold footer link into the viewport before clicking.
+
+    Playwright's click auto-scrolls, but the explicit scroll keeps parity
+    with the Selenium helper's contract of returning a viewport-visible link.
+    """
+    link = page.locator(css_selector).first
+    expect(link).to_be_attached()
+    link.scroll_into_view_if_needed()
+    return link
+
+
+def visit_privacy_page(*, page: Page) -> None:
+    scroll_footer_link_into_view(page=page, css_selector=HPL.PRIVACY_BTN)
+    wait_then_click_element(page=page, css_selector=HPL.PRIVACY_BTN)
+    expect(page.locator(HPL.PRIVACY_HEADER).first).to_have_text("Privacy Policy")
+
+
+def visit_terms_page(*, page: Page) -> None:
+    scroll_footer_link_into_view(page=page, css_selector=HPL.TERMS_BTN)
+    wait_then_click_element(page=page, css_selector=HPL.TERMS_BTN)
+    expect(page.locator(HPL.TERMS_HEADER).first).to_have_text("Terms & Conditions")
+
+
+def visit_contact_us_page(*, page: Page) -> None:
+    scroll_footer_link_into_view(page=page, css_selector=HPL.CONTACT_BTN)
+    wait_then_click_element(page=page, css_selector=HPL.CONTACT_BTN)
+    expect(page.locator(HPL.CONTACT_US_HEADER).first).to_have_text(
+        IDENTIFIERS.CONTACT_US_PAGE
+    )
+
+
+def contact_form_entry(*, page: Page, subject: str, content: str) -> None:
+    subject_input = wait_then_get_element(
+        page=page, css_selector=HPL.CONTACT_SUBJECT_INPUT
+    )
+    clear_then_send_keys(locator=subject_input, input_text=subject)
+
+    content_input = wait_then_get_element(
+        page=page, css_selector=HPL.CONTACT_CONTENT_INPUT
+    )
+    clear_then_send_keys(locator=content_input, input_text=content)
 
 
 # Modal

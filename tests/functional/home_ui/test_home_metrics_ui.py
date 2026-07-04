@@ -4,30 +4,30 @@ from typing import Any
 
 import pytest
 from flask import Flask
+from playwright.sync_api import Page
 from redis import Redis
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.metrics.events import DeviceType, EventName
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import assert_on_429_page
-from tests.functional.home_ui.selenium_utils import toggle_lhs_panels
+from tests.functional.home_ui.playwright_utils import toggle_lhs_panels
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
-    login_user_and_select_utub_by_utubid,
-    login_user_to_home_page,
-)
 from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import assert_on_429_page
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid,
+)
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
-    create_utub,
+    login_user_to_home_page,
     wait_then_click_element,
 )
+from tests.functional.utubs_ui.playwright_utils import create_utub
 
 pytestmark = pytest.mark.home_ui
 
-# Headless Chrome at 1920x1080 (see `tests/functional/conftest.py::build_driver`)
+# Headless Chrome at 1920x1080 (see `tests/functional/conftest.py::build_page_browser`)
 # resolves to DESKTOP via `frontend/lib/device-type.ts`'s media-query check.
 _EXPECTED_DEVICE_TYPE: int = DeviceType.DESKTOP.value
 
@@ -50,26 +50,26 @@ _MEMBER_DECK_HEADER_AND_CARET: str = "#MemberDeckHeaderAndCaret"
 # the rate-limit event, and `sendBeacon` queues the POST before
 # `document.write` tears the page down. `sendBeacon` survives the
 # in-place navigation per the W3C Beacon spec.
-_INSTALL_RATE_LIMIT_FLUSH_HOOK_JS: str = """
-$(document).ajaxComplete(function (event, xhr) {
-    if (xhr && xhr.status === 429) {
-        const pageHideEvent = new PageTransitionEvent("pagehide", {
-            persisted: false,
-            bubbles: false,
-            cancelable: false,
-        });
-        window.dispatchEvent(pageHideEvent);
-    }
-});
-"""
+_INSTALL_RATE_LIMIT_FLUSH_HOOK_JS: str = """() => {
+    $(document).ajaxComplete(function (event, xhr) {
+        if (xhr && xhr.status === 429) {
+            const pageHideEvent = new PageTransitionEvent("pagehide", {
+                persisted: false,
+                bubbles: false,
+                cancelable: false,
+            });
+            window.dispatchEvent(pageHideEvent);
+        }
+    });
+}"""
 
 
 def test_deck_collapse_emits_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_tags: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics: Any,
+    pg_conn_for_metrics_playwright: Any,
 ):
     """
     GIVEN a logged-in user on the home page with a UTub selected (so the
@@ -91,21 +91,21 @@ def test_deck_collapse_emits_to_anonymous_metrics(
     with provide_app.app_context():
         utub_id = Utubs.query.first().id
     login_user_and_select_utub_by_utubid(
-        provide_app, browser, user_id=user_id_for_test, utub_id=utub_id
+        app=provide_app, page=page, user_id=user_id_for_test, utub_id=utub_id
     )
 
     # With the UTub selected the Member deck is expanded; the first click
     # collapses it, so the emit fires UI_DECK_COLLAPSE.
-    wait_then_click_element(browser, _MEMBER_DECK_HEADER_AND_CARET, time=10)
+    wait_then_click_element(page=page, css_selector=_MEMBER_DECK_HEADER_AND_CARET)
 
     expected_dimensions: dict[str, Any] = {
         "device_type": _EXPECTED_DEVICE_TYPE,
         "deck": "members",
     }
     matched_row = wait_for_metrics_row(
-        browser=browser,
+        browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics,
+        pg_conn=pg_conn_for_metrics_playwright,
         event_name=EventName.UI_DECK_COLLAPSE,
         expected_dimensions=expected_dimensions,
     )
@@ -114,11 +114,11 @@ def test_deck_collapse_emits_to_anonymous_metrics(
 
 
 def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_tags: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics: Any,
+    pg_conn_for_metrics_playwright: Any,
 ):
     """
     GIVEN a logged-in user on the desktop home page with a UTub selected and
@@ -135,18 +135,18 @@ def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
         utub = Utubs.query.first()
         utub_id = utub.id
     login_user_and_select_utub_by_utubid(
-        provide_app, browser, user_id=user_id_for_test, utub_id=utub_id
+        app=provide_app, page=page, user_id=user_id_for_test, utub_id=utub_id
     )
 
-    def assert_toggle_emits(source: str):
+    def assert_toggle_emits(source: str) -> None:
         # Default state is expanded, so the first click collapses (emits
         # UI_LHS_COLLAPSE) and the second click expands (emits UI_LHS_EXPAND),
         # both carrying the affordance's `source` dim.
-        toggle_lhs_panels(browser, via=source)
+        toggle_lhs_panels(page=page, via=source)
         collapse_row = wait_for_metrics_row(
-            browser=browser,
+            browser=page,
             redis_client=metrics_redis_client,
-            pg_conn=pg_conn_for_metrics,
+            pg_conn=pg_conn_for_metrics_playwright,
             event_name=EventName.UI_LHS_COLLAPSE,
             expected_dimensions={
                 "device_type": _EXPECTED_DEVICE_TYPE,
@@ -156,11 +156,11 @@ def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
         assert collapse_row["count"] == 1
         assert collapse_row["bucket_start"] is not None
 
-        toggle_lhs_panels(browser, via=source)
+        toggle_lhs_panels(page=page, via=source)
         expand_row = wait_for_metrics_row(
-            browser=browser,
+            browser=page,
             redis_client=metrics_redis_client,
-            pg_conn=pg_conn_for_metrics,
+            pg_conn=pg_conn_for_metrics_playwright,
             event_name=EventName.UI_LHS_EXPAND,
             expected_dimensions={
                 "device_type": _EXPECTED_DEVICE_TYPE,
@@ -175,11 +175,11 @@ def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
 
 
 def test_rate_limit_hit_emits_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_users: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics: Any,
+    pg_conn_for_metrics_playwright: Any,
 ):
     """
     GIVEN a logged-in user on the home page and the metrics pipeline
@@ -205,28 +205,32 @@ def test_rate_limit_hit_emits_to_anonymous_metrics(
     emit when querying `AnonymousMetrics`.
     """
     user_id_for_test = 1
-    login_user_to_home_page(provide_app, browser, user_id_for_test)
+    login_user_to_home_page(app=provide_app, page=page, user_id=user_id_for_test)
 
-    browser.execute_script(_INSTALL_RATE_LIMIT_FLUSH_HOOK_JS)
-    add_forced_rate_limit_header(browser)
+    page.evaluate(_INSTALL_RATE_LIMIT_FLUSH_HOOK_JS)
+    add_forced_rate_limit_header(page=page)
 
-    create_utub(browser, UTS.TEST_UTUB_NAME_1, MOCK_UTUB_DESCRIPTION)
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+    create_utub(
+        page=page,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        utub_description=MOCK_UTUB_DESCRIPTION,
+    )
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE)
 
     # Confirm the page-replacement chain (`showNewPageOnAJAXHTMLResponse`)
     # has completed and the 429 error page is rendered. This proves the
     # prefilter's error callback ran end-to-end (which means the
     # `UI_RATE_LIMIT_HIT` emit fired and the `ajaxComplete` hook flushed
     # the buffer to `sendBeacon`) before we begin polling Postgres.
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
     expected_dimensions: dict[str, Any] = {
         "device_type": _EXPECTED_DEVICE_TYPE,
     }
     matched_row = wait_for_metrics_row(
-        browser=browser,
+        browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics,
+        pg_conn=pg_conn_for_metrics_playwright,
         event_name=EventName.UI_RATE_LIMIT_HIT,
         expected_dimensions=expected_dimensions,
     )
