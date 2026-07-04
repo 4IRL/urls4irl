@@ -22,8 +22,10 @@ from backend import db
 from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
+from tests.conftest import TEST_GOOGLE_OAUTH_CLIENT_ID, TEST_GOOGLE_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -42,6 +44,8 @@ _FIND_OR_CREATE_OAUTH_USER_TARGET = (
 
 _FAKE_CODE = "fake-authorization-code"
 _FAKE_STATE = "fake-state-value"
+_FAKE_OAUTH_PROVIDER_SECRET_KEY = "fake-oauth-provider-test-secret-key"
+_WRONG_CLIENT_SECRET = "wrong-client-secret"
 
 _EXISTING_SUBJECT = "sub_existing"
 _EXISTING_EMAIL = "existingoauthuser@example.com"
@@ -113,6 +117,48 @@ def _seed_existing_oauth_user(
         user.email_validated = True
         db.session.add(user)
         db.session.commit()
+
+
+def _build_fake_oauth_provider_app() -> Flask:
+    """Mounts only the fake OAuth provider blueprint on a throwaway Flask app.
+
+    `token()` reads just `SECRET_KEY`, `GOOGLE_OAUTH_CLIENT_ID`, and
+    `GOOGLE_OAUTH_CLIENT_SECRET` off `current_app.config`, so a full
+    `create_app()` boot is unnecessary. The shared `app` fixture from
+    `tests/conftest.py` never registers this blueprint since it is built with
+    `UI_TESTING=False` — `backend/testing/fake_oauth_provider.py` is only
+    wired in for Selenium's `ConfigTestUI` (see `backend/__init__.py`).
+    """
+    fake_oauth_app = Flask(__name__)
+    fake_oauth_app.config["SECRET_KEY"] = _FAKE_OAUTH_PROVIDER_SECRET_KEY
+    fake_oauth_app.config["GOOGLE_OAUTH_CLIENT_ID"] = TEST_GOOGLE_OAUTH_CLIENT_ID
+    fake_oauth_app.config["GOOGLE_OAUTH_CLIENT_SECRET"] = (
+        TEST_GOOGLE_OAUTH_CLIENT_SECRET
+    )
+    fake_oauth_app.register_blueprint(fake_oauth)
+    return fake_oauth_app
+
+
+def test_fake_oauth_token_rejects_wrong_client_secret():
+    """
+    GIVEN the fake OAuth provider's `/fake-oauth/token` endpoint configured
+        with the real test client_id/client_secret pair
+    WHEN a POST supplies the correct client_id but a wrong client_secret via
+        HTTP Basic auth
+    THEN the endpoint rejects with 401 and {"error": "invalid_client"} — the
+        `hmac.compare_digest` mismatch path this hardening protects, not just
+        a missing-credentials shortcut
+    """
+    fake_oauth_client = _build_fake_oauth_provider_app().test_client()
+
+    response = fake_oauth_client.post(
+        "/fake-oauth/token",
+        data={"code": "irrelevant-code"},
+        auth=(TEST_GOOGLE_OAUTH_CLIENT_ID, _WRONG_CLIENT_SECRET),
+    )
+
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "invalid_client"}
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)

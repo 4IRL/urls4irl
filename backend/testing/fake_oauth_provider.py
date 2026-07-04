@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hmac
 from typing import Any
 
 from flask import Blueprint, current_app, jsonify, redirect, request, session
@@ -93,8 +94,9 @@ def token():
     expected_client_secret = current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET")
     if (
         credentials is None
+        or not expected_client_secret
         or credentials.username != expected_client_id
-        or credentials.password != expected_client_secret
+        or not hmac.compare_digest(credentials.password or "", expected_client_secret)
     ):
         return jsonify({"error": "invalid_client"}), 401
 
