@@ -21,9 +21,9 @@ from tests.functional.login_utils import (
 from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
+    create_utub,
     wait_then_click_element,
 )
-from tests.functional.utubs_ui.selenium_utils import create_utub
 
 pytestmark = pytest.mark.home_ui
 

@@ -1,16 +1,14 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page, expect
 
-from locators import HomePageLocators as HPL
 from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.models.users import Users
 from backend.models.utubs import Utubs
 from backend.utils.constants import CONSTANTS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
-from tests.functional.assert_utils import (
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
     assert_on_429_page,
@@ -22,36 +20,37 @@ from tests.functional.db_utils import (
     get_utub_this_user_did_not_create,
     update_utub_to_empty_desc,
 )
-from tests.functional.login_utils import (
+from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
-    login_user_to_home_page,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     clear_then_send_keys,
     invalidate_csrf_token_on_page,
+    login_user_to_home_page,
     select_utub_by_id,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_utub_name_appears,
     wait_until_visible,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.selenium_utils import (
+from tests.functional.utubs_ui.playwright_utils import (
     create_utub,
-    wait_for_add_utub_description_button,
     open_update_utub_desc_input,
     update_utub_description,
+    wait_for_add_utub_description_button,
 )
 
 pytestmark = pytest.mark.utubs_ui
 
 
 def test_open_update_utub_description_input_creator(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to open the updateUTubDescription input using the pencil button.
@@ -64,25 +63,27 @@ def test_open_update_utub_description_input_creator(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
-    url_deck_subheader = wait_then_get_element(browser, HPL.SUBHEADER_URL_DECK)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
+    url_deck_subheader = wait_then_get_element(
+        page=page, css_selector=HPL.SUBHEADER_URL_DECK
+    )
     assert url_deck_subheader is not None
-    utub_description = url_deck_subheader.text
+    utub_description = url_deck_subheader.inner_text()
 
-    open_update_utub_desc_input(browser)
+    open_update_utub_desc_input(page=page)
 
     utub_description_update_input = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
     assert utub_description_update_input is not None
 
-    assert utub_description_update_input.is_displayed()
-
-    assert utub_description == utub_description_update_input.get_attribute("value")
+    assert utub_description == utub_description_update_input.input_value()
 
 
 def test_open_update_utub_description_hides_add_url_btn(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a user owns a UTub and the Add URL button is visible
@@ -93,21 +94,31 @@ def test_open_update_utub_description_hides_add_url_btn(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
-    wait_until_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE, timeout=3)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
+    )
 
-    open_update_utub_desc_input(browser)
+    open_update_utub_desc_input(page=page)
 
-    assert_not_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
+    )
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE
+    )
 
-    wait_until_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE, timeout=3)
-    assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
+    )
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE)
 
 
 def test_open_update_utub_description_input_member(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a fresh load of the U4I Home page
@@ -118,18 +129,25 @@ def test_open_update_utub_description_input_member(
     user_id = 1
     utub = get_utub_this_user_did_not_create(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
-    wait_until_utub_name_appears(browser, utub.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub.name
+    )
+    wait_until_utub_name_appears(page=page, utub_name=utub.name)
 
-    utub_description = wait_then_get_element(browser, HPL.SUBHEADER_URL_DECK)
-    assert HPL.EDITABLE_CLASS not in utub_description.get_dom_attribute("class")
+    utub_description = wait_then_get_element(
+        page=page, css_selector=HPL.SUBHEADER_URL_DECK
+    )
+    class_attr = utub_description.get_attribute("class") or ""
+    assert HPL.EDITABLE_CLASS not in class_attr
 
     utub_description.click()
-    assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
 
 
 def test_switch_from_owned_to_non_owned_utub_removes_description_editable(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a user who owns one UTub and is a member of another
@@ -145,23 +163,33 @@ def test_switch_from_owned_to_non_owned_utub_removes_description_editable(
             Utubs.utub_creator != user_id
         ).first()
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    utub_description = wait_then_get_element(browser, HPL.SUBHEADER_URL_DECK)
-    assert HPL.EDITABLE_CLASS in utub_description.get_dom_attribute("class")
+    utub_description = wait_then_get_element(
+        page=page, css_selector=HPL.SUBHEADER_URL_DECK
+    )
+    class_attr = utub_description.get_attribute("class") or ""
+    assert HPL.EDITABLE_CLASS in class_attr
 
-    select_utub_by_name(browser, utub_not_owned.name)
-    wait_until_utub_name_appears(browser, utub_not_owned.name)
+    select_utub_by_name(page=page, utub_name=utub_not_owned.name)
+    wait_until_utub_name_appears(page=page, utub_name=utub_not_owned.name)
 
-    utub_description = wait_then_get_element(browser, HPL.SUBHEADER_URL_DECK)
-    assert HPL.EDITABLE_CLASS not in utub_description.get_dom_attribute("class")
+    utub_description = wait_then_get_element(
+        page=page, css_selector=HPL.SUBHEADER_URL_DECK
+    )
+    class_attr = utub_description.get_attribute("class") or ""
+    assert HPL.EDITABLE_CLASS not in class_attr
 
     utub_description.click()
-    assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
 
 
 def test_close_update_utub_description_input_btn(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to close the updateUTubDescription input by clicking the 'x' button
@@ -174,19 +202,21 @@ def test_close_update_utub_description_input_btn(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    open_update_utub_desc_input(browser)
+    open_update_utub_desc_input(page=page)
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE
+    )
 
-    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
-
-    assert not update_utub_name_input.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
 
 
 def test_close_update_utub_description_input_key(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to close the updateUTubDescription input by pressing the Escape key
@@ -199,20 +229,19 @@ def test_close_update_utub_description_input_key(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    open_update_utub_desc_input(browser)
+    open_update_utub_desc_input(page=page)
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    wait_until_in_focus(page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    page.keyboard.press("Escape")
 
-    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
-
-    assert not update_utub_name_input.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
 
 
-def test_update_utub_description_btn(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
-):
+def test_update_utub_description_btn(page: Page, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to update the selected UTub description.
 
@@ -224,28 +253,26 @@ def test_update_utub_description_btn(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
+    update_utub_description(page=page, utub_description=MOCK_UTUB_DESCRIPTION)
 
     # Submits new UTub description
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
-
-    utub_description_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
     )
+
+    utub_description_elem = page.locator(HPL.SUBHEADER_URL_DECK)
 
     # Wait for POST request
-    utub_description_elem = wait_until_visible(
-        browser, utub_description_elem, timeout=3
-    )
+    utub_description_elem = wait_until_visible(locator=utub_description_elem)
     assert utub_description_elem is not None
-    assert utub_description_elem.text == MOCK_UTUB_DESCRIPTION
+    assert utub_description_elem.inner_text() == MOCK_UTUB_DESCRIPTION
 
 
-def test_update_utub_description_key(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
-):
+def test_update_utub_description_key(page: Page, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to update the selected UTub description.
 
@@ -257,27 +284,26 @@ def test_update_utub_description_key(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
+    update_utub_description(page=page, utub_description=MOCK_UTUB_DESCRIPTION)
 
     # Submits new UTub description
-    browser.switch_to.active_element.send_keys(Keys.ENTER)
+    wait_until_in_focus(page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    page.keyboard.press("Enter")
 
-    utub_description_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK
-    )
+    utub_description_elem = page.locator(HPL.SUBHEADER_URL_DECK)
 
     # Wait for POST request
-    utub_description_elem = wait_until_visible(
-        browser, utub_description_elem, timeout=3
-    )
+    utub_description_elem = wait_until_visible(locator=utub_description_elem)
     assert utub_description_elem is not None
-    assert utub_description_elem.text == MOCK_UTUB_DESCRIPTION
+    assert utub_description_elem.inner_text() == MOCK_UTUB_DESCRIPTION
 
 
 def test_update_utub_description_rate_limits(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update the selected UTub description while rate limited.
@@ -290,19 +316,23 @@ def test_update_utub_description_rate_limits(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
+    update_utub_description(page=page, utub_description=MOCK_UTUB_DESCRIPTION)
 
     # Submits new UTub description
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    add_forced_rate_limit_header(page=page)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    )
 
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
 
 def test_update_utub_description_length_exceeded(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update a selected UTub's description.
@@ -315,24 +345,26 @@ def test_update_utub_description_length_exceeded(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_utub_description = "a" * (CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH + 1)
 
-    update_utub_description(browser, new_utub_description)
+    update_utub_description(page=page, utub_description=new_utub_description)
 
     update_utub_description_input = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
     assert update_utub_description_input is not None
-    new_utub_description = update_utub_description_input.get_attribute("value")
+    new_utub_description = update_utub_description_input.input_value()
     assert new_utub_description is not None
 
     assert len(new_utub_description) == CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH
 
 
 def test_update_utub_description_sanitized(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update a selected UTub's description.
@@ -345,23 +377,28 @@ def test_update_utub_description_sanitized(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_description(browser, utub_description='<img src="evl.jpg">')
+    update_utub_description(page=page, utub_description='<img src="evl.jpg">')
 
     # Submits new UTub description
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    )
 
     # Wait for POST request
     invalid_utub_desc_field = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE + HPL.INVALID_FIELD_SUFFIX
+        page=page,
+        css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE + HPL.INVALID_FIELD_SUFFIX,
     )
     assert invalid_utub_desc_field is not None
-    assert invalid_utub_desc_field.text == UTUB_FAILURE.INVALID_INPUT
+    assert invalid_utub_desc_field.inner_text() == UTUB_FAILURE.INVALID_INPUT
 
 
 def test_update_utub_description_to_empty(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update a selected UTub's description to an empty value
@@ -374,34 +411,32 @@ def test_update_utub_description_to_empty(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
-
-    utub_description_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
     )
-    assert utub_description_elem.is_displayed()
 
-    update_utub_description(browser, utub_description="")
+    utub_description_elem = page.locator(HPL.SUBHEADER_URL_DECK)
+    expect(utub_description_elem.first).to_be_visible()
 
-    utub_description_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK
-    )
-    assert not utub_description_elem.is_displayed()
+    update_utub_description(page=page, utub_description="")
+
+    utub_description_elem = page.locator(HPL.SUBHEADER_URL_DECK)
+    expect(utub_description_elem.first).to_be_hidden()
 
     # Submits new UTub description
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    )
 
     # Wait until the submit button is hidden and then verify description is still hidden
-    wait_until_hidden(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE, timeout=3)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
 
-    utub_description_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK
-    )
-    assert not utub_description_elem.is_displayed()
+    utub_description_elem = page.locator(HPL.SUBHEADER_URL_DECK)
+    expect(utub_description_elem.first).to_be_hidden()
 
 
 def test_update_empty_utub_description_btn_shows_after_updating_to_empty(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to select the "Add UTub Description" button after
@@ -415,25 +450,30 @@ def test_update_empty_utub_description_btn_shows_after_updating_to_empty(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_description(browser, utub_description="")
+    update_utub_description(page=page, utub_description="")
 
     # Submits new UTub description
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    )
 
     # Wait until the submit button is hidden and then verify description is still hidden
-    wait_until_hidden(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE, timeout=3)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
 
-    wait_for_add_utub_description_button(browser)
+    wait_for_add_utub_description_button(page=page)
 
-    add_utub_desc = wait_then_get_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+    add_utub_desc = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
     assert add_utub_desc is not None
-    assert add_utub_desc.is_displayed()
 
 
 def test_update_empty_utub_description_btn_shows_after_selecting_utub(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to select the "Add UTub Description" button after
@@ -451,20 +491,21 @@ def test_update_empty_utub_description_btn_shows_after_selecting_utub(
     utub_user_did_not_create = get_utub_this_user_did_not_create(app, user_id)
 
     login_user_and_select_utub_by_name(
-        app, browser, user_id, utub_user_did_not_create.name
+        app=app, page=page, user_id=user_id, utub_name=utub_user_did_not_create.name
     )
-    select_utub_by_name(browser, utub_user_created.name)
-    wait_until_utub_name_appears(browser, utub_user_created.name)
+    select_utub_by_name(page=page, utub_name=utub_user_created.name)
+    wait_until_utub_name_appears(page=page, utub_name=utub_user_created.name)
 
-    wait_for_add_utub_description_button(browser)
+    wait_for_add_utub_description_button(page=page)
 
-    add_utub_desc = wait_then_get_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+    add_utub_desc = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
     assert add_utub_desc is not None
-    assert add_utub_desc.is_displayed()
 
 
 def test_update_empty_utub_description_btn_shows_after_creating_utub(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to select the "Add UTub Description" button after
@@ -476,20 +517,23 @@ def test_update_empty_utub_description_btn_shows_after_creating_utub(
     """
     app = provide_app
     user_id = 1
-    login_user_to_home_page(app, browser, user_id)
-    create_utub(browser, utub_name="UTub Name", utub_description="")
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE, time=3)
-    wait_until_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE, timeout=3)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
+    create_utub(page=page, utub_name="UTub Name", utub_description="")
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
+    )
 
-    wait_for_add_utub_description_button(browser)
+    wait_for_add_utub_description_button(page=page)
 
-    add_utub_desc = wait_then_get_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+    add_utub_desc = wait_then_get_element(
+        page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
     assert add_utub_desc is not None
-    assert add_utub_desc.is_displayed()
 
 
 def test_update_empty_utub_description_btn_opens_input(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to open UTub description input after the "Add UTub Description"button is shown when UTub description is empty
@@ -503,24 +547,24 @@ def test_update_empty_utub_description_btn_opens_input(
     utub_user_created = get_utub_this_user_created(app, user_id)
     update_utub_to_empty_desc(app, utub_user_created.id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    wait_for_add_utub_description_button(browser)
+    wait_for_add_utub_description_button(page=page)
 
-    wait_then_click_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
 
     utub_description_update_input = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
     assert utub_description_update_input is not None
 
-    assert utub_description_update_input.is_displayed()
-
-    assert "" == utub_description_update_input.get_attribute("value")
+    assert utub_description_update_input.input_value() == ""
 
 
 def test_update_empty_utub_description_updates_description_creator(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update UTub description after it was empty
@@ -535,40 +579,40 @@ def test_update_empty_utub_description_updates_description_creator(
     utub_user_created = get_utub_this_user_created(app, user_id)
     update_utub_to_empty_desc(app, utub_user_created.id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    wait_for_add_utub_description_button(browser)
+    wait_for_add_utub_description_button(page=page)
 
-    wait_then_click_element(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
 
     wait_until_visible_css_selector(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE, timeout=3
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
 
     update_utub_desc_input = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE, time=3
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
     assert update_utub_desc_input is not None
 
-    clear_then_send_keys(update_utub_desc_input, NEW_UTUB_DESC)
+    clear_then_send_keys(locator=update_utub_desc_input, input_text=NEW_UTUB_DESC)
 
     # Submits new UTub description
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
-
-    utub_description_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
     )
+
+    utub_description_elem = page.locator(HPL.SUBHEADER_URL_DECK)
 
     # Wait for POST request
-    utub_description_elem = wait_until_visible(
-        browser, utub_description_elem, timeout=3
-    )
+    utub_description_elem = wait_until_visible(locator=utub_description_elem)
     assert utub_description_elem is not None
-    assert utub_description_elem.text == NEW_UTUB_DESC
+    assert utub_description_elem.inner_text() == NEW_UTUB_DESC
 
 
 def test_update_empty_utub_description_shows_no_description_for_member(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     Tests that a non-owner member sees the "No description" placeholder
@@ -583,16 +627,21 @@ def test_update_empty_utub_description_shows_no_description_for_member(
     utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
     update_utub_to_empty_desc(app, utub_user_member_of.id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_member_of.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_member_of.id
+    )
 
-    no_desc_label = wait_then_get_element(browser, HPL.LABEL_NO_DESCRIPTION, time=3)
+    no_desc_label = wait_then_get_element(
+        page=page, css_selector=HPL.LABEL_NO_DESCRIPTION
+    )
     assert no_desc_label is not None
-    assert no_desc_label.is_displayed()
-    assert_not_visible_css_selector(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
 
 
 def test_update_utub_description_form_closes_when_selecting_other_utub(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     Tests that UTub Description form closes between updates
@@ -606,26 +655,23 @@ def test_update_utub_description_form_closes_when_selecting_other_utub(
     utub_user_created = get_utub_this_user_created(app, user_id)
     utub_user_did_not_create = get_utub_this_user_did_not_create(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    open_update_utub_desc_input(browser)
+    open_update_utub_desc_input(page=page)
 
     utub_description_update_input = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
     assert utub_description_update_input is not None
-    assert utub_description_update_input.is_displayed()
 
-    select_utub_by_name(browser, utub_name=utub_user_did_not_create.name)
-    utub_desc_update_input = wait_until_hidden(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE, timeout=3
-    )
-
-    assert not utub_desc_update_input.is_displayed()
+    select_utub_by_name(page=page, utub_name=utub_user_did_not_create.name)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
 
 
 def test_open_update_utub_description_btn_not_visible_with_no_utub_selected(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to not see the update UTub description button when no UTub selected.
@@ -639,19 +685,18 @@ def test_open_update_utub_description_btn_not_visible_with_no_utub_selected(
     with app.app_context():
         user: Users = Users.query.get(user_id)
         username = user.username
-    selected_utub = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB, time=3)
-    assert selected_utub is None
+    assert page.locator(HPL.SELECTOR_SELECTED_UTUB).count() == 0
 
-    login_user_to_home_page(app, browser, user_id)
-    assert_login_with_username(browser, username)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
+    assert_login_with_username(page=page, username=username)
 
-    utub_description = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK)
-    desc_classes = utub_description.get_dom_attribute("class") or ""
+    utub_description = page.locator(HPL.SUBHEADER_URL_DECK)
+    desc_classes = utub_description.get_attribute("class") or ""
     assert HPL.EDITABLE_CLASS not in desc_classes
 
 
 def test_no_description_label_visible_on_member_utub_after_own_utub_with_no_description(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     Tests that switching from an owned UTub with no description to a non-owned UTub
@@ -671,18 +716,23 @@ def test_no_description_label_visible_on_member_utub_after_own_utub_with_no_desc
     utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
     update_utub_to_empty_desc(app, utub_user_member_of.id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    select_utub_by_id(browser, utub_user_member_of.id)
+    select_utub_by_id(page=page, utub_id=utub_user_member_of.id)
 
-    no_desc_label = wait_then_get_element(browser, HPL.LABEL_NO_DESCRIPTION, time=3)
+    no_desc_label = wait_then_get_element(
+        page=page, css_selector=HPL.LABEL_NO_DESCRIPTION
+    )
     assert no_desc_label is not None
-    assert no_desc_label.is_displayed()
-    assert_not_visible_css_selector(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
 
 
 def test_update_utub_description_invalid_csrf_token(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to attempt to update the selected UTub description with an invalid CSRF token
@@ -698,19 +748,20 @@ def test_update_utub_description_invalid_csrf_token(
         username = user.username
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
-    invalidate_csrf_token_on_page(browser)
+    update_utub_description(page=page, utub_description=MOCK_UTUB_DESCRIPTION)
+    invalidate_csrf_token_on_page(page=page)
 
     # Submits new UTub description
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    wait_then_click_element(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
+    )
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
     # Page reloads after user clicks button in CSRF 403 error page
-    update_utub_desc_input = wait_until_hidden(
-        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE, timeout=3
-    )
-    assert not update_utub_desc_input.is_displayed()
-    assert_login_with_username(browser, username)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+    assert_login_with_username(page=page, username=username)

@@ -1,32 +1,31 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from backend import db
 from backend.models.utub_members import Utub_Members
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.utub_strs import UTUB_CREATE_MSG
-from tests.functional.assert_utils import (
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
+    assert_active_utub,
     assert_not_visible_css_selector,
     assert_visible_css_selector,
-    assert_active_utub,
 )
 from tests.functional.db_utils import create_test_searchable_utubs
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
+from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid,
-    login_user_to_home_page,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     clear_then_send_keys,
+    login_user_to_home_page,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.selenium_utils import (
+from tests.functional.utubs_ui.playwright_utils import (
     create_utub,
     open_utub_name_filter,
 )
@@ -34,9 +33,7 @@ from tests.functional.utubs_ui.selenium_utils import (
 pytestmark = pytest.mark.utubs_ui
 
 
-def test_utub_search_with_no_match(
-    browser: WebDriver, create_test_users, provide_app: Flask
-):
+def test_utub_search_with_no_match(page: Page, create_test_users, provide_app: Flask):
     """
     GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs
     WHEN user performs a search that matches no UTubs
@@ -46,28 +43,26 @@ def test_utub_search_with_no_match(
     user_id_for_test = 1
 
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
 
-    input_elem.send_keys("Z")
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem.fill("Z")
+    input_elem = wait_then_get_element(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
     assert input_elem is not None
-    assert input_elem.get_attribute("value") == "Z"
+    assert input_elem.input_value() == "Z"
 
     for utub_id in utub_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_not_visible_css_selector(browser, utub_selector, time=3)
+        assert_not_visible_css_selector(page=page, css_selector=utub_selector)
 
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_NO_RESULTS, time=3)
-    no_results_elem = browser.find_element(By.CSS_SELECTOR, HPL.UTUB_SEARCH_NO_RESULTS)
-    assert no_results_elem.text == UTS.UTUB_SEARCH_NO_UTUBS
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_NO_RESULTS)
+    no_results_elem = page.locator(HPL.UTUB_SEARCH_NO_RESULTS)
+    assert no_results_elem.inner_text() == UTS.UTUB_SEARCH_NO_UTUBS
 
 
-def test_utub_search_with_one_match(
-    browser: WebDriver, create_test_users, provide_app: Flask
-):
+def test_utub_search_with_one_match(page: Page, create_test_users, provide_app: Flask):
     """
     GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs
     WHEN user performs a search that matches one UTub
@@ -77,31 +72,29 @@ def test_utub_search_with_one_match(
     user_id_for_test = 1
 
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
     original_names_and_ids = utub_names_and_ids.copy()
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
 
     utub_name_to_show, utub_id_to_show = utub_names_and_ids.popitem()
 
-    input_elem.send_keys(utub_name_to_show)
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem.fill(utub_name_to_show)
+    input_elem = wait_then_get_element(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
     assert input_elem is not None
-    assert input_elem.get_attribute("value") == utub_name_to_show
+    assert input_elem.input_value() == utub_name_to_show
 
     for utub_id in original_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
         if utub_id == utub_id_to_show:
-            assert_visible_css_selector(browser, utub_selector, time=3)
+            assert_visible_css_selector(page=page, css_selector=utub_selector)
         else:
-            assert_not_visible_css_selector(browser, utub_selector, time=3)
+            assert_not_visible_css_selector(page=page, css_selector=utub_selector)
 
 
-def test_utub_search_with_all_match(
-    browser: WebDriver, create_test_users, provide_app: Flask
-):
+def test_utub_search_with_all_match(page: Page, create_test_users, provide_app: Flask):
     """
     GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs
     WHEN user performs a search that matches all UTubs
@@ -111,23 +104,23 @@ def test_utub_search_with_all_match(
     user_id_for_test = 1
 
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
 
-    input_elem.send_keys("1")
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem.fill("1")
+    input_elem = wait_then_get_element(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
     assert input_elem is not None
-    assert input_elem.get_attribute("value") == "1"
+    assert input_elem.input_value() == "1"
 
     for utub_id in utub_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_visible_css_selector(browser, utub_selector, time=3)
+        assert_visible_css_selector(page=page, css_selector=utub_selector)
 
 
 def test_utub_search_resets_on_create_utub(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs
@@ -137,41 +130,38 @@ def test_utub_search_resets_on_create_utub(
     app = provide_app
     user_id_for_test = 1
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
 
     # All UTubs missing 'Z'
-    input_elem.send_keys("Z")
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem.fill("Z")
+    input_elem = wait_then_get_element(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
     assert input_elem is not None
-    assert input_elem.get_attribute("value") == "Z"
+    assert input_elem.input_value() == "Z"
 
     for utub_id in utub_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_not_visible_css_selector(browser, utub_selector, time=3)
+        assert_not_visible_css_selector(page=page, css_selector=utub_selector)
 
-    create_utub(browser, utub_name="ABC", utub_description="")
+    create_utub(page=page, utub_name="ABC", utub_description="")
 
     # Submits new UTub
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE)
 
     # Wait for POST request
-    create_utub_name_input = wait_until_hidden(
-        browser, HPL.INPUT_UTUB_NAME_CREATE, timeout=3
-    )
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_CREATE)
 
-    assert not create_utub_name_input.is_displayed()
-    assert_active_utub(browser, "ABC")
+    assert_active_utub(page=page, utub_name="ABC")
 
     for utub_id in utub_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_visible_css_selector(browser, utub_selector, time=3)
+        assert_visible_css_selector(page=page, css_selector=utub_selector)
 
 
 def test_utub_search_resets_on_delete_utub(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs
@@ -183,41 +173,41 @@ def test_utub_search_resets_on_delete_utub(
     utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
     first_id = list(utub_names_and_ids.values())[0]
     login_user_and_select_utub_by_utubid(
-        app, browser, utub_id=first_id, user_id=user_id_for_test
+        app=app, page=page, utub_id=first_id, user_id=user_id_for_test
     )
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
 
     # All UTubs missing 'Z'
-    input_elem.send_keys("Z")
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
+    input_elem.fill("Z")
+    input_elem = wait_then_get_element(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
     assert input_elem is not None
-    assert input_elem.get_attribute("value") == "Z"
+    assert input_elem.input_value() == "Z"
 
     for utub_id in utub_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_not_visible_css_selector(browser, utub_selector, time=3)
+        assert_not_visible_css_selector(page=page, css_selector=utub_selector)
 
     deleted_utub_selector = f'{HPL.SELECTORS_UTUB}[utubid="{first_id}"]'
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
-    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
-    wait_for_selector_to_be_removed(browser, deleted_utub_selector, timeout=10)
+    wait_for_selector_to_be_removed(page=page, css_selector=deleted_utub_selector)
 
     for utub_id in utub_names_and_ids.values():
         if utub_id == first_id:
             continue
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_visible_css_selector(browser, utub_selector, time=3)
+        assert_visible_css_selector(page=page, css_selector=utub_selector)
 
 
 def test_search_bar_visible_when_utubs_exist(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a user with one or more UTubs logs in
@@ -229,21 +219,21 @@ def test_search_bar_visible_when_utubs_exist(
     app = provide_app
     user_id_for_test = 1
     create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
     # Desktop: the search hides behind the funnel toggle until opened.
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_UTUB_NAME_FILTER)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_WRAP)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_UTUB_DECK)
 
     # Opening the funnel reveals the search input.
-    open_utub_name_filter(browser)
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_INPUT, time=3)
+    open_utub_name_filter(page=page)
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_WRAP)
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
 
 
 def test_search_bar_hidden_when_no_utubs(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a user with zero UTubs logs in
@@ -253,16 +243,16 @@ def test_search_bar_hidden_when_no_utubs(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
-    assert_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
-    subheader_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK)
-    assert subheader_elem.text == UTUB_CREATE_MSG
+    assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_WRAP)
+    assert_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_UTUB_DECK)
+    subheader_elem = page.locator(HPL.SUBHEADER_UTUB_DECK)
+    assert subheader_elem.inner_text() == UTUB_CREATE_MSG
 
 
 def test_search_bar_appears_after_creating_first_utub(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a user with zero UTubs is on the home page (no funnel, no search bar)
@@ -272,32 +262,29 @@ def test_search_bar_appears_after_creating_first_utub(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
     # Zero UTubs: neither the search nor its funnel toggle is shown.
-    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.BUTTON_UTUB_NAME_FILTER)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_WRAP)
 
     utub_name = UTS.TEST_UTUB_NAME_1
-    create_utub(browser, utub_name=utub_name, utub_description="")
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+    create_utub(page=page, utub_name=utub_name, utub_description="")
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_SUBMIT_CREATE)
 
-    create_utub_name_input = wait_until_hidden(
-        browser, HPL.INPUT_UTUB_NAME_CREATE, timeout=3
-    )
-    assert not create_utub_name_input.is_displayed()
-    assert_active_utub(browser, utub_name)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_CREATE)
+    assert_active_utub(page=page, utub_name=utub_name)
 
     # First UTub created: the funnel toggle appears and reveals the search.
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
-    open_utub_name_filter(browser)
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_INPUT, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_UTUB_NAME_FILTER)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_UTUB_DECK)
+    open_utub_name_filter(page=page)
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_WRAP)
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_INPUT)
 
 
 def test_search_bar_disappears_after_deleting_last_utub(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a user with exactly one UTub (funnel toggle visible)
@@ -319,28 +306,28 @@ def test_search_bar_disappears_after_deleting_last_utub(
         db.session.commit()
 
     login_user_and_select_utub_by_utubid(
-        app, browser, utub_id=keep_id, user_id=user_id_for_test
+        app=app, page=page, utub_id=keep_id, user_id=user_id_for_test
     )
 
     # One UTub: the funnel toggle is available (search hidden until opened).
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_UTUB_NAME_FILTER)
 
     deleted_utub_selector = f'{HPL.SELECTORS_UTUB}[utubid="{keep_id}"]'
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
-    wait_for_selector_to_be_removed(browser, deleted_utub_selector, timeout=10)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_selector_to_be_removed(page=page, css_selector=deleted_utub_selector)
 
     # Last UTub deleted: the funnel toggle and search disappear.
-    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_WRAP, time=3)
-    assert_visible_css_selector(browser, HPL.SUBHEADER_UTUB_DECK, time=3)
-    subheader_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK)
-    assert subheader_elem.text == UTUB_CREATE_MSG
+    assert_not_visible_css_selector(page=page, css_selector=HPL.BUTTON_UTUB_NAME_FILTER)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_WRAP)
+    assert_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_UTUB_DECK)
+    subheader_elem = page.locator(HPL.SUBHEADER_UTUB_DECK)
+    assert subheader_elem.inner_text() == UTUB_CREATE_MSG
 
 
 def test_no_results_message_shown_when_search_matches_nothing(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a user with multiple UTubs is on the home page
@@ -351,19 +338,19 @@ def test_no_results_message_shown_when_search_matches_nothing(
     app = provide_app
     user_id_for_test = 1
     create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
-    input_elem.send_keys("ZZZZZZ")
+    input_elem.fill("ZZZZZZ")
 
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_NO_RESULTS, time=3)
-    no_results_elem = browser.find_element(By.CSS_SELECTOR, HPL.UTUB_SEARCH_NO_RESULTS)
-    assert no_results_elem.text == UTS.UTUB_SEARCH_NO_UTUBS
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_NO_RESULTS)
+    no_results_elem = page.locator(HPL.UTUB_SEARCH_NO_RESULTS)
+    assert no_results_elem.inner_text() == UTS.UTUB_SEARCH_NO_UTUBS
 
 
 def test_no_results_message_hidden_when_search_has_matches(
-    browser: WebDriver, create_test_users, provide_app: Flask
+    page: Page, create_test_users, provide_app: Flask
 ):
     """
     GIVEN a user with multiple UTubs whose initial search shows no results
@@ -373,14 +360,14 @@ def test_no_results_message_hidden_when_search_has_matches(
     app = provide_app
     user_id_for_test = 1
     create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
+    login_user_to_home_page(app=app, page=page, user_id=user_id_for_test)
 
-    input_elem = open_utub_name_filter(browser)
+    input_elem = open_utub_name_filter(page=page)
     assert input_elem is not None
 
-    input_elem.send_keys("ZZZZZZ")
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_NO_RESULTS, time=3)
+    input_elem.fill("ZZZZZZ")
+    assert_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_NO_RESULTS)
 
-    clear_then_send_keys(input_elem, "1")
-    wait_until_visible_css_selector(browser, HPL.SELECTORS_UTUB, timeout=3)
-    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_NO_RESULTS, time=3)
+    clear_then_send_keys(locator=input_elem, input_text="1")
+    wait_until_visible_css_selector(page=page, css_selector=HPL.SELECTORS_UTUB)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_SEARCH_NO_RESULTS)

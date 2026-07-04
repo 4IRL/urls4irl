@@ -1,51 +1,51 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
-from locators import HomePageLocators as HPL
 from backend.cli.mock_constants import MOCK_UTUB_NAME_BASE
 from backend.models.users import Users
 from backend.models.utubs import Utubs
 from backend.utils.constants import CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_UPDATE_SAME_NAME
-from tests.functional.assert_utils import (
-    assert_active_utub,
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.login_utils import create_user_session_and_provide_session_id
+from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
     assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.db_utils import get_utub_this_user_created
-from tests.functional.login_utils import (
-    create_user_session_and_provide_session_id,
+from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
-    login_user_with_cookie_from_session,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
+    current_base_url,
     get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
     get_selected_utub_name,
     invalidate_csrf_token_on_page,
+    login_user_with_cookie_from_session,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_utub_name_appears,
 )
-from tests.functional.utubs_ui.selenium_utils import (
+from tests.functional.utubs_ui.playwright_utils import (
     open_update_utub_name_input,
     update_utub_name,
 )
+from tests.functional.locators import HomePageLocators as HPL
 
 pytestmark = pytest.mark.utubs_ui
 
 
 def test_select_utub_changes_utub_name(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to select a specific UTub and observe the changes in display.
@@ -57,26 +57,28 @@ def test_select_utub_changes_utub_name(
     app = provide_app
     user_id = 1
     session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    base_url = current_base_url(page=page)
+    login_user_with_cookie_from_session(
+        context=page.context, session_id=session_id, base_url=base_url
+    )
+    page.goto(f"{base_url}/home")
 
-    utub_selector_names = get_all_utub_selector_names(browser)
+    utub_selector_names = get_all_utub_selector_names(page=page)
     current_utub_name = utub_selector_names[0]
 
-    select_utub_by_name(browser, current_utub_name)
-    assert_active_utub(browser, current_utub_name)
-    current_utub_url_ids = get_all_url_ids_in_selected_utub(browser)
+    select_utub_by_name(page=page, utub_name=current_utub_name)
+    current_utub_url_ids = get_all_url_ids_in_selected_utub(page=page)
 
     next_utub_name = utub_selector_names[1]
 
-    select_utub_by_name(browser, next_utub_name)
-    assert_active_utub(browser, next_utub_name)
-    next_utub_url_ids = get_all_url_ids_in_selected_utub(browser)
+    select_utub_by_name(page=page, utub_name=next_utub_name)
+    next_utub_url_ids = get_all_url_ids_in_selected_utub(page=page)
 
     assert not any([url_id in next_utub_url_ids for url_id in current_utub_url_ids])
 
 
 def test_open_update_utub_name_input_creator(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to open the updateUTubName input using the pencil button.
@@ -89,24 +91,26 @@ def test_open_update_utub_name_input_creator(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    utub_name_elem = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
+    utub_name_elem = wait_then_get_element(page=page, css_selector=HPL.HEADER_URL_DECK)
     assert utub_name_elem is not None
-    utub_name = utub_name_elem.text
+    utub_name = utub_name_elem.inner_text()
 
-    open_update_utub_name_input(browser)
+    open_update_utub_name_input(page=page)
 
-    utub_name_update_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_UPDATE)
+    utub_name_update_input = wait_then_get_element(
+        page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE
+    )
     assert utub_name_update_input is not None
 
-    assert utub_name_update_input.is_displayed()
-
-    assert utub_name == utub_name_update_input.get_attribute("value")
+    assert utub_name == utub_name_update_input.input_value()
 
 
 def test_open_update_utub_name_input_member(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a fresh load of the U4I Home page
@@ -118,18 +122,20 @@ def test_open_update_utub_name_input_member(
     with app.app_context():
         utub: Utubs = Utubs.query.filter(Utubs.utub_creator != user_id).first()
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub.id)
-    wait_until_utub_name_appears(browser, utub.name)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    wait_until_utub_name_appears(page=page, utub_name=utub.name)
 
-    utub_title = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
-    assert HPL.EDITABLE_CLASS not in utub_title.get_dom_attribute("class")
+    utub_title = wait_then_get_element(page=page, css_selector=HPL.HEADER_URL_DECK)
+    assert HPL.EDITABLE_CLASS not in (utub_title.get_attribute("class") or "")
 
     utub_title.click()
-    assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
 
 
 def test_switch_from_owned_to_non_owned_utub_removes_name_editable(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a user who owns one UTub and is a member of another
@@ -145,23 +151,25 @@ def test_switch_from_owned_to_non_owned_utub_removes_name_editable(
             Utubs.utub_creator != user_id
         ).first()
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    utub_title = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
-    assert HPL.EDITABLE_CLASS in utub_title.get_dom_attribute("class")
+    utub_title = wait_then_get_element(page=page, css_selector=HPL.HEADER_URL_DECK)
+    assert HPL.EDITABLE_CLASS in (utub_title.get_attribute("class") or "")
 
-    select_utub_by_name(browser, utub_not_owned.name)
-    wait_until_utub_name_appears(browser, utub_not_owned.name)
+    select_utub_by_name(page=page, utub_name=utub_not_owned.name)
+    wait_until_utub_name_appears(page=page, utub_name=utub_not_owned.name)
 
-    utub_title = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
-    assert HPL.EDITABLE_CLASS not in utub_title.get_dom_attribute("class")
+    utub_title = wait_then_get_element(page=page, css_selector=HPL.HEADER_URL_DECK)
+    assert HPL.EDITABLE_CLASS not in (utub_title.get_attribute("class") or "")
 
     utub_title.click()
-    assert_not_visible_css_selector(browser, HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
 
 
 def test_close_update_utub_name_input_btn(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to close the createUTub input by clicking the 'x' button
@@ -170,24 +178,23 @@ def test_close_update_utub_name_input_btn(
     WHEN user opens the createUTub input, then clicks the 'x'
     THEN ensure the createUTub input is closed
     """
-
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    open_update_utub_name_input(browser)
+    open_update_utub_name_input(page=page)
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
 
-    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
-
-    assert not update_utub_name_input.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
 
 
 def test_close_update_utub_name_input_key(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to close the createUTub input by pressing the Escape key
@@ -200,20 +207,19 @@ def test_close_update_utub_name_input_key(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    open_update_utub_name_input(browser)
+    open_update_utub_name_input(page=page)
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    wait_until_in_focus(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    page.keyboard.press("Escape")
 
-    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
-
-    assert not update_utub_name_input.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
 
 
-def test_update_utub_name_btn(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
-):
+def test_update_utub_name_btn(page: Page, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
 
@@ -225,32 +231,32 @@ def test_update_utub_name_btn(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_utub_name = MOCK_UTUB_NAME_BASE + "2"
 
-    update_utub_name(browser, new_utub_name)
+    update_utub_name(page=page, utub_name=new_utub_name)
 
     # Submits new UTub name
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
     # Wait for POST request
-    wait_until_hidden(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
-    url_deck_header = get_selected_utub_name(browser)
+    url_deck_header = get_selected_utub_name(page=page)
 
     # Assert new UTub name is updated in URL Deck
     assert new_utub_name == url_deck_header
 
-    utub_selector_names = get_all_utub_selector_names(browser)
+    utub_selector_names = get_all_utub_selector_names(page=page)
 
     # Assert new UTub name is updated in UTub Deck
     assert new_utub_name in utub_selector_names
 
 
-def test_update_utub_name_key(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
-):
+def test_update_utub_name_key(page: Page, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
 
@@ -262,31 +268,34 @@ def test_update_utub_name_key(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_utub_name = MOCK_UTUB_NAME_BASE + "2"
 
-    update_utub_name(browser, new_utub_name)
+    update_utub_name(page=page, utub_name=new_utub_name)
 
     # Submits new UTub name
-    browser.switch_to.active_element.send_keys(Keys.ENTER)
+    wait_until_in_focus(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    page.keyboard.press("Enter")
 
     # Wait for POST request
-    wait_until_hidden(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
-    url_deck_header = get_selected_utub_name(browser)
+    url_deck_header = get_selected_utub_name(page=page)
 
     # Assert new UTub name is updated in URL Deck
     assert new_utub_name == url_deck_header
 
-    utub_selector_names = get_all_utub_selector_names(browser)
+    utub_selector_names = get_all_utub_selector_names(page=page)
 
     # Assert new UTub name is updated in UTub Deck
     assert new_utub_name in utub_selector_names
 
 
 def test_update_utub_name_rate_limits(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update a selected UTub's name, but they are rate limited.
@@ -299,21 +308,23 @@ def test_update_utub_name_rate_limits(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_utub_name = MOCK_UTUB_NAME_BASE + "2"
 
-    update_utub_name(browser, new_utub_name)
+    update_utub_name(page=page, utub_name=new_utub_name)
 
     # Submits new UTub name
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    add_forced_rate_limit_header(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
 
 def test_update_utub_name_length_exceeded(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
@@ -326,22 +337,26 @@ def test_update_utub_name_length_exceeded(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_utub_name = "a" * (CONSTANTS.UTUBS.MAX_NAME_LENGTH + 1)
 
-    update_utub_name(browser, new_utub_name)
+    update_utub_name(page=page, utub_name=new_utub_name)
 
-    update_utub_name_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_UPDATE)
+    update_utub_name_input = wait_then_get_element(
+        page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE
+    )
     assert update_utub_name_input is not None
-    new_utub_name = update_utub_name_input.get_attribute("value")
-    assert new_utub_name is not None
+    actual_utub_name = update_utub_name_input.input_value()
+    assert actual_utub_name is not None
 
-    assert len(new_utub_name) == CONSTANTS.UTUBS.MAX_NAME_LENGTH
+    assert len(actual_utub_name) == CONSTANTS.UTUBS.MAX_NAME_LENGTH
 
 
 def test_update_utub_name_empty_field(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
@@ -354,24 +369,25 @@ def test_update_utub_name_empty_field(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_name(browser, utub_name="")
+    update_utub_name(page=page, utub_name="")
 
     # Submits new UTub name
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
     # Wait for POST request
     invalid_utub_name_field = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_NAME_UPDATE + HPL.INVALID_FIELD_SUFFIX
+        page=page,
+        css_selector=HPL.INPUT_UTUB_NAME_UPDATE + HPL.INVALID_FIELD_SUFFIX,
     )
     assert invalid_utub_name_field is not None
-    assert invalid_utub_name_field.text == FIELD_REQUIRED_STR
+    assert invalid_utub_name_field.inner_text() == FIELD_REQUIRED_STR
 
 
-def test_update_utub_name_sanitized(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
-):
+def test_update_utub_name_sanitized(page: Page, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
 
@@ -383,23 +399,26 @@ def test_update_utub_name_sanitized(
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    update_utub_name(browser, utub_name='<img src="evl.jpg">')
+    update_utub_name(page=page, utub_name='<img src="evl.jpg">')
 
     # Submits new UTub name
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
     # Wait for POST request
     invalid_utub_name_field = wait_then_get_element(
-        browser, HPL.INPUT_UTUB_NAME_UPDATE + HPL.INVALID_FIELD_SUFFIX
+        page=page,
+        css_selector=HPL.INPUT_UTUB_NAME_UPDATE + HPL.INVALID_FIELD_SUFFIX,
     )
     assert invalid_utub_name_field is not None
-    assert invalid_utub_name_field.text == UTUB_FAILURE.INVALID_INPUT
+    assert invalid_utub_name_field.inner_text() == UTUB_FAILURE.INVALID_INPUT
 
 
 def test_update_utub_name_similar(
-    browser: WebDriver,
+    page: Page,
     create_test_utubmembers,
     provide_app: Flask,
 ):
@@ -412,37 +431,36 @@ def test_update_utub_name_similar(
     WHEN user submits
     THEN the form is hidden, the UTub selector name and URL deck header are updated.
     """
-
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    utub_selector_names = get_all_utub_selector_names(browser)
+    utub_selector_names = get_all_utub_selector_names(page=page)
 
     new_utub_name = utub_selector_names[1]
 
-    update_utub_name(browser, new_utub_name)
+    update_utub_name(page=page, utub_name=new_utub_name)
 
     # Submits new UTub name
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
-    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL, time=5)
+    warning_modal_body = wait_then_get_element(page=page, css_selector=HPL.BODY_MODAL)
     assert warning_modal_body is not None
-    confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
-
-    utub_name_update_check_text = UTUB_UPDATE_SAME_NAME
+    confirmation_modal_body_text = warning_modal_body.inner_text()
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == utub_name_update_check_text
+    assert confirmation_modal_body_text == UTUB_UPDATE_SAME_NAME
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for POST request
-    wait_until_hidden(browser, HPL.BODY_MODAL, timeout=5)
+    wait_until_hidden(page=page, css_selector=HPL.BODY_MODAL)
 
-    url_deck_header = get_selected_utub_name(browser)
+    url_deck_header = get_selected_utub_name(page=page)
 
     # Assert new UTub name is updated in URL Deck
     assert new_utub_name == url_deck_header
@@ -452,7 +470,7 @@ def test_update_utub_name_similar(
 
 
 def test_update_utub_name_invalid_csrf_token(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to attempt to update a selected UTub's name with an invalid CSRF token
@@ -468,22 +486,21 @@ def test_update_utub_name_invalid_csrf_token(
         username = user.username
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_utub_name = MOCK_UTUB_NAME_BASE + "2"
 
-    update_utub_name(browser, new_utub_name)
+    update_utub_name(page=page, utub_name=new_utub_name)
 
-    invalidate_csrf_token_on_page(browser)
+    invalidate_csrf_token_on_page(page=page)
 
     # Submits new UTub name
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
     # Page reloads after user clicks button in CSRF 403 error page
-    update_utub_name_input = wait_until_hidden(
-        browser, HPL.INPUT_UTUB_NAME_UPDATE, timeout=3
-    )
-    assert not update_utub_name_input.is_displayed()
-    assert_login_with_username(browser, username)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_login_with_username(page=page, username=username)

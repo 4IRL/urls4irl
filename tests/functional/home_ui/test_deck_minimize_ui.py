@@ -13,10 +13,10 @@ from tests.functional.login_utils import (
     login_user_to_home_page,
 )
 from tests.functional.selenium_utils import (
+    delete_utub_as_creator,
     leave_utub_as_member,
     wait_then_click_element,
 )
-from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 
 pytestmark = pytest.mark.home_ui
 

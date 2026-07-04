@@ -136,6 +136,38 @@ def wait_for_any_element_with_text(
     return matching.first
 
 
+def wait_until_visible(*, locator: Locator) -> Locator:
+    """Wait until an already-located element is visible and return it."""
+    expect(locator).to_be_visible()
+    return locator
+
+
+def wait_until_css_property(
+    *, page: Page, css_selector: str, css_property: str, expected_value: str
+) -> Locator:
+    """Wait until an element's computed CSS property equals expected_value.
+
+    Use for elements transitioning via CSS (opacity, width) rather than
+    display:none, where visibility checks are unreliable.
+    """
+    page.wait_for_function(
+        """({ cssSelector, cssProperty, expectedValue }) => {
+            const element = document.querySelector(cssSelector);
+            if (!element) return false;
+            return (
+                window.getComputedStyle(element).getPropertyValue(cssProperty) ===
+                expectedValue
+            );
+        }""",
+        arg={
+            "cssSelector": css_selector,
+            "cssProperty": css_property,
+            "expectedValue": expected_value,
+        },
+    )
+    return page.locator(css_selector).first
+
+
 # Modal
 def wait_for_modal_ready(*, page: Page, modal_selector: str) -> Locator:
     """Wait for a Bootstrap modal to be fully shown and interactive.

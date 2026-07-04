@@ -1490,3 +1490,63 @@ def leave_utub_as_member(browser: WebDriver, utub_to_leave: Utubs) -> None:
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
     wait_until_hidden(browser, HPL.HOME_MODAL)
     wait_for_element_to_be_removed(browser, utub_selector)
+
+
+def create_utub(browser: WebDriver, utub_name: str, utub_description: str) -> None:
+    """
+    Once logged in, adds a new UTub by clicking the create button, filling in
+    the name and description inputs, but does NOT submit the form — the caller
+    is responsible for clicking submit or pressing Enter.
+
+    Args:
+        browser (WebDriver): WebDriver open to the U4I Home Page
+        utub_name (str): Name for the new UTub
+        utub_description (str): Description for the new UTub
+    """
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_CREATE)
+
+    create_utub_name_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_CREATE)
+    assert create_utub_name_input is not None
+    clear_then_send_keys(create_utub_name_input, utub_name)
+
+    create_utub_description_input = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_DESCRIPTION_CREATE
+    )
+    assert create_utub_description_input is not None
+    clear_then_send_keys(create_utub_description_input, utub_description)
+
+
+def delete_utub_as_creator(browser: WebDriver, utub_to_delete: Utubs) -> None:
+    """
+    Performs actions to delete a UTub as its creator: opens the confirm modal,
+    waits for the Bootstrap fade-in to settle (opacity == 1), clicks submit,
+    asserts the submit button is disabled immediately after click to prevent
+    double-submit, then waits for the modal and UTub selector to disappear.
+
+    Args:
+        browser (WebDriver): WebDriver open to the U4I Home Page with the
+            UTub to delete already selected
+        utub_to_delete (Utubs): The UTub model instance to delete
+    """
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
+
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_delete.id}"]'
+    utub_selector = wait_then_get_element(browser, css_selector, time=3)
+
+    # The confirmation modal fades in via a Bootstrap transition. Submitting while
+    # that fade-in is still running causes Bootstrap to drop the subsequent
+    # modal("hide") call (it ignores show/hide requests mid-transition), so the
+    # modal never becomes invisible. Gate the submit click on the modal being
+    # fully settled (opacity == 1) so the later hide is honored deterministically.
+    wait_until_css_property(browser, HPL.HOME_MODAL, "opacity", "1")
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+
+    # Assert submit button is disabled immediately after click to prevent double-submit
+    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
+    assert modal_submit_btn.get_property("disabled") is True
+
+    # Wait for DELETE request
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+
+    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)

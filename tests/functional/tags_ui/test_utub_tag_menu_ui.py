@@ -20,6 +20,7 @@ from tests.functional.login_utils import (
     login_user_select_utub_by_id_and_url_by_id,
 )
 from tests.functional.selenium_utils import (
+    delete_utub_as_creator,
     leave_utub_as_member,
     select_utub_by_id,
     wait_then_click_element,
@@ -28,7 +29,6 @@ from tests.functional.tags_ui.selenium_utils import (
     add_tag_to_url,
     click_open_update_utub_tags_btn,
 )
-from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 
 pytestmark = pytest.mark.tags_ui
 
