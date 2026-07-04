@@ -10,6 +10,7 @@ export type RouteId =
   | "confirmEmailAfterRegister"
   | "sendValidationEmail"
   | "forgotPassword"
+  | "oauthGoogleLogin"
   | "errorPage"
   | "logout"
   | "createUTub"
@@ -27,6 +28,7 @@ export interface AppRoutes {
   confirmEmailAfterRegister: string;
   sendValidationEmail: string;
   forgotPassword: string;
+  oauthGoogleLogin: string;
   errorPage: string;
   logout: string;
   contactUs: string;
@@ -112,6 +114,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     confirmEmailAfterRegister: rawConfig.routes.confirmEmailAfterRegister,
     sendValidationEmail: rawConfig.routes.sendValidationEmail,
     forgotPassword: rawConfig.routes.forgotPassword,
+    oauthGoogleLogin: rawConfig.routes.oauthGoogleLogin,
     errorPage: rawConfig.routes.errorPage,
     logout: rawConfig.routes.logout,
 

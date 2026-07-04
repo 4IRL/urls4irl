@@ -153,6 +153,7 @@ def generate_routes_js() -> dict[str, str]:
         "confirmEmailAfterRegister": url_for(SPLASH_ROUTES.CONFIRM_EMAIL),
         "sendValidationEmail": url_for(SPLASH_ROUTES.SEND_VALIDATION_EMAIL),
         "forgotPassword": url_for(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE),
+        "oauthGoogleLogin": url_for(OAUTH_ROUTES.GOOGLE_LOGIN),
         # Util routes
         "errorPage": url_for(SPLASH_ROUTES.ERROR_PAGE),
         # Logout
