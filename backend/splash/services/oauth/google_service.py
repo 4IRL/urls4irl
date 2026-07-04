@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from authlib.integrations.base_client.errors import OAuthError
-from flask import redirect, render_template, url_for
+from flask import redirect, render_template, request, session, url_for
 from flask_login import login_user
 from pydantic import BaseModel
 from werkzeug import Response as WerkzeugResponse
@@ -23,6 +23,7 @@ from backend.splash.services.oauth.account_service import (
 from backend.splash.services.oauth.constants import Provider
 from backend.splash.services.user_login import (
     _LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
+    _verify_and_provide_next_page,
 )
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings.oauth_strs import (
@@ -32,6 +33,8 @@ from backend.utils.strings.oauth_strs import (
     INVALID_CALLBACK_QUERY_MESSAGE,
     UNVERIFIED_EMAIL_MESSAGE,
 )
+
+_OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
 
 
 def initiate_google_login() -> WerkzeugResponse:
@@ -44,7 +47,13 @@ def initiate_google_login() -> WerkzeugResponse:
     `backend.utils.constants.provide_config_for_constants`), so this route is
     reachable in an unconfigured deployment only via a direct/bookmarked
     request, not through normal UI navigation.
+
+    Stashes the `next` query param (if present) in the session so
+    `handle_google_callback` can redirect back to the originally requested
+    page on success, mirroring the password-login `next` handling in
+    `user_login.py`.
     """
+    session[_OAUTH_NEXT_SESSION_KEY] = request.args.get("next")
     redirect_uri = url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -60,6 +69,8 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     Assumes Google OAuth credentials are configured; see the note on
     `initiate_google_login` above.
     """
+    stashed_next = session.pop(_OAUTH_NEXT_SESSION_KEY, None)
+
     parsed = parse_query_args(
         GoogleOAuthCallbackQuerySchema,
         message=INVALID_CALLBACK_QUERY_MESSAGE,
@@ -131,7 +142,16 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
 
     login_user(resolved_user)
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "google"})
-    return redirect(url_for(ROUTES.UTUBS.HOME))
+
+    next_page = (
+        # Synthetic single-key dict reusing _verify_and_provide_next_page's
+        # validation contract (user_login.py) rather than real request.args.
+        _verify_and_provide_next_page({"next": stashed_next})
+        if isinstance(stashed_next, str)
+        else ""
+    )
+    redirect_url = next_page if next_page else url_for(ROUTES.UTUBS.HOME)
+    return redirect(redirect_url)
 
 
 def _resolve_preferred_username(raw_username: str | None, email: str) -> str:

@@ -14,7 +14,7 @@ from __future__ import annotations
 from unittest import mock
 
 from authlib.integrations.base_client.errors import OAuthError
-from flask import Flask, url_for
+from flask import Flask, redirect, url_for
 from flask_login import current_user
 import pytest
 
@@ -22,6 +22,8 @@ from backend import db
 from backend.metrics.events import EventName
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
@@ -31,6 +33,7 @@ from backend.utils.strings.oauth_strs import (
     GENERIC_FAILURE_MESSAGE as _GENERIC_FAILURE_MESSAGE,
     UNVERIFIED_EMAIL_MESSAGE as _UNVERIFIED_EMAIL_MESSAGE,
 )
+from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.conftest import TEST_GOOGLE_OAUTH_CLIENT_ID, TEST_GOOGLE_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
@@ -43,6 +46,9 @@ pytestmark = pytest.mark.splash
 
 _AUTHORIZE_ACCESS_TOKEN_TARGET = (
     "backend.splash.services.oauth.google_service.oauth.google.authorize_access_token"
+)
+_AUTHORIZE_REDIRECT_TARGET = (
+    "backend.splash.services.oauth.google_service.oauth.google.authorize_redirect"
 )
 _FIND_OR_CREATE_OAUTH_USER_TARGET = (
     "backend.splash.services.oauth.google_service.find_or_create_oauth_user"
@@ -70,6 +76,9 @@ _METRICS_COLLISION_SUBJECT = "sub_metrics_collision"
 _METRICS_COLLISION_USERNAME = "metricscollisionuser"
 _METRICS_COLLISION_EMAIL = "metricscollisionuser@example.com"
 _METRICS_COLLISION_PASSWORD = "P@ssword123!"
+
+_NEXT_TARGET_UTUB_NAME = "OAuth Next Target"
+_UNAUTHORIZED_UTUB_ID = 999_999
 
 _LOGIN_SUCCESS_METHOD_DIM_KEY = "method"
 _LOGIN_FAILURE_REASON_DIM_KEY = "reason"
@@ -113,6 +122,21 @@ def _seed_existing_oauth_user(
         user.email_validated = True
         db.session.add(user)
         db.session.commit()
+
+
+def _seed_utub_membership(app: Flask, *, user_email: str, utub_name: str) -> int:
+    """Creates a UTub with the given user as its sole (creator) member,
+    matching `tests/integration/utubs/conftest.py`'s membership-seeding
+    pattern, and returns the new UTub's id."""
+    with app.app_context():
+        user = Users.query.filter_by(email=user_email).first()
+        new_utub = Utubs(name=utub_name, utub_creator=user.id, utub_description="")
+        creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
+        creator_to_utub.to_user = user
+        new_utub.members.append(creator_to_utub)
+        db.session.add(new_utub)
+        db.session.commit()
+        return new_utub.id
 
 
 def _build_fake_oauth_provider_app() -> Flask:
@@ -238,6 +262,107 @@ def test_google_callback_new_user_creates_account_and_logs_in(
         ).first()
         assert created_identity is not None
         assert created_identity.user.email == _NEW_USER_EMAIL
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_AUTHORIZE_REDIRECT_TARGET)
+def test_google_login_preserves_next_query_param_through_callback(
+    mock_authorize_redirect: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN a Users row with a linked google UserOAuthIdentity and membership in
+        a UTub
+    WHEN `GET /oauth/google/login` is hit with a `next` query param pointing at
+        that UTub, and the callback subsequently completes successfully
+    THEN the user is redirected to the originally requested UTub page instead
+        of the default home page, mirroring password login's `next` handling
+    """
+    mock_authorize_redirect.return_value = redirect(
+        "https://accounts.google.com/o/oauth2/mock-consent"
+    )
+    mock_authorize_access_token.return_value = _build_mocked_token(
+        subject=_EXISTING_SUBJECT, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    utub_id = _seed_utub_membership(
+        app, user_email=_EXISTING_EMAIL, utub_name=_NEXT_TARGET_UTUB_NAME
+    )
+    client, _ = load_login_page
+
+    expected_next = f"{url_for(ROUTES.UTUBS.HOME)}?{UTUB_ID_QUERY_PARAM}={utub_id}"
+    login_response = client.get(url_for(OAUTH_ROUTES.GOOGLE_LOGIN, next=expected_next))
+    assert login_response.status_code == 302
+    mock_authorize_redirect.assert_called_once()
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert len(response.history) == 1
+    assert response.history[0].status_code == 302
+    assert response.history[0].location == expected_next
+    assert current_user.is_authenticated
+    mock_authorize_access_token.assert_called_once()
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(_AUTHORIZE_REDIRECT_TARGET)
+def test_google_login_invalid_next_query_param_falls_back_to_home(
+    mock_authorize_redirect: mock.MagicMock,
+    mock_authorize_access_token: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN a Users row with a linked google UserOAuthIdentity
+    WHEN `GET /oauth/google/login` is hit with a `next` query param targeting a
+        UTub the user is not a member of, and the callback subsequently
+        completes successfully
+    THEN the user is redirected to the default home page rather than the
+        rejected `next` target
+    """
+    mock_authorize_redirect.return_value = redirect(
+        "https://accounts.google.com/o/oauth2/mock-consent"
+    )
+    mock_authorize_access_token.return_value = _build_mocked_token(
+        subject=_EXISTING_SUBJECT, email=_EXISTING_EMAIL
+    )
+    _seed_existing_oauth_user(
+        app,
+        subject=_EXISTING_SUBJECT,
+        email=_EXISTING_EMAIL,
+        username=_EXISTING_USERNAME,
+    )
+    client, _ = load_login_page
+
+    unauthorized_next = (
+        f"{url_for(ROUTES.UTUBS.HOME)}?{UTUB_ID_QUERY_PARAM}={_UNAUTHORIZED_UTUB_ID}"
+    )
+    login_response = client.get(
+        url_for(OAUTH_ROUTES.GOOGLE_LOGIN, next=unauthorized_next)
+    )
+    assert login_response.status_code == 302
+    mock_authorize_redirect.assert_called_once()
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert len(response.history) == 1
+    assert response.history[0].status_code == 302
+    assert response.history[0].location == url_for(ROUTES.UTUBS.HOME)
+    assert current_user.is_authenticated
+    mock_authorize_access_token.assert_called_once()
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
