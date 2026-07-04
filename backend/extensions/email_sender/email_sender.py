@@ -91,6 +91,32 @@ class EmailSender:
 
         return self._send_or_fail(message)
 
+    def send_oauth_provider_hint_email(
+        self, to_email: str, to_name: str, provider_names: list[str]
+    ) -> Response:
+        message = {
+            EMAILS.MESSAGES: [
+                self._message_builder(
+                    to_email=to_email,
+                    to_name=to_name,
+                    subject=EMAILS.OAUTH_HINT_SUBJECT,
+                    textpart=render_template(
+                        "email_templates/oauth_provider_hint_email.txt",
+                        provider_names=provider_names,
+                    ),
+                    htmlpart=render_template(
+                        "email_templates/oauth_provider_hint_email.html",
+                        provider_names=provider_names,
+                    ),
+                )
+            ]
+        }
+
+        if self._testing:
+            message[EMAILS.SANDBOXMODE] = True
+
+        return self._send_or_fail(message)
+
     def _to_builder(self, email: str, name: str) -> dict:
         return {EMAILS.EMAIL: email, EMAILS.NAME: name}
 

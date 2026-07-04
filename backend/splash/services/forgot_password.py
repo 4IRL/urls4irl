@@ -14,6 +14,23 @@ from backend.utils.datetime_utils import utc_now
 from backend.utils.mailjet_utils import handle_mailjet_failure
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD
 
+_PROVIDER_DISPLAY_NAMES: dict[str, str] = {"google": "Google", "github": "GitHub"}
+
+
+def _provider_display_name(provider: str) -> str:
+    """Maps an OAuth provider's lowercase enum value to its correct display name.
+
+    Falls back to str.title() for any provider not in the lookup, so a newly
+    added provider degrades gracefully instead of raising.
+
+    Args:
+        provider (str): lowercase provider key, e.g. "google" or "github"
+
+    Returns:
+        (str): the provider's correct display name, e.g. "Google" or "GitHub"
+    """
+    return _PROVIDER_DISPLAY_NAMES.get(provider, provider.title())
+
 
 def send_forgot_password_email_to_user(
     email: str,
@@ -46,6 +63,25 @@ def send_forgot_password_email_to_user(
         ).to_response()
 
     if user_with_email.password is None:
+        email_sender = safe_get_email_sender(current_app)
+        provider_names = [
+            _provider_display_name(identity.provider)
+            for identity in user_with_email.oauth_identities
+        ]
+        if provider_names:
+            if not email_sender.is_production() and not email_sender.is_testing():
+                print(
+                    f"Sending OAuth sign-in hint to {user_with_email.email}",
+                    flush=True,
+                )
+            email_send_result = email_sender.send_oauth_provider_hint_email(
+                user_with_email.email, user_with_email.username, provider_names
+            )
+            if email_send_result.status_code >= 500:
+                return handle_mailjet_failure(
+                    email_send_result,
+                    error_code=ForgotPasswordErrorCodes.EMAIL_SEND_FAILURE,
+                )
         return APIResponse(
             message=FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
         ).to_response()
