@@ -91,6 +91,13 @@ TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_METRICS_REDIS_URI = environ.get(ENV.TEST_METRICS_REDIS_URI, default="memory://")
 TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
 
+# Dummy Google OAuth credentials shared by ConfigTestUI (below) and
+# tests/conftest.py, so `should_register_google_oauth` registers the fake
+# in-process provider (backend/testing/fake_oauth_provider.py) for tests.
+# Never valid against the real Google endpoints.
+TEST_GOOGLE_OAUTH_CLIENT_ID = "test-google-client-id"
+TEST_GOOGLE_OAUTH_CLIENT_SECRET = "test-google-client-secret"
+
 LOG_DIR = environ.get(ENV.LOG_DIR, default="logs")
 
 if IS_PRODUCTION:
@@ -251,11 +258,9 @@ class ConfigTest(Config):
 class ConfigTestUI(ConfigTest):
     UI_TESTING = True
     SESSION_COOKIE_SECURE = False
-    # Dummy credentials so `should_register_google_oauth` registers the fake
-    # provider (backend/testing/fake_oauth_provider.py) for Selenium runs;
-    # never used against the real Google endpoints.
-    GOOGLE_OAUTH_CLIENT_ID = "test-google-client-id"
-    GOOGLE_OAUTH_CLIENT_SECRET = "test-google-client-secret"
+    # See TEST_GOOGLE_OAUTH_CLIENT_ID/TEST_GOOGLE_OAUTH_CLIENT_SECRET above.
+    GOOGLE_OAUTH_CLIENT_ID = TEST_GOOGLE_OAUTH_CLIENT_ID
+    GOOGLE_OAUTH_CLIENT_SECRET = TEST_GOOGLE_OAUTH_CLIENT_SECRET
 
     def __init__(self) -> None:
         super().__init__()

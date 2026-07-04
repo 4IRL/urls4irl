@@ -22,6 +22,8 @@ from backend.config import (
     POSTGRES_USER,
     POSTGRES_PASSWORD,
     TEST_DB_URI,
+    TEST_GOOGLE_OAUTH_CLIENT_ID,
+    TEST_GOOGLE_OAUTH_CLIENT_SECRET,
     TEST_METRICS_REDIS_URI,
     TEST_REDIS_URI,
 )
@@ -47,9 +49,6 @@ from tests.models_for_test import (
     all_tags,
     maximum_tags,
 )
-
-TEST_GOOGLE_OAUTH_CLIENT_ID = "test-google-client-id"
-TEST_GOOGLE_OAUTH_CLIENT_SECRET = "test-google-client-secret"
 
 # Per-worker metrics Redis DB index base on the dedicated `redis-metrics`
 # container. Each xdist worker is assigned `_METRICS_REDIS_DB_BASE + worker_num`
