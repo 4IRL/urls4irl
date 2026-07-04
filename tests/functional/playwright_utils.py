@@ -44,6 +44,28 @@ def wait_for_element_presence(*, page: Page, css_selector: str):
     return locator
 
 
+def wait_then_get_elements(*, page: Page, css_selector: str) -> list:
+    """Return per-element locators for every selector match after asserting
+    at least the first match is visible (Playwright twin of the Selenium
+    multi-element visibility-gated getter)."""
+    locator = page.locator(css_selector)
+    expect(locator.first).to_be_visible()
+    return locator.all()
+
+
+def wait_then_get_at_least_n_elements(
+    *, page: Page, css_selector: str, minimum_count: int
+) -> list:
+    """Wait until at least ``minimum_count`` elements matching the selector
+    are attached to the DOM, then return per-element locators for every
+    match. Use when a known number of elements fill in asynchronously (e.g.
+    one card per independent XHR) so the sample is only taken once the
+    expected number has settled."""
+    locator = page.locator(css_selector)
+    expect(locator.nth(minimum_count - 1)).to_be_attached()
+    return locator.all()
+
+
 def clear_then_send_keys(*, locator, input_text: str) -> None:
     """Clear an input field then fill it with the provided text."""
     locator.fill("")

@@ -1,4 +1,4 @@
-# Folder-local conftest for `metrics_ui` Selenium tests.
+# Folder-local conftest for `metrics_ui` Playwright tests.
 #
 # Session/parametrized fixtures (`browser`, `provide_app`, `runner`, etc.)
 # are inherited from `tests/functional/conftest.py` and `tests/conftest.py`.
@@ -14,7 +14,7 @@ from typing import Tuple
 import pytest
 from flask import Flask
 from flask.testing import FlaskCliRunner
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 
 def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
@@ -36,15 +36,15 @@ def _seed_metrics_via_cli(runner: Tuple[Flask, FlaskCliRunner]) -> None:
 @pytest.fixture(autouse=True)
 def seeded_metrics(
     runner: Tuple[Flask, FlaskCliRunner],
-    browser: WebDriver,
+    page: Page,
 ) -> None:
     """Seed the test DB with uniform metrics data before each test.
 
-    Depends on ``browser`` to guarantee ordering: ``browser`` calls
-    ``clear_db`` inside its own setup, which wipes every table including
-    ``AnonymousMetrics``.  Listing ``browser`` as a dependency ensures
-    this fixture always seeds AFTER that wipe, so the dashboard has data
-    to render when the test body executes.
+    Depends on ``page`` to guarantee ordering: ``page``'s setup (via
+    ``page_without_cookie_banner_cookie``) calls ``clear_db``, which wipes
+    every table including ``AnonymousMetrics``.  Listing ``page`` as a
+    dependency ensures this fixture always seeds AFTER that wipe, so the
+    dashboard has data to render when the test body executes.
 
     Uses function scope (the default) to match the ``runner`` fixture,
     which clears the DB in its own teardown after every test. A broader

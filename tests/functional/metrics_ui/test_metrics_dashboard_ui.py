@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import pytest
 from flask import Flask
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import Select, WebDriverWait
+from playwright.sync_api import Page, expect
 
 from backend.cli.mock_options import SEED_LATENCY_ENDPOINTS
 from backend.config import ConfigTestUI
@@ -17,10 +15,10 @@ from backend.models.anonymous_metrics import Anonymous_Metrics
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import MetricsDashboardLocators as MDL
-from tests.functional.metrics_ui.selenium_utils import (
+from tests.functional.metrics_ui.playwright_utils import (
     login_admin_and_open_metrics_dashboard,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     wait_for_element_presence,
     wait_then_click_element,
     wait_then_get_at_least_n_elements,
@@ -32,15 +30,10 @@ pytestmark = pytest.mark.metrics_ui
 
 DEFAULT_ADMIN_USER_ID: int = 1
 SEEDED_TABLE_ROW_SELECTOR: str = f"{MDL.TOP_TABLE_API} tbody tr.MetricsTopTableRow"
-WINDOW_BUTTON_TIMEOUT_SECONDS: int = 5
-PIPELINE_HEALTH_RENDER_TIMEOUT: int = 15
-FLOWS_RENDER_TIMEOUT: int = 15
-EXPECTED_FLOW_CARD_COUNT: int = 4
-GAUGES_RENDER_TIMEOUT: int = 15
-LATENCY_RENDER_TIMEOUT: int = 15
 # The seeder writes the same two endpoints for every device type, so the
 # per-endpoint percentile table groups down to exactly these two rows.
 EXPECTED_LATENCY_ROW_COUNT: int = len(SEED_LATENCY_ENDPOINTS)
+EXPECTED_FLOW_CARD_COUNT: int = 4
 ALL_PIPELINE_HEALTH_BAR_SELECTORS: tuple[str, ...] = (
     MDL.PIPELINE_HEALTH_BAR_FETCH_DESKTOP,
     MDL.PIPELINE_HEALTH_BAR_FETCH_MOBILE,
@@ -56,7 +49,7 @@ ALL_PIPELINE_HEALTH_LEGEND_SELECTORS: tuple[str, ...] = (
 
 
 def test_admin_dashboard_renders_with_seeded_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -71,25 +64,21 @@ def test_admin_dashboard_renders_with_seeded_metrics(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    title_element = wait_then_get_element(browser, MDL.DASHBOARD_TITLE, time=5)
-    assert title_element is not None
-    assert title_element.is_displayed()
-    assert title_element.text == UI_TEST_STRINGS.METRICS_DASHBOARD_TITLE
+    title_locator = wait_then_get_element(page=page, css_selector=MDL.DASHBOARD_TITLE)
+    expect(title_locator).to_have_text(UI_TEST_STRINGS.METRICS_DASHBOARD_TITLE)
 
-    first_table_row = wait_for_element_presence(
-        browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10
-    )
-    assert first_table_row is not None
+    wait_for_element_presence(page=page, css_selector=SEEDED_TABLE_ROW_SELECTOR)
 
 
 def test_window_switch_to_week_re_renders_chart(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -106,7 +95,8 @@ def test_window_switch_to_week_re_renders_chart(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
@@ -114,29 +104,26 @@ def test_window_switch_to_week_re_renders_chart(
 
     # Wait for the dashboard's initial render so the click below does
     # not race the initial fetch attaching its handlers.
-    wait_for_element_presence(browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10)
+    wait_for_element_presence(page=page, css_selector=SEEDED_TABLE_ROW_SELECTOR)
 
-    wait_then_click_element(
-        browser, MDL.WINDOW_WEEK_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    wait_then_click_element(page=page, css_selector=MDL.WINDOW_WEEK_BUTTON)
+
+    expect(page.locator(MDL.WINDOW_WEEK_BUTTON)).to_have_attribute(
+        "aria-pressed", "true"
     )
-
-    week_button = wait_then_get_element(browser, MDL.WINDOW_WEEK_BUTTON, time=5)
-    day_button = wait_then_get_element(browser, MDL.WINDOW_DAY_BUTTON, time=5)
-    assert week_button is not None
-    assert day_button is not None
-    assert week_button.get_attribute("aria-pressed") == "true"
-    assert day_button.get_attribute("aria-pressed") == "false"
+    expect(page.locator(MDL.WINDOW_DAY_BUTTON)).to_have_attribute(
+        "aria-pressed", "false"
+    )
 
     # The SVG title node is appended by the admin-metrics chart-render
     # path on every refresh; presence proves a re-render against the
     # new window happened.
     chart_title_selector = f"{MDL.CHART_API} title"
-    chart_title = wait_for_element_presence(browser, chart_title_selector, timeout=10)
-    assert chart_title is not None
+    wait_for_element_presence(page=page, css_selector=chart_title_selector)
 
 
 def test_substring_filter_narrows_top_table_to_no_matches(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -154,34 +141,31 @@ def test_substring_filter_narrows_top_table_to_no_matches(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_for_element_presence(browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10)
+    wait_for_element_presence(page=page, css_selector=SEEDED_TABLE_ROW_SELECTOR)
 
     # Gauges is the default tab, so the API panel (and its substring filter)
     # is hidden until the API tab is clicked.
-    wait_then_click_element(
-        browser, MDL.TAB_API_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_API_BUTTON)
 
     substring_input = wait_then_get_element(
-        browser, MDL.TOP_SUBSTRING_FILTER_API, time=5
+        page=page, css_selector=MDL.TOP_SUBSTRING_FILTER_API
     )
-    assert substring_input is not None
-    substring_input.send_keys("zzz-nonexistent-event")
+    substring_input.fill("zzz-nonexistent-event")
 
     empty_row_selector = f"{MDL.TOP_TABLE_API} tr.MetricsTopTableEmptyRow"
-    empty_row = wait_for_element_presence(browser, empty_row_selector, timeout=5)
-    assert empty_row is not None
-    assert len(browser.find_elements(By.CSS_SELECTOR, SEEDED_TABLE_ROW_SELECTOR)) == 0
+    wait_for_element_presence(page=page, css_selector=empty_row_selector)
+    assert page.locator(SEEDED_TABLE_ROW_SELECTOR).count() == 0
 
 
 def test_device_filter_mobile_narrows_top_table_to_mobile_events(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -200,7 +184,8 @@ def test_device_filter_mobile_narrows_top_table_to_mobile_events(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
@@ -208,19 +193,16 @@ def test_device_filter_mobile_narrows_top_table_to_mobile_events(
 
     # Wait for the dashboard's initial render so subsequent interactions
     # do not race the initial fetch attaching its handlers.
-    wait_for_element_presence(browser, SEEDED_TABLE_ROW_SELECTOR, timeout=10)
+    wait_for_element_presence(page=page, css_selector=SEEDED_TABLE_ROW_SELECTOR)
 
     # Switch to the UI tab; its panel is hidden until the tab is clicked.
-    wait_then_click_element(
-        browser, MDL.TAB_UI_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_UI_BUTTON)
 
     ui_table_row_selector = f"{MDL.TOP_TABLE_UI} tbody tr.MetricsTopTableRow"
-    wait_for_element_presence(browser, ui_table_row_selector, timeout=10)
+    wait_for_element_presence(page=page, css_selector=ui_table_row_selector)
 
-    device_filter = wait_then_get_element(browser, MDL.TOP_DEVICE_FILTER_UI, time=5)
-    assert device_filter is not None
-    Select(device_filter).select_by_value(str(int(DeviceType.MOBILE)))
+    wait_then_get_element(page=page, css_selector=MDL.TOP_DEVICE_FILTER_UI)
+    page.locator(MDL.TOP_DEVICE_FILTER_UI).select_option(str(int(DeviceType.MOBILE)))
 
     # The device filter is server-side (JSONB filter against
     # `dimensions.device_type`); when no mobile rows exist, the server
@@ -230,14 +212,13 @@ def test_device_filter_mobile_narrows_top_table_to_mobile_events(
     # substring filter (post-server-fetch). The empty row's presence
     # still proves the JSONB filter is wired end-to-end.
     empty_row_selector = f"{MDL.TOP_TABLE_UI} tr.MetricsTopTableEmptyRow"
-    empty_row = wait_for_element_presence(browser, empty_row_selector, timeout=10)
-    assert empty_row is not None
-    assert empty_row.text == ADMIN_METRICS_STRINGS.METRICS_EMPTY_STATE
-    assert len(browser.find_elements(By.CSS_SELECTOR, ui_table_row_selector)) == 0
+    empty_row = wait_for_element_presence(page=page, css_selector=empty_row_selector)
+    expect(empty_row).to_have_text(ADMIN_METRICS_STRINGS.METRICS_EMPTY_STATE)
+    assert page.locator(ui_table_row_selector).count() == 0
 
 
 def test_pipeline_health_card_renders_with_seeded_data(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -254,7 +235,8 @@ def test_pipeline_health_card_renders_with_seeded_data(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
@@ -263,33 +245,25 @@ def test_pipeline_health_card_renders_with_seeded_data(
     # Pipeline Health is the 4th tab and starts hidden. Click it so the user
     # journey of "open dashboard, click Pipeline Health, see chart" is what
     # gets validated, not just DOM presence under a hidden panel.
-    wait_then_click_element(browser, MDL.TAB_PIPELINE_HEALTH_BUTTON)
+    wait_then_click_element(page=page, css_selector=MDL.TAB_PIPELINE_HEALTH_BUTTON)
 
     # The card is server-pre-rendered (the partial ships in the HTML), so
     # its container always exists; the rects only appear after fetchAll()
     # completes the grouped-timeseries XHR and the renderer mutates the SVG.
-    wait_for_element_presence(
-        browser, MDL.PIPELINE_HEALTH_CARD, timeout=PIPELINE_HEALTH_RENDER_TIMEOUT
-    )
+    wait_for_element_presence(page=page, css_selector=MDL.PIPELINE_HEALTH_CARD)
 
     for bar_selector in ALL_PIPELINE_HEALTH_BAR_SELECTORS:
-        bar_element = wait_for_element_presence(
-            browser, bar_selector, timeout=PIPELINE_HEALTH_RENDER_TIMEOUT
-        )
-        assert (
-            bar_element is not None
-        ), f"Expected one rect for {bar_selector} but none rendered."
+        wait_for_element_presence(page=page, css_selector=bar_selector)
 
     for legend_selector in ALL_PIPELINE_HEALTH_LEGEND_SELECTORS:
-        legend_swatch = browser.find_elements(By.CSS_SELECTOR, legend_selector)
-        assert len(legend_swatch) == 1, (
+        assert page.locator(legend_selector).count() == 1, (
             f"Expected exactly one legend swatch matching {legend_selector}, "
-            f"got {len(legend_swatch)}."
+            f"got {page.locator(legend_selector).count()}."
         )
 
 
 def test_pipeline_health_card_renders_empty_state_with_no_data(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -308,35 +282,31 @@ def test_pipeline_health_card_renders_empty_state_with_no_data(
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(browser, MDL.TAB_PIPELINE_HEALTH_BUTTON)
+    wait_then_click_element(page=page, css_selector=MDL.TAB_PIPELINE_HEALTH_BUTTON)
 
     empty_state_element = wait_for_element_presence(
-        browser,
-        MDL.PIPELINE_HEALTH_EMPTY_STATE,
-        timeout=PIPELINE_HEALTH_RENDER_TIMEOUT,
+        page=page, css_selector=MDL.PIPELINE_HEALTH_EMPTY_STATE
     )
-    assert empty_state_element is not None
-    assert (
-        empty_state_element.text
-        == ADMIN_METRICS_STRINGS.METRICS_PIPELINE_HEALTH_EMPTY_STATE
+    expect(empty_state_element).to_have_text(
+        ADMIN_METRICS_STRINGS.METRICS_PIPELINE_HEALTH_EMPTY_STATE
     )
 
     for bar_selector in ALL_PIPELINE_HEALTH_BAR_SELECTORS:
-        rendered_bars = browser.find_elements(By.CSS_SELECTOR, bar_selector)
-        assert len(rendered_bars) == 0, (
+        assert page.locator(bar_selector).count() == 0, (
             f"Expected no rects for {bar_selector} in the empty-state, "
-            f"got {len(rendered_bars)}."
+            f"got {page.locator(bar_selector).count()}."
         )
 
 
 def test_flows_tab_renders_funnel_cards_with_seeded_data(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -351,33 +321,31 @@ def test_flows_tab_renders_funnel_cards_with_seeded_data(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(browser, MDL.TAB_FLOWS_BUTTON)
+    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
 
     flow_cards = wait_then_get_at_least_n_elements(
-        browser,
-        MDL.FLOWS_CARD,
+        page=page,
+        css_selector=MDL.FLOWS_CARD,
         minimum_count=EXPECTED_FLOW_CARD_COUNT,
-        time=FLOWS_RENDER_TIMEOUT,
     )
     assert len(flow_cards) >= EXPECTED_FLOW_CARD_COUNT, (
         f"Expected at least {EXPECTED_FLOW_CARD_COUNT} flow cards, "
         f"got {len(flow_cards)}."
     )
 
-    funnel_steps = wait_then_get_elements(
-        browser, MDL.FLOWS_FUNNEL_STEP, time=FLOWS_RENDER_TIMEOUT
-    )
+    funnel_steps = wait_then_get_elements(page=page, css_selector=MDL.FLOWS_FUNNEL_STEP)
     assert len(funnel_steps) >= 1, "Expected at least one funnel step row to render."
 
 
 def test_flows_tab_renders_empty_state_with_no_data(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -395,23 +363,23 @@ def test_flows_tab_renders_empty_state_with_no_data(
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(browser, MDL.TAB_FLOWS_BUTTON)
+    wait_then_click_element(page=page, css_selector=MDL.TAB_FLOWS_BUTTON)
 
     empty_state_element = wait_for_element_presence(
-        browser, MDL.FLOWS_CARD_EMPTY, timeout=FLOWS_RENDER_TIMEOUT
+        page=page, css_selector=MDL.FLOWS_CARD_EMPTY
     )
-    assert empty_state_element is not None
-    assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_FLOW_EMPTY
+    expect(empty_state_element).to_have_text(ADMIN_METRICS_STRINGS.METRICS_FLOW_EMPTY)
 
 
 def test_gauges_tab_is_default_and_renders_chart_on_row_click(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -429,59 +397,55 @@ def test_gauges_tab_is_default_and_renders_chart_on_row_click(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
     # Gauges is the default landing tab — it loads without any tab click.
-    gauges_tab = wait_then_get_element(browser, MDL.TAB_GAUGES_BUTTON, time=5)
-    assert gauges_tab is not None
-    assert gauges_tab.get_attribute("aria-selected") == "true"
+    expect(page.locator(MDL.TAB_GAUGES_BUTTON)).to_have_attribute(
+        "aria-selected", "true"
+    )
 
     gauge_rows = wait_then_get_at_least_n_elements(
-        browser,
-        MDL.GAUGES_ROW,
+        page=page,
+        css_selector=MDL.GAUGES_ROW,
         minimum_count=len(GaugeName),
-        time=GAUGES_RENDER_TIMEOUT,
     )
-    assert len(gauge_rows) >= len(GaugeName), (
-        f"Expected at least {len(GaugeName)} gauge rows, " f"got {len(gauge_rows)}."
-    )
+    assert len(gauge_rows) >= len(
+        GaugeName
+    ), f"Expected at least {len(GaugeName)} gauge rows, got {len(gauge_rows)}."
 
     # The global event-totals summary is hidden on the Gauges tab.
-    summary = browser.find_element(By.CSS_SELECTOR, MDL.SUMMARY_SECTION)
-    assert not summary.is_displayed(), "Summary must be hidden on the Gauges tab."
+    expect(page.locator(MDL.SUMMARY_SECTION)).to_be_hidden()
 
     # No chart until a row is clicked — only the prompt is shown.
-    prompt = wait_for_element_presence(
-        browser, MDL.GAUGES_DETAIL_PROMPT, timeout=GAUGES_RENDER_TIMEOUT
-    )
-    assert prompt is not None
-    assert prompt.text == ADMIN_METRICS_STRINGS.METRICS_GAUGE_SELECT_PROMPT
+    prompt = wait_for_element_presence(page=page, css_selector=MDL.GAUGES_DETAIL_PROMPT)
+    expect(prompt).to_have_text(ADMIN_METRICS_STRINGS.METRICS_GAUGE_SELECT_PROMPT)
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_DETAIL_CHART)) == 0
+        page.locator(MDL.GAUGES_DETAIL_CHART).count() == 0
     ), "No gauge chart should render before a row is clicked."
 
     # Click a known volume gauge (total_users) that has multiple seeded
     # timestamps, so its chart must contain a plotted line.
-    wait_then_click_element(browser, f'{MDL.GAUGES_ROW}[data-gauge-name="total_users"]')
-    total_users_polyline = wait_for_element_presence(
-        browser,
-        "#gauge-chart-total_users polyline",
-        timeout=GAUGES_RENDER_TIMEOUT,
+    wait_then_click_element(
+        page=page, css_selector=f'{MDL.GAUGES_ROW}[data-gauge-name="total_users"]'
     )
-    assert total_users_polyline is not None
-    detail_charts = browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_DETAIL_CHART)
-    assert len(detail_charts) == 1, "Only the selected gauge's chart should render."
+    wait_for_element_presence(
+        page=page, css_selector="#gauge-chart-total_users polyline"
+    )
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_DETAIL_PROMPT)) == 0
+        page.locator(MDL.GAUGES_DETAIL_CHART).count() == 1
+    ), "Only the selected gauge's chart should render."
+    assert (
+        page.locator(MDL.GAUGES_DETAIL_PROMPT).count() == 0
     ), "The prompt must be replaced by the chart once a row is selected."
 
 
 def test_gauges_tab_renders_empty_state_with_no_data(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -500,7 +464,8 @@ def test_gauges_tab_renders_empty_state_with_no_data(
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
@@ -508,17 +473,16 @@ def test_gauges_tab_renders_empty_state_with_no_data(
 
     # Gauges is the default tab, so the empty state renders without a tab click.
     empty_state_element = wait_for_element_presence(
-        browser, MDL.GAUGES_PANEL_EMPTY_STATE, timeout=GAUGES_RENDER_TIMEOUT
+        page=page, css_selector=MDL.GAUGES_PANEL_EMPTY_STATE
     )
-    assert empty_state_element is not None
-    assert empty_state_element.text == ADMIN_METRICS_STRINGS.METRICS_GAUGES_EMPTY
+    expect(empty_state_element).to_have_text(ADMIN_METRICS_STRINGS.METRICS_GAUGES_EMPTY)
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.GAUGES_ROW)) == 0
+        page.locator(MDL.GAUGES_ROW).count() == 0
     ), "No gauge rows should render when the batched response is empty."
 
 
 def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -538,7 +502,8 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
@@ -547,17 +512,15 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
     # Latency is not the default tab — activate it explicitly so the
     # "open dashboard, click Backend Performance, see table + chart" user
     # journey is what gets validated.
-    latency_tab = wait_then_click_element(
-        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
+    wait_then_click_element(page=page, css_selector=MDL.TAB_LATENCY_BUTTON)
+    expect(page.locator(MDL.TAB_LATENCY_BUTTON)).to_have_attribute(
+        "aria-selected", "true"
     )
-    assert latency_tab is not None
-    assert latency_tab.get_attribute("aria-selected") == "true"
 
     latency_rows = wait_then_get_at_least_n_elements(
-        browser,
-        MDL.LATENCY_ROW,
+        page=page,
+        css_selector=MDL.LATENCY_ROW,
         minimum_count=EXPECTED_LATENCY_ROW_COUNT,
-        time=LATENCY_RENDER_TIMEOUT,
     )
     assert len(latency_rows) == EXPECTED_LATENCY_ROW_COUNT, (
         f"Expected exactly {EXPECTED_LATENCY_ROW_COUNT} per-endpoint latency "
@@ -573,46 +536,43 @@ def test_latency_tab_renders_percentile_table_and_chart_on_row_click(
         f"table shows {rendered_endpoints}."
     )
     for row in latency_rows:
-        metric_cells = row.find_elements(By.CSS_SELECTOR, "td.metric")
+        metric_cells = row.locator("td.metric").all()
         assert len(metric_cells) == 3, "Each row must have p50/p95/p99 cells."
         for metric_cell in metric_cells:
-            assert metric_cell.text.strip(), "Percentile cell must not be empty."
+            assert (
+                metric_cell.inner_text().strip()
+            ), "Percentile cell must not be empty."
 
     # The global event-totals summary is hidden on the Latency tab.
-    summary = browser.find_element(By.CSS_SELECTOR, MDL.SUMMARY_SECTION)
-    assert not summary.is_displayed(), "Summary must be hidden on the Latency tab."
+    expect(page.locator(MDL.SUMMARY_SECTION)).to_be_hidden()
 
     # No chart until a row is clicked — only the prompt is shown.
     prompt = wait_for_element_presence(
-        browser, MDL.LATENCY_DETAIL_PROMPT, timeout=LATENCY_RENDER_TIMEOUT
+        page=page, css_selector=MDL.LATENCY_DETAIL_PROMPT
     )
-    assert prompt is not None
-    assert prompt.text == ADMIN_METRICS_STRINGS.METRICS_LATENCY_SELECT_PROMPT
+    expect(prompt).to_have_text(ADMIN_METRICS_STRINGS.METRICS_LATENCY_SELECT_PROMPT)
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_CHART)) == 0
+        page.locator(MDL.LATENCY_DETAIL_CHART).count() == 0
     ), "No latency chart should render before a row is clicked."
 
     # Click the first seeded endpoint row; its timeseries chart must render
     # with at least one plotted polyline segment.
     first_endpoint = SEED_LATENCY_ENDPOINTS[0][0]
     wait_then_click_element(
-        browser,
-        f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
-        time=LATENCY_RENDER_TIMEOUT,
+        page=page,
+        css_selector=f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
     )
-    chart_polyline = wait_for_element_presence(
-        browser, MDL.LATENCY_DETAIL_CHART_LINE, timeout=LATENCY_RENDER_TIMEOUT
-    )
-    assert chart_polyline is not None
-    detail_charts = browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_CHART)
-    assert len(detail_charts) == 1, "Only the selected endpoint's chart should render."
+    wait_for_element_presence(page=page, css_selector=MDL.LATENCY_DETAIL_CHART_LINE)
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DETAIL_PROMPT)) == 0
+        page.locator(MDL.LATENCY_DETAIL_CHART).count() == 1
+    ), "Only the selected endpoint's chart should render."
+    assert (
+        page.locator(MDL.LATENCY_DETAIL_PROMPT).count() == 0
     ), "The prompt must be replaced by the chart once a row is selected."
 
 
 def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -632,39 +592,36 @@ def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
     # only on phones — then a phone width. Cards must hold at both.
     desktop_width = (1280, 900)
     phone_width = (390, 844)
-    browser.set_window_size(*desktop_width)
+    page.set_viewport_size({"width": desktop_width[0], "height": desktop_width[1]})
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(
-        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_LATENCY_BUTTON)
 
     wait_then_get_at_least_n_elements(
-        browser,
-        MDL.LATENCY_ROW,
+        page=page,
+        css_selector=MDL.LATENCY_ROW,
         minimum_count=EXPECTED_LATENCY_ROW_COUNT,
-        time=LATENCY_RENDER_TIMEOUT,
     )
 
     for width, height in (desktop_width, phone_width):
-        browser.set_window_size(width, height)
-        latency_rows = browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)
+        page.set_viewport_size({"width": width, "height": height})
+        latency_rows = page.locator(MDL.LATENCY_ROW).all()
         assert len(latency_rows) == EXPECTED_LATENCY_ROW_COUNT
 
         # Card mode is active: value cells lay out as flex rows (label + value)
         # rather than table cells. (The header row is visually hidden via clip
         # for screen readers, so geometry — not is_displayed — is the signal.)
-        sample_metric_cell = latency_rows[0].find_element(By.CSS_SELECTOR, "td.metric")
-        metric_display = browser.execute_script(
-            "return window.getComputedStyle(arguments[0]).display;",
-            sample_metric_cell,
+        sample_metric_cell = latency_rows[0].locator("td.metric").first
+        metric_display = sample_metric_cell.evaluate(
+            "element => window.getComputedStyle(element).display"
         )
         assert metric_display == "flex", (
             f"At {width}px metric cells must render as flex card rows; "
@@ -672,29 +629,28 @@ def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
         )
 
         for row in latency_rows:
-            endpoint_cell = row.find_element(By.CSS_SELECTOR, "td.endpoint")
+            endpoint_cell = row.locator("td.endpoint").first
             # The full endpoint label is present (method + path), not an ellipsis.
             expected_endpoint = row.get_attribute("data-endpoint")
-            assert expected_endpoint in endpoint_cell.text, (
-                f"Endpoint cell '{endpoint_cell.text}' must contain the full "
+            endpoint_text = endpoint_cell.inner_text()
+            assert expected_endpoint in endpoint_text, (
+                f"Endpoint cell '{endpoint_text}' must contain the full "
                 f"endpoint '{expected_endpoint}' at {width}px."
             )
             assert (
-                "…" not in endpoint_cell.text and "..." not in endpoint_cell.text
+                "…" not in endpoint_text and "..." not in endpoint_text
             ), f"Endpoint name must not be truncated at {width}px."
             # The wrapping cell must not overflow its box (truncation produces
             # scrollWidth > clientWidth; a wrapping cell stays within its box).
-            overflowed = browser.execute_script(
-                "return arguments[0].scrollWidth > arguments[0].clientWidth + 1;",
-                endpoint_cell,
+            overflowed = endpoint_cell.evaluate(
+                "element => element.scrollWidth > element.clientWidth + 1"
             )
             assert not overflowed, f"Endpoint cell overflows (truncated) at {width}px."
 
             # Each percentile value surfaces its column label + unit via ::before.
-            p50_cell = row.find_elements(By.CSS_SELECTOR, "td.metric")[0]
-            before_content = browser.execute_script(
-                "return window.getComputedStyle(arguments[0], '::before').content;",
-                p50_cell,
+            p50_cell = row.locator("td.metric").first
+            before_content = p50_cell.evaluate(
+                "element => window.getComputedStyle(element, '::before').content"
             )
             assert "ms" in before_content, (
                 f"Metric label must include the 'ms' unit at {width}px; "
@@ -703,7 +659,7 @@ def test_latency_tab_renders_as_cards_without_truncation_at_all_widths(
 
 
 def test_latency_cards_have_consistent_dividers_and_selected_ring(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -721,29 +677,25 @@ def test_latency_cards_have_consistent_dividers_and_selected_ring(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(
-        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_LATENCY_BUTTON)
 
     latency_rows = wait_then_get_at_least_n_elements(
-        browser,
-        MDL.LATENCY_ROW,
+        page=page,
+        css_selector=MDL.LATENCY_ROW,
         minimum_count=EXPECTED_LATENCY_ROW_COUNT,
-        time=LATENCY_RENDER_TIMEOUT,
     )
 
     # Read before any hover/selection (mouse rests on the tab button, not a card)
     # so the only background variation that could exist is the zebra striping.
     card_backgrounds = {
-        browser.execute_script(
-            "return window.getComputedStyle(arguments[0]).backgroundColor;", row
-        )
+        row.evaluate("element => window.getComputedStyle(element).backgroundColor")
         for row in latency_rows
     }
     assert len(card_backgrounds) == 1, (
@@ -754,35 +706,30 @@ def test_latency_cards_have_consistent_dividers_and_selected_ring(
     # Ruled rows: each metric line has a visible bottom divider; the last line
     # (Samples) has none, so the divider never collides with the card border.
     first_row = latency_rows[0]
-    metric_cell = first_row.find_element(By.CSS_SELECTOR, "td.metric")
-    samples_cell = first_row.find_element(By.CSS_SELECTOR, "td.samples")
-    metric_border = browser.execute_script(
-        "return window.getComputedStyle(arguments[0]).borderBottomWidth;",
-        metric_cell,
+    metric_cell = first_row.locator("td.metric").first
+    samples_cell = first_row.locator("td.samples").first
+    metric_border = metric_cell.evaluate(
+        "element => window.getComputedStyle(element).borderBottomWidth"
     )
-    samples_border = browser.execute_script(
-        "return window.getComputedStyle(arguments[0]).borderBottomWidth;",
-        samples_cell,
+    samples_border = samples_cell.evaluate(
+        "element => window.getComputedStyle(element).borderBottomWidth"
     )
     assert metric_border != "0px", "Metric rows must show a ruled divider."
     assert samples_border == "0px", "The last (Samples) row must have no divider."
 
     # Selecting a card changes only its border (green ring) — not its surface.
-    unselected_border = browser.execute_script(
-        "return window.getComputedStyle(arguments[0]).borderTopColor;",
-        latency_rows[1],
+    unselected_border = latency_rows[1].evaluate(
+        "element => window.getComputedStyle(element).borderTopColor"
     )
     wait_then_click_element(
-        browser,
-        f'{MDL.LATENCY_ROW}[data-endpoint="{SEED_LATENCY_ENDPOINTS[0][0]}"]',
-        time=LATENCY_RENDER_TIMEOUT,
+        page=page,
+        css_selector=f'{MDL.LATENCY_ROW}[data-endpoint="{SEED_LATENCY_ENDPOINTS[0][0]}"]',
     )
     selected_row = wait_for_element_presence(
-        browser, MDL.LATENCY_ROW_SELECTED, timeout=LATENCY_RENDER_TIMEOUT
+        page=page, css_selector=MDL.LATENCY_ROW_SELECTED
     )
-    assert selected_row is not None
-    selected_border = browser.execute_script(
-        "return window.getComputedStyle(arguments[0]).borderTopColor;", selected_row
+    selected_border = selected_row.evaluate(
+        "element => window.getComputedStyle(element).borderTopColor"
     )
     assert selected_border != unselected_border, (
         "The selected card must show a distinct (green) border ring; "
@@ -791,7 +738,7 @@ def test_latency_cards_have_consistent_dividers_and_selected_ring(
 
 
 def test_latency_tab_renders_empty_state_with_no_samples(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -811,28 +758,24 @@ def test_latency_tab_renders_empty_state_with_no_samples(
 
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(
-        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_LATENCY_BUTTON)
 
-    empty_row = wait_for_element_presence(
-        browser, MDL.LATENCY_EMPTY_ROW, timeout=LATENCY_RENDER_TIMEOUT
-    )
-    assert empty_row is not None
-    assert empty_row.text.strip() == ADMIN_METRICS_STRINGS.METRICS_LATENCY_EMPTY
+    empty_row = wait_for_element_presence(page=page, css_selector=MDL.LATENCY_EMPTY_ROW)
+    expect(empty_row).to_have_text(ADMIN_METRICS_STRINGS.METRICS_LATENCY_EMPTY)
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_ROW)) == 0
+        page.locator(MDL.LATENCY_ROW).count() == 0
     ), "No per-endpoint latency rows should render when no samples exist."
 
 
 def test_latency_tab_shows_approximate_note_for_long_window(
-    browser: WebDriver,
+    page: Page,
     create_test_users,
     provide_app: Flask,
     provide_port: int,
@@ -861,7 +804,8 @@ def test_latency_tab_shows_approximate_note_for_long_window(
     """
     login_admin_and_open_metrics_dashboard(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
@@ -869,47 +813,38 @@ def test_latency_tab_shows_approximate_note_for_long_window(
 
     # Activate the Latency tab and wait for its initial (Day-window) render
     # so the window-switch clicks below do not race the initial fetch.
-    wait_then_click_element(
-        browser, MDL.TAB_LATENCY_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.TAB_LATENCY_BUTTON)
     wait_then_get_at_least_n_elements(
-        browser,
-        MDL.LATENCY_ROW,
+        page=page,
+        css_selector=MDL.LATENCY_ROW,
         minimum_count=EXPECTED_LATENCY_ROW_COUNT,
-        time=LATENCY_RENDER_TIMEOUT,
     )
 
     # Day is inside the 35-day raw retention -> exact path, no notes.
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_APPROXIMATE_NOTE)) == 0
+        page.locator(MDL.LATENCY_APPROXIMATE_NOTE).count() == 0
     ), "The approximate note must be absent on the exact (Day) raw window."
     assert (
-        len(browser.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DAILY_RESOLUTION_NOTE))
-        == 0
+        page.locator(MDL.LATENCY_DAILY_RESOLUTION_NOTE).count() == 0
     ), "The daily-resolution note must be absent on the exact (Day) raw window."
 
     # Year crosses the 35-day boundary -> rollup tier: approximate summary
     # note + daily-resolution note appear, and per-endpoint rows still
     # render from the seeded rollup data.
-    wait_then_click_element(
-        browser, MDL.WINDOW_YEAR_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.WINDOW_YEAR_BUTTON)
 
     approximate_note = wait_for_element_presence(
-        browser, MDL.LATENCY_APPROXIMATE_NOTE, timeout=LATENCY_RENDER_TIMEOUT
+        page=page, css_selector=MDL.LATENCY_APPROXIMATE_NOTE
     )
-    assert approximate_note is not None
-    assert (
-        approximate_note.text.strip()
-        == ADMIN_METRICS_STRINGS.METRICS_LATENCY_APPROXIMATE_NOTE
+    expect(approximate_note).to_have_text(
+        ADMIN_METRICS_STRINGS.METRICS_LATENCY_APPROXIMATE_NOTE
     )
 
     # The rollup still serves per-endpoint rows for the long window.
     year_rows = wait_then_get_at_least_n_elements(
-        browser,
-        MDL.LATENCY_ROW,
+        page=page,
+        css_selector=MDL.LATENCY_ROW,
         minimum_count=1,
-        time=LATENCY_RENDER_TIMEOUT,
     )
     assert (
         len(year_rows) >= 1
@@ -920,46 +855,28 @@ def test_latency_tab_shows_approximate_note_for_long_window(
     # endpoint so the daily-grain trend chart (and its note) render.
     first_endpoint = SEED_LATENCY_ENDPOINTS[0][0]
     wait_then_click_element(
-        browser,
-        f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
-        time=LATENCY_RENDER_TIMEOUT,
+        page=page,
+        css_selector=f'{MDL.LATENCY_ROW}[data-endpoint="{first_endpoint}"]',
     )
 
     daily_note = wait_for_element_presence(
-        browser, MDL.LATENCY_DAILY_RESOLUTION_NOTE, timeout=LATENCY_RENDER_TIMEOUT
+        page=page, css_selector=MDL.LATENCY_DAILY_RESOLUTION_NOTE
     )
-    assert daily_note is not None
-    assert (
-        daily_note.text.strip()
-        == ADMIN_METRICS_STRINGS.METRICS_LATENCY_DAILY_RESOLUTION_NOTE
+    expect(daily_note).to_have_text(
+        ADMIN_METRICS_STRINGS.METRICS_LATENCY_DAILY_RESOLUTION_NOTE
     )
 
     # Month (~28-31 days) is inside the 35-day raw retention -> exact path:
     # both notes disappear again.
-    wait_then_click_element(
-        browser, MDL.WINDOW_MONTH_BUTTON, time=WINDOW_BUTTON_TIMEOUT_SECONDS
-    )
+    wait_then_click_element(page=page, css_selector=MDL.WINDOW_MONTH_BUTTON)
 
     # The Month re-render replaces the table rows; wait for the exact-path
     # render to land before asserting the notes were removed.
     wait_then_get_at_least_n_elements(
-        browser,
-        MDL.LATENCY_ROW,
+        page=page,
+        css_selector=MDL.LATENCY_ROW,
         minimum_count=EXPECTED_LATENCY_ROW_COUNT,
-        time=LATENCY_RENDER_TIMEOUT,
     )
 
-    def _both_notes_absent(driver: WebDriver) -> bool:
-        return (
-            len(driver.find_elements(By.CSS_SELECTOR, MDL.LATENCY_APPROXIMATE_NOTE))
-            == 0
-            and len(
-                driver.find_elements(By.CSS_SELECTOR, MDL.LATENCY_DAILY_RESOLUTION_NOTE)
-            )
-            == 0
-        )
-
-    WebDriverWait(browser, LATENCY_RENDER_TIMEOUT).until(
-        _both_notes_absent,
-        "Both latency notes must be removed on the exact (Month) raw window.",
-    )
+    expect(page.locator(MDL.LATENCY_APPROXIMATE_NOTE)).to_have_count(0)
+    expect(page.locator(MDL.LATENCY_DAILY_RESOLUTION_NOTE)).to_have_count(0)
