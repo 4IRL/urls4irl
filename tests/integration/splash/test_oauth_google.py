@@ -12,12 +12,14 @@ credentials), so no per-test Authlib client setup is needed.
 from __future__ import annotations
 
 from unittest import mock
+from urllib.parse import parse_qs, urlencode, urlparse
 
 from authlib.integrations.base_client.errors import OAuthError
 from flask import Flask, redirect, url_for
 from flask_login import current_user
 import pytest
 from redis import Redis
+from werkzeug import Response as WerkzeugResponse
 
 from backend import db
 from backend.metrics.events import EventName
@@ -65,6 +67,7 @@ _FAKE_CODE = "fake-authorization-code"
 _FAKE_STATE = "fake-state-value"
 _FAKE_OAUTH_PROVIDER_SECRET_KEY = "fake-oauth-provider-test-secret-key"
 _WRONG_CLIENT_SECRET = "wrong-client-secret"
+_MOCK_CONSENT_REDIRECT_URL = "https://accounts.google.com/o/oauth2/mock-consent"
 
 _EXISTING_SUBJECT = "sub_existing"
 _EXISTING_EMAIL = "existingoauthuser@example.com"
@@ -288,6 +291,37 @@ def test_google_callback_new_user_creates_account_and_logs_in(
         assert created_identity.user.email == _NEW_USER_EMAIL
 
 
+@mock.patch(_AUTHORIZE_REDIRECT_TARGET)
+def test_google_login_redirects_with_expected_callback_redirect_uri(
+    mock_authorize_redirect: mock.MagicMock, load_login_page
+):
+    """
+    GIVEN the Google OAuth client registered for the test app
+    WHEN `GET /oauth/google/login` is hit directly, independent of the full
+        consent/callback round trip
+    THEN the route responds 302, and the `redirect_uri` argument
+        `initiate_google_login` passes to `authorize_redirect` — echoed back
+        into the mocked consent redirect's `Location` query string — matches
+        `OAUTH_ROUTES.GOOGLE_CALLBACK` built as an absolute URL
+    """
+
+    def _echo_redirect_uri(redirect_uri: str) -> WerkzeugResponse:
+        return redirect(
+            f"{_MOCK_CONSENT_REDIRECT_URL}?{urlencode({'redirect_uri': redirect_uri})}"
+        )
+
+    mock_authorize_redirect.side_effect = _echo_redirect_uri
+    client, _ = load_login_page
+
+    expected_redirect_uri = url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, _external=True)
+    response = client.get(url_for(OAUTH_ROUTES.GOOGLE_LOGIN))
+
+    assert response.status_code == 302
+    mock_authorize_redirect.assert_called_once()
+    location_query_params = parse_qs(urlparse(response.location).query)
+    assert location_query_params["redirect_uri"] == [expected_redirect_uri]
+
+
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
 @mock.patch(_AUTHORIZE_REDIRECT_TARGET)
 def test_google_login_preserves_next_query_param_through_callback(
@@ -304,9 +338,7 @@ def test_google_login_preserves_next_query_param_through_callback(
     THEN the user is redirected to the originally requested UTub page instead
         of the default home page, mirroring password login's `next` handling
     """
-    mock_authorize_redirect.return_value = redirect(
-        "https://accounts.google.com/o/oauth2/mock-consent"
-    )
+    mock_authorize_redirect.return_value = redirect(_MOCK_CONSENT_REDIRECT_URL)
     mock_authorize_access_token.return_value = _build_mocked_token(
         subject=_EXISTING_SUBJECT, email=_EXISTING_EMAIL
     )
@@ -354,9 +386,7 @@ def test_google_login_invalid_next_query_param_falls_back_to_home(
     THEN the user is redirected to the default home page rather than the
         rejected `next` target
     """
-    mock_authorize_redirect.return_value = redirect(
-        "https://accounts.google.com/o/oauth2/mock-consent"
-    )
+    mock_authorize_redirect.return_value = redirect(_MOCK_CONSENT_REDIRECT_URL)
     mock_authorize_access_token.return_value = _build_mocked_token(
         subject=_EXISTING_SUBJECT, email=_EXISTING_EMAIL
     )
