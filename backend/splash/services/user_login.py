@@ -24,6 +24,7 @@ _LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
 _LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
 _LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"
 _LOGIN_FAILURE_REASON_OAUTH_ONLY = "oauth_only"
+_LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION = "oauth_email_collision"
 
 
 def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
@@ -94,7 +95,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
     next_page = _verify_and_provide_next_page(request.args.to_dict())
     redirect_url = next_page if next_page else url_for(ROUTES.UTUBS.HOME)
 
-    record_event(EventName.LOGIN_SUCCESS)
+    record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "password"})
 
     return APIResponse(
         status_code=200,

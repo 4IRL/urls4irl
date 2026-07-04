@@ -82,6 +82,12 @@ class ForgotPasswordRequest(BaseModel):
     )
 
 
+class GoogleOAuthCallbackQuerySchema(BaseModel):
+    code: str | None = None
+    state: str | None = None
+    error: str | None = None
+
+
 class ResetPasswordRequest(BaseModel):
     new_password: str = Field(
         min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,

@@ -25,6 +25,12 @@ class SPLASH_ROUTES:
     ERROR_PAGE = _SPLASH + "error_page"
 
 
+class OAUTH_ROUTES:
+    _SPLASH = "splash."
+    GOOGLE_LOGIN = _SPLASH + "google_login"
+    GOOGLE_CALLBACK = _SPLASH + "google_callback"
+
+
 class URL_TAG_ROUTES:
     _URL_TAGS = "utub_url_tags."
     CREATE_URL_TAG = _URL_TAGS + "create_utub_url_tag"
@@ -90,6 +96,7 @@ class UTUB_ROUTES:
 class ROUTES:
     MEMBERS = MEMBER_ROUTES
     SPLASH = SPLASH_ROUTES
+    OAUTH = OAUTH_ROUTES
     URL_TAGS = URL_TAG_ROUTES
     UTUB_TAGS = UTUB_TAG_ROUTES
     URLS = URL_ROUTES

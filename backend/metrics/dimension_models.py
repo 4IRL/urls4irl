@@ -358,7 +358,19 @@ class _DimCrossUtubSearchPerformed(BaseModel):
 
 class _DimLoginFailure(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    reason: Literal["unknown_user", "bad_password", "email_unverified", "oauth_only"]
+    reason: Literal[
+        "unknown_user",
+        "bad_password",
+        "email_unverified",
+        "oauth_only",
+        "oauth_email_collision",
+    ]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
+class _DimLoginSuccess(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    method: Literal["password", "google"]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
@@ -396,11 +408,12 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.API_HIT: _DimApiHit,
     EventName.API_METRICS_INGEST_BATCH: _DimApiMetricsIngestBatch,
     # Domain events carry only device_type; auto-injected by MetricsWriter.record() from request context.
-    # `LOGIN_FAILURE` is the only domain event with a closed-set extra dim (`reason`).
+    # `LOGIN_FAILURE` (`reason`) and `LOGIN_SUCCESS` (`method`) are the domain
+    # events with a closed-set extra dim.
     EventName.CROSS_UTUB_SEARCH_PERFORMED: _DimCrossUtubSearchPerformed,
     EventName.EMAIL_VERIFIED: _DimDeviceOnly,
     EventName.LOGIN_FAILURE: _DimLoginFailure,
-    EventName.LOGIN_SUCCESS: _DimDeviceOnly,
+    EventName.LOGIN_SUCCESS: _DimLoginSuccess,
     EventName.MEMBER_ADDED: _DimDeviceOnly,
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,

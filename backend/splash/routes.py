@@ -9,7 +9,7 @@ from flask import (
 from flask_login import current_user, login_user
 from werkzeug import Response as WerkzeugResponse
 
-from backend import db
+from backend import csrf, db
 from backend.api_common.auth_decorators import (
     no_authenticated_users_allowed,
 )
@@ -21,9 +21,11 @@ from backend.app_logger import (
 )
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
+from backend.schemas.base import EmptyRedirectSchema, HtmlErrorPageSchema
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.splash import (
     ForgotPasswordRequest,
+    GoogleOAuthCallbackQuerySchema,
     LoginRequest,
     RegisterRequest,
     ResetPasswordRequest,
@@ -43,6 +45,10 @@ from backend.splash.constants import (
 )
 from backend.splash.services.forgot_password import (
     send_forgot_password_email_to_user,
+)
+from backend.splash.services.oauth.google_service import (
+    handle_google_callback,
+    initiate_google_login,
 )
 from backend.splash.services.reset_password import (
     get_reset_password_page,
@@ -209,6 +215,37 @@ def validate_email(token: str) -> WerkzeugResponse:
 )
 def forgot_password(forgot_password_request: ForgotPasswordRequest) -> FlaskResponse:
     return send_forgot_password_email_to_user(forgot_password_request.email)
+
+
+@splash.route("/oauth/google/login", methods=["GET"])
+@no_authenticated_users_allowed
+@api_route(
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="Redirect to Google's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback.",
+    status_codes={302: EmptyRedirectSchema},
+)
+def google_login() -> WerkzeugResponse:
+    """Kicks off Google OAuth. Dual-purpose: sign-in for returning users, auto-registration for first-time users (see docstring on the callback)."""
+    return initiate_google_login()
+
+
+@splash.route("/oauth/google/callback", methods=["GET"])
+@csrf.exempt
+@no_authenticated_users_allowed
+@api_route(
+    query_schema=GoogleOAuthCallbackQuerySchema,
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
+    status_codes={
+        200: HtmlErrorPageSchema,
+        302: EmptyRedirectSchema,
+        400: ErrorResponse,
+    },
+)
+def google_callback() -> WerkzeugResponse | str | FlaskResponse:
+    return handle_google_callback()
 
 
 @splash.route("/reset-password/<string:token>", methods=["GET"])
