@@ -9,6 +9,10 @@ from backend.cli.mock_constants import (
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
+from backend.utils.strings.splash_form_strs import (
+    GOOGLE_OAUTH_LOGIN_BUTTON_TEXT,
+    GOOGLE_OAUTH_REGISTER_BUTTON_TEXT,
+)
 from backend.utils.strings.tag_strs import (
     TAG_DECK_NO_TAGS as _TAG_DECK_NO_TAGS,
     TAG_FILTER_NO_RESULTS,
@@ -38,6 +42,37 @@ class UI_TEST_STRINGS:
 
     TEST_USERNAME_UNLISTED = USERNAME_BASE + "_UNLISTED"
     TEST_PASSWORD_UNLISTED = TEST_USERNAME_UNLISTED + EMAIL_SUFFIX
+
+    # Google OAuth — button labels re-exported so UI tests assert the rendered
+    # DOM text against the same backend source the templates render.
+    GOOGLE_OAUTH_LOGIN_BUTTON_TEXT = GOOGLE_OAUTH_LOGIN_BUTTON_TEXT
+    GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = GOOGLE_OAUTH_REGISTER_BUTTON_TEXT
+
+    # Google OAuth — deterministic per-scenario identities fed to the fake
+    # provider (backend/testing/fake_oauth_provider.py) via `set-identity`,
+    # keeping the four UI scenarios from colliding with each other's state.
+    OAUTH_RETURNING_USER_SUBJECT = "fake-oauth-subject-returning"
+    OAUTH_RETURNING_USER_EMAIL = "oauth.returning@example.com"
+    OAUTH_RETURNING_USER_NAME = "Returning OAuth User"
+    OAUTH_RETURNING_USER_USERNAME = "oauthreturninguser"
+
+    OAUTH_NEW_USER_SUBJECT = "fake-oauth-subject-new"
+    OAUTH_NEW_USER_EMAIL = "oauth.newuser@example.com"
+    # No spaces: this name becomes the derived username on account creation
+    # (see `_resolve_preferred_username`/`generate_unique_username_from_email`),
+    # asserted verbatim via `assert_login_with_username`.
+    OAUTH_NEW_USER_NAME = "NewOAuthUser"
+
+    OAUTH_COLLISION_SUBJECT = "fake-oauth-subject-collision"
+    OAUTH_COLLISION_EMAIL = "oauth.collision@example.com"
+    OAUTH_COLLISION_NAME = "Collision OAuth User"
+    OAUTH_COLLISION_PASSWORD = "P@ssword123!"
+    OAUTH_COLLISION_USERNAME = "oauthcollisionpwuser"
+
+    OAUTH_FORGOT_PASSWORD_SUBJECT = "fake-oauth-subject-forgot-password"
+    OAUTH_FORGOT_PASSWORD_EMAIL = "oauth.forgotpassword@example.com"
+    OAUTH_FORGOT_PASSWORD_NAME = "Forgot Password OAuth User"
+    OAUTH_FORGOT_PASSWORD_USERNAME = "oauthforgotpassworduser"
 
     # Register
     PASSWORD_EQUALITY_FAILED = "Passwords are not identical."

@@ -2,6 +2,7 @@ import os
 import json
 import secrets
 from typing import Mapping, NotRequired, TypedDict
+from urllib.parse import urljoin
 
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, abort, current_app, g, request, session, url_for
@@ -157,11 +158,26 @@ def create_app(
             # scope (no `openid`) makes Authlib take the plain-OAuth2 path instead
             # of id_token/JWT parsing, sidestepping JWT signing/JWKS verification
             # entirely.
+            #
+            # `access_token_url` must be made absolute: Authlib's token-exchange
+            # call (`fetch_access_token` -> `client.fetch_token`) hands the URL
+            # straight to `requests`, which never resolves a relative path -
+            # unlike the generic resource-fetch path (`userinfo()`) that
+            # respects `api_base_url` via `urljoin`. `OAUTH_SELF_BASE_URL` is
+            # only set by `tests/functional/conftest.py::worker_config`, once
+            # the Selenium worker's serving port is known.
+            self_base_url = app.config.get("OAUTH_SELF_BASE_URL")
+            access_token_url = (
+                urljoin(self_base_url, _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL)
+                if self_base_url
+                else _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL
+            )
             oauth.register(
                 name="google",
                 authorize_url=_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL,
-                access_token_url=_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL,
+                access_token_url=access_token_url,
                 userinfo_endpoint=_FAKE_GOOGLE_OAUTH_USERINFO_URL,
+                api_base_url=self_base_url,
                 client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
                 client_secret=app.config["GOOGLE_OAUTH_CLIENT_SECRET"],
                 client_kwargs={"scope": "email profile"},
@@ -242,6 +258,11 @@ def create_app(
         from backend.debug.routes import debug as debug_routes
 
         app.register_blueprint(debug_routes)
+
+    if app.config.get("UI_TESTING", False):
+        from backend.testing.fake_oauth_provider import fake_oauth
+
+        app.register_blueprint(fake_oauth)
 
     # All blueprints are registered above, so the url_map is fully populated;
     # validate cap-override keys here (not in init_app, where url_map is empty).

@@ -138,14 +138,27 @@ def worker_redis_uri(worker_id: str) -> str:
 
 
 @pytest.fixture(scope="session")
-def worker_config(worker_db_uri: str, worker_redis_uri: str) -> ConfigTestUI:
-    """Returns a ConfigTestUI instance configured for this worker's DB and Redis."""
+def worker_config(
+    worker_db_uri: str, worker_redis_uri: str, provide_port: int
+) -> ConfigTestUI:
+    """Returns a ConfigTestUI instance configured for this worker's DB and Redis.
+
+    `OAUTH_SELF_BASE_URL` must be set here, at config-construction time, rather
+    than inside `run_app()` — Authlib's `OAuth` registry caches a "google"
+    client the first time ANY `create_app(worker_config)` call registers it
+    (see `authlib.integrations.base_client.registry.BaseOAuth.create_client`),
+    and `build_app`/`provide_app`/`parallelize_app` each independently call
+    `create_app(worker_config)`. Setting it on the shared config object before
+    any of those fixtures run guarantees the fake OAuth provider's absolute
+    base URL wins regardless of which fixture happens to resolve first.
+    """
     config = ConfigTestUI()
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
+    config.OAUTH_SELF_BASE_URL = f"http://127.0.0.1:{provide_port}"
     return config
 
 
