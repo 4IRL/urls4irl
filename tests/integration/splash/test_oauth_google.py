@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlencode, urlparse
 from authlib.integrations.base_client.errors import OAuthError
 from flask import Flask, redirect, url_for
 from flask_login import current_user
+from pydantic import BaseModel, ValidationError
 import pytest
 from redis import Redis
 from werkzeug import Response as WerkzeugResponse
@@ -32,10 +33,12 @@ from backend.splash.constants import (
     LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
     LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
     LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
+    OAuthErrorCodes,
 )
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE as _CONSENT_DECLINED_MESSAGE,
     EMAIL_COLLISION_MESSAGE as _EMAIL_COLLISION_MESSAGE,
@@ -118,6 +121,23 @@ def _build_mocked_token(
 
 def _callback_url(**query_args: str) -> str:
     return url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, **query_args)
+
+
+def _build_real_validation_error() -> ValidationError:
+    """Builds a genuine `pydantic.ValidationError` by validating bad data against
+    a throwaway schema. `GoogleOAuthCallbackQuerySchema`'s fields are all
+    unconstrained `str | None`, so no real query string can fail it — this
+    stand-in error is used to exercise the `except ValidationError` branch in
+    `parse_query_args` directly."""
+
+    class _StrictIntSchema(BaseModel):
+        value: int
+
+    try:
+        _StrictIntSchema.model_validate({"value": "not-an-int"})
+    except ValidationError as validation_error:
+        return validation_error
+    raise AssertionError("expected ValidationError to be raised")
 
 
 def _assert_single_login_failure_reason(
@@ -457,6 +477,32 @@ def test_google_callback_email_collision_renders_reject_page(
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+@mock.patch(
+    "backend.splash.services.oauth.google_service.GoogleOAuthCallbackQuerySchema.model_validate"
+)
+def test_google_callback_invalid_query_args_returns_400_error_response(
+    mock_model_validate: mock.MagicMock, app: Flask, load_login_page
+):
+    """
+    GIVEN `GoogleOAuthCallbackQuerySchema.model_validate` raises `ValidationError`
+        (its real fields are all unconstrained `str | None`, so no genuine query
+        string can trigger this — see `_build_real_validation_error`)
+    WHEN the callback is hit
+    THEN `parse_query_args` returns the 400 field-error envelope with
+        `OAuthErrorCodes.INVALID_FORM_INPUT`, matching the schema declared in the
+        route's `status_codes`
+    """
+    mock_model_validate.side_effect = _build_real_validation_error()
+    client, _ = load_login_page
+
+    response = client.get(_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
+
+    assert response.status_code == 400
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.ERROR_CODE] == OAuthErrorCodes.INVALID_FORM_INPUT
+
+
 def test_google_callback_consent_declined_short_circuits_without_token_exchange(
     mock_authorize_access_token: mock.MagicMock, app: Flask, load_login_page
 ):
