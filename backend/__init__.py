@@ -98,11 +98,11 @@ limiter = Limiter(
     application_limits=["20000/hour", "5000/15minutes"],
 )
 
-# The not-yet-built test-only blueprint `backend/testing/fake_oauth_provider.py`
-# registers at these exact paths, gated behind UI_TESTING, so Selenium can
-# round-trip a real OAuth exchange without reaching Google. Kept as named
-# constants rather than inline literals since they are a contract this module
-# shares with that blueprint.
+# The test-only blueprint `backend/testing/fake_oauth_provider.py` registers
+# at these exact paths, gated behind UI_TESTING, so Selenium can round-trip a
+# real OAuth exchange without reaching Google. Kept as named constants rather
+# than inline literals since they are a contract this module shares with that
+# blueprint.
 _FAKE_GOOGLE_OAUTH_AUTHORIZE_URL = "/fake-oauth/authorize"
 _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL = "/fake-oauth/token"
 _FAKE_GOOGLE_OAUTH_USERINFO_URL = "/fake-oauth/userinfo"
