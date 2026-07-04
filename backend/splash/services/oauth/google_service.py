@@ -83,7 +83,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         # to a plain-OAuth2 GET against the configured userinfo endpoint.
         userinfo = oauth.google.userinfo(token=token)
 
-    if userinfo.get("email_verified") is False:
+    if userinfo.get("email_verified") is not True:
         return render_template(
             "pages/splash.html",
             oauth_unverified_email=True,

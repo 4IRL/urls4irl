@@ -80,13 +80,16 @@ def _build_mocked_token(
     *,
     subject: str,
     email: str,
-    email_verified: bool = True,
+    email_verified: bool | None = True,
     name: str | None = None,
 ) -> dict:
     """Builds the dict shape `authorize_access_token()` returns with a parsed
     `userinfo` OIDC claims set attached, matching the real-openid-scope branch
-    `handle_google_callback` reads from."""
-    userinfo = {"sub": subject, "email": email, "email_verified": email_verified}
+    `handle_google_callback` reads from. Passing `email_verified=None` omits
+    the claim entirely, matching a provider response that never sets it."""
+    userinfo = {"sub": subject, "email": email}
+    if email_verified is not None:
+        userinfo["email_verified"] = email_verified
     if name is not None:
         userinfo["name"] = name
     return {"userinfo": userinfo}
@@ -305,6 +308,43 @@ def test_google_callback_unverified_email_renders_reject_without_resolving_user(
     """
     mock_authorize_access_token.return_value = _build_mocked_token(
         subject=_UNVERIFIED_SUBJECT, email=_UNVERIFIED_EMAIL, email_verified=False
+    )
+    client, _ = load_login_page
+
+    with app.app_context():
+        assert Users.query.count() == 0
+        assert UserOAuthIdentity.query.count() == 0
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert _UNVERIFIED_EMAIL_MESSAGE.encode() in response.data
+    mock_find_or_create_oauth_user.assert_not_called()
+    mock_authorize_access_token.assert_called_once()
+
+    with app.app_context():
+        assert Users.query.count() == 0
+        assert UserOAuthIdentity.query.count() == 0
+
+
+@mock.patch(_FIND_OR_CREATE_OAUTH_USER_TARGET)
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_google_callback_missing_email_verified_renders_reject_without_resolving_user(
+    mock_authorize_access_token: mock.MagicMock,
+    mock_find_or_create_oauth_user: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN the mocked userinfo omits the `email_verified` claim entirely
+    WHEN the callback is hit
+    THEN the unverified-email reject page renders and `find_or_create_oauth_user`
+        is never called, matching the explicit `email_verified: False` case
+    """
+    mock_authorize_access_token.return_value = _build_mocked_token(
+        subject=_UNVERIFIED_SUBJECT, email=_UNVERIFIED_EMAIL, email_verified=None
     )
     client, _ = load_login_page
 
