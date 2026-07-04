@@ -118,7 +118,6 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
         return render_template(
             "pages/splash.html",
             oauth_email_collision=True,
-            oauth_collision_provider="Google",
             oauth_reject_message=_EMAIL_COLLISION_MESSAGE,
         )
 
