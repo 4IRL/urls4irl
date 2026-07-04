@@ -503,6 +503,46 @@ def test_google_callback_invalid_query_args_returns_400_error_response(
     assert response_json[STD_JSON.ERROR_CODE] == OAuthErrorCodes.INVALID_FORM_INPUT
 
 
+@mock.patch("backend.splash.services.oauth.google_service.oauth", new=object())
+def test_google_login_unconfigured_oauth_redirects_to_splash_without_crashing(
+    load_login_page,
+):
+    """
+    GIVEN `oauth.google` is unregistered (simulating a deployment with no
+        Google OAuth credentials configured)
+    WHEN `GET /oauth/google/login` is hit directly — e.g. a stale bookmark or
+        a client that bypasses the hidden splash button
+    THEN the route redirects to the splash page instead of raising
+        `AttributeError` from Authlib's `OAuth.__getattr__`
+    """
+    client, _ = load_login_page
+
+    response = client.get(url_for(OAUTH_ROUTES.GOOGLE_LOGIN))
+
+    assert response.status_code == 302
+    assert response.location == url_for(ROUTES.SPLASH.SPLASH_PAGE)
+
+
+@mock.patch("backend.splash.services.oauth.google_service.oauth", new=object())
+def test_google_callback_unconfigured_oauth_renders_generic_reject_without_crashing(
+    load_login_page,
+):
+    """
+    GIVEN `oauth.google` is unregistered (simulating credentials removed
+        mid-session, or a stale bookmarked callback URL)
+    WHEN `GET /oauth/google/callback` is hit directly
+    THEN the generic-failure reject page renders instead of raising
+        `AttributeError` from Authlib's `OAuth.__getattr__`
+    """
+    client, _ = load_login_page
+
+    response = client.get(_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
+
+    assert response.status_code == 200
+    assert _GENERIC_FAILURE_MESSAGE.encode() in response.data
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
 def test_google_callback_consent_declined_short_circuits_without_token_exchange(
     mock_authorize_access_token: mock.MagicMock, app: Flask, load_login_page
 ):
