@@ -164,6 +164,13 @@ jobs:
           python3.11 -m pip install --upgrade pip;
           pip install -r requirements/requirements-test.txt;
 
+      # UI workers (9-20) drive Playwright; the chromium binary is provisioned
+      # here rather than via a browser-server container (CI runs the browser
+      # on the runner itself, mirroring the previous runner-local Chrome path).
+      - name: Install Playwright browser
+        if: ${{ matrix.worker[0] >= 9 }}
+        run: python3.11 -m playwright install chromium --with-deps
+
       - name: Setup Node.js
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:

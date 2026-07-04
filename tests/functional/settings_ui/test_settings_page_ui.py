@@ -1,24 +1,22 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 from flask import Flask
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.wait import WebDriverWait
+from playwright.sync_api import Page, expect
 
 from backend.config import ConfigTestUI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import SettingsPageLocators as SPL
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     click_on_navbar,
     wait_for_element_presence,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_in_focus,
 )
-from tests.functional.settings_ui.selenium_utils import (
+from tests.functional.settings_ui.playwright_utils import (
     login_user_and_open_home,
     login_user_and_open_settings,
 )
@@ -26,11 +24,10 @@ from tests.functional.settings_ui.selenium_utils import (
 pytestmark = pytest.mark.settings_ui
 
 DEFAULT_USER_ID: int = 1
-URL_CONTAINS_TIMEOUT_SECONDS: int = 10
 
 
 def test_account_tab_is_default(
-    browser: WebDriver,
+    page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
@@ -42,23 +39,21 @@ def test_account_tab_is_default(
     """
     login_user_and_open_settings(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_USER_ID,
         config=provide_config,
     )
 
-    account_tab = wait_then_get_element(browser, SPL.TAB_ACCOUNT_BUTTON, time=5)
-    assert account_tab is not None
-    assert account_tab.get_attribute("aria-selected") == "true"
-
-    account_panel = wait_then_get_element(browser, SPL.PANEL_ACCOUNT, time=5)
-    assert account_panel is not None
-    assert account_panel.is_displayed()
+    expect(page.locator(SPL.TAB_ACCOUNT_BUTTON)).to_have_attribute(
+        "aria-selected", "true"
+    )
+    expect(page.locator(SPL.PANEL_ACCOUNT)).to_be_visible()
 
 
 def test_click_stats_tab_switches_panel(
-    browser: WebDriver,
+    page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
@@ -72,31 +67,31 @@ def test_click_stats_tab_switches_panel(
     """
     login_user_and_open_settings(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_USER_ID,
         config=provide_config,
     )
 
-    wait_then_click_element(browser, SPL.TAB_STATS_BUTTON, time=5)
+    wait_then_click_element(page=page, css_selector=SPL.TAB_STATS_BUTTON)
 
-    stats_tab = wait_then_get_element(browser, SPL.TAB_STATS_BUTTON, time=5)
-    assert stats_tab is not None
-    assert stats_tab.get_attribute("aria-selected") == "true"
+    expect(page.locator(SPL.TAB_STATS_BUTTON)).to_have_attribute(
+        "aria-selected", "true"
+    )
+    expect(page.locator(SPL.PANEL_STATS)).to_be_visible()
 
-    stats_panel = wait_then_get_element(browser, SPL.PANEL_STATS, time=5)
-    assert stats_panel is not None
-    assert stats_panel.is_displayed()
+    # Attribute-exact check mirroring the Selenium
+    # `get_attribute("hidden") is not None` assertion — a present-but-
+    # valueless HTML attribute reads as "".
+    expect(page.locator(SPL.PANEL_ACCOUNT)).to_have_attribute("hidden", "")
 
-    account_panel = browser.find_element(By.CSS_SELECTOR, SPL.PANEL_ACCOUNT)
-    assert account_panel.get_attribute("hidden") is not None
-
-    stats_heading = stats_panel.find_element(By.CSS_SELECTOR, "h2")
-    assert stats_heading.text == UI_TEST_STRINGS.SETTINGS_TAB_STATS
+    stats_heading = page.locator(SPL.PANEL_STATS).locator("h2")
+    expect(stats_heading).to_have_text(UI_TEST_STRINGS.SETTINGS_TAB_STATS)
 
 
 def test_page_title_renders(
-    browser: WebDriver,
+    page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
@@ -108,19 +103,19 @@ def test_page_title_renders(
     """
     login_user_and_open_settings(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_USER_ID,
         config=provide_config,
     )
 
-    page_title = wait_then_get_element(browser, f"{SPL.PAGE_ROOT} h1", time=5)
-    assert page_title is not None
-    assert page_title.text == UI_TEST_STRINGS.SETTINGS_PAGE_TITLE
+    page_title = wait_then_get_element(page=page, css_selector=f"{SPL.PAGE_ROOT} h1")
+    expect(page_title).to_have_text(UI_TEST_STRINGS.SETTINGS_PAGE_TITLE)
 
 
 def test_back_home_btn_navigates_to_home(
-    browser: WebDriver,
+    page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
@@ -132,7 +127,8 @@ def test_back_home_btn_navigates_to_home(
     """
     login_user_and_open_settings(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_USER_ID,
         config=provide_config,
@@ -140,17 +136,14 @@ def test_back_home_btn_navigates_to_home(
 
     # The back-home button lives inside the always-collapsed navbar
     # dropdown; open the hamburger before the button is clickable.
-    click_on_navbar(browser)
-    wait_then_click_element(browser, SPL.BACK_HOME_BTN, time=5)
+    click_on_navbar(page=page)
+    wait_then_click_element(page=page, css_selector=SPL.BACK_HOME_BTN)
 
-    WebDriverWait(browser, timeout=URL_CONTAINS_TIMEOUT_SECONDS).until(
-        EC.url_contains("/home")
-    )
-    assert browser.current_url.endswith("/home")
+    expect(page).to_have_url(re.compile(r"/home$"))
 
 
 def test_settings_nav_link_present_on_home(
-    browser: WebDriver,
+    page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
@@ -166,18 +159,19 @@ def test_settings_nav_link_present_on_home(
     """
     login_user_and_open_home(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_USER_ID,
         config=provide_config,
     )
 
-    nav_link = wait_for_element_presence(browser, SPL.SETTINGS_NAV_LINK, timeout=10)
-    assert nav_link is not None
+    # DOM presence, not visibility — the link is in a collapsed dropdown.
+    wait_for_element_presence(page=page, css_selector=SPL.SETTINGS_NAV_LINK)
 
 
 def test_arrow_key_navigates_tabs(
-    browser: WebDriver,
+    page: Page,
     provide_app: Flask,
     provide_port: int,
     provide_config: ConfigTestUI,
@@ -189,29 +183,24 @@ def test_arrow_key_navigates_tabs(
     """
     login_user_and_open_settings(
         app=provide_app,
-        browser=browser,
+        context=page.context,
+        page=page,
         port=provide_port,
         user_id=DEFAULT_USER_ID,
         config=provide_config,
     )
 
-    account_tab = wait_then_get_element(browser, SPL.TAB_ACCOUNT_BUTTON, time=5)
-    assert account_tab is not None
-    assert account_tab.get_attribute("aria-selected") == "true"
+    account_tab = page.locator(SPL.TAB_ACCOUNT_BUTTON)
+    expect(account_tab).to_have_attribute("aria-selected", "true")
     # Click activates the Account tab; the controller focuses the Account
     # panel on mouse activation. Wait for that focus to land as a barrier
-    # confirming the click handler ran before sending the key. send_keys
+    # confirming the click handler ran before sending the key. press()
     # then re-focuses the tab button itself, delivering the keydown to the
     # bound listener.
     account_tab.click()
-    wait_until_in_focus(browser, SPL.PANEL_ACCOUNT)
-    account_tab.send_keys(Keys.ARROW_RIGHT)
+    wait_until_in_focus(page=page, css_selector=SPL.PANEL_ACCOUNT)
+    account_tab.press("ArrowRight")
 
-    stats_tab = wait_then_get_element(browser, SPL.TAB_STATS_BUTTON, time=5)
-    assert stats_tab is not None
-    WebDriverWait(browser, timeout=5).until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR, SPL.TAB_STATS_BUTTON
-        ).get_attribute("aria-selected")
-        == "true"
+    expect(page.locator(SPL.TAB_STATS_BUTTON)).to_have_attribute(
+        "aria-selected", "true"
     )

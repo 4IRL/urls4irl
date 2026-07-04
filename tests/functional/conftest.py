@@ -4,6 +4,7 @@ from typing import Generator, Optional, Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
+from playwright.sync_api import Browser, Page, sync_playwright
 import pytest
 from redis import Redis
 from selenium import webdriver
@@ -29,6 +30,10 @@ from backend.models.users import Users
 from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import add_mock_urls
+from tests.functional.playwright_utils import (
+    PageBundle,
+    add_cookie_banner_cookie as add_playwright_cookie_banner_cookie,
+)
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
     add_cookie_banner_cookie,
@@ -282,6 +287,145 @@ def build_driver(
         driver.quit()
     except Exception:
         pass
+
+
+@pytest.fixture(scope="session")
+def playwright_instance():
+    """Session-scoped Playwright process. Session scope is required — a new
+    Playwright driver process per test would exhaust ports under n=8 load."""
+    instance = sync_playwright().start()
+    yield instance
+    instance.stop()
+
+
+@pytest.fixture(scope="session")
+def build_page_browser(
+    playwright_instance, provide_port: int, parallelize_app, turn_off_headless
+) -> Generator[Browser, None, None]:
+    """Playwright twin of `build_driver`: connects to the containerized
+    browser-server in Docker mode, else launches a local chromium. Forms a
+    parallel, non-coupled chain — never a dependency of (or for) the
+    Selenium `build_driver` fixture family.
+    """
+    config = ConfigTest()
+    base_url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    )
+
+    ping_server(base_url + str(provide_port))
+
+    if config.DOCKER:
+        if not config.TEST_PLAYWRIGHT_URI:
+            raise RuntimeError(
+                "PLAYWRIGHT_WS_URL env var is not set; cannot connect to the "
+                "Playwright browser server in Docker mode"
+            )
+        browser = playwright_instance.chromium.connect(config.TEST_PLAYWRIGHT_URI)
+    else:
+        browser = playwright_instance.chromium.launch(headless=not turn_off_headless)
+
+    yield browser
+
+    try:
+        browser.close()
+    except Exception:
+        pass
+
+
+@pytest.fixture
+def page_without_cookie_banner_cookie(
+    build_page_browser: Browser,
+    provide_port: int,
+    provide_config: ConfigTest,
+    runner: Tuple[Flask, FlaskCliRunner],
+    debug_strings,
+) -> Generator[PageBundle, None, None]:
+    """Playwright twin of `browser_without_cookie_banner_cookie`: clears the
+    DB and yields a fresh, auto-isolated context+page per test. No manual
+    cookie/tab/viewport cleanup is needed — the context is closed after each
+    test, unlike the shared session-scoped Selenium driver.
+    """
+    base_url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL
+        if provide_config.DOCKER
+        else UI_TEST_STRINGS.BASE_URL
+    ) + str(provide_port)
+
+    context = build_page_browser.new_context(
+        viewport={
+            "width": DESKTOP_VIEWPORT_WIDTH_PX,
+            "height": DESKTOP_VIEWPORT_HEIGHT_PX,
+        }
+    )
+    context.set_default_timeout(10_000)
+    context.set_default_navigation_timeout(30_000)
+
+    clear_db(runner, debug_strings)
+
+    page: Page = context.new_page()
+
+    yield PageBundle(page=page, context=context, base_url=base_url)
+
+    context.close()
+
+
+@pytest.fixture
+def page(
+    page_without_cookie_banner_cookie: PageBundle,
+) -> Generator[Page, None, None]:
+    """Desktop Playwright page with the cookie-banner consent cookie set."""
+    bundle = page_without_cookie_banner_cookie
+    add_playwright_cookie_banner_cookie(
+        context=bundle.context, base_url=bundle.base_url
+    )
+    yield bundle.page
+
+
+@pytest.fixture
+def page_mobile_portrait_without_cookie_banner_cookie(
+    build_page_browser: Browser,
+    provide_port: int,
+    provide_config: ConfigTest,
+    runner: Tuple[Flask, FlaskCliRunner],
+    debug_strings,
+) -> Generator[PageBundle, None, None]:
+    """Mobile-portrait Playwright context: Playwright-native touch/mobile
+    emulation replaces the Selenium `execute_cdp_cmd` touch + coarse-pointer
+    media emulation.
+    """
+    base_url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL
+        if provide_config.DOCKER
+        else UI_TEST_STRINGS.BASE_URL
+    ) + str(provide_port)
+
+    context = build_page_browser.new_context(
+        viewport={"width": 420, "height": 900},
+        has_touch=True,
+        is_mobile=True,
+    )
+    context.set_default_timeout(10_000)
+    context.set_default_navigation_timeout(30_000)
+
+    clear_db(runner, debug_strings)
+
+    page: Page = context.new_page()
+
+    yield PageBundle(page=page, context=context, base_url=base_url)
+
+    context.close()
+
+
+@pytest.fixture
+def page_mobile_portrait(
+    page_mobile_portrait_without_cookie_banner_cookie: PageBundle,
+) -> Generator[Page, None, None]:
+    """Mobile-portrait Playwright page with the cookie-banner cookie set."""
+    bundle = page_mobile_portrait_without_cookie_banner_cookie
+    add_playwright_cookie_banner_cookie(
+        context=bundle.context, base_url=bundle.base_url
+    )
+    yield bundle.page
 
 
 @pytest.fixture

@@ -7,7 +7,7 @@ PYTEST = source /code/venv/bin/activate && python -m pytest
 FLASK = source /code/venv/bin/activate && flask
 NOTIFY_TEST_DEFAULT_MSG = **Daily Backup — SUCCESS**\n✅ 💾 Database\n✅ 📄 Logs\n✅ ☁️ R2 daily\n💤 ☁️ R2 monthly\n✅ ☁️ R2 logs\n\n**Metrics — HEALTHY**\n🟢 📊 Minute Flush · 38s ago\n🟢 📊 Hourly Snapshot · 12m ago
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-backup-pipeline test-marker test-file test-file-parallel vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-backup-pipeline test-marker test-file test-file-parallel test-file-parallel-built vite-build typecheck prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built generate-types metrics-watch metrics-snapshot metrics-flush-now metrics-rows metrics-smoke-test metrics-clear-counters metrics-clear-rows metrics-clear-all gauge-sample-now gauge-rows gauge-clear-rows notify-test addmock audit plan-list playwright-unlock tunnel tunnel-stop
 
 .DEFAULT_GOAL := help
 
@@ -94,6 +94,9 @@ test-file: ## Run pytest against a specific file or path: make test-file f=<path
 
 test-file-parallel: ## Run pytest against a specific file or path in parallel: make test-file-parallel f=<path> [n=4] [args=<extra-pytest-args>]
 	$(EXEC_WEB) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
+
+test-file-parallel-built: start-built ## Run pytest against a specific file or path in parallel against built assets: make test-file-parallel-built f=<path> [n=4] [args=<extra-pytest-args>]
+	$(EXEC_WEB_BUILT) "$(PYTEST) $(f) -n $(or $(n),4) --dist=loadscope -v $(args)"
 
 vite-build: ## Build Vite to verify no import/syntax errors
 	$(EXEC_VITE) npx vite build
