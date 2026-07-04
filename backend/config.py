@@ -90,6 +90,7 @@ TEST_DB_URI = build_db_uri(
 TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_METRICS_REDIS_URI = environ.get(ENV.TEST_METRICS_REDIS_URI, default="memory://")
 TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
+TEST_PLAYWRIGHT_URI = environ.get(ENV.PLAYWRIGHT_WS_URL, default=None)
 
 # Dummy Google OAuth credentials shared by ConfigTestUI (below) and
 # tests/conftest.py, so `should_register_google_oauth` registers the fake
@@ -248,6 +249,8 @@ class ConfigTest(Config):
     )
     if isinstance(TEST_SELENIUM_URI, str):
         TEST_SELENIUM_URI = TEST_SELENIUM_URI
+    if isinstance(TEST_PLAYWRIGHT_URI, str):
+        TEST_PLAYWRIGHT_URI = TEST_PLAYWRIGHT_URI
 
     def __init__(self) -> None:
         super().__init__()

@@ -32,6 +32,7 @@ services:
       - BASE_EMAIL=u4i@urls4irl.app
       - DOCKER=true
       - SELENIUM_URL=http://selenium:4444/wd/hub
+      - PLAYWRIGHT_WS_URL=ws://playwright:3000/
       - VITE_DEV_SERVER=true
       - VITE_URL=http://localhost:5173
       - VITE_INTERNAL_HOST=vite
@@ -105,6 +106,26 @@ services:
       - SE_NODE_OVERRIDE_MAX_SESSIONS=12
     ports:
       - "4444:4444"
+    volumes:
+      - /dev/shm:/dev/shm
+
+  playwright:
+    image: mcr.microsoft.com/playwright:v1.60.0-noble
+    container_name: u4i-playwright
+    init: true
+    user: pwuser
+    working_dir: /home/pwuser
+    # The official image ships the browsers + node but NOT the playwright CLI on
+    # PATH; the documented browser-server invocation is npx with a version pinned
+    # to the image tag (and to the pip pin in requirements-test.txt).
+    command: npx -y playwright@1.60.0 run-server --port 3000 --host 0.0.0.0
+    depends_on:
+      web:
+        condition: service_healthy
+      vite:
+        condition: service_started
+    ports:
+      - "3000:3000"
     volumes:
       - /dev/shm:/dev/shm
 
