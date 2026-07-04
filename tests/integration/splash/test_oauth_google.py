@@ -77,6 +77,8 @@ _NEW_USER_NAME = "New OAuth User"
 _UNVERIFIED_SUBJECT = "sub_unverified"
 _UNVERIFIED_EMAIL = "unverifiedoauthuser@example.com"
 
+_MISSING_CLAIMS_USERINFO_TOKEN = {"userinfo": {"email_verified": True}}
+
 _METRICS_NEW_USER_SUBJECT = "sub_metrics_new"
 _METRICS_NEW_USER_EMAIL = "metricsnewuser@example.com"
 _METRICS_COLLISION_SUBJECT = "sub_metrics_collision"
@@ -555,6 +557,42 @@ def test_google_callback_missing_email_verified_renders_reject_without_resolving
         assert UserOAuthIdentity.query.count() == 0
 
 
+@mock.patch(_FIND_OR_CREATE_OAUTH_USER_TARGET)
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_google_callback_missing_claims_renders_generic_reject_without_resolving_user(
+    mock_authorize_access_token: mock.MagicMock,
+    mock_find_or_create_oauth_user: mock.MagicMock,
+    app: Flask,
+    load_login_page,
+):
+    """
+    GIVEN the mocked userinfo reports `email_verified: True` but omits both
+        the `sub` and `email` OIDC claims
+    WHEN the callback is hit
+    THEN the generic-failure reject page renders and `find_or_create_oauth_user`
+        is never called, and no new Users/UserOAuthIdentity rows are created
+    """
+    mock_authorize_access_token.return_value = _MISSING_CLAIMS_USERINFO_TOKEN
+    client, _ = load_login_page
+
+    with app.app_context():
+        assert Users.query.count() == 0
+        assert UserOAuthIdentity.query.count() == 0
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert _GENERIC_FAILURE_MESSAGE.encode() in response.data
+    mock_find_or_create_oauth_user.assert_not_called()
+    mock_authorize_access_token.assert_called_once()
+
+    with app.app_context():
+        assert Users.query.count() == 0
+        assert UserOAuthIdentity.query.count() == 0
+
+
 def test_google_callback_records_login_metrics_across_scenarios(
     metrics_enabled_app: Flask, provide_metrics_redis, load_login_page
 ):
@@ -738,7 +776,7 @@ def test_google_callback_missing_claims_records_login_failure_metric(
         `sub` and `email` OIDC claims
     THEN LOGIN_FAILURE records once with reason="oauth_generic_failure"
     """
-    mock_authorize_access_token.return_value = {"userinfo": {"email_verified": True}}
+    mock_authorize_access_token.return_value = _MISSING_CLAIMS_USERINFO_TOKEN
     client, _ = load_login_page
     assert count_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE) == 0
 
