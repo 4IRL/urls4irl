@@ -293,6 +293,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/oauth/google/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Redirect to Google's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback. */
+    get: operations["googleLogin"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/oauth/google/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET. */
+    get: operations["googleCallback"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/reset-password/{token}": {
     parameters: {
       query?: never;
@@ -1305,6 +1339,13 @@ export interface components {
      * @enum {integer}
      */
     ForgotPasswordErrorCodes: 1 | 3;
+    /** @description Documents a bare 302 redirect with no JSON body. */
+    EmptyRedirectSchema: Record<string, never>;
+    /**
+     * @description Documents an HTML page render (not a JSON body) returned for an
+     *     error/reject state.
+     */
+    HtmlErrorPageSchema: Record<string, never>;
     ResetPasswordRequest: {
       /** @description New password for the account */
       newPassword: string;
@@ -2718,6 +2759,71 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_ForgotPasswordErrorCodes"];
+        };
+      };
+    };
+  };
+  googleLogin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+    };
+  };
+  googleCallback: {
+    parameters: {
+      query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };

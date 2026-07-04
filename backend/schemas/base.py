@@ -22,3 +22,12 @@ class StatusMessageResponseSchema(BaseSchema):
         alias=STD_JSON.MESSAGE,
         description="Human-readable response message",
     )
+
+
+class EmptyRedirectSchema(BaseSchema):
+    """Documents a bare 302 redirect with no JSON body."""
+
+
+class HtmlErrorPageSchema(BaseSchema):
+    """Documents an HTML page render (not a JSON body) returned for an
+    error/reject state."""

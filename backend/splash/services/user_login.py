@@ -13,17 +13,18 @@ from backend.schemas.errors import (
     build_message_error_response,
 )
 from backend.schemas.users import LoginRedirectResponseSchema
-from backend.splash.constants import LoginErrorCodes
+from backend.splash.constants import (
+    LOGIN_FAILURE_REASON_BAD_PASSWORD,
+    LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED,
+    LOGIN_FAILURE_REASON_OAUTH_ONLY,
+    LOGIN_FAILURE_REASON_UNKNOWN_USER,
+    LoginErrorCodes,
+)
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
 _DUMMY_HASH = generate_password_hash("__dummy__")
-
-_LOGIN_FAILURE_REASON_UNKNOWN_USER = "unknown_user"
-_LOGIN_FAILURE_REASON_BAD_PASSWORD = "bad_password"
-_LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED = "email_unverified"
-_LOGIN_FAILURE_REASON_OAUTH_ONLY = "oauth_only"
 
 
 def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
@@ -33,7 +34,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         warning_log("User not found on login")
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_UNKNOWN_USER},
+            dimensions={"reason": LOGIN_FAILURE_REASON_UNKNOWN_USER},
         )
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
@@ -45,7 +46,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         warning_log("OAuth-only user attempted password login")
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_OAUTH_ONLY},
+            dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_ONLY},
         )
         # Return a response byte-identical to a genuine wrong-password attempt so
         # an attacker cannot fingerprint password-less (OAuth-only) accounts. The
@@ -65,7 +66,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         warning_log("User entered wrong password on login")
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_BAD_PASSWORD},
+            dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
         )
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
@@ -80,7 +81,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         warning_log(f"User={user.id} not email validated")
         record_event(
             EventName.LOGIN_FAILURE,
-            dimensions={"reason": _LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED},
+            dimensions={"reason": LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED},
         )
         return build_message_error_response(
             message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
@@ -94,7 +95,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
     next_page = _verify_and_provide_next_page(request.args.to_dict())
     redirect_url = next_page if next_page else url_for(ROUTES.UTUBS.HOME)
 
-    record_event(EventName.LOGIN_SUCCESS)
+    record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "password"})
 
     return APIResponse(
         status_code=200,

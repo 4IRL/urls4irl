@@ -1765,6 +1765,92 @@
         }
       }
     },
+    "/oauth/google/login": {
+      "get": {
+        "operationId": "googleLogin",
+        "tags": ["auth"],
+        "security": [],
+        "description": "Redirect to Google's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback.",
+        "responses": {
+          "302": {
+            "description": "Documents a bare 302 redirect with no JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/oauth/google/callback": {
+      "get": {
+        "operationId": "googleCallback",
+        "tags": ["auth"],
+        "security": [],
+        "description": "Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user \u2014 CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "error",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Documents an HTML page render (not a JSON body) returned for an\n    error/reject state.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "302": {
+            "description": "Documents a bare 302 redirect with no JSON body.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessEnvelope"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/reset-password/{token}": {
       "post": {
         "operationId": "resetPassword",
@@ -4428,6 +4514,16 @@
         "enum": [1, 3],
         "x-enum-varnames": ["INVALID_FORM_INPUT", "EMAIL_SEND_FAILURE"],
         "description": "Error codes for ForgotPasswordErrorCodes"
+      },
+      "EmptyRedirectSchema": {
+        "description": "Documents a bare 302 redirect with no JSON body.",
+        "properties": {},
+        "type": "object"
+      },
+      "HtmlErrorPageSchema": {
+        "description": "Documents an HTML page render (not a JSON body) returned for an\nerror/reject state.",
+        "properties": {},
+        "type": "object"
       },
       "ResetPasswordRequest": {
         "properties": {

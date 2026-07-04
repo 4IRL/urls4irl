@@ -20,6 +20,10 @@
 
     {% include 'components/splash/validate_email_expired.html' %}
 
+    {% elif oauth_email_collision or oauth_unverified_email or oauth_generic_failure or oauth_consent_declined %}
+
+    {% include 'components/splash/oauth_reject.html' %}
+
     {% elif is_resetting_password %}
 
     {% include 'components/splash/reset_password.html' %}

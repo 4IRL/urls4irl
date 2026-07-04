@@ -2,6 +2,7 @@ import os
 import json
 import secrets
 from typing import Mapping, NotRequired, TypedDict
+from urllib.parse import urljoin
 
 from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, abort, current_app, g, request, session, url_for
@@ -36,6 +37,7 @@ from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
 from backend.models.users import User_Role
+from backend.utils.oauth_config import should_register_google_oauth
 from backend.utils.strings.config_strs import CONFIG_ENVS
 
 
@@ -97,6 +99,15 @@ limiter = Limiter(
     application_limits=["20000/hour", "5000/15minutes"],
 )
 
+# The test-only blueprint `backend/testing/fake_oauth_provider.py` registers
+# at these exact paths, gated behind UI_TESTING, so Selenium can round-trip a
+# real OAuth exchange without reaching Google. Kept as named constants rather
+# than inline literals since they are a contract this module shares with that
+# blueprint.
+_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL = "/fake-oauth/authorize"
+_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL = "/fake-oauth/token"
+_FAKE_GOOGLE_OAUTH_USERINFO_URL = "/fake-oauth/userinfo"
+
 
 def create_app(
     config_class: type[Config] = Config, show_test_logs: bool = False
@@ -129,6 +140,49 @@ def create_app(
     metrics_writer.init_app(app)
     login_manager.init_app(app)
     oauth.init_app(app)
+
+    if should_register_google_oauth(
+        app.config.get("GOOGLE_OAUTH_CLIENT_ID"),
+        app.config.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+    ):
+        if app.config.get("UI_TESTING", False):
+            # Selenium test server only, against the test-only fake OAuth provider
+            # blueprint. Explicit endpoints bypass OIDC discovery, and the reduced
+            # scope (no `openid`) makes Authlib take the plain-OAuth2 path instead
+            # of id_token/JWT parsing, sidestepping JWT signing/JWKS verification
+            # entirely.
+            #
+            # `access_token_url` must be made absolute: Authlib's token-exchange
+            # call (`fetch_access_token` -> `client.fetch_token`) hands the URL
+            # straight to `requests`, which never resolves a relative path -
+            # unlike the generic resource-fetch path (`userinfo()`) that
+            # respects `api_base_url` via `urljoin`. `OAUTH_SELF_BASE_URL` is
+            # only set by `tests/functional/conftest.py::worker_config`, once
+            # the Selenium worker's serving port is known.
+            self_base_url = app.config.get("OAUTH_SELF_BASE_URL")
+            access_token_url = (
+                urljoin(self_base_url, _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL)
+                if self_base_url
+                else _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL
+            )
+            oauth.register(
+                name="google",
+                authorize_url=_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL,
+                access_token_url=access_token_url,
+                userinfo_endpoint=_FAKE_GOOGLE_OAUTH_USERINFO_URL,
+                api_base_url=self_base_url,
+                client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
+                client_secret=app.config["GOOGLE_OAUTH_CLIENT_SECRET"],
+                client_kwargs={"scope": "email profile"},
+            )
+        else:
+            oauth.register(
+                name="google",
+                server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+                client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
+                client_secret=app.config["GOOGLE_OAUTH_CLIENT_SECRET"],
+                client_kwargs={"scope": "openid email profile"},
+            )
 
     # Configure limiter with app-specific settings
     storage_options: Mapping = {"socket_connect_timeout": 30}
@@ -197,6 +251,11 @@ def create_app(
         from backend.debug.routes import debug as debug_routes
 
         app.register_blueprint(debug_routes)
+
+    if app.config.get("UI_TESTING", False):
+        from backend.testing.fake_oauth_provider import fake_oauth
+
+        app.register_blueprint(fake_oauth)
 
     # All blueprints are registered above, so the url_map is fully populated;
     # validate cap-override keys here (not in init_app, where url_map is empty).

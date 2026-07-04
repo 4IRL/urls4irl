@@ -180,6 +180,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
             "(email_validated guard passed)"
         ),
         category=EventCategory.DOMAIN,
+        dimensions={"method": ("password", "google")},
     ),
     EventName.LOGIN_FAILURE: EventRegistryEntry(
         description=("Login attempt rejected, tagged with closed-set failure reason"),
@@ -190,6 +191,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
                 "bad_password",
                 "email_unverified",
                 "oauth_only",
+                "oauth_email_collision",
+                "oauth_consent_declined",
+                "oauth_generic_failure",
+                "oauth_unverified_email",
             ),
         },
     ),

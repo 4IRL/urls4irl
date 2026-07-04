@@ -222,6 +222,69 @@ form {
     margin-top: 20px;
 }
 
+/* OAuth divider + button */
+
+.oauth-divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #6c757d;
+    font-size: 13px;
+    margin: 18px 0 14px 0;
+}
+
+.oauth-divider::before,
+.oauth-divider::after {
+    content: "";
+    flex: 1;
+    border-top: 1px solid #dee2e6;
+}
+
+.oauth-divider span {
+    padding: 0 12px;
+}
+
+.oauth-google-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 100%;
+    min-height: 2.75rem;          /* 44px touch target, matches .splash-button convention */
+    padding: var(--space-2) var(--space-6);
+    background: #ffffff;
+    border: 1px solid #dadce0;
+    border-radius: var(--radius-md);
+    font-size: 15px;
+    font-weight: 600;
+    color: #3c4043;
+    text-decoration: none;
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.oauth-google-button:hover {
+    background-color: #f7f8f8;
+    transform: translateY(-1px);
+}
+
+.oauth-google-button:focus-visible {
+    outline: 3px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.oauth-google-button svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .oauth-google-button { transition: none; }
+    .oauth-google-button:hover { transform: none; }
+}
+
 /* Validate Email */
 
 .validate-email-title {

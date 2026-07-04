@@ -91,6 +91,13 @@ TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_METRICS_REDIS_URI = environ.get(ENV.TEST_METRICS_REDIS_URI, default="memory://")
 TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
 
+# Dummy Google OAuth credentials shared by ConfigTestUI (below) and
+# tests/conftest.py, so `should_register_google_oauth` registers the fake
+# in-process provider (backend/testing/fake_oauth_provider.py) for tests.
+# Never valid against the real Google endpoints.
+TEST_GOOGLE_OAUTH_CLIENT_ID = "test-google-client-id"
+TEST_GOOGLE_OAUTH_CLIENT_SECRET = "test-google-client-secret"
+
 LOG_DIR = environ.get(ENV.LOG_DIR, default="logs")
 
 if IS_PRODUCTION:
@@ -168,6 +175,19 @@ class Config:
     GOOGLE_OAUTH_CLIENT_SECRET = GOOGLE_OAUTH_CLIENT_SECRET
     GITHUB_OAUTH_CLIENT_ID = GITHUB_OAUTH_CLIENT_ID
     GITHUB_OAUTH_CLIENT_SECRET = GITHUB_OAUTH_CLIENT_SECRET
+    # Set only by `tests/functional/conftest.py::worker_config`, before any
+    # fixture calls `create_app()` — Authlib's `OAuth` registry caches a
+    # "google" client the first time it's registered, and `build_app`,
+    # `provide_app`, and `parallelize_app` each independently call
+    # `create_app(worker_config)`, so this must be set on the shared config
+    # object before any of those fixtures run to avoid a race on which one
+    # "wins" the registration. Authlib's token-exchange call
+    # (`fetch_access_token` -> `client.fetch_token`) makes a raw `requests`
+    # call that never resolves a relative URL against `api_base_url` (unlike
+    # the generic resource-fetch path `userinfo()` does) — so the fake OAuth
+    # provider's endpoints must be made absolute against this base for the
+    # in-process browser<->server round trip to succeed.
+    OAUTH_SELF_BASE_URL: str | None = None
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:
@@ -238,6 +258,9 @@ class ConfigTest(Config):
 class ConfigTestUI(ConfigTest):
     UI_TESTING = True
     SESSION_COOKIE_SECURE = False
+    # See TEST_GOOGLE_OAUTH_CLIENT_ID/TEST_GOOGLE_OAUTH_CLIENT_SECRET above.
+    GOOGLE_OAUTH_CLIENT_ID = TEST_GOOGLE_OAUTH_CLIENT_ID
+    GOOGLE_OAUTH_CLIENT_SECRET = TEST_GOOGLE_OAUTH_CLIENT_SECRET
 
     def __init__(self) -> None:
         super().__init__()

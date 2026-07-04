@@ -1,6 +1,7 @@
 from enum import Enum
 from os import environ
 import time
+from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from selenium.common.exceptions import (
     ElementNotInteractableException,
@@ -592,6 +593,55 @@ def login_user_ui(
     wait_until_visible_css_selector(browser, SPL.LOGIN_INPUT_USERNAME)
 
     return input_login_fields(browser, username, password)
+
+
+def login_with_google_ui(
+    browser: WebDriver,
+    subject: str = UTS.OAUTH_RETURNING_USER_SUBJECT,
+    email: str = UTS.OAUTH_RETURNING_USER_EMAIL,
+    name: str = UTS.OAUTH_RETURNING_USER_NAME,
+    from_register: bool = False,
+):
+    """
+    Streamlines actions needed to sign in (or register) via the fake Google
+    OAuth provider (backend/testing/fake_oauth_provider.py).
+
+    Args:
+        WebDriver open to U4I Splash Page
+        (Optional) Subject claim the fake provider should return, defaults to a returning-user subject
+        (Optional) Email claim the fake provider should return, defaults to a returning-user email
+        (Optional) Display name claim the fake provider should return, defaults to a returning-user name
+        (Optional) Whether to click Google's button from the Register modal instead of Login, defaults to False
+
+    Returns:
+        N/A
+    """
+    splash_url = browser.current_url
+    split_splash_url = urlsplit(splash_url)
+    set_identity_url = urlunsplit(
+        (
+            split_splash_url.scheme,
+            split_splash_url.netloc,
+            "/fake-oauth/set-identity",
+            urlencode({"subject": subject, "email": email, "name": name}),
+            "",
+        )
+    )
+
+    # Seeding the identity is its own navigation (the fake provider has no
+    # session-shared way to receive it otherwise), so return to the splash
+    # page afterward before opening the login/register modal.
+    browser.get(set_identity_url)
+    browser.get(splash_url)
+
+    if from_register:
+        wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+        wait_for_modal_ready(browser, SPL.REGISTER_MODAL)
+        wait_then_click_element(browser, SPL.REGISTER_BUTTON_GOOGLE_OAUTH)
+    else:
+        wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+        wait_for_modal_ready(browser, SPL.LOGIN_MODAL)
+        wait_then_click_element(browser, SPL.LOGIN_BUTTON_GOOGLE_OAUTH)
 
 
 def input_login_fields(

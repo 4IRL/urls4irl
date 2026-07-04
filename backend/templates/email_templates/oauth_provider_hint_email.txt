@@ -1,0 +1,10 @@
+You requested a password reset, but this account doesn't have a password. You sign in to URLS4IRL with {{ provider_names|join(' and ') }}.
+
+Head to the login page and use that sign-in option instead:
+
+{{ url_for('splash.splash_page', _external=True) }}
+
+If you didn't request this, you can safely delete this email.
+
+Cheers,
+Team at URLS4IRL

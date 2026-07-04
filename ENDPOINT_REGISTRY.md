@@ -3,7 +3,7 @@
 Cross-layer navigation map for every route in the application. Each entry traces:
 **Route → Handler → Service → Template → JS Module → Tests**
 
-Last updated: 2026-07-01
+Last updated: 2026-07-03
 
 ---
 
@@ -125,33 +125,33 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 
 ---
 
-## OAuth Blueprint (planned — routes not yet implemented)
+## OAuth Blueprint
 
-Base path: `/oauth`. These rows are stubs for routes landing in later phases of the OAuth initiative (see `plans/oauth/oauth-integration-master.md`). The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) already exist as of Phase 1, but carry no route.
+Base path: `/oauth`. Google sign-in is implemented (below); GitHub remains a stub for a later phase of the OAuth initiative (see `plans/oauth/oauth-integration-master.md`). The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) are shared across providers. Google client registration itself (`oauth.google` Authlib registration, gated on configured credentials) is covered by `tests/integration/splash/test_oauth_client_init.py` (marker: `splash`), independent of the per-route tests listed below.
 
-**CSRF pattern (planned):** the forthcoming OAuth callback routes will stack the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route` above `@api_route`, as at `backend/metrics/routes.py:ingest`). No new decorator or helper is introduced — the established exemption pattern is reused. OAuth state/CSRF is handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
+Both Google routes are non-AJAX, browser-navigation routes (like `/confirm-email` and `/validate/expired` above) rather than AJAX JSON-envelope routes — there is no dedicated JS module or CSRF-meta-tag row for either.
+
+**CSRF pattern:** `GET /oauth/google/callback` stacks the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route`, above `@no_authenticated_users_allowed`/`@api_route`, as at `backend/metrics/routes.py:ingest`). The exemption is defensive/self-documenting rather than load-bearing: Flask-WTF's `CSRFProtect` only checks unsafe methods (POST/PUT/PATCH/DELETE) and this route is GET-only. OAuth state/CSRF is instead handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
 
 ### GET /oauth/google/login
 
-| Layer          | Location                          |
-| -------------- | --------------------------------- |
-| **Handler**    | Phase 2 — not yet implemented.    |
-| **Decorators** | Phase 2 — not yet implemented.    |
-| **Service**    | Phase 2 — not yet implemented.    |
-| **Template**   | Phase 2 — not yet implemented.    |
-| **JS Module**  | Phase 2 — not yet implemented.    |
-| **Tests**      | Phase 2 — not yet implemented.    |
+| Layer          | Location                                                                                                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:google_login`                                                                                                                                                                                                                                                           |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(ajax_required=False, tags=[OPEN_API.AUTH], description="Redirect to Google's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback.", status_codes={302: EmptyRedirectSchema})` |
+| **Service**    | `backend/splash/services/oauth/google_service.py:initiate_google_login`                                                                                                                                                                                                                           |
+| **Template**   | None (redirect only)                                                                                                                                                                                                                                                                              |
+| **Tests**      | `tests/integration/splash/test_oauth_google.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_google_ui.py` (marker: `splash_ui`)                                                                                                                                                    |
 
 ### GET /oauth/google/callback
 
-| Layer          | Location                          |
-| -------------- | --------------------------------- |
-| **Handler**    | Phase 2 — not yet implemented.    |
-| **Decorators** | Phase 2 — not yet implemented.    |
-| **Service**    | Phase 2 — not yet implemented.    |
-| **Template**   | Phase 2 — not yet implemented.    |
-| **JS Module**  | Phase 2 — not yet implemented.    |
-| **Tests**      | Phase 2 — not yet implemented.    |
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/splash/routes.py:google_callback`                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Decorators** | `@csrf.exempt`, `@no_authenticated_users_allowed`, `@api_route(query_schema=GoogleOAuthCallbackQuerySchema, ajax_required=False, tags=[OPEN_API.AUTH], description="Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.", status_codes={200: HtmlErrorPageSchema, 302: EmptyRedirectSchema, 400: ErrorResponse})` |
+| **Service**    | `backend/splash/services/oauth/google_service.py:handle_google_callback` (validates `code`/`state`/`error` via `GoogleOAuthCallbackQuerySchema`/`parse_query_args`)                                                                                                                                                                                                                                                                                                                                                      |
+| **Template**   | `pages/splash.html` (via the shared `components/splash/oauth_reject.html` partial on any reject branch — email collision, unverified email, consent decline, or generic token-exchange failure)                                                                                                                                                                                                                                                                                                                          |
+| **Tests**      | `tests/integration/splash/test_oauth_google.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_google_ui.py` (marker: `splash_ui`)                                                                                                                                                                                                                                                                                                                                                                           |
 
 ### GET /oauth/github/login
 
