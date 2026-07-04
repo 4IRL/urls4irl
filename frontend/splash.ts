@@ -44,6 +44,13 @@ function initEmailValidationIfPresent(): void {
   }
 }
 
+function initOAuthRejectIfPresent(): void {
+  const modalForm = $("#ModalForm[data-modal-context='oauth-reject']");
+  if (modalForm.length) {
+    bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
+  }
+}
+
 // Initialize on document ready
 $(document).ready(function () {
   initMetricsClient();
@@ -55,4 +62,7 @@ $(document).ready(function () {
 
   // Check if email validation modal is present and initialize it
   initEmailValidationIfPresent();
+
+  // Check if OAuth reject modal is present and initialize it
+  initOAuthRejectIfPresent();
 });

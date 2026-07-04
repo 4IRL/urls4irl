@@ -1,0 +1,25 @@
+<div class="modal fade show" id="SplashModal" tabindex="-1" aria-labelledby="FormModal" style="display: block;"
+    aria-modal="true" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <form id="ModalForm" method="POST" class="login-register-form" data-modal-context="oauth-reject" action="" novalidate>
+                <div class="modal-header">
+                    <h5 class="modal-title">Sign-In Error</h5>
+                    <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="SplashModalAlertBanner" class="alert alert-danger alert-banner-splash-modal-display"
+                        role="alert">
+                        {{ oauth_reject_message }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button"
+                        class="btn btn-warning close-modal login-register-form-group center-block col-4"
+                        data-bs-dismiss="modal">Close</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

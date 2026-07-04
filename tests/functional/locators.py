@@ -343,6 +343,7 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_INPUT_PASSWORD = f"{LOGIN_MODAL} #password"
     LOGIN_BUTTON_SUBMIT = f"{LOGIN_MODAL} #submit"
     LOGIN_INVALID_FEEDBACK = f"{LOGIN_MODAL} .invalid-feedback"
+    LOGIN_BUTTON_GOOGLE_OAUTH = f"{LOGIN_MODAL} #GoogleOAuthLogin"
 
     # Register modal scoped selectors
     REGISTER_INPUT_USERNAME = f"{REGISTER_MODAL} #username"
@@ -353,6 +354,7 @@ class SplashPageLocators(GenericPageLocator):
     REGISTER_BUTTON_SUBMIT = f"{REGISTER_MODAL} #submit"
     REGISTER_INVALID_FEEDBACK = f"{REGISTER_MODAL} .invalid-feedback"
     REGISTER_BTN_CLOSE = f"{REGISTER_MODAL} .btn-close"
+    REGISTER_BUTTON_GOOGLE_OAUTH = f"{REGISTER_MODAL} #GoogleOAuthRegister"
 
     # Forgot password modal scoped selectors
     FORGOT_PASSWORD_INPUT_EMAIL = f"{FORGOT_PASSWORD_MODAL} #email"
