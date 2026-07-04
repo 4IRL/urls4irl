@@ -1,9 +1,6 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import WebDriverWait
+from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.models.users import Users
@@ -11,7 +8,9 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import TAG_CONSTANTS
-from tests.functional.assert_utils import (
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
     assert_active_utub,
     assert_login_with_username,
     assert_not_visible_css_selector,
@@ -19,21 +18,22 @@ from tests.functional.assert_utils import (
     assert_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.db_utils import get_utub_this_user_created
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_and_select_utub_by_utubid
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_login_utils import login_user_and_select_utub_by_utubid
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     force_next_delete_ajax_failure_no_navigate,
     invalidate_csrf_token_on_page,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_shown
-from tests.functional.tags_ui.selenium_utils import (
+from tests.functional.tags_ui.playwright_assert_utils import (
+    assert_delete_utub_tag_modal_shown,
+)
+from tests.functional.tags_ui.playwright_utils import (
     apply_tag_filter_by_id_and_get_shown_urls,
     click_open_update_utub_tags_btn,
     delete_utub_tag_elem,
@@ -46,258 +46,232 @@ pytestmark = pytest.mark.tags_ui
 
 
 def test_open_delete_utub_tag_modal_click(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they click on the delete UTub Tag button
-    THEN ensure the modal to confirm deleting a tag is shown
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    click_open_update_utub_tags_btn(browser)
-    delete_utub_tag_css_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}'] > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
+    click_open_update_utub_tags_btn(page=page)
+    delete_utub_tag_css_selector = (
+        f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
+        f" > {HPL.UTUB_TAG_MENU_WRAP}"
+        f" > {HPL.BUTTON_UTUB_TAG_DELETE}"
+    )
 
-    assert_visible_css_selector(browser, delete_utub_tag_css_selector)
-    wait_then_click_element(browser, delete_utub_tag_css_selector, time=3)
+    assert_visible_css_selector(page=page, css_selector=delete_utub_tag_css_selector)
+    wait_then_click_element(page=page, css_selector=delete_utub_tag_css_selector)
 
-    assert_delete_utub_tag_modal_shown(browser, int(tag_id), app)
+    assert_delete_utub_tag_modal_shown(page=page, tag_id=int(tag_id), app=app)
 
 
 def test_open_delete_utub_tag_modal_key(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they focus on the delete UTub Tag button and press the enter key
-    THEN ensure the modal to confirm deleting a tag is shown
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    click_open_update_utub_tags_btn(browser)
-    delete_utub_tag_css_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}'] > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
+    click_open_update_utub_tags_btn(page=page)
+    delete_utub_tag_css_selector = (
+        f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
+        f" > {HPL.UTUB_TAG_MENU_WRAP}"
+        f" > {HPL.BUTTON_UTUB_TAG_DELETE}"
+    )
 
-    assert_visible_css_selector(browser, delete_utub_tag_css_selector)
+    assert_visible_css_selector(page=page, css_selector=delete_utub_tag_css_selector)
     delete_tag_btn = wait_then_get_element(
-        browser, delete_utub_tag_css_selector, time=3
+        page=page, css_selector=delete_utub_tag_css_selector
     )
     assert delete_tag_btn
 
-    delete_tag_btn.send_keys(Keys.ENTER)
-    assert_delete_utub_tag_modal_shown(browser, int(tag_id), app)
+    delete_tag_btn.press("Enter")
+    assert_delete_utub_tag_modal_shown(page=page, tag_id=int(tag_id), app=app)
 
 
 def test_dismiss_delete_utub_tag_modal_btn_click(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they open the confirm delete UTub Tag modal and then click on the cancel button
-    THEN ensure the modal is closed
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
 
-    confirm_utub_tag_del_modal = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not confirm_utub_tag_del_modal.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_dismiss_delete_utub_tag_modal_btn_key(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they open the confirm delete UTub Tag modal and then focus on the cancel button
-    and press the enter key
-    THEN ensure the modal is closed
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
 
-    close_btn = wait_then_get_element(browser, HPL.BUTTON_MODAL_DISMISS)
+    # Wait for Bootstrap's show transition to complete before pressing Enter.
+    # press() does not auto-wait for parent element stability (unlike click()), so
+    # if the modal is mid-fade-in when Enter fires, Bootstrap's modal.hide() call
+    # is a no-op (_isTransitioning guard).
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+
+    close_btn = wait_then_get_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
     assert close_btn
 
-    close_btn.send_keys(Keys.ENTER)
+    close_btn.press("Enter")
 
-    confirm_utub_tag_del_modal = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not confirm_utub_tag_del_modal.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_dismiss_delete_utub_tag_modal_x(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they open the confirm delete UTub Tag modal and then click on the X button
-    THEN ensure the modal is closed
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
 
-    wait_then_click_element(browser, HPL.BUTTON_X_CLOSE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_X_CLOSE)
 
-    confirm_utub_tag_del_modal = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not confirm_utub_tag_del_modal.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_dismiss_delete_utub_tag_modal_click_outside_modal(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they open the confirm delete UTub Tag modal and then click outside the modal
-    THEN ensure the modal is closed
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
-    dismiss_modal_with_click_out(browser)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
+    # Wait for Bootstrap's show transition to complete before clicking outside.
+    # Clicking the backdrop while _isTransitioning is true is a no-op, so the
+    # modal never becomes hidden.
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    dismiss_modal_with_click_out(page=page, modal_selector=HPL.HOME_MODAL)
 
-    confirm_utub_tag_del_modal = wait_until_hidden(browser, HPL.HOME_MODAL)
-
-    # Assert warning modal appears with appropriate text
-    assert not confirm_utub_tag_del_modal.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
 
 def test_delete_utub_tag_removes_utub_tag_elem(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they delete a UTub tag
-    THEN ensure the UTub Tag element is removed from the Tags deck
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    delete_utub_tag_elem(browser, tag_id, app)
+    delete_utub_tag_elem(page=page, tag_id=tag_id, app=app)
 
-    # Assert utub tag no longer exists
-    assert tag_id not in get_all_utub_tags_ids_in_utub(browser)
+    assert tag_id not in get_all_utub_tags_ids_in_utub(page=page)
 
 
 def test_delete_utub_tag_removes_url_tag_elems(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they delete a UTub tag
-    THEN ensure associated URL Tag elements are removed
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
     url_tag_badge_selector = f"{HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
-    assert browser.find_elements(By.CSS_SELECTOR, url_tag_badge_selector)
+    assert page.locator(url_tag_badge_selector).count() > 0
 
-    delete_utub_tag_elem(browser, tag_id, app)
+    delete_utub_tag_elem(page=page, tag_id=tag_id, app=app)
 
-    assert not browser.find_elements(By.CSS_SELECTOR, url_tag_badge_selector)
+    assert page.locator(url_tag_badge_selector).count() == 0
 
 
 def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they delete a UTub tag that is currently selected and filtering
-    THEN ensure filtering is reset and the tag deck text is updated
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    # Add two tags to the UTub, and then add each to a single different URL
     with app.app_context():
         utub_urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_user_created.id
@@ -311,86 +285,79 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
             db.session.commit()
 
             new_utub_url_tag = Utub_Url_Tags(
-                utub_id=utub_user_created.id, utub_tag_id=new_tag.id, utub_url_id=url.id
+                utub_id=utub_user_created.id,
+                utub_tag_id=new_tag.id,
+                utub_url_id=url.id,
             )
             db.session.add(new_utub_url_tag)
             db.session.commit()
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
     displayed_urls_with_tag = apply_tag_filter_by_id_and_get_shown_urls(
-        browser, int(tag_id)
+        page=page, utub_tag_id=int(tag_id)
     )
 
-    tag_deck_count = wait_then_get_element(browser, HPL.TAG_DECK_COUNT, time=3)
+    tag_deck_count = wait_then_get_element(page=page, css_selector=HPL.TAG_DECK_COUNT)
     assert tag_deck_count
 
-    tag_deck_count_txt = tag_deck_count.text
+    tag_deck_count_txt = tag_deck_count.inner_text()
     assert f"(1/{TAG_CONSTANTS.MAX_URL_TAGS})" in tag_deck_count_txt
 
-    delete_utub_tag_elem(browser, tag_id, app)
+    delete_utub_tag_elem(page=page, tag_id=tag_id, app=app)
 
-    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-    visible_urls = [url_row for url_row in url_row_elements if url_row.is_displayed()]
+    url_row_elements = page.locator(HPL.ROWS_URLS).all()
+    visible_urls = [url_row for url_row in url_row_elements if url_row.is_visible()]
 
     assert len(visible_urls) > len(displayed_urls_with_tag)
 
-    tag_deck_count = wait_then_get_element(browser, HPL.TAG_DECK_COUNT, time=3)
+    tag_deck_count = wait_then_get_element(page=page, css_selector=HPL.TAG_DECK_COUNT)
     assert tag_deck_count
 
-    tag_deck_count_txt = tag_deck_count.text
+    tag_deck_count_txt = tag_deck_count.inner_text()
     assert f"(0/{TAG_CONSTANTS.MAX_URL_TAGS})" in tag_deck_count_txt
 
 
-def test_delete_utub_tag_rate_limits(
-    browser: WebDriver, create_test_tags, provide_app: Flask
-):
-    """
-    GIVEN a user in a UTub with Tags and is rate limited
-    WHEN they delete a UTub tag
-    THEN ensure 429 error page is shown
-    """
+def test_delete_utub_tag_rate_limits(page: Page, create_test_tags, provide_app: Flask):
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
     url_tag_badge_selector = f"{HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
-    assert browser.find_elements(By.CSS_SELECTOR, url_tag_badge_selector)
+    assert page.locator(url_tag_badge_selector).count() > 0
 
-    add_forced_rate_limit_header(browser)
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    add_forced_rate_limit_header(page=page)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
 
 def test_delete_last_utub_tag_closes_utub_tag_menu(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they delete the last UTub tag in the deck
-    THEN ensure the UTub Tag menu is closed
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    # Add two tags to the UTub, and then add each to a single different URL
     with app.app_context():
         new_tag = Utub_Tags(
             utub_id=utub_user_created.id, tag_string="tag_1", created_by=user_id
@@ -398,134 +365,106 @@ def test_delete_last_utub_tag_closes_utub_tag_menu(
         db.session.add(new_tag)
         db.session.commit()
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    delete_utub_tag_elem(browser, tag_id, app)
+    delete_utub_tag_elem(page=page, tag_id=tag_id, app=app)
 
     assert_visible_css_selector(
-        browser, css_selector=HPL.WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS
+        page=page, css_selector=HPL.WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS
     )
-    assert_not_visible_css_selector(browser, css_selector=HPL.UTUB_TAG_MENU_WRAP)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.UTUB_TAG_MENU_WRAP)
     assert_not_visible_css_selector(
-        browser, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
+        page=page, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
     )
-    assert_not_visible_css_selector(browser, css_selector=HPL.BUTTON_UTUB_TAG_DELETE)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.BUTTON_UTUB_TAG_DELETE)
 
 
 def test_delete_utub_tag_invalid_csrf_token(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    GIVEN a user in a UTub with Tags
-    WHEN they delete a UTub tag in the deck with an invalid CSRF token
-    THEN ensure U4I responds with a proper error message
-    """
-
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    # Add two tags to the UTub, and then add each to a single different URL
     with app.app_context():
         user: Users = Users.query.get(1)
         username = user.username
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    invalidate_csrf_token_on_page(browser)
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    invalidate_csrf_token_on_page(page=page)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
-    # Page reloads after user clicks button in CSRF 403 error page
-    assert_login_with_username(browser, username)
+    assert_login_with_username(page=page, username=username)
 
-    # Reload will bring user back to the UTub they were in before
-    assert_active_utub(browser, utub_user_created.name)
+    assert_active_utub(page=page, utub_name=utub_user_created.name)
 
-    delete_utub_submit_btn_modal = wait_until_hidden(
-        browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
-    )
-    assert not delete_utub_submit_btn_modal.is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
 
 def test_delete_utub_tag_submit_button_reenables_on_server_error(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests that the submit button re-enables after a server error so the user can retry.
-
-    GIVEN a user in a UTub with Tags and the delete UTub Tag confirmation modal is open
-    WHEN the DELETE request fails with a 500 server error
-    THEN ensure the #modalSubmit button is re-enabled (not disabled)
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+    tag_id = get_first_visible_tag_in_utub(page=page).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+    open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
 
-    # Force the next DELETE ajax call to fail (with early return to prevent navigation)
-    force_next_delete_ajax_failure_no_navigate(browser)
+    force_next_delete_ajax_failure_no_navigate(page=page)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
-    # Poll until the async failure handler re-enables the submit button
-    WebDriverWait(browser, 5).until(
-        lambda driver: not driver.find_element(
-            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
-        ).get_property("disabled")
-    )
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT).first).to_be_enabled()
 
 
 def test_delete_utub_tag_submit_button_enabled_on_second_modal_open(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests that the submit button is enabled when opening the delete modal for a
-    second UTub tag after successfully deleting the first.
-
-    GIVEN a user in a UTub with at least 2 tags
-    WHEN they successfully delete tag 1 and then open the delete modal for tag 2
-    THEN ensure the #modalSubmit button is NOT disabled
-    """
     app = provide_app
 
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
 
-    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+    login_user_and_select_utub_by_utubid(
+        app=app, page=page, user_id=user_id, utub_id=utub_user_created.id
+    )
 
-    # Get the first visible tag
-    first_tag_elem = get_first_visible_tag_in_utub(browser)
+    first_tag_elem = get_first_visible_tag_in_utub(page=page)
     first_tag_id = first_tag_elem.get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
     assert first_tag_id
 
-    # Delete the first tag (leaves UI in tag update mode)
-    delete_utub_tag_elem(browser, first_tag_id, app)
+    delete_utub_tag_elem(page=page, tag_id=first_tag_id, app=app)
 
-    # Still in update mode — get the next visible tag and click its delete button directly
-    second_tag_elem = get_first_visible_tag_in_utub(browser)
+    second_tag_elem = get_first_visible_tag_in_utub(page=page)
     second_tag_id = second_tag_elem.get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
     assert second_tag_id
 
@@ -533,12 +472,7 @@ def test_delete_utub_tag_submit_button_enabled_on_second_modal_open(
         f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{second_tag_id}']"
         f" > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
     )
-    wait_then_click_element(browser, second_tag_delete_selector, time=3)
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    wait_then_click_element(page=page, css_selector=second_tag_delete_selector)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
 
-    # Assert the submit button is NOT disabled when the modal opens for the second tag
-    WebDriverWait(browser, 5).until(
-        lambda driver: not driver.find_element(
-            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
-        ).get_property("disabled")
-    )
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT).first).to_be_enabled()

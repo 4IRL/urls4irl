@@ -1,28 +1,23 @@
 from flask import Flask
 import pytest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from backend.models.users import Users
-from tests.functional.assert_utils import (
+from tests.functional.db_utils import (
+    get_tag_on_url_in_utub,
+    get_url_in_utub,
+    get_utub_this_user_created,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.db_utils import (
-    get_utub_this_user_created,
-    get_url_in_utub,
-    get_tag_on_url_in_utub,
+from tests.functional.playwright_login_utils import (
+    login_user_select_utub_by_id_and_url_by_id,
 )
-from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
-from tests.functional.tags_ui.selenium_utils import (
-    get_tag_badge_selector_on_selected_url_by_tag_id,
-    get_delete_tag_button_on_hover,
-    get_visible_urls_and_urls_with_tag_text_by_tag_id,
-)
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     get_selected_url,
     invalidate_csrf_token_on_page,
@@ -31,21 +26,18 @@ from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_until_css_property,
 )
-from locators import HomePageLocators as HPL
+from tests.functional.tags_ui.playwright_utils import (
+    get_delete_tag_button_on_hover,
+    get_tag_badge_selector_on_selected_url_by_tag_id,
+    get_visible_urls_and_urls_with_tag_text_by_tag_id,
+)
 
 pytestmark = pytest.mark.tags_ui
 
 
 def test_get_delete_tag_button_on_hover(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests a user's ability to open the tag delete button when hovering on a tag in a URL
-
-    GIVEN a user has access to UTubs, URLs, and tags
-    WHEN user hovers over tag badge
-    THEN ensure the deleteTag button is displayed
-    """
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -53,25 +45,26 @@ def test_get_delete_tag_button_on_hover(
     url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector
+    )
 
-    assert delete_tag_button.is_displayed()
+    assert delete_tag_button.is_visible()
 
 
 def test_hide_delete_tag_button_after_hover(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests a user's ability to hide the tag delete button when moving cursor away from a tag in a URL
-
-    GIVEN a user has access to UTubs, URLs, and tags
-    WHEN user hovers over tag badge and then moves cursor to another element
-    THEN ensure the deleteTag button is hidden
-    """
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -79,39 +72,41 @@ def test_hide_delete_tag_button_after_hover(
     url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector
+    )
 
-    assert delete_tag_button.is_displayed()
+    assert delete_tag_button.is_visible()
 
     url_title_selector = f"{HPL.ROW_SELECTED_URL} {HPL.URL_TITLE_READ}"
-    url_title = browser.find_element(By.CSS_SELECTOR, url_title_selector)
-    actions = ActionChains(browser)
-    actions.move_to_element(url_title).pause(3).perform()
+    page.locator(url_title_selector).first.hover()
 
     delete_tag_btn_selector = f"{tag_badge_selector} > {HPL.BUTTON_TAG_DELETE}"
-    wait_until_css_property(browser, delete_tag_btn_selector, "opacity", "0")
+    wait_until_css_property(
+        page=page,
+        css_selector=delete_tag_btn_selector,
+        css_property="opacity",
+        expected_value="0",
+    )
     assert (
-        browser.execute_script(
-            "return window.getComputedStyle(arguments[0]).getPropertyValue('opacity');",
-            browser.find_element(By.CSS_SELECTOR, delete_tag_btn_selector),
+        page.locator(delete_tag_btn_selector).first.evaluate(
+            "element => window.getComputedStyle(element).getPropertyValue('opacity')"
         )
         == "0"
     )
 
 
-def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
-    """
-    Tests a user's ability to delete tags from a URL
-
-    GIVEN a user has access to UTubs with URLs and tags applied
-    WHEN user clicks the deleteTag button
-    THEN ensure the tag is removed from the URL
-    """
-
+def test_delete_tag(page: Page, create_test_tags, provide_app: Flask):
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -122,45 +117,39 @@ def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     tag_id = url_tag.utub_tag_id
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_id, url_id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_id,
+        utub_url_id=url_id,
     )
 
     init_vis, init_total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
-        browser, tag_id
+        page=page, tag_id=tag_id
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector
+    )
 
-    tag_badge = browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
+    tag_badge_locator = page.locator(tag_badge_selector)
     delete_tag_button.click()
 
-    # Wait for DELETE request
-    wait_for_element_to_be_removed(browser, tag_badge, timeout=3)
+    wait_for_element_to_be_removed(page=page, locator=tag_badge_locator)
 
-    # Assert tag no longer exists in URL
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
+    assert page.locator(tag_badge_selector).count() == 0
 
-    # Assert URL count in Tag Deck is decremented
     final_vis, final_total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
-        browser, tag_id
+        page=page, tag_id=tag_id
     )
     assert final_vis == init_vis - 1
     assert final_total == init_total - 1
 
 
-def test_delete_tag_rate_limits(
-    browser: WebDriver, create_test_tags, provide_app: Flask
-):
-    """
-    Tests a user's ability to delete tags from a URL when they are rate limited
-
-    GIVEN a user has access to UTubs with URLs and tags applied and is rate limited
-    WHEN user clicks the deleteTag button
-    THEN ensure the 429 error page is shown
-    """
-
+def test_delete_tag_rate_limits(page: Page, create_test_tags, provide_app: Flask):
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -169,28 +158,29 @@ def test_delete_tag_rate_limits(
     url_id = url_in_utub.id
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_id, url_id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_id,
+        utub_url_id=url_id,
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector
+    )
 
-    add_forced_rate_limit_header(browser)
+    add_forced_rate_limit_header(page=page)
     delete_tag_button.click()
 
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
 
 def test_no_get_delete_tag_button_on_hover_update_url_title(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests the limitation on users, preventing deletion of tags while updating URL titles
-
-    GIVEN a user has selected a URL they added to a UTub
-    WHEN user clicks the editURLTitle button, and subsequently hovers over a tag
-    THEN ensure the deleteTag button is not displayed
-    """
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -198,26 +188,27 @@ def test_no_get_delete_tag_button_on_hover_update_url_title(
     url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_update_url_title(browser, get_selected_url(browser))
+    open_update_url_title(page=page, selected_url_row=get_selected_url(page=page))
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
-    assert not delete_tag_button.is_displayed()
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector, assert_visible=False
+    )
+    assert not delete_tag_button.is_visible()
 
 
 def test_no_get_delete_tag_button_on_hover_update_url_string(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests the limitation on users, preventing deletion of tags while updating URL strings
-
-    GIVEN a user has selected a URL they added to a UTub
-    WHEN user clicks the editURLTitle button, and subsequently hovers over a tag
-    THEN ensure the deleteTag button is not displayed
-    """
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -225,27 +216,28 @@ def test_no_get_delete_tag_button_on_hover_update_url_string(
     url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
     edit_url_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
-    wait_then_click_element(browser, edit_url_selector, time=3)
+    wait_then_click_element(page=page, css_selector=edit_url_selector)
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
-    assert not delete_tag_button.is_displayed()
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector, assert_visible=False
+    )
+    assert not delete_tag_button.is_visible()
 
 
 def test_no_get_delete_tag_button_on_hover_add_tag(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
-    """
-    Tests the limitation on users, preventing deletion of tags while adding tags
-
-    GIVEN a user has selected a URL they added to a UTub
-    WHEN user clicks the addTag button, and subsequently hovers over a tag
-    THEN ensure the deleteTag button is not displayed
-    """
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -253,28 +245,26 @@ def test_no_get_delete_tag_button_on_hover_add_tag(
     url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
     add_tag_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}"
-    wait_then_click_element(browser, add_tag_selector, time=3)
+    wait_then_click_element(page=page, css_selector=add_tag_selector)
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
-    assert not delete_tag_button.is_displayed()
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector, assert_visible=False
+    )
+    assert not delete_tag_button.is_visible()
 
 
-def test_delete_tag_invalid_csrf(
-    browser: WebDriver, create_test_tags, provide_app: Flask
-):
-    """
-    Tests a user's ability to delete tags from a URL with an invalid csrf token
-
-    GIVEN a user has access to UTubs with URLs and tags applied
-    WHEN user clicks the deleteTag button with an invalid csrf token
-    THEN ensure U4I responds with a proper error message
-    """
-
+def test_delete_tag_invalid_csrf(page: Page, create_test_tags, provide_app: Flask):
     app = provide_app
     user_id_for_test = 1
     with app.app_context():
@@ -285,18 +275,24 @@ def test_delete_tag_invalid_csrf(
     url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
-    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
+        url_tag_id=url_tag.id
+    )
+    delete_tag_button = get_delete_tag_button_on_hover(
+        page=page, tag_badge_selector=tag_badge_selector
+    )
 
-    invalidate_csrf_token_on_page(browser)
+    invalidate_csrf_token_on_page(page=page)
     delete_tag_button.click()
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
-    assert_login_with_username(browser, user.username)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
+    assert_login_with_username(page=page, username=user.username)
 
-    # Assert tag not in DOM as return to page has all UTubs unselected
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
+    assert page.locator(tag_badge_selector).count() == 0

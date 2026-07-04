@@ -4,6 +4,7 @@ from backend.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.playwright_utils import (
     clear_then_send_keys,
+    wait_for_modal_ready,
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -102,7 +103,10 @@ def leave_utub_as_member(*, page: Page, utub_to_leave: Utubs) -> None:
         utub_to_leave: UTub model instance to leave
     """
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_LEAVE)
-    expect(page.locator(HPL.BODY_MODAL)).to_be_visible()
+    # Wait for Bootstrap's show transition to settle before clicking submit.
+    # Submitting while _isTransitioning is true causes Bootstrap to drop the
+    # subsequent modal("hide") call, so the modal never becomes hidden.
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_selector_to_be_removed(

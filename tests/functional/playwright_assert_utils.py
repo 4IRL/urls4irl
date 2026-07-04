@@ -39,6 +39,35 @@ def assert_panel_visibility_mobile(*, page: Page, visible_deck: Decks) -> None:
     assert_visible_css_selector(page=page, css_selector=visible_deck.value)
 
 
+def assert_tooltip_animates(
+    *,
+    page: Page,
+    parent_css_selector: str,
+    tooltip_parent_class: str,
+    tooltip_text: str,
+    outside_elem: str = HPL.U4I_LOGO,
+) -> None:
+    """Assert that a tooltip (by U4I convention `{parent-class}-tooltip`):
+    1) is hidden before hovering the parent element,
+    2) shows with the expected text while hovering it,
+    3) hides again after the mouse moves to an outside element."""
+    tooltip_selector = f"{tooltip_parent_class}{HPL.TOOLTIP_SUFFIX}"
+    assert_not_visible_css_selector(page=page, css_selector=tooltip_selector)
+
+    parent_element = page.locator(parent_css_selector).first
+    expect(parent_element).to_be_visible()
+    parent_element.hover()
+
+    tooltip = page.locator(tooltip_selector).first
+    expect(tooltip).to_be_visible()
+    expect(tooltip).to_have_text(tooltip_text)
+
+    outside_element = page.locator(outside_elem).first
+    expect(outside_element).to_be_visible()
+    outside_element.hover()
+    assert_not_visible_css_selector(page=page, css_selector=tooltip_selector)
+
+
 def assert_on_404_page(*, page: Page) -> None:
     error_header = page.locator("h2").first
     expect(error_header).to_be_visible()

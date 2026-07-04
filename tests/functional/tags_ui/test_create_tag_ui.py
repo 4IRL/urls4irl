@@ -1,46 +1,49 @@
+from __future__ import annotations
+
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
+from playwright.sync_api import Page, expect
 
 from backend.models.users import Users
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import CONSTANTS, STRINGS, TAG_CONSTANTS
-from tests.functional.assert_utils import (
-    assert_login_with_username,
-    assert_on_429_page,
-    assert_tooltip_animates,
-    assert_visited_403_on_invalid_csrf_and_reload,
-)
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     count_urls_with_tag_applied_by_tag_string,
     get_tag_in_utub_by_tag_string,
+    get_url_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
-    get_url_in_utub,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
-from tests.functional.tags_ui.selenium_utils import (
-    get_visible_urls_and_urls_with_tag_text_by_tag_id,
-    open_tag_combobox,
-    stage_new_tag,
-    stage_tag_suggestion,
-    submit_staged_tags,
-    type_in_tag_combobox,
+from tests.functional.playwright_assert_utils import (
+    assert_login_with_username,
+    assert_not_visible_css_selector,
+    assert_on_429_page,
+    assert_tooltip_animates,
+    assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_login_utils import (
+    login_user_select_utub_by_id_and_url_by_id,
+)
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
+)
+from tests.functional.tags_ui.playwright_utils import (
+    get_visible_urls_and_urls_with_tag_text_by_tag_id,
+    open_tag_combobox,
+    stage_new_tag,
+    stage_tag_suggestion,
+    submit_staged_tags,
+    type_in_tag_combobox,
 )
 
 pytestmark = pytest.mark.tags_ui
@@ -52,13 +55,13 @@ FRESH_TAG = "Fresh"
 DUPLICATE_TAG = "Another"
 
 
-def _badge_count_on_selected_url(browser: WebDriver) -> int:
+def _badge_count_on_selected_url(*, page: Page) -> int:
     badge_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}"
-    return len(browser.find_elements(By.CSS_SELECTOR, badge_selector))
+    return page.locator(badge_selector).count()
 
 
 def test_create_tag_btn_tooltip_animates(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests a member's ability to see the tooltip animate when hovering over the add URL tag button.
@@ -72,20 +75,22 @@ def test_create_tag_btn_tooltip_animates(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
     assert_tooltip_animates(
-        browser=browser,
+        page=page,
         parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}",
         tooltip_parent_class=HPL.BUTTON_TAG_CREATE,
         tooltip_text=STRINGS.ADD_URL_TAG_TOOLTIP,
     )
 
 
-def test_open_combobox_creator(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_open_combobox_creator(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests a UTub creator's ability to open the tag combobox on a given URL.
 
@@ -99,39 +104,39 @@ def test_open_combobox_creator(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
     combobox_input_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}"
 
-    combobox_input = wait_then_get_element(browser, combobox_input_selector, time=3)
-    assert combobox_input is not None
-    assert combobox_input.is_displayed()
-    assert browser.switch_to.active_element == browser.find_element(
-        By.CSS_SELECTOR, combobox_input_selector
+    combobox_input = wait_then_get_element(
+        page=page, css_selector=combobox_input_selector
     )
+    assert combobox_input is not None
+    assert combobox_input.is_visible()
+    wait_until_in_focus(page=page, css_selector=combobox_input_selector)
 
-    hidden_elements = (
+    for elem_selector in (
         HPL.BUTTON_URL_ACCESS,
         HPL.BUTTON_URL_STRING_UPDATE,
         HPL.BUTTON_URL_DELETE,
-    )
-    for elem_selector in hidden_elements:
-        hidden_btn = browser.find_element(
-            By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {elem_selector}"
+    ):
+        assert_not_visible_css_selector(
+            page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {elem_selector}"
         )
-        assert not hidden_btn.is_displayed()
 
-    add_tag_btn = browser.find_element(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}"
-    )
-    assert add_tag_btn.is_displayed()
-    classes = add_tag_btn.get_attribute("class")
-    assert classes and HPL.BUTTON_BIG_TAG_CANCEL_CREATE.replace(".", "") in classes
+    add_tag_btn = page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}").first
+    assert add_tag_btn.is_visible()
+    add_tag_btn_classes = add_tag_btn.get_attribute("class") or ""
+    assert HPL.BUTTON_BIG_TAG_CANCEL_CREATE.replace(".", "") in add_tag_btn_classes
 
 
-def test_open_combobox_member(browser: WebDriver, create_test_urls, provide_app: Flask):
+def test_open_combobox_member(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests a UTub member's ability to open the tag combobox on a given URL.
 
@@ -149,32 +154,29 @@ def test_open_combobox_member(browser: WebDriver, create_test_urls, provide_app:
         ).first()
 
     login_user_select_utub_by_id_and_url_by_id(
-        app,
-        browser,
-        USER_ID_FOR_TEST,
-        utub_user_did_not_create.id,
-        utub_url_user_did_not_add.id,
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_did_not_create.id,
+        utub_url_id=utub_url_user_did_not_add.id,
     )
 
-    open_tag_combobox(browser, utub_url_user_did_not_add.id)
+    open_tag_combobox(page=page, url_id=utub_url_user_did_not_add.id)
     combobox_input_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}"
 
-    combobox_input = wait_then_get_element(browser, combobox_input_selector, time=3)
+    combobox_input = wait_then_get_element(
+        page=page, css_selector=combobox_input_selector
+    )
     assert combobox_input is not None
-    assert combobox_input.is_displayed()
-    assert browser.switch_to.active_element == browser.find_element(
-        By.CSS_SELECTOR, combobox_input_selector
+    assert combobox_input.is_visible()
+    wait_until_in_focus(page=page, css_selector=combobox_input_selector)
+
+    assert_not_visible_css_selector(
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 
-    hidden_btn = browser.find_element(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
-    )
-    assert not hidden_btn.is_displayed()
 
-
-def test_cancel_combobox_btn_creator(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_cancel_combobox_btn_creator(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests a UTub owner's ability to close the tag combobox via the cancel button.
 
@@ -187,37 +189,28 @@ def test_cancel_combobox_btn_creator(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
 
-    wait_then_click_element(browser, HPL.BUTTON_TAGS_CANCEL_BATCH, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_TAGS_CANCEL_BATCH)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_TAG_COMBOBOX)
 
-    combobox_input = wait_until_hidden(browser, HPL.INPUT_TAG_COMBOBOX, timeout=3)
-    assert combobox_input is not None
-    assert not combobox_input.is_displayed()
+    for elem_selector in (HPL.BUTTON_URL_ACCESS, HPL.BUTTON_URL_DELETE):
+        restored_btn = page.locator(f"{HPL.ROW_SELECTED_URL} {elem_selector}").first
+        assert restored_btn.is_visible()
 
-    restored_elements = (
-        HPL.BUTTON_URL_ACCESS,
-        HPL.BUTTON_URL_DELETE,
-    )
-    for elem_selector in restored_elements:
-        restored_btn = browser.find_element(
-            By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {elem_selector}"
-        )
-        assert restored_btn.is_displayed()
-
-    add_tag_btn = browser.find_element(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}"
-    )
-    classes = add_tag_btn.get_attribute("class")
-    assert classes and HPL.BUTTON_BIG_TAG_CANCEL_CREATE.replace(".", "") not in classes
+    add_tag_btn = page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}").first
+    add_tag_btn_classes = add_tag_btn.get_attribute("class") or ""
+    assert HPL.BUTTON_BIG_TAG_CANCEL_CREATE.replace(".", "") not in add_tag_btn_classes
 
 
-def test_cancel_combobox_key_creator(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_cancel_combobox_key_creator(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests a UTub owner's ability to close the tag combobox via the Escape key.
 
@@ -230,23 +223,24 @@ def test_cancel_combobox_key_creator(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
 
     # The listbox is hidden on a freshly opened combobox, so a single Escape
     # cancels the whole combobox (the second-Escape branch).
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}").first.press(
+        "Escape"
+    )
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_TAG_COMBOBOX)
 
-    combobox_input = wait_until_hidden(browser, HPL.INPUT_TAG_COMBOBOX, timeout=3)
-    assert combobox_input is not None
-    assert not combobox_input.is_displayed()
 
-
-def test_create_multiple_tags_batch(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_create_multiple_tags_batch(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests applying multiple tags to a URL in one batch via the combobox.
 
@@ -276,37 +270,39 @@ def test_create_multiple_tags_batch(
     assert init_fresh_tag_count_in_utub == 0
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_id,
+        utub_url_id=url_in_utub.id,
     )
 
-    assert _badge_count_on_selected_url(browser) == init_tag_count_on_url
+    assert _badge_count_on_selected_url(page=page) == init_tag_count_on_url
 
-    open_tag_combobox(browser, url_in_utub.id)
-    stage_tag_suggestion(browser, EXISTING_TAG_ALPHA)
-    stage_tag_suggestion(browser, EXISTING_TAG_BETA)
-    stage_new_tag(browser, FRESH_TAG)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    stage_tag_suggestion(page=page, tag_text=EXISTING_TAG_ALPHA)
+    stage_tag_suggestion(page=page, tag_text=EXISTING_TAG_BETA)
+    stage_new_tag(page=page, text=FRESH_TAG)
 
-    staged_chips = browser.find_elements(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}"
-    )
+    staged_chips = page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}").all()
     assert len(staged_chips) == 3
 
-    submit_staged_tags(browser)
+    submit_staged_tags(page=page)
 
     submit_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAGS_SUBMIT_BATCH}"
-    wait_until_hidden(browser, submit_selector, timeout=3)
+    wait_until_hidden(page=page, css_selector=submit_selector)
 
     badge_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}"
-    badge_elems = wait_then_get_elements(browser, badge_selector, time=3)
+    badge_elems = wait_then_get_elements(page=page, css_selector=badge_selector)
     assert badge_elems
     assert len(badge_elems) == init_tag_count_on_url + 3
-    assert all([badge.is_displayed() for badge in badge_elems])
+    assert all(badge.is_visible() for badge in badge_elems)
 
     badge_text_elems_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGE_NAME_READ}"
-    badge_text_elems: list[WebElement] = wait_then_get_elements(
-        browser, badge_text_elems_selector, time=3
+    badge_text_elems = wait_then_get_elements(
+        page=page, css_selector=badge_text_elems_selector
     )
-    badge_texts = [elem.text for elem in badge_text_elems]
+    badge_texts = [elem.inner_text() for elem in badge_text_elems]
     for expected_tag in (EXISTING_TAG_ALPHA, EXISTING_TAG_BETA, FRESH_TAG):
         assert expected_tag in badge_texts
 
@@ -315,11 +311,11 @@ def test_create_multiple_tags_batch(
     fresh_tag_selector = (
         f'{HPL.LIST_TAGS} {HPL.TAG_FILTERS}[data-utub-tag-id="{fresh_tag.id}"]'
     )
-    fresh_tag_elem = wait_then_get_element(browser, fresh_tag_selector, time=3)
+    fresh_tag_elem = wait_then_get_element(page=page, css_selector=fresh_tag_selector)
     assert fresh_tag_elem is not None
 
     visible_urls, total_urls = get_visible_urls_and_urls_with_tag_text_by_tag_id(
-        browser, fresh_tag.id
+        page=page, tag_id=fresh_tag.id
     )
     assert visible_urls == 1
     assert total_urls == init_fresh_tag_count_in_utub + 1
@@ -327,15 +323,13 @@ def test_create_multiple_tags_batch(
     # Existing tags' deck counters were incremented to 1 on this URL.
     alpha_tag = get_tag_in_utub_by_tag_string(app, utub_id, EXISTING_TAG_ALPHA)
     alpha_visible, alpha_total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
-        browser, alpha_tag.id
+        page=page, tag_id=alpha_tag.id
     )
     assert alpha_visible == 1
     assert alpha_total == 1
 
 
-def test_create_tag_key_submits_batch(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_create_tag_key_submits_batch(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests submitting a staged tag via the Enter key.
 
@@ -356,35 +350,39 @@ def test_create_tag_key_submits_batch(
     assert init_tag_count_on_url == 0
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
-    stage_new_tag(browser, FRESH_TAG)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    stage_new_tag(page=page, text=FRESH_TAG)
 
     # Staging via an option click moves focus off the input; click it to restore
     # focus so the Enter keydown reaches the combobox handler. Input is empty after
     # staging, so Enter with a staged chip and no active option submits the batch.
     combobox_input_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}"
-    wait_then_click_element(browser, combobox_input_selector, time=3)
-    browser.find_element(By.CSS_SELECTOR, combobox_input_selector).send_keys(Keys.ENTER)
+    wait_then_click_element(page=page, css_selector=combobox_input_selector)
+    page.locator(combobox_input_selector).first.press("Enter")
 
     submit_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAGS_SUBMIT_BATCH}"
-    wait_until_hidden(browser, submit_selector, timeout=3)
+    wait_until_hidden(page=page, css_selector=submit_selector)
 
     badge_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}"
-    badge_elems = wait_then_get_elements(browser, badge_selector, time=3)
+    badge_elems = wait_then_get_elements(page=page, css_selector=badge_selector)
     assert len(badge_elems) == init_tag_count_on_url + 1
 
     badge_text_elems_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGE_NAME_READ}"
     badge_text_elems = wait_then_get_elements(
-        browser, badge_text_elems_selector, time=3
+        page=page, css_selector=badge_text_elems_selector
     )
-    assert any([elem.text == FRESH_TAG for elem in badge_text_elems])
+    assert any(elem.inner_text() == FRESH_TAG for elem in badge_text_elems)
 
 
 def test_create_tag_above_limit_blocks_staging(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    page: Page, create_test_tags, provide_app: Flask
 ):
     """
     Tests that a URL already at the tag limit surfaces the limit message and the
@@ -407,37 +405,39 @@ def test_create_tag_above_limit_blocks_staging(
     assert init_tag_count_on_url == TAG_CONSTANTS.MAX_URL_TAGS
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    badge_count_before = _badge_count_on_selected_url(browser)
+    badge_count_before = _badge_count_on_selected_url(page=page)
     assert badge_count_before == TAG_CONSTANTS.MAX_URL_TAGS
 
-    open_tag_combobox(browser, url_in_utub.id)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
 
     message_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_COMBOBOX_MSG}"
-    message_elem = wait_then_get_element(browser, message_selector, time=3)
+    message_elem = wait_then_get_element(page=page, css_selector=message_selector)
     assert message_elem is not None
     expected_message = STRINGS.TAGS_LIMIT_REACHED.replace(
         "{max}", str(TAG_CONSTANTS.MAX_URL_TAGS)
     )
-    assert message_elem.text == expected_message
+    assert message_elem.inner_text() == expected_message
 
-    combobox_input = browser.find_element(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}"
-    )
-    assert not combobox_input.is_enabled()
+    combobox_input = page.locator(
+        f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}"
+    ).first
+    expect(combobox_input).to_be_disabled()
 
     # No chip could be staged and the URL is unchanged.
-    staged_chips = browser.find_elements(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}"
-    )
+    staged_chips = page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}").all()
     assert len(staged_chips) == 0
-    assert _badge_count_on_selected_url(browser) == badge_count_before
+    assert _badge_count_on_selected_url(page=page) == badge_count_before
 
 
 def test_create_tag_duplicate_on_url_skipped(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests that staging a tag already applied to the URL is silently skipped.
@@ -454,37 +454,39 @@ def test_create_tag_duplicate_on_url_skipped(
     add_tag_to_utub_user_created(app, utub_id, USER_ID_FOR_TEST, DUPLICATE_TAG)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_id,
+        utub_url_id=url_in_utub.id,
     )
 
-    assert _badge_count_on_selected_url(browser) == 0
+    assert _badge_count_on_selected_url(page=page) == 0
 
     # Apply the tag once.
-    open_tag_combobox(browser, url_in_utub.id)
-    stage_tag_suggestion(browser, DUPLICATE_TAG)
-    submit_staged_tags(browser)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    stage_tag_suggestion(page=page, tag_text=DUPLICATE_TAG)
+    submit_staged_tags(page=page)
     submit_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAGS_SUBMIT_BATCH}"
-    wait_until_hidden(browser, submit_selector, timeout=3)
-    assert _badge_count_on_selected_url(browser) == 1
+    wait_until_hidden(page=page, css_selector=submit_selector)
+    assert _badge_count_on_selected_url(page=page) == 1
 
     # Reopen and try to stage the same tag — it is excluded from suggestions as
     # already-applied, so it cannot be re-staged and the badge count is unchanged.
-    open_tag_combobox(browser, url_in_utub.id)
-    type_in_tag_combobox(browser, DUPLICATE_TAG)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    type_in_tag_combobox(page=page, text=DUPLICATE_TAG)
 
     options_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_COMBOBOX_OPTION}"
-    options = browser.find_elements(By.CSS_SELECTOR, options_selector)
-    assert all(option.text.strip() != DUPLICATE_TAG for option in options)
+    options = page.locator(options_selector).all()
+    assert all(option.inner_text().strip() != DUPLICATE_TAG for option in options)
 
-    staged_chips = browser.find_elements(
-        By.CSS_SELECTOR, f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}"
-    )
+    staged_chips = page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}").all()
     assert len(staged_chips) == 0
-    assert _badge_count_on_selected_url(browser) == 1
+    assert _badge_count_on_selected_url(page=page) == 1
 
 
 def test_create_tag_text_length_exceeded(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests that the combobox input truncates a tag value exceeding the char limit.
@@ -498,24 +500,26 @@ def test_create_tag_text_length_exceeded(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
-    type_in_tag_combobox(browser, "a" * (CONSTANTS.TAGS.MAX_TAG_LENGTH + 1))
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    type_in_tag_combobox(page=page, text="a" * (CONSTANTS.TAGS.MAX_TAG_LENGTH + 1))
 
     combobox_input = wait_then_get_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_COMBOBOX}",
     )
     assert combobox_input is not None
-    new_url_tag = combobox_input.get_attribute("value")
-    assert new_url_tag is not None
+    new_url_tag = combobox_input.input_value()
     assert len(new_url_tag) == CONSTANTS.TAGS.MAX_TAG_LENGTH
 
 
-def test_create_tag_text_sanitized(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_create_tag_text_sanitized(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests that a sanitized/HTML tag value cannot be staged.
 
@@ -529,28 +533,30 @@ def test_create_tag_text_sanitized(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    assert _badge_count_on_selected_url(browser) == 0
+    assert _badge_count_on_selected_url(page=page) == 0
 
-    open_tag_combobox(browser, url_in_utub.id)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
     # The combobox does not sanitize client-side, so the raw string stages; the
     # backend rejects it on submit.
-    stage_new_tag(browser, '<img src="evl.jpg">')
-    submit_staged_tags(browser)
+    stage_new_tag(page=page, text='<img src="evl.jpg">')
+    submit_staged_tags(page=page)
 
     message_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_COMBOBOX_MSG}"
-    message_elem = wait_then_get_element(browser, message_selector, time=3)
+    message_elem = wait_then_get_element(page=page, css_selector=message_selector)
     assert message_elem is not None
-    assert message_elem.text
+    assert message_elem.inner_text()
 
-    assert _badge_count_on_selected_url(browser) == 0
+    assert _badge_count_on_selected_url(page=page) == 0
 
 
-def test_create_tag_rate_limits(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_create_tag_rate_limits(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests a user's ability to apply a tag when they are rate limited.
 
@@ -564,20 +570,24 @@ def test_create_tag_rate_limits(
     url_in_utub = get_url_in_utub(app, utub_id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
-    stage_new_tag(browser, FRESH_TAG)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    stage_new_tag(page=page, text=FRESH_TAG)
 
-    add_forced_rate_limit_header(browser)
-    submit_staged_tags(browser)
+    add_forced_rate_limit_header(page=page)
+    submit_staged_tags(page=page)
 
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
 
 def test_create_tag_invalid_csrf_token(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests the site error response to applying a tag with an invalid CSRF token.
@@ -593,24 +603,25 @@ def test_create_tag_invalid_csrf_token(
     url_in_utub = get_url_in_utub(app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_user_created.id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    open_tag_combobox(browser, url_in_utub.id)
-    stage_new_tag(browser, FRESH_TAG)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
+    stage_new_tag(page=page, text=FRESH_TAG)
 
-    invalidate_csrf_token_on_page(browser)
-    submit_staged_tags(browser)
+    invalidate_csrf_token_on_page(page=page)
+    submit_staged_tags(page=page)
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
-
-    # Page reloads after user clicks button in CSRF 403 error page
-    wait_then_get_element(browser, HPL.ROW_SELECTED_URL, time=3)
-    assert_login_with_username(browser, user.username)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
+    assert_login_with_username(page=page, username=user.username)
 
 
 def test_card_stays_selected_during_combobox_interaction(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Card-stays-selected regression (DD-5).
@@ -629,35 +640,39 @@ def test_card_stays_selected_during_combobox_interaction(
     add_tag_to_utub_user_created(app, utub_id, USER_ID_FOR_TEST, EXISTING_TAG_ALPHA)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, USER_ID_FOR_TEST, utub_id, url_in_utub.id
+        app=app,
+        page=page,
+        user_id=USER_ID_FOR_TEST,
+        utub_id=utub_id,
+        utub_url_id=url_in_utub.id,
     )
 
     def assert_card_still_selected() -> None:
-        selected_url = browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
+        selected_url = page.locator(HPL.ROW_SELECTED_URL).first
         assert selected_url.get_attribute("urlselected") == "true"
 
-    open_tag_combobox(browser, url_in_utub.id)
+    open_tag_combobox(page=page, url_id=url_in_utub.id)
     assert_card_still_selected()
 
     # Click inside the listbox (after typing to populate it). Clicking a listbox
     # option stages it as a chip; either way the card must stay selected.
-    type_in_tag_combobox(browser, EXISTING_TAG_ALPHA)
+    type_in_tag_combobox(page=page, text=EXISTING_TAG_ALPHA)
     listbox_selector = f"{HPL.ROW_SELECTED_URL} .urlTagListbox"
-    wait_until_visible_css_selector(browser, listbox_selector, timeout=3)
-    browser.find_element(By.CSS_SELECTOR, listbox_selector).click()
+    wait_until_visible_css_selector(page=page, css_selector=listbox_selector)
+    page.locator(listbox_selector).first.click()
     assert_card_still_selected()
 
     # Ensure a staged chip exists, then click it — clicking a chip must not
     # deselect the card.
     chip_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_STAGED_CHIP}"
-    if not browser.find_elements(By.CSS_SELECTOR, chip_selector):
-        stage_new_tag(browser, FRESH_TAG)
-    staged_chip = wait_then_get_element(browser, chip_selector, time=3)
+    if page.locator(chip_selector).count() == 0:
+        stage_new_tag(page=page, text=FRESH_TAG)
+    staged_chip = wait_then_get_element(page=page, css_selector=chip_selector)
     assert staged_chip is not None
     staged_chip.click()
     assert_card_still_selected()
 
     # Click the cancel button — the card must remain selected after close.
-    wait_then_click_element(browser, HPL.BUTTON_TAGS_CANCEL_BATCH, time=3)
-    wait_until_hidden(browser, HPL.INPUT_TAG_COMBOBOX, timeout=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_TAGS_CANCEL_BATCH)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_TAG_COMBOBOX)
     assert_card_still_selected()

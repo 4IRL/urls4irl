@@ -586,6 +586,107 @@ def force_next_delete_ajax_failure_no_navigate(*, page: Page) -> None:
     }""")
 
 
+def open_update_url_title(*, page: Page, selected_url_row: Locator) -> None:
+    """Hover the selected URL's title to reveal the edit button, click it,
+    and wait for the title-update input to become visible."""
+    url_title_text = page.locator(f"{HPL.ROW_SELECTED_URL} {HPL.URL_TITLE_READ}").first
+    expect(url_title_text).to_be_visible()
+    url_title_text.hover()
+
+    update_url_title_button = selected_url_row.locator(HPL.BUTTON_URL_TITLE_UPDATE)
+    update_url_title_button.click()
+
+    update_url_title_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}"
+    wait_until_visible_css_selector(page=page, css_selector=update_url_title_selector)
+
+
+_DISPATCH_POINTER_DRAG_JS = """
+    async ({ cssSelector, startX, startY, endX, endY, steps, stepDelayMs }) => {
+        const element = document.querySelector(cssSelector);
+        if (!element) {
+            throw new Error('No element found for selector "' + cssSelector + '"');
+        }
+
+        function dispatchPointer(type, clientX, clientY) {
+            const event = new PointerEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                pointerId: 1,
+                pointerType: "touch",
+                button: 0,
+                clientX: clientX,
+                clientY: clientY,
+            });
+            element.dispatchEvent(event);
+        }
+
+        function sleep(milliseconds) {
+            return new Promise((resolve) => setTimeout(resolve, milliseconds));
+        }
+
+        dispatchPointer("pointerdown", startX, startY);
+        for (let step = 1; step <= steps; step++) {
+            if (stepDelayMs > 0) {
+                await sleep(stepDelayMs);
+            }
+            const interpolatedX = startX + ((endX - startX) * step) / steps;
+            const interpolatedY = startY + ((endY - startY) * step) / steps;
+            dispatchPointer("pointermove", interpolatedX, interpolatedY);
+        }
+        if (stepDelayMs > 0) {
+            await sleep(stepDelayMs);
+        }
+        dispatchPointer("pointerup", endX, endY);
+    }
+"""
+
+
+def dispatch_pointer_drag(
+    *,
+    page: Page,
+    css_selector: str,
+    start_y: float,
+    end_y: float,
+    start_x: float | None = None,
+    end_x: float | None = None,
+    steps: int = 6,
+    step_delay_ms: int = 0,
+) -> None:
+    """Drives a synthetic pointer drag on the element matched by
+    ``css_selector`` — pointerdown at the start point, ``steps`` interpolated
+    pointermoves, and a final pointerup at the end point.
+
+    ``start_x``/``end_x`` default to 0 (purely vertical drag). Every event is
+    a real PointerEvent (pointerType "touch", primary button) dispatched
+    directly on the target element (gesture listeners bind via
+    element.addEventListener; document-dispatched synthetics never reach
+    them). ``step_delay_ms`` inserts real wall-clock pauses between moves so
+    a sub-threshold drag's velocity sample stays below the fling threshold —
+    an instantaneous synthetic drag otherwise computes a huge velocity and
+    commits regardless of distance.
+
+    @example dispatch_pointer_drag(page=page, css_selector="#tagSheetHandle",
+        start_y=780, end_y=560)  # 220px up (open gesture)
+    @example dispatch_pointer_drag(page=page, css_selector="#tagSheetHandle",
+        start_y=780, end_y=720, step_delay_ms=40)  # slow sub-threshold drag
+    """
+    resolved_start_x = start_x if start_x is not None else 0
+    resolved_end_x = end_x if end_x is not None else 0
+
+    page.evaluate(
+        _DISPATCH_POINTER_DRAG_JS,
+        {
+            "cssSelector": css_selector,
+            "startX": resolved_start_x,
+            "startY": start_y,
+            "endX": resolved_end_x,
+            "endY": end_y,
+            "steps": steps,
+            "stepDelayMs": step_delay_ms,
+        },
+    )
+
+
 def set_focus_on_element(*, page: Page, locator: Locator) -> None:
     locator.focus()
     expect(locator).to_be_focused()
