@@ -13,7 +13,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.api_auth_strs import API_AUTH_FAILURE
+from backend.utils.strings.api_auth_strs import API_AUTH, API_AUTH_FAILURE
 from backend.utils.strings.email_validation_strs import EMAILS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
 
@@ -298,11 +298,20 @@ def api_authentication_required(func: Callable) -> Callable:
     Base of the /api/v1 decorator chain — deliberately does NOT require a
     validated email, so endpoints like `/me` and `/auth/resend-validation`
     remain reachable by unvalidated accounts (design-doc gating decision).
+
+    The identity must come from a bearer token: `load_user_from_request`
+    stamps `g.api_bearer_authenticated` when it resolves the user. Session-
+    cookie identities never carry the stamp (Flask-Login resolves the session
+    BEFORE consulting the request loader), so browser sessions cannot reach
+    the CSRF-exempt /api/v1 surface — including ambiguous requests that send
+    both a session cookie and a bearer token.
     """
 
     @wraps(func)
     def decorated_view(*args, **kwargs):
-        if not current_user.is_authenticated:
+        if not current_user.is_authenticated or not g.get(
+            API_AUTH.BEARER_AUTHENTICATED_G_KEY, False
+        ):
             return build_message_error_response(
                 message=API_AUTH_FAILURE.AUTHENTICATION_REQUIRED,
                 status_code=401,

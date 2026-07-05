@@ -1,6 +1,7 @@
 from flask import (
     Blueprint,
     Request,
+    g,
     redirect,
     render_template,
     request,
@@ -35,6 +36,12 @@ def load_user_from_request(incoming_request: Request) -> Users | None:
     honored on web routes, so the session-cookie web app's auth behavior is
     provably untouched. Returns None (unauthenticated) on any failure —
     Flask-Login then falls back to the session cookie, if present.
+
+    On success, stamps `g.api_bearer_authenticated = True` so
+    `api_authentication_required` can verify the identity came from a bearer
+    token. Flask-Login consults this loader only when session-cookie auth did
+    not resolve a user, so a session-authenticated request never carries the
+    stamp — keeping the CSRF-exempt /api/v1 surface bearer-only.
     """
     if not incoming_request.path.startswith(API_AUTH.API_V1_URL_PREFIX):
         return None
@@ -46,7 +53,10 @@ def load_user_from_request(incoming_request: Request) -> Users | None:
         return None
 
     bearer_token = authorization_header[len(API_AUTH.BEARER_PREFIX) :]
-    return decode_access_token(token=bearer_token)
+    bearer_user: Users | None = decode_access_token(token=bearer_token)
+    if bearer_user is not None:
+        setattr(g, API_AUTH.BEARER_AUTHENTICATED_G_KEY, True)
+    return bearer_user
 
 
 @login_manager.unauthorized_handler

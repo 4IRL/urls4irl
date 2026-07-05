@@ -17,6 +17,10 @@ class API_AUTH:
     EXPIRATION_CLAIM = "exp"
     TOKEN_TYPE_CLAIM = "type"
     ACCESS_TOKEN_TYPE = "access"
+    # flask.g key stamped by load_user_from_request when the identity was
+    # resolved from a bearer token; checked by api_authentication_required so
+    # session-cookie identities can never reach the CSRF-exempt /api/v1 surface
+    BEARER_AUTHENTICATED_G_KEY = "api_bearer_authenticated"
 
 
 class API_AUTH_FAILURE(FAILURE_GENERAL):
