@@ -350,6 +350,9 @@ def test_update_utub_name_happy_path(
     WHEN PATCH /api/v1/utubs/1/name with a new name
     THEN 200 with utubID and utubName; DB row updated
     """
+    with app.app_context():
+        assert Utubs.query.get(1).name != _UPDATED_NAME
+
     response = api_client.patch(
         _update_name_url(app, utub_id=1),
         json={_UTUB_NAME_FIELD: _UPDATED_NAME},
@@ -437,6 +440,9 @@ def test_update_utub_desc_happy_path(
     WHEN PATCH /api/v1/utubs/1/description with a new description
     THEN 200 with utubID and utubDescription
     """
+    with app.app_context():
+        assert Utubs.query.get(1).utub_description != _UPDATED_DESC
+
     response = api_client.patch(
         _update_desc_url(app, utub_id=1),
         json={_UTUB_DESC_FIELD: _UPDATED_DESC},
@@ -447,6 +453,38 @@ def test_update_utub_desc_happy_path(
     response_json = response.get_json()
     assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert response_json[UTUB_SUCCESS.UTUB_DESCRIPTION] == _UPDATED_DESC
+
+    with app.app_context():
+        assert Utubs.query.get(1).utub_description == _UPDATED_DESC
+
+
+def test_update_utub_desc_no_token_is_401(app: Flask, api_client: FlaskClient):
+    """No Authorization header → 401."""
+    response = api_client.patch(
+        _update_desc_url(app, utub_id=1),
+        json={_UTUB_DESC_FIELD: _UPDATED_DESC},
+    )
+
+    assert response.status_code == 401
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+
+
+def test_update_utub_desc_missing_body_is_400(
+    app: Flask,
+    api_client: FlaskClient,
+    bearer_headers_first_user: dict[str, str],
+    add_single_utub_as_user_without_logging_in,
+):
+    """Missing required utubDescription field → 400."""
+    response = api_client.patch(
+        _update_desc_url(app, utub_id=1),
+        headers=bearer_headers_first_user,
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
 
 
 def test_update_utub_desc_not_creator_is_403(
