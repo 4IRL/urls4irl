@@ -1,4 +1,5 @@
 from backend.models.anonymous_gauges import Anonymous_Gauges  # noqa: F401
+from backend.models.api_refresh_tokens import ApiRefreshTokens  # noqa: F401
 from backend.models.anonymous_latency_rollups import (  # noqa: F401
     Anonymous_Latency_Daily_Rollups,
 )

@@ -60,6 +60,16 @@ GOOGLE_OAUTH_CLIENT_SECRET = environ.get(ENV.GOOGLE_OAUTH_CLIENT_SECRET, default
 GITHUB_OAUTH_CLIENT_ID = environ.get(ENV.GITHUB_OAUTH_CLIENT_ID, default=None)
 GITHUB_OAUTH_CLIENT_SECRET = environ.get(ENV.GITHUB_OAUTH_CLIENT_SECRET, default=None)
 
+# Mobile /api/v1 bearer-token lifetimes (design: 15-minute access JWTs, 30-day
+# DB-backed refresh tokens). Must be valid integers; a non-numeric value raises
+# ValueError at import time (fail-fast behavior).
+API_ACCESS_TOKEN_LIFETIME_SECONDS = int(
+    environ.get(ENV.API_ACCESS_TOKEN_LIFETIME_SECONDS, default="900")
+)
+API_REFRESH_TOKEN_LIFETIME_SECONDS = int(
+    environ.get(ENV.API_REFRESH_TOKEN_LIFETIME_SECONDS, default="2592000")
+)
+
 DEV_DB_URI = build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
@@ -175,6 +185,8 @@ class Config:
     GOOGLE_OAUTH_CLIENT_SECRET = GOOGLE_OAUTH_CLIENT_SECRET
     GITHUB_OAUTH_CLIENT_ID = GITHUB_OAUTH_CLIENT_ID
     GITHUB_OAUTH_CLIENT_SECRET = GITHUB_OAUTH_CLIENT_SECRET
+    API_ACCESS_TOKEN_LIFETIME_SECONDS = API_ACCESS_TOKEN_LIFETIME_SECONDS
+    API_REFRESH_TOKEN_LIFETIME_SECONDS = API_REFRESH_TOKEN_LIFETIME_SECONDS
     # Set only by `tests/functional/conftest.py::worker_config`, before any
     # fixture calls `create_app()` — Authlib's `OAuth` registry caches a
     # "google" client the first time it's registered, and `build_app`,
