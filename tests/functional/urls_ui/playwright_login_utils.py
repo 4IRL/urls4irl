@@ -1,15 +1,14 @@
 from typing import Tuple
 
 from flask import Flask
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
+from playwright.sync_api import Locator, Page
 
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
-from tests.functional.login_utils import (
+from tests.functional.playwright_login_utils import (
     login_user_select_utub_by_name_and_url_by_string,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     get_selected_url,
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_click_element,
@@ -19,26 +18,25 @@ from tests.functional.selenium_utils import (
 
 
 def login_select_utub_select_url_click_delete_get_modal_url(
-    browser: WebDriver,
+    *,
+    page: Page,
     app: Flask,
     user_id: int,
     utub_name: str,
     url_string: str,
-    timeout: int = 5,
-) -> Tuple[WebElement, WebElement]:
+) -> Tuple[Locator, Locator]:
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id, utub_name, url_string
+        app=app, page=page, user_id=user_id, utub_name=utub_name, url_string=url_string
     )
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
     wait_for_animation_to_end_check_top_lhs_corner(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=timeout
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
     )
-    wait_until_visible_css_selector(browser, ML.ELEMENT_MODAL, timeout)
-    modal = wait_then_get_element(browser, HPL.BODY_MODAL)
-    assert modal is not None
+    wait_until_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    modal = wait_then_get_element(page=page, css_selector=HPL.BODY_MODAL)
 
     return modal, url_row

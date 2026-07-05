@@ -1,15 +1,11 @@
 from datetime import datetime
+
 from flask import Flask
 import pytest
-from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import WebDriverWait
+from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.api_common.request_errors import min_length_message
-from backend.config import ConfigTest
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.utils.constants import CONSTANTS
@@ -17,16 +13,18 @@ from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
-from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import (
+from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.playwright_assert_utils import (
     assert_on_404_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
+    clear_then_send_keys,
+    current_base_url,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
     wait_for_element_presence,
+    wait_for_modal_ready,
     wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
@@ -39,24 +37,8 @@ from tests.functional.selenium_utils import (
 pytestmark = pytest.mark.splash_ui
 
 
-def wait_for_reset_password_close_button(browser: WebDriver) -> None:
-    """Wait for handleUserChangedPassword to run, which changes the submit button to 'Close'.
-
-    Timeout raised from 5s to 10s: under the documented n=8 UI parallelism cap,
-    worst-case AJAX round-trip + handleUserChangedPassword DOM update is ~6s
-    (observed in `slowest 10 durations` for `test_password_reset_successful_reset_key`).
-    10s provides headroom for Postgres / Flask contention spikes.
-    """
-    WebDriverWait(browser, 10).until(
-        lambda driver: driver.find_element(
-            By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT
-        ).get_attribute("value")
-        == "Close"
-    )
-
-
 def test_password_reset_routes_user_properly(
-    browser: WebDriver, create_user_resetting_password
+    page: Page, create_user_resetting_password
 ):
     """
     Tests a user's ability to click a non-expired password reset URL
@@ -66,22 +48,15 @@ def test_password_reset_routes_user_properly(
     THEN ensure the splash page opens and the reset password modal shows
     """
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
-    assert wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3) is not None
-    assert wait_then_get_element(browser, SPL.INPUT_CONFIRM_NEW_PASSWORD) is not None
+    expect(page.locator(SPL.INPUT_NEW_PASSWORD).first).to_be_visible()
+    expect(page.locator(SPL.INPUT_CONFIRM_NEW_PASSWORD).first).to_be_visible()
 
 
-def test_password_reset_dismiss_modal_click(
-    browser: WebDriver, create_user_resetting_password, provide_port, provide_config
-):
+def test_password_reset_dismiss_modal_click(page: Page, create_user_resetting_password):
     """
     Tests a user's ability to click a non-expired password reset URL
 
@@ -90,34 +65,21 @@ def test_password_reset_dismiss_modal_click(
     THEN ensure the modal is closed
     """
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
-    assert wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3) is not None
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
-    assert splash_modal is not None
+    expect(page.locator(SPL.INPUT_NEW_PASSWORD).first).to_be_visible()
+    wait_for_modal_ready(page=page, modal_selector=SPL.SPLASH_MODAL)
 
-    # Put focus on splash modal and wait, or else escape key won't work
-    splash_modal.click()
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
+    dismiss_modal_with_click_out(page=page, modal_selector=SPL.SPLASH_MODAL)
+    wait_until_hidden(page=page, css_selector=SPL.SPLASH_MODAL)
 
-    dismiss_modal_with_click_out(browser, SPL.SPLASH_MODAL)
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
-    assert modal_element is None or not modal_element.is_displayed()
-    config: ConfigTest = provide_config
-    base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
-    assert browser.current_url == f"{base_url}{provide_port}/"
+    expected_url = current_base_url(page=page) + "/"
+    expect(page).to_have_url(expected_url)
 
 
-def test_password_reset_dismiss_modal_x(
-    browser: WebDriver, create_user_resetting_password, provide_port, provide_config
-):
+def test_password_reset_dismiss_modal_x(page: Page, create_user_resetting_password):
     """
     Tests a user's ability to click a non-expired password reset URL
 
@@ -126,38 +88,21 @@ def test_password_reset_dismiss_modal_x(
     THEN ensure the modal is closed
     """
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
-    assert wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3) is not None
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
-    assert splash_modal is not None
+    expect(page.locator(SPL.INPUT_NEW_PASSWORD).first).to_be_visible()
+    wait_for_modal_ready(page=page, modal_selector=SPL.SPLASH_MODAL)
 
-    # Put focus on splash modal and wait, or else escape key won't work
-    splash_modal.click()
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
+    wait_then_click_element(page=page, css_selector=f"{SPL.SPLASH_MODAL} .btn-close")
+    wait_until_hidden(page=page, css_selector=SPL.SPLASH_MODAL)
 
-    wait_then_click_element(browser, f"{SPL.SPLASH_MODAL} .btn-close", time=3)
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
-    assert modal_element is None or not modal_element.is_displayed()
-
-    config: ConfigTest = provide_config
-    base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
-    assert browser.current_url == f"{base_url}{provide_port}/"
+    expected_url = current_base_url(page=page) + "/"
+    expect(page).to_have_url(expected_url)
 
 
-def test_password_reset_dismiss_modal_key(
-    browser: WebDriver,
-    create_user_resetting_password,
-    provide_port: int,
-    provide_config,
-):
+def test_password_reset_dismiss_modal_key(page: Page, create_user_resetting_password):
     """
     Tests a user's ability to click a non-expired password reset URL
 
@@ -166,33 +111,22 @@ def test_password_reset_dismiss_modal_key(
     THEN ensure the modal is closed
     """
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
-    assert wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3) is not None
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
-    assert splash_modal is not None
+    expect(page.locator(SPL.INPUT_NEW_PASSWORD).first).to_be_visible()
+    wait_for_modal_ready(page=page, modal_selector=SPL.SPLASH_MODAL)
 
-    # Put focus on splash modal and wait, or else escape key won't work
-    splash_modal.click()
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
+    page.keyboard.press("Escape")
+    wait_until_hidden(page=page, css_selector=SPL.SPLASH_MODAL)
 
-    ActionChains(browser).send_keys(Keys.ESCAPE).perform()
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL, timeout=5)
-    assert modal_element is None or not modal_element.is_displayed()
-    config: ConfigTest = provide_config
-    base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
-    assert browser.current_url == f"{base_url}{provide_port}/"
+    expected_url = current_base_url(page=page) + "/"
+    expect(page).to_have_url(expected_url)
 
 
 def test_password_reset_successful_reset_btn(
-    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+    page: Page, create_user_resetting_password, provide_app: Flask
 ):
     """
     Tests a user's ability to change their password using the form provided
@@ -204,46 +138,38 @@ def test_password_reset_successful_reset_btn(
     NEW_PASSWORD = "ABCDEFGH1234568"
 
     app = provide_app
-
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
     # Under the n=8 UI parallelism cap, the splash.ts ES module can take
     # 200-800ms+ between DOMContentLoaded and `initResetPasswordForm`
     # finishing handler binding. Without this wait, the test can race that
     # gap: it fills inputs and clicks submit before the JS handler is bound,
-    # triggering the default HTML form POST (form-urlencoded, no
-    # preventDefault, full page navigation) instead of the AJAX path. The
-    # browser then navigates away from the modal page and the downstream
-    # `value === "Close"` wait times out.
-    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+    # triggering the default HTML form POST instead of the AJAX path.
+    wait_for_element_presence(page=page, css_selector=SPL.RESET_PASSWORD_FORM_READY)
 
-    new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
-    assert new_password_input is not None
-
-    confirm_new_password_input = wait_then_get_element(
-        browser, SPL.INPUT_CONFIRM_NEW_PASSWORD
+    new_password_input = wait_then_get_element(
+        page=page, css_selector=SPL.INPUT_NEW_PASSWORD
     )
-    assert confirm_new_password_input is not None
+    confirm_new_password_input = wait_then_get_element(
+        page=page, css_selector=SPL.INPUT_CONFIRM_NEW_PASSWORD
+    )
 
-    new_password_input.send_keys(NEW_PASSWORD)
-    confirm_new_password_input.send_keys(NEW_PASSWORD)
+    clear_then_send_keys(locator=new_password_input, input_text=NEW_PASSWORD)
+    clear_then_send_keys(locator=confirm_new_password_input, input_text=NEW_PASSWORD)
 
-    wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT)
+    wait_then_click_element(page=page, css_selector=SPL.RESET_PASSWORD_BUTTON_SUBMIT)
 
-    wait_for_reset_password_close_button(browser)
+    # Wait for handleUserChangedPassword to run, which changes the submit
+    # button value to 'Close'.
+    expect(page.locator(SPL.RESET_PASSWORD_BUTTON_SUBMIT).first).to_have_value("Close")
 
-    confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=5)
-    assert confirm_alert is not None
-
-    assert confirm_alert.text == RESET_PASSWORD.PASSWORD_RESET
+    confirm_alert = wait_then_get_element(
+        page=page, css_selector=SPL.SPLASH_MODAL_ALERT
+    )
+    expect(confirm_alert).to_have_text(RESET_PASSWORD.PASSWORD_RESET)
 
     with app.app_context():
         user: Users = Users.query.first()
@@ -251,7 +177,7 @@ def test_password_reset_successful_reset_btn(
 
 
 def test_password_reset_successful_reset_key(
-    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+    page: Page, create_user_resetting_password, provide_app: Flask
 ):
     """
     Tests a user's ability to change their password using the form provided
@@ -263,52 +189,38 @@ def test_password_reset_successful_reset_key(
     NEW_PASSWORD = "ABCDEFGH1234568"
 
     app = provide_app
-
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
     # See `_btn` variant: wait for the form to advertise readiness so the
-    # submit handler is bound before we dispatch ENTER. Without this guard,
-    # the keydown can fire before `initResetPasswordForm` binds its submit
-    # listener, falling through to the browser's default form POST.
-    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+    # submit handler is bound before we dispatch ENTER.
+    wait_for_element_presence(page=page, css_selector=SPL.RESET_PASSWORD_FORM_READY)
 
-    new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
-    assert new_password_input is not None
-
-    confirm_new_password_input = wait_then_get_element(
-        browser, SPL.INPUT_CONFIRM_NEW_PASSWORD
+    new_password_input = wait_then_get_element(
+        page=page, css_selector=SPL.INPUT_NEW_PASSWORD
     )
-    assert confirm_new_password_input is not None
+    confirm_new_password_input = wait_then_get_element(
+        page=page, css_selector=SPL.INPUT_CONFIRM_NEW_PASSWORD
+    )
 
-    new_password_input.send_keys(NEW_PASSWORD)
-    confirm_new_password_input.send_keys(NEW_PASSWORD)
+    clear_then_send_keys(locator=new_password_input, input_text=NEW_PASSWORD)
+    clear_then_send_keys(locator=confirm_new_password_input, input_text=NEW_PASSWORD)
 
-    # Send ENTER directly to the confirm input rather than routing through
-    # `browser.switch_to.active_element`. Under the n=8 UI parallelism cap,
-    # `document.activeElement` can lag behind the preceding `send_keys` and
-    # resolve to `<body>`, causing the keydown to land outside the form and
-    # never trigger submission. Targeting the input element directly is
-    # deterministic and preserves the test's "user pressed Enter on the last
-    # input" intent. ENTER on an input also requires keyboard focus on that
-    # input to dispatch a submit, so the focus wait below is a precondition,
-    # not a timing pad.
-    wait_until_in_focus(browser, SPL.INPUT_CONFIRM_NEW_PASSWORD)
-    confirm_new_password_input.send_keys(Keys.ENTER)
+    # Wait for keyboard focus on the confirm input before pressing Enter so
+    # the submit event fires on the correct element.
+    wait_until_in_focus(page=page, css_selector=SPL.INPUT_CONFIRM_NEW_PASSWORD)
+    confirm_new_password_input.press("Enter")
 
-    wait_for_reset_password_close_button(browser)
+    # Wait for handleUserChangedPassword to run, which changes the submit
+    # button value to 'Close'.
+    expect(page.locator(SPL.RESET_PASSWORD_BUTTON_SUBMIT).first).to_have_value("Close")
 
-    confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=5)
-    assert confirm_alert is not None
-
-    assert confirm_alert.text == RESET_PASSWORD.PASSWORD_RESET
+    confirm_alert = wait_then_get_element(
+        page=page, css_selector=SPL.SPLASH_MODAL_ALERT
+    )
+    expect(confirm_alert).to_have_text(RESET_PASSWORD.PASSWORD_RESET)
 
     with app.app_context():
         user: Users = Users.query.first()
@@ -316,7 +228,7 @@ def test_password_reset_successful_reset_key(
 
 
 def test_password_reset_with_hour_old_token(
-    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+    page: Page, create_user_resetting_password, provide_app: Flask
 ):
     """
     Tests U4I response for user clicking on reset password URL with more than hour old token
@@ -335,19 +247,14 @@ def test_password_reset_with_hour_old_token(
         db.session.commit()
 
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
-    assert_on_404_page(browser)
+    page.goto(reset_password_url)
+    assert_on_404_page(page=page)
 
 
 def test_password_reset_with_expired_token(
-    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+    page: Page, create_user_resetting_password, provide_app: Flask
 ):
     """
     Tests U4I response for user clicking on reset password URL with expired token
@@ -365,20 +272,13 @@ def test_password_reset_with_expired_token(
         db.session.commit()
 
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
-    assert_on_404_page(browser)
+    page.goto(reset_password_url)
+    assert_on_404_page(page=page)
 
 
-def test_password_reset_with_invalid_token(
-    browser: WebDriver, create_user_resetting_password
-):
+def test_password_reset_with_invalid_token(page: Page, create_user_resetting_password):
     """
     Tests U4I response for user clicking on reset password URL with invalid token
 
@@ -388,13 +288,15 @@ def test_password_reset_with_invalid_token(
     """
     INVALID_TOKEN = "abcdefghijklmnop"
 
-    reset_password_url = browser.current_url + "reset-password/" + INVALID_TOKEN
-    browser.get(reset_password_url)
-    assert_on_404_page(browser)
+    reset_password_url = (
+        current_base_url(page=page) + "/reset-password/" + INVALID_TOKEN
+    )
+    page.goto(reset_password_url)
+    assert_on_404_page(page=page)
 
 
 def test_password_reset_with_unconfirmed_email(
-    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+    page: Page, create_user_resetting_password, provide_app: Flask
 ):
     """
     Tests U4I response for user clicking on reset password URL with an unconfirmed email
@@ -410,19 +312,14 @@ def test_password_reset_with_unconfirmed_email(
         db.session.commit()
 
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
-    assert_on_404_page(browser)
+    page.goto(reset_password_url)
+    assert_on_404_page(page=page)
 
 
 def test_password_reset_unequal_password_fields(
-    browser: WebDriver, create_user_resetting_password
+    page: Page, create_user_resetting_password
 ):
     """
     Tests a user's ability to change their password using the form provided
@@ -435,47 +332,37 @@ def test_password_reset_unequal_password_fields(
     NEW_PASSWORD = "ABCDEFGH1234568"
 
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
     # See `_btn` variant: wait for the form to advertise readiness so the
-    # AJAX submit path is wired before we click. Without this, the click can
-    # land before `initResetPasswordForm` binds its submit handler, falling
-    # through to the browser's default form POST and producing a different
-    # error than the one this test asserts on.
-    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+    # AJAX submit path is wired before we click.
+    wait_for_element_presence(page=page, css_selector=SPL.RESET_PASSWORD_FORM_READY)
 
-    new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
-    assert new_password_input is not None
-
-    confirm_new_password_input = wait_then_get_element(
-        browser, SPL.INPUT_CONFIRM_NEW_PASSWORD
+    new_password_input = wait_then_get_element(
+        page=page, css_selector=SPL.INPUT_NEW_PASSWORD
     )
-    assert confirm_new_password_input is not None
+    confirm_new_password_input = wait_then_get_element(
+        page=page, css_selector=SPL.INPUT_CONFIRM_NEW_PASSWORD
+    )
 
-    new_password_input.send_keys(NEW_PASSWORD)
-    confirm_new_password_input.send_keys(NEW_PASSWORD + "a")
+    clear_then_send_keys(locator=new_password_input, input_text=NEW_PASSWORD)
+    clear_then_send_keys(
+        locator=confirm_new_password_input, input_text=NEW_PASSWORD + "a"
+    )
 
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
-    browser.find_element(By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT).click()
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
+    wait_for_page_complete_and_dom_stable(page=page)
+    wait_then_click_element(page=page, css_selector=SPL.RESET_PASSWORD_BUTTON_SUBMIT)
+    wait_for_page_complete_and_dom_stable(page=page)
 
     invalid_field = wait_then_get_element(
-        browser, SPL.RESET_PASSWORD_INVALID_FEEDBACK, time=3
+        page=page, css_selector=SPL.RESET_PASSWORD_INVALID_FEEDBACK
     )
-    assert invalid_field is not None
-    assert invalid_field.text == RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL
+    expect(invalid_field).to_have_text(RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL)
 
 
-def test_password_reset_missing_fields(
-    browser: WebDriver, create_user_resetting_password
-):
+def test_password_reset_missing_fields(page: Page, create_user_resetting_password):
     """
     Tests a user's ability to change their password using the form provided
 
@@ -484,39 +371,29 @@ def test_password_reset_missing_fields(
     THEN ensure U4I responds with appropriate error message
     """
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
-    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+    wait_for_element_presence(page=page, css_selector=SPL.RESET_PASSWORD_FORM_READY)
 
     wait_until_visible_css_selector(
-        browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, timeout=3
+        page=page, css_selector=SPL.RESET_PASSWORD_BUTTON_SUBMIT
     )
-    submit_btn = wait_then_click_element(
-        browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, time=3
-    )
-    assert submit_btn is not None
+    wait_then_click_element(page=page, css_selector=SPL.RESET_PASSWORD_BUTTON_SUBMIT)
 
     wait_until_visible_css_selector(
-        browser, SPL.RESET_PASSWORD_INVALID_FEEDBACK, timeout=3
+        page=page, css_selector=SPL.RESET_PASSWORD_INVALID_FEEDBACK
     )
     invalid_fields = wait_then_get_elements(
-        browser, SPL.RESET_PASSWORD_INVALID_FEEDBACK, time=3
+        page=page, css_selector=SPL.RESET_PASSWORD_INVALID_FEEDBACK
     )
     assert len(invalid_fields) == 2
-    assert invalid_fields[0].text == min_length_message(12)
-    assert invalid_fields[1].text == FAILURE_GENERAL.FIELD_REQUIRED_STR
+    expect(invalid_fields[0]).to_have_text(min_length_message(12))
+    expect(invalid_fields[1]).to_have_text(FAILURE_GENERAL.FIELD_REQUIRED_STR)
 
 
-def test_password_reset_invalid_csrf_token(
-    browser: WebDriver, create_user_resetting_password
-):
+def test_password_reset_invalid_csrf_token(page: Page, create_user_resetting_password):
     """
     Tests a user's ability to attempt to submit password reset with invalid CSRF token
 
@@ -525,34 +402,21 @@ def test_password_reset_invalid_csrf_token(
     THEN browser redirects user to error page, where user can refresh
     """
     reset_password_suffix = create_user_resetting_password
-    reset_password_suffix = (
-        reset_password_suffix[1:]
-        if reset_password_suffix[0] == "/"
-        else reset_password_suffix
-    )
-    reset_password_url = browser.current_url + reset_password_suffix
+    reset_password_url = current_base_url(page=page) + reset_password_suffix
 
-    browser.get(reset_password_url)
+    page.goto(reset_password_url)
 
-    wait_for_element_presence(browser, SPL.RESET_PASSWORD_FORM_READY, timeout=10)
+    wait_for_element_presence(page=page, css_selector=SPL.RESET_PASSWORD_FORM_READY)
 
-    new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
-    assert new_password_input is not None
+    expect(page.locator(SPL.INPUT_NEW_PASSWORD).first).to_be_visible()
+    expect(page.locator(SPL.INPUT_CONFIRM_NEW_PASSWORD).first).to_be_visible()
+    wait_for_page_complete_and_dom_stable(page=page)
 
-    confirm_new_password_input = wait_then_get_element(
-        browser, SPL.INPUT_CONFIRM_NEW_PASSWORD
-    )
-    assert confirm_new_password_input is not None
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
+    invalidate_csrf_token_in_form(page=page)
+    wait_for_page_complete_and_dom_stable(page=page)
+    wait_then_click_element(page=page, css_selector=SPL.RESET_PASSWORD_BUTTON_SUBMIT)
 
-    invalidate_csrf_token_in_form(browser)
-    wait_for_page_complete_and_dom_stable(browser, timeout=10)
-    wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, time=10)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
-    # Visit 403 error page due to CSRF, then reload
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
-
-    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=3)
-    assert welcome_text is not None
-
-    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE
+    welcome_text = wait_then_get_element(page=page, css_selector=SPL.WELCOME_TEXT)
+    expect(welcome_text).to_have_text(IDENTIFIERS.SPLASH_PAGE)

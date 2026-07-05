@@ -1,28 +1,32 @@
+from __future__ import annotations
+
 from flask import Flask
 import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from backend.models.users import Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import (
-    assert_not_visible_css_selector,
-    assert_visible_css_selector,
-    assert_panel_visibility_mobile,
-)
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import (
+    assert_not_visible_css_selector,
+    assert_panel_visibility_mobile,
+    assert_visible_css_selector,
+)
+from tests.functional.playwright_utils import (
     Decks,
+    PageBundle,
     click_on_navbar,
+    current_base_url,
     input_login_fields,
+    wait_for_class_to_be_removed,
     wait_for_element_visible,
     wait_then_click_element,
-    wait_until_hidden,
 )
 
 pytestmark = pytest.mark.mobile_ui
 
 
-def test_splash_page_ui_shows(browser_mobile_portrait: WebDriver):
+def test_splash_page_ui_shows(page_mobile_portrait: Page):
     """
     Tests that the main buttons are visible on the splash page in mobile.
 
@@ -30,14 +34,19 @@ def test_splash_page_ui_shows(browser_mobile_portrait: WebDriver):
     WHEN user views the web page
     THEN ensure the login, register, and navbar toggler buttons are visible
     """
-    browser = browser_mobile_portrait
-    assert_visible_css_selector(browser, SPL.BUTTON_REGISTER)
-    assert_visible_css_selector(browser, SPL.BUTTON_LOGIN)
-    assert_visible_css_selector(browser, SPL.NAVBAR_TOGGLER)
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.BUTTON_REGISTER
+    )
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.BUTTON_LOGIN
+    )
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.NAVBAR_TOGGLER
+    )
 
 
 def test_navbar_on_mobile_splash_shows_login_register(
-    browser_mobile_portrait: WebDriver,
+    page_mobile_portrait: Page,
 ):
     """
     Tests that the login and register buttons are visible in the navbar on mobile.
@@ -46,16 +55,18 @@ def test_navbar_on_mobile_splash_shows_login_register(
     WHEN user clicks on navbar toggler
     THEN ensure the login and register buttons are shown
     """
-    browser = browser_mobile_portrait
+    click_on_navbar(page=page_mobile_portrait)
 
-    click_on_navbar(browser)
-
-    assert_visible_css_selector(browser, SPL.NAVBAR_LOGIN)
-    assert_visible_css_selector(browser, SPL.NAVBAR_REGISTER)
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.NAVBAR_LOGIN
+    )
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.NAVBAR_REGISTER
+    )
 
 
 def test_navbar_on_mobile_splash_hides_login_register(
-    browser_mobile_portrait: WebDriver,
+    page_mobile_portrait: Page,
 ):
     """
     Tests that the login and register buttons are visible in the navbar on mobile.
@@ -64,18 +75,20 @@ def test_navbar_on_mobile_splash_hides_login_register(
     WHEN user clicks on navbar toggler and then clicks to hide it
     THEN ensure the login and register buttons are no longer shown
     """
-    browser = browser_mobile_portrait
+    click_on_navbar(page=page_mobile_portrait)
 
-    click_on_navbar(browser)
+    click_on_navbar(page=page_mobile_portrait)
 
-    click_on_navbar(browser)
-
-    assert_not_visible_css_selector(browser, SPL.NAVBAR_LOGIN)
-    assert_not_visible_css_selector(browser, SPL.NAVBAR_REGISTER)
+    assert_not_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.NAVBAR_LOGIN
+    )
+    assert_not_visible_css_selector(
+        page=page_mobile_portrait, css_selector=SPL.NAVBAR_REGISTER
+    )
 
 
 def test_mobile_email_validation_brings_user_to_utub_panel(
-    browser_mobile_portrait: WebDriver,
+    page_mobile_portrait: Page,
     create_user_unconfirmed_email,
     provide_app: Flask,
 ):
@@ -86,14 +99,12 @@ def test_mobile_email_validation_brings_user_to_utub_panel(
     WHEN user clicks link in the email for email validation
     THEN ensure the UTub panel is shown on mobile
     """
-    browser = browser_mobile_portrait
-
     app = provide_app
     validation_url_suffix = create_user_unconfirmed_email
-    validation_url = browser.current_url + validation_url_suffix
+    validation_url = current_base_url(page=page_mobile_portrait) + validation_url_suffix
 
-    browser.get(validation_url)
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
+    page_mobile_portrait.goto(validation_url)
+    assert_panel_visibility_mobile(page=page_mobile_portrait, visible_deck=Decks.UTUBS)
 
     with app.app_context():
         user: Users = Users.query.filter(Users.username == UTS.TEST_USERNAME_1).first()
@@ -101,7 +112,7 @@ def test_mobile_email_validation_brings_user_to_utub_panel(
 
 
 def test_mobile_login_brings_user_to_utub_panel(
-    browser_mobile_portrait: WebDriver,
+    page_mobile_portrait: Page,
     create_test_users,
 ):
     """
@@ -111,31 +122,35 @@ def test_mobile_login_brings_user_to_utub_panel(
     WHEN user clicks link in the email for email validation
     THEN ensure the UTub panel is shown on mobile
     """
-    browser = browser_mobile_portrait
+    click_on_navbar(page=page_mobile_portrait)
 
-    click_on_navbar(browser)
+    wait_then_click_element(page=page_mobile_portrait, css_selector=SPL.NAVBAR_LOGIN)
+    input_login_fields(page=page_mobile_portrait)
 
-    wait_then_click_element(browser, SPL.NAVBAR_LOGIN)
-    input_login_fields(browser)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=SPL.LOGIN_BUTTON_SUBMIT
+    )
 
-    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
-
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(page=page_mobile_portrait, visible_deck=Decks.UTUBS)
 
 
 def test_mobile_navbar_press_hides_cookie_banner(
-    browser_mobile_portrait_without_cookie_banner_cookie: WebDriver,
+    page_mobile_portrait_without_cookie_banner_cookie: PageBundle,
 ):
     """
     GIVEN a user visiting the splash page without a cookie banner cookie
     WHEN the user opens the site and sees the cookie banner
     THEN ensure that the cookie banner is hidden when they click on the mobile navbar
     """
-    browser = browser_mobile_portrait_without_cookie_banner_cookie
+    page = page_mobile_portrait_without_cookie_banner_cookie.page
 
-    wait_for_element_visible(browser, SPL.COOKIE_BANNER)
-    assert_visible_css_selector(browser, SPL.COOKIE_BANNER)
+    wait_for_element_visible(page=page, css_selector=SPL.COOKIE_BANNER)
+    assert_visible_css_selector(page=page, css_selector=SPL.COOKIE_BANNER)
 
-    wait_then_click_element(browser, SPL.NAVBAR_TOGGLER)
-    wait_until_hidden(browser, SPL.COOKIE_BANNER)
-    assert_not_visible_css_selector(browser, SPL.COOKIE_BANNER)
+    wait_then_click_element(page=page, css_selector=SPL.NAVBAR_TOGGLER)
+    # The banner hides via opacity transition (opacity:0) rather than
+    # display:none, so check the is-visible class was removed.
+    wait_for_class_to_be_removed(
+        page=page, css_selector=SPL.COOKIE_BANNER, class_name="is-visible"
+    )
+    assert page.locator(f"{SPL.COOKIE_BANNER}.is-visible").count() == 0

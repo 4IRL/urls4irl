@@ -121,7 +121,7 @@ def metrics_registry_synced(
 
     `AnonymousMetrics."eventName"` has a FK to `EventRegistry."name"`, so a
     flush UPSERT fails unless every `EventName` value has a row. The
-    functional `browser` fixture invokes `clear_db(runner, ...)` between
+    functional page fixtures invoke `clear_db(runner, ...)` between
     tests, which `flask managedb clear test` resolves to `meta.drop_all() +
     meta.create_all()` — wiping EventRegistry along with everything else.
     The actual sync must therefore happen **after** `clear_db` runs, inside
@@ -138,9 +138,9 @@ def _reset_metrics_state_for_test(
     """Shared reset implementation invoked by both desktop + mobile fixtures.
 
     Pulled out as a helper so the same logic can run in two fixture
-    variants — one ordered after the desktop `browser` chain, one ordered
-    after the mobile `browser_mobile_portrait` chain — without forcing both
-    browser chains to spin up.
+    variants — one ordered after the desktop page chain, one ordered
+    after the mobile `page_mobile_portrait` chain — without forcing both
+    page chains to spin up.
 
     - UNLINK every `metrics:counter:*` and `metrics:batch:*` key — the same
       keys touched by `make metrics-clear-counters`.
@@ -202,7 +202,7 @@ def clear_metrics_state(
     metrics_redis_client: Redis,
     metrics_registry_synced: Flask,
     runner: Tuple[Flask, FlaskCliRunner],
-    browser_without_cookie_banner_cookie: Any,
+    page_without_cookie_banner_cookie: Any,
 ) -> Generator[None, None, None]:
     """Reset metrics state before every desktop metrics-validation test.
 
@@ -210,16 +210,14 @@ def clear_metrics_state(
     non-metrics UI tests in the same domain marker do not pay the
     EventRegistry resync cost.
 
-    `runner` and `browser_without_cookie_banner_cookie` are requested
-    explicitly so `clear_db` (executed by the parent `browser` fixture
-    chain) runs strictly **before** this fixture's body, not after —
-    otherwise the in-fixture sync runs and then `clear_db` wipes
-    EventRegistry, and the test body's UPSERT fails the FK check.
+    `runner` and `page_without_cookie_banner_cookie` are requested
+    explicitly so `clear_db` (executed inside the page fixture's setup)
+    runs strictly **before** this fixture's body, not after — otherwise
+    the in-fixture sync runs and then `clear_db` wipes EventRegistry, and
+    the test body's UPSERT fails the FK check.
 
     Mobile tests use `clear_metrics_state_mobile` instead so the desktop
-    `browser_without_cookie_banner_cookie` chain (which would otherwise
-    spin up a second WebDriver via `build_driver`) is never instantiated
-    for a mobile-viewport test.
+    page chain is never instantiated for a mobile-viewport test.
     """
     _reset_metrics_state_for_test(provide_app, metrics_redis_client)
     yield
@@ -231,13 +229,13 @@ def clear_metrics_state_mobile(
     metrics_redis_client: Redis,
     metrics_registry_synced: Flask,
     runner: Tuple[Flask, FlaskCliRunner],
-    browser_mobile_portrait_without_cookie_banner_cookie: Any,
+    page_mobile_portrait_without_cookie_banner_cookie: Any,
 ) -> Generator[None, None, None]:
     """Mobile-viewport variant of `clear_metrics_state`.
 
     Identical behavior to `clear_metrics_state` (see its docstring) but
-    orders itself after the mobile browser fixture chain instead of the
-    desktop one, so a mobile test never triggers a second WebDriver setup.
+    orders itself after the mobile page fixture chain instead of the
+    desktop one, so a mobile test never triggers a desktop context setup.
     """
     _reset_metrics_state_for_test(provide_app, metrics_redis_client)
     yield
@@ -274,14 +272,7 @@ def pg_conn_for_metrics_mobile(
     provide_app: Flask,
     clear_metrics_state_mobile: None,
 ) -> Generator[Any, None, None]:
-    """Mobile-viewport variant of `pg_conn_for_metrics`.
-
-    Identical behavior — opens a psycopg2 connection ordered after the
-    mobile metrics state reset — but pulls in the mobile browser chain
-    rather than the desktop one. Mobile tests should request this fixture
-    instead of `pg_conn_for_metrics` to avoid spinning up a second
-    WebDriver.
-    """
+    """Mobile-viewport variant of `pg_conn_for_metrics`."""
     pg_conn = _build_pg_conn(provide_app)
     try:
         yield pg_conn

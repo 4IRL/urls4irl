@@ -4,21 +4,22 @@ from typing import Any
 
 import pytest
 from flask import Flask
+from playwright.sync_api import Page
 from redis import Redis
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_and_select_utub_by_name
 from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
-from tests.functional.selenium_utils import wait_then_get_element
-from tests.functional.urls_ui.selenium_utils import create_url
+from tests.functional.playwright_login_utils import login_user_and_select_utub_by_name
+from tests.functional.playwright_utils import wait_then_get_element
+from tests.functional.urls_ui.playwright_utils import create_url
 
 pytestmark = pytest.mark.create_urls_ui
 
-# Headless Chrome at 1920x1080 (see `tests/functional/conftest.py::build_driver`)
-# resolves to DESKTOP via `frontend/lib/device-type.ts`'s media-query check.
+# Headless Chromium at the desktop viewport (see
+# `tests/functional/conftest.py::page_without_cookie_banner_cookie`) resolves
+# to DESKTOP via `frontend/lib/device-type.ts`'s media-query check.
 _EXPECTED_DEVICE_TYPE: int = DeviceType.DESKTOP.value
 
 # A novel URL the user adds in `test_url_create_form_submit_*`. Distinct from
@@ -29,7 +30,7 @@ _NEW_URL_TITLE: str = "Metrics UI suite — create-URL fixture"
 
 
 def test_url_create_form_submit_emits_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
@@ -48,16 +49,18 @@ def test_url_create_form_submit_emits_to_anonymous_metrics(
     """
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
-        provide_app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
     )
 
-    create_url(browser, _NEW_URL_TITLE, _NEW_URL_STRING)
+    create_url(page=page, url_title=_NEW_URL_TITLE, url_string=_NEW_URL_STRING)
 
     # Confirm the URL row landed in the deck before triggering the flush —
     # otherwise the form-submit emit may not have been buffered yet and
     # the dispatch would flush an empty buffer.
-    new_url_row = wait_then_get_element(browser, HPL.ROWS_URLS, time=10)
-    assert new_url_row is not None
+    wait_then_get_element(page=page, css_selector=HPL.ROWS_URLS)
 
     expected_dimensions: dict[str, Any] = {
         "device_type": _EXPECTED_DEVICE_TYPE,
@@ -65,7 +68,7 @@ def test_url_create_form_submit_emits_to_anonymous_metrics(
         "trigger": "button_click",
     }
     matched_row = wait_for_metrics_row(
-        browser=browser,
+        browser=page,
         redis_client=metrics_redis_client,
         pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_FORM_SUBMIT,
@@ -76,7 +79,7 @@ def test_url_create_form_submit_emits_to_anonymous_metrics(
 
 
 def test_url_create_with_tags_form_submit_emits_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
@@ -104,19 +107,21 @@ def test_url_create_with_tags_form_submit_emits_to_anonymous_metrics(
     """
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
-        provide_app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
     )
 
     create_url(
-        browser,
-        _NEW_URL_TITLE,
-        _NEW_URL_STRING,
+        page=page,
+        url_title=_NEW_URL_TITLE,
+        url_string=_NEW_URL_STRING,
         tag_strings=["metricstag"],
     )
 
     # Confirm the URL row landed in the deck before triggering the flush.
-    new_url_row = wait_then_get_element(browser, HPL.ROWS_URLS, time=10)
-    assert new_url_row is not None
+    wait_then_get_element(page=page, css_selector=HPL.ROWS_URLS)
 
     expected_dimensions: dict[str, Any] = {
         "device_type": _EXPECTED_DEVICE_TYPE,
@@ -124,7 +129,7 @@ def test_url_create_with_tags_form_submit_emits_to_anonymous_metrics(
         "trigger": "button_click",
     }
     matched_row = wait_for_metrics_row(
-        browser=browser,
+        browser=page,
         redis_client=metrics_redis_client,
         pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_FORM_SUBMIT,

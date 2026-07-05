@@ -1,17 +1,12 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
-from tests.functional.assert_utils import (
-    assert_logged_in_on_mobile,
-)
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
-    create_user_session_and_provide_session_id,
-    login_user_with_session_and_banner_cookie,
-)
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import assert_logged_in_on_mobile
+from tests.functional.playwright_utils import (
     click_on_navbar,
+    login_user_to_home_page,
     visit_privacy_page,
     visit_terms_page,
     wait_then_click_element,
@@ -21,7 +16,7 @@ pytestmark = pytest.mark.mobile_ui
 
 
 def test_privacy_policy(
-    browser_mobile_portrait: WebDriver, create_test_users, provide_app: Flask
+    page_mobile_portrait: Page, create_test_users, provide_app: Flask
 ):
     """
     Tests a logged in mobile user's ability to visit the privacy page from the home page.
@@ -30,18 +25,17 @@ def test_privacy_policy(
     WHEN user clicks the privacy button in the footer
     THEN ensure the U4I Privacy Policy is displayed
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_session_and_banner_cookie(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    visit_privacy_page(browser)
+    visit_privacy_page(page=page)
 
 
 @pytest.mark.parametrize("home_btn_css_selector", [HPL.U4I_LOGO, HPL.BACK_HOME_BTN])
 def test_privacy_policy_return_home(
-    browser_mobile_portrait: WebDriver,
+    page_mobile_portrait: Page,
     create_test_users,
     provide_app: Flask,
     home_btn_css_selector: str,
@@ -53,20 +47,20 @@ def test_privacy_policy_return_home(
     WHEN user clicks the privacy button in the footer and then tries to go home via the buttons
     THEN ensure the home page is displayed
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_session_and_banner_cookie(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    visit_privacy_page(browser)
-    click_on_navbar(browser) if home_btn_css_selector == HPL.BACK_HOME_BTN else None
-    wait_then_click_element(browser, home_btn_css_selector, time=3)
-    assert_logged_in_on_mobile(browser)
+    visit_privacy_page(page=page)
+    if home_btn_css_selector == HPL.BACK_HOME_BTN:
+        click_on_navbar(page=page)
+    wait_then_click_element(page=page, css_selector=home_btn_css_selector)
+    assert_logged_in_on_mobile(page=page)
 
 
 def test_terms_page(
-    browser_mobile_portrait_without_cookie_banner_cookie: WebDriver,
+    page_mobile_portrait: Page,
     create_test_users,
     provide_app: Flask,
 ):
@@ -77,18 +71,17 @@ def test_terms_page(
     WHEN user clicks the terms button in the footer
     THEN ensure the U4I Terms & Conditions are displayed
     """
-    browser = browser_mobile_portrait_without_cookie_banner_cookie
+    page = page_mobile_portrait
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_session_and_banner_cookie(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    visit_terms_page(browser)
+    visit_terms_page(page=page)
 
 
 @pytest.mark.parametrize("home_btn_css_selector", [HPL.U4I_LOGO, HPL.BACK_HOME_BTN])
 def test_terms_return_home(
-    browser_mobile_portrait: WebDriver,
+    page_mobile_portrait: Page,
     create_test_users,
     provide_app: Flask,
     home_btn_css_selector: str,
@@ -100,13 +93,13 @@ def test_terms_return_home(
     WHEN user clicks the terms button in the footer and then tries to go home via the buttons
     THEN ensure the home page is displayed
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_session_and_banner_cookie(browser, session_id)
+    login_user_to_home_page(app=app, page=page, user_id=user_id)
 
-    visit_terms_page(browser)
-    click_on_navbar(browser) if home_btn_css_selector == HPL.BACK_HOME_BTN else None
-    wait_then_click_element(browser, home_btn_css_selector, time=3)
-    assert_logged_in_on_mobile(browser)
+    visit_terms_page(page=page)
+    if home_btn_css_selector == HPL.BACK_HOME_BTN:
+        click_on_navbar(page=page)
+    wait_then_click_element(page=page, css_selector=home_btn_css_selector)
+    assert_logged_in_on_mobile(page=page)

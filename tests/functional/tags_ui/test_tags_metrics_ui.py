@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 from flask import Flask
+from playwright.sync_api import Page
 from redis import Redis
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.metrics.events import DeviceType, EventName
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -14,13 +14,15 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
 from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_login_utils import (
+    login_user_select_utub_by_id_and_url_by_id,
+)
+from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_until_hidden,
 )
-from tests.functional.tags_ui.selenium_utils import add_tag_to_url
+from tests.functional.tags_ui.playwright_utils import add_tag_to_url
 
 pytestmark = pytest.mark.tags_ui
 
@@ -30,7 +32,7 @@ _EXPECTED_DEVICE_TYPE: int = DeviceType.DESKTOP.value
 
 
 def test_tag_apply_emits_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_urls: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
@@ -58,30 +60,30 @@ def test_tag_apply_emits_to_anonymous_metrics(
     url_in_utub = get_url_in_utub(provide_app, utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        provide_app,
-        browser,
-        user_id_for_test,
-        utub_user_created.id,
-        url_in_utub.id,
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=url_in_utub.id,
     )
 
-    add_tag_to_url(browser, url_in_utub.id, tag_text)
+    add_tag_to_url(page=page, selected_url_id=url_in_utub.id, tag_string=tag_text)
 
     # Submit the tag create form — emits `UI_TAG_APPLY` in the success
     # handler after the POST completes.
     submit_button_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
-    wait_then_click_element(browser, submit_button_selector, time=3)
+    wait_then_click_element(page=page, css_selector=submit_button_selector)
 
     # Confirm the apply completed (submit button hidden) before triggering
     # the flush — otherwise the emit may not have been buffered yet and
     # the dispatch would flush an empty buffer.
-    wait_until_hidden(browser, submit_button_selector, timeout=3)
+    wait_until_hidden(page=page, css_selector=submit_button_selector)
 
     expected_dimensions: dict[str, Any] = {
         "device_type": _EXPECTED_DEVICE_TYPE,
     }
     matched_row = wait_for_metrics_row(
-        browser=browser,
+        browser=page,
         redis_client=metrics_redis_client,
         pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_TAG_APPLY,

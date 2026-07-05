@@ -1,7 +1,7 @@
-"""Selenium UI tests for the Google OAuth login/register flow.
+"""Playwright UI tests for the Google OAuth login/register flow.
 
 Mocking `oauth.google`'s Authlib calls is not feasible against a
-Selenium-driven built server — there is no in-process patch boundary a test
+Playwright-driven built server — there is no in-process patch boundary a test
 can reach into. Instead, these tests exercise the real
 button -> redirect -> callback -> login round trip against the test-only fake
 OAuth provider (`backend/testing/fake_oauth_provider.py`), registered only
@@ -12,23 +12,25 @@ from __future__ import annotations
 
 from flask import Flask
 import pytest
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import assert_login_with_username
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import assert_login_with_username
+from tests.functional.playwright_utils import (
     clear_then_send_keys,
     login_with_google_ui,
     wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
 )
-from tests.functional.splash_ui.assert_utils import assert_forgot_password_submission
-from tests.functional.splash_ui.selenium_utils import open_forgot_password_modal
+from tests.functional.splash_ui.playwright_assert_utils import (
+    assert_forgot_password_submission,
+)
+from tests.functional.splash_ui.playwright_utils import open_forgot_password_modal
 
 pytestmark = pytest.mark.splash_ui
 
@@ -59,9 +61,7 @@ def _seed_password_user(
         db.session.commit()
 
 
-def test_google_login_returning_user_from_login_modal(
-    browser: WebDriver, provide_app: Flask
-):
+def test_google_login_returning_user_from_login_modal(page: Page, provide_app: Flask):
     """
     GIVEN a Users row with a linked google UserOAuthIdentity
     WHEN the user clicks "Sign in with Google" from the Login modal and the
@@ -75,29 +75,29 @@ def test_google_login_returning_user_from_login_modal(
         username=UTS.OAUTH_RETURNING_USER_USERNAME,
     )
 
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-    wait_for_modal_ready(browser, SPL.LOGIN_MODAL)
-    google_button = wait_then_get_element(browser, SPL.LOGIN_BUTTON_GOOGLE_OAUTH)
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+    google_button = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_BUTTON_GOOGLE_OAUTH
+    )
     assert google_button is not None
-    assert google_button.text == UTS.GOOGLE_OAUTH_LOGIN_BUTTON_TEXT
+    expect(google_button).to_have_text(UTS.GOOGLE_OAUTH_LOGIN_BUTTON_TEXT)
 
     login_with_google_ui(
-        browser,
+        page=page,
         subject=UTS.OAUTH_RETURNING_USER_SUBJECT,
         email=UTS.OAUTH_RETURNING_USER_EMAIL,
         name=UTS.OAUTH_RETURNING_USER_NAME,
     )
 
-    assert_login_with_username(browser, UTS.OAUTH_RETURNING_USER_USERNAME)
+    assert_login_with_username(page=page, username=UTS.OAUTH_RETURNING_USER_USERNAME)
 
     with provide_app.app_context():
         assert Users.query.count() == 1
         assert UserOAuthIdentity.query.count() == 1
 
 
-def test_google_register_new_user_from_register_modal(
-    browser: WebDriver, provide_app: Flask
-):
+def test_google_register_new_user_from_register_modal(page: Page, provide_app: Flask):
     """
     GIVEN no existing Users/UserOAuthIdentity row for the fake provider's
         deterministic new-user subject/email
@@ -109,21 +109,23 @@ def test_google_register_new_user_from_register_modal(
         assert Users.query.count() == 0
         assert UserOAuthIdentity.query.count() == 0
 
-    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
-    wait_for_modal_ready(browser, SPL.REGISTER_MODAL)
-    google_button = wait_then_get_element(browser, SPL.REGISTER_BUTTON_GOOGLE_OAUTH)
+    wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
+    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
+    google_button = wait_then_get_element(
+        page=page, css_selector=SPL.REGISTER_BUTTON_GOOGLE_OAUTH
+    )
     assert google_button is not None
-    assert google_button.text == UTS.GOOGLE_OAUTH_REGISTER_BUTTON_TEXT
+    expect(google_button).to_have_text(UTS.GOOGLE_OAUTH_REGISTER_BUTTON_TEXT)
 
     login_with_google_ui(
-        browser,
+        page=page,
         subject=UTS.OAUTH_NEW_USER_SUBJECT,
         email=UTS.OAUTH_NEW_USER_EMAIL,
         name=UTS.OAUTH_NEW_USER_NAME,
         from_register=True,
     )
 
-    assert_login_with_username(browser, UTS.OAUTH_NEW_USER_NAME)
+    assert_login_with_username(page=page, username=UTS.OAUTH_NEW_USER_NAME)
 
     with provide_app.app_context():
         assert Users.query.count() == 1
@@ -136,7 +138,7 @@ def test_google_register_new_user_from_register_modal(
 
 
 def test_google_login_email_collision_shows_reject_message(
-    browser: WebDriver, provide_app: Flask
+    page: Page, provide_app: Flask
 ):
     """
     GIVEN a password-based Users row with no linked UserOAuthIdentity
@@ -152,15 +154,15 @@ def test_google_login_email_collision_shows_reject_message(
     )
 
     login_with_google_ui(
-        browser,
+        page=page,
         subject=UTS.OAUTH_COLLISION_SUBJECT,
         email=UTS.OAUTH_COLLISION_EMAIL,
         name=UTS.OAUTH_COLLISION_NAME,
     )
 
-    modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+    modal_alert = wait_then_get_element(page=page, css_selector=SPL.SPLASH_MODAL_ALERT)
     assert modal_alert is not None
-    assert modal_alert.text == UTS.OAUTH_EMAIL_COLLISION_MESSAGE
+    expect(modal_alert).to_have_text(UTS.OAUTH_EMAIL_COLLISION_MESSAGE)
 
     with provide_app.app_context():
         assert Users.query.count() == 1
@@ -168,7 +170,7 @@ def test_google_login_email_collision_shows_reject_message(
 
 
 def test_forgot_password_for_google_only_account_shows_generic_success(
-    browser: WebDriver, provide_app: Flask
+    page: Page, provide_app: Flask
 ):
     """
     GIVEN a Google-only (password-less) Users row
@@ -184,14 +186,18 @@ def test_forgot_password_for_google_only_account_shows_generic_success(
         username=UTS.OAUTH_FORGOT_PASSWORD_USERNAME,
     )
 
-    open_forgot_password_modal(browser)
-    email_input = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL)
+    open_forgot_password_modal(page=page)
+    email_input = wait_then_get_element(
+        page=page, css_selector=SPL.FORGOT_PASSWORD_INPUT_EMAIL
+    )
     assert email_input is not None
-    clear_then_send_keys(email_input, UTS.OAUTH_FORGOT_PASSWORD_EMAIL)
+    clear_then_send_keys(
+        locator=email_input, input_text=UTS.OAUTH_FORGOT_PASSWORD_EMAIL
+    )
 
-    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
+    wait_then_click_element(page=page, css_selector=SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
 
-    assert_forgot_password_submission(browser)
+    assert_forgot_password_submission(page=page)
 
     with provide_app.app_context():
         oauth_only_user = Users.query.filter_by(

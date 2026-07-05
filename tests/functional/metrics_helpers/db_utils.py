@@ -3,8 +3,8 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from playwright.sync_api import Page
 from redis import Redis
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.metrics.events import EventName
 from scripts.flush_metrics import FLUSH_LOCK_KEY, run_flush
@@ -28,26 +28,27 @@ _BEACON_SETTLE_SECONDS: float = 0.3
 # to `/api/metrics`. Unlike `visibilitychange`, the `pagehide` listener is
 # NOT gated against the browser's internal page-hidden state, so a
 # synthesized event with the correct constructor fires the listener reliably
-# even under headless Chrome via Selenium. The page stays alive after the
+# even under headless Chromium. The page stays alive after the
 # dispatch (no real navigation), so the beacon flight has the full network
 # stack available and is guaranteed to land.
 _DISPATCH_PAGEHIDE_JS: str = """
-const done = arguments[arguments.length - 1];
-try {
-    const pageHideEvent = new PageTransitionEvent("pagehide", {
-        persisted: false,
-        bubbles: false,
-        cancelable: false,
-    });
-    window.dispatchEvent(pageHideEvent);
-    done("dispatched");
-} catch (err) {
-    done("error: " + String(err));
+() => {
+    try {
+        const pageHideEvent = new PageTransitionEvent("pagehide", {
+            persisted: false,
+            bubbles: false,
+            cancelable: false,
+        });
+        window.dispatchEvent(pageHideEvent);
+        return "dispatched";
+    } catch (err) {
+        return "error: " + String(err);
+    }
 }
 """
 
 
-def _trigger_metrics_flush_via_pagehide(browser: WebDriver) -> None:
+def _trigger_metrics_flush_via_pagehide(browser: Page) -> None:
     """Force the metrics-client's `pagehide` -> `flushBeacon()` path.
 
     Synthesizes a real `PageTransitionEvent("pagehide")` on the page's
@@ -73,7 +74,7 @@ def _trigger_metrics_flush_via_pagehide(browser: WebDriver) -> None:
     After dispatching, sleeps briefly so the async sendBeacon request can
     be flushed onto the wire before the test starts polling Postgres.
     """
-    dispatch_result = browser.execute_async_script(_DISPATCH_PAGEHIDE_JS)
+    dispatch_result = browser.evaluate(_DISPATCH_PAGEHIDE_JS)
     if dispatch_result != "dispatched":
         raise RuntimeError(
             f"_trigger_metrics_flush_via_pagehide: dispatch failed: "
@@ -118,7 +119,7 @@ def query_anonymous_metrics_rows(
 
 
 def wait_for_metrics_row(
-    browser: WebDriver,
+    browser: Page,
     redis_client: Redis,
     pg_conn: Any,
     event_name: EventName,
@@ -176,7 +177,7 @@ def wait_for_metrics_row(
             f"event_name={event_name.value!r}; sync_event_registry never "
             "ran or the test DB was cleared between fixture setup and "
             "assertion. Check the order of `clear_metrics_state` vs the "
-            "parent `browser` fixture's `clear_db` call."
+            "parent page fixture's `clear_db` call."
         )
 
     deadline = time.monotonic() + timeout_seconds

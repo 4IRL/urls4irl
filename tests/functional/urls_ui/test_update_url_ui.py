@@ -5,10 +5,7 @@ from urllib.parse import urlsplit
 from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import (
     MOCK_URL_STRINGS,
@@ -22,7 +19,13 @@ from backend.utils.constants import STRINGS, URL_CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import URL_FAILURE
-from tests.functional.assert_utils import (
+from tests.functional.db_utils import (
+    add_mock_urls,
+    get_utub_this_user_created,
+    get_url_in_utub,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_on_429_page,
     assert_tooltip_animates,
@@ -30,18 +33,12 @@ from tests.functional.assert_utils import (
     assert_update_url_state_is_shown,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.db_utils import (
-    add_mock_urls,
-    get_utub_this_user_created,
-    get_url_in_utub,
-)
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
+from tests.functional.playwright_login_utils import (
     login_user_select_utub_by_id_and_url_by_id,
     login_user_select_utub_by_name_and_url_by_string,
     login_user_select_utub_by_name_and_url_by_title,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     get_selected_url,
     invalidate_csrf_token_on_page,
@@ -51,19 +48,19 @@ from tests.functional.selenium_utils import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
-from tests.functional.urls_ui.assert_utils import (
+from tests.functional.urls_ui.playwright_assert_utils import (
     assert_select_url_as_utub_owner_or_url_creator,
 )
-from tests.functional.urls_ui.selenium_utils import (
-    update_url_title,
+from tests.functional.urls_ui.playwright_utils import (
     update_url_string,
+    update_url_title,
 )
 
 pytestmark = pytest.mark.update_urls_ui
 
 
 def test_update_url_string_tooltip_animates(
-    browser: WebDriver,
+    page: Page,
     create_test_urls,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -83,11 +80,15 @@ def test_update_url_string_tooltip_animates(
     utub_url = get_url_in_utub(app, utub_id=utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, utub_url.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=utub_url.id,
     )
 
     assert_tooltip_animates(
-        browser=browser,
+        page=page,
         parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}",
         tooltip_parent_class=HPL.BUTTON_URL_STRING_UPDATE,
         tooltip_text=STRINGS.EDIT_URL_TOOLTIP,
@@ -103,7 +104,7 @@ def test_update_url_string_tooltip_animates(
     ],
 )
 def test_update_url_with_valid_url(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -131,46 +132,49 @@ def test_update_url_with_valid_url(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
-    assert_select_url_as_utub_owner_or_url_creator(browser, HPL.ROW_SELECTED_URL)
+    assert_select_url_as_utub_owner_or_url_creator(
+        page=page, url_selector=HPL.ROW_SELECTED_URL
+    )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
     if input_url.startswith(("\t", "\n")):
         # This is needed to insert escaped characters via Selenium into input fields
         input_url = input_url.encode("unicode_escape").decode("utf-8")
 
-    update_url_string(browser, url_row, input_url)
-    assert_update_url_state_is_shown(browser, url_row)
+    update_url_string(page=page, url_string=input_url)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     submit_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
     )
-    wait_then_click_element(browser, submit_css_selector)
+    wait_then_click_element(page=page, css_selector=submit_css_selector)
 
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == url_row_string_display
     assert url_row_data_attrib == VALIDATED_URL
 
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    expect(page.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
 
-    assert not browser.find_element(
-        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
-    ).is_displayed()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_hidden()
 
 
 def test_update_url_string_submit_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -195,26 +199,30 @@ def test_update_url_string_submit_btn(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
-    update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(browser, url_row)
+    update_url_string(page=page, url_string=random_url_to_change_to)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     submit_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
     )
-    wait_then_click_element(browser, submit_css_selector)
+    wait_then_click_element(page=page, css_selector=submit_css_selector)
 
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == url_row_string_display
@@ -226,16 +234,13 @@ def test_update_url_string_submit_btn(
 
     assert host_changed_to in actual_host or actual_host in host_changed_to
 
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    expect(page.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
 
-    assert not browser.find_element(
-        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
-    ).is_displayed()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_hidden()
 
 
 def test_update_url_string_press_enter_key(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -260,22 +265,26 @@ def test_update_url_string_press_enter_key(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
-    update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(browser, url_row)
-    browser.switch_to.active_element.send_keys(Keys.ENTER)
+    update_url_string(page=page, url_string=random_url_to_change_to)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
+    page.keyboard.press("Enter")
 
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == url_row_string_display
@@ -287,16 +296,13 @@ def test_update_url_string_press_enter_key(
 
     assert host_changed_to in actual_host or actual_host in host_changed_to
 
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    expect(page.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
 
-    assert not browser.find_element(
-        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
-    ).is_displayed()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_hidden()
 
 
 def test_update_url_string_rate_limits(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -321,26 +327,30 @@ def test_update_url_string_rate_limits(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
-    update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(browser, url_row)
+    update_url_string(page=page, url_string=random_url_to_change_to)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
-    add_forced_rate_limit_header(browser)
+    add_forced_rate_limit_header(page=page)
 
     submit_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
     )
-    wait_then_click_element(browser, submit_css_selector)
+    wait_then_click_element(page=page, css_selector=submit_css_selector)
 
-    assert_on_429_page(browser)
+    assert_on_429_page(page=page)
 
 
 def test_update_url_string_big_cancel_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -365,46 +375,46 @@ def test_update_url_string_big_cancel_btn(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row = get_selected_url(page=page)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
-    init_url_row_string_display = url_row_string_elem.text
+    init_url_row_string_display = url_row_string_elem.inner_text()
 
     update_btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
-    wait_then_click_element(browser, update_btn_selector)
-    assert_update_url_state_is_shown(browser, url_row)
+    wait_then_click_element(page=page, css_selector=update_btn_selector)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     cancel_update_btn = wait_then_get_element(
-        browser, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
+        page=page, css_selector=HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
     )
-    assert cancel_update_btn is not None
     cancel_update_btn.click()
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == init_url_row_data
     assert url_row_string_display == init_url_row_string_display
 
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    expect(page.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
 
-    assert not browser.find_element(
-        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
-    ).is_displayed()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_hidden()
 
 
 def test_update_url_string_cancel_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -429,49 +439,49 @@ def test_update_url_string_cancel_btn(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row = get_selected_url(page=page)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
-    init_url_row_string_display = url_row_string_elem.text
+    init_url_row_string_display = url_row_string_elem.inner_text()
 
     url_update_btn_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
     )
-    wait_until_visible_css_selector(browser, url_update_btn_css_selector)
-    wait_then_click_element(browser, url_update_btn_css_selector)
-    assert_update_url_state_is_shown(browser, url_row)
+    wait_until_visible_css_selector(page=page, css_selector=url_update_btn_css_selector)
+    wait_then_click_element(page=page, css_selector=url_update_btn_css_selector)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     cancel_update_btn = wait_then_get_element(
-        browser, HPL.BUTTON_URL_STRING_CANCEL_UPDATE
+        page=page, css_selector=HPL.BUTTON_URL_STRING_CANCEL_UPDATE
     )
-    assert cancel_update_btn is not None
     cancel_update_btn.click()
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == init_url_row_data
     assert url_row_string_display == init_url_row_string_display
 
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    expect(page.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
 
-    assert not browser.find_element(
-        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
-    ).is_displayed()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_hidden()
 
 
 def test_update_url_string_escape_key(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -496,48 +506,49 @@ def test_update_url_string_escape_key(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row = get_selected_url(page=page)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
-    init_url_row_string_display = url_row_string_elem.text
+    init_url_row_string_display = url_row_string_elem.inner_text()
 
     url_update_btn_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
     )
-    wait_until_visible_css_selector(browser, url_update_btn_css_selector)
-    wait_then_click_element(browser, url_update_btn_css_selector)
-    assert_update_url_state_is_shown(browser, url_row)
+    wait_until_visible_css_selector(page=page, css_selector=url_update_btn_css_selector)
+    wait_then_click_element(page=page, css_selector=url_update_btn_css_selector)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     wait_until_in_focus(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
     )
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    page.keyboard.press("Escape")
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == init_url_row_data
     assert url_row_string_display == init_url_row_string_display
 
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    expect(page.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
 
-    assert not browser.find_element(
-        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
-    ).is_displayed()
+    expect(page.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_hidden()
 
 
 def test_update_url_title_submit_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -556,30 +567,34 @@ def test_update_url_title_submit_btn(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
     url_title = UTS.TEST_URL_TITLE_UPDATE
-    update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    update_url_title(page=page, selected_url_row=url_row, url_title=url_title)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_hidden()
 
     # Submit
     submit_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}"
-    wait_then_click_element(browser, submit_css_selector)
+    wait_then_click_element(page=page, css_selector=submit_css_selector)
 
     # Wait for POST request
-    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_visible()
 
     # Extract URL string from updated URL row
-    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_title = url_row.locator(HPL.URL_TITLE_READ).inner_text()
 
     assert url_title == url_row_title
 
 
 def test_update_url_title_submit_enter_key(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -598,29 +613,33 @@ def test_update_url_title_submit_enter_key(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
     url_title = UTS.TEST_URL_TITLE_UPDATE
-    update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    update_url_title(page=page, selected_url_row=url_row, url_title=url_title)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_hidden()
 
     # Submit
-    browser.switch_to.active_element.send_keys(Keys.ENTER)
+    page.keyboard.press("Enter")
 
     # Wait for update to hide
-    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_visible()
 
     # Extract URL string from updated URL row
-    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_title = url_row.locator(HPL.URL_TITLE_READ).inner_text()
 
     assert url_title == url_row_title
 
 
 def test_update_url_title_cancel_click_btn(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -639,32 +658,36 @@ def test_update_url_title_cancel_click_btn(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
     # Extract URL string from updated URL row
-    init_url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    init_url_row_title = url_row.locator(HPL.URL_TITLE_READ).inner_text()
 
     url_title = UTS.TEST_URL_TITLE_UPDATE
-    update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    update_url_title(page=page, selected_url_row=url_row, url_title=url_title)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_hidden()
 
     cancel_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}"
-    wait_then_click_element(browser, cancel_css_selector)
+    wait_then_click_element(page=page, css_selector=cancel_css_selector)
 
-    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_visible()
 
     # Extract URL string from updated URL row
-    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_title = url_row.locator(HPL.URL_TITLE_READ).inner_text()
 
     assert init_url_row_title == url_row_title
 
 
 def test_update_url_title_cancel_press_escape(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -683,31 +706,35 @@ def test_update_url_title_cancel_press_escape(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
     # Extract URL string from updated URL row
-    init_url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    init_url_row_title = url_row.locator(HPL.URL_TITLE_READ).inner_text()
 
     url_title = UTS.TEST_URL_TITLE_UPDATE
-    update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    update_url_title(page=page, selected_url_row=url_row, url_title=url_title)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_hidden()
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    page.keyboard.press("Escape")
 
-    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+    expect(url_row.locator(HPL.URL_TITLE_READ)).to_be_visible()
 
     # Extract URL string from updated URL row
-    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_title = url_row.locator(HPL.URL_TITLE_READ).inner_text()
 
     assert init_url_row_title == url_row_title
 
 
 def test_update_url_title_length_exceeded(
-    browser: WebDriver,
+    page: Page,
     create_test_urls,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -726,25 +753,32 @@ def test_update_url_title_length_exceeded(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
-    update_url_title(browser, url_row, "a" * (URL_CONSTANTS.MAX_URL_TITLE_LENGTH + 1))
+    update_url_title(
+        page=page,
+        selected_url_row=url_row,
+        url_title="a" * (URL_CONSTANTS.MAX_URL_TITLE_LENGTH + 1),
+    )
 
     update_url_title_input = wait_then_get_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",
     )
 
-    assert update_url_title_input is not None
-    new_url_title = update_url_title_input.get_attribute("value")
-    assert new_url_title is not None
+    new_url_title = update_url_title_input.input_value()
     assert len(new_url_title) == URL_CONSTANTS.MAX_URL_TITLE_LENGTH
 
 
 def test_update_url_string_empty_field(
-    browser: WebDriver, create_test_urls, provide_app
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a user and selected UTub
@@ -754,26 +788,29 @@ def test_update_url_string_empty_field(
     app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, "")
+    get_selected_url(page=page)
+    update_url_string(page=page, url_string="")
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
     invalid_url_string_error = wait_then_get_element(
-        browser, HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX, time=3
+        page=page,
+        css_selector=HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX,
     )
-    assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == FIELD_REQUIRED_STR
+    assert invalid_url_string_error.inner_text() == FIELD_REQUIRED_STR
 
 
-def test_update_url_title_empty_field(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_update_url_title_empty_field(page: Page, create_test_urls, provide_app: Flask):
     """
     GIVEN a user and selected UTub
     WHEN the updateURL title form is submitted empty
@@ -782,25 +819,30 @@ def test_update_url_title_empty_field(
     app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
-    update_url_title(browser, url_row, "")
+    url_row = get_selected_url(page=page)
+    update_url_title(page=page, selected_url_row=url_row, url_title="")
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}",
     )
 
     invalid_url_title_error = wait_then_get_element(
-        browser, HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX, time=3
+        page=page,
+        css_selector=HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX,
     )
-    assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == FIELD_REQUIRED_STR
+    assert invalid_url_title_error.inner_text() == FIELD_REQUIRED_STR
 
 
 def test_update_url_string_duplicate_url(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a user and selected UTub
@@ -820,24 +862,28 @@ def test_update_url_string_duplicate_url(
         ).first()
 
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, utub.name, another_utub_url.url_title
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=utub.name,
+        url_title=another_utub_url.url_title,
     )
 
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, url_to_update_to)
+    get_selected_url(page=page)
+    update_url_string(page=page, url_string=url_to_update_to)
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
     error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
-    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=error_css_selector)
 
     invalid_url_string_error = wait_then_get_element(
-        browser, error_css_selector, time=3
+        page=page, css_selector=error_css_selector
     )
-    assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == URL_FAILURE.URL_IN_UTUB
+    assert invalid_url_string_error.inner_text() == URL_FAILURE.URL_IN_UTUB
 
 
 @pytest.mark.parametrize(
@@ -849,7 +895,7 @@ def test_update_url_string_duplicate_url(
     ],
 )
 def test_update_url_string_invalid_urls(
-    browser: WebDriver, create_test_urls, provide_app: Flask, invalid_url: str
+    page: Page, create_test_urls, provide_app: Flask, invalid_url: str
 ):
     """
     GIVEN a user and selected UTub
@@ -860,28 +906,34 @@ def test_update_url_string_invalid_urls(
     user_id_for_test = 1
 
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, invalid_url)
+    get_selected_url(page=page)
+    update_url_string(page=page, url_string=invalid_url)
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
     error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
-    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=error_css_selector)
 
     invalid_url_string_error = wait_then_get_element(
-        browser, error_css_selector, time=3
+        page=page, css_selector=error_css_selector
     )
-    assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
+    assert (
+        invalid_url_string_error.inner_text() == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
+    )
 
 
 def test_update_url_string_credentials_url(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a user and selected UTub
@@ -892,30 +944,35 @@ def test_update_url_string_credentials_url(
     user_id_for_test = 1
 
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
     invalid_url = "https://user:password@example.com"
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, invalid_url)
+    get_selected_url(page=page)
+    update_url_string(page=page, url_string=invalid_url)
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
     error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
-    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=error_css_selector)
 
     invalid_url_string_error = wait_then_get_element(
-        browser, error_css_selector, time=3
+        page=page, css_selector=error_css_selector
     )
-    assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
+    assert (
+        invalid_url_string_error.inner_text()
+        == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
+    )
 
 
-def test_update_url_sanitized_title(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_update_url_sanitized_title(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests the site error response to a user's attempt to update a URL with a title that
     contains improper or unsanitized inputs
@@ -928,26 +985,34 @@ def test_update_url_sanitized_title(
     user_id_for_test = 1
 
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
-    update_url_title(browser, url_row, '<img src="evl.jpg">')
+    update_url_title(
+        page=page, selected_url_row=url_row, url_title='<img src="evl.jpg">'
+    )
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}",
     )
 
     error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
-    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=error_css_selector)
 
-    invalid_url_title_error = wait_then_get_element(browser, error_css_selector, time=3)
-    assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
+    invalid_url_title_error = wait_then_get_element(
+        page=page, css_selector=error_css_selector
+    )
+    assert invalid_url_title_error.inner_text() == URL_FAILURE.INVALID_INPUT
 
 
 def test_update_url_title_invalid_csrf_token(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests the site error response to a user's attempt to update a URL with a title
@@ -963,28 +1028,32 @@ def test_update_url_title_invalid_csrf_token(
         user: Users = Users.query.get(user_id_for_test)
 
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    url_row = get_selected_url(page=page)
 
-    update_url_title(browser, url_row, "Testing")
-    invalidate_csrf_token_on_page(browser)
+    update_url_title(page=page, selected_url_row=url_row, url_title="Testing")
+    invalidate_csrf_token_on_page(page=page)
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}",
     )
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
     # Page reloads after user clicks button in CSRF 403 error page
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(0)
 
-    assert_login_with_username(browser, user.username)
+    assert_login_with_username(page=page, username=user.username)
 
 
 def test_update_url_strips_tracking_params(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -1004,23 +1073,27 @@ def test_update_url_strips_tracking_params(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, MOCK_URL_WITH_TRACKING_PARAMS)
-    assert_update_url_state_is_shown(browser, url_row)
+    url_row = get_selected_url(page=page)
+    update_url_string(page=page, url_string=MOCK_URL_WITH_TRACKING_PARAMS)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     submit_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
     )
-    wait_then_click_element(browser, submit_css_selector)
+    wait_then_click_element(page=page, css_selector=submit_css_selector)
 
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     # The update path sets `.text(updatedURLString)` directly (no prefix
@@ -1030,7 +1103,7 @@ def test_update_url_strips_tracking_params(
 
 
 def test_update_url_tracking_params_collision_shows_error(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -1052,28 +1125,35 @@ def test_update_url_tracking_params_collision_shows_error(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, url_to_edit
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=url_to_edit,
     )
 
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, MOCK_URL_WITH_TRACKING_PARAMS)
+    get_selected_url(page=page)
+    update_url_string(page=page, url_string=MOCK_URL_WITH_TRACKING_PARAMS)
 
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
     error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
-    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=error_css_selector)
 
     invalid_url_string_error = wait_then_get_element(
-        browser, error_css_selector, time=3
+        page=page, css_selector=error_css_selector
     )
-    assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == UTS.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    assert (
+        invalid_url_string_error.inner_text()
+        == UTS.URL_IN_UTUB_TRACKING_PARAMS_STRIPPED
+    )
 
 
 def test_update_url_preserves_non_tracking_params(
-    browser: WebDriver,
+    page: Page,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -1093,24 +1173,28 @@ def test_update_url_preserves_non_tracking_params(
 
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_string(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=random_url_to_add,
     )
 
     url_with_legit_params = UTS.URL_WITH_NON_TRACKING_PARAMS
-    url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, url_with_legit_params)
-    assert_update_url_state_is_shown(browser, url_row)
+    url_row = get_selected_url(page=page)
+    update_url_string(page=page, url_string=url_with_legit_params)
+    assert_update_url_state_is_shown(page=page, url_row=url_row)
 
     submit_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
     )
-    wait_then_click_element(browser, submit_css_selector)
+    wait_then_click_element(page=page, css_selector=submit_css_selector)
 
-    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    assert_update_url_state_is_hidden(url_row)
+    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row=url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
-    url_row_string_display = url_row_string_elem.text
+    url_row_string_elem = url_row.locator(HPL.URL_STRING_READ)
+    url_row_string_display = url_row_string_elem.inner_text()
     url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == url_with_legit_params
@@ -1118,7 +1202,7 @@ def test_update_url_preserves_non_tracking_params(
 
 
 def test_update_url_string_invalid_csrf_token(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests the site error response to a user's attempt to update a URL with a url string
@@ -1134,21 +1218,25 @@ def test_update_url_string_invalid_csrf_token(
         user: Users = Users.query.get(user_id_for_test)
 
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_title=UTS.TEST_URL_TITLE_1,
     )
 
-    url_row = get_selected_url(browser)
+    get_selected_url(page=page)
 
-    update_url_string(browser, url_row, "Testing")
-    invalidate_csrf_token_on_page(browser)
+    update_url_string(page=page, url_string="Testing")
+    invalidate_csrf_token_on_page(page=page)
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
     # Page reloads after user clicks button in CSRF 403 error page
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
+    expect(page.locator(HPL.ROW_SELECTED_URL)).to_have_count(0)
 
-    assert_login_with_username(browser, user.username)
+    assert_login_with_username(page=page, username=user.username)

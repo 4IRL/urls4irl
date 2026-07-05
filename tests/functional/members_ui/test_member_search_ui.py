@@ -1,31 +1,30 @@
+import re
+
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import WebDriverWait
+from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.cli.mock_constants import USERNAME_BASE
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import (
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.members_ui.playwright_utils import (
+    create_member_active_utub,
+    open_member_name_filter,
+)
+from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
     assert_panel_visibility_mobile,
     assert_visible_css_selector,
 )
-from tests.functional.db_utils import get_utub_this_user_created
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
+from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid_mobile,
 )
-from tests.functional.members_ui.selenium_utils import (
-    create_member_active_utub,
-    open_member_name_filter,
-)
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     Decks,
     click_on_navbar,
     wait_for_class_to_be_removed,
@@ -98,7 +97,7 @@ def _unique_username_substring(target: Users, others: list[Users]) -> str:
 
 
 def test_member_filter_funnel_visible_when_utub_selected(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a user selects a UTub that has members
@@ -109,23 +108,25 @@ def test_member_filter_funnel_visible_when_utub_selected(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
     # Before opening: funnel shown, search wrap hidden.
-    assert_visible_css_selector(browser, HPL.BUTTON_MEMBER_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.MEMBER_SEARCH_WRAP, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_MEMBER_NAME_FILTER)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.MEMBER_SEARCH_WRAP)
 
     # Opening the funnel reveals the search input wrap and input.
-    input_elem = open_member_name_filter(browser)
+    input_elem = open_member_name_filter(page=page)
     assert input_elem is not None
-    assert_visible_css_selector(browser, HPL.MEMBER_SEARCH_WRAP, time=3)
-    assert_visible_css_selector(browser, HPL.MEMBER_SEARCH_INPUT, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.MEMBER_SEARCH_WRAP)
+    assert_visible_css_selector(page=page, css_selector=HPL.MEMBER_SEARCH_INPUT)
 
 
 def test_member_filter_togglable_on_mobile(
-    browser_mobile_portrait: WebDriver, create_test_utubmembers, provide_app: Flask
+    page_mobile_portrait: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a user on a mobile viewport (<992px) selects a UTub with members
@@ -136,32 +137,52 @@ def test_member_filter_togglable_on_mobile(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    browser = browser_mobile_portrait
 
     login_user_and_select_utub_by_utubid_mobile(
-        app, browser, user_id, utub_user_created.id
+        app=app,
+        page=page_mobile_portrait,
+        user_id=user_id,
+        utub_id=utub_user_created.id,
     )
 
     # On mobile the member deck is a separate panel; navigate to it via the navbar.
-    click_on_navbar(browser)
-    wait_then_click_element(browser, HPL.NAVBAR_MEMBER_DECK)
-    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    assert_panel_visibility_mobile(browser, visible_deck=Decks.MEMBERS)
+    click_on_navbar(page=page_mobile_portrait)
+    wait_then_click_element(
+        page=page_mobile_portrait, css_selector=HPL.NAVBAR_MEMBER_DECK
+    )
+    wait_for_class_to_be_removed(
+        page=page_mobile_portrait,
+        css_selector=HPL.NAVBAR_DROPDOWN,
+        class_name="collapsing",
+    )
+    assert_panel_visibility_mobile(
+        page=page_mobile_portrait, visible_deck=Decks.MEMBERS
+    )
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(
+        page=page_mobile_portrait, css_selector=HPL.BADGES_MEMBERS
+    )
 
     # Mobile: the search wrap is hidden by default; the funnel toggles it (this is
     # the divergence from the UTub filter, which is always-visible on mobile).
-    assert_visible_css_selector(browser, HPL.BUTTON_MEMBER_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.MEMBER_SEARCH_WRAP, time=3)
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=HPL.BUTTON_MEMBER_NAME_FILTER
+    )
+    assert_not_visible_css_selector(
+        page=page_mobile_portrait, css_selector=HPL.MEMBER_SEARCH_WRAP
+    )
 
-    open_member_name_filter(browser)
-    assert_visible_css_selector(browser, HPL.MEMBER_SEARCH_WRAP, time=3)
-    assert_visible_css_selector(browser, HPL.MEMBER_SEARCH_INPUT, time=3)
+    open_member_name_filter(page=page_mobile_portrait)
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=HPL.MEMBER_SEARCH_WRAP
+    )
+    assert_visible_css_selector(
+        page=page_mobile_portrait, css_selector=HPL.MEMBER_SEARCH_INPUT
+    )
 
 
 def test_typing_substring_hides_non_matching_members_and_clearing_shows_all(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub with multiple members is selected and the filter is open
@@ -172,7 +193,9 @@ def test_typing_substring_hides_non_matching_members_and_clearing_shows_all(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     owner, other_member = _get_owner_and_other_member(
         app, utub_user_created.id, user_id
@@ -181,28 +204,28 @@ def test_typing_substring_hides_non_matching_members_and_clearing_shows_all(
     matched_selector = _member_badge_selector(other_member.id)
     owner_selector = _member_badge_selector(owner.id)
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
     # Before typing: both the matching member and the owner are visible.
-    assert_visible_css_selector(browser, matched_selector, time=3)
-    assert_visible_css_selector(browser, owner_selector, time=3)
+    assert_visible_css_selector(page=page, css_selector=matched_selector)
+    assert_visible_css_selector(page=page, css_selector=owner_selector)
 
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(match_term)
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(match_term)
 
     # Matching row stays visible; the owner (non-matching) becomes hidden.
-    assert_visible_css_selector(browser, matched_selector, time=3)
-    assert_not_visible_css_selector(browser, owner_selector, time=3)
+    assert_visible_css_selector(page=page, css_selector=matched_selector)
+    assert_not_visible_css_selector(page=page, css_selector=owner_selector)
 
-    # Clearing the term shows all rows again. Backspace one key per typed char so
-    # each deletion fires an `input` event.
-    input_elem.send_keys(Keys.BACKSPACE * len(match_term))
-    assert_visible_css_selector(browser, matched_selector, time=3)
-    assert_visible_css_selector(browser, owner_selector, time=3)
+    # Clearing the term shows all rows again. fill("") fires an input event that
+    # resets the filter.
+    input_elem.fill("")
+    assert_visible_css_selector(page=page, css_selector=matched_selector)
+    assert_visible_css_selector(page=page, css_selector=owner_selector)
 
 
 def test_filter_term_not_matching_owner_hides_owner_row(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub with an owner and other members is selected
@@ -213,7 +236,9 @@ def test_filter_term_not_matching_owner_hides_owner_row(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     owner, other_member = _get_owner_and_other_member(
         app, utub_user_created.id, user_id
@@ -221,23 +246,23 @@ def test_filter_term_not_matching_owner_hides_owner_row(
     # A term unique to a non-owner member, so the owner does not match.
     non_owner_term = _unique_username_substring(other_member, [owner])
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
     # Before typing: the owner row is visible.
-    assert_visible_css_selector(browser, HPL.BADGE_OWNER, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BADGE_OWNER)
 
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(non_owner_term)
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(non_owner_term)
 
     # The owner is hidden because its username does not contain the term.
-    assert_not_visible_css_selector(browser, HPL.BADGE_OWNER, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.BADGE_OWNER)
     assert_visible_css_selector(
-        browser, _member_badge_selector(other_member.id), time=3
+        page=page, css_selector=_member_badge_selector(other_member.id)
     )
 
 
 def test_filter_term_matching_only_owner_shows_owner_hides_list_members(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub with an owner and other members is selected
@@ -247,7 +272,9 @@ def test_filter_term_matching_only_owner_shows_owner_hides_list_members(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     with app.app_context():
         owner: Users = Users.query.get(user_id)
@@ -260,28 +287,28 @@ def test_filter_term_matching_only_owner_shows_owner_hides_list_members(
         ]
     owner_only_term = _unique_username_substring(owner, other_members)
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
     # Before typing: the owner and at least one list member are visible.
-    assert_visible_css_selector(browser, HPL.BADGE_OWNER, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BADGE_OWNER)
     assert len(other_members) >= 1
     assert_visible_css_selector(
-        browser, _member_badge_selector(other_members[0].id), time=3
+        page=page, css_selector=_member_badge_selector(other_members[0].id)
     )
 
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(owner_only_term)
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(owner_only_term)
 
     # The owner stays visible; every non-owner list member is hidden.
-    assert_visible_css_selector(browser, HPL.BADGE_OWNER, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BADGE_OWNER)
     for other_member in other_members:
         assert_not_visible_css_selector(
-            browser, _member_badge_selector(other_member.id), time=3
+            page=page, css_selector=_member_badge_selector(other_member.id)
         )
 
 
 def test_no_results_message_shown_when_term_matches_no_members(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub with members is selected and the filter is open
@@ -292,25 +319,28 @@ def test_no_results_message_shown_when_term_matches_no_members(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
     # Before typing: the no-results message is hidden.
-    assert_not_visible_css_selector(browser, HPL.MEMBER_SEARCH_NO_RESULTS, time=3)
-
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(NO_MATCH_SEARCH_TERM)
-
-    assert_visible_css_selector(browser, HPL.MEMBER_SEARCH_NO_RESULTS, time=3)
-    no_results_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.MEMBER_SEARCH_NO_RESULTS
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.MEMBER_SEARCH_NO_RESULTS
     )
-    assert no_results_elem.text == UTS.MEMBER_SEARCH_NO_MEMBERS
+
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(NO_MATCH_SEARCH_TERM)
+
+    assert_visible_css_selector(page=page, css_selector=HPL.MEMBER_SEARCH_NO_RESULTS)
+    expect(page.locator(HPL.MEMBER_SEARCH_NO_RESULTS)).to_have_text(
+        UTS.MEMBER_SEARCH_NO_MEMBERS
+    )
 
 
 def test_escape_closes_filter_returns_focus_to_funnel_and_clears_term(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub with members is selected and the filter is open with a typed term
@@ -321,37 +351,42 @@ def test_escape_closes_filter_returns_focus_to_funnel_and_clears_term(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     owner, other_member = _get_owner_and_other_member(
         app, utub_user_created.id, user_id
     )
     typed_term = _unique_username_substring(other_member, [owner])
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(typed_term)
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(typed_term)
 
     # Before ESC: the term is present and the funnel is hidden (X shown instead).
-    assert input_elem.get_attribute("value") == typed_term
-    assert_not_visible_css_selector(browser, HPL.BUTTON_MEMBER_NAME_FILTER, time=3)
+    assert input_elem.input_value() == typed_term
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_MEMBER_NAME_FILTER
+    )
 
-    input_elem.send_keys(Keys.ESCAPE)
+    # Ensure the input has focus before pressing ESC so the keydown is delivered.
+    wait_until_in_focus(page=page, css_selector=HPL.MEMBER_SEARCH_INPUT)
+    page.keyboard.press("Escape")
 
     # After ESC: the filter closes, the funnel reappears and regains focus, and the
     # term is cleared.
-    assert_visible_css_selector(browser, HPL.BUTTON_MEMBER_NAME_FILTER, time=3)
-    assert_not_visible_css_selector(browser, HPL.MEMBER_SEARCH_WRAP, time=3)
-    wait_until_in_focus(browser, HPL.BUTTON_MEMBER_NAME_FILTER, timeout=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_MEMBER_NAME_FILTER)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.MEMBER_SEARCH_WRAP)
+    wait_until_in_focus(page=page, css_selector=HPL.BUTTON_MEMBER_NAME_FILTER)
 
-    open_member_name_filter(browser)
-    reopened_input = browser.find_element(By.CSS_SELECTOR, HPL.MEMBER_SEARCH_INPUT)
-    assert reopened_input.get_attribute("value") == ""
+    open_member_name_filter(page=page)
+    assert page.locator(HPL.MEMBER_SEARCH_INPUT).input_value() == ""
 
 
 def test_filter_resets_on_add_member_form_open(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub owner has the member filter open with a typed term
@@ -362,39 +397,36 @@ def test_filter_resets_on_add_member_form_open(
     app = provide_app
     user_id = 1
     utub_user_created = get_utub_this_user_created(app, user_id)
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     owner, other_member = _get_owner_and_other_member(
         app, utub_user_created.id, user_id
     )
     typed_term = _unique_username_substring(other_member, [owner])
 
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
 
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(typed_term)
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(typed_term)
 
     # Before opening the add-member form: the filter is open.
-    member_deck = browser.find_element(By.CSS_SELECTOR, HPL.MEMBER_DECK)
-    assert "member-search-open" in (member_deck.get_attribute("class") or "")
+    expect(page.locator(HPL.MEMBER_DECK)).to_have_class(
+        re.compile(r"(^|\s)member-search-open(\s|$)")
+    )
 
     # Opening the add-member form closes the filter and hides the member list.
-    wait_then_click_element(browser, HPL.BUTTON_MEMBER_CREATE, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_CREATE)
 
-    WebDriverWait(browser, 3).until(
-        lambda _: "member-search-open"
-        not in (
-            browser.find_element(By.CSS_SELECTOR, HPL.MEMBER_DECK).get_attribute(
-                "class"
-            )
-            or ""
-        )
+    expect(page.locator(HPL.MEMBER_DECK)).not_to_have_class(
+        re.compile(r"(^|\s)member-search-open(\s|$)")
     )
-    assert_not_visible_css_selector(browser, HPL.DISPLAY_MEMBER_WRAP, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.DISPLAY_MEMBER_WRAP)
 
 
 def test_member_filter_reapplied_after_successful_add(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a UTub owner has a filter term active that hides the owner row while a
@@ -420,7 +452,9 @@ def test_member_filter_reapplied_after_successful_add(
         app, utub_user_created.id, seeded_username
     )
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    login_user_and_select_utub_by_name(
+        app=app, page=page, user_id=user_id, utub_name=utub_user_created.name
+    )
 
     new_member_username = USERNAME_BASE + "2"
     with app.app_context():
@@ -446,29 +480,29 @@ def test_member_filter_reapplied_after_successful_add(
     # Gate on the member deck finishing its render before targeting a specific
     # badge (mirrors the sibling filter tests): the deck repaints just after UTub
     # select, so wait for any member badge first to avoid racing the render.
-    wait_until_visible_css_selector(browser, HPL.BADGES_MEMBERS, timeout=3)
-    wait_until_visible_css_selector(browser, seeded_selector, timeout=3)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.BADGES_MEMBERS)
+    wait_until_visible_css_selector(page=page, css_selector=seeded_selector)
 
     # Before adding: owner and seeded member are both visible.
-    assert_visible_css_selector(browser, owner_selector, time=3)
-    assert_visible_css_selector(browser, seeded_selector, time=3)
+    assert_visible_css_selector(page=page, css_selector=owner_selector)
+    assert_visible_css_selector(page=page, css_selector=seeded_selector)
 
     # Apply the filter: the owner row is hidden, the seeded member stays visible.
-    input_elem = open_member_name_filter(browser)
-    input_elem.send_keys(filter_term)
-    assert_not_visible_css_selector(browser, owner_selector, time=3)
-    assert_visible_css_selector(browser, seeded_selector, time=3)
+    input_elem = open_member_name_filter(page=page)
+    input_elem.fill(filter_term)
+    assert_not_visible_css_selector(page=page, css_selector=owner_selector)
+    assert_visible_css_selector(page=page, css_selector=seeded_selector)
 
     # Add a brand-new member (opening the form collapses the filter and clears the
     # term; on success reapplyMemberFilter runs against the empty term).
-    create_member_active_utub(browser, new_member_username)
-    wait_then_click_element(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE, time=3)
-    wait_until_hidden(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE, timeout=3)
+    create_member_active_utub(page=page, member_name=new_member_username)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MEMBER_SUBMIT_CREATE)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MEMBER_SUBMIT_CREATE)
 
     # After the add: reapplyMemberFilter re-evaluated every row against the cleared
     # term, so the previously hidden owner is visible again and the newly appended
     # member is visible alongside the seeded member.
-    wait_until_visible_css_selector(browser, new_member_selector, timeout=3)
-    assert_visible_css_selector(browser, owner_selector, time=3)
-    assert_visible_css_selector(browser, seeded_selector, time=3)
-    assert_visible_css_selector(browser, new_member_selector, time=3)
+    wait_until_visible_css_selector(page=page, css_selector=new_member_selector)
+    assert_visible_css_selector(page=page, css_selector=owner_selector)
+    assert_visible_css_selector(page=page, css_selector=seeded_selector)
+    assert_visible_css_selector(page=page, css_selector=new_member_selector)

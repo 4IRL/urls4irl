@@ -11,7 +11,7 @@ services:
     healthcheck:
       disable: true
 
-  selenium:
+  playwright:
     depends_on:
       vite:
         condition: service_completed_successfully

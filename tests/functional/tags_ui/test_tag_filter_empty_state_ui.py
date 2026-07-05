@@ -1,33 +1,32 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from backend import db
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import (
-    assert_not_visible_css_selector,
-    assert_visible_css_selector,
-)
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     create_test_searchable_urls_with_tags,
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
+from tests.functional.playwright_assert_utils import (
+    assert_not_visible_css_selector,
+    assert_visible_css_selector,
+)
+from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
 )
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     select_utub_by_id,
     wait_then_click_element,
     wait_then_get_element,
 )
-from tests.functional.tags_ui.selenium_utils import get_utub_tag_filter_selector
-from tests.functional.urls_ui.selenium_utils import (
+from tests.functional.tags_ui.playwright_utils import get_utub_tag_filter_selector
+from tests.functional.urls_ui.playwright_utils import (
     focus_url_search_input,
     wait_for_url_search_filter_applied,
 )
@@ -38,7 +37,7 @@ UNMATCHED_TAG_STRING = "unmatched-tag"
 
 
 def test_tag_filter_hides_all_urls_shows_no_results_message(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub with URLs and a tag applied to the UTub but not to any URL
@@ -53,24 +52,29 @@ def test_tag_filter_hides_all_urls_shows_no_results_message(
     )
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    no_results_elem = browser.find_element(By.CSS_SELECTOR, HPL.TAG_FILTER_NO_RESULTS)
-    assert no_results_elem.text == UTS.TAG_FILTER_NO_URLS
+    no_results_elem = wait_then_get_element(
+        page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS
+    )
+    assert no_results_elem.inner_text() == UTS.TAG_FILTER_NO_URLS
 
-    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    url_row_elements = page.locator(HPL.ROWS_URLS).all()
     for url_row in url_row_elements:
-        assert not url_row.is_displayed()
+        assert not url_row.is_visible()
 
 
 def test_unselect_tag_filter_hides_no_results_message(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub with the tag filter no-results message displayed
@@ -85,26 +89,29 @@ def test_unselect_tag_filter_hides_no_results_message(
     )
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
     # Unselect the tag
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    url_row_elements = page.locator(HPL.ROWS_URLS).all()
     for url_row in url_row_elements:
-        assert url_row.is_displayed()
+        assert url_row.is_visible()
 
 
 def test_unselect_all_button_hides_no_results_message(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub with the tag filter no-results message displayed
@@ -119,25 +126,28 @@ def test_unselect_all_button_hides_no_results_message(
     )
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    wait_then_click_element(browser, HPL.BUTTON_UNSELECT_ALL, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UNSELECT_ALL)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    url_row_elements = page.locator(HPL.ROWS_URLS).all()
     for url_row in url_row_elements:
-        assert url_row.is_displayed()
+        assert url_row.is_visible()
 
 
 def test_partial_tag_filter_does_not_show_no_results(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub with URLs where a tag is applied to some but not all URLs
@@ -167,21 +177,24 @@ def test_partial_tag_filter_does_not_show_no_results(
         db.session.commit()
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-    visible_urls = [url_row for url_row in url_row_elements if url_row.is_displayed()]
+    url_row_elements = page.locator(HPL.ROWS_URLS).all()
+    visible_urls = [url_row for url_row in url_row_elements if url_row.is_visible()]
     assert len(visible_urls) >= 1
 
 
 def test_switching_utub_hides_no_results_message(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub with the tag filter no-results message displayed
@@ -199,21 +212,24 @@ def test_switching_utub_hides_no_results_message(
     second_utub_id = second_utub.id
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    select_utub_by_id(browser, second_utub_id)
+    select_utub_by_id(page=page, utub_id=second_utub_id)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
 
 def test_tag_filter_no_results_with_search_active(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub with URLs, an active search, and an unmatched tag filter
@@ -231,29 +247,27 @@ def test_tag_filter_no_results_with_search_active(
     )
 
     login_user_and_select_utub_by_name(
-        app,
-        browser,
-        user_id_for_test,
-        UTS.URL_SEARCH_UTUB_NAME,
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_name=UTS.URL_SEARCH_UTUB_NAME,
     )
 
-    focus_url_search_input(browser)
-    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
+    focus_url_search_input(page=page)
+    search_input = wait_then_get_element(page=page, css_selector=HPL.URL_SEARCH_INPUT)
     assert search_input is not None
-    search_input.send_keys(UTS.URL_SEARCH_TITLES[0])
-    wait_for_url_search_filter_applied(browser)
+    search_input.fill(UTS.URL_SEARCH_TITLES[0])
+    wait_for_url_search_filter_applied(page=page)
 
     # Apply the unmatched tag filter to hide all URLs
-    unmatched_tag_filter = get_utub_tag_filter_selector(unmatched_tag.id)
-    wait_then_click_element(browser, unmatched_tag_filter, time=3)
+    unmatched_tag_filter = get_utub_tag_filter_selector(utub_tag_id=unmatched_tag.id)
+    wait_then_click_element(page=page, css_selector=unmatched_tag_filter)
 
-    assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
-    assert_not_visible_css_selector(browser, HPL.URL_SEARCH_NO_RESULTS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_NO_RESULTS)
 
 
-def test_tag_filter_aria_announcement(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_tag_filter_aria_announcement(page: Page, create_test_urls, provide_app: Flask):
     """
     GIVEN a UTub with URLs and an unmatched tag
     WHEN the user selects then unselects the tag filter
@@ -267,32 +281,38 @@ def test_tag_filter_aria_announcement(
     )
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    announcement_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.TAG_FILTER_ANNOUNCEMENT
+    announcement_elem = wait_then_get_element(
+        page=page, css_selector=HPL.TAG_FILTER_ANNOUNCEMENT
     )
-    assert announcement_elem.get_attribute("textContent") == UTS.TAG_FILTER_NO_URLS
+    assert (
+        announcement_elem.evaluate("element => element.textContent")
+        == UTS.TAG_FILTER_NO_URLS
+    )
 
     # Unselect to hide the message
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)
 
-    announcement_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.TAG_FILTER_ANNOUNCEMENT
+    announcement_elem = wait_then_get_element(
+        page=page, css_selector=HPL.TAG_FILTER_ANNOUNCEMENT
     )
-    assert announcement_elem.get_attribute("textContent") == ""
+    assert announcement_elem.evaluate("element => element.textContent") == ""
 
 
 def test_zero_urls_utub_tag_filter_does_not_show_no_results(
-    browser: WebDriver, create_test_utubmembers, provide_app: Flask
+    page: Page, create_test_utubmembers, provide_app: Flask
 ):
     """
     GIVEN a UTub with zero URLs and a tag added to the UTub
@@ -307,13 +327,15 @@ def test_zero_urls_utub_tag_filter_does_not_show_no_results(
     )
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
     )
 
-    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-    assert len(url_row_elements) == 0
+    assert page.locator(HPL.ROWS_URLS).count() == 0
 
-    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_filter, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id=tag_in_utub.id)
+    wait_then_click_element(page=page, css_selector=utub_tag_filter)
 
-    assert_not_visible_css_selector(browser, HPL.TAG_FILTER_NO_RESULTS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.TAG_FILTER_NO_RESULTS)

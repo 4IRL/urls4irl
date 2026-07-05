@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from flask import Flask
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import BrowserContext, Page
 
 from backend import db
 from backend.config import ConfigTestUI
 from backend.models.users import User_Role, Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.login_utils import (
+from tests.functional.playwright_utils import (
     create_user_session_and_provide_session_id,
     login_user_with_cookie_from_session,
 )
@@ -34,25 +34,28 @@ def promote_user_to_admin(*, app: Flask, user_id: int) -> None:
 def login_admin_and_open_metrics_dashboard(
     *,
     app: Flask,
-    browser: WebDriver,
+    context: BrowserContext,
+    page: Page,
     port: int,
     user_id: int,
     config: ConfigTestUI,
 ) -> None:
     """Promote `user_id` to ADMIN, log them in via session cookie, then
-    navigate the browser directly to the admin metrics dashboard.
+    navigate the page directly to the admin metrics dashboard.
 
     Uses the same `create_user_session_and_provide_session_id` +
     `login_user_with_cookie_from_session` pair the other UI suites use
-    so the Selenium session matches a logged-in browser exactly. The
+    so the Playwright context matches a logged-in browser exactly. The
     host portion of the URL is selected from the test config so the
-    helper works both inside Docker (where Selenium reaches Flask via
-    `http://web:<port>`) and on the host (`http://127.0.0.1:<port>`).
+    helper works both inside Docker (where the browser-server reaches Flask
+    via `http://web:<port>`) and on the host (`http://127.0.0.1:<port>`).
     """
     promote_user_to_admin(app=app, user_id=user_id)
-    session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
     base_url = (
         UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
     )
-    browser.get(f"{base_url}{port}{ADMIN_METRICS_DASHBOARD_PATH}")
+    login_user_with_cookie_from_session(
+        context=context, session_id=session_id, base_url=f"{base_url}{port}"
+    )
+    page.goto(f"{base_url}{port}{ADMIN_METRICS_DASHBOARD_PATH}")

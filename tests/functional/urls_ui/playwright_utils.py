@@ -1,12 +1,10 @@
-from selenium.common.exceptions import StaleElementReferenceException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.support.ui import WebDriverWait
+import re
 
-from tests.functional.assert_utils import assert_visible_css_selector
+from playwright.sync_api import BrowserContext, Locator, Page, Route, expect
+
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import assert_visible_css_selector
+from tests.functional.playwright_utils import (
     clear_then_send_keys,
     dispatch_pointer_drag,
     open_update_url_title,
@@ -19,14 +17,14 @@ from tests.functional.selenium_utils import (
 )
 
 # Drag distance (px) chosen to exceed the 35% commit threshold. At the 420px-wide
-# browser_mobile_portrait fixture, .urlRow (and its .urlRowSwipeReveal backing
+# page_mobile_portrait fixture, .urlRow (and its .urlRowSwipeReveal backing
 # panel) render edge-to-edge at 420px, so the threshold is ~147px; 300px commits
 # with a safe margin while staying within the row's [0, 420] drag range.
 SWIPE_COMMIT_PX = 300
 
 # Drag distance (px) chosen to stay well below the 35% commit threshold so the
 # gesture snaps back to its prior state instead of committing. At the 420px-wide
-# browser_mobile_portrait fixture the threshold is ~147px (see SWIPE_COMMIT_PX),
+# page_mobile_portrait fixture the threshold is ~147px (see SWIPE_COMMIT_PX),
 # so 60px is comfortably sub-threshold and the row must snap back closed.
 SWIPE_SNAP_BACK_PX = 60
 
@@ -37,245 +35,264 @@ SWIPE_SNAP_BACK_PX = 60
 SWIPE_SNAP_BACK_STEP_DELAY_MS = 40
 
 
-def get_url_row_selector(utub_url_id: int) -> str:
+def _fulfill_with_stub_page(route: Route) -> None:
+    route.fulfill(
+        status=200,
+        content_type="text/html",
+        body="<html><body>mock external page</body></html>",
+    )
+
+
+def stub_mock_url_responses(*, context: BrowserContext) -> None:
+    """Fulfill navigations to the fake mock URL domain (`https://www.u4i.test/N`)
+    so popup navigations commit with their target URL. The `.test` TLD is
+    unresolvable; without this stub the popup lands on a net-error page whose
+    committed URL never matches the mock URL strings."""
+    context.route(
+        re.compile(r"^https://www\.u4i\.test/.*$"),
+        _fulfill_with_stub_page,
+    )
+
+
+def install_window_open_spy(*, page: Page) -> None:
+    """Wraps `window.open` so tests can assert the app requested a new tab
+    (URL + target) even when headless Chromium refuses to materialize a page
+    for the scheme — e.g. `mailto:` popups never fire Playwright's `page`
+    event, unlike the Selenium window-handle behavior."""
+    page.evaluate("""() => {
+        window.__windowOpenCalls = [];
+        const originalWindowOpen = window.open.bind(window);
+        window.open = function (url, target, features) {
+            window.__windowOpenCalls.push({
+                url: String(url),
+                target: target === undefined ? null : target,
+            });
+            return originalWindowOpen(url, target, features);
+        };
+    }""")
+
+
+def wait_for_window_open_call(*, page: Page) -> list[dict]:
+    """Blocks until the `install_window_open_spy` wrapper has recorded at
+    least one `window.open` call, then returns the recorded calls."""
+    page.wait_for_function("() => (window.__windowOpenCalls || []).length > 0")
+    return page.evaluate("() => window.__windowOpenCalls")
+
+
+def get_url_row_selector(*, utub_url_id: int) -> str:
     """Builds the CSS selector for the URL row with the given ``utuburlid``."""
     return f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
 
 
-def open_url_search_box(browser: WebDriver):
+def open_url_search_box(*, page: Page) -> None:
     """Opens the URL search box via the toggle icon (mobile/tablet flow)."""
-    wait_until_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON, timeout=3)
-    assert_visible_css_selector(browser, HPL.URL_OPEN_SEARCH_ICON)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
+    assert_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
 
-    wait_then_click_element(browser, HPL.URL_OPEN_SEARCH_ICON, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
     wait_for_animation_to_end_check_top_lhs_corner(
-        browser, HPL.URL_SEARCH_INPUT, timeout=3
+        page=page, css_selector=HPL.URL_SEARCH_INPUT
     )
-    wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
+    wait_until_in_focus(page=page, css_selector=HPL.URL_SEARCH_INPUT)
 
-    assert_visible_css_selector(browser, HPL.URL_CLOSE_SEARCH_ICON, time=3)
-    url_search_elem = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=3)
-    assert browser.switch_to.active_element == url_search_elem
+    assert_visible_css_selector(page=page, css_selector=HPL.URL_CLOSE_SEARCH_ICON)
 
 
-def focus_url_search_input(browser: WebDriver):
+def focus_url_search_input(*, page: Page) -> None:
     """Focuses the always-visible URL search input (desktop flow)."""
-    search_wrap = browser.find_element(By.CSS_SELECTOR, HPL.URL_SEARCH_WRAP)
-    WebDriverWait(browser, 10).until(
-        lambda _: "search-ready" in (search_wrap.get_dom_attribute("class") or "")
+    expect(page.locator(HPL.URL_SEARCH_WRAP).first).to_have_class(
+        re.compile(r"(^|\s)search-ready(\s|$)")
     )
-    wait_until_visible_css_selector(browser, HPL.URL_SEARCH_INPUT, timeout=10)
-    search_input = wait_then_get_element(browser, HPL.URL_SEARCH_INPUT, time=10)
-    assert search_input is not None
+    wait_until_visible_css_selector(page=page, css_selector=HPL.URL_SEARCH_INPUT)
+    search_input = wait_then_get_element(page=page, css_selector=HPL.URL_SEARCH_INPUT)
     search_input.click()
-    wait_until_in_focus(browser, HPL.URL_SEARCH_INPUT)
+    wait_until_in_focus(page=page, css_selector=HPL.URL_SEARCH_INPUT)
 
 
 def create_url(
-    browser: WebDriver,
+    *,
+    page: Page,
     url_title: str,
     url_string: str,
     tag_strings: list[str] | None = None,
-):
+) -> None:
     """
     Streamlines actions required to create a URL in the selected UTub.
 
     Args:
-        WebDriver open to a selected UTub
-        URL title
-        URL
-        Optional list of tag strings to stage as chips in the inline create-form
-            combobox before submitting (URL + tags are created atomically).
+        page: Page open to a selected UTub
+        url_title: URL title
+        url_string: URL
+        tag_strings: Optional list of tag strings to stage as chips in the
+            inline create-form combobox before submitting (URL + tags are
+            created atomically).
     """
-    fill_create_url_form(browser, url_title, url_string, tag_strings)
+    fill_create_url_form(
+        page=page, url_title=url_title, url_string=url_string, tag_strings=tag_strings
+    )
 
-    # Submit
-    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_URL_SUBMIT_CREATE)
 
 
 def fill_create_url_form(
-    browser: WebDriver,
+    *,
+    page: Page,
     url_title: str,
     url_string: str,
     tag_strings: list[str] | None = None,
-):
+) -> None:
     """
-    Streamlines actions required to create a URL in the selected UTub.
+    Streamlines actions required to fill the create-URL form in the selected UTub.
 
     Args:
-        WebDriver open to a selected UTub
-        URL title
-        URL
-        Optional list of tag strings to stage as chips in the inline create-form
-            combobox before the form is submitted.
+        page: Page open to a selected UTub
+        url_title: URL title
+        url_string: URL
+        tag_strings: Optional list of tag strings to stage as chips in the
+            inline create-form combobox before the form is submitted.
     """
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE)
+    url_creation_row = wait_then_get_element(
+        page=page, css_selector=HPL.WRAP_URL_CREATE
+    )
+    expect(url_creation_row).to_be_visible()
 
-    # Select createURL button
-    wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
-    url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
-    assert url_creation_row is not None
-    assert url_creation_row.is_displayed()
+    url_title_input_field = wait_then_get_element(
+        page=page, css_selector=HPL.INPUT_URL_TITLE_CREATE
+    )
+    clear_then_send_keys(locator=url_title_input_field, input_text=url_title)
 
-    # Input new URL Title
-    url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
-    assert url_title_input_field is not None
-    clear_then_send_keys(url_title_input_field, url_title)
+    url_string_input_field = wait_then_get_element(
+        page=page, css_selector=HPL.INPUT_URL_STRING_CREATE
+    )
+    clear_then_send_keys(locator=url_string_input_field, input_text=url_string)
 
-    # Input new URL String
-    url_string_input_field = wait_then_get_element(browser, HPL.INPUT_URL_STRING_CREATE)
-    assert url_string_input_field is not None
-    clear_then_send_keys(url_string_input_field, url_string)
-
-    # Stage any requested tags as chips in the inline create-form combobox.
     for tag_string in tag_strings or []:
-        stage_new_tag_in_create_form(browser, tag_string)
+        stage_new_tag_in_create_form(page=page, text=tag_string)
 
 
-def _count_staged_chips_in_create_form(browser: WebDriver) -> int:
-    return len(browser.find_elements(By.CSS_SELECTOR, HPL.CREATE_FORM_TAG_STAGED_CHIP))
+def _count_staged_chips_in_create_form(*, page: Page) -> int:
+    return page.locator(HPL.CREATE_FORM_TAG_STAGED_CHIP).count()
 
 
 def _wait_for_staged_chip_count_in_create_form(
-    browser: WebDriver, expected_count: int
+    *, page: Page, expected_count: int
 ) -> None:
     """
     Confirms a chip was staged in the create form by waiting for the chip count
     to reach `expected_count`. A count delta (rather than a
     `[data-staged-tag-string]` attribute selector) is robust for any tag text.
     """
-    WebDriverWait(browser, 3).until(
-        lambda _: _count_staged_chips_in_create_form(browser) == expected_count
-    )
+    expect(page.locator(HPL.CREATE_FORM_TAG_STAGED_CHIP)).to_have_count(expected_count)
 
 
-def type_in_create_form_tag_combobox(browser: WebDriver, text: str) -> WebElement:
+def type_in_create_form_tag_combobox(*, page: Page, text: str) -> Locator:
     """
     Types into the create-form combobox input (scoped to `#createURLWrap`).
     Clicking an option to stage a chip moves focus off the input, so this clicks
     the input first to deterministically restore focus before sending keys.
     """
     combobox_input_selector = HPL.CREATE_FORM_TAG_COMBOBOX_INPUT
-    wait_then_click_element(browser, combobox_input_selector, time=3)
-    wait_until_in_focus(browser, combobox_input_selector, timeout=3)
-    combobox_input = browser.find_element(By.CSS_SELECTOR, combobox_input_selector)
-    assert combobox_input.is_displayed()
-    clear_then_send_keys(combobox_input, text)
+    wait_then_click_element(page=page, css_selector=combobox_input_selector)
+    wait_until_in_focus(page=page, css_selector=combobox_input_selector)
+    combobox_input = page.locator(combobox_input_selector).first
+    expect(combobox_input).to_be_visible()
+    clear_then_send_keys(locator=combobox_input, input_text=text)
     return combobox_input
 
 
-def _click_matching_create_form_option(
-    browser: WebDriver, options_selector: str, target_text: str
-) -> bool:
-    """
-    Re-finds the option whose label text matches `target_text` and clicks it,
-    atomically (find + click in one call) so the 200ms debounce re-render of the
-    listbox cannot make the element stale. Returns False (so the WebDriverWait
-    poll retries) if the option is not yet present or goes stale mid-click.
-    """
-    try:
-        options = browser.find_elements(By.CSS_SELECTOR, options_selector)
-        matching_option = next(
-            (
-                option
-                for option in options
-                if option.text.strip() == target_text.strip()
-            ),
-            None,
-        )
-        if matching_option is None or not matching_option.is_displayed():
-            return False
-        matching_option.click()
-        return True
-    except StaleElementReferenceException:
-        return False
-
-
-def stage_tag_suggestion_in_create_form(browser: WebDriver, tag_text: str) -> None:
+def stage_tag_suggestion_in_create_form(*, page: Page, tag_text: str) -> None:
     """
     Types `tag_text` to filter the existing-tag suggestions in the create-form
     combobox, then stages the suggestion whose label matches exactly (an existing
-    UTub tag becomes a chip).
+    UTub tag becomes a chip). The find + click happens atomically inside the
+    browser so the 200ms debounce re-render of the listbox cannot invalidate the
+    matched option between finding and clicking it.
     """
-    chips_before = _count_staged_chips_in_create_form(browser)
-    type_in_create_form_tag_combobox(browser, tag_text)
+    chips_before = _count_staged_chips_in_create_form(page=page)
+    type_in_create_form_tag_combobox(page=page, text=tag_text)
 
     options_selector = (
         f"{HPL.CREATE_FORM_TAG_COMBOBOX_OPTION} {HPL.TAG_COMBOBOX_OPTION_LABEL}"
     )
-    wait_then_get_element(browser, options_selector, time=3)
-    WebDriverWait(browser, 3).until(
-        lambda _: _click_matching_create_form_option(
-            browser, options_selector, tag_text
-        )
+    wait_then_get_element(page=page, css_selector=options_selector)
+    page.wait_for_function(
+        """({ selector, targetText }) => {
+            const options = Array.from(document.querySelectorAll(selector));
+            const match = options.find(
+                (option) => option.textContent.trim() === targetText.trim()
+            );
+            if (!match || !match.offsetParent) return false;
+            match.click();
+            return true;
+        }""",
+        arg={"selector": options_selector, "targetText": tag_text},
     )
-    _wait_for_staged_chip_count_in_create_form(browser, chips_before + 1)
+    _wait_for_staged_chip_count_in_create_form(
+        page=page, expected_count=chips_before + 1
+    )
 
 
-def stage_new_tag_in_create_form(browser: WebDriver, text: str) -> None:
+def stage_new_tag_in_create_form(*, page: Page, text: str) -> None:
     """
     Types `text` into the create-form combobox and stages it via the "Create tag"
     option (a brand-new tag that does not yet exist in the UTub becomes a chip).
     """
-    chips_before = _count_staged_chips_in_create_form(browser)
-    type_in_create_form_tag_combobox(browser, text)
+    chips_before = _count_staged_chips_in_create_form(page=page)
+    type_in_create_form_tag_combobox(page=page, text=text)
 
     create_new_label_selector = (
-        f"{HPL.CREATE_FORM_TAG_COMBOBOX_CREATE_NEW} " f"{HPL.TAG_COMBOBOX_OPTION_LABEL}"
+        f"{HPL.CREATE_FORM_TAG_COMBOBOX_CREATE_NEW} {HPL.TAG_COMBOBOX_OPTION_LABEL}"
     )
-    wait_then_click_element(browser, create_new_label_selector, time=3)
-    _wait_for_staged_chip_count_in_create_form(browser, chips_before + 1)
+    wait_then_click_element(page=page, css_selector=create_new_label_selector)
+    _wait_for_staged_chip_count_in_create_form(
+        page=page, expected_count=chips_before + 1
+    )
 
 
-def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
+def update_url_string(*, page: Page, url_string: str) -> None:
     """
-    Streamlines actions required to update a URL in the selected URL.
+    Streamlines actions required to update the selected URL's string.
     """
-    wait_for_page_complete_and_dom_stable(browser)
+    wait_for_page_complete_and_dom_stable(page=page)
 
-    # Select editURL button
     btn_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
-    wait_then_click_element(browser, btn_css_selector)
+    wait_then_click_element(page=page, css_selector=btn_css_selector)
 
-    # Input new URL string
     update_url_string_input_css_selector = (
         f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
     )
-    wait_until_visible_css_selector(browser, update_url_string_input_css_selector)
+    wait_until_visible_css_selector(
+        page=page, css_selector=update_url_string_input_css_selector
+    )
 
     update_url_string_input = wait_then_get_element(
-        browser, update_url_string_input_css_selector
+        page=page, css_selector=update_url_string_input_css_selector
     )
-    assert update_url_string_input
-    clear_then_send_keys(update_url_string_input, url_string)
+    clear_then_send_keys(locator=update_url_string_input, input_text=url_string)
 
 
-def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
+def update_url_title(*, page: Page, selected_url_row: Locator, url_title: str) -> None:
     """
-    Streamlines actions required to updated a URL in the selected URL.
-
-    Args:
-        WebDriver open to a selected URL
-        New URL title
-
-    Returns:
-        Yields WebDriver to tests
+    Streamlines actions required to update the selected URL's title.
     """
-    open_update_url_title(browser, selected_url_row)
+    open_update_url_title(page=page, selected_url_row=selected_url_row)
 
-    # Input new URL Title
-    url_title_input_field = selected_url_row.find_element(
-        By.CSS_SELECTOR, HPL.INPUT_URL_TITLE_UPDATE
-    )
-    clear_then_send_keys(url_title_input_field, url_title)
+    url_title_input_field = selected_url_row.locator(HPL.INPUT_URL_TITLE_UPDATE)
+    clear_then_send_keys(locator=url_title_input_field, input_text=url_title)
 
 
 class ClipboardMockHelper:
-    def __init__(self, driver: WebDriver):
-        self.driver: WebDriver = driver
+    """Injects a JS clipboard mock into the page so headless tests can observe
+    and fail clipboard operations deterministically (Playwright port of the
+    Selenium `execute_script` clipboard mock)."""
+
+    def __init__(self, page: Page):
+        self.page: Page = page
 
     def setup_clipboard_mock(self):
         """Setup a comprehensive clipboard mock with logging and verification"""
-        self.driver.execute_script("""
+        self.page.evaluate("""() => {
             // Enhanced mock for headless environments
             window.mockClipboard = {
                 data: '',
@@ -480,12 +497,12 @@ class ClipboardMockHelper:
             };
             console.log('Enhanced headless clipboard mock setup complete');
             return true;
-        """)
+        }""")
 
     def setup_clipboard_failure(self):
         """Setup clipboard to fail on write operations"""
         self.setup_clipboard_mock()
-        self.driver.execute_script("""
+        self.page.evaluate("""() => {
             window.mockClipboard.setWriteFailure({
                 shouldFail: true,
                 failureType: 'permission',
@@ -497,20 +514,20 @@ class ClipboardMockHelper:
                 shouldFail: true,
                 failureRate: 0
             });
-        """)
+        }""")
         return True
 
-    def wait_for_async_clipboard(self, timeout=5):
+    def wait_for_async_clipboard(self):
         """Wait for async clipboard operations to complete in headless"""
-        self.driver.execute_script("""
+        self.page.evaluate("""() => {
             return new Promise(function(resolve) {
                 setTimeout(resolve, 100);
             });
-        """)
+        }""")
 
     def verify_mock_setup(self):
         """Verify the mock was set up correctly"""
-        result = self.driver.execute_script("""
+        result = self.page.evaluate("""() => {
             return {
                 hasMockClipboard: typeof window.mockClipboard !== 'undefined',
                 hasNavigatorClipboard: typeof navigator.clipboard !== 'undefined',
@@ -519,84 +536,80 @@ class ClipboardMockHelper:
                 hasFailureConfig: typeof window.mockClipboard.failureConfig !== 'undefined',
                 mockStats: window.mockClipboard ? window.mockClipboard.getStats() : null
             };
-        """)
+        }""")
         return result["hasMockClipboard"] and result["hasNavigatorClipboard"]
 
     def test_mock_directly(self, test_text="Hello Mock Test"):
         """Test the mock directly to ensure it works"""
-        # Test writeText
-        write_result = self.driver.execute_script(
-            """
-            var testText = arguments[0];
+        write_result = self.page.evaluate(
+            """(testText) => {
             return navigator.clipboard.writeText(testText).then(function() {
                 return {success: true, error: null};
             }).catch(function(err) {
                 return {success: false, error: err.toString()};
             });
-        """,
+        }""",
             test_text,
         )
 
-        # Test readText
-        read_result = self.driver.execute_script("""
+        read_result = self.page.evaluate("""() => {
             return navigator.clipboard.readText().then(function(text) {
                 return {success: true, text: text, error: null};
             }).catch(function(err) {
                 return {success: false, text: null, error: err.toString()};
             });
-        """)
+        }""")
         return write_result and read_result and read_result.get("text") == test_text
 
     def get_mock_stats(self):
         """Get current mock statistics"""
-        return self.driver.execute_script("return window.mockClipboard.getStats();")
+        return self.page.evaluate("() => window.mockClipboard.getStats()")
 
     def get_clipboard_content(self):
         """Get current clipboard content from mock"""
-        return self.driver.execute_script("return window.mockClipboard.data;")
+        return self.page.evaluate("() => window.mockClipboard.data")
 
     def reset_mock(self):
         """Reset the mock to initial state"""
-        self.driver.execute_script("""
+        self.page.evaluate("""() => {
             window.mockClipboard.data = '';
             window.mockClipboard.writeCount = 0;
             window.mockClipboard.readCount = 0;
             window.mockClipboard.lastWriteTime = null;
             window.mockClipboard.lastReadTime = null;
             window.mockClipboard.errors = [];
-        """)
+        }""")
 
     def cleanup_mock(self):
         """Restore original clipboard functionality"""
-        self.driver.execute_script("""
+        self.page.evaluate("""() => {
             if (window.originalClipboard) {
                 navigator.clipboard = window.originalClipboard;
             }
             if (window.originalExecCommand) {
                 document.execCommand = window.originalExecCommand;
             }
-        """)
+        }""")
 
 
-def wait_for_url_search_filter_applied(browser: WebDriver, timeout: int = 3):
+def wait_for_url_search_filter_applied(*, page: Page) -> None:
     """Wait until the URL search handler has updated the DOM.
 
-    After typing into the search input, the handler (possibly debounced) sets a
-    ``searchable`` attribute on every ``.urlRow[filterable='true']`` element. This
-    function blocks until all such rows carry the attribute, confirming that the
-    search filter cycle has completed.
-    """
+    After typing into the search input, the handler (possibly debounced)
+    sets a ``searchable`` attribute on every visible filterable URL row;
+    block until all such rows carry the attribute, confirming the search
+    filter cycle has completed."""
+    page.wait_for_function(
+        """(visibleRowSelector) => {
+            const rows = Array.from(document.querySelectorAll(visibleRowSelector));
+            if (rows.length === 0) return false;
+            return rows.every((row) => row.getAttribute("searchable") !== null);
+        }""",
+        arg=HPL.ROW_VISIBLE_URL,
+    )
 
-    def all_filterable_rows_have_searchable_attr(driver: WebDriver) -> bool:
-        rows = driver.find_elements(By.CSS_SELECTOR, HPL.ROW_VISIBLE_URL)
-        if not rows:
-            return False
-        return all(row.get_attribute("searchable") is not None for row in rows)
 
-    WebDriverWait(browser, timeout).until(all_filterable_rows_have_searchable_attr)
-
-
-def swipe_url_card_delete(browser: WebDriver, url_row_selector: str) -> None:
+def swipe_url_card_delete(*, page: Page, url_row_selector: str) -> None:
     """
     Drags the given URL row leftward by ``SWIPE_COMMIT_PX`` to commit the
     swipe-to-delete gesture. The drag starts near the row's right edge and ends
@@ -604,14 +617,15 @@ def swipe_url_card_delete(browser: WebDriver, url_row_selector: str) -> None:
     row commits (revealing the delete panel and opening the confirm modal)
     rather than snapping back closed.
     """
-    row = browser.find_element(By.CSS_SELECTOR, url_row_selector)
-    rect = row.rect
-    start_x = rect["x"] + rect["width"] - 5
-    start_y = rect["y"] + rect["height"] / 2
+    row = page.locator(url_row_selector).first
+    bounding_box = row.bounding_box()
+    assert bounding_box is not None
+    start_x = bounding_box["x"] + bounding_box["width"] - 5
+    start_y = bounding_box["y"] + bounding_box["height"] / 2
     end_x = start_x - SWIPE_COMMIT_PX
     dispatch_pointer_drag(
-        browser,
-        url_row_selector,
+        page=page,
+        css_selector=url_row_selector,
         start_x=start_x,
         end_x=end_x,
         start_y=start_y,
@@ -619,20 +633,21 @@ def swipe_url_card_delete(browser: WebDriver, url_row_selector: str) -> None:
     )
 
 
-def swipe_url_card_below_threshold(browser: WebDriver, url_row_selector: str) -> None:
+def swipe_url_card_below_threshold(*, page: Page, url_row_selector: str) -> None:
     """
     Drags the given URL row leftward by ``SWIPE_SNAP_BACK_PX`` — well below the
     35% commit threshold — so the row snaps back to its resting position rather
     than committing the swipe-to-delete gesture.
     """
-    row = browser.find_element(By.CSS_SELECTOR, url_row_selector)
-    rect = row.rect
-    start_x = rect["x"] + rect["width"] - 5
-    start_y = rect["y"] + rect["height"] / 2
+    row = page.locator(url_row_selector).first
+    bounding_box = row.bounding_box()
+    assert bounding_box is not None
+    start_x = bounding_box["x"] + bounding_box["width"] - 5
+    start_y = bounding_box["y"] + bounding_box["height"] / 2
     end_x = start_x - SWIPE_SNAP_BACK_PX
     dispatch_pointer_drag(
-        browser,
-        url_row_selector,
+        page=page,
+        css_selector=url_row_selector,
         start_x=start_x,
         end_x=end_x,
         start_y=start_y,
@@ -641,31 +656,38 @@ def swipe_url_card_below_threshold(browser: WebDriver, url_row_selector: str) ->
     )
 
 
-def wait_until_url_card_swipe_committed(browser: WebDriver, timeout: int = 10) -> None:
+def wait_until_url_card_swipe_committed(*, page: Page, timeout: int = 10) -> None:
     """
     Waits until a ``.urlRow`` carries the ``swipe-committed`` class, confirming
     the swipe-to-delete gesture has committed. Only one row can be mid-gesture at
     a time (the drag state is a single module-local object in ``swipe.ts``), so
     this checks across all rows rather than a specific selector.
     """
-    WebDriverWait(browser, timeout).until(
-        lambda driver: any(
-            "swipe-committed" in (row.get_attribute("class") or "")
-            for row in driver.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-        )
+    page.wait_for_function(
+        """(rowSelector) => {
+            const rows = Array.from(document.querySelectorAll(rowSelector));
+            return rows.some((row) => row.classList.contains("swipe-committed"));
+        }""",
+        arg=HPL.ROWS_URLS,
+        timeout=timeout * 1000,
     )
 
 
-def wait_until_url_card_swipe_reset(browser: WebDriver, timeout: int = 10) -> None:
+def wait_until_url_card_swipe_reset(*, page: Page, timeout: int = 10) -> None:
     """
     Waits until no ``.urlRow`` carries the ``swipe-dragging`` or
     ``swipe-committed`` class, confirming the swipe gesture has fully reset
     (either snapped back below threshold, or its confirm modal was dismissed).
     """
-    WebDriverWait(browser, timeout).until(
-        lambda driver: all(
-            "swipe-dragging" not in (row.get_attribute("class") or "")
-            and "swipe-committed" not in (row.get_attribute("class") or "")
-            for row in driver.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-        )
+    page.wait_for_function(
+        """(rowSelector) => {
+            const rows = Array.from(document.querySelectorAll(rowSelector));
+            return rows.every(
+                (row) =>
+                    !row.classList.contains("swipe-dragging") &&
+                    !row.classList.contains("swipe-committed")
+            );
+        }""",
+        arg=HPL.ROWS_URLS,
+        timeout=timeout * 1000,
     )
