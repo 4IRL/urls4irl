@@ -442,6 +442,644 @@
         }
       }
     },
+    "/api/v1/utubs": {
+      "post": {
+        "operationId": "apiV1CreateUtub",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Create a new UTub",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUTubRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubCreatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      },
+      "get": {
+        "operationId": "apiV1GetUtubs",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve a summary of all UTubs for the current user",
+        "responses": {
+          "200": {
+            "description": "List of UTub summaries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubSummaryListSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}": {
+      "get": {
+        "operationId": "apiV1GetSingleUtub",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve data for a single UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Full UTub detail with members, URLs, and tags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDetailSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "apiV1DeleteUtub",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Delete a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "UTub deleted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDeletedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/name": {
+      "patch": {
+        "operationId": "apiV1UpdateUtubName",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Update a UTub name",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUTubNameRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub name updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubNameUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/description": {
+      "patch": {
+        "operationId": "apiV1UpdateUtubDesc",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Update a UTub description",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateUTubDescriptionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "UTub description updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UtubDescUpdatedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubErrorCodes": {
+            "$ref": "#/components/schemas/UTubErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/members": {
+      "post": {
+        "operationId": "apiV1CreateMember",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Add a member to a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddMemberRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Member modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_UTubMembersErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "UTubMembersErrorCodes": {
+            "$ref": "#/components/schemas/UTubMembersErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/utubs/{utub_id}/members/{user_id}": {
+      "delete": {
+        "operationId": "apiV1RemoveMember",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Remove a member from a UTub",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Member modified",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/MemberModifiedResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/contact": {
       "post": {
         "operationId": "submitContactUs",
@@ -3773,6 +4411,385 @@
         "required": ["idToken"],
         "type": "object"
       },
+      "CreateUTubRequest": {
+        "properties": {
+          "utubName": {
+            "description": "Name of the UTub to create",
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional description for the UTub"
+          }
+        },
+        "required": ["utubName"],
+        "type": "object"
+      },
+      "UtubCreatedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "Unique ID of the newly created UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the newly created UTub",
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the newly created UTub, or null if not set"
+          },
+          "utubCreatorID": {
+            "description": "User ID of the UTub creator",
+            "type": "integer"
+          }
+        },
+        "required": ["utubID", "utubName", "utubDescription", "utubCreatorID"],
+        "type": "object"
+      },
+      "ErrorResponse_UTubErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/UTubErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "UTubErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2],
+        "x-enum-varnames": ["UNKNOWN_ERROR", "INVALID_FORM_INPUT"],
+        "description": "Error codes for UTubErrorCodes"
+      },
+      "UtubSummaryItemSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique UTub ID",
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the UTub",
+            "type": "string"
+          },
+          "memberRole": {
+            "description": "Role of the current user in the UTub",
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "memberRole"],
+        "type": "object"
+      },
+      "UtubSummaryListSchema": {
+        "description": "List of UTub summaries",
+        "properties": {
+          "utubs": {
+            "description": "List of UTubs the user is a member of",
+            "items": {
+              "$ref": "#/components/schemas/UtubSummaryItemSchema"
+            },
+            "type": "array"
+          }
+        },
+        "required": ["utubs"],
+        "type": "object"
+      },
+      "UserSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique user ID",
+            "type": "integer"
+          },
+          "username": {
+            "description": "Username of the user",
+            "type": "string"
+          }
+        },
+        "required": ["id", "username"],
+        "type": "object"
+      },
+      "UtubTagSchema": {
+        "properties": {
+          "id": {
+            "description": "Unique tag ID within the UTub",
+            "type": "integer"
+          },
+          "tagString": {
+            "description": "Tag label text",
+            "type": "string"
+          },
+          "tagApplied": {
+            "default": 0,
+            "description": "Number of URLs in the UTub this tag is applied to",
+            "type": "integer"
+          }
+        },
+        "required": ["id", "tagString"],
+        "type": "object"
+      },
+      "UtubUrlSchema": {
+        "properties": {
+          "utubUrlID": {
+            "description": "Unique ID of the URL within the UTub",
+            "type": "integer"
+          },
+          "urlString": {
+            "description": "The URL string",
+            "type": "string"
+          },
+          "utubUrlTagIDs": {
+            "description": "List of tag IDs applied to this URL",
+            "items": {
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "urlTitle": {
+            "description": "Display title for the URL",
+            "type": "string"
+          },
+          "canDelete": {
+            "description": "Whether the current user can delete this URL",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "utubUrlID",
+          "urlString",
+          "utubUrlTagIDs",
+          "urlTitle",
+          "canDelete"
+        ],
+        "type": "object"
+      },
+      "UtubDetailSchema": {
+        "description": "Full UTub detail with members, URLs, and tags",
+        "properties": {
+          "id": {
+            "description": "Unique UTub ID",
+            "type": "integer"
+          },
+          "name": {
+            "description": "Name of the UTub",
+            "type": "string"
+          },
+          "createdByUserID": {
+            "description": "User ID of the UTub creator",
+            "type": "integer"
+          },
+          "createdAt": {
+            "description": "Creation timestamp of the UTub (ISO 8601)",
+            "format": "date-time",
+            "type": "string"
+          },
+          "description": {
+            "description": "Description of the UTub",
+            "type": "string"
+          },
+          "members": {
+            "description": "List of members in the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UserSchema"
+            },
+            "type": "array"
+          },
+          "urls": {
+            "description": "List of URLs in the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UtubUrlSchema"
+            },
+            "type": "array"
+          },
+          "tags": {
+            "description": "List of tags used in the UTub",
+            "items": {
+              "$ref": "#/components/schemas/UtubTagSchema"
+            },
+            "type": "array"
+          },
+          "isCreator": {
+            "description": "Whether the current user is the creator of the UTub",
+            "type": "boolean"
+          },
+          "currentUser": {
+            "description": "ID of the currently authenticated user",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "createdByUserID",
+          "createdAt",
+          "description",
+          "members",
+          "urls",
+          "tags",
+          "isCreator",
+          "currentUser"
+        ],
+        "type": "object"
+      },
+      "UpdateUTubNameRequest": {
+        "properties": {
+          "utubName": {
+            "description": "New name for the UTub",
+            "maxLength": 30,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["utubName"],
+        "type": "object"
+      },
+      "UtubNameUpdatedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose name was updated",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "New name of the UTub",
+            "type": "string"
+          }
+        },
+        "required": ["utubID", "utubName"],
+        "type": "object"
+      },
+      "UpdateUTubDescriptionRequest": {
+        "properties": {
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "New description for the UTub, or empty to clear"
+          }
+        },
+        "type": "object"
+      },
+      "UtubDescUpdatedResponseSchema": {
+        "description": "UTub description updated",
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub whose description was updated",
+            "type": "integer"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "New description of the UTub, or null if cleared"
+          }
+        },
+        "required": ["utubID", "utubDescription"],
+        "type": "object"
+      },
+      "UtubDeletedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the deleted UTub",
+            "type": "integer"
+          },
+          "utubName": {
+            "description": "Name of the deleted UTub",
+            "type": "string"
+          },
+          "utubDescription": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Description of the deleted UTub, or null if not set"
+          }
+        },
+        "required": ["utubID", "utubName", "utubDescription"],
+        "type": "object"
+      },
+      "AddMemberRequest": {
+        "properties": {
+          "username": {
+            "description": "Username of the member to add",
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": ["username"],
+        "type": "object"
+      },
+      "MemberModifiedResponseSchema": {
+        "properties": {
+          "utubID": {
+            "description": "ID of the UTub the member was added to or removed from",
+            "type": "integer"
+          },
+          "member": {
+            "$ref": "#/components/schemas/UserSchema",
+            "description": "User object for the member added or removed"
+          }
+        },
+        "required": ["utubID", "member"],
+        "type": "object"
+      },
+      "ErrorResponse_UTubMembersErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/UTubMembersErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "UTubMembersErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2],
+        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
+        "description": "Error codes for UTubMembersErrorCodes"
+      },
       "ContactRequest": {
         "properties": {
           "subject": {
@@ -3827,67 +4844,6 @@
         "enum": [1],
         "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for ContactErrorCodes"
-      },
-      "UserSchema": {
-        "properties": {
-          "id": {
-            "description": "Unique user ID",
-            "type": "integer"
-          },
-          "username": {
-            "description": "Username of the user",
-            "type": "string"
-          }
-        },
-        "required": ["id", "username"],
-        "type": "object"
-      },
-      "MemberModifiedResponseSchema": {
-        "properties": {
-          "utubID": {
-            "description": "ID of the UTub the member was added to or removed from",
-            "type": "integer"
-          },
-          "member": {
-            "$ref": "#/components/schemas/UserSchema",
-            "description": "User object for the member added or removed"
-          }
-        },
-        "required": ["utubID", "member"],
-        "type": "object"
-      },
-      "AddMemberRequest": {
-        "properties": {
-          "username": {
-            "description": "Username of the member to add",
-            "maxLength": 20,
-            "minLength": 3,
-            "type": "string"
-          }
-        },
-        "required": ["username"],
-        "type": "object"
-      },
-      "ErrorResponse_UTubMembersErrorCodes": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ErrorResponse"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "errorCode": {
-                "$ref": "#/components/schemas/UTubMembersErrorCodes"
-              }
-            }
-          }
-        ]
-      },
-      "UTubMembersErrorCodes": {
-        "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
-        "description": "Error codes for UTubMembersErrorCodes"
       },
       "MetricsIngestEvent": {
         "additionalProperties": false,
@@ -5232,25 +6188,6 @@
         "required": ["utubUrlID", "urlString", "urlTitle"],
         "type": "object"
       },
-      "UtubTagSchema": {
-        "properties": {
-          "id": {
-            "description": "Unique tag ID within the UTub",
-            "type": "integer"
-          },
-          "tagString": {
-            "description": "Tag label text",
-            "type": "string"
-          },
-          "tagApplied": {
-            "default": 0,
-            "description": "Number of URLs in the UTub this tag is applied to",
-            "type": "integer"
-          }
-        },
-        "required": ["id", "tagString"],
-        "type": "object"
-      },
       "UrlCreatedResponseSchema": {
         "properties": {
           "utubID": {
@@ -5430,305 +6367,6 @@
           }
         },
         "required": ["utubID", "URL", "tagCountsInUtub"],
-        "type": "object"
-      },
-      "CreateUTubRequest": {
-        "properties": {
-          "utubName": {
-            "description": "Name of the UTub to create",
-            "maxLength": 30,
-            "minLength": 1,
-            "type": "string"
-          },
-          "utubDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional description for the UTub"
-          }
-        },
-        "required": ["utubName"],
-        "type": "object"
-      },
-      "UtubCreatedResponseSchema": {
-        "properties": {
-          "utubID": {
-            "description": "Unique ID of the newly created UTub",
-            "type": "integer"
-          },
-          "utubName": {
-            "description": "Name of the newly created UTub",
-            "type": "string"
-          },
-          "utubDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Description of the newly created UTub, or null if not set"
-          },
-          "utubCreatorID": {
-            "description": "User ID of the UTub creator",
-            "type": "integer"
-          }
-        },
-        "required": ["utubID", "utubName", "utubDescription", "utubCreatorID"],
-        "type": "object"
-      },
-      "ErrorResponse_UTubErrorCodes": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/ErrorResponse"
-          },
-          {
-            "type": "object",
-            "properties": {
-              "errorCode": {
-                "$ref": "#/components/schemas/UTubErrorCodes"
-              }
-            }
-          }
-        ]
-      },
-      "UTubErrorCodes": {
-        "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": ["UNKNOWN_ERROR", "INVALID_FORM_INPUT"],
-        "description": "Error codes for UTubErrorCodes"
-      },
-      "UtubUrlSchema": {
-        "properties": {
-          "utubUrlID": {
-            "description": "Unique ID of the URL within the UTub",
-            "type": "integer"
-          },
-          "urlString": {
-            "description": "The URL string",
-            "type": "string"
-          },
-          "utubUrlTagIDs": {
-            "description": "List of tag IDs applied to this URL",
-            "items": {
-              "type": "integer"
-            },
-            "type": "array"
-          },
-          "urlTitle": {
-            "description": "Display title for the URL",
-            "type": "string"
-          },
-          "canDelete": {
-            "description": "Whether the current user can delete this URL",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "utubUrlID",
-          "urlString",
-          "utubUrlTagIDs",
-          "urlTitle",
-          "canDelete"
-        ],
-        "type": "object"
-      },
-      "UtubDetailSchema": {
-        "description": "Full UTub detail with members, URLs, and tags",
-        "properties": {
-          "id": {
-            "description": "Unique UTub ID",
-            "type": "integer"
-          },
-          "name": {
-            "description": "Name of the UTub",
-            "type": "string"
-          },
-          "createdByUserID": {
-            "description": "User ID of the UTub creator",
-            "type": "integer"
-          },
-          "createdAt": {
-            "description": "Creation timestamp of the UTub (ISO 8601)",
-            "format": "date-time",
-            "type": "string"
-          },
-          "description": {
-            "description": "Description of the UTub",
-            "type": "string"
-          },
-          "members": {
-            "description": "List of members in the UTub",
-            "items": {
-              "$ref": "#/components/schemas/UserSchema"
-            },
-            "type": "array"
-          },
-          "urls": {
-            "description": "List of URLs in the UTub",
-            "items": {
-              "$ref": "#/components/schemas/UtubUrlSchema"
-            },
-            "type": "array"
-          },
-          "tags": {
-            "description": "List of tags used in the UTub",
-            "items": {
-              "$ref": "#/components/schemas/UtubTagSchema"
-            },
-            "type": "array"
-          },
-          "isCreator": {
-            "description": "Whether the current user is the creator of the UTub",
-            "type": "boolean"
-          },
-          "currentUser": {
-            "description": "ID of the currently authenticated user",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "createdByUserID",
-          "createdAt",
-          "description",
-          "members",
-          "urls",
-          "tags",
-          "isCreator",
-          "currentUser"
-        ],
-        "type": "object"
-      },
-      "UtubSummaryItemSchema": {
-        "properties": {
-          "id": {
-            "description": "Unique UTub ID",
-            "type": "integer"
-          },
-          "name": {
-            "description": "Name of the UTub",
-            "type": "string"
-          },
-          "memberRole": {
-            "description": "Role of the current user in the UTub",
-            "type": "string"
-          }
-        },
-        "required": ["id", "name", "memberRole"],
-        "type": "object"
-      },
-      "UtubSummaryListSchema": {
-        "description": "List of UTub summaries",
-        "properties": {
-          "utubs": {
-            "description": "List of UTubs the user is a member of",
-            "items": {
-              "$ref": "#/components/schemas/UtubSummaryItemSchema"
-            },
-            "type": "array"
-          }
-        },
-        "required": ["utubs"],
-        "type": "object"
-      },
-      "UpdateUTubNameRequest": {
-        "properties": {
-          "utubName": {
-            "description": "New name for the UTub",
-            "maxLength": 30,
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": ["utubName"],
-        "type": "object"
-      },
-      "UtubNameUpdatedResponseSchema": {
-        "properties": {
-          "utubID": {
-            "description": "ID of the UTub whose name was updated",
-            "type": "integer"
-          },
-          "utubName": {
-            "description": "New name of the UTub",
-            "type": "string"
-          }
-        },
-        "required": ["utubID", "utubName"],
-        "type": "object"
-      },
-      "UpdateUTubDescriptionRequest": {
-        "properties": {
-          "utubDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "New description for the UTub, or empty to clear"
-          }
-        },
-        "type": "object"
-      },
-      "UtubDescUpdatedResponseSchema": {
-        "description": "UTub description updated",
-        "properties": {
-          "utubID": {
-            "description": "ID of the UTub whose description was updated",
-            "type": "integer"
-          },
-          "utubDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "New description of the UTub, or null if cleared"
-          }
-        },
-        "required": ["utubID", "utubDescription"],
-        "type": "object"
-      },
-      "UtubDeletedResponseSchema": {
-        "properties": {
-          "utubID": {
-            "description": "ID of the deleted UTub",
-            "type": "integer"
-          },
-          "utubName": {
-            "description": "Name of the deleted UTub",
-            "type": "string"
-          },
-          "utubDescription": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Description of the deleted UTub, or null if not set"
-          }
-        },
-        "required": ["utubID", "utubName", "utubDescription"],
         "type": "object"
       },
       "AddTagRequest": {

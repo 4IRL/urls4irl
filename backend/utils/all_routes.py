@@ -108,6 +108,16 @@ class API_V1_ROUTES:
     AUTH_LOGOUT_ALL = _API_V1 + "api_v1_auth_logout_all"
     AUTH_RESEND_VALIDATION = _API_V1 + "api_v1_auth_resend_validation"
     AUTH_GOOGLE = _API_V1 + "api_v1_auth_google"
+    # UTub routes
+    CREATE_UTUB = _API_V1 + "api_v1_create_utub"
+    GET_UTUBS = _API_V1 + "api_v1_get_utubs"
+    GET_SINGLE_UTUB = _API_V1 + "api_v1_get_single_utub"
+    UPDATE_UTUB_NAME = _API_V1 + "api_v1_update_utub_name"
+    UPDATE_UTUB_DESC = _API_V1 + "api_v1_update_utub_desc"
+    DELETE_UTUB = _API_V1 + "api_v1_delete_utub"
+    # Member routes
+    CREATE_MEMBER = _API_V1 + "api_v1_create_member"
+    REMOVE_MEMBER = _API_V1 + "api_v1_remove_member"
 
 
 class ROUTES:

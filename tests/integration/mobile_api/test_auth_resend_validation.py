@@ -32,6 +32,9 @@ def test_resend_validation_sends_email(
     WHEN POST /api/v1/auth/resend-validation is called
     THEN the validation email is sent and 200 is returned
     """
+    with app.app_context():
+        assert Email_Validations.query.first().attempts == 0
+
     response = api_client.post(
         _resend_url(app), headers=make_bearer_headers(access_token_unvalidated_user)
     )

@@ -175,6 +175,7 @@ def test_logout_all_revokes_every_device(
     THEN every refresh token for the user is revoked
     """
     with app.app_context():
+        assert ApiRefreshTokens.query.count() == 0
         first_user: Users = Users.query.get(1)
         first_device_token = issue_refresh_token(user=first_user)
         second_device_token = issue_refresh_token(user=first_user)
