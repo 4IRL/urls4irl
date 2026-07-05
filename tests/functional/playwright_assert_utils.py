@@ -224,3 +224,65 @@ def assert_active_utub(*, page: Page, utub_name: str) -> None:
     url_deck_header = page.locator(HPL.HEADER_URL_DECK).first
     expect(url_deck_header).to_be_visible()
     expect(url_deck_header).to_have_text(utub_name)
+
+
+def assert_update_url_state_is_shown(*, page: Page, url_row: Locator) -> None:
+    hidden_btns = (
+        HPL.BUTTON_URL_DELETE,
+        HPL.BUTTON_TAG_CREATE,
+        HPL.BUTTON_URL_ACCESS,
+    )
+
+    for btn_selector in hidden_btns:
+        css_selector = f"{HPL.ROW_SELECTED_URL} {btn_selector}"
+        assert_not_visible_css_selector(page=page, css_selector=css_selector)
+
+    expect(url_row.locator(HPL.BUTTON_URL_STRING_UPDATE)).to_have_count(0)
+
+    visible_btns = (
+        HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE,
+        HPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        HPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+    )
+
+    for btn_selector in visible_btns:
+        css_selector = f"{HPL.ROW_SELECTED_URL} {btn_selector}"
+        assert_visible_css_selector(page=page, css_selector=css_selector)
+
+    assert_visible_css_selector(
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
+    )
+
+    assert_not_visible_css_selector(
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.URL_STRING_READ}"
+    )
+    assert_not_visible_css_selector(
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.GO_TO_URL_ICON}"
+    )
+
+
+def assert_update_url_state_is_hidden(*, url_row: Locator) -> None:
+    visible_btns = (
+        HPL.BUTTON_URL_DELETE,
+        HPL.BUTTON_TAG_CREATE,
+        HPL.BUTTON_URL_ACCESS,
+        HPL.BUTTON_URL_STRING_UPDATE,
+    )
+
+    for btn_selector in visible_btns:
+        expect(url_row.locator(btn_selector)).to_be_visible()
+
+    expect(url_row.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(0)
+
+    hidden_btns = (
+        HPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        HPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+    )
+
+    for btn_selector in hidden_btns:
+        expect(url_row.locator(btn_selector)).to_be_hidden()
+
+    expect(url_row.locator(HPL.INPUT_URL_STRING_UPDATE)).to_be_hidden()
+
+    expect(url_row.locator(HPL.URL_STRING_READ)).to_be_visible()
+    expect(url_row.locator(HPL.GO_TO_URL_ICON)).to_be_visible()

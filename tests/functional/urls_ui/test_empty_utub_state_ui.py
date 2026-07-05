@@ -1,32 +1,31 @@
 from flask import Flask
 import pytest
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page, expect
 
 from backend import db
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import (
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
 )
-from tests.functional.db_utils import get_utub_this_user_created
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_and_select_utub_by_utubid
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_login_utils import login_user_and_select_utub_by_utubid
+from tests.functional.playwright_utils import (
     select_utub_by_id,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
 )
-from tests.functional.urls_ui.selenium_utils import create_url
+from tests.functional.urls_ui.playwright_utils import create_url
 
 pytestmark = pytest.mark.urls_ui
 
 
 def test_empty_utub_shows_no_urls_message(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a UTub with zero URLs
@@ -38,17 +37,17 @@ def test_empty_utub_shows_no_urls_message(
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
     )
 
-    assert_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
 
-    no_urls_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_NO_URLS)
-    assert no_urls_elem.text == UTS.UTUB_NO_URLS
+    no_urls_elem = page.locator(HPL.SUBHEADER_NO_URLS).first
+    expect(no_urls_elem).to_have_text(UTS.UTUB_NO_URLS)
 
 
 def test_empty_utub_shows_add_url_button(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a UTub with zero URLs
@@ -60,17 +59,17 @@ def test_empty_utub_shows_add_url_button(
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
     )
 
-    assert_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_DECK_URL_CREATE)
 
-    add_url_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_DECK_URL_CREATE)
-    assert add_url_btn.text == UTS.ADD_URL_BUTTON
+    add_url_btn = page.locator(HPL.BUTTON_DECK_URL_CREATE).first
+    expect(add_url_btn).to_have_text(UTS.ADD_URL_BUTTON)
 
 
 def test_add_url_button_opens_create_form(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a UTub with zero URLs showing the empty state
@@ -82,19 +81,19 @@ def test_add_url_button_opens_create_form(
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
     )
 
-    assert_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.BUTTON_DECK_URL_CREATE)
 
-    wait_then_click_element(browser, HPL.BUTTON_DECK_URL_CREATE, time=3)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_DECK_URL_CREATE)
 
-    assert_visible_css_selector(browser, HPL.WRAP_URL_CREATE, time=3)
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.WRAP_URL_CREATE)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
 
 
 def test_creating_url_hides_empty_state(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    page: Page, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a UTub with zero URLs showing the empty state
@@ -106,22 +105,21 @@ def test_creating_url_hides_empty_state(
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
     )
 
-    assert_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
 
-    create_url(browser, "Test URL", "https://example.com")
+    create_url(page=page, url_title="Test URL", url_string="https://example.com")
 
-    url_row_elem = wait_then_get_element(browser, HPL.ROWS_URLS, time=5)
-    assert url_row_elem is not None
+    wait_then_get_element(page=page, css_selector=HPL.ROWS_URLS)
 
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
-    assert_not_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.BUTTON_DECK_URL_CREATE)
 
 
 def test_populated_utub_does_not_show_empty_state(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a UTub that has URLs
@@ -133,18 +131,18 @@ def test_populated_utub_does_not_show_empty_state(
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS, time=5)
+    url_rows = wait_then_get_elements(page=page, css_selector=HPL.ROWS_URLS)
     assert len(url_rows) > 0
 
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
-    assert_not_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.BUTTON_DECK_URL_CREATE)
 
 
 def test_switching_from_populated_to_empty_utub_shows_empty_state(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a user viewing a UTub with URLs
@@ -175,16 +173,16 @@ def test_switching_from_populated_to_empty_utub_shows_empty_state(
         db.session.commit()
 
     login_user_and_select_utub_by_utubid(
-        app, browser, user_id_for_test, utub_user_created.id
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub_user_created.id
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS, time=5)
+    url_rows = wait_then_get_elements(page=page, css_selector=HPL.ROWS_URLS)
     assert len(url_rows) > 0
-    assert_not_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
 
-    select_utub_by_id(browser, empty_utub_id)
+    select_utub_by_id(page=page, utub_id=empty_utub_id)
 
-    assert_visible_css_selector(browser, HPL.SUBHEADER_NO_URLS, time=3)
+    assert_visible_css_selector(page=page, css_selector=HPL.SUBHEADER_NO_URLS)
 
-    no_urls_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_NO_URLS)
-    assert no_urls_elem.text == UTS.UTUB_NO_URLS
+    no_urls_elem = page.locator(HPL.SUBHEADER_NO_URLS).first
+    expect(no_urls_elem).to_have_text(UTS.UTUB_NO_URLS)

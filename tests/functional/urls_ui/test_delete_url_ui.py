@@ -4,11 +4,7 @@ from typing import Tuple
 from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.support.ui import WebDriverWait
+from playwright.sync_api import Page, expect
 
 from backend.cli.mock_constants import MOCK_URL_STRINGS
 from backend.models.users import Users
@@ -16,7 +12,13 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import STRINGS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import DELETE_URL_WARNING
-from tests.functional.assert_utils import (
+from tests.functional.db_utils import (
+    add_mock_urls,
+    get_url_in_utub,
+    get_utub_this_user_created,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.playwright_assert_utils import (
     assert_active_utub,
     assert_elem_with_url_string_exists,
     assert_login_with_username,
@@ -24,16 +26,10 @@ from tests.functional.assert_utils import (
     assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.db_utils import (
-    add_mock_urls,
-    get_utub_this_user_created,
-    get_url_in_utub,
+from tests.functional.playwright_login_utils import (
+    login_user_select_utub_by_id_and_url_by_id,
 )
-from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
-from tests.functional.urls_ui.login_utils import (
-    login_select_utub_select_url_click_delete_get_modal_url,
-)
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     force_next_delete_ajax_failure_no_navigate,
@@ -41,18 +37,22 @@ from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
 )
-from locators import HomePageLocators as HPL
+from tests.functional.urls_ui.playwright_login_utils import (
+    login_select_utub_select_url_click_delete_get_modal_url,
+)
 
 pytestmark = pytest.mark.urls_ui
 
 
 def test_delete_url_tooltip_animates(
-    browser: WebDriver,
+    page: Page,
     create_test_urls,
     runner: Tuple[Flask, FlaskCliRunner],
     provide_app: Flask,
@@ -72,18 +72,22 @@ def test_delete_url_tooltip_animates(
     utub_url = get_url_in_utub(app, utub_id=utub_user_created.id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, utub_url.id
+        app=app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=utub_url.id,
     )
 
     assert_tooltip_animates(
-        browser=browser,
+        page=page,
         parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}",
         tooltip_parent_class=HPL.BUTTON_URL_DELETE,
         tooltip_text=STRINGS.DELETE_URL_TOOLTIP,
     )
 
 
-def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Flask):
+def test_delete_url_submit(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests user's ability to delete a URL
 
@@ -95,7 +99,7 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
 
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
-            browser=browser,
+            page=page,
             app=provide_app,
             user_id=user_id_for_test,
             utub_name=UTS.TEST_UTUB_NAME_1,
@@ -104,35 +108,32 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     )
 
     css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
-    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+    expect(page.locator(css_selector).first).to_be_attached()
 
-    init_num_url_rows = get_num_url_rows(browser)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Assert submit button is disabled immediately after click to prevent double-submit
-    modal_submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT)
-    assert modal_submit_btn.get_property("disabled") is True
+    modal_submit_btn = page.locator(HPL.BUTTON_MODAL_SUBMIT).first
+    expect(modal_submit_btn).to_be_disabled()
 
-    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
     # Wait for animation to complete
-    assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
 
     # Assert URL no longer exists in UTub
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, css_selector)
-    assert init_num_url_rows - 1 == get_num_url_rows(browser)
+    expect(page.locator(css_selector)).to_have_count(0)
+    assert init_num_url_rows - 1 == get_num_url_rows(page=page)
 
 
-def test_delete_url_rate_limits(
-    browser: WebDriver, create_test_urls, provide_app: Flask
-):
+def test_delete_url_rate_limits(page: Page, create_test_urls, provide_app: Flask):
     """
     Tests user's ability to delete a URL when they are rate limited
 
@@ -143,7 +144,7 @@ def test_delete_url_rate_limits(
     user_id_for_test = 1
 
     delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
-        browser=browser,
+        page=page,
         app=provide_app,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
@@ -151,20 +152,20 @@ def test_delete_url_rate_limits(
     )
 
     css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
-    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+    expect(page.locator(css_selector).first).to_be_attached()
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    assert_on_429_page(browser)
+    add_forced_rate_limit_header(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    assert_on_429_page(page=page)
 
 
 def test_delete_url_cancel_click_cancel_btn(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests user's ability to delete a URL
@@ -177,7 +178,7 @@ def test_delete_url_cancel_click_cancel_btn(
 
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
-            browser=browser,
+            page=page,
             app=provide_app,
             user_id=user_id_for_test,
             utub_name=UTS.TEST_UTUB_NAME_1,
@@ -185,24 +186,24 @@ def test_delete_url_cancel_click_cancel_btn(
         )
     )
 
-    init_num_url_rows = get_num_url_rows(browser)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
 
-    # Assert URL no longer exists in UTub
-    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(browser)
-    assert url_elem_to_delete.is_displayed()
+    # Assert URL still exists in UTub
+    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
+    assert init_num_url_rows == get_num_url_rows(page=page)
+    expect(url_elem_to_delete).to_be_visible()
 
 
 def test_delete_url_cancel_click_x_btn(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests user's ability to delete a URL
@@ -215,7 +216,7 @@ def test_delete_url_cancel_click_x_btn(
 
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
-            browser=browser,
+            page=page,
             app=provide_app,
             user_id=user_id_for_test,
             utub_name=UTS.TEST_UTUB_NAME_1,
@@ -223,24 +224,24 @@ def test_delete_url_cancel_click_x_btn(
         )
     )
 
-    init_num_url_rows = get_num_url_rows(browser)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
-    wait_then_click_element(browser, HPL.BUTTON_X_CLOSE)
-    wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_X_CLOSE)
+    wait_until_hidden(page=page, css_selector=HPL.BUTTON_X_CLOSE)
 
-    # Assert URL no longer exists in UTub
-    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(browser)
-    assert url_elem_to_delete.is_displayed()
+    # Assert URL still exists in UTub
+    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
+    assert init_num_url_rows == get_num_url_rows(page=page)
+    expect(url_elem_to_delete).to_be_visible()
 
 
 def test_delete_url_cancel_press_esc_key(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests user's ability to delete a URL
@@ -253,7 +254,7 @@ def test_delete_url_cancel_press_esc_key(
 
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
-            browser=browser,
+            page=page,
             app=provide_app,
             user_id=user_id_for_test,
             utub_name=UTS.TEST_UTUB_NAME_1,
@@ -261,24 +262,25 @@ def test_delete_url_cancel_press_esc_key(
         )
     )
 
-    init_num_url_rows = get_num_url_rows(browser)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
-    wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
+    wait_until_in_focus(page=page, css_selector=HPL.HOME_MODAL)
+    page.keyboard.press("Escape")
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
-    # Assert URL no longer exists in UTub
-    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(browser)
-    assert url_elem_to_delete.is_displayed()
+    # Assert URL still exists in UTub
+    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
+    assert init_num_url_rows == get_num_url_rows(page=page)
+    expect(url_elem_to_delete).to_be_visible()
 
 
 def test_delete_url_cancel_click_outside_modal(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests user's ability to delete a URL
@@ -291,7 +293,7 @@ def test_delete_url_cancel_click_outside_modal(
 
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
-            browser=browser,
+            page=page,
             app=provide_app,
             user_id=user_id_for_test,
             utub_name=UTS.TEST_UTUB_NAME_1,
@@ -299,24 +301,25 @@ def test_delete_url_cancel_click_outside_modal(
         )
     )
 
-    init_num_url_rows = get_num_url_rows(browser)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
-    dismiss_modal_with_click_out(browser)
-    wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
+    wait_for_modal_ready(page=page, modal_selector=HPL.HOME_MODAL)
+    dismiss_modal_with_click_out(page=page, modal_selector=HPL.HOME_MODAL)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
     # Assert URL still exists in UTub
-    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
-    assert init_num_url_rows == get_num_url_rows(browser)
-    assert url_elem_to_delete.is_displayed()
+    assert_elem_with_url_string_exists(page=page, url_string=UTS.TEST_URL_STRING_CREATE)
+    assert init_num_url_rows == get_num_url_rows(page=page)
+    expect(url_elem_to_delete).to_be_visible()
 
 
 def test_delete_last_url(
-    browser: WebDriver,
+    page: Page,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
     provide_app: Flask,
@@ -342,7 +345,7 @@ def test_delete_last_url(
     user_id_for_test = 1
 
     _, url_elem_to_delete = login_select_utub_select_url_click_delete_get_modal_url(
-        browser=browser,
+        page=page,
         app=provide_app,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
@@ -350,21 +353,21 @@ def test_delete_last_url(
     )
 
     css_selector = f'{HPL.URL_STRING_READ}[href="{random_url_to_add_as_last}"]'
-    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+    expect(page.locator(css_selector).first).to_be_attached()
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
-    assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, css_selector)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
+    expect(page.locator(css_selector)).to_have_count(0)
 
-    no_url_subheader = wait_then_get_element(browser, HPL.SUBHEADER_NO_URLS)
-    assert no_url_subheader is not None
-    assert no_url_subheader.text == UTS.UTUB_NO_URLS
+    no_url_subheader = wait_then_get_element(
+        page=page, css_selector=HPL.SUBHEADER_NO_URLS
+    )
+    expect(no_url_subheader).to_have_text(UTS.UTUB_NO_URLS)
 
 
 def test_delete_url_invalid_csrf_token(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to attempt to delete a URL with an invalid CSRF token
@@ -384,29 +387,28 @@ def test_delete_url_invalid_csrf_token(
         url_string_to_delete = url_to_delete.standalone_url.url_string
 
     login_select_utub_select_url_click_delete_get_modal_url(
-        browser=browser,
+        page=page,
         app=provide_app,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
         url_string=url_string_to_delete,
     )
 
-    invalidate_csrf_token_on_page(browser)
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    invalidate_csrf_token_on_page(page=page)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
-    assert_visited_403_on_invalid_csrf_and_reload(browser)
+    assert_visited_403_on_invalid_csrf_and_reload(page=page)
 
     # Page reloads after user clicks button in CSRF 403 error page
-    delete_url_modal = wait_until_hidden(browser, HPL.HOME_MODAL, timeout=3)
-    assert not delete_url_modal.is_displayed()
-    assert_login_with_username(browser, user.username)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    assert_login_with_username(page=page, username=user.username)
 
     # Reload will bring user back to the UTub they were in before
-    assert_active_utub(browser, utub_user_created.name)
+    assert_active_utub(page=page, utub_name=utub_user_created.name)
 
 
 def test_delete_url_submit_button_reenables_on_server_error(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests that the submit button re-enables after a server error so the user can retry.
@@ -418,31 +420,27 @@ def test_delete_url_submit_button_reenables_on_server_error(
     user_id_for_test = 1
 
     delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
-        browser=browser,
+        page=page,
         app=provide_app,
         user_id=user_id_for_test,
         utub_name=UTS.TEST_UTUB_NAME_1,
         url_string=UTS.TEST_URL_STRING_CREATE,
     )
 
-    confirmation_modal_body_text = delete_modal.text
+    confirmation_modal_body_text = delete_modal.inner_text()
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     # Force the next DELETE ajax call to fail (with early return to prevent navigation)
-    force_next_delete_ajax_failure_no_navigate(browser)
+    force_next_delete_ajax_failure_no_navigate(page=page)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Poll until the async failure handler re-enables the submit button
-    WebDriverWait(browser, 5).until(
-        lambda driver: not driver.find_element(
-            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
-        ).get_property("disabled")
-    )
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()
 
 
 def test_delete_url_submit_button_enabled_on_second_modal_open(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    page: Page, create_test_urls, provide_app: Flask
 ):
     """
     Tests that the submit button is enabled when opening the delete modal for a
@@ -465,35 +463,31 @@ def test_delete_url_submit_button_enabled_on_second_modal_open(
         second_utub_url_id = utub_urls[1].id
 
     login_select_utub_select_url_click_delete_get_modal_url(
-        browser=browser,
+        page=page,
         app=app,
         user_id=user_id_for_test,
         utub_name=utub_user_created.name,
         url_string=first_utub_url_string,
     )
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for the first URL row to be removed from the DOM
     first_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{first_utub_url_id}"]'
-    first_url_row_elem = browser.find_element(By.CSS_SELECTOR, first_url_row_selector)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
-    wait_for_element_to_be_removed(browser, first_url_row_elem)
+    first_url_row_elem = page.locator(first_url_row_selector).first
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+    wait_for_element_to_be_removed(page=page, locator=first_url_row_elem)
 
     # Select the second URL and open its delete modal
     second_url_row_selector = f'{HPL.ROWS_URLS}[utuburlid="{second_utub_url_id}"]'
-    wait_then_click_element(browser, second_url_row_selector, time=3)
+    wait_then_click_element(page=page, css_selector=second_url_row_selector)
     wait_for_animation_to_end_check_top_lhs_corner(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
     wait_then_click_element(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=3
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
     )
-    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=5)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
 
     # Assert the submit button is NOT disabled when the modal opens for the second URL
-    WebDriverWait(browser, 5).until(
-        lambda driver: not driver.find_element(
-            By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT
-        ).get_property("disabled")
-    )
+    expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_enabled()

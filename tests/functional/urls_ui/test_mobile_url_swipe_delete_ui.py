@@ -1,15 +1,8 @@
 from flask import Flask
 import pytest
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
+from playwright.sync_api import Page
 
 from backend.utils.strings.url_strs import DELETE_URL_WARNING
-from tests.functional.assert_utils import (
-    assert_not_visible_css_selector,
-    assert_panel_visibility_mobile,
-    assert_visible_css_selector,
-)
 from tests.functional.db_utils import (
     get_url_in_utub,
     get_urls_in_utub,
@@ -18,8 +11,15 @@ from tests.functional.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
-from tests.functional.login_utils import login_user_and_select_utub_by_utubid_mobile
-from tests.functional.selenium_utils import (
+from tests.functional.playwright_assert_utils import (
+    assert_not_visible_css_selector,
+    assert_panel_visibility_mobile,
+    assert_visible_css_selector,
+)
+from tests.functional.playwright_login_utils import (
+    login_user_and_select_utub_by_utubid_mobile,
+)
+from tests.functional.playwright_utils import (
     Decks,
     get_num_url_rows,
     wait_for_animation_to_end_check_top_lhs_corner,
@@ -28,7 +28,7 @@ from tests.functional.selenium_utils import (
     wait_until_css_property,
     wait_until_hidden,
 )
-from tests.functional.urls_ui.selenium_utils import (
+from tests.functional.urls_ui.playwright_utils import (
     get_url_row_selector,
     swipe_url_card_below_threshold,
     swipe_url_card_delete,
@@ -46,7 +46,7 @@ NEUTRAL_ROW_BORDER_COLOR = "rgb(52, 60, 61)"
 
 
 def test_url_swipe_commit_opens_confirm_modal(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a logged-in mobile user on the URL deck with a deletable URL
@@ -54,64 +54,63 @@ def test_url_swipe_commit_opens_confirm_modal(
     THEN the row commits (swipe-committed class) and the delete confirmation
         modal opens, proving the real browser commits the drag gesture end-to-end
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    row_selector = get_url_row_selector(utub_url.id)
-    assert_visible_css_selector(browser, row_selector)
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    assert_visible_css_selector(page=page, css_selector=row_selector)
 
-    swipe_url_card_delete(browser, row_selector)
-    wait_until_url_card_swipe_committed(browser)
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
+    wait_until_url_card_swipe_committed(page=page)
 
-    assert_visible_css_selector(browser, ML.ELEMENT_MODAL)
-    modal_body = browser.find_element(By.CSS_SELECTOR, HPL.BODY_MODAL)
-    assert modal_body.text == DELETE_URL_WARNING
+    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    modal_body = page.locator(HPL.BODY_MODAL).first
+    assert modal_body.inner_text() == DELETE_URL_WARNING
 
 
 def test_url_swipe_commit_confirm_deletes_and_removes_row(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a committed swipe-to-delete gesture with the confirm modal open
     WHEN the user confirms the deletion
     THEN the URL is deleted and its row is removed from the DOM
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    row_selector = get_url_row_selector(utub_url.id)
-    url_row = browser.find_element(By.CSS_SELECTOR, row_selector)
-    init_num_url_rows = get_num_url_rows(browser)
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    url_row = page.locator(row_selector).first
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    swipe_url_card_delete(browser, row_selector)
-    wait_until_url_card_swipe_committed(browser)
-    assert_visible_css_selector(browser, ML.ELEMENT_MODAL)
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
+    wait_until_url_card_swipe_committed(page=page)
+    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
-    assert wait_for_element_to_be_removed(browser, url_row)
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, row_selector)
-    assert init_num_url_rows - 1 == get_num_url_rows(browser)
+    wait_for_element_to_be_removed(page=page, locator=url_row)
+    assert page.locator(row_selector).count() == 0
+    assert init_num_url_rows - 1 == get_num_url_rows(page=page)
 
 
 def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a committed swipe-to-delete gesture with the confirm modal open
@@ -123,40 +122,43 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
         bug where the suppression rule lost the cascade to the pre-existing
         focus-ring rule despite the suppression class being correctly applied)
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    row_selector = get_url_row_selector(utub_url.id)
-    init_num_url_rows = get_num_url_rows(browser)
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    swipe_url_card_delete(browser, row_selector)
-    wait_until_url_card_swipe_committed(browser)
-    assert_visible_css_selector(browser, ML.ELEMENT_MODAL)
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
+    wait_until_url_card_swipe_committed(page=page)
+    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
-    wait_until_hidden(browser, HPL.HOME_MODAL)
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
+    wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
-    wait_until_url_card_swipe_reset(browser)
-    url_row = browser.find_element(By.CSS_SELECTOR, row_selector)
+    wait_until_url_card_swipe_reset(page=page)
+    url_row = page.locator(row_selector).first
     row_class = url_row.get_attribute("class") or ""
     assert SWIPE_COMMITTED_CLASS not in row_class
     assert SWIPE_DRAGGING_CLASS not in row_class
-    assert init_num_url_rows == get_num_url_rows(browser)
+    assert init_num_url_rows == get_num_url_rows(page=page)
 
     wait_until_css_property(
-        browser, row_selector, "border-bottom-color", NEUTRAL_ROW_BORDER_COLOR
+        page=page,
+        css_selector=row_selector,
+        css_property="border-bottom-color",
+        expected_value=NEUTRAL_ROW_BORDER_COLOR,
     )
 
 
 def test_url_swipe_dismiss_twice_then_blur_leaves_no_stuck_goto_icon(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN two rows that each committed a swipe-to-delete gesture and had the
@@ -170,7 +172,7 @@ def test_url_swipe_dismiss_twice_then_blur_leaves_no_stuck_goto_icon(
         never matches when the swipe module's WCAG focus-return blurs the
         row directly, so the class leaked forever once focus moved on)
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     utub_urls = get_urls_in_utub(app, utub.id)
@@ -178,34 +180,34 @@ def test_url_swipe_dismiss_twice_then_blur_leaves_no_stuck_goto_icon(
     first_url, second_url = utub_urls[0], utub_urls[1]
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    first_row_selector = get_url_row_selector(first_url.id)
-    second_row_selector = get_url_row_selector(second_url.id)
+    first_row_selector = get_url_row_selector(utub_url_id=first_url.id)
+    second_row_selector = get_url_row_selector(utub_url_id=second_url.id)
 
     for row_selector in (first_row_selector, second_row_selector):
-        swipe_url_card_delete(browser, row_selector)
-        wait_until_url_card_swipe_committed(browser)
-        assert_visible_css_selector(browser, ML.ELEMENT_MODAL)
-        wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
-        wait_until_hidden(browser, HPL.HOME_MODAL)
-        wait_until_url_card_swipe_reset(browser)
+        swipe_url_card_delete(page=page, url_row_selector=row_selector)
+        wait_until_url_card_swipe_committed(page=page)
+        assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+        wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
+        wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
+        wait_until_url_card_swipe_reset(page=page)
 
     # A tap elsewhere blurs whichever row the WCAG focus-return trigger last
     # focused, the same way a real user would move on after dismissing.
-    wait_then_click_element(browser, HPL.MAIN_PANEL)
+    wait_then_click_element(page=page, css_selector=HPL.MAIN_PANEL)
 
     for row_selector in (first_row_selector, second_row_selector):
         icon_selector = f"{row_selector} {HPL.GO_TO_URL_ICON}"
-        assert_not_visible_css_selector(browser, icon_selector)
-        icon = browser.find_element(By.CSS_SELECTOR, icon_selector)
+        assert_not_visible_css_selector(page=page, css_selector=icon_selector)
+        icon = page.locator(icon_selector).first
         assert "visible-on-focus" not in (icon.get_attribute("class") or "")
 
 
 def test_url_swipe_below_threshold_snaps_back_no_op(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a logged-in mobile user on the URL deck with a deletable URL
@@ -215,31 +217,31 @@ def test_url_swipe_below_threshold_snaps_back_no_op(
         confirm modal, proving the real browser only commits once the
         threshold is crossed
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    row_selector = get_url_row_selector(utub_url.id)
-    init_num_url_rows = get_num_url_rows(browser)
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    init_num_url_rows = get_num_url_rows(page=page)
 
-    swipe_url_card_below_threshold(browser, row_selector)
-    wait_until_url_card_swipe_reset(browser)
+    swipe_url_card_below_threshold(page=page, url_row_selector=row_selector)
+    wait_until_url_card_swipe_reset(page=page)
 
-    assert_not_visible_css_selector(browser, ML.ELEMENT_MODAL)
-    url_row = browser.find_element(By.CSS_SELECTOR, row_selector)
+    assert_not_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    url_row = page.locator(row_selector).first
     row_class = url_row.get_attribute("class") or ""
     assert SWIPE_COMMITTED_CLASS not in row_class
-    assert init_num_url_rows == get_num_url_rows(browser)
+    assert init_num_url_rows == get_num_url_rows(page=page)
 
 
 def test_url_tap_to_select_delete_button_still_works(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a logged-in mobile user on the URL deck with a deletable URL
@@ -247,37 +249,37 @@ def test_url_tap_to_select_delete_button_still_works(
     THEN the confirm modal opens exactly as before the swipe gesture was added
         (non-regression of the existing tap-to-select delete flow)
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_created(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    row_selector = get_url_row_selector(utub_url.id)
-    wait_then_click_element(browser, row_selector, time=10)
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    wait_then_click_element(page=page, css_selector=row_selector)
 
     # The selected-row padding/transform transition must settle before the
     # delete button's post-select position is stable, otherwise the click
     # lands on a still-animating sibling (e.g. .urlTags) instead of the
     # button — mirrors login_select_utub_select_url_click_delete_get_modal_url.
     wait_for_animation_to_end_check_top_lhs_corner(
-        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+        page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 
     delete_btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
-    wait_then_click_element(browser, delete_btn_selector, time=5)
+    wait_then_click_element(page=page, css_selector=delete_btn_selector)
 
-    assert_visible_css_selector(browser, ML.ELEMENT_MODAL)
-    modal_body = browser.find_element(By.CSS_SELECTOR, HPL.BODY_MODAL)
-    assert modal_body.text == DELETE_URL_WARNING
+    assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    modal_body = page.locator(HPL.BODY_MODAL).first
+    assert modal_body.inner_text() == DELETE_URL_WARNING
 
 
 def test_url_swipe_inert_for_non_deletable_row(
-    browser_mobile_portrait: WebDriver, create_test_urls, provide_app: Flask
+    page_mobile_portrait: Page, create_test_urls, provide_app: Flask
 ):
     """
     GIVEN a logged-in mobile user on the URL deck with a URL they cannot delete
@@ -286,7 +288,7 @@ def test_url_swipe_inert_for_non_deletable_row(
     THEN the row is inert — no swipe reveal panel exists, no swipe class is
         applied, and no confirm modal opens
     """
-    browser = browser_mobile_portrait
+    page = page_mobile_portrait
     app = provide_app
     utub = get_utub_this_user_did_not_create(app, USER_ID_FOR_TEST)
     utub_url = get_url_in_utub(app, utub.id)
@@ -299,19 +301,19 @@ def test_url_swipe_inert_for_non_deletable_row(
     ), "Test premise violated: seeded URL was added by the test user"
 
     login_user_and_select_utub_by_utubid_mobile(
-        app=app, browser=browser, user_id=USER_ID_FOR_TEST, utub_id=utub.id
+        app=app, page=page, user_id=USER_ID_FOR_TEST, utub_id=utub.id
     )
-    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
 
-    row_selector = get_url_row_selector(utub_url.id)
-    assert_visible_css_selector(browser, row_selector)
-    url_row = browser.find_element(By.CSS_SELECTOR, row_selector)
-    assert len(url_row.find_elements(By.CSS_SELECTOR, ".urlRowSwipeReveal")) == 0
+    row_selector = get_url_row_selector(utub_url_id=utub_url.id)
+    assert_visible_css_selector(page=page, css_selector=row_selector)
+    url_row = page.locator(row_selector).first
+    assert url_row.locator(".urlRowSwipeReveal").count() == 0
 
-    swipe_url_card_delete(browser, row_selector)
+    swipe_url_card_delete(page=page, url_row_selector=row_selector)
 
-    assert_not_visible_css_selector(browser, ML.ELEMENT_MODAL)
-    url_row = browser.find_element(By.CSS_SELECTOR, row_selector)
+    assert_not_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+    url_row = page.locator(row_selector).first
     row_class = url_row.get_attribute("class") or ""
     assert SWIPE_COMMITTED_CLASS not in row_class
     assert SWIPE_DRAGGING_CLASS not in row_class

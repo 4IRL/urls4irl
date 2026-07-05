@@ -46,7 +46,9 @@ from tests.functional.ui_test_setup import (
     ping_server,
     run_app,
 )
-from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
+from tests.functional.urls_ui.playwright_utils import (
+    ClipboardMockHelper as PlaywrightClipboardMockHelper,
+)
 
 # Redis ships with 16 databases (indices 0-15) by default per the default redis.conf
 REDIS_DEFAULT_MAX_DATABASES = 16
@@ -754,9 +756,10 @@ def create_test_tags(runner, debug_strings):
 
 
 @pytest.fixture(scope="function")
-def clipboard_mock(browser):
-    """Pytest fixture that sets up clipboard mock for headless testing"""
-    mock_helper = ClipboardMockHelper(browser)
+def clipboard_mock_playwright(page: Page):
+    """Pytest fixture that sets up the Playwright clipboard mock for headless
+    testing"""
+    mock_helper = PlaywrightClipboardMockHelper(page)
 
     yield mock_helper
     mock_helper.cleanup_mock()

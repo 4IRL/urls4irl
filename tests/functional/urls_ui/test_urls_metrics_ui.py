@@ -5,9 +5,8 @@ from typing import Any
 
 import pytest
 from flask import Flask
+from playwright.sync_api import Page
 from redis import Redis
-from selenium.webdriver.common.by import By
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend.cli.mock_constants import MOCK_TEST_URL_STRINGS
 from backend.metrics.events import DeviceType, EventName
@@ -16,16 +15,17 @@ from tests.functional.db_utils import (
     get_utub_url_id_by_url_string,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import (
+from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
+from tests.functional.playwright_login_utils import (
     login_user_select_utub_by_id_and_url_by_id,
 )
-from tests.functional.metrics_helpers.db_utils import wait_for_metrics_row
-from tests.functional.selenium_utils import get_selected_url
+from tests.functional.playwright_utils import get_selected_url
 
 pytestmark = pytest.mark.urls_ui
 
-# Headless Chrome at 1920x1080 (see `tests/functional/conftest.py::build_driver`)
-# resolves to DESKTOP via `frontend/lib/device-type.ts`'s media-query check.
+# Headless Chromium at the desktop viewport (see
+# `tests/functional/conftest.py::page_without_cookie_banner_cookie`) resolves
+# to DESKTOP via `frontend/lib/device-type.ts`'s media-query check.
 _EXPECTED_DEVICE_TYPE: int = DeviceType.DESKTOP.value
 
 # Mock URLs used by `create_test_access_urls` do not carry tag rows, so every
@@ -34,11 +34,11 @@ _NO_ACTIVE_TAGS: int = 0
 
 
 def test_url_access_emits_to_anonymous_metrics(
-    browser: WebDriver,
+    page: Page,
     create_test_access_urls: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics: Any,
+    pg_conn_for_metrics_playwright: Any,
 ):
     """
     GIVEN a logged-in user with a selected UTub containing accessible URLs and
@@ -60,20 +60,23 @@ def test_url_access_emits_to_anonymous_metrics(
     )
 
     login_user_select_utub_by_id_and_url_by_id(
-        provide_app, browser, user_id_for_test, utub_user_created.id, utub_url_id
+        app=provide_app,
+        page=page,
+        user_id=user_id_for_test,
+        utub_id=utub_user_created.id,
+        utub_url_id=utub_url_id,
     )
 
-    initial_window_handle = browser.current_window_handle
-
-    selected_url_row = get_selected_url(browser)
-    url_anchor = selected_url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
-    url_anchor.click()
+    selected_url_row = get_selected_url(page=page)
+    url_anchor = selected_url_row.locator(HPL.URL_STRING_READ)
 
     # `window.open(..., "_blank")` from `accessLink(...)` spawns a background
-    # tab. Pivot back to the original tab so the dispatched `pagehide`
-    # event fires on the page that owns the metrics-client buffer.
-    if browser.current_window_handle != initial_window_handle:
-        browser.switch_to.window(initial_window_handle)
+    # tab. Absorb the popup event; the original `page` object keeps pointing
+    # at the tab that owns the metrics-client buffer, so the dispatched
+    # `pagehide` inside `wait_for_metrics_row` fires on the right page (no
+    # Selenium-style window-handle pivot needed).
+    with page.context.expect_page():
+        url_anchor.click()
 
     expected_dimensions: dict[str, Any] = {
         "device_type": _EXPECTED_DEVICE_TYPE,
@@ -82,9 +85,9 @@ def test_url_access_emits_to_anonymous_metrics(
         "active_tag_count": _NO_ACTIVE_TAGS,
     }
     matched_row = wait_for_metrics_row(
-        browser=browser,
+        browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics,
+        pg_conn=pg_conn_for_metrics_playwright,
         event_name=EventName.UI_URL_ACCESS,
         expected_dimensions=expected_dimensions,
     )
