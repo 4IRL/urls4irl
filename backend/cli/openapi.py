@@ -60,7 +60,7 @@ ACRONYM_MAP: dict[str, str] = {
 }
 
 
-def _humanize_class_name(name: str) -> str:
+def humanize_class_name(name: str) -> str:
     """Convert a PascalCase schema class name to a human-readable description."""
     # Step 1: strip ResponseSchema or Schema suffix
     stripped = re.sub(r"(ResponseSchema|Response|Schema)$", "", name)
@@ -79,13 +79,13 @@ def _humanize_class_name(name: str) -> str:
     return " ".join(result_tokens)
 
 
-def _response_description(status_code: int, schema_cls: Type[BaseModel]) -> str:
+def response_description(status_code: int, schema_cls: Type[BaseModel]) -> str:
     """Build a human-readable response description for the OpenAPI spec."""
     if status_code >= 400:
         return HTTP_STATUS_DESCRIPTIONS.get(status_code, "Error")
     if schema_cls.__doc__ is not None:
         return schema_cls.__doc__.strip()
-    return _humanize_class_name(schema_cls.__name__)
+    return humanize_class_name(schema_cls.__name__)
 
 
 _STATUS_LITERAL_VALUES: list[str] = list(
@@ -153,7 +153,7 @@ def _build_query_parameter_schema(field_schema: dict[str, Any]) -> dict[str, Any
     schema_copy.pop("description", None)
     schema_copy.pop("default", None)
     # `explode` is a parameter-level serialization key (lifted to the parameter
-    # object by `_extract_query_parameters`), not a JSON Schema keyword — strip
+    # object by `extract_query_parameters`), not a JSON Schema keyword — strip
     # it so it never leaks into the emitted `schema`.
     schema_copy.pop("explode", None)
 
@@ -173,7 +173,7 @@ def _build_query_parameter_schema(field_schema: dict[str, Any]) -> dict[str, Any
     return schema_copy
 
 
-def _extract_query_parameters(
+def extract_query_parameters(
     query_schema_cls: Type[BaseModel],
     components_schemas: dict[str, Any],
 ) -> list[dict[str, Any]]:
@@ -201,7 +201,7 @@ def _extract_query_parameters(
     nested_defs = json_schema.get("$defs", {})
     for def_name, def_schema in nested_defs.items():
         if def_name not in components_schemas:
-            _strip_auto_titles(def_schema)
+            strip_auto_titles(def_schema)
             components_schemas[def_name] = def_schema
 
     parameters: list[dict[str, Any]] = []
@@ -227,7 +227,7 @@ def _extract_query_parameters(
     return parameters
 
 
-def _endpoint_to_operation_id(endpoint: str) -> str:
+def endpoint_to_operation_id(endpoint: str) -> str:
     """Convert Flask endpoint to camelCase operationId.
 
     Drop the blueprint prefix (everything before and including the first dot),
@@ -250,7 +250,7 @@ def _build_schema_ref(schema_cls: Type[BaseModel]) -> str:
     return f"#/components/schemas/{schema_cls.__name__}"
 
 
-def _strip_auto_titles(schema: dict[str, Any]) -> None:
+def strip_auto_titles(schema: dict[str, Any]) -> None:
     """Recursively remove auto-generated 'title' keys from a JSON schema dict.
 
     Pydantic adds a 'title' key to every schema and property by default.
@@ -259,17 +259,17 @@ def _strip_auto_titles(schema: dict[str, Any]) -> None:
     schema.pop("title", None)
 
     for prop in schema.get("properties", {}).values():
-        _strip_auto_titles(prop)
+        strip_auto_titles(prop)
 
     for def_schema in schema.get("$defs", {}).values():
-        _strip_auto_titles(def_schema)
+        strip_auto_titles(def_schema)
 
     for keyword in ("allOf", "anyOf", "oneOf"):
         for sub_schema in schema.get(keyword, []):
-            _strip_auto_titles(sub_schema)
+            strip_auto_titles(sub_schema)
 
     if "items" in schema and isinstance(schema["items"], dict):
-        _strip_auto_titles(schema["items"])
+        strip_auto_titles(schema["items"])
 
 
 def _collect_schema(
@@ -285,11 +285,11 @@ def _collect_schema(
     defs = schema_dict.pop("$defs", {})
     for def_name, def_schema in defs.items():
         if def_name not in components_schemas:
-            _strip_auto_titles(def_schema)
+            strip_auto_titles(def_schema)
             components_schemas[def_name] = def_schema
 
     # Strip auto-generated titles from the root schema
-    _strip_auto_titles(schema_dict)
+    strip_auto_titles(schema_dict)
 
     # Add root schema under its class name
     class_name = schema_cls.__name__
@@ -304,14 +304,14 @@ def _collect_schema(
 
 
 @functools.lru_cache(maxsize=None)
-def _schema_has_status_property(schema_cls: Type[BaseModel]) -> bool:
+def schema_has_status_property(schema_cls: Type[BaseModel]) -> bool:
     """Check if the schema's JSON schema output has a 'status' property."""
     json_schema = schema_cls.model_json_schema()
     return "status" in json_schema.get("properties", {})
 
 
 @functools.lru_cache(maxsize=None)
-def _schema_is_empty(schema_cls: Type[BaseModel]) -> bool:
+def schema_is_empty(schema_cls: Type[BaseModel]) -> bool:
     """Check if the schema's JSON schema output has no properties."""
     return not schema_cls.model_json_schema().get("properties")
 
@@ -324,9 +324,9 @@ def _build_response_schema_obj(schema_cls: Type[BaseModel]) -> dict[str, Any]:
     2. Schema has no properties -> direct $ref to SuccessEnvelope
     3. Otherwise -> allOf composition with SuccessEnvelope + data schema
     """
-    if _schema_has_status_property(schema_cls):
+    if schema_has_status_property(schema_cls):
         return {"$ref": _build_schema_ref(schema_cls)}
-    elif _schema_is_empty(schema_cls):
+    elif schema_is_empty(schema_cls):
         return {"$ref": f"#/components/schemas/{SUCCESS_ENVELOPE_NAME}"}
 
     return {
@@ -358,7 +358,7 @@ def _collect_error_code_enum_schema(
     }
 
 
-def _build_typed_error_response_schema(
+def build_typed_error_response_schema(
     enum_cls: type[IntEnum],
     components_schemas: dict[str, Any],
 ) -> str:
@@ -471,7 +471,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
         # Extract query parameters from the optional query schema
         query_params: list[dict[str, Any]] = (
-            _extract_query_parameters(query_schema, components_schemas)
+            extract_query_parameters(query_schema, components_schemas)
             if query_schema is not None
             else []
         )
@@ -484,7 +484,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
         # Build operation for each HTTP method
         for method in effective_methods:
-            base_operation_id = _endpoint_to_operation_id(rule.endpoint)
+            base_operation_id = endpoint_to_operation_id(rule.endpoint)
             operation_id = (
                 f"{base_operation_id}_{method.lower()}"
                 if is_multi_method
@@ -544,7 +544,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                             and error_code_enum is not None
                             and issubclass(error_code_enum, IntEnum)
                         ):
-                            typed_name = _build_typed_error_response_schema(
+                            typed_name = build_typed_error_response_schema(
                                 error_code_enum, components_schemas
                             )
                             response_schema_obj = {
@@ -558,7 +558,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                         response_schema_obj = _build_response_schema_obj(schema_cls)
 
                     responses[str(code)] = {
-                        "description": _response_description(code, schema_cls),
+                        "description": response_description(code, schema_cls),
                         "content": {
                             "application/json": {
                                 "schema": response_schema_obj,
@@ -574,7 +574,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
 
                 operation["responses"] = {
                     "200": {
-                        "description": _response_description(200, response_schema),
+                        "description": response_description(200, response_schema),
                         "content": {
                             "application/json": {
                                 "schema": fallback_schema_obj,

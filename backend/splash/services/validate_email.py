@@ -47,13 +47,13 @@ def send_validation_email_to_user() -> WerkzeugResponse | FlaskResponse:
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
     if current_email_validation.has_too_many_email_attempts():
-        return _build_response_for_max_email_attempts_sent()
+        return build_response_for_max_email_attempts_sent()
 
     has_more_attempts = current_email_validation.increment_attempt()
     db.session.commit()
 
     if not has_more_attempts:
-        return _build_response_for_email_attempts_rate_limited(current_email_validation)
+        return build_response_for_email_attempts_rate_limited(current_email_validation)
 
     email_sender = safe_get_email_sender(current_app)
     if not email_sender.is_production() and not email_sender.is_testing():
@@ -69,10 +69,10 @@ def send_validation_email_to_user() -> WerkzeugResponse | FlaskResponse:
         current_user.email, current_user.username, url_for_confirmation
     )
 
-    return _handle_email_sending_result(email_send_result)
+    return handle_email_sending_result(email_send_result)
 
 
-def _build_response_for_max_email_attempts_sent() -> FlaskResponse:
+def build_response_for_max_email_attempts_sent() -> FlaskResponse:
     """
     Builds a response when the User has sent too many email attempts.
     The attempts reset after a given amount of time - this is told to the user.
@@ -90,7 +90,7 @@ def _build_response_for_max_email_attempts_sent() -> FlaskResponse:
     )
 
 
-def _build_response_for_email_attempts_rate_limited(
+def build_response_for_email_attempts_rate_limited(
     email_validation: Email_Validations,
 ) -> FlaskResponse:
     """
@@ -118,7 +118,7 @@ def _log_email_send_if_in_development(email_validation: Email_Validations):
     )
 
 
-def _handle_email_sending_result(email_result: requests.Response) -> FlaskResponse:
+def handle_email_sending_result(email_result: requests.Response) -> FlaskResponse:
     """
     Handles using the Mailjet service to send an email to the User.
 

@@ -61,15 +61,15 @@ metrics = Blueprint("metrics", __name__)
 _METRICS_RATE_LIMIT = "120 per minute, 3000 per hour"
 
 
-def _bucket_batch_size(event_count: int) -> Literal["1", "2-5", "6-25", "26-100"]:
+def bucket_batch_size(event_count: int) -> Literal["1", "2-5", "6-25", "26-100"]:
     """Maps a batch event_count to its closed-set bucket label.
 
     Examples:
-        >>> _bucket_batch_size(1)
+        >>> bucket_batch_size(1)
         '1'
-        >>> _bucket_batch_size(5)
+        >>> bucket_batch_size(5)
         '2-5'
-        >>> _bucket_batch_size(100)
+        >>> bucket_batch_size(100)
         '26-100'
     """
     if event_count <= 1:
@@ -107,7 +107,7 @@ def ingest(metrics_ingest_request: MetricsIngestRequest) -> FlaskResponse:
     record_event(
         EventName.API_METRICS_INGEST_BATCH,
         dimensions={
-            "batch_size_bucket": _bucket_batch_size(len(metrics_ingest_request.events)),
+            "batch_size_bucket": bucket_batch_size(len(metrics_ingest_request.events)),
             "transport": parsed_query.transport or "fetch",
             DEVICE_TYPE_DIM_KEY: classify_user_agent(request.headers.get("User-Agent")),
         },

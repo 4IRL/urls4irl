@@ -103,49 +103,25 @@ class AjaxFlaskLoginClient(FlaskLoginClient):
         return super().open(*args, **kwargs)
 
 
-# Order matters!
-TEST_SPLIT = (
-    "unit",
-    "splash",
-    "utubs",
-    "members",
-    "urls",
-    "tags",
-    "account_and_support",
-    "cli",
-    "splash_ui",
-    "home_ui",
-    "utubs_ui",
-    "members_ui",
-    "urls_ui",
-    "create_urls_ui",
-    "update_urls_ui",
-    "tags_ui",
-    "mobile_ui",
-    "metrics_ui",
-    "settings_ui",
-    "search_ui",
-    "mobile_api",
-)
-
-
 def pytest_collection_modifyitems(
     session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
 ) -> None:
-    # Change default values to 1 before turning in to GitHub
-    current_worker = int(os.getenv("GITHUB_WORKER_ID", -1)) - 1
+    # CI selects a single marker per job via GITHUB_TEST_MARKER. Local runs
+    # (Makefile targets pass `-m <marker>` directly to pytest) leave this
+    # unset, so no filtering happens here.
+    target_marker = os.getenv("GITHUB_TEST_MARKER")
 
-    if current_worker >= 0:
+    if target_marker:
         deselected_items = []
         selected_items = []
 
         for item in items:
-            if item.get_closest_marker(TEST_SPLIT[current_worker]) is None:
+            if item.get_closest_marker(target_marker) is None:
                 deselected_items.append(item)
             else:
                 selected_items.append(item)
 
-        print(f"Running marker: {TEST_SPLIT[current_worker]}")
+        print(f"Running marker: {target_marker}")
         config.hook.pytest_deselected(items=deselected_items)
         items[:] = selected_items
 

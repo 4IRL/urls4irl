@@ -1,42 +1,34 @@
 """
-Bearer-token (/api/v1) wrapper routes for URL tags, UTub tags, and search.
+Bearer-token (/api/v1) wrapper routes for URL tags and UTub tags.
 
 Each route is an exact twin of its web counterpart (backend/tags/url_tag_routes.py,
-backend/tags/utub_tag_routes.py, backend/search/routes.py), with three changes:
+backend/tags/utub_tag_routes.py), with three changes:
   - Session decorator → api_ equivalent
   - ajax_required=False (no X-Requested-With sentinel)
   - tags=[OPEN_API.MOBILE_API] + 401/403 added to status_codes
 """
 
-from flask_login import current_user
-from pydantic import BaseModel
-
 from backend.api_common.auth_decorators import (
-    api_email_validation_required,
     api_utub_membership_required,
     api_utub_membership_with_valid_url_in_utub_required,
     api_utub_membership_with_valid_url_tag,
     api_utub_membership_with_valid_utub_tag,
 )
-from backend.api_common.parse_request import api_route, parse_query_args
-from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.api_common.parse_request import api_route
+from backend.api_common.responses import FlaskResponse
 from backend.api_v1.routes import api_v1
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.search import SearchQuerySchema
 from backend.schemas.requests.tags import AddTagRequest, AddTagsRequest
-from backend.schemas.search import SearchResultsSchema
 from backend.schemas.tags import (
     UrlTagModifiedResponseSchema,
     UrlTagsModifiedResponseSchema,
     UtubTagAddedToUtubResponseSchema,
     UtubTagDeletedFromUtubResponseSchema,
 )
-from backend.search.constants import SearchErrorCodes, SearchFailureMessages
-from backend.search.services.cross_utub_search import search_across_user_utubs
 from backend.tags.constants import URLTagErrorCodes, UTubTagErrorCodes
 from backend.tags.services.create_url_tag import (
     add_batch_tags_to_existing_url,
@@ -205,33 +197,3 @@ def api_v1_delete_utub_tag(
     return delete_utub_tag_from_utub_and_utub_urls(
         utub=current_utub, utub_tag=current_utub_tag
     )
-
-
-@api_v1.route("/search", methods=["GET"])
-@api_email_validation_required
-@api_route(
-    query_schema=SearchQuerySchema,
-    response_schema=SearchResultsSchema,
-    ajax_required=False,
-    tags=[OPEN_API.MOBILE_API],
-    description="Search across all of the current user's member UTubs, grouped by source UTub.",
-    status_codes={
-        200: SearchResultsSchema,
-        400: ErrorResponse,
-        401: ErrorResponse,
-        403: ErrorResponse,
-    },
-)
-def api_v1_search_across_utubs() -> FlaskResponse:
-    """Search across all UTubs the authenticated user belongs to."""
-    parsed = parse_query_args(
-        SearchQuerySchema,
-        message=SearchFailureMessages.INVALID_QUERY,
-        error_code=SearchErrorCodes.INVALID_QUERY_PARAM,
-    )
-    if not isinstance(parsed, BaseModel):
-        return parsed
-    response_schema = search_across_user_utubs(
-        query=parsed.q, fields=parsed.fields, user_id=current_user.id
-    )
-    return APIResponse(data=response_schema, status_code=200).to_response()

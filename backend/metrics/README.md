@@ -263,7 +263,7 @@ rows (typically 90 days, check with whoever runs the analytics):
   breaks the membership unit test.
 - **API events without recursion guard** — emitting a metrics event from a
   request handler that itself fires `API_HIT` causes infinite recursion. Check
-  `backend/extensions/metrics/middleware.py::_should_skip` covers your blueprint.
+  `backend/extensions/metrics/middleware.py::should_skip` covers your blueprint.
 
 ### What the audit does NOT catch
 

@@ -60,7 +60,7 @@ def _example_value_for_annotation(annotation: object) -> Any:
     """Return a Pydantic-valid example for a `_Dim*` field annotation.
 
     Mirrors the annotation-walking logic in
-    `backend/extensions/metrics/dim_types_generator.py::_ts_for_annotation`
+    `backend/extensions/metrics/dim_types_generator.py::ts_for_annotation`
     but produces runtime values instead of TS source. Picking the *first*
     Literal member and the *smallest* IntEnum value keeps the output
     deterministic so a regression in this helper surfaces with a stable

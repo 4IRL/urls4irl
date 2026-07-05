@@ -46,7 +46,7 @@ jobs:
         working-directory: frontend
         run: npx vitest run --coverage
 
-  Tests:
+  Tests-Integration:
     env:
       FLASK_DEBUG: 'false'
       PRODUCTION: 'false'
@@ -63,29 +63,17 @@ jobs:
     strategy:
       matrix:
         worker:
-          - [1, 'Unit Tests', 3]
-          - [2, 'Splash Integration Tests', 3]
-          - [3, 'UTub Integration Tests', 3]
-          - [4, 'UTub Member Integration Tests', 3]
-          - [5, 'UTub URL Integration Tests', 3]
-          - [6, 'UTub Tags Integration Tests', 3]
-          - [7, 'Account and Support Integration Tests', 3]
-          - [8, 'CLI Integration Tests', 3]
-          - [9, 'UI Splash Functional Tests', 2]
-          - [10, 'UI Home Functional Tests', 2]
-          - [11, 'UI UTub Functional Tests', 2]
-          - [12, 'UI Member Functional Tests', 2]
-          - [13, 'UI URL Functional Tests', 2]
-          - [14, 'UI Create URL Functional Tests', 2]
-          - [15, 'UI Update URL Functional Tests', 2]
-          - [16, 'UI Tags Functional Tests', 2]
-          - [17, 'UI Mobile Functional Tests', 2]
-          - [18, 'UI Metrics Dashboard Functional Tests', 2]
-          - [19, 'UI Settings Functional Tests', 2]
-          - [20, 'UI Cross-UTub Search Functional Tests', 2]
-          - [21, 'Mobile API Integration Tests', 3]
+          - ['Unit Tests', 'unit', 3]
+          - ['Splash Integration Tests', 'splash', 3]
+          - ['UTub Integration Tests', 'utubs', 3]
+          - ['UTub Member Integration Tests', 'members', 3]
+          - ['UTub URL Integration Tests', 'urls', 3]
+          - ['UTub Tags Integration Tests', 'tags', 3]
+          - ['Account and Support Integration Tests', 'account_and_support', 3]
+          - ['CLI Integration Tests', 'cli', 3]
+          - ['Mobile API Integration Tests', 'mobile_api', 3]
 
-    name: ${{ format('{0}', matrix.worker[1]) }}
+    name: ${{ format('{0}', matrix.worker[0]) }}
 
     # Service containers to run with `Run-Tests`
     services:
@@ -107,7 +95,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-    
+
       # Redis service configuration
       redis:
         image: 'redis:6.2.16-alpine'
@@ -138,7 +126,7 @@ jobs:
       # 👇 We need to set up the env vars from values taken from the matrix
       - name: Set up worker env vars
         run: |
-          echo "GITHUB_WORKER_ID=${{matrix.worker[0]}}" >> $GITHUB_ENV
+          echo "GITHUB_TEST_MARKER=${{ matrix.worker[1] }}" >> $GITHUB_ENV
 
       - name: Set xdist workers
         run: echo "XDIST_N=${{ matrix.worker[2] }}" >> $GITHUB_ENV
@@ -149,7 +137,7 @@ jobs:
           python-version: '3.11.9'
           cache: 'pip'
           cache-dependency-path: '**/requirements/requirements-test.txt'
-      
+
       - name: Setup caching
         uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
         id: cache
@@ -159,19 +147,137 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pip-
             ${{ runner.os }}-
-      
+
       - name: Install Dependencies
         run: |
           python3.11 -m pip install --upgrade pip;
           pip install -r requirements/requirements-test.txt;
 
-      # UI workers (9-20) drive Playwright; the chromium binary is provisioned
-      # here rather than via a browser-server container (CI runs the browser
-      # on the runner itself, mirroring the previous runner-local Chrome path).
-      # Worker 21 (mobile_api) is an integration worker appended after the UI
-      # block, so the condition is bounded above as well.
+      - name: Run tests
+        env:
+          DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
+        timeout-minutes: 15
+        run: |
+          if [[ "$XDIST_N" -gt 0 ]]; then
+            python3.11 -m pytest -n $XDIST_N --dist=loadscope
+          else
+            python3.11 -m pytest
+          fi
+
+  Tests-UI:
+    env:
+      FLASK_DEBUG: 'false'
+      PRODUCTION: 'false'
+      SECRET_KEY: 'ABCDEFGH12345678'
+      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
+      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
+      BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
+
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Splits tests into multiple workers
+    strategy:
+      matrix:
+        worker:
+          - ['UI Splash Functional Tests', 'splash_ui', 2]
+          - ['UI Home Functional Tests', 'home_ui', 2]
+          - ['UI UTub Functional Tests', 'utubs_ui', 2]
+          - ['UI Member Functional Tests', 'members_ui', 2]
+          - ['UI URL Functional Tests', 'urls_ui', 2]
+          - ['UI Create URL Functional Tests', 'create_urls_ui', 2]
+          - ['UI Update URL Functional Tests', 'update_urls_ui', 2]
+          - ['UI Tags Functional Tests', 'tags_ui', 2]
+          - ['UI Mobile Functional Tests', 'mobile_ui', 2]
+          - ['UI Metrics Dashboard Functional Tests', 'metrics_ui', 2]
+          - ['UI Settings Functional Tests', 'settings_ui', 2]
+          - ['UI Cross-UTub Search Functional Tests', 'search_ui', 2]
+
+    name: ${{ format('{0}', matrix.worker[0]) }}
+
+    # Service containers to run with `Run-Tests`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: 'postgres:16.3-bookworm'
+        # Map the ports
+        ports:
+          - 5432:5432
+        # Provide the password for postgres
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Redis service configuration
+      redis:
+        image: 'redis:6.2.16-alpine'
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping | grep PONG || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      # Dedicated metrics Redis container (isolated from shared sessions/limiter).
+      redis-metrics:
+        image: 'redis:6.2.16-alpine'
+        ports:
+          - 6380:6379
+        command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save '' --appendonly no
+        options: >-
+          --health-cmd "redis-cli ping | grep PONG || exit 1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # 👇 We need to set up the env vars from values taken from the matrix
+      - name: Set up worker env vars
+        run: |
+          echo "GITHUB_TEST_MARKER=${{ matrix.worker[1] }}" >> $GITHUB_ENV
+
+      - name: Set xdist workers
+        run: echo "XDIST_N=${{ matrix.worker[2] }}" >> $GITHUB_ENV
+
+      - name: Setup Python
+        uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
+        with:
+          python-version: '3.11.9'
+          cache: 'pip'
+          cache-dependency-path: '**/requirements/requirements-test.txt'
+
+      - name: Setup caching
+        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.11/site-packages/*
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements/requirements-test.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+
+      - name: Install Dependencies
+        run: |
+          python3.11 -m pip install --upgrade pip;
+          pip install -r requirements/requirements-test.txt;
+
+      # Every worker in this job is a UI worker, so the chromium binary is
+      # provisioned unconditionally (previously bounded to a numeric worker
+      # range within a shared job).
       - name: Install Playwright browser
-        if: ${{ matrix.worker[0] >= 9 && matrix.worker[0] <= 20 }}
         run: python3.11 -m playwright install chromium --with-deps
 
       - name: Setup Node.js

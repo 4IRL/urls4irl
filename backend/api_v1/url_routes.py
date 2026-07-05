@@ -1,29 +1,35 @@
 """
-Bearer-token (/api/v1) wrapper routes for URLs.
+Bearer-token (/api/v1) wrapper routes for URLs and cross-UTub search.
 
-Each route is an exact twin of its web counterpart (backend/urls/routes.py),
-with three changes:
+Each route is an exact twin of its web counterpart (backend/urls/routes.py,
+backend/search/routes.py), with three changes:
   - Session decorator → api_ equivalent
   - ajax_required=False (no X-Requested-With sentinel)
   - tags=[OPEN_API.MOBILE_API] + 401/403 added to status_codes
 """
 
+from flask_login import current_user
+from pydantic import BaseModel
+
 from backend.api_common.auth_decorators import (
+    api_email_validation_required,
     api_url_adder_or_creator_required,
     api_utub_membership_required,
     api_utub_membership_with_valid_url_in_utub_required,
 )
-from backend.api_common.parse_request import api_route
-from backend.api_common.responses import FlaskResponse
+from backend.api_common.parse_request import api_route, parse_query_args
+from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.api_v1.routes import api_v1
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import ErrorResponse
+from backend.schemas.requests.search import SearchQuerySchema
 from backend.schemas.requests.urls import (
     CreateURLRequest,
     UpdateURLStringRequest,
     UpdateURLTitleRequest,
 )
+from backend.schemas.search import SearchResultsSchema
 from backend.schemas.urls import (
     UrlCreatedResponseSchema,
     UrlDeletedResponseSchema,
@@ -31,6 +37,8 @@ from backend.schemas.urls import (
     UrlTitleUpdatedResponseSchema,
     UrlUpdatedResponseSchema,
 )
+from backend.search.constants import SearchErrorCodes, SearchFailureMessages
+from backend.search.services.cross_utub_search import search_across_user_utubs
 from backend.urls.constants import URLErrorCodes
 from backend.urls.services.create_urls import create_url_in_utub
 from backend.urls.services.delete_urls import delete_url_in_utub
@@ -185,3 +193,33 @@ def api_v1_delete_url(
     return delete_url_in_utub(
         current_utub=current_utub, current_utub_url=current_utub_url
     )
+
+
+@api_v1.route("/search", methods=["GET"])
+@api_email_validation_required
+@api_route(
+    query_schema=SearchQuerySchema,
+    response_schema=SearchResultsSchema,
+    ajax_required=False,
+    tags=[OPEN_API.MOBILE_API],
+    description="Search across all of the current user's member UTubs, grouped by source UTub.",
+    status_codes={
+        200: SearchResultsSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        403: ErrorResponse,
+    },
+)
+def api_v1_search_across_utubs() -> FlaskResponse:
+    """Search across all UTubs the authenticated user belongs to."""
+    parsed = parse_query_args(
+        SearchQuerySchema,
+        message=SearchFailureMessages.INVALID_QUERY,
+        error_code=SearchErrorCodes.INVALID_QUERY_PARAM,
+    )
+    if not isinstance(parsed, BaseModel):
+        return parsed
+    response_schema = search_across_user_utubs(
+        query=parsed.q, fields=parsed.fields, user_id=current_user.id
+    )
+    return APIResponse(data=response_schema, status_code=200).to_response()

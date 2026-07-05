@@ -42,14 +42,12 @@ from backend.splash.services.oauth.account_service import (
 )
 from backend.splash.services.oauth.constants import Provider
 
-# Established precedent for importing service-private helpers across modules:
-# google_service.py imports _verify_and_provide_next_page from user_login.py.
-from backend.splash.services.oauth.google_service import _resolve_preferred_username
-from backend.splash.services.user_login import _DUMMY_HASH
+from backend.splash.services.oauth.google_service import resolve_preferred_username
+from backend.splash.services.user_login import DUMMY_HASH
 from backend.splash.services.validate_email import (
-    _build_response_for_email_attempts_rate_limited,
-    _build_response_for_max_email_attempts_sent,
-    _handle_email_sending_result,
+    build_response_for_email_attempts_rate_limited,
+    build_response_for_max_email_attempts_sent,
+    handle_email_sending_result,
 )
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.api_auth_strs import API_AUTH_FAILURE, API_AUTH_SUCCESS
@@ -113,7 +111,7 @@ def login_user_for_api(*, username: str, password: str) -> FlaskResponse:
         # Byte- and latency-identical to the wrong-password branch so
         # password-less (OAuth-only) accounts cannot be fingerprinted;
         # mirrors the web login service.
-        check_password_hash(_DUMMY_HASH, password)
+        check_password_hash(DUMMY_HASH, password)
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
@@ -229,13 +227,13 @@ def resend_validation_email_for_api() -> FlaskResponse:
         )
 
     if current_email_validation.has_too_many_email_attempts():
-        return _build_response_for_max_email_attempts_sent()
+        return build_response_for_max_email_attempts_sent()
 
     has_more_attempts = current_email_validation.increment_attempt()
     db.session.commit()
 
     if not has_more_attempts:
-        return _build_response_for_email_attempts_rate_limited(current_email_validation)
+        return build_response_for_email_attempts_rate_limited(current_email_validation)
 
     email_sender = safe_get_email_sender(current_app)
     url_for_confirmation = url_for(
@@ -246,7 +244,7 @@ def resend_validation_email_for_api() -> FlaskResponse:
     email_send_result = email_sender.send_account_email_confirmation(
         current_user.email, current_user.username, url_for_confirmation
     )
-    return _handle_email_sending_result(email_send_result)
+    return handle_email_sending_result(email_send_result)
 
 
 def google_auth_for_api(*, id_token: str) -> FlaskResponse:
@@ -278,7 +276,7 @@ def google_auth_for_api(*, id_token: str) -> FlaskResponse:
             status_code=403,
         )
 
-    preferred_username = _resolve_preferred_username(claims.name, claims.email)
+    preferred_username = resolve_preferred_username(claims.name, claims.email)
 
     try:
         resolved_user = find_or_create_oauth_user(

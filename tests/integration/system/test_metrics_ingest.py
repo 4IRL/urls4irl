@@ -897,7 +897,7 @@ def test_ingest_batch_counter_is_not_double_counted_via_api_hit(
     GIVEN a successful ingest
     WHEN inspecting the metrics blueprint's API_HIT counter
     THEN there is no API_HIT counter for `metrics.ingest` — the recursion
-    guard in `_should_skip(blueprint='metrics')` keeps the new batch counter
+    guard in `should_skip(blueprint='metrics')` keeps the new batch counter
     from being double-counted via the middleware. Belt-and-braces guard if
     that skip rule is ever weakened.
     """

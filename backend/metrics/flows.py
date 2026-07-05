@@ -115,7 +115,7 @@ class FlowId(StrEnum):
 ALL_FLOW_IDS: tuple[str, ...] = tuple(member.value for member in FlowId)
 
 
-def _parse_flow_filter_condition(value: object) -> object:
+def parse_flow_filter_condition(value: object) -> object:
     """Split one `dim:value` filter scalar into a `(dim, value)` tuple.
 
     Per DD-2, a colon-encoded filter scalar (`form:url_create`) is split on the
@@ -143,7 +143,7 @@ def _parse_flow_filter_condition(value: object) -> object:
 # A single parsed AND-filter predicate: `(dim, value)`. Bound from a
 # `dim:value` scalar via the `BeforeValidator` above.
 FlowFilterCondition = Annotated[
-    tuple[str, str], BeforeValidator(_parse_flow_filter_condition)
+    tuple[str, str], BeforeValidator(parse_flow_filter_condition)
 ]
 
 

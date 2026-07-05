@@ -27,7 +27,7 @@ from backend.splash.services.oauth.account_service import (
     find_or_create_oauth_user,
 )
 from backend.splash.services.oauth.constants import Provider
-from backend.splash.services.user_login import _verify_and_provide_next_page
+from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
@@ -150,7 +150,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
 
-    preferred_username = _resolve_preferred_username(
+    preferred_username = resolve_preferred_username(
         userinfo.get("name") or userinfo.get("given_name"), email
     )
 
@@ -176,9 +176,9 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "google"})
 
     next_page = (
-        # Synthetic single-key dict reusing _verify_and_provide_next_page's
+        # Synthetic single-key dict reusing verify_and_provide_next_page's
         # validation contract (user_login.py) rather than real request.args.
-        _verify_and_provide_next_page({"next": stashed_next})
+        verify_and_provide_next_page({"next": stashed_next})
         if isinstance(stashed_next, str)
         else ""
     )
@@ -186,7 +186,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     return redirect(redirect_url)
 
 
-def _resolve_preferred_username(raw_username: str | None, email: str) -> str:
+def resolve_preferred_username(raw_username: str | None, email: str) -> str:
     """Sanitizes a provider-supplied display name for use as a username seed.
 
     Falls back to the email local-part when the raw name is missing, or when
@@ -194,11 +194,11 @@ def _resolve_preferred_username(raw_username: str | None, email: str) -> str:
     field here to reject against).
 
     Examples:
-        >>> _resolve_preferred_username("Jane Doe", "jane@example.com")
+        >>> resolve_preferred_username("Jane Doe", "jane@example.com")
         'Jane Doe'
-        >>> _resolve_preferred_username("<script>alert(1)</script>", "jane@example.com")
+        >>> resolve_preferred_username("<script>alert(1)</script>", "jane@example.com")
         'jane'
-        >>> _resolve_preferred_username(None, "jane@example.com")
+        >>> resolve_preferred_username(None, "jane@example.com")
         'jane'
     """
     if not raw_username:

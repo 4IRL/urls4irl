@@ -9,9 +9,9 @@ from backend.search.constants import (
     field_order_metric_value,
 )
 from backend.search.services.cross_utub_search import (
-    _group_sort_key,
-    _hit_sort_key,
-    _weights_from_fields,
+    group_sort_key,
+    hit_sort_key,
+    weights_from_fields,
 )
 
 pytestmark = pytest.mark.unit
@@ -43,7 +43,7 @@ def _make_hit(
 def test_hit_sort_key_scores_url_above_title_above_tag(app: Flask) -> None:
     """
     GIVEN single-field hits matching on url, title, and tag
-    WHEN _hit_sort_key is computed for each (default priority url > title > tag)
+    WHEN hit_sort_key is computed for each (default priority url > title > tag)
     THEN the negated score orders url (3) before title (2) before tag (1).
     """
     with app.app_context():
@@ -51,25 +51,25 @@ def test_hit_sort_key_scores_url_above_title_above_tag(app: Flask) -> None:
         title_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_TITLE])
         tag_hit = _make_hit(url_title="a", matched_fields=[MatchedField.TAG])
 
-        assert _hit_sort_key(url_hit)[0] == -_URL_SCORE
-        assert _hit_sort_key(title_hit)[0] == -_TITLE_SCORE
-        assert _hit_sort_key(tag_hit)[0] == -_TAG_SCORE
+        assert hit_sort_key(url_hit)[0] == -_URL_SCORE
+        assert hit_sort_key(title_hit)[0] == -_TITLE_SCORE
+        assert hit_sort_key(tag_hit)[0] == -_TAG_SCORE
 
-        ranked = sorted([tag_hit, title_hit, url_hit], key=_hit_sort_key)
+        ranked = sorted([tag_hit, title_hit, url_hit], key=hit_sort_key)
         assert ranked == [url_hit, title_hit, tag_hit]
 
 
 def test_hit_sort_key_uses_best_field_when_multiple_match(app: Flask) -> None:
     """
     GIVEN a hit matching on both tag and title
-    WHEN _hit_sort_key is computed
+    WHEN hit_sort_key is computed
     THEN the score reflects the best (highest-weight) field, not the sum.
     """
     with app.app_context():
         multi_hit = _make_hit(
             url_title="a", matched_fields=[MatchedField.TAG, MatchedField.URL_TITLE]
         )
-        assert _hit_sort_key(multi_hit)[0] == -_TITLE_SCORE
+        assert hit_sort_key(multi_hit)[0] == -_TITLE_SCORE
 
 
 def test_hit_sort_key_breaks_ties_by_title_ascending_case_insensitive(
@@ -77,32 +77,32 @@ def test_hit_sort_key_breaks_ties_by_title_ascending_case_insensitive(
 ) -> None:
     """
     GIVEN two equal-score title hits with titles "Banana" and "apple"
-    WHEN sorted by _hit_sort_key
+    WHEN sorted by hit_sort_key
     THEN they order case-insensitively ascending: "apple" before "Banana".
     """
     with app.app_context():
         banana = _make_hit(url_title="Banana", matched_fields=[MatchedField.URL_TITLE])
         apple = _make_hit(url_title="apple", matched_fields=[MatchedField.URL_TITLE])
 
-        ranked = sorted([banana, apple], key=_hit_sort_key)
+        ranked = sorted([banana, apple], key=hit_sort_key)
         assert ranked == [apple, banana]
 
 
 def test_hit_sort_key_handles_empty_match_and_none_title(app: Flask) -> None:
     """
     GIVEN a hit with no matched fields and a None url_title
-    WHEN _hit_sort_key is computed
+    WHEN hit_sort_key is computed
     THEN score defaults to 0 and the None title collapses to an empty string.
     """
     with app.app_context():
         empty_hit = _make_hit(url_title=None, matched_fields=[])
-        assert _hit_sort_key(empty_hit) == (0, "")
+        assert hit_sort_key(empty_hit) == (0, "")
 
 
 def test_group_sort_key_orders_by_best_score_then_count_then_name(app: Flask) -> None:
     """
     GIVEN one group with a title hit and another whose best is a tag hit
-    WHEN _group_sort_key is computed
+    WHEN group_sort_key is computed
     THEN the title group's negated best-score outranks the tag group's.
     """
     with app.app_context():
@@ -112,9 +112,9 @@ def test_group_sort_key_orders_by_best_score_then_count_then_name(app: Flask) ->
         )
         tag_group = (2, [_make_hit(url_title="a", matched_fields=[MatchedField.TAG])])
 
-        assert _group_sort_key(title_group)[0] == -_TITLE_SCORE
-        assert _group_sort_key(tag_group)[0] == -_TAG_SCORE
-        assert sorted([tag_group, title_group], key=_group_sort_key) == [
+        assert group_sort_key(title_group)[0] == -_TITLE_SCORE
+        assert group_sort_key(tag_group)[0] == -_TAG_SCORE
+        assert sorted([tag_group, title_group], key=group_sort_key) == [
             title_group,
             tag_group,
         ]
@@ -123,7 +123,7 @@ def test_group_sort_key_orders_by_best_score_then_count_then_name(app: Flask) ->
 def test_group_sort_key_breaks_score_ties_by_match_count_descending(app: Flask) -> None:
     """
     GIVEN two groups with equal best-score but different hit counts
-    WHEN sorted by _group_sort_key
+    WHEN sorted by group_sort_key
     THEN the group with more matching URLs ranks first.
     """
     with app.app_context():
@@ -139,7 +139,7 @@ def test_group_sort_key_breaks_score_ties_by_match_count_descending(app: Flask) 
             [_make_hit(url_title="a", matched_fields=[MatchedField.URL_TITLE])],
         )
 
-        assert sorted([one_hit, two_hits], key=_group_sort_key) == [two_hits, one_hit]
+        assert sorted([one_hit, two_hits], key=group_sort_key) == [two_hits, one_hit]
 
 
 def test_group_sort_key_breaks_score_and_count_ties_by_name_ascending(
@@ -147,7 +147,7 @@ def test_group_sort_key_breaks_score_and_count_ties_by_name_ascending(
 ) -> None:
     """
     GIVEN two groups with equal best-score and equal count, named "Bravo" and "alpha"
-    WHEN sorted by _group_sort_key
+    WHEN sorted by group_sort_key
     THEN they order case-insensitively ascending by utub name: "alpha" before "Bravo".
     """
     with app.app_context():
@@ -172,13 +172,13 @@ def test_group_sort_key_breaks_score_and_count_ties_by_name_ascending(
             ],
         )
 
-        assert sorted([bravo, alpha], key=_group_sort_key) == [alpha, bravo]
+        assert sorted([bravo, alpha], key=group_sort_key) == [alpha, bravo]
 
 
 def test_hit_sort_key_honors_reordered_weights(app: Flask) -> None:
     """
     GIVEN an explicit weights map prioritizing tag over title over url
-    WHEN _hit_sort_key is computed with that weights argument
+    WHEN hit_sort_key is computed with that weights argument
     THEN scores follow the supplied map and sorting flips accordingly.
     """
     with app.app_context():
@@ -191,13 +191,13 @@ def test_hit_sort_key_honors_reordered_weights(app: Flask) -> None:
         url_hit = _make_hit(url_title="a", matched_fields=[MatchedField.URL_STRING])
         tag_hit = _make_hit(url_title="a", matched_fields=[MatchedField.TAG])
 
-        assert _hit_sort_key(tag_hit, weights=reordered_weights)[0] == -3
-        assert _hit_sort_key(title_hit, weights=reordered_weights)[0] == -2
-        assert _hit_sort_key(url_hit, weights=reordered_weights)[0] == -1
+        assert hit_sort_key(tag_hit, weights=reordered_weights)[0] == -3
+        assert hit_sort_key(title_hit, weights=reordered_weights)[0] == -2
+        assert hit_sort_key(url_hit, weights=reordered_weights)[0] == -1
 
         ranked = sorted(
             [url_hit, title_hit, tag_hit],
-            key=lambda hit: _hit_sort_key(hit, weights=reordered_weights),
+            key=lambda hit: hit_sort_key(hit, weights=reordered_weights),
         )
         assert ranked == [tag_hit, title_hit, url_hit]
 
@@ -205,7 +205,7 @@ def test_hit_sort_key_honors_reordered_weights(app: Flask) -> None:
 def test_group_sort_key_honors_reordered_weights(app: Flask) -> None:
     """
     GIVEN an explicit weights map prioritizing tag over title
-    WHEN _group_sort_key is computed with that weights argument
+    WHEN group_sort_key is computed with that weights argument
     THEN the tag group's negated best-score outranks the title group's.
     """
     with app.app_context():
@@ -220,12 +220,12 @@ def test_group_sort_key_honors_reordered_weights(app: Flask) -> None:
         )
         tag_group = (2, [_make_hit(url_title="a", matched_fields=[MatchedField.TAG])])
 
-        assert _group_sort_key(tag_group, weights=reordered_weights)[0] == -3
-        assert _group_sort_key(title_group, weights=reordered_weights)[0] == -2
+        assert group_sort_key(tag_group, weights=reordered_weights)[0] == -3
+        assert group_sort_key(title_group, weights=reordered_weights)[0] == -2
 
         ranked = sorted(
             [title_group, tag_group],
-            key=lambda group: _group_sort_key(group, weights=reordered_weights),
+            key=lambda group: group_sort_key(group, weights=reordered_weights),
         )
         assert ranked == [tag_group, title_group]
 
@@ -233,10 +233,10 @@ def test_group_sort_key_honors_reordered_weights(app: Flask) -> None:
 def test_weights_from_fields_maps_order_to_descending_weights() -> None:
     """
     GIVEN an ordered field sequence
-    WHEN _weights_from_fields is computed
+    WHEN weights_from_fields is computed
     THEN the first field gets the highest weight, decreasing by one per position.
     """
-    assert _weights_from_fields(
+    assert weights_from_fields(
         (MatchedField.URL_STRING, MatchedField.URL_TITLE, MatchedField.TAG)
     ) == {
         MatchedField.URL_STRING: _URL_SCORE,
@@ -248,10 +248,10 @@ def test_weights_from_fields_maps_order_to_descending_weights() -> None:
 def test_weights_from_fields_single_field_gets_weight_one() -> None:
     """
     GIVEN a single-field sequence
-    WHEN _weights_from_fields is computed
+    WHEN weights_from_fields is computed
     THEN the only field is mapped to weight 1.
     """
-    assert _weights_from_fields((MatchedField.TAG,)) == {MatchedField.TAG: _TAG_SCORE}
+    assert weights_from_fields((MatchedField.TAG,)) == {MatchedField.TAG: _TAG_SCORE}
 
 
 def test_field_order_metric_value_joins_with_priority_separator() -> None:
