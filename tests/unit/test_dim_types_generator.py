@@ -5,13 +5,13 @@ from typing import Literal
 import pytest
 
 from backend.extensions.metrics.dim_types_generator import (
-    _named_alias_annotations,
-    _ts_for_annotation,
     generate_dim_types_ts,
     generate_dim_values_ts,
     generate_flows_ts,
     generate_resources_ts,
     generate_ui_events_ts,
+    named_alias_annotations,
+    ts_for_annotation,
 )
 from backend.metrics.dimension_models import HomeForm
 from backend.metrics.events import EVENT_CATEGORY, EventCategory, EventName
@@ -128,52 +128,52 @@ def test_generate_dim_values_ts_emits_named_alias_constants_and_device_type() ->
 def test_ts_for_annotation_raises_value_error_on_unsupported_annotation() -> None:
     """
     GIVEN an annotation type the generator does not know how to map
-    WHEN _ts_for_annotation() is called with that annotation
+    WHEN ts_for_annotation() is called with that annotation
     THEN a ValueError is raised pointing the maintainer at the offending type.
     """
-    named_aliases = _named_alias_annotations()
+    named_aliases = named_alias_annotations()
 
     class _SyntheticUnsupportedAnnotation:
         pass
 
     with pytest.raises(ValueError, match="Unsupported annotation in dim codegen"):
-        _ts_for_annotation(_SyntheticUnsupportedAnnotation, named_aliases)
+        ts_for_annotation(_SyntheticUnsupportedAnnotation, named_aliases)
 
 
 def test_ts_for_annotation_int_returns_number() -> None:
     """
     GIVEN the primitive `int` annotation
-    WHEN _ts_for_annotation() is called with it
+    WHEN ts_for_annotation() is called with it
     THEN the function returns the TS primitive `'number'`.
     """
-    assert _ts_for_annotation(int, {}) == "number"
+    assert ts_for_annotation(int, {}) == "number"
 
 
 def test_ts_for_annotation_bool_returns_boolean() -> None:
     """
     GIVEN the primitive `bool` annotation
-    WHEN _ts_for_annotation() is called with it
+    WHEN ts_for_annotation() is called with it
     THEN the function returns the TS primitive `'boolean'`.
     """
-    assert _ts_for_annotation(bool, {}) == "boolean"
+    assert ts_for_annotation(bool, {}) == "boolean"
 
 
 def test_ts_for_annotation_str_returns_string() -> None:
     """
     GIVEN the primitive `str` annotation
-    WHEN _ts_for_annotation() is called with it
+    WHEN ts_for_annotation() is called with it
     THEN the function returns the TS primitive `'string'`.
     """
-    assert _ts_for_annotation(str, {}) == "string"
+    assert ts_for_annotation(str, {}) == "string"
 
 
 def test_ts_for_annotation_inline_literal_returns_quoted_union() -> None:
     """
     GIVEN an inline `Literal['a', 'b']` annotation (not a named alias)
-    WHEN _ts_for_annotation() is called with an empty named_aliases map
+    WHEN ts_for_annotation() is called with an empty named_aliases map
     THEN the function returns the quoted TS string union `'"a" | "b"'`.
     """
-    assert _ts_for_annotation(Literal["a", "b"], {}) == '"a" | "b"'
+    assert ts_for_annotation(Literal["a", "b"], {}) == '"a" | "b"'
 
 
 def test_generate_resources_ts_emits_resources_const_type_and_by_category() -> None:
@@ -210,15 +210,15 @@ def test_generate_resources_ts_emits_resources_const_type_and_by_category() -> N
 def test_ts_for_annotation_named_alias_returns_alias_name() -> None:
     """
     GIVEN a named module-level Pydantic Literal alias (`HomeForm`)
-    WHEN _ts_for_annotation() is called with the real
-        identity-keyed named_aliases map from `_named_alias_annotations()`
+    WHEN ts_for_annotation() is called with the real
+        identity-keyed named_aliases map from `named_alias_annotations()`
     THEN the function short-circuits the Literal branch and returns the
         alias name (`'HomeForm'`) so the generated TS imports the named type
         from `./metrics-dim-values.js` instead of inlining the union.
     """
-    named_aliases = _named_alias_annotations()
+    named_aliases = named_alias_annotations()
 
-    assert _ts_for_annotation(HomeForm, named_aliases) == "HomeForm"
+    assert ts_for_annotation(HomeForm, named_aliases) == "HomeForm"
 
 
 def test_generate_flows_ts_emits_flow_ids_metadata_and_header() -> None:

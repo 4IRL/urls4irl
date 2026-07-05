@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from backend.metrics.events import EventCategory, EventName
-from backend.metrics.flows import _parse_flow_filter_condition
+from backend.metrics.flows import parse_flow_filter_condition
 from backend.metrics.latency import LatencyMetricName
 from backend.schemas.metrics import (
     SummaryCategoryCount,
@@ -17,13 +17,13 @@ from backend.schemas.metrics import (
     TopEventsResponseSchema,
 )
 from backend.schemas.requests.metrics import (
-    _BOTH_WINDOW_AND_RANGE_ERROR,
-    _MISSING_WINDOW_OR_RANGE_ERROR,
-    _PARTIAL_RANGE_ERROR,
-    _RANGE_ORDER_ERROR,
+    BOTH_WINDOW_AND_RANGE_ERROR,
     GaugesTimeseriesQuerySchema,
     LatencyQuerySchema,
     LatencyTimeseriesQuerySchema,
+    MISSING_WINDOW_OR_RANGE_ERROR,
+    PARTIAL_RANGE_ERROR,
+    RANGE_ORDER_ERROR,
     SummaryQuerySchema,
     TimeseriesQuerySchema,
     TopEventsQuerySchema,
@@ -318,7 +318,7 @@ def test_summary_query_rejects_missing_window_and_range():
     """No `window` and no `start`/`end` → 400 via the XOR validator."""
     with pytest.raises(ValidationError) as exc_info:
         SummaryQuerySchema.model_validate({})
-    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, MISSING_WINDOW_OR_RANGE_ERROR)
 
 
 def test_summary_query_rejects_extra_keys():
@@ -372,21 +372,21 @@ def test_gauges_timeseries_query_rejects_window_and_range_together():
                 "end": ABS_RANGE_END_ISO,
             }
         )
-    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, BOTH_WINDOW_AND_RANGE_ERROR)
 
 
 def test_gauges_timeseries_query_rejects_missing_window_and_range():
     """No window and no range → 400 via the missing-spec XOR branch."""
     with pytest.raises(ValidationError) as exc_info:
         GaugesTimeseriesQuerySchema.model_validate({})
-    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, MISSING_WINDOW_OR_RANGE_ERROR)
 
 
 def test_gauges_timeseries_query_rejects_partial_range():
     """`start` without `end` is incomplete → 400 via the partial-range XOR branch."""
     with pytest.raises(ValidationError) as exc_info:
         GaugesTimeseriesQuerySchema.model_validate({"start": ABS_RANGE_START_ISO})
-    _assert_first_validation_message(exc_info.value, _PARTIAL_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, PARTIAL_RANGE_ERROR)
 
 
 # -------------------- Window XOR Absolute-Range Validation -----------------
@@ -423,7 +423,7 @@ def test_window_and_range_together_rejected(
     }
     with pytest.raises(ValidationError) as exc_info:
         schema_cls.model_validate(payload)
-    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, BOTH_WINDOW_AND_RANGE_ERROR)
 
 
 @pytest.mark.parametrize(
@@ -448,7 +448,7 @@ def test_partial_range_rejected(
     payload = {**base_payload, partial_field: partial_value}
     with pytest.raises(ValidationError) as exc_info:
         schema_cls.model_validate(payload)
-    _assert_first_validation_message(exc_info.value, _PARTIAL_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, PARTIAL_RANGE_ERROR)
 
 
 @pytest.mark.parametrize(
@@ -462,7 +462,7 @@ def test_neither_window_nor_range_rejected(
     """Empty spec (no window, no range) → 400 with the missing-spec message."""
     with pytest.raises(ValidationError) as exc_info:
         schema_cls.model_validate(base_payload)
-    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, MISSING_WINDOW_OR_RANGE_ERROR)
 
 
 @pytest.mark.parametrize(
@@ -479,7 +479,7 @@ def test_start_equal_to_end_rejected(schema_cls: type, base_payload: dict[str, s
     }
     with pytest.raises(ValidationError) as exc_info:
         schema_cls.model_validate(payload)
-    _assert_first_validation_message(exc_info.value, _RANGE_ORDER_ERROR)
+    _assert_first_validation_message(exc_info.value, RANGE_ORDER_ERROR)
 
 
 @pytest.mark.parametrize(
@@ -496,7 +496,7 @@ def test_start_after_end_rejected(schema_cls: type, base_payload: dict[str, str]
     }
     with pytest.raises(ValidationError) as exc_info:
         schema_cls.model_validate(payload)
-    _assert_first_validation_message(exc_info.value, _RANGE_ORDER_ERROR)
+    _assert_first_validation_message(exc_info.value, RANGE_ORDER_ERROR)
 
 
 @pytest.mark.parametrize(
@@ -652,17 +652,17 @@ def test_summary_response_schema_round_trip():
     assert len(response.by_category) == 2
 
 
-# ----------------------- _parse_flow_filter_condition ----------------------
+# ----------------------- parse_flow_filter_condition ----------------------
 
 
 def test_parse_flow_filter_condition_well_formed_returns_tuple():
     """A well-formed `dim:value` scalar parses into a `(dim, value)` tuple."""
-    assert _parse_flow_filter_condition("form:utub_create") == ("form", "utub_create")
+    assert parse_flow_filter_condition("form:utub_create") == ("form", "utub_create")
 
 
 def test_parse_flow_filter_condition_value_may_contain_colons():
     """Only the FIRST colon splits dim from value, so values may contain colons."""
-    assert _parse_flow_filter_condition("endpoint:urls:create") == (
+    assert parse_flow_filter_condition("endpoint:urls:create") == (
         "endpoint",
         "urls:create",
     )
@@ -670,19 +670,19 @@ def test_parse_flow_filter_condition_value_may_contain_colons():
 
 def test_parse_flow_filter_condition_passes_through_existing_tuple():
     """An already-tuple input (in-code `FLOWS` entries) passes through unchanged."""
-    assert _parse_flow_filter_condition(("form", "login")) == ("form", "login")
+    assert parse_flow_filter_condition(("form", "login")) == ("form", "login")
 
 
 def test_parse_flow_filter_condition_rejects_entry_without_colon():
     """A scalar lacking a colon raises `ValueError`."""
     with pytest.raises(ValueError):
-        _parse_flow_filter_condition("nocolon")
+        parse_flow_filter_condition("nocolon")
 
 
 def test_parse_flow_filter_condition_rejects_empty_dim():
     """A scalar with an empty dim (leading colon) raises `ValueError`."""
     with pytest.raises(ValueError):
-        _parse_flow_filter_condition(":value")
+        parse_flow_filter_condition(":value")
 
 
 def test_parse_flow_filter_condition_accepts_empty_value():
@@ -693,7 +693,7 @@ def test_parse_flow_filter_condition_accepts_empty_value():
     practice, but the parser stays permissive so a future filter on a sentinel
     empty-string dim value does not require a change.
     """
-    assert _parse_flow_filter_condition("form:") == ("form", "")
+    assert parse_flow_filter_condition("form:") == ("form", "")
 
 
 def test_parse_flow_filter_condition_rejects_non_str_non_tuple():
@@ -704,7 +704,7 @@ def test_parse_flow_filter_condition_rejects_non_str_non_tuple():
     rejected before Pydantic binds the `tuple[str, str]` field.
     """
     with pytest.raises(ValueError):
-        _parse_flow_filter_condition(42)
+        parse_flow_filter_condition(42)
 
 
 # --------------------------- LatencyQuerySchema ----------------------------
@@ -807,21 +807,21 @@ def test_latency_query_rejects_window_and_range_together():
                 "end": ABS_RANGE_END_ISO,
             }
         )
-    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, BOTH_WINDOW_AND_RANGE_ERROR)
 
 
 def test_latency_query_rejects_missing_window_and_range():
     """No window and no range → 400 via the missing-spec XOR branch."""
     with pytest.raises(ValidationError) as exc_info:
         LatencyQuerySchema.model_validate({})
-    _assert_first_validation_message(exc_info.value, _MISSING_WINDOW_OR_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, MISSING_WINDOW_OR_RANGE_ERROR)
 
 
 def test_latency_query_rejects_partial_range():
     """`start` without `end` is incomplete → 400 via the partial-range XOR branch."""
     with pytest.raises(ValidationError) as exc_info:
         LatencyQuerySchema.model_validate({"start": ABS_RANGE_START_ISO})
-    _assert_first_validation_message(exc_info.value, _PARTIAL_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, PARTIAL_RANGE_ERROR)
 
 
 # ----------------------- LatencyTimeseriesQuerySchema ----------------------
@@ -896,4 +896,4 @@ def test_latency_timeseries_query_rejects_window_and_range_together():
                 "end": ABS_RANGE_END_ISO,
             }
         )
-    _assert_first_validation_message(exc_info.value, _BOTH_WINDOW_AND_RANGE_ERROR)
+    _assert_first_validation_message(exc_info.value, BOTH_WINDOW_AND_RANGE_ERROR)

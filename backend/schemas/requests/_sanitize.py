@@ -7,7 +7,7 @@ from backend.utils.strings.json_strs import FAILURE_GENERAL
 INVALID_INPUT = FAILURE_GENERAL.INVALID_INPUT  # "Invalid input, please try again."
 
 
-def _sanitize_and_reject_if_modified(value: str | None) -> str | None:
+def sanitize_and_reject_if_modified(value: str | None) -> str | None:
     """For required sanitized string fields: reject if sanitization would change the value."""
     if not isinstance(value, str):
         return value
@@ -37,7 +37,7 @@ def _sanitize_optional_description(value: str | None) -> str | None:
     return value
 
 
-SanitizedStr = Annotated[str, BeforeValidator(_sanitize_and_reject_if_modified)]
+SanitizedStr = Annotated[str, BeforeValidator(sanitize_and_reject_if_modified)]
 OptionalSanitizedStr = Annotated[
     str | None, BeforeValidator(_sanitize_optional_description)
 ]

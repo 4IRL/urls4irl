@@ -1050,7 +1050,7 @@ def test_component_schemas_have_no_title_fields(runner, tmp_path):
     GIVEN a generated OpenAPI spec
     WHEN we inspect all component schemas
     THEN no schema or property has a "title" key, confirming
-        _strip_auto_titles removed Pydantic's auto-generated titles
+        strip_auto_titles removed Pydantic's auto-generated titles
     """
     spec = _generate_spec(runner, tmp_path)
     schemas = spec["components"]["schemas"]

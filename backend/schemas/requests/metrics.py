@@ -18,12 +18,10 @@ from backend.metrics.flows import ALL_FLOW_IDS
 from backend.metrics.latency import LatencyMetricName
 from backend.metrics.resources import RESOURCE_BY_CATEGORY, Resource
 
-_BOTH_WINDOW_AND_RANGE_ERROR: str = (
-    "Provide either `window` or `start`+`end`, not both."
-)
-_PARTIAL_RANGE_ERROR: str = "Both `start` and `end` are required for an absolute range."
-_MISSING_WINDOW_OR_RANGE_ERROR: str = "Provide `window` or both `start` and `end`."
-_RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
+BOTH_WINDOW_AND_RANGE_ERROR: str = "Provide either `window` or `start`+`end`, not both."
+PARTIAL_RANGE_ERROR: str = "Both `start` and `end` are required for an absolute range."
+MISSING_WINDOW_OR_RANGE_ERROR: str = "Provide `window` or both `start` and `end`."
+RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
 _RESOURCE_WITHOUT_CATEGORY_ERROR: str = (
     "`resource` requires `category` (api | domain | ui) so the filter "
     "knows which column to target."
@@ -47,14 +45,14 @@ def _validate_window_xor_range(
     has_start = start is not None
     has_end = end is not None
     if has_start != has_end:
-        raise ValueError(_PARTIAL_RANGE_ERROR)
+        raise ValueError(PARTIAL_RANGE_ERROR)
     has_range = has_start and has_end
     if has_window and has_range:
-        raise ValueError(_BOTH_WINDOW_AND_RANGE_ERROR)
+        raise ValueError(BOTH_WINDOW_AND_RANGE_ERROR)
     if not has_window and not has_range:
-        raise ValueError(_MISSING_WINDOW_OR_RANGE_ERROR)
+        raise ValueError(MISSING_WINDOW_OR_RANGE_ERROR)
     if has_range and start >= end:
-        raise ValueError(_RANGE_ORDER_ERROR)
+        raise ValueError(RANGE_ORDER_ERROR)
 
 
 def _validate_resource_for_category(category: str | None, resource: str | None) -> None:

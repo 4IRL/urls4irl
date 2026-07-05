@@ -24,7 +24,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
-_DUMMY_HASH = generate_password_hash("__dummy__")
+DUMMY_HASH = generate_password_hash("__dummy__")
 
 
 def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
@@ -55,7 +55,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         # Spend the same bcrypt time the wrong-password branch does so the two
         # branches are indistinguishable by wall-clock latency as well as bytes.
         # The result is intentionally discarded — only the elapsed time matters.
-        check_password_hash(_DUMMY_HASH, password)
+        check_password_hash(DUMMY_HASH, password)
         return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
@@ -92,7 +92,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
     safe_add_log(f"Logging User.id={user.id} in")
 
     # next query param takes user to the page they wanted to originally before being logged in
-    next_page = _verify_and_provide_next_page(request.args.to_dict())
+    next_page = verify_and_provide_next_page(request.args.to_dict())
     redirect_url = next_page if next_page else url_for(ROUTES.UTUBS.HOME)
 
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "password"})
@@ -103,7 +103,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
     ).to_response()
 
 
-def _verify_and_provide_next_page(request_args: dict[str, str]) -> str:
+def verify_and_provide_next_page(request_args: dict[str, str]) -> str:
     url = ""
     if _has_invalid_next_query_param(request_args):
         return url

@@ -6,7 +6,7 @@ from flask import Blueprint, Flask
 from pydantic import BaseModel
 
 from backend import limiter
-from backend.api_common.parse_request import _schema_name_to_kwarg, api_route
+from backend.api_common.parse_request import api_route, schema_name_to_kwarg
 from backend.contact.constants import ContactErrorCodes
 from backend.contact.routes import contact
 from backend.members.routes import members
@@ -721,20 +721,20 @@ def test_api_route_non_ajax_logs_warning(minimal_app: Flask, caplog):
 def test_schema_name_to_kwarg_conversions():
     """
     GIVEN various schema classes with CamelCase names
-    WHEN _schema_name_to_kwarg is called
+    WHEN schema_name_to_kwarg is called
     THEN the names are correctly converted to snake_case
     """
-    assert _schema_name_to_kwarg(LoginRequest) == "login_request"
-    assert _schema_name_to_kwarg(CreateURLRequest) == "create_url_request"
-    assert _schema_name_to_kwarg(UpdateURLStringRequest) == "update_url_string_request"
-    assert _schema_name_to_kwarg(AddMemberRequest) == "add_member_request"
-    assert _schema_name_to_kwarg(CreateUTubRequest) == "create_utub_request"
-    assert _schema_name_to_kwarg(UpdateUTubNameRequest) == "update_utub_name_request"
+    assert schema_name_to_kwarg(LoginRequest) == "login_request"
+    assert schema_name_to_kwarg(CreateURLRequest) == "create_url_request"
+    assert schema_name_to_kwarg(UpdateURLStringRequest) == "update_url_string_request"
+    assert schema_name_to_kwarg(AddMemberRequest) == "add_member_request"
+    assert schema_name_to_kwarg(CreateUTubRequest) == "create_utub_request"
+    assert schema_name_to_kwarg(UpdateUTubNameRequest) == "update_utub_name_request"
     assert (
-        _schema_name_to_kwarg(UpdateUTubDescriptionRequest)
+        schema_name_to_kwarg(UpdateUTubDescriptionRequest)
         == "update_utub_description_request"
     )
-    assert _schema_name_to_kwarg(ContactRequest) == "contact_request"
+    assert schema_name_to_kwarg(ContactRequest) == "contact_request"
 
 
 # --- Tests for tags, description, and status_codes metadata ---

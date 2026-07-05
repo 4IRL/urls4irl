@@ -65,7 +65,7 @@ def parse_query_args(
         )
 
 
-def _schema_name_to_kwarg(schema_cls: Type[BaseModel]) -> str:
+def schema_name_to_kwarg(schema_cls: Type[BaseModel]) -> str:
     """Convert a schema class name from CamelCase to snake_case for kwarg injection.
 
     Examples::
@@ -133,7 +133,7 @@ def api_route(
             )
 
     kwarg_name: str | None = (
-        _schema_name_to_kwarg(request_schema) if request_schema is not None else None
+        schema_name_to_kwarg(request_schema) if request_schema is not None else None
     )
 
     def decorator(route_fn: Callable) -> Callable:

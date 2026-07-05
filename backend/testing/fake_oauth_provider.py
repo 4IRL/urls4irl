@@ -7,9 +7,9 @@ from flask import Blueprint, Response, current_app, jsonify, redirect, request, 
 from itsdangerous import BadSignature, URLSafeSerializer
 
 from backend import (
-    _FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL,
-    _FAKE_GOOGLE_OAUTH_AUTHORIZE_URL,
-    _FAKE_GOOGLE_OAUTH_USERINFO_URL,
+    FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL,
+    FAKE_GOOGLE_OAUTH_AUTHORIZE_URL,
+    FAKE_GOOGLE_OAUTH_USERINFO_URL,
     csrf,
 )
 
@@ -54,7 +54,7 @@ def set_identity() -> tuple[str, int]:
     return "OK", 200
 
 
-@fake_oauth.route(_FAKE_GOOGLE_OAUTH_AUTHORIZE_URL, methods=["GET"])
+@fake_oauth.route(FAKE_GOOGLE_OAUTH_AUTHORIZE_URL, methods=["GET"])
 def authorize() -> Response | tuple[Response, int]:
     """Mimics Google's authorization endpoint.
 
@@ -82,7 +82,7 @@ def authorize() -> Response | tuple[Response, int]:
     return redirect(f"{redirect_uri}{separator}code={code}&state={state}")
 
 
-@fake_oauth.route(_FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL, methods=["POST"])
+@fake_oauth.route(FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL, methods=["POST"])
 @csrf.exempt
 def token() -> Response | tuple[Response, int]:
     """Mimics Google's token endpoint.
@@ -127,7 +127,7 @@ def token() -> Response | tuple[Response, int]:
     )
 
 
-@fake_oauth.route(_FAKE_GOOGLE_OAUTH_USERINFO_URL, methods=["GET"])
+@fake_oauth.route(FAKE_GOOGLE_OAUTH_USERINFO_URL, methods=["GET"])
 def userinfo() -> Response | tuple[Response, int]:
     """Mimics Google's userinfo endpoint.
 

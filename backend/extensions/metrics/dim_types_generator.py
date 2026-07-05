@@ -89,7 +89,7 @@ _NAMED_LITERAL_ALIASES: tuple[tuple[str, str], ...] = (
 )
 
 
-def _named_alias_annotations() -> dict[int, str]:
+def named_alias_annotations() -> dict[int, str]:
     """Map ``id(alias)`` -> alias_name for every named Pydantic Literal alias.
 
     Identity-keyed so callers can detect when a Pydantic field's annotation
@@ -106,11 +106,11 @@ def _named_alias_annotations() -> dict[int, str]:
     return identity_to_name
 
 
-def _ts_for_annotation(annotation: object, named_aliases: dict[int, str]) -> str:
+def ts_for_annotation(annotation: object, named_aliases: dict[int, str]) -> str:
     """Map a Pydantic field annotation to a TypeScript type expression.
 
     ``named_aliases`` is the identity-keyed map produced once per codegen run
-    by ``_named_alias_annotations()`` and threaded through ``_emit_class_type``
+    by ``named_alias_annotations()`` and threaded through ``_emit_class_type``
     so this function never re-imports the dimension module on a hot path.
     """
     if get_origin(annotation) is Annotated:
@@ -146,7 +146,7 @@ def _ts_for_annotation(annotation: object, named_aliases: dict[int, str]) -> str
         return "string"
     raise ValueError(
         f"Unsupported annotation in dim codegen: {annotation!r}. "
-        "Extend `_ts_for_annotation` to handle this type."
+        "Extend `ts_for_annotation` to handle this type."
     )
 
 
@@ -158,7 +158,7 @@ def _ts_type_name_for_class(model: type[BaseModel]) -> str:
 def _emit_class_type(model: type[BaseModel], named_aliases: dict[int, str]) -> str:
     lines = [f"export type {_ts_type_name_for_class(model)} = {{"]
     for field_name, field_info in model.model_fields.items():
-        ts_type = _ts_for_annotation(field_info.annotation, named_aliases)
+        ts_type = ts_for_annotation(field_info.annotation, named_aliases)
         lines.append(f"  {field_name}: {ts_type};")
     lines.append("};")
     return "\n".join(lines)
@@ -188,9 +188,9 @@ def generate_dim_types_ts() -> str:
         seen_classes.setdefault(model, None)
 
     # Build the identity-keyed named-alias map ONCE per codegen run and thread
-    # it through `_emit_class_type` -> `_ts_for_annotation`. Avoids the
+    # it through `_emit_class_type` -> `ts_for_annotation`. Avoids the
     # importlib + alias-lookup work firing for every dim field.
-    named_aliases = _named_alias_annotations()
+    named_aliases = named_alias_annotations()
 
     parts: list[str] = [_DIMENSIONS_FILE_HEADER]
 

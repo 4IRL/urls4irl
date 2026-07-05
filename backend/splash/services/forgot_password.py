@@ -17,7 +17,7 @@ from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD
 _PROVIDER_DISPLAY_NAMES: dict[str, str] = {"google": "Google", "github": "GitHub"}
 
 
-def _provider_display_name(provider: str) -> str:
+def provider_display_name(provider: str) -> str:
     """Maps an OAuth provider's lowercase enum value to its correct display name.
 
     Falls back to str.title() for any provider not in the lookup, so a newly
@@ -65,7 +65,7 @@ def send_forgot_password_email_to_user(
     if user_with_email.password is None:
         email_sender = safe_get_email_sender(current_app)
         provider_names = [
-            _provider_display_name(identity.provider)
+            provider_display_name(identity.provider)
             for identity in user_with_email.oauth_identities
         ]
         if provider_names:

@@ -25,7 +25,7 @@ from backend.search.constants import (
 )
 
 
-def _weights_from_fields(
+def weights_from_fields(
     fields: Sequence[MatchedField],
 ) -> dict[MatchedField, int]:
     """Map an ordered field list to ranking weights (first field = highest).
@@ -34,13 +34,13 @@ def _weights_from_fields(
     first field gets the largest weight, decreasing by one per position.
 
     Example:
-        _weights_from_fields((URL_STRING, URL_TITLE, TAG))
+        weights_from_fields((URL_STRING, URL_TITLE, TAG))
         -> {URL_STRING: 3, URL_TITLE: 2, TAG: 1}
     """
     return {field: len(fields) - index for index, field in enumerate(fields)}
 
 
-_FIELD_WEIGHTS: dict[MatchedField, int] = _weights_from_fields(DEFAULT_SEARCH_FIELDS)
+_FIELD_WEIGHTS: dict[MatchedField, int] = weights_from_fields(DEFAULT_SEARCH_FIELDS)
 
 
 def _escape_ilike(term: str) -> str:
@@ -94,7 +94,7 @@ def _compute_matched_fields(
     return matched
 
 
-def _hit_sort_key(
+def hit_sort_key(
     hit: tuple[Utub_Urls, list[MatchedField]],
     *,
     weights: dict[MatchedField, int] = _FIELD_WEIGHTS,
@@ -114,7 +114,7 @@ def _hit_sort_key(
     return (-score, (utub_url.url_title or "").lower())
 
 
-def _group_sort_key(
+def group_sort_key(
     group_item: tuple[int, list[tuple[Utub_Urls, list[MatchedField]]]],
     *,
     weights: dict[MatchedField, int] = _FIELD_WEIGHTS,
@@ -158,7 +158,7 @@ def search_across_user_utubs(
     """
     effective_fields = list(fields) if fields else list(DEFAULT_SEARCH_FIELDS)
     selected_fields = set(effective_fields)
-    weights = _weights_from_fields(effective_fields)
+    weights = weights_from_fields(effective_fields)
 
     escaped = _escape_ilike(query)
     query_lower = query.lower()
@@ -201,10 +201,10 @@ def search_across_user_utubs(
         grouped.setdefault(utub_url.utub_id, []).append((utub_url, matched_fields))
 
     for hit_list in grouped.values():
-        hit_list.sort(key=functools.partial(_hit_sort_key, weights=weights))
+        hit_list.sort(key=functools.partial(hit_sort_key, weights=weights))
 
     sorted_groups = sorted(
-        grouped.items(), key=functools.partial(_group_sort_key, weights=weights)
+        grouped.items(), key=functools.partial(group_sort_key, weights=weights)
     )
     results = [
         SearchUtubGroupSchema.from_utub_urls(hit_list[0][0].utub, hit_list)

@@ -22,7 +22,7 @@ def max_length_message(length: int) -> str:
     return f"Must be at most {length} characters."
 
 
-def _humanize_error_message(msg: str) -> str:
+def humanize_error_message(msg: str) -> str:
     """Map raw Pydantic validation messages to user-friendly equivalents."""
     if msg == "Field required":
         return FIELD_REQUIRED_STR
@@ -56,6 +56,6 @@ def pydantic_errors_to_dict(validation_error: ValidationError) -> dict[str, list
         # Pydantic prefixes BeforeValidator/field_validator messages with "Value error, " — strip it
         if msg.startswith("Value error, "):
             msg = msg[len("Value error, ") :]
-        msg = _humanize_error_message(msg)
+        msg = humanize_error_message(msg)
         errors.setdefault(field_name, []).append(msg)
     return errors

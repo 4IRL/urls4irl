@@ -12,7 +12,7 @@ from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.schemas.users import ForgotPasswordResponseSchema
-from backend.splash.services.forgot_password import _provider_display_name
+from backend.splash.services.forgot_password import provider_display_name
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD
@@ -283,10 +283,10 @@ def test_forgot_password_oauth_only_response_conforms_to_schema(
 def test_provider_display_name_falls_back_to_title_case_for_unmapped_provider():
     """
     GIVEN a provider key not present in `_PROVIDER_DISPLAY_NAMES` (e.g. "discord")
-    WHEN `_provider_display_name` is called with that key
+    WHEN `provider_display_name` is called with that key
     THEN it falls back to `str.title()` instead of raising or returning the raw key.
     """
-    assert _provider_display_name("discord") == "Discord"
+    assert provider_display_name("discord") == "Discord"
 
 
 def test_send_oauth_provider_hint_email_renders_templates_without_mocking(app):

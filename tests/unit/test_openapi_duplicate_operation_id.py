@@ -6,7 +6,7 @@ import pytest
 from flask import Blueprint, Flask
 
 from backend.api_common.parse_request import api_route
-from backend.cli.openapi import _endpoint_to_operation_id, generate_openapi_spec
+from backend.cli.openapi import endpoint_to_operation_id, generate_openapi_spec
 
 pytestmark = pytest.mark.unit
 
@@ -42,19 +42,19 @@ def test_duplicate_operation_id_raises_value_error():
 def test_endpoint_to_operation_id_strips_blueprint_prefix():
     """
     GIVEN a dotted Flask endpoint like 'utubs.create_utub'
-    WHEN _endpoint_to_operation_id is called
+    WHEN endpoint_to_operation_id is called
     THEN it strips the blueprint prefix and returns camelCase 'createUtub'
     """
-    assert _endpoint_to_operation_id("utubs.create_utub") == "createUtub"
+    assert endpoint_to_operation_id("utubs.create_utub") == "createUtub"
 
 
 def test_endpoint_to_operation_id_converts_snake_case():
     """
     GIVEN a plain snake_case endpoint like 'get_items'
-    WHEN _endpoint_to_operation_id is called
+    WHEN endpoint_to_operation_id is called
     THEN it returns camelCase 'getItems'
     """
-    assert _endpoint_to_operation_id("get_items") == "getItems"
+    assert endpoint_to_operation_id("get_items") == "getItems"
 
 
 def test_no_response_schema_produces_success_fallback_and_warning():

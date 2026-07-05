@@ -10,12 +10,12 @@ _WINDOW_NAMED_DELTAS: dict[str, timedelta] = {
     "week": timedelta(days=7),
 }
 _WINDOW_SHORTHAND_RE: re.Pattern = re.compile(r"^(\d+)([hd])$")
-_WINDOW_PARSE_ERROR_FMT: str = (
+WINDOW_PARSE_ERROR_FMT: str = (
     "Invalid window: {value!r}. Expected one of {names} or NhNd shorthand "
     "(e.g. 24h, 7d)."
 )
-_RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
-_MISSING_WINDOW_ERROR: str = "Provide `window` or both `start` and `end`."
+RANGE_ORDER_ERROR: str = "`start` must be strictly before `end`."
+MISSING_WINDOW_ERROR: str = "Provide `window` or both `start` and `end`."
 
 
 def compute_bucket_start_epoch(now_epoch_seconds: int, bucket_seconds: int) -> int:
@@ -59,7 +59,7 @@ def epoch_to_aware_datetime(epoch_seconds: int) -> datetime:
     return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc)
 
 
-def _shift_calendar_month(reference: datetime, months: int) -> datetime:
+def shift_calendar_month(reference: datetime, months: int) -> datetime:
     """Shift `reference` back by `months` calendar months.
 
     Clamps the day to the last valid day of the target month so callers like
@@ -69,19 +69,19 @@ def _shift_calendar_month(reference: datetime, months: int) -> datetime:
 
     Examples:
         Common case — shift back one month on a normal day:
-        >>> _shift_calendar_month(datetime(2026, 4, 15, tzinfo=timezone.utc), 1)
+        >>> shift_calendar_month(datetime(2026, 4, 15, tzinfo=timezone.utc), 1)
         datetime.datetime(2026, 3, 15, 0, 0, tzinfo=datetime.timezone.utc)
 
         End-of-month clamping — Mar 31 minus 1 month clamps to Feb 28 (non-leap):
-        >>> _shift_calendar_month(datetime(2026, 3, 31, tzinfo=timezone.utc), 1)
+        >>> shift_calendar_month(datetime(2026, 3, 31, tzinfo=timezone.utc), 1)
         datetime.datetime(2026, 2, 28, 0, 0, tzinfo=datetime.timezone.utc)
 
         Leap-year clamping — Feb 29 2024 minus 12 months clamps to Feb 28 2023:
-        >>> _shift_calendar_month(datetime(2024, 2, 29, tzinfo=timezone.utc), 12)
+        >>> shift_calendar_month(datetime(2024, 2, 29, tzinfo=timezone.utc), 12)
         datetime.datetime(2023, 2, 28, 0, 0, tzinfo=datetime.timezone.utc)
 
         Leap year — Mar 31 2024 minus 1 month resolves to Feb 29 (leap year):
-        >>> _shift_calendar_month(datetime(2024, 3, 31, tzinfo=timezone.utc), 1)
+        >>> shift_calendar_month(datetime(2024, 3, 31, tzinfo=timezone.utc), 1)
         datetime.datetime(2024, 2, 29, 0, 0, tzinfo=datetime.timezone.utc)
     """
     zero_indexed_month = reference.month - 1 - months
@@ -95,41 +95,41 @@ def _shift_calendar_month(reference: datetime, months: int) -> datetime:
     )
 
 
-def _named_window_start(name: str, now: datetime) -> datetime | None:
+def named_window_start(name: str, now: datetime) -> datetime | None:
     """Return the start datetime for a named window, or None if unrecognized.
 
-    `month` and `year` use calendar-aware arithmetic via `_shift_calendar_month`
+    `month` and `year` use calendar-aware arithmetic via `shift_calendar_month`
     (Feb 29 + 1 year → Feb 28; Mar 31 - 1 month → Feb 28/29). `day` and `week`
     stay on fixed `timedelta` deltas because their semantics are unambiguous.
 
     Examples:
         "day" returns exactly 24 hours before `now`:
-        >>> _named_window_start("day", datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc))
+        >>> named_window_start("day", datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc))
         datetime.datetime(2026, 6, 4, 12, 0, tzinfo=datetime.timezone.utc)
 
         "week" returns exactly 7 days before `now`:
-        >>> _named_window_start("week", datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc))
+        >>> named_window_start("week", datetime(2026, 6, 5, 12, 0, tzinfo=timezone.utc))
         datetime.datetime(2026, 5, 29, 12, 0, tzinfo=datetime.timezone.utc)
 
         "month" uses calendar arithmetic, clamping if needed (Mar 31 → Feb 28):
-        >>> _named_window_start("month", datetime(2026, 3, 31, tzinfo=timezone.utc))
+        >>> named_window_start("month", datetime(2026, 3, 31, tzinfo=timezone.utc))
         datetime.datetime(2026, 2, 28, 0, 0, tzinfo=datetime.timezone.utc)
 
         "year" shifts back 12 calendar months (Feb 29 2024 → Feb 28 2023):
-        >>> _named_window_start("year", datetime(2024, 2, 29, tzinfo=timezone.utc))
+        >>> named_window_start("year", datetime(2024, 2, 29, tzinfo=timezone.utc))
         datetime.datetime(2023, 2, 28, 0, 0, tzinfo=datetime.timezone.utc)
 
         Unrecognized name returns None:
-        >>> _named_window_start("quarter", datetime(2026, 6, 5, tzinfo=timezone.utc)) is None
+        >>> named_window_start("quarter", datetime(2026, 6, 5, tzinfo=timezone.utc)) is None
         True
     """
     fixed_delta = _WINDOW_NAMED_DELTAS.get(name)
     if fixed_delta is not None:
         return now - fixed_delta
     if name == "month":
-        return _shift_calendar_month(now, 1)
+        return shift_calendar_month(now, 1)
     if name == "year":
-        return _shift_calendar_month(now, 12)
+        return shift_calendar_month(now, 12)
     return None
 
 
@@ -143,7 +143,7 @@ def parse_window(value: str, now: datetime) -> tuple[datetime, datetime]:
 
     Raises:
         ValueError: when `value` is not a recognized window string. The message
-            uses `_WINDOW_PARSE_ERROR_FMT` so callers (including tests) can
+            uses `WINDOW_PARSE_ERROR_FMT` so callers (including tests) can
             assert against the exact text.
 
     Examples:
@@ -191,7 +191,7 @@ def parse_window(value: str, now: datetime) -> tuple[datetime, datetime]:
             ...
         ValueError: Invalid window: 'quarter'. Expected one of ...
     """
-    named_start = _named_window_start(value, now)
+    named_start = named_window_start(value, now)
     if named_start is not None:
         return (named_start, now)
 
@@ -201,12 +201,12 @@ def parse_window(value: str, now: datetime) -> tuple[datetime, datetime]:
         unit = shorthand_match.group(2)
         if magnitude <= 0:
             raise ValueError(
-                _WINDOW_PARSE_ERROR_FMT.format(value=value, names=WINDOW_NAMED)
+                WINDOW_PARSE_ERROR_FMT.format(value=value, names=WINDOW_NAMED)
             )
         delta = timedelta(hours=magnitude) if unit == "h" else timedelta(days=magnitude)
         return (now - delta, now)
 
-    raise ValueError(_WINDOW_PARSE_ERROR_FMT.format(value=value, names=WINDOW_NAMED))
+    raise ValueError(WINDOW_PARSE_ERROR_FMT.format(value=value, names=WINDOW_NAMED))
 
 
 def resolve_query_window(
@@ -230,11 +230,11 @@ def resolve_query_window(
     """
     if start is not None and end is not None:
         if start >= end:
-            raise ValueError(_RANGE_ORDER_ERROR)
+            raise ValueError(RANGE_ORDER_ERROR)
         return (start, end)
     if window is not None:
         return parse_window(window, now)
-    raise ValueError(_MISSING_WINDOW_ERROR)
+    raise ValueError(MISSING_WINDOW_ERROR)
 
 
 def previous_window(

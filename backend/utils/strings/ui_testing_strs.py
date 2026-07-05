@@ -65,7 +65,7 @@ class UI_TEST_STRINGS:
     OAUTH_NEW_USER_SUBJECT = "fake-oauth-subject-new"
     OAUTH_NEW_USER_EMAIL = "oauth.newuser@example.com"
     # No spaces: this name becomes the derived username on account creation
-    # (see `_resolve_preferred_username`/`generate_unique_username_from_email`),
+    # (see `resolve_preferred_username`/`generate_unique_username_from_email`),
     # asserted verbatim via `assert_login_with_username`.
     OAUTH_NEW_USER_NAME = "NewOAuthUser"
 

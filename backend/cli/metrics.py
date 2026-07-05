@@ -16,7 +16,7 @@ from backend.extensions.metrics.dim_types_generator import (
     generate_resources_ts,
     generate_ui_events_ts,
 )
-from backend.extensions.metrics.middleware import _should_skip
+from backend.extensions.metrics.middleware import should_skip
 from backend.extensions.metrics.registry_sync import sync_event_registry
 from backend.metrics import query_service
 from backend.metrics.audit import (
@@ -398,7 +398,7 @@ def audit_command(strict: bool) -> None:
 
 def _count_auto_counted_api_routes(app: Flask) -> int:
     """Return the number of distinct (endpoint, method) pairs that the API_HIT
-    middleware would record — i.e., routes not filtered by `_should_skip`.
+    middleware would record — i.e., routes not filtered by `should_skip`.
 
     Walks Flask's URL map and applies the same skip predicate the middleware
     uses at request time (`backend/extensions/metrics/middleware.py`). One
@@ -420,7 +420,7 @@ def _count_auto_counted_api_routes(app: Flask) -> int:
         blueprint_name: str | None = (
             rule.endpoint.rsplit(".", 1)[0] if "." in rule.endpoint else None
         )
-        if _should_skip(rule.endpoint, blueprint_name):
+        if should_skip(rule.endpoint, blueprint_name):
             continue
         for method_name in rule.methods:
             if method_name in _COVERAGE_SUMMARY_COUNTED_METHODS:
@@ -465,7 +465,7 @@ def coverage_summary_command() -> None:
         Count    — distinct route handlers (API) or `EventName` members
 
     Sources:
-        - API (auto): `app.url_map` minus `_should_skip` filtered routes,
+        - API (auto): `app.url_map` minus `should_skip` filtered routes,
           counted as distinct (endpoint, method) pairs.
         - Domain per Resource: `EventName` members in `EventCategory.DOMAIN`
           grouped by `EVENT_NAME_TO_RESOURCE`.

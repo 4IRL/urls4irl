@@ -4,6 +4,384 @@
  */
 
 export interface paths {
+  "/api/v1/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Retrieve the authenticated user's profile */
+    get: operations["apiV1GetMe"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Log in with username and password, receiving an access + refresh token pair */
+    post: operations["apiV1AuthLogin"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/refresh": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Rotate a refresh token for a new access + refresh token pair */
+    post: operations["apiV1AuthRefresh"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/logout": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Log out this device by revoking the presented refresh token's rotation family */
+    post: operations["apiV1AuthLogout"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/logout-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Log out everywhere by revoking every refresh token for the authenticated user */
+    post: operations["apiV1AuthLogoutAll"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/resend-validation": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Re-send the email-validation email for the authenticated (unvalidated) user */
+    post: operations["apiV1AuthResendValidation"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/google": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Exchange a native Google Sign-In id_token for an access + refresh token pair */
+    post: operations["apiV1AuthGoogle"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/urls/{utub_url_id}/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Add a tag to a URL in a UTub */
+    post: operations["apiV1CreateUtubUrlTag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/urls/{utub_url_id}/tags/batch": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Apply multiple tags to a URL in a UTub */
+    post: operations["apiV1CreateUtubUrlTags"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/urls/{utub_url_id}/tags/{utub_tag_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Remove a tag from a URL in a UTub */
+    delete: operations["apiV1DeleteUtubUrlTag"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Add a tag to a UTub */
+    post: operations["apiV1CreateUtubTag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/tags/{utub_tag_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Delete a tag from a UTub */
+    delete: operations["apiV1DeleteUtubTag"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/urls": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Add a URL to a UTub */
+    post: operations["apiV1CreateUrl"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/urls/{utub_url_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Retrieve a URL from a UTub */
+    get: operations["apiV1GetUrl"];
+    put?: never;
+    post?: never;
+    /** @description Delete a URL from a UTub */
+    delete: operations["apiV1DeleteUrl"];
+    options?: never;
+    head?: never;
+    /** @description Update a URL string in a UTub */
+    patch: operations["apiV1UpdateUrl"];
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/urls/{utub_url_id}/title": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Update a URL title in a UTub */
+    patch: operations["apiV1UpdateUrlTitle"];
+    trace?: never;
+  };
+  "/api/v1/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Search across all of the current user's member UTubs, grouped by source UTub. */
+    get: operations["apiV1SearchAcrossUtubs"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/members": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Add a member to a UTub */
+    post: operations["apiV1CreateMember"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/members/{user_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /** @description Remove a member from a UTub */
+    delete: operations["apiV1RemoveMember"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Retrieve a summary of all UTubs for the current user */
+    get: operations["apiV1GetUtubs"];
+    put?: never;
+    /** @description Create a new UTub */
+    post: operations["apiV1CreateUtub"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Retrieve data for a single UTub */
+    get: operations["apiV1GetSingleUtub"];
+    put?: never;
+    post?: never;
+    /** @description Delete a UTub */
+    delete: operations["apiV1DeleteUtub"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/name": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Update a UTub name */
+    patch: operations["apiV1UpdateUtubName"];
+    trace?: never;
+  };
+  "/api/v1/utubs/{utub_id}/description": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** @description Update a UTub description */
+    patch: operations["apiV1UpdateUtubDesc"];
+    trace?: never;
+  };
   "/contact": {
     parameters: {
       query?: never;
@@ -582,23 +960,16 @@ export interface components {
       /** @description Human-readable response message, if applicable */
       message?: string;
     };
-    ContactRequest: {
-      /**
-       * @description Subject line of the contact message
-       * @example Bug report
-       */
-      subject: string;
-      /** @description Body content of the contact message */
-      content: string;
-    };
-    ContactResponseSchema: {
-      /**
-       * @description Response status: Success, Failure, or No change
-       * @enum {string}
-       */
-      status: "Success" | "Failure" | "No change";
-      /** @description Human-readable response message */
-      message: string;
+    /** @description Authenticated user's profile for the mobile /api/v1 surface. */
+    ApiUserProfileSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Email address of the user */
+      email: string;
+      /** @description Whether the user's email address has been validated */
+      emailValidated: boolean;
     };
     ErrorResponse: {
       /**
@@ -631,14 +1002,274 @@ export interface components {
        */
       urlString: string | null;
     };
-    ErrorResponse_ContactErrorCodes: components["schemas"]["ErrorResponse"] & {
-      errorCode?: components["schemas"]["ContactErrorCodes"];
+    /**
+     * @description Mobile /api/v1 login body — identical fields/validation to the web
+     *     LoginRequest, but a distinct class so the @api_route kwarg injection name
+     *     (api_login_request) and OpenAPI schema name never collide with the web
+     *     surface.
+     */
+    ApiLoginRequest: {
+      /**
+       * @description Username for login
+       * @example john_doe
+       */
+      username: string;
+      /** @description Password for login */
+      password: string;
+    };
+    /** @description Access + refresh token pair issued by the /api/v1/auth endpoints. */
+    ApiTokenPairResponseSchema: {
+      /** @description Short-lived HS256 JWT for Authorization: Bearer */
+      accessToken: string;
+      /** @description Opaque rotating refresh token; revoked server-side on logout */
+      refreshToken: string;
+      /**
+       * @description Always 'Bearer'
+       * @constant
+       */
+      tokenType: "Bearer";
+      /** @description Access token lifetime in seconds */
+      expiresIn: number;
+      /** @description Profile of the authenticated user, including emailValidated */
+      user: components["schemas"]["ApiUserProfileSchema"];
+    };
+    ErrorResponse_ApiAuthErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ApiAuthErrorCodes"];
     };
     /**
-     * @description Error codes for ContactErrorCodes
+     * @description Error codes for ApiAuthErrorCodes
      * @enum {integer}
      */
-    ContactErrorCodes: 1;
+    ApiAuthErrorCodes: 1 | 2 | 3 | 4 | 5;
+    ApiRefreshRequest: {
+      /** @description The refresh token to rotate for a new token pair */
+      refreshToken: string;
+    };
+    ApiLogoutRequest: {
+      /** @description The refresh token whose device session should be revoked */
+      refreshToken: string;
+    };
+    /** @description Status and message response */
+    StatusMessageResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+    };
+    ApiGoogleAuthRequest: {
+      /** @description Google id_token obtained from the native Google Sign-In SDK */
+      idToken: string;
+    };
+    AddTagRequest: {
+      /**
+       * @description Tag label to add
+       * @example python
+       */
+      tagString: string;
+    };
+    UtubTagOnAddDeleteSchema: {
+      /** @description Unique tag ID within the UTub */
+      utubTagID: number;
+      /** @description Tag label text */
+      tagString: string;
+    };
+    UrlTagModifiedResponseSchema: {
+      /** @description Updated list of tag IDs applied to the URL */
+      utubUrlTagIDs: number[];
+      /** @description Tag that was added or removed from the URL */
+      utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
+      /** @description New count of URLs this tag is applied to after modification */
+      tagCountsInUtub: number;
+    };
+    ErrorResponse_URLTagErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["URLTagErrorCodes"];
+    };
+    /**
+     * @description Error codes for URLTagErrorCodes
+     * @enum {integer}
+     */
+    URLTagErrorCodes: 1 | 2;
+    AddTagsRequest: {
+      /**
+       * @description Tags to apply to the URL
+       * @example [
+       *       "python",
+       *       "web"
+       *     ]
+       */
+      tagStrings: string[];
+    };
+    UtubTagSchema: {
+      /** @description Unique tag ID within the UTub */
+      id: number;
+      /** @description Tag label text */
+      tagString: string;
+      /**
+       * @description Number of URLs in the UTub this tag is applied to
+       * @default 0
+       */
+      tagApplied: number;
+    };
+    UrlTagsModifiedResponseSchema: {
+      /** @description Full updated list of tag IDs on the URL */
+      utubUrlTagIDs: number[];
+      /** @description Tags newly applied in this batch, with refreshed UTub-wide counts */
+      appliedTags: components["schemas"]["UtubTagSchema"][];
+    };
+    UtubTagAddedToUtubResponseSchema: {
+      /** @description Tag that was added to the UTub */
+      utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
+      /** @description New count of URLs this tag is applied to after addition */
+      tagCountsInUtub: number;
+    };
+    ErrorResponse_UTubTagErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["UTubTagErrorCodes"];
+    };
+    /**
+     * @description Error codes for UTubTagErrorCodes
+     * @enum {integer}
+     */
+    UTubTagErrorCodes: 1 | 2;
+    UtubTagDeletedFromUtubResponseSchema: {
+      /** @description Tag that was deleted from the UTub */
+      utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
+      /** @description List of URL IDs that had this tag removed */
+      utubUrlIDs: number[];
+    };
+    CreateURLRequest: {
+      /**
+       * @description URL string to add
+       * @example https://example.com
+       */
+      urlString: string;
+      /** @description Display title for the URL */
+      urlTitle: string;
+      /**
+       * @description Optional tags to apply to the URL on creation
+       * @example [
+       *       "python",
+       *       "web"
+       *     ]
+       */
+      tagStrings?: string[];
+    };
+    /** @description URL item shape for creation responses (UtubUrlDeleteSchema fields + tag IDs). */
+    UrlCreatedItemSchema: {
+      /** @description Unique ID of the URL within the UTub */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description Display title for the URL */
+      urlTitle: string;
+      /** @description Tag IDs applied to the URL on creation */
+      utubUrlTagIDs?: number[];
+    };
+    UrlCreatedResponseSchema: {
+      /** @description ID of the UTub the URL was added to */
+      utubID: number;
+      /** @description User ID of the user who added the URL */
+      addedByUserID: number;
+      /** @description URL item that was created */
+      URL: components["schemas"]["UrlCreatedItemSchema"];
+      /** @description Tags applied to the URL on creation, with UTub-wide counts */
+      appliedTags?: components["schemas"]["UtubTagSchema"][];
+    };
+    ErrorResponse_URLErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["URLErrorCodes"];
+    };
+    /**
+     * @description Error codes for URLErrorCodes
+     * @enum {integer}
+     */
+    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    UtubUrlDetailSchema: {
+      /** @description Unique ID of the URL within the UTub */
+      utubUrlID: number;
+      /** @description Display title for the URL */
+      urlTitle: string;
+      /** @description The URL string */
+      urlString: string;
+      /** @description List of tags applied to this URL */
+      urlTags: components["schemas"]["UtubTagOnAddDeleteSchema"][];
+    };
+    UrlReadResponseSchema: {
+      /** @description Detailed URL item retrieved */
+      URL: components["schemas"]["UtubUrlDetailSchema"];
+    };
+    UpdateURLStringRequest: {
+      /**
+       * @description New URL string to replace the existing one
+       * @example https://example.com
+       */
+      urlString: string;
+    };
+    UrlUpdatedResponseSchema: {
+      /** @description ID of the UTub containing the URL */
+      utubID: number;
+      /** @description Name of the UTub containing the URL */
+      utubName: string;
+      /** @description Detailed URL item with updated URL string */
+      URL: components["schemas"]["UtubUrlDetailSchema"];
+    };
+    UpdateURLTitleRequest: {
+      /** @description New display title for the URL */
+      urlTitle: string;
+    };
+    UrlTitleUpdatedResponseSchema: {
+      /** @description Detailed URL item with updated title */
+      URL: components["schemas"]["UtubUrlDetailSchema"];
+    };
+    UtubUrlDeleteSchema: {
+      /** @description Unique ID of the URL within the UTub */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description Display title for the URL */
+      urlTitle: string;
+    };
+    UrlDeletedResponseSchema: {
+      /** @description ID of the UTub the URL was deleted from */
+      utubID: number;
+      /** @description URL item that was deleted */
+      URL: components["schemas"]["UtubUrlDeleteSchema"];
+      /** @description Map of tag ID to new applied count after deletion */
+      tagCountsInUtub: {
+        [key: string]: number;
+      };
+    };
+    /** @enum {string} */
+    MatchedField: "url" | "title" | "tag";
+    SearchHitSchema: {
+      /** @description Utub_Urls association id (the .urlRow[utuburlid] DOM key) */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description Per-UTub display title for the URL */
+      urlTitle: string;
+      /** @description Tags applied to this URL in its UTub */
+      urlTags: components["schemas"]["UtubTagOnAddDeleteSchema"][];
+      /** @description Which fields the query matched (title/url/tag) — consumers may highlight these in the UI. */
+      matchedFields: components["schemas"]["MatchedField"][];
+    };
+    SearchUtubGroupSchema: {
+      /** @description Source UTub id — consumers use this to navigate to or label the matching UTub. */
+      utubID: number;
+      /** @description Source UTub name for the group label */
+      utubName: string;
+      /** @description Matching URLs within this UTub, ranked best-first */
+      urls: components["schemas"]["SearchHitSchema"][];
+    };
+    SearchResultsSchema: {
+      /** @description Groups ranked best-first; one group per source UTub with ≥1 matching URL */
+      results: components["schemas"]["SearchUtubGroupSchema"][];
+    };
+    AddMemberRequest: {
+      /** @description Username of the member to add */
+      username: string;
+    };
     UserSchema: {
       /** @description Unique user ID */
       id: number;
@@ -651,10 +1282,6 @@ export interface components {
       /** @description User object for the member added or removed */
       member: components["schemas"]["UserSchema"];
     };
-    AddMemberRequest: {
-      /** @description Username of the member to add */
-      username: string;
-    };
     ErrorResponse_UTubMembersErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["UTubMembersErrorCodes"];
     };
@@ -663,6 +1290,142 @@ export interface components {
      * @enum {integer}
      */
     UTubMembersErrorCodes: 1 | 2;
+    CreateUTubRequest: {
+      /** @description Name of the UTub to create */
+      utubName: string;
+      /**
+       * @description Optional description for the UTub
+       * @default null
+       */
+      utubDescription: string | null;
+    };
+    UtubCreatedResponseSchema: {
+      /** @description Unique ID of the newly created UTub */
+      utubID: number;
+      /** @description Name of the newly created UTub */
+      utubName: string;
+      /** @description Description of the newly created UTub, or null if not set */
+      utubDescription: string | null;
+      /** @description User ID of the UTub creator */
+      utubCreatorID: number;
+    };
+    ErrorResponse_UTubErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["UTubErrorCodes"];
+    };
+    /**
+     * @description Error codes for UTubErrorCodes
+     * @enum {integer}
+     */
+    UTubErrorCodes: 1 | 2;
+    UtubSummaryItemSchema: {
+      /** @description Unique UTub ID */
+      id: number;
+      /** @description Name of the UTub */
+      name: string;
+      /** @description Role of the current user in the UTub */
+      memberRole: string;
+    };
+    /** @description List of UTub summaries */
+    UtubSummaryListSchema: {
+      /** @description List of UTubs the user is a member of */
+      utubs: components["schemas"]["UtubSummaryItemSchema"][];
+    };
+    UtubUrlSchema: {
+      /** @description Unique ID of the URL within the UTub */
+      utubUrlID: number;
+      /** @description The URL string */
+      urlString: string;
+      /** @description List of tag IDs applied to this URL */
+      utubUrlTagIDs: number[];
+      /** @description Display title for the URL */
+      urlTitle: string;
+      /** @description Whether the current user can delete this URL */
+      canDelete: boolean;
+    };
+    /** @description Full UTub detail with members, URLs, and tags */
+    UtubDetailSchema: {
+      /** @description Unique UTub ID */
+      id: number;
+      /** @description Name of the UTub */
+      name: string;
+      /** @description User ID of the UTub creator */
+      createdByUserID: number;
+      /**
+       * Format: date-time
+       * @description Creation timestamp of the UTub (ISO 8601)
+       */
+      createdAt: string;
+      /** @description Description of the UTub */
+      description: string;
+      /** @description List of members in the UTub */
+      members: components["schemas"]["UserSchema"][];
+      /** @description List of URLs in the UTub */
+      urls: components["schemas"]["UtubUrlSchema"][];
+      /** @description List of tags used in the UTub */
+      tags: components["schemas"]["UtubTagSchema"][];
+      /** @description Whether the current user is the creator of the UTub */
+      isCreator: boolean;
+      /** @description ID of the currently authenticated user */
+      currentUser: number;
+    };
+    UpdateUTubNameRequest: {
+      /** @description New name for the UTub */
+      utubName: string;
+    };
+    UtubNameUpdatedResponseSchema: {
+      /** @description ID of the UTub whose name was updated */
+      utubID: number;
+      /** @description New name of the UTub */
+      utubName: string;
+    };
+    UpdateUTubDescriptionRequest: {
+      /**
+       * @description New description for the UTub, or empty to clear
+       * @default null
+       */
+      utubDescription: string | null;
+    };
+    /** @description UTub description updated */
+    UtubDescUpdatedResponseSchema: {
+      /** @description ID of the UTub whose description was updated */
+      utubID: number;
+      /** @description New description of the UTub, or null if cleared */
+      utubDescription: string | null;
+    };
+    UtubDeletedResponseSchema: {
+      /** @description ID of the deleted UTub */
+      utubID: number;
+      /** @description Name of the deleted UTub */
+      utubName: string;
+      /** @description Description of the deleted UTub, or null if not set */
+      utubDescription: string | null;
+    };
+    ContactRequest: {
+      /**
+       * @description Subject line of the contact message
+       * @example Bug report
+       */
+      subject: string;
+      /** @description Body content of the contact message */
+      content: string;
+    };
+    ContactResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
+    };
+    ErrorResponse_ContactErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["ContactErrorCodes"];
+    };
+    /**
+     * @description Error codes for ContactErrorCodes
+     * @enum {integer}
+     */
+    ContactErrorCodes: 1;
     /**
      * @description One UI metrics event submitted by the browser.
      *
@@ -1215,38 +1978,6 @@ export interface components {
       /** @description Zero-filled per-bucket percentile series in chronological order. */
       buckets: components["schemas"]["LatencyTimeseriesBucket"][];
     };
-    /** @enum {string} */
-    MatchedField: "url" | "title" | "tag";
-    SearchHitSchema: {
-      /** @description Utub_Urls association id (the .urlRow[utuburlid] DOM key) */
-      utubUrlID: number;
-      /** @description The URL string */
-      urlString: string;
-      /** @description Per-UTub display title for the URL */
-      urlTitle: string;
-      /** @description Tags applied to this URL in its UTub */
-      urlTags: components["schemas"]["UtubTagOnAddDeleteSchema"][];
-      /** @description Which fields the query matched (title/url/tag) — consumers may highlight these in the UI. */
-      matchedFields: components["schemas"]["MatchedField"][];
-    };
-    SearchUtubGroupSchema: {
-      /** @description Source UTub id — consumers use this to navigate to or label the matching UTub. */
-      utubID: number;
-      /** @description Source UTub name for the group label */
-      utubName: string;
-      /** @description Matching URLs within this UTub, ranked best-first */
-      urls: components["schemas"]["SearchHitSchema"][];
-    };
-    UtubTagOnAddDeleteSchema: {
-      /** @description Unique tag ID within the UTub */
-      utubTagID: number;
-      /** @description Tag label text */
-      tagString: string;
-    };
-    SearchResultsSchema: {
-      /** @description Groups ranked best-first; one group per source UTub with ≥1 matching URL */
-      results: components["schemas"]["SearchUtubGroupSchema"][];
-    };
     RegisterRequest: {
       /**
        * @description Username for the new account
@@ -1373,297 +2104,6 @@ export interface components {
       /** @description Service health status */
       status: string;
     };
-    /** @description Status and message response */
-    StatusMessageResponseSchema: {
-      /**
-       * @description Response status: Success, Failure, or No change
-       * @enum {string}
-       */
-      status: "Success" | "Failure" | "No change";
-      /** @description Human-readable response message */
-      message: string;
-    };
-    CreateURLRequest: {
-      /**
-       * @description URL string to add
-       * @example https://example.com
-       */
-      urlString: string;
-      /** @description Display title for the URL */
-      urlTitle: string;
-      /**
-       * @description Optional tags to apply to the URL on creation
-       * @example [
-       *       "python",
-       *       "web"
-       *     ]
-       */
-      tagStrings?: string[];
-    };
-    /** @description URL item shape for creation responses (UtubUrlDeleteSchema fields + tag IDs). */
-    UrlCreatedItemSchema: {
-      /** @description Unique ID of the URL within the UTub */
-      utubUrlID: number;
-      /** @description The URL string */
-      urlString: string;
-      /** @description Display title for the URL */
-      urlTitle: string;
-      /** @description Tag IDs applied to the URL on creation */
-      utubUrlTagIDs?: number[];
-    };
-    UtubTagSchema: {
-      /** @description Unique tag ID within the UTub */
-      id: number;
-      /** @description Tag label text */
-      tagString: string;
-      /**
-       * @description Number of URLs in the UTub this tag is applied to
-       * @default 0
-       */
-      tagApplied: number;
-    };
-    UrlCreatedResponseSchema: {
-      /** @description ID of the UTub the URL was added to */
-      utubID: number;
-      /** @description User ID of the user who added the URL */
-      addedByUserID: number;
-      /** @description URL item that was created */
-      URL: components["schemas"]["UrlCreatedItemSchema"];
-      /** @description Tags applied to the URL on creation, with UTub-wide counts */
-      appliedTags?: components["schemas"]["UtubTagSchema"][];
-    };
-    ErrorResponse_URLErrorCodes: components["schemas"]["ErrorResponse"] & {
-      errorCode?: components["schemas"]["URLErrorCodes"];
-    };
-    /**
-     * @description Error codes for URLErrorCodes
-     * @enum {integer}
-     */
-    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
-    UtubUrlDetailSchema: {
-      /** @description Unique ID of the URL within the UTub */
-      utubUrlID: number;
-      /** @description Display title for the URL */
-      urlTitle: string;
-      /** @description The URL string */
-      urlString: string;
-      /** @description List of tags applied to this URL */
-      urlTags: components["schemas"]["UtubTagOnAddDeleteSchema"][];
-    };
-    UrlReadResponseSchema: {
-      /** @description Detailed URL item retrieved */
-      URL: components["schemas"]["UtubUrlDetailSchema"];
-    };
-    UpdateURLStringRequest: {
-      /**
-       * @description New URL string to replace the existing one
-       * @example https://example.com
-       */
-      urlString: string;
-    };
-    UrlUpdatedResponseSchema: {
-      /** @description ID of the UTub containing the URL */
-      utubID: number;
-      /** @description Name of the UTub containing the URL */
-      utubName: string;
-      /** @description Detailed URL item with updated URL string */
-      URL: components["schemas"]["UtubUrlDetailSchema"];
-    };
-    UpdateURLTitleRequest: {
-      /** @description New display title for the URL */
-      urlTitle: string;
-    };
-    UrlTitleUpdatedResponseSchema: {
-      /** @description Detailed URL item with updated title */
-      URL: components["schemas"]["UtubUrlDetailSchema"];
-    };
-    UtubUrlDeleteSchema: {
-      /** @description Unique ID of the URL within the UTub */
-      utubUrlID: number;
-      /** @description The URL string */
-      urlString: string;
-      /** @description Display title for the URL */
-      urlTitle: string;
-    };
-    UrlDeletedResponseSchema: {
-      /** @description ID of the UTub the URL was deleted from */
-      utubID: number;
-      /** @description URL item that was deleted */
-      URL: components["schemas"]["UtubUrlDeleteSchema"];
-      /** @description Map of tag ID to new applied count after deletion */
-      tagCountsInUtub: {
-        [key: string]: number;
-      };
-    };
-    CreateUTubRequest: {
-      /** @description Name of the UTub to create */
-      utubName: string;
-      /**
-       * @description Optional description for the UTub
-       * @default null
-       */
-      utubDescription: string | null;
-    };
-    UtubCreatedResponseSchema: {
-      /** @description Unique ID of the newly created UTub */
-      utubID: number;
-      /** @description Name of the newly created UTub */
-      utubName: string;
-      /** @description Description of the newly created UTub, or null if not set */
-      utubDescription: string | null;
-      /** @description User ID of the UTub creator */
-      utubCreatorID: number;
-    };
-    ErrorResponse_UTubErrorCodes: components["schemas"]["ErrorResponse"] & {
-      errorCode?: components["schemas"]["UTubErrorCodes"];
-    };
-    /**
-     * @description Error codes for UTubErrorCodes
-     * @enum {integer}
-     */
-    UTubErrorCodes: 1 | 2;
-    UtubUrlSchema: {
-      /** @description Unique ID of the URL within the UTub */
-      utubUrlID: number;
-      /** @description The URL string */
-      urlString: string;
-      /** @description List of tag IDs applied to this URL */
-      utubUrlTagIDs: number[];
-      /** @description Display title for the URL */
-      urlTitle: string;
-      /** @description Whether the current user can delete this URL */
-      canDelete: boolean;
-    };
-    /** @description Full UTub detail with members, URLs, and tags */
-    UtubDetailSchema: {
-      /** @description Unique UTub ID */
-      id: number;
-      /** @description Name of the UTub */
-      name: string;
-      /** @description User ID of the UTub creator */
-      createdByUserID: number;
-      /**
-       * Format: date-time
-       * @description Creation timestamp of the UTub (ISO 8601)
-       */
-      createdAt: string;
-      /** @description Description of the UTub */
-      description: string;
-      /** @description List of members in the UTub */
-      members: components["schemas"]["UserSchema"][];
-      /** @description List of URLs in the UTub */
-      urls: components["schemas"]["UtubUrlSchema"][];
-      /** @description List of tags used in the UTub */
-      tags: components["schemas"]["UtubTagSchema"][];
-      /** @description Whether the current user is the creator of the UTub */
-      isCreator: boolean;
-      /** @description ID of the currently authenticated user */
-      currentUser: number;
-    };
-    UtubSummaryItemSchema: {
-      /** @description Unique UTub ID */
-      id: number;
-      /** @description Name of the UTub */
-      name: string;
-      /** @description Role of the current user in the UTub */
-      memberRole: string;
-    };
-    /** @description List of UTub summaries */
-    UtubSummaryListSchema: {
-      /** @description List of UTubs the user is a member of */
-      utubs: components["schemas"]["UtubSummaryItemSchema"][];
-    };
-    UpdateUTubNameRequest: {
-      /** @description New name for the UTub */
-      utubName: string;
-    };
-    UtubNameUpdatedResponseSchema: {
-      /** @description ID of the UTub whose name was updated */
-      utubID: number;
-      /** @description New name of the UTub */
-      utubName: string;
-    };
-    UpdateUTubDescriptionRequest: {
-      /**
-       * @description New description for the UTub, or empty to clear
-       * @default null
-       */
-      utubDescription: string | null;
-    };
-    /** @description UTub description updated */
-    UtubDescUpdatedResponseSchema: {
-      /** @description ID of the UTub whose description was updated */
-      utubID: number;
-      /** @description New description of the UTub, or null if cleared */
-      utubDescription: string | null;
-    };
-    UtubDeletedResponseSchema: {
-      /** @description ID of the deleted UTub */
-      utubID: number;
-      /** @description Name of the deleted UTub */
-      utubName: string;
-      /** @description Description of the deleted UTub, or null if not set */
-      utubDescription: string | null;
-    };
-    AddTagRequest: {
-      /**
-       * @description Tag label to add
-       * @example python
-       */
-      tagString: string;
-    };
-    UrlTagModifiedResponseSchema: {
-      /** @description Updated list of tag IDs applied to the URL */
-      utubUrlTagIDs: number[];
-      /** @description Tag that was added or removed from the URL */
-      utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
-      /** @description New count of URLs this tag is applied to after modification */
-      tagCountsInUtub: number;
-    };
-    ErrorResponse_URLTagErrorCodes: components["schemas"]["ErrorResponse"] & {
-      errorCode?: components["schemas"]["URLTagErrorCodes"];
-    };
-    /**
-     * @description Error codes for URLTagErrorCodes
-     * @enum {integer}
-     */
-    URLTagErrorCodes: 1 | 2;
-    AddTagsRequest: {
-      /**
-       * @description Tags to apply to the URL
-       * @example [
-       *       "python",
-       *       "web"
-       *     ]
-       */
-      tagStrings: string[];
-    };
-    UrlTagsModifiedResponseSchema: {
-      /** @description Full updated list of tag IDs on the URL */
-      utubUrlTagIDs: number[];
-      /** @description Tags newly applied in this batch, with refreshed UTub-wide counts */
-      appliedTags: components["schemas"]["UtubTagSchema"][];
-    };
-    UtubTagAddedToUtubResponseSchema: {
-      /** @description Tag that was added to the UTub */
-      utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
-      /** @description New count of URLs this tag is applied to after addition */
-      tagCountsInUtub: number;
-    };
-    ErrorResponse_UTubTagErrorCodes: components["schemas"]["ErrorResponse"] & {
-      errorCode?: components["schemas"]["UTubTagErrorCodes"];
-    };
-    /**
-     * @description Error codes for UTubTagErrorCodes
-     * @enum {integer}
-     */
-    UTubTagErrorCodes: 1 | 2;
-    UtubTagDeletedFromUtubResponseSchema: {
-      /** @description Tag that was deleted from the UTub */
-      utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
-      /** @description List of URL IDs that had this tag removed */
-      utubUrlIDs: number[];
-    };
   };
   responses: never;
   parameters: never;
@@ -1673,6 +2113,1444 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  apiV1GetMe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authenticated user's profile for the mobile /api/v1 surface. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ApiUserProfileSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1AuthLogin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ApiLoginRequest"];
+      };
+    };
+    responses: {
+      /** @description Access + refresh token pair issued by the /api/v1/auth endpoints. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ApiTokenPairResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ApiAuthErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1AuthRefresh: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ApiRefreshRequest"];
+      };
+    };
+    responses: {
+      /** @description Access + refresh token pair issued by the /api/v1/auth endpoints. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ApiTokenPairResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ApiAuthErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1AuthLogout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ApiLogoutRequest"];
+      };
+    };
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ApiAuthErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1AuthLogoutAll: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1AuthResendValidation: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1AuthGoogle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ApiGoogleAuthRequest"];
+      };
+    };
+    responses: {
+      /** @description Access + refresh token pair issued by the /api/v1/auth endpoints. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ApiTokenPairResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ApiAuthErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_ApiAuthErrorCodes"];
+        };
+      };
+      /** @description Too many requests */
+      429: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1CreateUtubUrlTag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddTagRequest"];
+      };
+    };
+    responses: {
+      /** @description URL tag modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlTagModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1CreateUtubUrlTags: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddTagsRequest"];
+      };
+    };
+    responses: {
+      /** @description URL tags modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlTagsModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLTagErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1DeleteUtubUrlTag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+        utub_tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description URL tag modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlTagModifiedResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1CreateUtubTag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddTagRequest"];
+      };
+    };
+    responses: {
+      /** @description UTub tag added to UTub */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubTagAddedToUtubResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubTagErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1DeleteUtubTag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description UTub tag deleted from UTub */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubTagDeletedFromUtubResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1CreateUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateURLRequest"];
+      };
+    };
+    responses: {
+      /** @description URL created */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlCreatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+    };
+  };
+  apiV1GetUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description URL read */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlReadResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1DeleteUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description URL deleted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlDeletedResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1UpdateUrl: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateURLStringRequest"];
+      };
+    };
+    responses: {
+      /** @description URL updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+    };
+  };
+  apiV1UpdateUrlTitle: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateURLTitleRequest"];
+      };
+    };
+    responses: {
+      /** @description URL title updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UrlTitleUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1SearchAcrossUtubs: {
+    parameters: {
+      query: {
+        /** @description Case-insensitive search term matched against URL strings, titles, and tags. */
+        q: string;
+        /** @description Comma-separated, ordered subset of fields to search (e.g. `url,title,tag`). Membership restricts which of title/url/tag match; order sets ranking priority, first = highest. Omitted/empty = all fields in default priority (url > title > tag). */
+        fields?: components["schemas"]["MatchedField"][];
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Search results */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["SearchResultsSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1CreateMember: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AddMemberRequest"];
+      };
+    };
+    responses: {
+      /** @description Member modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MemberModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubMembersErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1RemoveMember: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Member modified */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["MemberModifiedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1GetUtubs: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description List of UTub summaries */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubSummaryListSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1CreateUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["CreateUTubRequest"];
+      };
+    };
+    responses: {
+      /** @description UTub created */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubCreatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1GetSingleUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Full UTub detail with members, URLs, and tags */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubDetailSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1DeleteUtub: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description UTub deleted */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubDeletedResponseSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1UpdateUtubName: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateUTubNameRequest"];
+      };
+    };
+    responses: {
+      /** @description UTub name updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubNameUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  apiV1UpdateUtubDesc: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["UpdateUTubDescriptionRequest"];
+      };
+    };
+    responses: {
+      /** @description UTub description updated */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["UtubDescUpdatedResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_UTubErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   submitContactUs: {
     parameters: {
       query?: never;

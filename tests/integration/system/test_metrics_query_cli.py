@@ -14,8 +14,8 @@ from backend.cli.metrics import (
     TOP_EVENTS_HEADER,
 )
 from backend.extensions.metrics.buckets import (
-    _WINDOW_PARSE_ERROR_FMT,
     WINDOW_NAMED,
+    WINDOW_PARSE_ERROR_FMT,
 )
 from backend.metrics.events import (
     EVENT_DESCRIPTIONS,
@@ -222,7 +222,7 @@ def test_flask_metrics_top_invalid_window_exits_nonzero_with_parse_error(
 
     result = runner.invoke(args=["metrics", "top", "--window=bogus"])
 
-    expected_message = _WINDOW_PARSE_ERROR_FMT.format(value="bogus", names=WINDOW_NAMED)
+    expected_message = WINDOW_PARSE_ERROR_FMT.format(value="bogus", names=WINDOW_NAMED)
     assert result.exit_code != 0
     combined_output = result.output + (result.stderr if result.stderr_bytes else "")
     assert expected_message in combined_output
@@ -454,7 +454,7 @@ def test_flask_metrics_gauge_timeseries_invalid_window_exits_nonzero(
         args=["metrics", "gauge-timeseries", "--name=total_users", "--window=bogus"]
     )
 
-    expected_message = _WINDOW_PARSE_ERROR_FMT.format(value="bogus", names=WINDOW_NAMED)
+    expected_message = WINDOW_PARSE_ERROR_FMT.format(value="bogus", names=WINDOW_NAMED)
     assert result.exit_code != 0
     combined_output = result.output + (result.stderr if result.stderr_bytes else "")
     assert expected_message in combined_output

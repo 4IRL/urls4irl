@@ -15,7 +15,7 @@ _SKIP_ENDPOINTS: frozenset[str] = frozenset({"static", SYSTEM_ROUTES.HEALTH})
 _METRICS_BLUEPRINT_NAME: str = "metrics"
 
 
-def _should_skip(endpoint: str | None, blueprint: str | None) -> bool:
+def should_skip(endpoint: str | None, blueprint: str | None) -> bool:
     """Return True when this request must not be recorded as an api_hit.
 
     Skips:
@@ -46,7 +46,7 @@ def init_metrics_middleware(app: Flask) -> None:
     def _record_api_hit(response: Response) -> Response:
         if not app.config.get(CONFIG_ENVS.METRICS_ENABLED, False):
             return response
-        if _should_skip(request.endpoint, request.blueprint):
+        if should_skip(request.endpoint, request.blueprint):
             return response
         device_type = classify_user_agent(request.headers.get("User-Agent"))
         record_event(
