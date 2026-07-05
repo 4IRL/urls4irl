@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  "/api/v1/me": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Retrieve the authenticated user's profile */
+    get: operations["apiV1GetMe"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/contact": {
     parameters: {
       query?: never;
@@ -582,23 +599,16 @@ export interface components {
       /** @description Human-readable response message, if applicable */
       message?: string;
     };
-    ContactRequest: {
-      /**
-       * @description Subject line of the contact message
-       * @example Bug report
-       */
-      subject: string;
-      /** @description Body content of the contact message */
-      content: string;
-    };
-    ContactResponseSchema: {
-      /**
-       * @description Response status: Success, Failure, or No change
-       * @enum {string}
-       */
-      status: "Success" | "Failure" | "No change";
-      /** @description Human-readable response message */
-      message: string;
+    /** @description Authenticated user's profile for the mobile /api/v1 surface. */
+    ApiUserProfileSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Email address of the user */
+      email: string;
+      /** @description Whether the user's email address has been validated */
+      emailValidated: boolean;
     };
     ErrorResponse: {
       /**
@@ -630,6 +640,24 @@ export interface components {
        * @default null
        */
       urlString: string | null;
+    };
+    ContactRequest: {
+      /**
+       * @description Subject line of the contact message
+       * @example Bug report
+       */
+      subject: string;
+      /** @description Body content of the contact message */
+      content: string;
+    };
+    ContactResponseSchema: {
+      /**
+       * @description Response status: Success, Failure, or No change
+       * @enum {string}
+       */
+      status: "Success" | "Failure" | "No change";
+      /** @description Human-readable response message */
+      message: string;
     };
     ErrorResponse_ContactErrorCodes: components["schemas"]["ErrorResponse"] & {
       errorCode?: components["schemas"]["ContactErrorCodes"];
@@ -1673,6 +1701,36 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  apiV1GetMe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Authenticated user's profile for the mobile /api/v1 surface. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["ApiUserProfileSchema"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   submitContactUs: {
     parameters: {
       query?: never;

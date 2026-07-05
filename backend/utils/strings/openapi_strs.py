@@ -2,6 +2,7 @@ AUTH = "auth"
 CONTACT = "contact"
 MEMBERS = "members"
 METRICS = "metrics"
+MOBILE_API = "mobile-api"
 SEARCH = "search"
 SYSTEM = "system"
 TAGS = "tags"
@@ -14,6 +15,7 @@ class OPEN_API:
     CONTACT = CONTACT
     MEMBERS = MEMBERS
     METRICS = METRICS
+    MOBILE_API = MOBILE_API
     SEARCH = SEARCH
     SYSTEM = SYSTEM
     TAGS = TAGS

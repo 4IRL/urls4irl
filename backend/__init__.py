@@ -216,6 +216,7 @@ def create_app(
     # imports — every blueprint module ultimately imports from `backend.*`,
     # which transitively imports this module. Mirrors the existing pattern.
     from backend.admin.routes import admin as admin_blueprint
+    from backend.api_v1.routes import api_v1
     from backend.contact.routes import contact
     from backend.members.routes import members
     from backend.metrics.routes import metrics
@@ -235,6 +236,11 @@ def create_app(
     app.jinja_env.globals["User_Role"] = User_Role
 
     app.register_blueprint(admin_blueprint)
+    # Bearer-token mobile surface: native clients carry no CSRF token, so the
+    # whole blueprint is exempt (established non-browser pattern — see the
+    # metrics ingest route and the Google OAuth callback).
+    app.register_blueprint(api_v1)
+    csrf.exempt(api_v1)
     app.register_blueprint(contact)
     app.register_blueprint(members)
     app.register_blueprint(metrics)

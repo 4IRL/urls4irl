@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from backend.api_common.auth_decorators import (
     ADMIN_AUTH_DECORATORS,
+    API_AUTH_DECORATORS,
     SESSION_AUTH_DECORATORS,
 )
 from backend.schemas.base import StatusMessageResponseSchema
@@ -391,9 +392,18 @@ def _build_typed_error_response_schema(
 def _build_security(
     auth_decorator: str | None,
     method: str,
+    endpoint: str,
 ) -> list[dict[str, list]]:
     """Build the OpenAPI security requirement for an operation."""
     is_mutating = method.upper() in MUTATING_METHODS
+
+    # Bearer-token /api/v1 surface: never csrfToken (the api_v1 blueprint is
+    # CSRF-exempt) and never sessionAuth. Auth endpoints (login/refresh/...)
+    # carry no auth decorator and therefore require no security at all.
+    if endpoint.startswith("api_v1."):
+        if auth_decorator in API_AUTH_DECORATORS:
+            return [{"bearerAuth": []}]
+        return []
 
     has_session_auth = auth_decorator in SESSION_AUTH_DECORATORS
     has_admin_auth = auth_decorator in ADMIN_AUTH_DECORATORS
@@ -493,7 +503,7 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
             operation: dict[str, Any] = {
                 "operationId": operation_id,
                 "tags": tags or [],
-                "security": _build_security(auth_decorator, method),
+                "security": _build_security(auth_decorator, method, rule.endpoint),
             }
 
             if description:
@@ -632,6 +642,17 @@ def generate_openapi_spec(app: Flask, strict: bool = False) -> dict[str, Any]:
                         "header or bearer token. This scheme is declared only "
                         "to mark routes that additionally require admin role "
                         "on top of an authenticated session."
+                    ),
+                },
+                "bearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "JWT",
+                    "description": (
+                        "Mobile /api/v1 access token: short-lived HS256 JWT "
+                        "sent as 'Authorization: Bearer <token>'. Obtained "
+                        "from the /api/v1/auth endpoints. No cookie, CSRF "
+                        "token, or X-Requested-With header is required."
                     ),
                 },
             },

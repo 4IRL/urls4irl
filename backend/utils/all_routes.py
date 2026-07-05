@@ -93,7 +93,19 @@ class UTUB_ROUTES:
     UPDATE_UTUB_DESC = _UTUBS + "update_utub_desc"
 
 
+class API_V1_ROUTES:
+    """Endpoint names for the bearer-token mobile surface.
+
+    Used by integration tests via url_for(); deliberately NOT included in
+    generate_routes_js() — the web frontend never calls /api/v1.
+    """
+
+    _API_V1 = "api_v1."
+    GET_ME = _API_V1 + "api_v1_get_me"
+
+
 class ROUTES:
+    API_V1 = API_V1_ROUTES
     MEMBERS = MEMBER_ROUTES
     SPLASH = SPLASH_ROUTES
     OAUTH = OAUTH_ROUTES

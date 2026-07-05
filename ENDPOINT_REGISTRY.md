@@ -707,6 +707,29 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+## Mobile API Blueprint (`/api/v1`)
+
+Bearer-token surface for native mobile clients. Blueprint-wide conventions: CSRF-exempt
+(`csrf.exempt(api_v1)`), `ajax_required=False` on every route, `api_v1_`-prefixed view names,
+JSON `ErrorResponse` envelope for every error (blueprint 404 errorhandler + `/api/v1` JSON
+branches in the app-level 403/404/429 handlers). Auth via `Authorization: Bearer <access JWT>`
+resolved by `backend/users/routes.py:load_user_from_request`. Metrics: `API_HIT` middleware
+auto-coverage only (no DOMAIN events).
+
+### GET /api/v1/me
+
+| Layer          | Location                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_get_me`                                                                                                                                                                          |
+| **Decorators** | `@api_authentication_required`, `@api_route(response_schema=ApiUserProfileSchema, ajax_required=False, tags=["mobile-api"], description="Retrieve the authenticated user's profile", status_codes={200: ApiUserProfileSchema, 401: ErrorResponse})` |
+| **Service**    | `APIResponse()` direct (serializes `current_user` via `ApiUserProfileSchema`)                                                                                                                                     |
+| **Schema**     | `backend/schemas/api_v1.py:ApiUserProfileSchema` (response)                                                                                                                                                       |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                           |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                     |
+| **Tests**      | `tests/integration/mobile_api/test_me_endpoint.py` (marker: `mobile_api`)                                                                                                                                         |
+
+---
+
 ## Cross-Cutting Patterns
 
 ### CSRF Token Delivery

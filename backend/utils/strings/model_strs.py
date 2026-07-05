@@ -5,6 +5,7 @@ CREATED_BY = "createdByUserID"
 CREATED_AT = "createdAt"
 DESCRIPTION = "description"
 EMAIL = "email"
+EMAIL_VALIDATED = "emailValidated"
 ID = "id"
 IS_CREATOR = "isCreator"
 MEMBERS = "members"
@@ -37,6 +38,8 @@ MATCHED_FIELDS = "matchedFields"
 
 class MODELS:
     ID = ID
+    EMAIL = EMAIL
+    EMAIL_VALIDATED = EMAIL_VALIDATED
     NAME = NAME
     URL_ID = URL_ID
     URL_TAG_IDS = UTUB_URL_TAG_IDS

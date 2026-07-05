@@ -6,6 +6,47 @@
   },
   "x-non-json-responses": "Known non-JSON responses not documented in this spec: 302 redirects from @no_authenticated_users_allowed and @email_validation_required auth decorators, and HTML 404s from abort()/get_or_404().",
   "paths": {
+    "/api/v1/me": {
+      "get": {
+        "operationId": "apiV1GetMe",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Retrieve the authenticated user's profile",
+        "responses": {
+          "200": {
+            "description": "Authenticated user's profile for the mobile /api/v1 surface.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiUserProfileSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/contact": {
       "post": {
         "operationId": "submitContactUs",
@@ -3116,38 +3157,27 @@
         },
         "required": ["status"]
       },
-      "ContactRequest": {
+      "ApiUserProfileSchema": {
+        "description": "Authenticated user's profile for the mobile /api/v1 surface.",
         "properties": {
-          "subject": {
-            "description": "Subject line of the contact message",
-            "examples": ["Bug report"],
-            "maxLength": 100,
-            "minLength": 5,
+          "id": {
+            "description": "Unique user ID",
+            "type": "integer"
+          },
+          "username": {
+            "description": "Username of the user",
             "type": "string"
           },
-          "content": {
-            "description": "Body content of the contact message",
-            "maxLength": 1500,
-            "minLength": 1,
-            "type": "string"
-          }
-        },
-        "required": ["subject", "content"],
-        "type": "object"
-      },
-      "ContactResponseSchema": {
-        "properties": {
-          "status": {
-            "description": "Response status: Success, Failure, or No change",
-            "enum": ["Success", "Failure", "No change"],
+          "email": {
+            "description": "Email address of the user",
             "type": "string"
           },
-          "message": {
-            "description": "Human-readable response message",
-            "type": "string"
+          "emailValidated": {
+            "description": "Whether the user's email address has been validated",
+            "type": "boolean"
           }
         },
-        "required": ["status", "message"],
+        "required": ["id", "username", "email", "emailValidated"],
         "type": "object"
       },
       "ErrorResponse": {
@@ -3214,6 +3244,40 @@
             ],
             "default": null,
             "description": "URL string involved in the error, if applicable"
+          }
+        },
+        "required": ["status", "message"],
+        "type": "object"
+      },
+      "ContactRequest": {
+        "properties": {
+          "subject": {
+            "description": "Subject line of the contact message",
+            "examples": ["Bug report"],
+            "maxLength": 100,
+            "minLength": 5,
+            "type": "string"
+          },
+          "content": {
+            "description": "Body content of the contact message",
+            "maxLength": 1500,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["subject", "content"],
+        "type": "object"
+      },
+      "ContactResponseSchema": {
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
           }
         },
         "required": ["status", "message"],
@@ -5320,6 +5384,12 @@
         "type": "http",
         "scheme": "bearer",
         "description": "Admin authorization is enforced by a Flask-Login session-role check (User_Role.ADMIN), NOT a request header or bearer token. This scheme is declared only to mark routes that additionally require admin role on top of an authenticated session."
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Mobile /api/v1 access token: short-lived HS256 JWT sent as 'Authorization: Bearer <token>'. Obtained from the /api/v1/auth endpoints. No cookie, CSRF token, or X-Requested-With header is required."
       }
     }
   }
