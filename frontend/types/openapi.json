@@ -47,6 +47,401 @@
         }
       }
     },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "apiV1AuthLogin",
+        "tags": ["mobile-api"],
+        "security": [],
+        "description": "Log in with username and password, receiving an access + refresh token pair",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiLoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access + refresh token pair issued by the /api/v1/auth endpoints.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiTokenPairResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ApiAuthErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ApiAuthErrorCodes": {
+            "$ref": "#/components/schemas/ApiAuthErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/refresh": {
+      "post": {
+        "operationId": "apiV1AuthRefresh",
+        "tags": ["mobile-api"],
+        "security": [],
+        "description": "Rotate a refresh token for a new access + refresh token pair",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiRefreshRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access + refresh token pair issued by the /api/v1/auth endpoints.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiTokenPairResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ApiAuthErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ApiAuthErrorCodes": {
+            "$ref": "#/components/schemas/ApiAuthErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "apiV1AuthLogout",
+        "tags": ["mobile-api"],
+        "security": [],
+        "description": "Log out this device by revoking the presented refresh token's rotation family",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiLogoutRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ApiAuthErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ApiAuthErrorCodes": {
+            "$ref": "#/components/schemas/ApiAuthErrorCodes"
+          }
+        }
+      }
+    },
+    "/api/v1/auth/logout-all": {
+      "post": {
+        "operationId": "apiV1AuthLogoutAll",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Log out everywhere by revoking every refresh token for the authenticated user",
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/resend-validation": {
+      "post": {
+        "operationId": "apiV1AuthResendValidation",
+        "tags": ["mobile-api"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "description": "Re-send the email-validation email for the authenticated (unvalidated) user",
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/google": {
+      "post": {
+        "operationId": "apiV1AuthGoogle",
+        "tags": ["mobile-api"],
+        "security": [],
+        "description": "Exchange a native Google Sign-In id_token for an access + refresh token pair",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApiGoogleAuthRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Access + refresh token pair issued by the /api/v1/auth endpoints.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessEnvelope"
+                    },
+                    {
+                      "$ref": "#/components/schemas/ApiTokenPairResponseSchema"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ApiAuthErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_ApiAuthErrorCodes"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "ApiAuthErrorCodes": {
+            "$ref": "#/components/schemas/ApiAuthErrorCodes"
+          }
+        }
+      }
+    },
     "/contact": {
       "post": {
         "operationId": "submitContactUs",
@@ -3249,6 +3644,135 @@
         "required": ["status", "message"],
         "type": "object"
       },
+      "ApiLoginRequest": {
+        "description": "Mobile /api/v1 login body \u2014 identical fields/validation to the web\nLoginRequest, but a distinct class so the @api_route kwarg injection name\n(api_login_request) and OpenAPI schema name never collide with the web\nsurface.",
+        "properties": {
+          "username": {
+            "description": "Username for login",
+            "examples": ["john_doe"],
+            "maxLength": 20,
+            "minLength": 3,
+            "type": "string"
+          },
+          "password": {
+            "description": "Password for login",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["username", "password"],
+        "type": "object"
+      },
+      "ApiTokenPairResponseSchema": {
+        "description": "Access + refresh token pair issued by the /api/v1/auth endpoints.",
+        "properties": {
+          "accessToken": {
+            "description": "Short-lived HS256 JWT for Authorization: Bearer",
+            "type": "string"
+          },
+          "refreshToken": {
+            "description": "Opaque rotating refresh token; revoked server-side on logout",
+            "type": "string"
+          },
+          "tokenType": {
+            "const": "Bearer",
+            "description": "Always 'Bearer'",
+            "type": "string"
+          },
+          "expiresIn": {
+            "description": "Access token lifetime in seconds",
+            "type": "integer"
+          },
+          "user": {
+            "$ref": "#/components/schemas/ApiUserProfileSchema",
+            "description": "Profile of the authenticated user, including emailValidated"
+          }
+        },
+        "required": [
+          "accessToken",
+          "refreshToken",
+          "tokenType",
+          "expiresIn",
+          "user"
+        ],
+        "type": "object"
+      },
+      "ErrorResponse_ApiAuthErrorCodes": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ErrorResponse"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "errorCode": {
+                "$ref": "#/components/schemas/ApiAuthErrorCodes"
+              }
+            }
+          }
+        ]
+      },
+      "ApiAuthErrorCodes": {
+        "type": "integer",
+        "enum": [1, 2, 3, 4, 5],
+        "x-enum-varnames": [
+          "INVALID_FORM_INPUT",
+          "INVALID_REFRESH_TOKEN",
+          "REFRESH_TOKEN_REUSE_DETECTED",
+          "INVALID_GOOGLE_TOKEN",
+          "OAUTH_EMAIL_COLLISION"
+        ],
+        "description": "Error codes for ApiAuthErrorCodes"
+      },
+      "ApiRefreshRequest": {
+        "properties": {
+          "refreshToken": {
+            "description": "The refresh token to rotate for a new token pair",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["refreshToken"],
+        "type": "object"
+      },
+      "ApiLogoutRequest": {
+        "properties": {
+          "refreshToken": {
+            "description": "The refresh token whose device session should be revoked",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["refreshToken"],
+        "type": "object"
+      },
+      "StatusMessageResponseSchema": {
+        "description": "Status and message response",
+        "properties": {
+          "status": {
+            "description": "Response status: Success, Failure, or No change",
+            "enum": ["Success", "Failure", "No change"],
+            "type": "string"
+          },
+          "message": {
+            "description": "Human-readable response message",
+            "type": "string"
+          }
+        },
+        "required": ["status", "message"],
+        "type": "object"
+      },
+      "ApiGoogleAuthRequest": {
+        "properties": {
+          "idToken": {
+            "description": "Google id_token obtained from the native Google Sign-In SDK",
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "required": ["idToken"],
+        "type": "object"
+      },
       "ContactRequest": {
         "properties": {
           "subject": {
@@ -4650,22 +5174,6 @@
           }
         },
         "required": ["status"],
-        "type": "object"
-      },
-      "StatusMessageResponseSchema": {
-        "description": "Status and message response",
-        "properties": {
-          "status": {
-            "description": "Response status: Success, Failure, or No change",
-            "enum": ["Success", "Failure", "No change"],
-            "type": "string"
-          },
-          "message": {
-            "description": "Human-readable response message",
-            "type": "string"
-          }
-        },
-        "required": ["status", "message"],
         "type": "object"
       },
       "CreateURLRequest": {

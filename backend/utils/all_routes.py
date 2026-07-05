@@ -102,6 +102,12 @@ class API_V1_ROUTES:
 
     _API_V1 = "api_v1."
     GET_ME = _API_V1 + "api_v1_get_me"
+    AUTH_LOGIN = _API_V1 + "api_v1_auth_login"
+    AUTH_REFRESH = _API_V1 + "api_v1_auth_refresh"
+    AUTH_LOGOUT = _API_V1 + "api_v1_auth_logout"
+    AUTH_LOGOUT_ALL = _API_V1 + "api_v1_auth_logout_all"
+    AUTH_RESEND_VALIDATION = _API_V1 + "api_v1_auth_resend_validation"
+    AUTH_GOOGLE = _API_V1 + "api_v1_auth_google"
 
 
 class ROUTES:

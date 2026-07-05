@@ -728,6 +728,76 @@ auto-coverage only (no DOMAIN events).
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                     |
 | **Tests**      | `tests/integration/mobile_api/test_me_endpoint.py` (marker: `mobile_api`)                                                                                                                                         |
 
+### POST /api/v1/auth/login
+
+| Layer          | Location                                                                                                                                                                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_login`                                                                                                                                                                                                                                          |
+| **Decorators** | `@api_route(request_schema=ApiLoginRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 429})`, `@limiter.limit("10/minute")`                                                                                       |
+| **Service**    | `backend/api_v1/services/auth.py:login_user_for_api` (mirrors `login_user_to_u4i` validation; issues token pair even for unvalidated-email accounts per design doc)                                                                                                                   |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiLoginRequest`                                                                                                                                                                                                                                |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                               |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                                         |
+| **Tests**      | `tests/integration/mobile_api/test_auth_login.py`, `tests/integration/mobile_api/test_auth_rate_limit.py` (marker: `mobile_api`)                                                                                                                                                      |
+
+### POST /api/v1/auth/refresh
+
+| Layer          | Location                                                                                                                                                                                              |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_refresh`                                                                                                                                                        |
+| **Decorators** | `@api_route(request_schema=ApiRefreshRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 429})`, `@limiter.limit("10/minute")` |
+| **Service**    | `backend/api_v1/services/auth.py:refresh_api_tokens` (rotation + reuse-detection chain revocation via `rotate_refresh_token`)                                                                         |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiRefreshRequest`                                                                                                                                              |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                               |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                         |
+| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                                 |
+
+### POST /api/v1/auth/logout
+
+| Layer          | Location                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_logout`                                                                                                                                                             |
+| **Decorators** | `@api_route(request_schema=ApiLogoutRequest, response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 429})`, `@limiter.limit("10/minute")`     |
+| **Service**    | `backend/api_v1/services/auth.py:logout_api_device` (revokes the presented refresh token's rotation family)                                                                                               |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiLogoutRequest`                                                                                                                                                   |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                   |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                             |
+| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                                     |
+
+### POST /api/v1/auth/logout-all
+
+| Layer          | Location                                                                                                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_logout_all`                                                                                                                                     |
+| **Decorators** | `@api_authentication_required`, `@api_route(response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 429})`, `@limiter.limit("10/minute")` |
+| **Service**    | `backend/api_v1/services/auth.py:logout_api_everywhere` (revokes every refresh token row for the bearer user)                                                                         |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                               |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                         |
+| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                 |
+
+### POST /api/v1/auth/resend-validation
+
+| Layer          | Location                                                                                                                                                                                              |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_resend_validation`                                                                                                                                              |
+| **Decorators** | `@api_authentication_required`, `@api_route(response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 404, 429})`, `@limiter.limit("10/minute")` |
+| **Service**    | `backend/api_v1/services/auth.py:resend_validation_email_for_api` (reuses `Email_Validations` attempt limits + shared Mailjet result handling; JSON instead of the web redirect)                      |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                               |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                         |
+| **Tests**      | `tests/integration/mobile_api/test_auth_resend_validation.py` (marker: `mobile_api`)                                                                                                                  |
+
+### POST /api/v1/auth/google
+
+| Layer          | Location                                                                                                                                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_google`                                                                                                                                                                 |
+| **Decorators** | `@api_route(request_schema=ApiGoogleAuthRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 409, 429})`, `@limiter.limit("10/minute")` |
+| **Service**    | `backend/api_v1/services/auth.py:google_auth_for_api` → `google_tokens.py:verify_google_id_token` (RS256 signature + audience + issuer via Google JWKS) → `find_or_create_oauth_user`                         |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiGoogleAuthRequest`                                                                                                                                                   |
+| **JS Module**  | N/A — consumed by native mobile clients (native Google Sign-In SDK supplies the id_token)                                                                                                                     |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                 |
+| **Tests**      | `tests/integration/mobile_api/test_auth_google.py` (marker: `mobile_api`)                                                                                                                                     |
+
 ---
 
 ## Cross-Cutting Patterns

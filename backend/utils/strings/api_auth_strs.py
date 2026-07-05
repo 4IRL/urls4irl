@@ -22,12 +22,14 @@ class API_AUTH:
 class API_AUTH_FAILURE(FAILURE_GENERAL):
     AUTHENTICATION_REQUIRED = "Authentication required."
     EMAIL_VALIDATION_REQUIRED = "Email validation required."
+    EMAIL_ALREADY_VALIDATED = "Email is already validated."
     INVALID_REFRESH_TOKEN = "Invalid, expired, or revoked refresh token."
     REFRESH_TOKEN_REUSE_DETECTED = (
         "Refresh token reuse detected. All sessions for this device were revoked."
     )
     UNABLE_TO_VERIFY_GOOGLE_TOKEN = "Unable to verify Google identity token."
-    EMAIL_ALREADY_REGISTERED = (
-        "This email is already registered with a password. "
-        "Log in with your password instead."
-    )
+
+
+class API_AUTH_SUCCESS:
+    LOGGED_OUT = "Logged out."
+    LOGGED_OUT_EVERYWHERE = "Logged out on all devices."
