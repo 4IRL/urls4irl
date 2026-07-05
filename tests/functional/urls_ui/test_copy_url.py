@@ -62,7 +62,7 @@ def test_copy_url_btn_click_fail(
     page: Page,
     create_test_urls,
     provide_app: Flask,
-    clipboard_mock_playwright: ClipboardMockHelper,
+    clipboard_mock: ClipboardMockHelper,
 ):
     """
     Tests a User's ability to copy the URL when clicking on URL button, and that
@@ -104,8 +104,8 @@ def test_copy_url_btn_click_fail(
     )
     assert tooltip_on_hvr.inner_text() == STRINGS.COPY_URL_TOOLTIP
 
-    clipboard_mock_playwright.setup_clipboard_failure()
-    assert clipboard_mock_playwright.verify_mock_setup()
+    clipboard_mock.setup_clipboard_failure()
+    assert clipboard_mock.verify_mock_setup()
 
     wait_then_click_element(page=page, css_selector=copy_btn)
 
@@ -131,7 +131,7 @@ def test_copy_url_btn_click(
     page: Page,
     create_test_urls,
     provide_app: Flask,
-    clipboard_mock_playwright: ClipboardMockHelper,
+    clipboard_mock: ClipboardMockHelper,
 ):
     """
     Tests a User's ability to copy the URL when clicking on URL button, and that
@@ -177,8 +177,8 @@ def test_copy_url_btn_click(
     )
     assert tooltip_on_hvr.inner_text() == STRINGS.COPY_URL_TOOLTIP
 
-    clipboard_mock_playwright.setup_clipboard_mock()
-    assert clipboard_mock_playwright.verify_mock_setup()
+    clipboard_mock.setup_clipboard_mock()
+    assert clipboard_mock.verify_mock_setup()
 
     wait_then_click_element(page=page, css_selector=copy_btn)
 
@@ -192,7 +192,7 @@ def test_copy_url_btn_click(
     )
     assert tooltip_on_click.inner_text() == STRINGS.COPIED_URL_TOOLTIP
 
-    assert clipboard_mock_playwright.get_clipboard_content() == url_string
+    assert clipboard_mock.get_clipboard_content() == url_string
 
     wait_for_animation_to_end_check_top_lhs_corner(
         page=page, css_selector=f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
@@ -206,7 +206,7 @@ def test_copy_url_btn_key(
     page: Page,
     create_test_urls,
     provide_app: Flask,
-    clipboard_mock_playwright: ClipboardMockHelper,
+    clipboard_mock: ClipboardMockHelper,
 ):
     """
     Tests a User's ability to copy the URL when clicking on URL button, and that
@@ -253,8 +253,8 @@ def test_copy_url_btn_key(
     )
     assert tooltip_on_hvr.inner_text() == STRINGS.COPY_URL_TOOLTIP
 
-    clipboard_mock_playwright.setup_clipboard_mock()
-    assert clipboard_mock_playwright.verify_mock_setup()
+    clipboard_mock.setup_clipboard_mock()
+    assert clipboard_mock.verify_mock_setup()
 
     url_copy_btn = wait_then_get_element(page=page, css_selector=copy_btn)
     url_copy_btn.press("Enter")
@@ -269,7 +269,7 @@ def test_copy_url_btn_key(
     )
     assert tooltip_on_click.inner_text() == STRINGS.COPIED_URL_TOOLTIP
 
-    assert clipboard_mock_playwright.get_clipboard_content() == url_string
+    assert clipboard_mock.get_clipboard_content() == url_string
 
     wait_for_animation_to_end_check_top_lhs_corner(
         page=page, css_selector=f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"

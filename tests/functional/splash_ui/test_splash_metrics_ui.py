@@ -28,7 +28,7 @@ def test_login_submit_emits_to_anonymous_metrics(
     create_test_users: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN the splash page is loaded with a registered, validated user and
@@ -60,7 +60,7 @@ def test_login_submit_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright,
+        pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_LOGIN_SUBMIT,
         expected_dimensions=expected_dimensions,
     )

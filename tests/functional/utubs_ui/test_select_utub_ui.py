@@ -13,12 +13,12 @@ from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
 )
-from tests.functional.login_utils import create_user_session_and_provide_session_id
 from tests.functional.playwright_login_utils import (
     login_user_and_select_utub_by_utubid,
 )
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
+    create_user_session_and_provide_session_id,
     current_base_url,
     login_user_to_home_page,
     login_user_with_cookie_from_session,
@@ -163,7 +163,7 @@ def test_utub_member_icon(page: Page, create_test_tags, provide_app: Flask):
             Utub_Members.user_id == user_id
         ).all()
 
-    session_id = create_user_session_and_provide_session_id(app, user_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
     base_url = current_base_url(page=page)
     login_user_with_cookie_from_session(
         context=page.context, session_id=session_id, base_url=base_url

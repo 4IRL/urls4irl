@@ -89,7 +89,6 @@ TEST_DB_URI = build_db_uri(
 
 TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_METRICS_REDIS_URI = environ.get(ENV.TEST_METRICS_REDIS_URI, default="memory://")
-TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
 TEST_PLAYWRIGHT_URI = environ.get(ENV.PLAYWRIGHT_WS_URL, default=None)
 
 # Dummy Google OAuth credentials shared by ConfigTestUI (below) and
@@ -247,8 +246,6 @@ class ConfigTest(Config):
         if (TEST_REDIS_URI is not None and TEST_REDIS_URI != "memory://")
         else ""
     )
-    if isinstance(TEST_SELENIUM_URI, str):
-        TEST_SELENIUM_URI = TEST_SELENIUM_URI
     if isinstance(TEST_PLAYWRIGHT_URI, str):
         TEST_PLAYWRIGHT_URI = TEST_PLAYWRIGHT_URI
 
@@ -267,8 +264,8 @@ class ConfigTestUI(ConfigTest):
 
     def __init__(self) -> None:
         super().__init__()
-        # Override VITE_URL for Docker-based Selenium tests
-        # Chrome in Selenium container reaches Vite via Docker network hostname
+        # Override VITE_URL for Docker-based UI tests
+        # Chromium in the Playwright container reaches Vite via Docker network hostname
         if IS_DOCKER and VITE_INTERNAL_HOST:
             from urllib.parse import urlparse, urlunparse
 

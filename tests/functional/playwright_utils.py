@@ -1,18 +1,19 @@
 from dataclasses import dataclass
 from enum import Enum
 import re
+import secrets
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
-from flask import Flask
+from flask import Flask, session
 from playwright.sync_api import BrowserContext, Locator, Page, expect
 
+from backend.models.users import Users
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import GenericPageLocator
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.login_utils import create_user_session_and_provide_session_id
 
 # Baseline auto-retrying assertion timeout for all Playwright `expect()` calls.
 # Matches the existing Selenium `wait_for_element_presence(timeout=10)` baseline
@@ -700,6 +701,41 @@ def current_base_url(*, page: Page) -> str:
     return f"{split_url.scheme}://{split_url.netloc}"
 
 
+def _create_random_identifier() -> str:
+    return secrets.token_hex(64)
+
+
+def _create_random_sid() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def create_user_session_and_provide_session_id(*, app: Flask, user_id: int) -> str:
+    """
+    Manually creates a user session to allow user to be logged in
+    without needing UI interaction.
+
+    Args:
+        app (Flask): The Flask application is necessary to generate a request context in order to insert the session into the appropriate session engine
+        user_id (int): The user ID wanting to be logged in as
+
+    Returns:
+        (str): The session ID of the user that can be used to log the user in
+    """
+    random_sid = _create_random_sid()
+    with app.test_request_context("/"):
+        user: Users = Users.query.get(user_id)
+        session["_user_id"] = user.get_id()
+        session["_fresh"] = True
+        session["_id"] = _create_random_identifier()
+        session.sid = random_sid
+        session.modified = True
+
+        app.session_interface.save_session(
+            app, session, response=app.make_response("Testing")
+        )
+    return random_sid
+
+
 def login_user_to_home_page(*, app: Flask, page: Page, user_id: int) -> None:
     """Log `user_id` in via a pre-built server-side session cookie, then
     navigate to the authenticated home page.
@@ -709,7 +745,7 @@ def login_user_to_home_page(*, app: Flask, page: Page, user_id: int) -> None:
     origin is derived from the page's current URL and the navigation goes
     straight to /home.
     """
-    session_id = create_user_session_and_provide_session_id(app, user_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
     base_url = current_base_url(page=page)
     login_user_with_cookie_from_session(
         context=page.context, session_id=session_id, base_url=base_url

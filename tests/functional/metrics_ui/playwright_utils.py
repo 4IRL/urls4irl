@@ -7,8 +7,10 @@ from backend import db
 from backend.config import ConfigTestUI
 from backend.models.users import User_Role, Users
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.login_utils import create_user_session_and_provide_session_id
-from tests.functional.playwright_utils import login_user_with_cookie_from_session
+from tests.functional.playwright_utils import (
+    create_user_session_and_provide_session_id,
+    login_user_with_cookie_from_session,
+)
 
 ADMIN_METRICS_DASHBOARD_PATH: str = "/admin/metrics"
 
@@ -49,7 +51,7 @@ def login_admin_and_open_metrics_dashboard(
     via `http://web:<port>`) and on the host (`http://127.0.0.1:<port>`).
     """
     promote_user_to_admin(app=app, user_id=user_id)
-    session_id = create_user_session_and_provide_session_id(app, user_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
     base_url = (
         UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
     )

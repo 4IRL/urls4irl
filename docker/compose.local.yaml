@@ -31,7 +31,6 @@ services:
       - FLASK_ENV=development
       - BASE_EMAIL=u4i@urls4irl.app
       - DOCKER=true
-      - SELENIUM_URL=http://selenium:4444/wd/hub
       - PLAYWRIGHT_WS_URL=ws://playwright:3000/
       - VITE_DEV_SERVER=true
       - VITE_URL=http://localhost:5173
@@ -90,24 +89,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-
-  selenium:
-    image: selenium/standalone-chromium:latest
-    container_name: u4i-selenium
-    depends_on:
-      web:
-        condition: service_healthy
-      vite:
-        condition: service_started
-    environment:
-      - START_XVFB=false
-      - SE_NODE_MAX_SESSIONS=12
-      - JAVA_OPTS=-XX:ActiveProcessorCount=12
-      - SE_NODE_OVERRIDE_MAX_SESSIONS=12
-    ports:
-      - "4444:4444"
-    volumes:
-      - /dev/shm:/dev/shm
 
   playwright:
     image: mcr.microsoft.com/playwright:v1.60.0-noble

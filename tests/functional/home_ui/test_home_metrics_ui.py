@@ -69,7 +69,7 @@ def test_deck_collapse_emits_to_anonymous_metrics(
     create_test_tags: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN a logged-in user on the home page with a UTub selected (so the
@@ -105,7 +105,7 @@ def test_deck_collapse_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright,
+        pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_DECK_COLLAPSE,
         expected_dimensions=expected_dimensions,
     )
@@ -118,7 +118,7 @@ def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
     create_test_tags: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN a logged-in user on the desktop home page with a UTub selected and
@@ -146,7 +146,7 @@ def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
         collapse_row = wait_for_metrics_row(
             browser=page,
             redis_client=metrics_redis_client,
-            pg_conn=pg_conn_for_metrics_playwright,
+            pg_conn=pg_conn_for_metrics,
             event_name=EventName.UI_LHS_COLLAPSE,
             expected_dimensions={
                 "device_type": _EXPECTED_DEVICE_TYPE,
@@ -160,7 +160,7 @@ def test_lhs_collapse_and_expand_emit_to_anonymous_metrics(
         expand_row = wait_for_metrics_row(
             browser=page,
             redis_client=metrics_redis_client,
-            pg_conn=pg_conn_for_metrics_playwright,
+            pg_conn=pg_conn_for_metrics,
             event_name=EventName.UI_LHS_EXPAND,
             expected_dimensions={
                 "device_type": _EXPECTED_DEVICE_TYPE,
@@ -179,7 +179,7 @@ def test_rate_limit_hit_emits_to_anonymous_metrics(
     create_test_users: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN a logged-in user on the home page and the metrics pipeline
@@ -230,7 +230,7 @@ def test_rate_limit_hit_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright,
+        pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_RATE_LIMIT_HIT,
         expected_dimensions=expected_dimensions,
     )

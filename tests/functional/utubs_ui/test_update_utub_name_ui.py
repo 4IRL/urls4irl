@@ -9,7 +9,6 @@ from backend.utils.constants import CONSTANTS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_UPDATE_SAME_NAME
 from tests.functional.db_utils import get_utub_this_user_created
-from tests.functional.login_utils import create_user_session_and_provide_session_id
 from tests.functional.playwright_assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
@@ -22,6 +21,7 @@ from tests.functional.playwright_login_utils import (
 )
 from tests.functional.playwright_utils import (
     add_forced_rate_limit_header,
+    create_user_session_and_provide_session_id,
     current_base_url,
     get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
@@ -56,7 +56,7 @@ def test_select_utub_changes_utub_name(
     """
     app = provide_app
     user_id = 1
-    session_id = create_user_session_and_provide_session_id(app, user_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
     base_url = current_base_url(page=page)
     login_user_with_cookie_from_session(
         context=page.context, session_id=session_id, base_url=base_url

@@ -37,7 +37,7 @@ def test_utub_select_emits_to_anonymous_metrics(
     create_test_utubs: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN a logged-in user with at least one UTub and the metrics pipeline
@@ -69,7 +69,7 @@ def test_utub_select_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright,
+        pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_UTUB_SELECT,
         expected_dimensions=expected_dimensions,
     )
@@ -82,7 +82,7 @@ def test_utub_create_form_submit_emits_to_anonymous_metrics(
     create_test_users: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN a logged-in user with no UTubs and the metrics pipeline activated
@@ -121,7 +121,7 @@ def test_utub_create_form_submit_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright,
+        pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_FORM_SUBMIT,
         expected_dimensions=expected_dimensions,
     )

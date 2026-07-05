@@ -7,9 +7,6 @@ from flask.testing import FlaskCliRunner
 from playwright.sync_api import Browser, Page, sync_playwright
 import pytest
 from redis import Redis
-from selenium import webdriver
-from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.chrome.options import Options
 from sqlalchemy import create_engine, text
 
 from backend import create_app, db
@@ -34,11 +31,6 @@ from tests.functional.playwright_utils import (
     PageBundle,
     add_cookie_banner_cookie as add_playwright_cookie_banner_cookie,
 )
-from tests.functional.selenium_utils import (
-    ChromeRemoteWebDriver,
-    add_cookie_banner_cookie,
-    wait_for_page_complete_and_dom_stable,
-)
 from tests.functional.ui_test_setup import (
     clear_db,
     find_open_port,
@@ -46,16 +38,12 @@ from tests.functional.ui_test_setup import (
     ping_server,
     run_app,
 )
-from tests.functional.urls_ui.playwright_utils import (
-    ClipboardMockHelper as PlaywrightClipboardMockHelper,
-)
+from tests.functional.urls_ui.playwright_utils import ClipboardMockHelper
 
 # Redis ships with 16 databases (indices 0-15) by default per the default redis.conf
 REDIS_DEFAULT_MAX_DATABASES = 16
 
-# Canonical desktop viewport for the shared session-scoped Chrome driver. Defined
-# once here so build_driver and the per-test teardown agree on a single size,
-# preventing a test that resizes the shared window from polluting later tests.
+# Canonical desktop viewport for Playwright desktop contexts.
 DESKTOP_VIEWPORT_WIDTH_PX = 1920
 DESKTOP_VIEWPORT_HEIGHT_PX = 1080
 
@@ -249,49 +237,6 @@ def provide_app(worker_config: ConfigTestUI) -> Generator[Flask, None, None]:
 
 
 @pytest.fixture(scope="session")
-def build_driver(
-    provide_port: int, parallelize_app, turn_off_headless
-) -> Generator[WebDriver, None, None]:
-    """
-    Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
-    """
-    config = ConfigTest()
-    open_port = provide_port
-    options = Options()
-    options.add_argument("--disable-notifications")
-
-    if not turn_off_headless:
-        options.add_argument("--headless=new")
-
-    if config.DOCKER:
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-
-        driver = ChromeRemoteWebDriver(
-            command_executor=config.TEST_SELENIUM_URI, options=options
-        )
-        url = UI_TEST_STRINGS.DOCKER_BASE_URL
-    else:
-        driver = webdriver.Chrome(options=options)
-        url = UI_TEST_STRINGS.BASE_URL
-
-    driver.set_window_size(
-        width=DESKTOP_VIEWPORT_WIDTH_PX, height=DESKTOP_VIEWPORT_HEIGHT_PX
-    )
-
-    ping_server(url + str(open_port))
-
-    yield driver
-
-    # Teardown: Quit the browser after tests
-    try:
-        driver.quit()
-    except Exception:
-        pass
-
-
-@pytest.fixture(scope="session")
 def playwright_instance():
     """Session-scoped Playwright process. Session scope is required — a new
     Playwright driver process per test would exhaust ports under n=8 load."""
@@ -304,10 +249,8 @@ def playwright_instance():
 def build_page_browser(
     playwright_instance, provide_port: int, parallelize_app, turn_off_headless
 ) -> Generator[Browser, None, None]:
-    """Playwright twin of `build_driver`: connects to the containerized
-    browser-server in Docker mode, else launches a local chromium. Forms a
-    parallel, non-coupled chain — never a dependency of (or for) the
-    Selenium `build_driver` fixture family.
+    """Session-scoped browser: connects to the containerized browser-server
+    in Docker mode, else launches a local chromium.
     """
     config = ConfigTest()
     base_url = (
@@ -342,10 +285,9 @@ def page_without_cookie_banner_cookie(
     runner: Tuple[Flask, FlaskCliRunner],
     debug_strings,
 ) -> Generator[PageBundle, None, None]:
-    """Playwright twin of `browser_without_cookie_banner_cookie`: clears the
-    DB and yields a fresh, auto-isolated context+page per test. No manual
-    cookie/tab/viewport cleanup is needed — the context is closed after each
-    test, unlike the shared session-scoped Selenium driver.
+    """Clears the DB and yields a fresh, auto-isolated context+page per
+    test. No manual cookie/tab/viewport cleanup is needed — the context is
+    closed after each test.
     """
     base_url = (
         UI_TEST_STRINGS.DOCKER_BASE_URL
@@ -441,185 +383,6 @@ def page_mobile_portrait(
     )
     bundle.page.reload()
     yield bundle.page
-
-
-@pytest.fixture
-def build_driver_mobile_portrait(
-    provide_port: int, parallelize_app, turn_off_headless
-) -> Generator[WebDriver, None, None]:
-    """
-    Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
-    """
-    config = ConfigTest()
-    open_port = provide_port
-    options = Options()
-    options.add_argument("--disable-notifications")
-
-    if not turn_off_headless:
-        options.add_argument("--headless=new")
-
-    if config.DOCKER:
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-
-        driver = ChromeRemoteWebDriver(
-            command_executor=config.TEST_SELENIUM_URI, options=options
-        )
-        url = UI_TEST_STRINGS.DOCKER_BASE_URL
-    else:
-        driver = webdriver.Chrome(options=options)
-        url = UI_TEST_STRINGS.BASE_URL
-
-    driver.set_window_size(width=420, height=900)
-
-    # Emulate a coarse-pointer touch device. Touch emulation is required for
-    # `(any-pointer: coarse)` / `(pointer: coarse)` to match — without it,
-    # `Emulation.setEmulatedMedia` silently no-ops for the pointer feature.
-    driver.execute_cdp_cmd(
-        "Emulation.setTouchEmulationEnabled",
-        {"enabled": True, "maxTouchPoints": 5},
-    )
-
-    driver.execute_cdp_cmd(
-        "Emulation.setEmulatedMedia",
-        {
-            "features": [
-                {"name": "any-pointer", "value": "coarse"},
-                {"name": "pointer", "value": "coarse"},
-                {"name": "hover", "value": "none"},
-                {"name": "any-hover", "value": "none"},
-            ],
-        },
-    )
-
-    ping_server(url + str(open_port))
-
-    yield driver
-
-    # Teardown: Quit the browser after tests
-    try:
-        driver.quit()
-    except Exception:
-        pass
-
-
-@pytest.fixture
-def browser_without_cookie_banner_cookie(
-    provide_port: int,
-    provide_config: ConfigTest,
-    build_driver: WebDriver,
-    runner: Tuple[Flask, FlaskCliRunner],
-    debug_strings,
-):
-    """
-    This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
-    """
-    open_port = provide_port
-    url = (
-        UI_TEST_STRINGS.DOCKER_BASE_URL
-        if provide_config.DOCKER
-        else UI_TEST_STRINGS.BASE_URL
-    )
-    driver = build_driver
-
-    driver.get(url + str(open_port) + "/")
-    wait_for_page_complete_and_dom_stable(driver)
-
-    init_handle = driver.current_window_handle
-
-    clear_db(runner, debug_strings)
-
-    # Return the driver object to be used in the test functions
-    yield driver
-
-    # Clean up any additional tabs that may have been opened during tests
-    for handle in driver.window_handles:
-        if handle != init_handle:
-            driver.switch_to.window(handle)
-            driver.close()
-
-    # Return to the initial tab, clear cookies while still on app domain,
-    # then navigate to about:blank to release renderer state
-    driver.switch_to.window(init_handle)
-    driver.delete_all_cookies()
-    driver.get("about:blank")
-
-    # Restore the canonical desktop window size so a test that resized the
-    # shared session-scoped driver cannot pollute later desktop tests.
-    driver.set_window_size(
-        width=DESKTOP_VIEWPORT_WIDTH_PX, height=DESKTOP_VIEWPORT_HEIGHT_PX
-    )
-
-
-@pytest.fixture
-def browser(
-    browser_without_cookie_banner_cookie: WebDriver,
-):
-    """
-    This fixture adds the consent cookie before all tests
-    """
-    browser = browser_without_cookie_banner_cookie
-    add_cookie_banner_cookie(browser)
-
-    yield browser
-
-
-@pytest.fixture
-def browser_mobile_portrait_without_cookie_banner_cookie(
-    provide_port: int,
-    provide_config: ConfigTest,
-    build_driver_mobile_portrait: WebDriver,
-    runner: Tuple[Flask, FlaskCliRunner],
-    debug_strings,
-):
-    """
-    This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
-    """
-    open_port = provide_port
-    url = (
-        UI_TEST_STRINGS.DOCKER_BASE_URL
-        if provide_config.DOCKER
-        else UI_TEST_STRINGS.BASE_URL
-    )
-    driver = build_driver_mobile_portrait
-
-    driver.get(url + str(open_port) + "/")
-    driver.delete_all_cookies()
-    driver.get(url + str(open_port) + "/")
-    wait_for_page_complete_and_dom_stable(driver)
-
-    init_handle = driver.current_window_handle
-
-    clear_db(runner, debug_strings)
-
-    # Return the driver object to be used in the test functions
-    yield driver
-
-    # Clean up any additional tabs that may have been opened during tests
-    for handle in driver.window_handles:
-        if handle != init_handle:
-            driver.switch_to.window(handle)
-            driver.close()
-
-    # Return to the initial tab, clear cookies while still on app domain,
-    # then navigate to about:blank to release renderer state
-    driver.switch_to.window(init_handle)
-    driver.delete_all_cookies()
-    driver.get("about:blank")
-
-
-@pytest.fixture
-def browser_mobile_portrait(
-    browser_mobile_portrait_without_cookie_banner_cookie: WebDriver,
-):
-    """
-    This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
-    """
-    browser = browser_mobile_portrait_without_cookie_banner_cookie
-    add_cookie_banner_cookie(browser)
-
-    yield browser
 
 
 @pytest.fixture
@@ -756,10 +519,9 @@ def create_test_tags(runner, debug_strings):
 
 
 @pytest.fixture(scope="function")
-def clipboard_mock_playwright(page: Page):
-    """Pytest fixture that sets up the Playwright clipboard mock for headless
-    testing"""
-    mock_helper = PlaywrightClipboardMockHelper(page)
+def clipboard_mock(page: Page):
+    """Pytest fixture that sets up the clipboard mock for headless testing"""
+    mock_helper = ClipboardMockHelper(page)
 
     yield mock_helper
     mock_helper.cleanup_mock()

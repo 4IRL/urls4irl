@@ -78,6 +78,7 @@ def test_register_to_login_modal_btn(page: Page):
     THEN ensure the modal view changes
     """
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
+    wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN_FROM_REGISTER)
     wait_for_modal_hidden(page=page, modal_selector=SPL.REGISTER_MODAL)
     wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
@@ -98,6 +99,7 @@ def test_dismiss_login_modal_btn(page: Page):
     THEN the modal is closed
     """
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BTN_CLOSE)
     wait_until_hidden(page=page, css_selector=SPL.LOGIN_MODAL)
 
@@ -125,6 +127,7 @@ def test_dismiss_login_modal_x(page: Page):
     THEN the modal is closed
     """
     wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+    wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_X_MODAL_DISMISS)
     wait_until_hidden(page=page, css_selector=SPL.LOGIN_MODAL)
 

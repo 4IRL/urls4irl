@@ -31,7 +31,7 @@ def test_member_invite_form_submit_emits_to_anonymous_metrics(
     create_test_utubs: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright: Any,
+    pg_conn_for_metrics: Any,
 ):
     """
     GIVEN a logged-in UTub owner with a UTub selected and the metrics
@@ -74,7 +74,7 @@ def test_member_invite_form_submit_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright,
+        pg_conn=pg_conn_for_metrics,
         event_name=EventName.UI_FORM_SUBMIT,
         expected_dimensions=expected_dimensions,
     )

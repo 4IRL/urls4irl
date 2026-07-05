@@ -31,7 +31,7 @@ def test_mobile_menu_open_emits_to_anonymous_metrics(
     create_test_users: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright_mobile: Any,
+    pg_conn_for_metrics_mobile: Any,
 ):
     """
     GIVEN a logged-in user on the home page in a mobile-portrait viewport
@@ -62,7 +62,7 @@ def test_mobile_menu_open_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright_mobile,
+        pg_conn=pg_conn_for_metrics_mobile,
         event_name=EventName.UI_NAVBAR_DROPDOWN_OPEN,
         expected_dimensions=expected_dimensions,
     )
@@ -75,7 +75,7 @@ def test_mobile_menu_close_emits_to_anonymous_metrics(
     create_test_users: Any,
     provide_app: Flask,
     metrics_redis_client: Redis,
-    pg_conn_for_metrics_playwright_mobile: Any,
+    pg_conn_for_metrics_mobile: Any,
 ):
     """
     GIVEN a logged-in user on the home page in a mobile-portrait viewport
@@ -99,7 +99,7 @@ def test_mobile_menu_close_emits_to_anonymous_metrics(
     login_user_to_home_page(app=provide_app, page=page, user_id=user_id_for_test)
 
     rows_before = query_anonymous_metrics_rows(
-        pg_conn_for_metrics_playwright_mobile,
+        pg_conn_for_metrics_mobile,
         event_name=EventName.UI_NAVBAR_DROPDOWN_CLOSE.value,
     )
     assert rows_before == []
@@ -113,7 +113,7 @@ def test_mobile_menu_close_emits_to_anonymous_metrics(
     matched_row = wait_for_metrics_row(
         browser=page,
         redis_client=metrics_redis_client,
-        pg_conn=pg_conn_for_metrics_playwright_mobile,
+        pg_conn=pg_conn_for_metrics_mobile,
         event_name=EventName.UI_NAVBAR_DROPDOWN_CLOSE,
         expected_dimensions=expected_dimensions,
     )

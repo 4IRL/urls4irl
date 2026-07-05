@@ -3,7 +3,6 @@ iniconfig==2.0.0
 pluggy==1.5.0
 pytest==9.0.3
 pytest-xdist==3.6.1
-selenium==4.20.0
 playwright==1.60.0
 pyee==13.0.1
 -r requirements-prod.txt
