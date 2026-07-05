@@ -118,6 +118,21 @@ class API_V1_ROUTES:
     # Member routes
     CREATE_MEMBER = _API_V1 + "api_v1_create_member"
     REMOVE_MEMBER = _API_V1 + "api_v1_remove_member"
+    # URL routes
+    CREATE_URL = _API_V1 + "api_v1_create_url"
+    GET_URL = _API_V1 + "api_v1_get_url"
+    UPDATE_URL = _API_V1 + "api_v1_update_url"
+    UPDATE_URL_TITLE = _API_V1 + "api_v1_update_url_title"
+    DELETE_URL = _API_V1 + "api_v1_delete_url"
+    # URL-tag routes
+    CREATE_URL_TAG = _API_V1 + "api_v1_create_utub_url_tag"
+    CREATE_URL_TAGS_BATCH = _API_V1 + "api_v1_create_utub_url_tags"
+    DELETE_URL_TAG = _API_V1 + "api_v1_delete_utub_url_tag"
+    # UTub-tag routes
+    CREATE_UTUB_TAG = _API_V1 + "api_v1_create_utub_tag"
+    DELETE_UTUB_TAG = _API_V1 + "api_v1_delete_utub_tag"
+    # Search
+    SEARCH = _API_V1 + "api_v1_search_across_utubs"
 
 
 class ROUTES:

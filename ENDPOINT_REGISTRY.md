@@ -890,6 +890,134 @@ auto-coverage only (no DOMAIN events).
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                         |
 | **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                      |
 
+### POST /api/v1/utubs/\<utub_id\>/urls
+
+| Layer          | Location                                                                                                                                                                                                                                                               |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_create_url`                                                                                                                                                                                                                      |
+| **Decorators** | `@api_utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404, 409})`                                                         |
+| **Service**    | `backend/urls/services/create_urls.py:create_url_in_utub`                                                                                                                                                                                                             |
+| **Schema**     | `backend/schemas/requests/urls.py:CreateURLRequest` (request); `backend/schemas/urls.py:UrlCreatedResponseSchema` (response)                                                                                                                                           |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                          |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                          |
+
+### GET /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>
+
+| Layer          | Location                                                                                                                                                                                                                           |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_get_url`                                                                                                                                                                                     |
+| **Decorators** | `@api_utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                                           |
+| **Service**    | `backend/urls/services/read_urls.py:get_url_in_utub`                                                                                                                                                                              |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                            |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                      |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                      |
+
+### PATCH /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>
+
+| Layer          | Location                                                                                                                                                                                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_update_url`                                                                                                                                                                                                                           |
+| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404, 409})`         |
+| **Service**    | `backend/urls/services/update_urls.py:update_url_in_utub`                                                                                                                                                                                                                  |
+| **Schema**     | `backend/schemas/requests/urls.py:UpdateURLStringRequest` (request); `backend/schemas/urls.py:UrlUpdatedResponseSchema` (response)                                                                                                                                          |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                     |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                               |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                               |
+
+### PATCH /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/title
+
+| Layer          | Location                                                                                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_update_url_title`                                                                                                                                                                                                                    |
+| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`         |
+| **Service**    | `backend/urls/services/update_url_titles.py:update_url_title_if_new`                                                                                                                                                                                                      |
+| **Schema**     | `backend/schemas/requests/urls.py:UpdateURLTitleRequest` (request); `backend/schemas/urls.py:UrlTitleUpdatedResponseSchema` (response)                                                                                                                                     |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                    |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                              |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                              |
+
+### DELETE /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>
+
+| Layer          | Location                                                                                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_delete_url`                                                                                                                                                                       |
+| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)`, `@api_route(response_schema=UrlDeletedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`     |
+| **Service**    | `backend/urls/services/delete_urls.py:delete_url_in_utub`                                                                                                                                                              |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                 |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                           |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                           |
+
+### POST /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/tags
+
+| Layer          | Location                                                                                                                                                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/tag_search_routes.py:api_v1_create_utub_url_tag`                                                                                                                                                                                                     |
+| **Decorators** | `@api_utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagRequest, response_schema=UrlTagModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                    |
+| **Service**    | `backend/tags/services/create_url_tag.py:add_tag_to_url_if_valid`                                                                                                                                                                                                    |
+| **Schema**     | `backend/schemas/requests/tags.py:AddTagRequest` (request); `backend/schemas/tags.py:UrlTagModifiedResponseSchema` (response)                                                                                                                                         |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                               |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                         |
+| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                     |
+
+### POST /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/tags/batch
+
+| Layer          | Location                                                                                                                                                                                                                                                                |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/tag_search_routes.py:api_v1_create_utub_url_tags`                                                                                                                                                                                                      |
+| **Decorators** | `@api_utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagsRequest, response_schema=UrlTagsModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                    |
+| **Service**    | `backend/tags/services/create_url_tag.py:add_batch_tags_to_existing_url`                                                                                                                                                                                               |
+| **Schema**     | `backend/schemas/requests/tags.py:AddTagsRequest` (request); `backend/schemas/tags.py:UrlTagsModifiedResponseSchema` (response)                                                                                                                                         |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                 |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                           |
+| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                       |
+
+### DELETE /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/tags/\<utub_tag_id\>
+
+| Layer          | Location                                                                                                                                                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/tag_search_routes.py:api_v1_delete_utub_url_tag`                                                                                                                                                           |
+| **Decorators** | `@api_utub_membership_with_valid_url_tag`, `@api_route(response_schema=UrlTagModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                                          |
+| **Service**    | `backend/tags/services/delete_url_tag.py:delete_url_tag`                                                                                                                                                                   |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                     |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                               |
+| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                           |
+
+### POST /api/v1/utubs/\<utub_id\>/tags
+
+| Layer          | Location                                                                                                                                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/tag_search_routes.py:api_v1_create_utub_tag`                                                                                                                                                                                                    |
+| **Decorators** | `@api_utub_membership_required`, `@api_route(request_schema=AddTagRequest, response_schema=UtubTagAddedToUtubResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                   |
+| **Service**    | `backend/tags/services/create_utub_tag.py:create_tag_in_utub`                                                                                                                                                                                                   |
+| **Schema**     | `backend/schemas/requests/tags.py:AddTagRequest` (request); `backend/schemas/tags.py:UtubTagAddedToUtubResponseSchema` (response)                                                                                                                                |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                          |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                    |
+| **Tests**      | `tests/integration/mobile_api/test_utub_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                               |
+
+### DELETE /api/v1/utubs/\<utub_id\>/tags/\<utub_tag_id\>
+
+| Layer          | Location                                                                                                                                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/tag_search_routes.py:api_v1_delete_utub_tag`                                                                                                                                                             |
+| **Decorators** | `@api_utub_membership_with_valid_utub_tag`, `@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                               |
+| **Service**    | `backend/tags/services/delete_utub_tag.py:delete_utub_tag_from_utub_and_utub_urls`                                                                                                                                       |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                   |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                             |
+| **Tests**      | `tests/integration/mobile_api/test_utub_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                        |
+
+### GET /api/v1/search
+
+| Layer          | Location                                                                                                                                                                                                                      |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/tag_search_routes.py:api_v1_search_across_utubs`                                                                                                                                                             |
+| **Decorators** | `@api_email_validation_required`, `@api_route(query_schema=SearchQuerySchema, response_schema=SearchResultsSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403})`                              |
+| **Service**    | `backend/search/services/cross_utub_search.py:search_across_user_utubs`                                                                                                                                                      |
+| **Schema**     | `backend/schemas/requests/search.py:SearchQuerySchema` (query params); `backend/schemas/search.py:SearchResultsSchema` (response)                                                                                            |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                       |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                 |
+| **Tests**      | `tests/integration/mobile_api/test_search_endpoint.py` (marker: `mobile_api`)                                                                                                                                                |
+
 ---
 
 ## Cross-Cutting Patterns
