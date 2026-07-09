@@ -34,8 +34,9 @@ jobs:
                 load: true # Important: loads image into local Docker for the script
                 tags: ${{ matrix.name }}:test
                 # Use GHA cache to make subsequent PR builds much faster
+                # mode=min (final layer only) to stay well under the repo's 10GB GHA cache quota
                 cache-from: type=gha,scope=${{ matrix.name }}
-                cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+                cache-to: type=gha,mode=min,scope=${{ matrix.name }}
 
             - name: Run Smoke Test
               run: |
