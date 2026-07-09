@@ -72,6 +72,7 @@ jobs:
           - ['Account and Support Integration Tests', 'account_and_support', 3]
           - ['CLI Integration Tests', 'cli', 3]
           - ['Mobile API Integration Tests', 'mobile_api', 3]
+          - ['Admin Integration Tests', 'admin', 3]
 
     name: ${{ format('{0}', matrix.worker[0]) }}
 
@@ -193,6 +194,7 @@ jobs:
           - ['UI Metrics Dashboard Functional Tests', 'metrics_ui', 2]
           - ['UI Settings Functional Tests', 'settings_ui', 2]
           - ['UI Cross-UTub Search Functional Tests', 'search_ui', 2]
+          - ['UI Admin Functional Tests', 'admin_ui', 2]
 
     name: ${{ format('{0}', matrix.worker[0]) }}
 
