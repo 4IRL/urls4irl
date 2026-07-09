@@ -205,6 +205,13 @@ def assert_visited_403_on_invalid_csrf_and_reload(*, page: Page) -> None:
     error_page_subheader = page.locator(f"{SPL.ERROR_PAGE_HANDLER} h2").first
     expect(error_page_subheader).to_have_text(IDENTIFIERS.HTML_403)
 
+    # The refresh button's click listener is attached by error.ts inside
+    # $(document).ready(...), which only runs once that module script has
+    # executed. The button is DOM-visible before then, so waiting on
+    # visibility alone lets the click land before the listener is bound,
+    # silently no-op-ing. Module scripts block "load", so this wait
+    # guarantees the listener is attached before the click is issued.
+    page.wait_for_load_state("load")
     wait_until_visible_css_selector(page=page, css_selector=SPL.ERROR_PAGE_REFRESH_BTN)
     wait_then_click_element(page=page, css_selector=SPL.ERROR_PAGE_REFRESH_BTN)
 
