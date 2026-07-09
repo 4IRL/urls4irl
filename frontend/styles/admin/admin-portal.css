@@ -134,6 +134,56 @@
     font-weight: 600;
 }
 
+/* ---- Health dashboard --------------------------------------------------- */
+
+.admin-health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.admin-health-card h2 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--cardURLTextColor);
+}
+
+.admin-health-value {
+    font-size: 1.2rem;
+    color: var(--UTubDescriptionColor);
+}
+
+.admin-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.admin-status-badge.status-up {
+    color: var(--deckHeaderGreen);
+    border: 1px solid var(--deckHeaderGreen);
+}
+
+.admin-status-badge.status-down {
+    color: #e05260;
+    border: 1px solid #e05260;
+}
+
+.admin-status-badge.status-neutral {
+    color: var(--cardURLTextColor);
+    border: 1px solid var(--borderColor);
+}
+
+.admin-health-captured {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--cardURLTextColor);
+}
+
 /* ---- htmx request indicators ------------------------------------------- */
 /* htmx's built-in indicator <style> injection is disabled in admin.ts
  * (includeIndicatorStyles = false) because the CSP only allows nonced

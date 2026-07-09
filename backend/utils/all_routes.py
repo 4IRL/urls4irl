@@ -71,6 +71,8 @@ class ADMIN_ROUTES:
     _ADMIN = "admin."
     METRICS_PAGE = _ADMIN + "admin_metrics"
     PORTAL = _ADMIN + "admin_portal"
+    HEALTH_PAGE = _ADMIN + "admin_health"
+    HEALTH_SNAPSHOT = _ADMIN + "admin_health_snapshot"
 
 
 class SEARCH_ROUTES:

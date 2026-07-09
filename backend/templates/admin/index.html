@@ -6,7 +6,7 @@
     <p id="AdminPortalSubtitle">{{ ADMIN_PORTAL_STRINGS.PORTAL_SUBTITLE }}</p>
 </header>
 <div id="AdminQuickLinks" class="admin-quick-links">
-    <a class="admin-quick-link-card" href="/admin/health">
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_health') }}">
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_HEALTH }}</h2>
         <p>Database, Redis, connections, disk, and sidecar cron status.</p>
     </a>

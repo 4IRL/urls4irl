@@ -8,6 +8,7 @@ import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initNavbarBackdrop, initNavbarRouting } from "./lib/navbar-shared.js";
+import { initHealthMonitor } from "./admin/health-monitor.js";
 
 // The app ships a strict nonce-based CSP (no unsafe-eval, nonce-only
 // style-src). Disable htmx's eval-dependent features (hx-on, js: prefixes,
@@ -23,4 +24,5 @@ $(document).ready(() => {
   initCookieBanner();
   initNavbarRouting();
   initNavbarBackdrop();
+  initHealthMonitor();
 });

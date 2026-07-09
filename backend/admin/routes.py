@@ -5,6 +5,7 @@ from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
 
 from backend.api_common.auth_decorators import admin_login_required
+from backend.admin.health_service import collect_health_snapshot
 from backend.extensions import audit
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.admin_portal_strs import (
@@ -39,6 +40,38 @@ def admin_portal() -> FlaskResponse:
     return render_template(
         "admin/index.html",
         is_admin_portal=True,
+    )
+
+
+@admin.route("/admin/health", methods=["GET"])
+@admin_login_required
+def admin_health() -> FlaskResponse:
+    """Server-rendered shell for the system-health dashboard.
+
+    The dashboard content itself is loaded (and every 30s reloaded) from
+    ``/admin/health/snapshot`` via htmx; this route only renders the shell
+    and audits the page view.
+    """
+    audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.HEALTH_VIEW)
+    return render_template(
+        "admin/health.html",
+        is_admin_portal=True,
+    )
+
+
+@admin.route("/admin/health/snapshot", methods=["GET"])
+@admin_login_required
+def admin_health_snapshot() -> FlaskResponse:
+    """HTML fragment with the current health snapshot, swapped in by htmx.
+
+    Deliberately NOT audited: the fragment is polled every 30 seconds and
+    per-poll audit rows would flood the audit log; the page view itself is
+    audited by ``admin_health``.
+    """
+    health_snapshot = collect_health_snapshot()
+    return render_template(
+        "admin/_health_snapshot.html",
+        snapshot=health_snapshot,
     )
 
 

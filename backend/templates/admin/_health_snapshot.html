@@ -1,0 +1,40 @@
+{# htmx fragment — rendered standalone by admin.admin_health_snapshot and
+   swapped into #AdminHealthSnapshot; deliberately does NOT extend any base
+   template. #}
+{% macro status_badge(status) %}
+<span class="admin-status-badge {% if status == 'up' %}status-up{% elif status == 'down' %}status-down{% else %}status-neutral{% endif %}">{{ status }}</span>
+{% endmacro %}
+{% macro timestamp_cell(moment) %}
+{% if moment is not none %}{{ moment.strftime('%Y-%m-%d %H:%M:%S UTC') }}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_NEVER_RAN }}{% endif %}
+{% endmacro %}
+<div id="AdminHealthGrid" class="admin-health-grid">
+    <div id="AdminHealthDatabase" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_DATABASE }}</h2>
+        {{ status_badge(snapshot.database_status) }}
+    </div>
+    <div id="AdminHealthDbConnections" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_DB_CONNECTIONS }}</h2>
+        <span class="admin-health-value">{% if snapshot.database_connection_count is not none %}{{ snapshot.database_connection_count }}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
+    </div>
+    <div id="AdminHealthSessionRedis" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_SESSION_REDIS }}</h2>
+        {{ status_badge(snapshot.session_redis_status) }}
+    </div>
+    <div id="AdminHealthMetricsRedis" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_METRICS_REDIS }}</h2>
+        {{ status_badge(snapshot.metrics_redis_status) }}
+    </div>
+    <div id="AdminHealthDisk" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_DISK_USED }}</h2>
+        <span class="admin-health-value">{% if snapshot.disk_used_percent is not none %}{{ snapshot.disk_used_percent }}%{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
+    </div>
+    <div id="AdminHealthFlush" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_FLUSH_LAST_SUCCESS }}</h2>
+        <span class="admin-health-value">{{ timestamp_cell(snapshot.flush_last_success_at) }}</span>
+    </div>
+    <div id="AdminHealthGauge" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_GAUGE_LAST_SAMPLE }}</h2>
+        <span class="admin-health-value">{{ timestamp_cell(snapshot.gauge_last_sample_at) }}</span>
+    </div>
+</div>
+<p id="AdminHealthCapturedAt" class="admin-health-captured">{{ snapshot.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>

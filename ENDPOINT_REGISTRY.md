@@ -655,6 +655,40 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### GET /admin/health
+
+| Layer           | Location                                                                                                                                   |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_health`                                                                                                     |
+| **Decorators**  | `@admin_login_required`                                                                                                                     |
+| **Service**     | `render_template()` direct; emits `audit.record(action="admin.health.view")`                                                               |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                              |
+| **Template**    | `admin/health.html` (extends `admin/base.html`; snapshot region `#AdminHealthSnapshot` declares `hx-trigger="load, refresh-health"`)        |
+| **JS Module**   | `frontend/admin/health-monitor.ts` (30s poll clock + visibilitychange pause/resume, dispatches `refresh-health`)                            |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                       |
+| **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_PAGE`                                                                                      |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                |
+
+---
+
+### GET /admin/health/snapshot
+
+| Layer           | Location                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_health_snapshot`                                                                                                |
+| **Decorators**  | `@admin_login_required`                                                                                                                         |
+| **Service**     | `backend/admin/health_service.py:collect_health_snapshot` (DB SELECT 1 + pg_stat_activity, session/metrics Redis pings, sidecar sentinel epochs, disk %) |
+| **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                                  |
+| **Template**    | `admin/_health_snapshot.html` (standalone fragment, no base template)                                                                           |
+| **JS Module**   | `frontend/admin/health-monitor.ts` (issues the htmx `refresh-health` trigger)                                                                   |
+| **CSRF**        | Not required (GET)                                                                                                                              |
+| **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                        |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_SNAPSHOT`                                                                                      |
+| **Metrics**     | `API_HIT` middleware auto-coverage; deliberately NOT audited per-poll (page view is audited instead)                                            |
+
+---
+
 ### GET /admin/metrics
 
 | Layer           | Location                                                                                                                          |

@@ -588,6 +588,13 @@ class AdminPortalLocators(GenericPageLocator):
     NAV_AUDIT_LOG = "#AdminNavAuditLog"
     NAV_METRICS = "#AdminNavMetrics"
 
+    # Health dashboard page
+    HEALTH_TITLE = "#AdminHealthTitle"
+    HEALTH_SNAPSHOT_REGION = "#AdminHealthSnapshot"
+    HEALTH_GRID = "#AdminHealthGrid"
+    HEALTH_DATABASE_CARD = "#AdminHealthDatabase"
+    HEALTH_CAPTURED_AT = "#AdminHealthCapturedAt"
+
 
 class SettingsPageLocators(GenericPageLocator):
     """A collector class for user settings page locators.
