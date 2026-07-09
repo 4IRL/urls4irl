@@ -1,0 +1,53 @@
+{# htmx fragment — rendered standalone by admin.admin_audit_log_rows and
+   swapped into #AdminAuditLogResults. Metadata expands via the native
+   <details> element (zero JS, CSP-proof). #}
+{% if audit_page.entries %}
+<table id="AdminAuditLogTable" class="admin-table">
+    <thead>
+        <tr>
+            <th>Created (UTC)</th>
+            <th>Actor</th>
+            <th>Action</th>
+            <th>Target Type</th>
+            <th>Target ID</th>
+            <th>Metadata</th>
+        </tr>
+    </thead>
+    <tbody id="AdminAuditLogRows">
+        {% for audit_entry in audit_page.entries %}
+        <tr class="admin-audit-row">
+            <td>{{ audit_entry.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            <td>{{ audit_entry.actor.username }}</td>
+            <td>{{ audit_entry.action }}</td>
+            <td>{{ audit_entry.target_type or '—' }}</td>
+            <td>{{ audit_entry.target_id or '—' }}</td>
+            <td>
+                {% if audit_entry.log_metadata %}
+                <details class="admin-audit-metadata">
+                    <summary>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_METADATA_SUMMARY }}</summary>
+                    <pre>{{ audit_entry.log_metadata | tojson(indent=2) }}</pre>
+                </details>
+                {% else %}—{% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div id="AdminAuditLogPagination" class="admin-search-pagination">
+    <span id="AdminAuditLogCount">{{ audit_page.total_count }} entr{{ 'y' if audit_page.total_count == 1 else 'ies' }}</span>
+    {% if audit_page.has_previous %}
+    <a id="AdminAuditLogPrev" href="#"
+       hx-get="{{ url_for('admin.admin_audit_log_rows', actor=audit_page.filters.actor, action=audit_page.filters.action, target_type=audit_page.filters.target_type, since=audit_page.filters.since, until=audit_page.filters.until, offset=audit_page.previous_offset) }}"
+       hx-target="#AdminAuditLogResults"
+       hx-swap="innerHTML">Previous</a>
+    {% endif %}
+    {% if audit_page.has_next %}
+    <a id="AdminAuditLogNext" href="#"
+       hx-get="{{ url_for('admin.admin_audit_log_rows', actor=audit_page.filters.actor, action=audit_page.filters.action, target_type=audit_page.filters.target_type, since=audit_page.filters.since, until=audit_page.filters.until, offset=audit_page.next_offset) }}"
+       hx-target="#AdminAuditLogResults"
+       hx-swap="innerHTML">Next</a>
+    {% endif %}
+</div>
+{% else %}
+<p id="AdminAuditLogEmpty" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_NO_RESULTS }}</p>
+{% endif %}

@@ -4,6 +4,11 @@ from flask import Blueprint, abort, render_template, request
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
 
+from backend.admin.audit_service import (
+    AuditLogFilters,
+    DEFAULT_AUDIT_PAGE_LIMIT,
+    query_audit_log,
+)
 from backend.admin.health_service import collect_health_snapshot
 from backend.admin.user_service import (
     DEFAULT_SEARCH_LIMIT,
@@ -105,10 +110,7 @@ def admin_users_search() -> FlaskResponse:
     retention purge.
     """
     search_query: str = request.args.get("q", "")
-    try:
-        result_offset = max(int(request.args.get("offset", "0")), 0)
-    except ValueError:
-        result_offset = 0
+    result_offset = _parse_offset_arg()
     search_page = search_users(
         query=search_query,
         limit=DEFAULT_SEARCH_LIMIT,
@@ -146,6 +148,59 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
         "admin_portal/users/detail.html",
         is_admin_portal=True,
         detail_user=detail_user,
+    )
+
+
+def _parse_offset_arg() -> int:
+    try:
+        return max(int(request.args.get("offset", "0")), 0)
+    except ValueError:
+        return 0
+
+
+def _audit_filters_from_request() -> AuditLogFilters:
+    return AuditLogFilters(
+        actor=request.args.get("actor", ""),
+        action=request.args.get("action", ""),
+        target_type=request.args.get("target_type", ""),
+        since=request.args.get("since", ""),
+        until=request.args.get("until", ""),
+    )
+
+
+@admin.route("/admin/audit-log", methods=["GET"])
+@admin_login_required
+def admin_audit_log() -> FlaskResponse:
+    """Server-rendered shell for the audit-log viewer.
+
+    The rows table loads (and reloads on filter changes) from
+    ``/admin/audit-log/rows`` via htmx. The page view itself is audited —
+    yes, viewing the audit log is itself an audited action.
+    """
+    audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.AUDIT_LOG_VIEW)
+    return render_template(
+        "admin_portal/audit_log/index.html",
+        is_admin_portal=True,
+    )
+
+
+@admin.route("/admin/audit-log/rows", methods=["GET"])
+@admin_login_required
+def admin_audit_log_rows() -> FlaskResponse:
+    """HTML fragment of filtered audit-log rows, swapped in by htmx.
+
+    Not audited per-reload: the audited resource here IS the audit log,
+    and the page view already records ``admin.audit_log.view`` — per-filter
+    rows would only add self-referential noise.
+    """
+    audit_page = query_audit_log(
+        filters=_audit_filters_from_request(),
+        limit=DEFAULT_AUDIT_PAGE_LIMIT,
+        offset=_parse_offset_arg(),
+    )
+    return render_template(
+        "admin_portal/audit_log/_rows.html",
+        audit_page=audit_page,
     )
 
 

@@ -740,6 +740,40 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### GET /admin/audit-log
+
+| Layer           | Location                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**     | `backend/admin/routes.py:admin_audit_log`                                                                                        |
+| **Decorators**  | `@admin_login_required`                                                                                                            |
+| **Service**     | `render_template()` direct; audits `admin.audit_log.view` (yes — viewing the audit log is itself audited)                          |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                      |
+| **Template**    | `admin_portal/audit_log/index.html` (filter form: actor/action/target_type/since/until, `hx-trigger="input changed delay:500ms, change delay:100ms"`) |
+| **JS Module**   | None — htmx attributes + native `<details>` metadata expansion                                                                     |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                              |
+| **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_PAGE`                                                                          |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                       |
+
+---
+
+### GET /admin/audit-log/rows
+
+| Layer           | Location                                                                                                                                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**     | `backend/admin/routes.py:admin_audit_log_rows` (query params: `actor`, `action`, `target_type`, `since`, `until`, `offset`)                         |
+| **Decorators**  | `@admin_login_required`                                                                                                                              |
+| **Service**     | `backend/admin/audit_service.py:query_audit_log` (actor username/email ILIKE join, action ILIKE, target_type exact, inclusive date bounds, newest-first pagination) |
+| **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                                       |
+| **Template**    | `admin_portal/audit_log/_rows.html` (standalone fragment: table w/ actor username join + expandable metadata `<details>`, Previous/Next pagination)  |
+| **JS Module**   | None — htmx attributes only                                                                                                                          |
+| **CSRF**        | Not required (GET)                                                                                                                                   |
+| **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                         |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_ROWS`                                                                                            |
+| **Metrics**     | `API_HIT` middleware auto-coverage; NOT audited per-reload (page view records `admin.audit_log.view`; per-filter rows would be self-referential noise) |
+
+---
+
 ### GET /admin/db/* (Flask-Admin read-only DB browser)
 
 | Layer           | Location                                                                                                                                                                                                 |

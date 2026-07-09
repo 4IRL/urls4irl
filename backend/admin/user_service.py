@@ -8,7 +8,7 @@ from backend.models.users import Users
 
 DEFAULT_SEARCH_LIMIT: int = 20
 
-_LIKE_ESCAPE_CHAR: str = "\\"
+LIKE_ESCAPE_CHAR: str = "\\"
 
 
 @dataclass(frozen=True)
@@ -38,16 +38,16 @@ class UserSearchPage:
         return self.offset + self.limit
 
 
-def _escape_like_wildcards(raw_query: str) -> str:
+def escape_like_wildcards(raw_query: str) -> str:
     r"""Escape SQL LIKE wildcards so user input matches literally.
 
     Example: ``"50%_off"`` becomes ``"50\%\_off"`` — without this, a query
     of ``"%"`` would match every user.
     """
     return (
-        raw_query.replace(_LIKE_ESCAPE_CHAR, _LIKE_ESCAPE_CHAR * 2)
-        .replace("%", _LIKE_ESCAPE_CHAR + "%")
-        .replace("_", _LIKE_ESCAPE_CHAR + "_")
+        raw_query.replace(LIKE_ESCAPE_CHAR, LIKE_ESCAPE_CHAR * 2)
+        .replace("%", LIKE_ESCAPE_CHAR + "%")
+        .replace("_", LIKE_ESCAPE_CHAR + "_")
     )
 
 
@@ -69,11 +69,11 @@ def search_users(
     normalized_query = query.strip()
     users_query = Users.query
     if normalized_query:
-        like_pattern = f"%{_escape_like_wildcards(normalized_query)}%"
+        like_pattern = f"%{escape_like_wildcards(normalized_query)}%"
         users_query = users_query.filter(
             or_(
-                Users.username.ilike(like_pattern, escape=_LIKE_ESCAPE_CHAR),
-                Users.email.ilike(like_pattern, escape=_LIKE_ESCAPE_CHAR),
+                Users.username.ilike(like_pattern, escape=LIKE_ESCAPE_CHAR),
+                Users.email.ilike(like_pattern, escape=LIKE_ESCAPE_CHAR),
             )
         )
     total_count = users_query.count()

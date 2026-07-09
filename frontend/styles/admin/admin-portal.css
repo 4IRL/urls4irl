@@ -230,6 +230,44 @@
     color: var(--cardURLTextColor);
 }
 
+/* ---- Audit log ----------------------------------------------------------- */
+
+.admin-audit-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.admin-audit-filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-audit-filters .admin-search-input {
+    margin-bottom: 0;
+    max-width: 220px;
+}
+
+.admin-audit-metadata summary {
+    cursor: pointer;
+    color: var(--deckHeaderGreen);
+}
+
+.admin-audit-metadata pre {
+    margin: 6px 0 0;
+    padding: 8px;
+    background-color: var(--defaultPageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    color: var(--UTubDescriptionColor);
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+
 /* ---- htmx request indicators ------------------------------------------- */
 /* htmx's built-in indicator <style> injection is disabled in admin.ts
  * (includeIndicatorStyles = false) because the CSP only allows nonced

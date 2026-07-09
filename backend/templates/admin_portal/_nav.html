@@ -4,7 +4,7 @@
         <li><a id="AdminNavHealth" class="admin-nav-link{% if active_nav == 'health' %} active{% endif %}" href="{{ url_for('admin.admin_health') }}">{{ ADMIN_PORTAL_STRINGS.NAV_HEALTH }}</a></li>
         <li><a id="AdminNavDbBrowser" class="admin-nav-link{% if active_nav == 'db' %} active{% endif %}" href="{{ url_for('admin_db.index') }}">{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</a></li>
         <li><a id="AdminNavUsers" class="admin-nav-link{% if active_nav == 'users' %} active{% endif %}" href="{{ url_for('admin.admin_users') }}">{{ ADMIN_PORTAL_STRINGS.NAV_USERS }}</a></li>
-        <li><a id="AdminNavAuditLog" class="admin-nav-link{% if active_nav == 'audit-log' %} active{% endif %}" href="/admin/audit-log">{{ ADMIN_PORTAL_STRINGS.NAV_AUDIT_LOG }}</a></li>
+        <li><a id="AdminNavAuditLog" class="admin-nav-link{% if active_nav == 'audit-log' %} active{% endif %}" href="{{ url_for('admin.admin_audit_log') }}">{{ ADMIN_PORTAL_STRINGS.NAV_AUDIT_LOG }}</a></li>
         <li><a id="AdminNavMetrics" class="admin-nav-link" href="{{ url_for('admin.admin_metrics') }}">{{ ADMIN_PORTAL_STRINGS.NAV_METRICS }}</a></li>
     </ul>
 </nav>

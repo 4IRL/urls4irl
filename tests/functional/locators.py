@@ -607,6 +607,15 @@ class AdminPortalLocators(GenericPageLocator):
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
 
+    # Audit log page
+    AUDIT_LOG_TITLE = "#AdminAuditLogTitle"
+    AUDIT_FILTER_ACTION = "#AdminAuditFilterAction"
+    AUDIT_LOG_RESULTS = "#AdminAuditLogResults"
+    AUDIT_LOG_TABLE = "#AdminAuditLogTable"
+    AUDIT_LOG_ROW = "tr.admin-audit-row"
+    AUDIT_METADATA_DETAILS = "details.admin-audit-metadata"
+    AUDIT_LOG_EMPTY = "#AdminAuditLogEmpty"
+
 
 class SettingsPageLocators(GenericPageLocator):
     """A collector class for user settings page locators.

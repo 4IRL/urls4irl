@@ -1,0 +1,37 @@
+{% extends "admin_portal/base.html" %}
+{% set active_nav = 'audit-log' %}
+{% block admin_content %}
+<header id="AdminAuditLogHeader" class="admin-page-header">
+    <h1 id="AdminAuditLogTitle">{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_TITLE }}</h1>
+</header>
+<div class="admin-panel">
+    <form id="AdminAuditLogFilters"
+          class="admin-audit-filters"
+          hx-get="{{ url_for('admin.admin_audit_log_rows') }}"
+          hx-trigger="input changed delay:500ms, change delay:100ms"
+          hx-target="#AdminAuditLogResults"
+          hx-swap="innerHTML">
+        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_ACTOR }}
+            <input id="AdminAuditFilterActor" class="admin-search-input" type="search" name="actor">
+        </label>
+        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_ACTION }}
+            <input id="AdminAuditFilterAction" class="admin-search-input" type="search" name="action">
+        </label>
+        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_TARGET_TYPE }}
+            <input id="AdminAuditFilterTargetType" class="admin-search-input" type="search" name="target_type">
+        </label>
+        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_SINCE }}
+            <input id="AdminAuditFilterSince" class="admin-search-input" type="date" name="since">
+        </label>
+        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_UNTIL }}
+            <input id="AdminAuditFilterUntil" class="admin-search-input" type="date" name="until">
+        </label>
+    </form>
+    <div id="AdminAuditLogResults"
+         hx-get="{{ url_for('admin.admin_audit_log_rows') }}"
+         hx-trigger="load"
+         hx-swap="innerHTML"
+         aria-live="polite">
+    </div>
+</div>
+{% endblock %}

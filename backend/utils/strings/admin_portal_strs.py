@@ -32,6 +32,14 @@ class ADMIN_PORTAL_STRINGS:
     USER_DETAIL_TITLE: str = "User Detail"
     USER_DETAIL_MEMBERSHIPS_HEADING: str = "UTub Memberships"
     USER_DETAIL_NO_MEMBERSHIPS: str = "Not a member of any UTubs."
+    AUDIT_LOG_TITLE: str = "Audit Log"
+    AUDIT_LOG_NO_RESULTS: str = "No audit entries match these filters."
+    AUDIT_LOG_FILTER_ACTOR: str = "Actor (username or email)"
+    AUDIT_LOG_FILTER_ACTION: str = "Action contains"
+    AUDIT_LOG_FILTER_TARGET_TYPE: str = "Target type"
+    AUDIT_LOG_FILTER_SINCE: str = "Since"
+    AUDIT_LOG_FILTER_UNTIL: str = "Until"
+    AUDIT_LOG_METADATA_SUMMARY: str = "metadata"
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -42,3 +50,4 @@ class ADMIN_AUDIT_ACTIONS:
     DB_BROWSER_VIEW: str = "admin.db_browser.view"
     USER_SEARCH: str = "admin.user.search"
     USER_VIEW: str = "admin.user.view"
+    AUDIT_LOG_VIEW: str = "admin.audit_log.view"
