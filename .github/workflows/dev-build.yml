@@ -28,6 +28,9 @@ jobs:
         - name: Checkout
           uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+        - name: Set lowercase image owner
+          run: echo "OWNER_LC=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_ENV"
+
         - name: Set up QEMU
           uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
         
@@ -63,6 +66,6 @@ jobs:
             push: true
             tags: ${{ steps.meta.outputs.tags }}
             labels: ${{ steps.meta.outputs.labels }}
-            cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:buildcache
-            cache-to: type=registry,ref=ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}:buildcache,mode=max
+            cache-from: type=registry,ref=ghcr.io/${{ env.OWNER_LC }}/${{ matrix.image }}:buildcache
+            cache-to: type=registry,ref=ghcr.io/${{ env.OWNER_LC }}/${{ matrix.image }}:buildcache,mode=max
 
