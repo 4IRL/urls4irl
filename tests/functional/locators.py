@@ -566,6 +566,29 @@ class MetricsDashboardLocators(GenericPageLocator):
     LATENCY_DAILY_RESOLUTION_NOTE = "#MetricsLatencyGrid .latency-daily-note"
 
 
+class AdminPortalLocators(GenericPageLocator):
+    """A collector class for admin portal landing page locators.
+
+    Selectors mirror the IDs defined in
+    `backend/templates/admin/index.html` and
+    `backend/templates/admin/_nav.html`.
+    """
+
+    # Page-level containers
+    PORTAL_TITLE = "#AdminPortalTitle"
+    PORTAL_SUBTITLE = "#AdminPortalSubtitle"
+    QUICK_LINKS = "#AdminQuickLinks"
+
+    # Navigation shell
+    NAV = "#AdminNav"
+    NAV_DASHBOARD = "#AdminNavDashboard"
+    NAV_HEALTH = "#AdminNavHealth"
+    NAV_DB_BROWSER = "#AdminNavDbBrowser"
+    NAV_USERS = "#AdminNavUsers"
+    NAV_AUDIT_LOG = "#AdminNavAuditLog"
+    NAV_METRICS = "#AdminNavMetrics"
+
+
 class SettingsPageLocators(GenericPageLocator):
     """A collector class for user settings page locators.
 

@@ -1,0 +1,30 @@
+{% extends "admin/base.html" %}
+{% set active_nav = 'dashboard' %}
+{% block admin_content %}
+<header id="AdminPortalHeader" class="admin-page-header">
+    <h1 id="AdminPortalTitle">{{ ADMIN_PORTAL_STRINGS.PORTAL_TITLE }}</h1>
+    <p id="AdminPortalSubtitle">{{ ADMIN_PORTAL_STRINGS.PORTAL_SUBTITLE }}</p>
+</header>
+<div id="AdminQuickLinks" class="admin-quick-links">
+    <a class="admin-quick-link-card" href="/admin/health">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_HEALTH }}</h2>
+        <p>Database, Redis, connections, disk, and sidecar cron status.</p>
+    </a>
+    <a class="admin-quick-link-card" href="/admin/db">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</h2>
+        <p>Read-only browser over every database table.</p>
+    </a>
+    <a class="admin-quick-link-card" href="/admin/users">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_USERS }}</h2>
+        <p>Search users and inspect account details and memberships.</p>
+    </a>
+    <a class="admin-quick-link-card" href="/admin/audit-log">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_AUDIT_LOG }}</h2>
+        <p>Every admin access and action, filterable and paginated.</p>
+    </a>
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_metrics') }}">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_METRICS }}</h2>
+        <p>Anonymous usage metrics dashboard.</p>
+    </a>
+</div>
+{% endblock %}

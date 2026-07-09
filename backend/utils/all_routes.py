@@ -70,6 +70,7 @@ class ACCOUNT_AND_SETTING_ROUTES:
 class ADMIN_ROUTES:
     _ADMIN = "admin."
     METRICS_PAGE = _ADMIN + "admin_metrics"
+    PORTAL = _ADMIN + "admin_portal"
 
 
 class SEARCH_ROUTES:

@@ -1,0 +1,14 @@
+{% extends "pages/layout.html" %}
+{% block modal_extender %}{% endblock %}
+{% block mainbody %}
+<main id="AdminPortal">
+    {% include 'admin/_nav.html' %}
+    <section id="AdminContent" aria-label="Admin section content">
+    {% block admin_content %}{% endblock %}
+    </section>
+    {% if config.VITE_DEV_SERVER %}
+    <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>
+    {% endif %}
+    <script nonce="{{ nonce }}" type="module" src="{{ vite_asset('admin.ts') }}"></script>
+</main>
+{% endblock %}

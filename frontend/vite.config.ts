@@ -61,6 +61,8 @@ export default defineConfig(({ mode }) => ({
         navbar: resolve(__dirname, "frontend/navbar.ts"),
         // Entry point for admin metrics dashboard
         adminMetrics: resolve(__dirname, "frontend/admin-metrics.ts"),
+        // Entry point for the admin portal shell (health, users, audit log)
+        admin: resolve(__dirname, "frontend/admin.ts"),
         // Entry point for the user settings page
         settings: resolve(__dirname, "frontend/settings.ts"),
       },

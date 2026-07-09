@@ -8,6 +8,7 @@ from backend.cli.mock_constants import (
     MOCK_URL_WITH_TRACKING_PARAMS,
 )
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
+from backend.utils.strings.admin_portal_strs import ADMIN_PORTAL_STRINGS
 from backend.utils.strings.oauth_strs import EMAIL_COLLISION_MESSAGE
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.splash_form_strs import (
@@ -195,6 +196,12 @@ class UI_TEST_STRINGS:
 
     # Admin metrics dashboard — re-export backend constants so test
     # assertions stay locked to the user-facing strings.
+    ADMIN_PORTAL_TITLE = ADMIN_PORTAL_STRINGS.PORTAL_TITLE
+    ADMIN_PORTAL_NAV_HEALTH = ADMIN_PORTAL_STRINGS.NAV_HEALTH
+    ADMIN_PORTAL_NAV_DB_BROWSER = ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER
+    ADMIN_PORTAL_NAV_USERS = ADMIN_PORTAL_STRINGS.NAV_USERS
+    ADMIN_PORTAL_NAV_AUDIT_LOG = ADMIN_PORTAL_STRINGS.NAV_AUDIT_LOG
+    ADMIN_PORTAL_NAV_METRICS = ADMIN_PORTAL_STRINGS.NAV_METRICS
     METRICS_DASHBOARD_TITLE = ADMIN_METRICS_STRINGS.METRICS_DASHBOARD_TITLE
     METRICS_TAB_API = ADMIN_METRICS_STRINGS.METRICS_TAB_API
     METRICS_TAB_UI = ADMIN_METRICS_STRINGS.METRICS_TAB_UI

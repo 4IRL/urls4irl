@@ -638,6 +638,23 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ## Admin Blueprint
 
+### GET /admin
+
+| Layer           | Location                                                                                                                      |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_portal`                                                                                        |
+| **Decorators**  | `@admin_login_required`                                                                                                        |
+| **Service**     | `render_template()` direct; emits `audit.record(action="admin.portal.view")` (`backend/extensions/audit/record.py`)           |
+| **Schema**      | None (request) / None (response — page is HTML, not JSON)                                                                      |
+| **Template**    | `admin/index.html` (extends `admin/base.html`, includes `admin/_nav.html`; vars: `is_admin_portal=True`)                       |
+| **JS Module**   | `frontend/admin.ts` (entry point: loads htmx, registers plugins, sets up CSRF, navbar + cookie banner init)                    |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_portal_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.PORTAL`                                                                              |
+| **Metrics**     | `API_HIT` middleware auto-coverage (`admin.admin_portal` × method × status × device); no DOMAIN event — internal admin surface |
+
+---
+
 ### GET /admin/metrics
 
 | Layer           | Location                                                                                                                          |
