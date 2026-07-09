@@ -34,6 +34,9 @@ Sonnet 5 subagents doing the mechanical per-file work. This file is the actual p
 the top-level `Agent` call (`model: "fable"`, `subagent_type: "general-purpose"`) — kept here so
 it can be reused/rerun without reconstructing it, and so a resumed run has a fixed reference point.
 
+## Status
+finished: false
+
 ## Prompt
 
 **Task:** Execute <initiative description> described in `<master-plan-path>` — all <N> phases,
@@ -53,6 +56,9 @@ place, as you reach it.>
 - Create and continuously maintain a memory file at `plans/<topic>/<name>-progress.md`. This is
   your own persistent scratchpad for the entire run — if this run is interrupted and resumed,
   read this file first before re-deriving anything from git history. Structure it with:
+  - A `## Status` section at the top: `finished: false`. This mirrors the master plan's own
+    `## Status` block so `/plan-list` can track this file too — flip it to `true` only once the
+    initiative reaches Definition of done, in the same edit that flips the master plan's.
   - A phase-by-phase status table (not-started / in-progress / done, commit range on
     `<branch-name>`, verification result).
   - A running decisions log — anywhere you deviated from a master-plan bullet and why.
@@ -140,7 +146,11 @@ place, as you reach it.>
 - <Final full-suite verification command(s), matching this repo's "Final Verification Step"
   convention — e.g. the full UI + integration suite green with the legacy system fully removed.>
 - `<master-plan-path>`'s `## Status` updated to `finished: true`.
-- `plans/<topic>/<name>-progress.md` reflects the final state of every phase.
+- `plans/<topic>/<name>-progress.md` reflects the final state of every phase, and its own
+  `## Status` is flipped to `finished: true` in the same pass.
+- This execution-prompt file's own `## Status` (above `## Prompt`) is flipped to `finished: true`
+  as well — all three files (`master`, `progress`, `execution-prompt`) move to `finished: true`
+  together once the initiative is truly done, not just once the code merges.
 - Everything lives on the single `<branch-name>` branch, pushed with a single PR covering the
   whole initiative — the PR is where review happens.
 - Every CI check on that PR is green. The task isn't complete until CI passes — local
@@ -165,6 +175,7 @@ commits, and flags in plain sentences.
 
 ## Fill-in checklist (do not skip any)
 
+- [ ] `## Status` block (`finished: false`) is present above `## Prompt` — never omit it; it's how `/plan-list` tracks this file.
 - [ ] `<Title>`, `<initiative one-liner>`, `<initiative description>`, `<master-plan-path>`, `<N>` — pulled directly from the master plan.
 - [ ] `<branch-name>` — the single branch chosen in Step 4/5. Must match the master plan's `**Branch:**` line exactly.
 - [ ] Pre-existing detailed sub-plan(s), if any — name and path. Most initiatives have none; some (like a foundational first phase) may already have one written by `/plan-creator` before this skill ran.

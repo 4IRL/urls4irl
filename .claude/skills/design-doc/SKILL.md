@@ -117,7 +117,15 @@ Write to `plans/<topic>/<name>-design.md` (kebab-case, ends in `-design`).
 
 ## Mockups
 <link every mockup produced: `[<name>](mocks/<name>.html)` — omit if none>
+
+## Status
+finished: true
 ```
+
+A design doc is a complete deliverable the moment it's written — Step 5's loop only exits once every
+open question is resolved or explicitly deferred, so there's no separate "implementation" phase for
+this file to await. Always write `finished: true`, matching `/plan-creator`'s and
+`/master-plan-creator`'s `## Status` block so `/plan-list` picks it up as done rather than unknown.
 
 ## Step 7: Cleanup & Handoff
 

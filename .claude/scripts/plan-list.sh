@@ -87,3 +87,20 @@ summary="${summary} · ${linked_n}/${total} linked to a GitHub issue"
 echo
 echo "$summary"
 echo "Legend: [x] finished  [ ] open  [?] no \`## Status\`/\`finished:\` line  ·  #N = GitHub issue"
+
+# Flat "Not Done" section (open + unknown) so every non-finished plan is visible
+# without a separate filtered request. Topic is appended per-row since this list
+# has no topic-grouping headings like the main list above.
+not_done_n=$((open_n + unknown_n))
+if [ "$not_done_n" -gt 0 ]; then
+  echo
+  echo "## Not Done (${not_done_n})"
+  printf "%b" "$rows" \
+    | sort -t"$(printf '\t')" -k1,1 -k2,2 -k5,5 \
+    | awk -F'\t' '
+        $4 != "x" {
+          master_tag = ($3 == "master" ? "  (master)" : "")
+          issue_tag  = ($6 == "" ? "  (no issue)" : "  #" $6)
+          printf "  - [%s] %s%s%s  · %s\n", $4, $5, master_tag, issue_tag, $1
+        }
+      '

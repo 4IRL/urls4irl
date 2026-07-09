@@ -5,7 +5,7 @@ description: List every plan document under plans/ — master plans AND sub-plan
 
 # Plan List
 
-Prints every plan under `plans/` (masters and sub-plans), grouped by topic, each tagged finished `[x]` or open `[ ]` and annotated with its related GitHub issue (`#N`, or `(no issue)` for plans that predate the issue-linking convention), with a summary count.
+Prints every plan under `plans/` (masters and sub-plans), grouped by topic, each tagged finished `[x]` or open `[ ]` and annotated with its related GitHub issue (`#N`, or `(no issue)` for plans that predate the issue-linking convention), with a summary count. The output always ends with a flat `## Not Done` section listing every open/unknown plan together (no separate "show me the open ones" follow-up needed).
 
 ## Why a script (do not hand-roll this)
 
@@ -26,7 +26,7 @@ The lookup is delegated to `.claude/scripts/plan-list.sh` so the model never rea
 
    (Equivalent direct call: `.claude/scripts/plan-list.sh`.)
 
-2. Relay the script's output to the user **verbatim** — it is already grouped, formatted, and summarized. Do **not** re-read individual plan files or re-derive any status; the script is the source of truth.
+2. Relay the script's output to the user **verbatim** — it is already grouped, formatted, and summarized, including the trailing `## Not Done` section. Do **not** re-read individual plan files or re-derive any status; the script is the source of truth.
 
 3. If any plan shows `[?]`, point out that that file is missing a `## Status` / `finished:` line and may be malformed — otherwise add nothing beyond at most a one-line summary.
 
