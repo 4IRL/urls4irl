@@ -62,10 +62,10 @@ def test_admin_users_search_and_click_detail(
         config=provide_config,
     )
 
-    # Wait for the htmx load-triggered swap to populate the initial results.
+    # Wait for the user-search controller to populate the initial results.
     wait_then_get_element(page=page, css_selector=APL.USER_SEARCH_TABLE)
 
-    # Type the search term into the input and wait for the debounced htmx swap.
+    # Type the search term into the input and wait for the debounced swap.
     page.fill(APL.USER_SEARCH_INPUT, _SEARCH_TARGET_USERNAME)
 
     search_row_locator = page.locator(APL.USER_SEARCH_ROW)
@@ -105,7 +105,7 @@ def test_admin_users_search_no_results_shows_empty_state(
         config=provide_config,
     )
 
-    # Wait for initial htmx load before typing.
+    # Wait for the user-search controller initial load before typing.
     wait_then_get_element(page=page, css_selector=APL.USER_SEARCH_TABLE)
 
     page.fill(APL.USER_SEARCH_INPUT, _NO_MATCH_QUERY)

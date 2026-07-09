@@ -1,23 +1,26 @@
-import htmx from "htmx.org";
-
-export const HEALTH_SNAPSHOT_REGION_ID = "AdminHealthSnapshot";
-export const HEALTH_REFRESH_EVENT = "refresh-health";
-export const HEALTH_POLL_INTERVAL_MS = 30_000;
-
 /**
- * Poll the health snapshot fragment every 30 seconds, pausing while the
- * tab is hidden and refreshing immediately on return.
+ * Health-snapshot polling controller for the admin /admin/health page.
  *
- * The polling clock lives here (not in an `hx-trigger="every 30s"`
- * attribute) so visibility pause/resume is deterministic and CSP-safe —
- * htmx event filters would require eval, which the app's CSP forbids.
- * The region declares `hx-trigger="load, refresh-health"` and this module
- * dispatches the `refresh-health` event on each tick.
+ * Fetches the server-rendered health snapshot fragment and swaps it into
+ * #AdminHealthSnapshot using native jQuery AJAX (via fetchAndSwap):
+ *   - immediate fetch on init
+ *   - 30-second interval poll
+ *   - visibility-aware: pauses when the tab is hidden, fires an immediate
+ *     fetch and resumes on return
+ *
+ * The snapshot URL is read from the `data-snapshot-url` attribute on
+ * #AdminHealthSnapshot (set by the Jinja template via url_for).
  *
  * Returns a disposer that stops the poll clock and detaches the
  * visibilitychange listener (page code ignores it; tests use it to keep
  * monitors from accumulating across cases).
  */
+
+import { fetchAndSwap } from "./fragment-swap.js";
+
+export const HEALTH_SNAPSHOT_REGION_ID = "AdminHealthSnapshot";
+export const HEALTH_POLL_INTERVAL_MS = 30_000;
+
 export function initHealthMonitor({
   pollIntervalMs = HEALTH_POLL_INTERVAL_MS,
 }: { pollIntervalMs?: number } = {}): () => void {
@@ -26,15 +29,22 @@ export function initHealthMonitor({
     return () => {};
   }
 
+  const snapshotUrl = snapshotRegion.dataset.snapshotUrl;
+  if (!snapshotUrl) {
+    return () => {};
+  }
+
+  const doFetch = (): void => {
+    fetchAndSwap({ url: snapshotUrl, targetEl: snapshotRegion });
+  };
+
   let pollTimer: number | null = null;
 
   const startPolling = (): void => {
     if (pollTimer !== null) {
       return;
     }
-    pollTimer = window.setInterval(() => {
-      htmx.trigger(snapshotRegion, HEALTH_REFRESH_EVENT);
-    }, pollIntervalMs);
+    pollTimer = window.setInterval(doFetch, pollIntervalMs);
   };
 
   const stopPolling = (): void => {
@@ -49,11 +59,12 @@ export function initHealthMonitor({
     if (document.hidden) {
       stopPolling();
     } else {
-      htmx.trigger(snapshotRegion, HEALTH_REFRESH_EVENT);
+      doFetch();
       startPolling();
     }
   };
 
+  doFetch();
   document.addEventListener("visibilitychange", onVisibilityChange);
   startPolling();
 

@@ -268,21 +268,6 @@
     white-space: pre-wrap;
 }
 
-/* ---- htmx request indicators ------------------------------------------- */
-/* htmx's built-in indicator <style> injection is disabled in admin.ts
- * (includeIndicatorStyles = false) because the CSP only allows nonced
- * style elements; these rules replicate the stock behavior. */
-
-.htmx-indicator {
-    opacity: 0;
-    transition: opacity 200ms ease-in;
-}
-
-.htmx-request .htmx-indicator,
-.htmx-request.htmx-indicator {
-    opacity: 1;
-}
-
 @media (max-width: 575.98px) {
     #AdminPortal {
         padding: 10px;

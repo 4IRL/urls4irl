@@ -1,5 +1,5 @@
-{# htmx fragment — rendered standalone by admin.admin_users_search and
-   swapped into #AdminUserSearchResults. #}
+{# HTML fragment — rendered standalone by admin.admin_users_search and
+   swapped into #AdminUserSearchResults by the native TS user-search controller. #}
 {% if search_page.users %}
 <table id="AdminUserSearchTable" class="admin-table">
     <thead>
@@ -29,15 +29,11 @@
     <span id="AdminUserSearchCount">{{ search_page.total_count }} match{{ 'es' if search_page.total_count != 1 else '' }}</span>
     {% if search_page.has_previous %}
     <a id="AdminUserSearchPrev" href="#"
-       hx-get="{{ url_for('admin.admin_users_search', q=search_page.query, offset=search_page.previous_offset) }}"
-       hx-target="#AdminUserSearchResults"
-       hx-swap="innerHTML">Previous</a>
+       data-fragment-href="{{ url_for('admin.admin_users_search', q=search_page.query, offset=search_page.previous_offset) }}">Previous</a>
     {% endif %}
     {% if search_page.has_next %}
     <a id="AdminUserSearchNext" href="#"
-       hx-get="{{ url_for('admin.admin_users_search', q=search_page.query, offset=search_page.next_offset) }}"
-       hx-target="#AdminUserSearchResults"
-       hx-swap="innerHTML">Next</a>
+       data-fragment-href="{{ url_for('admin.admin_users_search', q=search_page.query, offset=search_page.next_offset) }}">Next</a>
     {% endif %}
 </div>
 {% else %}

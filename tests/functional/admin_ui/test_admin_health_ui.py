@@ -37,8 +37,8 @@ def test_admin_health_renders_title_and_grid_for_admin(
     GIVEN a logged-in admin user
     WHEN the admin opens /admin/health
     THEN the page renders the health title with the correct text and, after
-         htmx loads the snapshot fragment, the AdminHealthGrid is present and
-         the database card displays the "up" status text.
+         the health-monitor controller loads the snapshot fragment, the
+         AdminHealthGrid is present and the database card displays "up".
     """
     login_admin_and_open_admin_health(
         app=provide_app,
@@ -52,7 +52,7 @@ def test_admin_health_renders_title_and_grid_for_admin(
     title_locator = wait_then_get_element(page=page, css_selector=APL.HEALTH_TITLE)
     expect(title_locator).to_have_text(UI_TEST_STRINGS.ADMIN_HEALTH_TITLE)
 
-    # Wait for the htmx load-trigger to fetch and swap in the snapshot fragment.
+    # Wait for the health-monitor controller to fetch and swap in the snapshot fragment.
     health_grid_locator = wait_then_get_element(page=page, css_selector=APL.HEALTH_GRID)
     expect(health_grid_locator).to_be_visible()
 

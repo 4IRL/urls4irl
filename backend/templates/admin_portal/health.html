@@ -5,9 +5,7 @@
     <h1 id="AdminHealthTitle">{{ ADMIN_PORTAL_STRINGS.HEALTH_TITLE }}</h1>
 </header>
 <div id="AdminHealthSnapshot"
-     hx-get="{{ url_for('admin.admin_health_snapshot') }}"
-     hx-trigger="load, refresh-health"
-     hx-swap="innerHTML"
+     data-snapshot-url="{{ url_for('admin.admin_health_snapshot') }}"
      aria-live="polite">
 </div>
 {% endblock %}

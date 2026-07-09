@@ -7,10 +7,7 @@
 <div class="admin-panel">
     <form id="AdminAuditLogFilters"
           class="admin-audit-filters"
-          hx-get="{{ url_for('admin.admin_audit_log_rows') }}"
-          hx-trigger="input changed delay:500ms, change delay:100ms"
-          hx-target="#AdminAuditLogResults"
-          hx-swap="innerHTML">
+          data-filter-url="{{ url_for('admin.admin_audit_log_rows') }}">
         <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_ACTOR }}
             <input id="AdminAuditFilterActor" class="admin-search-input" type="search" name="actor">
         </label>
@@ -28,9 +25,6 @@
         </label>
     </form>
     <div id="AdminAuditLogResults"
-         hx-get="{{ url_for('admin.admin_audit_log_rows') }}"
-         hx-trigger="load"
-         hx-swap="innerHTML"
          aria-live="polite">
     </div>
 </div>

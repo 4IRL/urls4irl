@@ -59,8 +59,8 @@ def admin_health() -> FlaskResponse:
     """Server-rendered shell for the system-health dashboard.
 
     The dashboard content itself is loaded (and every 30s reloaded) from
-    ``/admin/health/snapshot`` via htmx; this route only renders the shell
-    and audits the page view.
+    ``/admin/health/snapshot`` by the client-side health-monitor controller;
+    this route only renders the shell and audits the page view.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.HEALTH_VIEW)
     return render_template(
@@ -72,7 +72,7 @@ def admin_health() -> FlaskResponse:
 @admin.route("/admin/health/snapshot", methods=["GET"])
 @admin_login_required
 def admin_health_snapshot() -> FlaskResponse:
-    """HTML fragment with the current health snapshot, swapped in by htmx.
+    """HTML fragment with the current health snapshot.
 
     Deliberately NOT audited: the fragment is polled every 30 seconds and
     per-poll audit rows would flood the audit log; the page view itself is
@@ -90,9 +90,9 @@ def admin_health_snapshot() -> FlaskResponse:
 def admin_users() -> FlaskResponse:
     """Server-rendered shell for the admin user-search page.
 
-    The results table is loaded (on load, and 500ms-debounced on typing)
-    from ``/admin/users/search`` via htmx. Not audited itself — the
-    load-triggered fragment request records the initial (blank) search.
+    The results table is loaded (on init, and 500ms-debounced on typing)
+    from ``/admin/users/search`` by the client-side user-search controller.
+    Not audited itself — the initial fragment request records the blank search.
     """
     return render_template(
         "admin_portal/users/index.html",
@@ -103,7 +103,7 @@ def admin_users() -> FlaskResponse:
 @admin.route("/admin/users/search", methods=["GET"])
 @admin_login_required
 def admin_users_search() -> FlaskResponse:
-    """HTML fragment of user-search result rows, swapped in by htmx.
+    """HTML fragment of user-search result rows.
 
     Every execution is audited with the query and result count — search
     strings land in AuditLogs.metadata and age out with the 90-day
@@ -174,8 +174,9 @@ def admin_audit_log() -> FlaskResponse:
     """Server-rendered shell for the audit-log viewer.
 
     The rows table loads (and reloads on filter changes) from
-    ``/admin/audit-log/rows`` via htmx. The page view itself is audited —
-    yes, viewing the audit log is itself an audited action.
+    ``/admin/audit-log/rows`` by the client-side audit-log controller.
+    The page view itself is audited — yes, viewing the audit log is itself
+    an audited action.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.AUDIT_LOG_VIEW)
     return render_template(
@@ -187,7 +188,7 @@ def admin_audit_log() -> FlaskResponse:
 @admin.route("/admin/audit-log/rows", methods=["GET"])
 @admin_login_required
 def admin_audit_log_rows() -> FlaskResponse:
-    """HTML fragment of filtered audit-log rows, swapped in by htmx.
+    """HTML fragment of filtered audit-log rows.
 
     Not audited per-reload: the audited resource here IS the audit log,
     and the page view already records ``admin.audit_log.view`` — per-filter

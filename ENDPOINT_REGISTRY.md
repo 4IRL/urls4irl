@@ -647,7 +647,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Service**     | `render_template()` direct; emits `audit.record(action="admin.portal.view")` (`backend/extensions/audit/record.py`)           |
 | **Schema**      | None (request) / None (response — page is HTML, not JSON)                                                                      |
 | **Template**    | `admin_portal/index.html` (extends `admin_portal/base.html`, includes `admin_portal/_nav.html`; vars: `is_admin_portal=True`)                       |
-| **JS Module**   | `frontend/admin.ts` (entry point: loads htmx, registers plugins, sets up CSRF, navbar + cookie banner init)                    |
+| **JS Module**   | `frontend/admin.ts` (entry point: registers plugins, sets up CSRF, navbar + cookie banner init; wires health-monitor, user-search, audit-log controllers) |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                          |
 | **Tests**       | `tests/integration/admin/test_admin_portal_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.PORTAL`                                                                              |
@@ -663,8 +663,8 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required`                                                                                                                     |
 | **Service**     | `render_template()` direct; emits `audit.record(action="admin.health.view")`                                                               |
 | **Schema**      | None (request) / None (response — HTML shell)                                                                                              |
-| **Template**    | `admin_portal/health.html` (extends `admin_portal/base.html`; snapshot region `#AdminHealthSnapshot` declares `hx-trigger="load, refresh-health"`)        |
-| **JS Module**   | `frontend/admin/health-monitor.ts` (30s poll clock + visibilitychange pause/resume, dispatches `refresh-health`)                            |
+| **Template**    | `admin_portal/health.html` (extends `admin_portal/base.html`; snapshot region `#AdminHealthSnapshot` with `data-snapshot-url`)                            |
+| **JS Module**   | `frontend/admin/health-monitor.ts` (immediate init fetch + 30s poll clock + visibilitychange pause/resume via `fragment-swap.ts`)                         |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                       |
 | **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                    |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_PAGE`                                                                                      |
@@ -679,9 +679,9 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/routes.py:admin_health_snapshot`                                                                                                |
 | **Decorators**  | `@admin_login_required`                                                                                                                         |
 | **Service**     | `backend/admin/health_service.py:collect_health_snapshot` (DB SELECT 1 + pg_stat_activity, session/metrics Redis pings, sidecar sentinel epochs, disk %) |
-| **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                                  |
+| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminHealthSnapshot)                                                              |
 | **Template**    | `admin_portal/_health_snapshot.html` (standalone fragment, no base template)                                                                           |
-| **JS Module**   | `frontend/admin/health-monitor.ts` (issues the htmx `refresh-health` trigger)                                                                   |
+| **JS Module**   | `frontend/admin/health-monitor.ts` (calls `fetchAndSwap` on each poll tick)                                                                     |
 | **CSRF**        | Not required (GET)                                                                                                                              |
 | **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                        |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_SNAPSHOT`                                                                                      |
@@ -697,8 +697,8 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required`                                                                                                       |
 | **Service**     | `render_template()` direct (results load via the search fragment); not audited itself — the load-triggered fragment records the initial blank search |
 | **Schema**      | None (request) / None (response — HTML shell)                                                                                 |
-| **Template**    | `admin_portal/users/index.html` (search input: `hx-trigger="input changed delay:500ms, search"`; results region loads on `load`) |
-| **JS Module**   | None — htmx attributes only (native debounce; row navigation is a plain anchor)                                               |
+| **Template**    | `admin_portal/users/index.html` (search input with `data-search-url`; results region `#AdminUserSearchResults`)                  |
+| **JS Module**   | `frontend/admin/user-search.ts` (500ms-debounced input + immediate search event + pagination delegation via `fragment-swap.ts`)  |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                         |
 | **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)      |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_PAGE`                                                                         |
@@ -713,9 +713,9 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/routes.py:admin_users_search` (query params: `q`, `offset`)                                                                |
 | **Decorators**  | `@admin_login_required`                                                                                                                    |
 | **Service**     | `backend/admin/user_service.py:search_users` (username/email ILIKE with wildcard escaping, id-ordered pagination); audits `admin.user.search` with `{query, result_count}` metadata |
-| **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                             |
-| **Template**    | `admin_portal/users/_results.html` (standalone fragment: table + Previous/Next `hx-get` pagination)                                        |
-| **JS Module**   | None — htmx attributes only                                                                                                                |
+| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminUserSearchResults)                                                       |
+| **Template**    | `admin_portal/users/_results.html` (standalone fragment: table + Previous/Next links with `data-fragment-href`)                            |
+| **JS Module**   | `frontend/admin/user-search.ts` + `frontend/admin/fragment-swap.ts` (pagination click delegation)                                          |
 | **CSRF**        | Not required (GET)                                                                                                                         |
 | **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                   |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_SEARCH`                                                                                    |
@@ -748,8 +748,8 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required`                                                                                                            |
 | **Service**     | `render_template()` direct; audits `admin.audit_log.view` (yes — viewing the audit log is itself audited)                          |
 | **Schema**      | None (request) / None (response — HTML shell)                                                                                      |
-| **Template**    | `admin_portal/audit_log/index.html` (filter form: actor/action/target_type/since/until, `hx-trigger="input changed delay:500ms, change delay:100ms"`) |
-| **JS Module**   | None — htmx attributes + native `<details>` metadata expansion                                                                     |
+| **Template**    | `admin_portal/audit_log/index.html` (filter form with `data-filter-url`: actor/action/target_type/since/until inputs)                |
+| **JS Module**   | `frontend/admin/audit-log.ts` (500ms input debounce, 100ms change debounce, pagination delegation; native `<details>` metadata)       |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                              |
 | **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_PAGE`                                                                          |
@@ -764,9 +764,9 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/routes.py:admin_audit_log_rows` (query params: `actor`, `action`, `target_type`, `since`, `until`, `offset`)                         |
 | **Decorators**  | `@admin_login_required`                                                                                                                              |
 | **Service**     | `backend/admin/audit_service.py:query_audit_log` (actor username/email ILIKE join, action ILIKE, target_type exact, inclusive date bounds, newest-first pagination) |
-| **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                                       |
-| **Template**    | `admin_portal/audit_log/_rows.html` (standalone fragment: table w/ actor username join + expandable metadata `<details>`, Previous/Next pagination)  |
-| **JS Module**   | None — htmx attributes only                                                                                                                          |
+| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminAuditLogResults)                                                                   |
+| **Template**    | `admin_portal/audit_log/_rows.html` (standalone fragment: table w/ actor username join + expandable metadata `<details>`; Previous/Next `data-fragment-href`) |
+| **JS Module**   | `frontend/admin/audit-log.ts` + `frontend/admin/fragment-swap.ts` (pagination click delegation)                                                       |
 | **CSRF**        | Not required (GET)                                                                                                                                   |
 | **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                         |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_ROWS`                                                                                            |

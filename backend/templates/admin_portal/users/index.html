@@ -11,14 +11,8 @@
            name="q"
            placeholder="{{ ADMIN_PORTAL_STRINGS.USERS_SEARCH_PLACEHOLDER }}"
            aria-label="{{ ADMIN_PORTAL_STRINGS.USERS_SEARCH_ARIA }}"
-           hx-get="{{ url_for('admin.admin_users_search') }}"
-           hx-trigger="input changed delay:500ms, search"
-           hx-target="#AdminUserSearchResults"
-           hx-swap="innerHTML">
+           data-search-url="{{ url_for('admin.admin_users_search') }}">
     <div id="AdminUserSearchResults"
-         hx-get="{{ url_for('admin.admin_users_search') }}"
-         hx-trigger="load"
-         hx-swap="innerHTML"
          aria-live="polite">
     </div>
 </div>

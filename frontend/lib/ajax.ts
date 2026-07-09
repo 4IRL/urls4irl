@@ -53,6 +53,27 @@ export function ajaxCall(
 }
 
 /**
+ * Makes a GET request for an HTML fragment and returns the raw HTML string.
+ * Use `.done((html: string) => { el.innerHTML = html; })` on the returned
+ * jqXHR. The global `$.ajaxPrefilter` in `csrf.ts` handles 429s; call
+ * `is429Handled` at the top of any `.fail()` handler.
+ * @param {string} url - Fragment endpoint URL (may include query params)
+ * @param {number} timeout - Request timeout in ms (default: 5000)
+ * @returns {JQuery.jqXHR} jQuery AJAX promise
+ */
+export function ajaxCallFragment(
+  url: string,
+  timeout: number = 5_000,
+): JQuery.jqXHR {
+  return $.ajax({
+    type: "GET",
+    url,
+    dataType: "text",
+    timeout,
+  });
+}
+
+/**
  * Sends a debug message to the server (dev only)
  * @param {string} msg - Debug message
  */

@@ -45,12 +45,12 @@ def test_admin_audit_log_happy_path_filter_and_metadata_expand(
     """
     GIVEN a logged-in admin user with seeded test users in the database
     WHEN the admin first visits /admin/users (producing at least one
-         admin.user.search audit row from the htmx load-triggered fragment),
+         admin.user.search audit row from the auto-fired initial search),
          then navigates to /admin/audit-log
     THEN the audit log table loads (the page-view itself adds an
          admin.audit_log.view row, so ≥1 row always exists); after typing
-         "user.search" into the action filter input and waiting for the htmx
-         debounce swap, only admin.user.search rows are visible; expanding a
+         "user.search" into the action filter input and waiting for the
+         debounced swap, only admin.user.search rows are visible; expanding a
          metadata <details> element reveals a <pre> block containing the
          "result_count" key.
     """
@@ -74,14 +74,14 @@ def test_admin_audit_log_happy_path_filter_and_metadata_expand(
 
     # Before filtering: navigate to /admin/users first to ensure at least one
     # admin.user.search audit row exists in the log (from the auto-fired
-    # htmx fragment on that page). Use goto so the session cookie is already
+    # initial search on that page). Use goto so the session cookie is already
     # set by login_admin_and_open_audit_log above.
     page.goto(f"{full_base_url}{ADMIN_USERS_PATH}")
 
     # Return to the audit-log page. The page view itself records AUDIT_LOG_VIEW.
     page.goto(f"{full_base_url}{ADMIN_AUDIT_LOG_PATH}")
 
-    # Wait for the htmx load-triggered swap to populate #AdminAuditLogTable.
+    # Wait for the audit-log controller to populate #AdminAuditLogTable.
     audit_table_locator = wait_then_get_element(
         page=page, css_selector=APL.AUDIT_LOG_TABLE
     )
@@ -95,7 +95,7 @@ def test_admin_audit_log_happy_path_filter_and_metadata_expand(
     action_filter_locator = page.locator(APL.AUDIT_FILTER_ACTION)
     action_filter_locator.fill(_USER_SEARCH_ACTION_SUBSTRING)
 
-    # Wait for the debounced htmx swap deterministically: the unfiltered
+    # Wait for the debounced swap deterministically: the unfiltered
     # table always contains this page visit's own admin.audit_log.view row,
     # which the "user.search" filter excludes — so its disappearance proves
     # the filtered fragment replaced the initial one. expect() auto-retries.

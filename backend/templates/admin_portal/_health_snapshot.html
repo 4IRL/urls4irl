@@ -1,6 +1,6 @@
-{# htmx fragment — rendered standalone by admin.admin_health_snapshot and
-   swapped into #AdminHealthSnapshot; deliberately does NOT extend any base
-   template. #}
+{# HTML fragment — rendered standalone by admin.admin_health_snapshot and
+   swapped into #AdminHealthSnapshot by the native TS health-monitor controller;
+   deliberately does NOT extend any base template. #}
 {% macro status_badge(status) %}
 <span class="admin-status-badge {% if status == 'up' %}status-up{% elif status == 'down' %}status-down{% else %}status-neutral{% endif %}">{{ status }}</span>
 {% endmacro %}
