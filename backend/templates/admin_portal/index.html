@@ -14,7 +14,7 @@
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</h2>
         <p>Read-only browser over every database table.</p>
     </a>
-    <a class="admin-quick-link-card" href="/admin/users">
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_users') }}">
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_USERS }}</h2>
         <p>Search users and inspect account details and memberships.</p>
     </a>

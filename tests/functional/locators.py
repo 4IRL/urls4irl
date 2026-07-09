@@ -595,6 +595,18 @@ class AdminPortalLocators(GenericPageLocator):
     HEALTH_DATABASE_CARD = "#AdminHealthDatabase"
     HEALTH_CAPTURED_AT = "#AdminHealthCapturedAt"
 
+    # Users search page
+    USERS_TITLE = "#AdminUsersTitle"
+    USER_SEARCH_INPUT = "#AdminUserSearchInput"
+    USER_SEARCH_RESULTS = "#AdminUserSearchResults"
+    USER_SEARCH_TABLE = "#AdminUserSearchTable"
+    USER_SEARCH_ROW = "tr.admin-user-row"
+    USER_SEARCH_EMPTY = "#AdminUserSearchEmpty"
+
+    # User detail page
+    USER_DETAIL_TITLE = "#AdminUserDetailTitle"
+    USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
+
 
 class SettingsPageLocators(GenericPageLocator):
     """A collector class for user settings page locators.

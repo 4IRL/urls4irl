@@ -689,6 +689,57 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### GET /admin/users
+
+| Layer           | Location                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_users`                                                                                        |
+| **Decorators**  | `@admin_login_required`                                                                                                       |
+| **Service**     | `render_template()` direct (results load via the search fragment); not audited itself — the load-triggered fragment records the initial blank search |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                 |
+| **Template**    | `admin_portal/users/index.html` (search input: `hx-trigger="input changed delay:500ms, search"`; results region loads on `load`) |
+| **JS Module**   | None — htmx attributes only (native debounce; row navigation is a plain anchor)                                               |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                         |
+| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)      |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_PAGE`                                                                         |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                  |
+
+---
+
+### GET /admin/users/search
+
+| Layer           | Location                                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**     | `backend/admin/routes.py:admin_users_search` (query params: `q`, `offset`)                                                                |
+| **Decorators**  | `@admin_login_required`                                                                                                                    |
+| **Service**     | `backend/admin/user_service.py:search_users` (username/email ILIKE with wildcard escaping, id-ordered pagination); audits `admin.user.search` with `{query, result_count}` metadata |
+| **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                             |
+| **Template**    | `admin_portal/users/_results.html` (standalone fragment: table + Previous/Next `hx-get` pagination)                                        |
+| **JS Module**   | None — htmx attributes only                                                                                                                |
+| **CSRF**        | Not required (GET)                                                                                                                         |
+| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                   |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_SEARCH`                                                                                    |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                               |
+
+---
+
+### GET /admin/users/&lt;user_id&gt;
+
+| Layer           | Location                                                                                                                      |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------|
+| **Handler**     | `backend/admin/routes.py:admin_user_detail`                                                                                   |
+| **Decorators**  | `@admin_login_required` (404 for unknown user id)                                                                              |
+| **Service**     | `backend/admin/user_service.py:get_user_detail`; audits `admin.user.view` with `target_type="User"`, `target_id=<id>`         |
+| **Schema**      | None (request) / None (response — HTML page)                                                                                   |
+| **Template**    | `admin_portal/users/detail.html` (metadata table + UTub memberships table; READ-ONLY — no action buttons, mutations are a later, separately-gated effort) |
+| **JS Module**   | None                                                                                                                           |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USER_DETAIL`                                                                         |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                   |
+
+---
+
 ### GET /admin/db/* (Flask-Admin read-only DB browser)
 
 | Layer           | Location                                                                                                                                                                                                 |

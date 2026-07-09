@@ -25,6 +25,13 @@ class ADMIN_PORTAL_STRINGS:
     HEALTH_LABEL_GAUGE_LAST_SAMPLE: str = "Gauge Sample (sidecar)"
     HEALTH_VALUE_UNKNOWN: str = "unknown"
     HEALTH_NEVER_RAN: str = "never"
+    USERS_TITLE: str = "Users"
+    USERS_SEARCH_PLACEHOLDER: str = "Search by username or email…"
+    USERS_SEARCH_ARIA: str = "Search users by username or email"
+    USERS_NO_RESULTS: str = "No users match this search."
+    USER_DETAIL_TITLE: str = "User Detail"
+    USER_DETAIL_MEMBERSHIPS_HEADING: str = "UTub Memberships"
+    USER_DETAIL_NO_MEMBERSHIPS: str = "Not a member of any UTubs."
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -33,3 +40,5 @@ class ADMIN_AUDIT_ACTIONS:
     PORTAL_VIEW: str = "admin.portal.view"
     HEALTH_VIEW: str = "admin.health.view"
     DB_BROWSER_VIEW: str = "admin.db_browser.view"
+    USER_SEARCH: str = "admin.user.search"
+    USER_VIEW: str = "admin.user.view"

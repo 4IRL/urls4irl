@@ -1,0 +1,46 @@
+{% extends "admin_portal/base.html" %}
+{% set active_nav = 'users' %}
+{% block admin_content %}
+<header id="AdminUserDetailHeader" class="admin-page-header">
+    <h1 id="AdminUserDetailTitle">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_TITLE }}: {{ detail_user.username }}</h1>
+</header>
+<div id="AdminUserDetailPanel" class="admin-panel">
+    <table id="AdminUserDetailTable" class="admin-table">
+        <tbody>
+            <tr><th>ID</th><td id="AdminUserDetailId">{{ detail_user.id }}</td></tr>
+            <tr><th>Username</th><td id="AdminUserDetailUsername">{{ detail_user.username }}</td></tr>
+            <tr><th>Email</th><td id="AdminUserDetailEmail">{{ detail_user.email }}</td></tr>
+            <tr><th>Role</th><td id="AdminUserDetailRole">{{ detail_user.role.value }}</td></tr>
+            <tr><th>Email Validated</th><td id="AdminUserDetailEmailValidated">{{ 'yes' if detail_user.email_validated else 'no' }}</td></tr>
+            <tr><th>Created</th><td id="AdminUserDetailCreated">{{ detail_user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td></tr>
+            <tr><th>OAuth Identities</th><td id="AdminUserDetailOauth">{{ detail_user.oauth_identities | length }}</td></tr>
+            <tr><th>Local Password Set</th><td id="AdminUserDetailHasPassword">{{ 'yes' if detail_user.password is not none else 'no' }}</td></tr>
+        </tbody>
+    </table>
+</div>
+<div id="AdminUserMemberships" class="admin-panel">
+    <h2 id="AdminUserMembershipsHeading">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_MEMBERSHIPS_HEADING }}</h2>
+    {% if detail_user.utubs_is_member_of %}
+    <table id="AdminUserMembershipsTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>UTub ID</th>
+                <th>UTub Name</th>
+                <th>Member Role</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for membership in detail_user.utubs_is_member_of %}
+            <tr>
+                <td>{{ membership.to_utub.id }}</td>
+                <td>{{ membership.to_utub.name }}</td>
+                <td>{{ membership.member_role.value }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p id="AdminUserNoMemberships">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_NO_MEMBERSHIPS }}</p>
+    {% endif %}
+</div>
+{% endblock %}

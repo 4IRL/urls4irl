@@ -1,0 +1,45 @@
+{# htmx fragment — rendered standalone by admin.admin_users_search and
+   swapped into #AdminUserSearchResults. #}
+{% if search_page.users %}
+<table id="AdminUserSearchTable" class="admin-table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Email Validated</th>
+            <th>Created</th>
+        </tr>
+    </thead>
+    <tbody id="AdminUserSearchRows">
+        {% for result_user in search_page.users %}
+        <tr class="admin-user-row">
+            <td>{{ result_user.id }}</td>
+            <td><a class="admin-user-link" href="{{ url_for('admin.admin_user_detail', user_id=result_user.id) }}">{{ result_user.username }}</a></td>
+            <td>{{ result_user.email }}</td>
+            <td>{{ result_user.role.value }}</td>
+            <td>{{ 'yes' if result_user.email_validated else 'no' }}</td>
+            <td>{{ result_user.created_at.strftime('%Y-%m-%d') }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<div id="AdminUserSearchPagination" class="admin-search-pagination">
+    <span id="AdminUserSearchCount">{{ search_page.total_count }} match{{ 'es' if search_page.total_count != 1 else '' }}</span>
+    {% if search_page.has_previous %}
+    <a id="AdminUserSearchPrev" href="#"
+       hx-get="{{ url_for('admin.admin_users_search', q=search_page.query, offset=search_page.previous_offset) }}"
+       hx-target="#AdminUserSearchResults"
+       hx-swap="innerHTML">Previous</a>
+    {% endif %}
+    {% if search_page.has_next %}
+    <a id="AdminUserSearchNext" href="#"
+       hx-get="{{ url_for('admin.admin_users_search', q=search_page.query, offset=search_page.next_offset) }}"
+       hx-target="#AdminUserSearchResults"
+       hx-swap="innerHTML">Next</a>
+    {% endif %}
+</div>
+{% else %}
+<p id="AdminUserSearchEmpty" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.USERS_NO_RESULTS }}</p>
+{% endif %}

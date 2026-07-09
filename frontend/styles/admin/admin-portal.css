@@ -184,6 +184,52 @@
     color: var(--cardURLTextColor);
 }
 
+/* ---- User search --------------------------------------------------------- */
+
+.admin-search-input {
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    background-color: var(--defaultPageBackgroundColor);
+    color: var(--UTubDescriptionColor);
+}
+
+.admin-search-input:focus {
+    outline: none;
+    border-color: var(--deckHeaderGreen);
+}
+
+.admin-user-link {
+    color: var(--deckHeaderGreen);
+    text-decoration: none;
+}
+
+.admin-user-link:hover {
+    text-decoration: underline;
+}
+
+.admin-search-pagination {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-search-pagination a {
+    color: var(--deckHeaderGreen);
+    cursor: pointer;
+}
+
+.admin-search-empty {
+    margin: 0;
+    color: var(--cardURLTextColor);
+}
+
 /* ---- htmx request indicators ------------------------------------------- */
 /* htmx's built-in indicator <style> injection is disabled in admin.ts
  * (includeIndicatorStyles = false) because the CSP only allows nonced
