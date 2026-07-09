@@ -253,6 +253,13 @@ def create_app(
     app.register_blueprint(utub_url_tags)
     app.register_blueprint(utub_tags)
 
+    # Read-only Flask-Admin DB browser (mounted at /admin/db). Imported and
+    # initialized after every model module has been imported so the mapper
+    # registry it iterates is fully populated.
+    from backend.admin.db_browser import init_db_browser
+
+    init_db_browser(app)
+
     if not (testing or production):
         from backend.debug.routes import debug as debug_routes
 

@@ -1,4 +1,4 @@
-{% extends "admin/base.html" %}
+{% extends "admin_portal/base.html" %}
 {% set active_nav = 'dashboard' %}
 {% block admin_content %}
 <header id="AdminPortalHeader" class="admin-page-header">
@@ -10,7 +10,7 @@
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_HEALTH }}</h2>
         <p>Database, Redis, connections, disk, and sidecar cron status.</p>
     </a>
-    <a class="admin-quick-link-card" href="/admin/db">
+    <a class="admin-quick-link-card" href="{{ url_for('admin_db.index') }}">
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</h2>
         <p>Read-only browser over every database table.</p>
     </a>

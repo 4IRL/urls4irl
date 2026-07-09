@@ -4,8 +4,8 @@ from flask import Blueprint, render_template
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
 
-from backend.api_common.auth_decorators import admin_login_required
 from backend.admin.health_service import collect_health_snapshot
+from backend.api_common.auth_decorators import admin_login_required
 from backend.extensions import audit
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.admin_portal_strs import (
@@ -38,7 +38,7 @@ def admin_portal() -> FlaskResponse:
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.PORTAL_VIEW)
     return render_template(
-        "admin/index.html",
+        "admin_portal/index.html",
         is_admin_portal=True,
     )
 
@@ -54,7 +54,7 @@ def admin_health() -> FlaskResponse:
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.HEALTH_VIEW)
     return render_template(
-        "admin/health.html",
+        "admin_portal/health.html",
         is_admin_portal=True,
     )
 
@@ -70,7 +70,7 @@ def admin_health_snapshot() -> FlaskResponse:
     """
     health_snapshot = collect_health_snapshot()
     return render_template(
-        "admin/_health_snapshot.html",
+        "admin_portal/_health_snapshot.html",
         snapshot=health_snapshot,
     )
 

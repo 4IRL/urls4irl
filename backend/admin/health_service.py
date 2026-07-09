@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import shutil
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import shutil
 
 from flask import current_app
 from redis import Redis
@@ -19,6 +19,9 @@ STATUS_NOT_CONFIGURED: str = "not configured"
 
 _MEMORY_URI: str = "memory://"
 _DISK_PROBE_PATH: str = "/"
+# Flask-Session stores the live Redis client under this config key when
+# SESSION_TYPE == "redis" (see backend/config.py); absent under cachelib.
+_SESSION_REDIS_CONFIG_KEY: str = "SESSION_REDIS"
 
 
 @dataclass(frozen=True)
@@ -55,7 +58,7 @@ def _probe_database() -> tuple[str, int | None]:
 
 
 def _probe_session_redis() -> str:
-    session_redis: Redis | None = current_app.config.get("SESSION_REDIS")
+    session_redis: Redis | None = current_app.config.get(_SESSION_REDIS_CONFIG_KEY)
     if session_redis is None:
         return STATUS_NOT_CONFIGURED
     try:
@@ -113,7 +116,7 @@ def _probe_disk_used_percent() -> float | None:
     try:
         disk_usage = shutil.disk_usage(_DISK_PROBE_PATH)
         return round(disk_usage.used / disk_usage.total * 100, 1)
-    except OSError as disk_error:
+    except Exception as disk_error:
         warning_log(f"health snapshot: disk probe failed: {disk_error}")
         return None
 

@@ -570,8 +570,8 @@ class AdminPortalLocators(GenericPageLocator):
     """A collector class for admin portal landing page locators.
 
     Selectors mirror the IDs defined in
-    `backend/templates/admin/index.html` and
-    `backend/templates/admin/_nav.html`.
+    `backend/templates/admin_portal/index.html` and
+    `backend/templates/admin_portal/_nav.html`.
     """
 
     # Page-level containers

@@ -32,3 +32,4 @@ class ADMIN_AUDIT_ACTIONS:
 
     PORTAL_VIEW: str = "admin.portal.view"
     HEALTH_VIEW: str = "admin.health.view"
+    DB_BROWSER_VIEW: str = "admin.db_browser.view"

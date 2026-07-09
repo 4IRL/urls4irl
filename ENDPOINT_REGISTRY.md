@@ -646,7 +646,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required`                                                                                                        |
 | **Service**     | `render_template()` direct; emits `audit.record(action="admin.portal.view")` (`backend/extensions/audit/record.py`)           |
 | **Schema**      | None (request) / None (response — page is HTML, not JSON)                                                                      |
-| **Template**    | `admin/index.html` (extends `admin/base.html`, includes `admin/_nav.html`; vars: `is_admin_portal=True`)                       |
+| **Template**    | `admin_portal/index.html` (extends `admin_portal/base.html`, includes `admin_portal/_nav.html`; vars: `is_admin_portal=True`)                       |
 | **JS Module**   | `frontend/admin.ts` (entry point: loads htmx, registers plugins, sets up CSRF, navbar + cookie banner init)                    |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                          |
 | **Tests**       | `tests/integration/admin/test_admin_portal_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
@@ -663,7 +663,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required`                                                                                                                     |
 | **Service**     | `render_template()` direct; emits `audit.record(action="admin.health.view")`                                                               |
 | **Schema**      | None (request) / None (response — HTML shell)                                                                                              |
-| **Template**    | `admin/health.html` (extends `admin/base.html`; snapshot region `#AdminHealthSnapshot` declares `hx-trigger="load, refresh-health"`)        |
+| **Template**    | `admin_portal/health.html` (extends `admin_portal/base.html`; snapshot region `#AdminHealthSnapshot` declares `hx-trigger="load, refresh-health"`)        |
 | **JS Module**   | `frontend/admin/health-monitor.ts` (30s poll clock + visibilitychange pause/resume, dispatches `refresh-health`)                            |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                       |
 | **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                    |
@@ -680,12 +680,30 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required`                                                                                                                         |
 | **Service**     | `backend/admin/health_service.py:collect_health_snapshot` (DB SELECT 1 + pg_stat_activity, session/metrics Redis pings, sidecar sentinel epochs, disk %) |
 | **Schema**      | None (request) / None (response — HTML fragment for htmx swap)                                                                                  |
-| **Template**    | `admin/_health_snapshot.html` (standalone fragment, no base template)                                                                           |
+| **Template**    | `admin_portal/_health_snapshot.html` (standalone fragment, no base template)                                                                           |
 | **JS Module**   | `frontend/admin/health-monitor.ts` (issues the htmx `refresh-health` trigger)                                                                   |
 | **CSRF**        | Not required (GET)                                                                                                                              |
 | **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                        |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_SNAPSHOT`                                                                                      |
 | **Metrics**     | `API_HIT` middleware auto-coverage; deliberately NOT audited per-poll (page view is audited instead)                                            |
+
+---
+
+### GET /admin/db/* (Flask-Admin read-only DB browser)
+
+| Layer           | Location                                                                                                                                                                                                 |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | Flask-Admin generated views — `backend/admin/db_browser.py:init_db_browser` (`ProtectedAdminIndexView` at `/admin/db/`, one `ReadOnlyModelView` per mapped model at `/admin/db/<model>/` + `/details/`) |
+| **Decorators**  | `is_accessible()` gate on every view (`_AdminAccessMixin`): 302 → login for anonymous, 403 for non-admin — mirrors `@admin_login_required`                                                              |
+| **Service**     | Flask-Admin `contrib.sqla`; list views emit `audit.record(action="admin.db_browser.view", target_type=<ModelClass>)`                                                                                    |
+| **Schema**      | None — server-rendered HTML; read-only (`can_create/can_edit/can_delete/can_export = False` on every view; `Users.password` column excluded)                                                            |
+| **Template**    | Flask-Admin packaged Bootstrap4 templates (app portal templates live under `templates/admin_portal/` to avoid the `admin/*` template-name collision)                                                    |
+| **JS Module**   | None (Flask-Admin's own static assets; inline scripts nonce'd via `csp_nonce_generator`)                                                                                                                |
+| **CSRF**        | N/A — no mutating endpoints enabled                                                                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_db_browser.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                                                                 |
+| **Route Const** | Flask-Admin endpoints `admin_db.index` / `admin_db_<model>.index_view`                                                                                                                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface                                                                                      |
+| **Deps**        | `Flask-Admin==2.2.0` (requirements-prod.txt; zero new transitive deps — flask/jinja2/markupsafe/werkzeug/wtforms already pinned)                                                                        |
 
 ---
 
