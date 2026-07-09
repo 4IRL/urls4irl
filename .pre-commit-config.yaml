@@ -42,3 +42,17 @@ repos:
       language: system
       types: [ts]
       pass_filenames: false
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: "v0.11.0.1"
+    hooks:
+    - id: shellcheck
+      args: [--severity=warning, -x]
+      exclude: ^\.claude/(hooks|worktrees)/
+
+  - repo: https://github.com/scop/pre-commit-shfmt
+    rev: "v3.13.1-1"
+    hooks:
+    - id: shfmt
+      args: [-i, "2", -ci, --write]
+      exclude: ^\.claude/(hooks|worktrees)/

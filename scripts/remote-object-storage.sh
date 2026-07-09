@@ -8,15 +8,16 @@ remote_backup() {
   local failure=0
   local db_mime_type=""
   local log_mime_type=""
-  REMOTE_BACKUP_ERROR=""
+  # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
   REMOTE_DB_STATUS=skip
+  # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
   REMOTE_DB_MONTHLY_STATUS=skip
+  # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
   REMOTE_LOGS_STATUS=skip
 
   if [[ "${PRODUCTION:-}" != "true" ]]; then
     echo -e "\n\n Skipping remote object storage due to not in production \n\n"
     failure=0
-    REMOTE_BACKUP_ERROR=""
     return 0
   fi
 
@@ -45,12 +46,13 @@ remote_backup() {
       --s3-no-check-bucket \
       --header-upload "Content-Type:$db_mime_type"; then
       echo "Error: Failure in sending daily database backup to Cloudflare R2"
-      REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
+      # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
       REMOTE_DB_STATUS=fail
       failure=1
       notify_step "REMOTE_DB" "FAILURE" "Error: Failure in sending daily database backup to Cloudflare R2"
     else
       echo "Success: Sent daily database backup to Cloudflare R2"
+      # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
       REMOTE_DB_STATUS=ok
     fi
 
@@ -65,19 +67,19 @@ remote_backup() {
         --s3-no-check-bucket \
         --header-upload "Content-Type:$db_mime_type"; then
         echo "Error: Failure in sending monthly database backup to Cloudflare R2"
-        REMOTE_BACKUP_ERROR="Error: Failure in sending monthly database backup to Cloudflare R2"
+        # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
         REMOTE_DB_MONTHLY_STATUS=fail
         failure=1
         notify_step "REMOTE_DB_MONTHLY" "FAILURE" "Error: Failure in sending monthly database backup to Cloudflare R2"
       else
         echo "Success: Sent monthly database backup to Cloudflare R2"
+        # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
         REMOTE_DB_MONTHLY_STATUS=ok
       fi
       rm -f "${monthly_file}"
     fi
   else
     echo "Skipping database remote backup due to local backup failure"
-    REMOTE_BACKUP_ERROR="Skipping database remote backup due to local backup failure"
     # REMOTE_DB_STATUS stays "skip" (its default): the remote DB backup was
     # intentionally NOT attempted because the upstream local DB backup already
     # failed and reported its own failure. This is distinct from an
@@ -94,17 +96,17 @@ remote_backup() {
       --s3-no-check-bucket \
       --header-upload "Content-Type:$log_mime_type"; then
       echo "Error: Failure in sending daily app logs to Cloudflare R2"
-      REMOTE_BACKUP_ERROR="Error: Failure in sending daily app logs to Cloudflare R2"
+      # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
       REMOTE_LOGS_STATUS=fail
       failure=1
       notify_step "REMOTE_LOGS" "FAILURE" "Error: Failure in sending daily app logs to Cloudflare R2"
     else
       echo "Success: Sent daily app logs to Cloudflare R2"
+      # shellcheck disable=SC2034 # read by daily-docker.sh (notify.py --summary) after sourcing this file
       REMOTE_LOGS_STATUS=ok
     fi
   else
     echo "Skipping log remote backup due to local backup failure"
-    REMOTE_BACKUP_ERROR="Skipping log remote backup due to local backup failure"
     failure=1
   fi
 

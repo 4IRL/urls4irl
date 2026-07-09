@@ -9,7 +9,7 @@ echo -e "\n\n START LOG BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 
 # Compress daily backup on host
 echo "Compressing logs on host..."
-if ! gzip -c "${LOG_FILE}" > "${COMPRESSED_LOG_FILE}"; then
+if ! gzip -c "${LOG_FILE}" >"${COMPRESSED_LOG_FILE}"; then
   echo "Error: Failure in compressing the logs"
   return 1
 fi

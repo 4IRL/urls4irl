@@ -8,7 +8,7 @@ echo -e "\n\n START LOCAL DATABASE BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 # ------- BACKUP DATABASE, STORE AND COMPRESS ON HOST ------- #
 
 echo "Generating backup and storing on the host..."
-if ! PGPASSWORD="$DB_PASS" pg_dump -h "db" -U "$DB_USER" -d "$DB_NAME" --clean --if-exists --create > "${DB_BACKUP_FILE}"; then
+if ! PGPASSWORD="$DB_PASS" pg_dump -h "db" -U "$DB_USER" -d "$DB_NAME" --clean --if-exists --create >"${DB_BACKUP_FILE}"; then
   echo "Error: Failure in generating backup in docker container"
   return 1
 fi
@@ -18,7 +18,7 @@ unset DB_PASS DB_USER DB_NAME
 
 # Compress daily backup on host
 echo "Compressing backup on host..."
-if ! gzip -c "${DB_BACKUP_FILE}" > "${COMPRESSED_DB_BACKUP_FILE}"; then
+if ! gzip -c "${DB_BACKUP_FILE}" >"${COMPRESSED_DB_BACKUP_FILE}"; then
   echo "Error: Failure in compressing the backup"
   return 1
 fi
@@ -39,7 +39,6 @@ if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --direct
 fi
 
 unset DB_BACKUP_FILE
-
 
 echo -e "\n\n FINISH LOCAL DATABASE BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 echo "----------------------------------------------------"

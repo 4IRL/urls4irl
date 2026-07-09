@@ -42,14 +42,29 @@ while IFS= read -r plan_file; do
   ' "$plan_file")"
 
   case "$finished_value" in
-    true)  box="x"; done_n=$((done_n + 1)) ;;
-    false) box=" "; open_n=$((open_n + 1)) ;;
-    *)     box="?"; unknown_n=$((unknown_n + 1)) ;;
+    true)
+      box="x"
+      done_n=$((done_n + 1))
+      ;;
+    false)
+      box=" "
+      open_n=$((open_n + 1))
+      ;;
+    *)
+      box="?"
+      unknown_n=$((unknown_n + 1))
+      ;;
   esac
 
   case "$plan_file" in
-    *-master.md) kind="master"; kind_sort="0" ;;
-    *)           kind="sub";    kind_sort="1" ;;
+    *-master.md)
+      kind="master"
+      kind_sort="0"
+      ;;
+    *)
+      kind="sub"
+      kind_sort="1"
+      ;;
   esac
 
   # Related GitHub issue number from the YAML frontmatter (`github_issue: <N>`).
@@ -72,9 +87,9 @@ fi
 echo "# Plans"
 
 # Sort by topic, then master-before-sub, then name; print grouped with a checkbox per plan.
-printf "%b" "$rows" \
-  | sort -t"$(printf '\t')" -k1,1 -k2,2 -k5,5 \
-  | awk -F'\t' '
+printf "%b" "$rows" |
+  sort -t"$(printf '\t')" -k1,1 -k2,2 -k5,5 |
+  awk -F'\t' '
       { if ($1 != current_topic) { current_topic = $1; printf "\n## %s\n", $1 }
         master_tag = ($3 == "master" ? "  (master)" : "")
         issue_tag  = ($6 == "" ? "  (no issue)" : "  #" $6)
@@ -95,12 +110,13 @@ not_done_n=$((open_n + unknown_n))
 if [ "$not_done_n" -gt 0 ]; then
   echo
   echo "## Not Done (${not_done_n})"
-  printf "%b" "$rows" \
-    | sort -t"$(printf '\t')" -k1,1 -k2,2 -k5,5 \
-    | awk -F'\t' '
+  printf "%b" "$rows" |
+    sort -t"$(printf '\t')" -k1,1 -k2,2 -k5,5 |
+    awk -F'\t' '
         $4 != "x" {
           master_tag = ($3 == "master" ? "  (master)" : "")
           issue_tag  = ($6 == "" ? "  (no issue)" : "  #" $6)
           printf "  - [%s] %s%s%s  · %s\n", $4, $5, master_tag, issue_tag, $1
         }
       '
+fi

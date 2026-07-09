@@ -18,23 +18,24 @@
 CREDENTIALS_FILE="secrets/db_credentials.conf"
 
 if [ ! -f "$CREDENTIALS_FILE" ]; then
-    echo "Error: Credentials file '$CREDENTIALS_FILE' not found!"
-    exit 1
+  echo "Error: Credentials file '$CREDENTIALS_FILE' not found!"
+  exit 1
 fi
 
 # Read credentials
+# shellcheck source=/dev/null
 source "$CREDENTIALS_FILE"
 
 # Ensure all required variables are set
 if [[ -z "$CONTAINER_NAME" || -z "$DB_NAME" || -z "$DB_USER" || -z "$DB_PASSWORD" ]]; then
-    echo "Error: Missing required database credentials in '$CREDENTIALS_FILE'"
-    exit 1
+  echo "Error: Missing required database credentials in '$CREDENTIALS_FILE'"
+  exit 1
 fi
 
 # Check if a filename was provided as an argument
 if [ $# -eq 0 ]; then
-    echo "Usage: $0 <backup_file.sql.gz>"
-    exit 1
+  echo "Usage: $0 <backup_file.sql.gz>"
+  exit 1
 fi
 
 BACKUP_FILE="$1"
@@ -42,12 +43,12 @@ TMP_FILE="tmp.db"
 
 # Check if the backup file exists
 if [ ! -f "$BACKUP_FILE" ]; then
-    echo "Error: Backup file '$BACKUP_FILE' not found!"
-    exit 1
+  echo "Error: Backup file '$BACKUP_FILE' not found!"
+  exit 1
 fi
 
 echo "Unzipping backup file..."
-gunzip -c "$BACKUP_FILE" > "$TMP_FILE"
+gunzip -c "$BACKUP_FILE" >"$TMP_FILE"
 
 echo "Modifying owner references in backup file..."
 sed -i '' -E "s/Owner: [^ ]*/Owner: $DB_USER/g" "$TMP_FILE"
@@ -68,8 +69,8 @@ echo "Checking if database '$DB_NAME' is empty..."
 TABLE_COUNT=$(docker exec -i "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -t -c "SELECT count(*) FROM pg_tables WHERE schemaname='public';" | tr -d '[:space:]')
 
 if [[ "$TABLE_COUNT" -ne 0 ]]; then
-    echo "Warning: Database '$DB_NAME' is not empty. Dropping all tables..."
-    docker exec -i "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
+  echo "Warning: Database '$DB_NAME' is not empty. Dropping all tables..."
+  docker exec -i "$CONTAINER_NAME" psql -U "$DB_USER" -d "$DB_NAME" -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public;"
 fi
 
 echo "Copying modified backup file into Docker container..."
