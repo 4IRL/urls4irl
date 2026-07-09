@@ -13,6 +13,7 @@ API_REFRESH_TOKENS = "ApiRefreshTokens"
 EVENT_REGISTRY = "EventRegistry"
 ANONYMOUS_METRICS = "AnonymousMetrics"
 ANONYMOUS_GAUGES = "AnonymousGauges"
+AUDIT_LOGS = "AuditLogs"
 ALEMBIC_VERSION = "alembic_version"
 
 
@@ -33,6 +34,7 @@ class TABLE_NAMES:
     EVENT_REGISTRY = EVENT_REGISTRY
     ANONYMOUS_METRICS = ANONYMOUS_METRICS
     ANONYMOUS_GAUGES = ANONYMOUS_GAUGES
+    AUDIT_LOGS = AUDIT_LOGS
 
     SORTED_TABLES_FOR_DELETION = (
         ANONYMOUS_GAUGES,
@@ -49,5 +51,7 @@ class TABLE_NAMES:
         CONTACT_FORM_ENTRIES,
         USER_OAUTH_IDENTITIES,
         API_REFRESH_TOKENS,
+        # AuditLogs references Users (actorId FK) and must drop before it.
+        AUDIT_LOGS,
         USERS,
     )
