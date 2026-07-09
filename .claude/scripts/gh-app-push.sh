@@ -46,11 +46,11 @@ if [ -z "$BRANCH" ]; then
 fi
 
 case "$BRANCH" in
-  main|master)
+  main | master)
     echo "Error: refusing to push to '$BRANCH'. Feature branches only." >&2
     exit 3
     ;;
-  --force|-f|--force-with-lease|--force-with-lease=*|*\ --force*|*\ -f*)
+  --force | -f | --force-with-lease | --force-with-lease=* | *\ --force* | *\ -f*)
     echo "Error: branch name looks like a force-push flag: '$BRANCH'. Refused." >&2
     exit 3
     ;;

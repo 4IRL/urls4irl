@@ -44,8 +44,8 @@ clear_lock_files() {
     for profile in "${root}/${PROFILE_MARKER}"*; do
       [ -d "${profile}" ] || continue
       rm -f "${profile}/SingletonLock" \
-            "${profile}/SingletonCookie" \
-            "${profile}/SingletonSocket" 2>/dev/null || true
+        "${profile}/SingletonCookie" \
+        "${profile}/SingletonSocket" 2>/dev/null || true
     done
   done
 }

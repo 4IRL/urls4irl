@@ -1,7 +1,6 @@
 #!/bin/bash
 set +x # Disable command echoing
 
-
 echo "!!######################################################################################################!!"
 echo -e "\nSTARTING DAILY WORKFLOW CONTAINER: $(date +%Y%m%d_%H%M%S)\n"
 echo "!!######################################################################################################!!"
@@ -12,9 +11,9 @@ chown -R workflow:workflow /app/volume /app/workflow_logs /backups 2>/dev/null |
 chmod -R 755 /backups /app/volume /app/workflow_logs 2>/dev/null || true
 
 if [ "$PRODUCTION" == "true" ]; then
-    echo -e "\nLoading environments...\n"
+  echo -e "\nLoading environments...\n"
 else
-    echo -e "\nRunning workflow in development mode\n"
+  echo -e "\nRunning workflow in development mode\n"
 fi
 
 # Write the cron environment dump. build_container_env.py is the single source

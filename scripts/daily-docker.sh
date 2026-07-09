@@ -6,35 +6,35 @@ SENSITIVE_VARS=("R2_ENDPOINT" "SECRET_ACCESS_KEY" "ACCESS_KEY" "DB_PASS" "DB_USE
 
 # Cleanup function
 cleanup_secrets() {
-    local exit_code=$?
-    echo "----------------------------------------------------"
+  local exit_code=$?
+  echo "----------------------------------------------------"
 
-    if [[ $exit_code -ne 0 ]]; then
-      echo -e "\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-      echo -e "\n\n SCRIPT EXITED IN ERROR \n\n"
-      echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-    fi
+  if [[ $exit_code -ne 0 ]]; then
+    echo -e "\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+    echo -e "\n\n SCRIPT EXITED IN ERROR \n\n"
+    echo "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+  fi
 
-    echo -e "\n\n Cleaning up sensitive variables...\n\n"
-    echo "----------------------------------------------------"
-    for var in "${SENSITIVE_VARS[@]}"; do
-        if [[ -n "${!var:-}" ]]; then
-            # Get the variable value and its length
-            local var_value="${!var}"
-            local var_length=${#var_value}
-            if [[ $var_length -gt 0 ]]; then
-                # Overwrite with random data
-                eval "$var=\"$(head -c $var_length /dev/urandom 2>/dev/null | base64 2>/dev/null | head -c $var_length || echo '')\""
-            fi
-            unset "$var"
-        fi
-    done
-
-    if [[ -n "${WORKFLOW_LOG_DIR:-}" ]]; then
-      if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "$WORKFLOW_LOG_DIR" --pattern '*-daily-workflow-logs.txt' --max-files 90; then
-          echo "Warning: workflow_logs prune failed"
+  echo -e "\n\n Cleaning up sensitive variables...\n\n"
+  echo "----------------------------------------------------"
+  for var in "${SENSITIVE_VARS[@]}"; do
+    if [[ -n "${!var:-}" ]]; then
+      # Get the variable value and its length
+      local var_value="${!var}"
+      local var_length=${#var_value}
+      if [[ $var_length -gt 0 ]]; then
+        # Overwrite with random data
+        eval "$var=\"$(head -c $var_length /dev/urandom 2>/dev/null | base64 2>/dev/null | head -c $var_length || echo '')\""
       fi
+      unset "$var"
     fi
+  done
+
+  if [[ -n "${WORKFLOW_LOG_DIR:-}" ]]; then
+    if ! /opt/metrics-venv/bin/python /app/backup_maintenance.py prune-logs --directory "$WORKFLOW_LOG_DIR" --pattern '*-daily-workflow-logs.txt' --max-files 90; then
+      echo "Warning: workflow_logs prune failed"
+    fi
+  fi
 }
 
 trap cleanup_secrets EXIT
@@ -43,8 +43,8 @@ trap cleanup_secrets EXIT
 if [[ -f /app/container_environment ]]; then
   . /app/container_environment
 else
-    echo "ERROR: /app/container_environment not found!";
-    exit 1;
+  echo "ERROR: /app/container_environment not found!"
+  exit 1
 fi
 
 # Redirecting file stdout/stderr to a daily logfile
@@ -58,7 +58,7 @@ exec 1>>"$LOGFILE"
 exec 2>&1
 
 notify_step() {
-    /opt/metrics-venv/bin/python /app/scripts/notify.py --job "$1" --status "$2" --detail "${3:-}" || true
+  /opt/metrics-venv/bin/python /app/scripts/notify.py --job "$1" --status "$2" --detail "${3:-}" || true
 }
 
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
@@ -70,11 +70,11 @@ echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 # block could send a failure notification — leaving only a cron.log line as the
 # signal. Checking here turns a silent misconfiguration into a notified one.
 for required_var in POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD; do
-    if [[ -z "${!required_var:-}" ]]; then
-        echo "Error: required environment variable ${required_var} is missing or empty"
-        notify_step "DAILY" "FAILURE" "Error: required environment variable ${required_var} is missing or empty — aborting daily backup"
-        exit 1
-    fi
+  if [[ -z "${!required_var:-}" ]]; then
+    echo "Error: required environment variable ${required_var} is missing or empty"
+    notify_step "DAILY" "FAILURE" "Error: required environment variable ${required_var} is missing or empty — aborting daily backup"
+    exit 1
+  fi
 done
 
 # Build variables for database backup
@@ -110,7 +110,6 @@ if ! source "$SCRIPT_DIR/backup-logs.sh"; then
 fi
 
 unset LOG_FILE LOG_DIR
-
 
 source "$SCRIPT_DIR/remote-object-storage.sh"
 remote_exit=0

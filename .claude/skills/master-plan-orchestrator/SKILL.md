@@ -122,7 +122,7 @@ If any check fails, fix the plan file before proceeding.
 
 This is the artifact that makes the master plan executable by a single autonomous agent instead of a sequence of human-reviewed PRs.
 
-Read `references/execution-prompt-template.md` in full — it contains the template structure and fill-in guidance. Fill in every placeholder from the master plan you just wrote (title, branch name, topic, phase count, scope boundaries, verification commands, ordering constraints) and write the result to `plans/<topic>/<name>-execution-prompt.md`.
+Read `references/execution-prompt-template.md` in full — it contains the template structure and fill-in guidance. Fill in every placeholder from the master plan you just wrote (title, branch name, topic, phase count, scope boundaries, verification commands, ordering constraints) and write the result to `plans/<topic>/<name>-execution-prompt.md`. Include the template's `## Status` block (`finished: false`) above `## Prompt` verbatim — do not drop it; it's what lets `/plan-list` track this file the same way it tracks the master plan.
 
 The template's `## Prompt` section is what later gets handed to the orchestrator **verbatim**, via a separate `Agent` tool call with `model: "fable"`. Everything above `## Prompt` in the generated file is reference/resume scaffolding for whoever launches or re-launches the run — it is never itself sent to the agent.
 

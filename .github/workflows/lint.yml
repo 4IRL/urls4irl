@@ -44,3 +44,14 @@ jobs:
 
       - name: Verify TypeScript with ESLint
         run: npx eslint "**/*.ts"
+
+      - name: Install shellcheck
+        working-directory: .
+        run: |
+          curl -sSL https://github.com/koalaman/shellcheck/releases/download/v0.11.0/shellcheck-v0.11.0.linux.x86_64.tar.xz | tar -xJ
+          sudo mv shellcheck-v0.11.0/shellcheck /usr/local/bin/shellcheck
+          shellcheck --version
+
+      - name: Verify shell scripts with ShellCheck
+        working-directory: .
+        run: shellcheck --severity=warning -x scripts/*.sh docker/*.sh frontend/setup-vendor.sh .claude/scripts/*.sh

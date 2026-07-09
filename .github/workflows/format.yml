@@ -33,3 +33,12 @@ jobs:
 
       - name: Prettier
         run: npx prettier --check "**/*.js"
+
+      - name: Install shfmt
+        run: |
+          curl -sSLo /usr/local/bin/shfmt https://github.com/mvdan/sh/releases/download/v3.13.1/shfmt_v3.13.1_linux_amd64
+          chmod +x /usr/local/bin/shfmt
+          shfmt --version
+
+      - name: Verify shell formatting with shfmt
+        run: shfmt -i 2 -ci -d scripts/*.sh docker/*.sh frontend/setup-vendor.sh .claude/scripts/*.sh
