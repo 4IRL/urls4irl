@@ -625,6 +625,8 @@ class AdminPortalLocators(GenericPageLocator):
     DB_TABLE_GRID = "#AdminDbTableGrid"
     DB_TABLE_EMPTY = "#AdminDbTableEmpty"
     DB_ROW_DETAIL = "#AdminDbRowDetail"
+    DB_TABLE_SEARCH = "#AdminDbTableSearch"
+    DB_SORT_LINK = ".admin-db-sort-link"
 
 
 class SettingsPageLocators(GenericPageLocator):

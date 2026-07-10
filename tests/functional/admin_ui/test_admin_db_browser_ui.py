@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 from flask import Flask
 from playwright.sync_api import Page, expect
 
+from backend.cli.mock_constants import TEST_USER_COUNT, USERNAME_BASE
 from backend.config import ConfigTestUI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.admin_ui.playwright_utils import (
@@ -39,6 +42,13 @@ _SCRYPT_HASH_PREFIX: str = "scrypt:"
 # The first cell of each grid row links to that row's detail page via the
 # DB-row-scoped link class.
 _DB_ROW_LINK_SELECTOR: str = ".admin-db-row-link"
+
+# The sortable/searchable Users grid columns and the highest mock username,
+# which surfaces first once the grid is sorted by username descending.
+_USERNAME_COLUMN_KEY: str = "username"
+_LAST_MOCK_USERNAME: str = f"{USERNAME_BASE}{TEST_USER_COUNT}"
+# A query guaranteed to match no seeded user, forcing the empty-search state.
+_NO_MATCH_SEARCH_QUERY: str = "zzqnosuchrowzzq"
 
 
 def test_admin_db_browser_overview_happy_path(
@@ -109,6 +119,111 @@ def test_admin_db_browser_grid_happy_path_masks_password(
 
     db_browser_nav_link = page.locator(APL.NAV_DB_BROWSER)
     expect(db_browser_nav_link).to_have_class("admin-nav-link active")
+
+
+def test_admin_db_browser_sort_link_reorders_rows(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin viewing the Users grid in default (PK) order
+    WHEN the admin clicks the username column header sort link twice
+    THEN the URL carries ``sort=username``, then ``dir=desc``, and the first
+         data row surfaces the alphabetically-last mock username.
+    """
+    login_admin_and_open_db_browser_table(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        table_name="Users",
+    )
+
+    grid_locator = wait_then_get_element(page=page, css_selector=APL.DB_TABLE_GRID)
+    expect(grid_locator).to_be_visible()
+
+    username_sort_link = page.locator(APL.DB_SORT_LINK).filter(
+        has_text=_USERNAME_COLUMN_KEY
+    )
+    username_sort_link.click()
+    expect(page).to_have_url(re.compile(rf"sort={_USERNAME_COLUMN_KEY}"))
+
+    page.locator(APL.DB_SORT_LINK).filter(has_text=_USERNAME_COLUMN_KEY).click()
+    expect(page).to_have_url(re.compile("dir=desc"))
+
+    first_row_locator = page.locator(APL.DB_TABLE_GRID).locator("tbody tr").first
+    expect(first_row_locator).to_contain_text(_LAST_MOCK_USERNAME)
+
+
+def test_admin_db_browser_search_filters_rows(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin viewing the Users grid with several mock users
+    WHEN the admin types one full username into the search box and submits
+    THEN exactly one row renders and it contains the searched username.
+    """
+    login_admin_and_open_db_browser_table(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        table_name="Users",
+    )
+
+    search_input = wait_then_get_element(page=page, css_selector=APL.DB_TABLE_SEARCH)
+    search_input.fill(UI_TEST_STRINGS.TEST_USERNAME_1)
+    search_input.press("Enter")
+
+    grid_locator = wait_then_get_element(page=page, css_selector=APL.DB_TABLE_GRID)
+    grid_row_locator = grid_locator.locator("tbody tr")
+    expect(grid_row_locator).to_have_count(1)
+    expect(grid_locator).to_contain_text(UI_TEST_STRINGS.TEST_USERNAME_1)
+
+
+def test_admin_db_browser_search_no_match_shows_empty_state(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin viewing the Users grid
+    WHEN the admin searches for a term no user matches
+    THEN the no-search-results empty state renders and the grid is absent.
+    """
+    login_admin_and_open_db_browser_table(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        table_name="Users",
+    )
+
+    search_input = wait_then_get_element(page=page, css_selector=APL.DB_TABLE_SEARCH)
+    search_input.fill(_NO_MATCH_SEARCH_QUERY)
+    search_input.press("Enter")
+
+    empty_locator = wait_then_get_element(page=page, css_selector=APL.DB_TABLE_EMPTY)
+    expect(empty_locator).to_be_visible()
+    expect(empty_locator).to_have_text(
+        UI_TEST_STRINGS.ADMIN_PORTAL_DB_NO_SEARCH_RESULTS
+    )
+    assert page.locator(APL.DB_TABLE_GRID).count() == 0
 
 
 def test_admin_db_browser_empty_table_shows_empty_state(

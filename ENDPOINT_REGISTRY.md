@@ -795,11 +795,11 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 | Layer           | Location                                                                                                                          |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/routes.py:admin_db_table` (query param: `offset`; 404 on unknown table)                                           |
+| **Handler**     | `backend/admin/routes.py:admin_db_table` (query params: `offset`, `sort`, `dir`, `q`; 404 on unknown table)                      |
 | **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
-| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (offset/limit=50 pagination, sensitive-column masking, safe cell formatting); audits `admin.db_browser.view` (`target_type=table_name`) |
-| **Schema**      | None (request) / None (response — server-rendered HTML; read-only)                                                                |
-| **Template**    | `admin_portal/db/table.html` (breadcrumb + `#AdminDbTableGrid` scrollable grid or `#AdminDbTableEmpty` empty-state; Previous/Next `<a href>` pagination) |
+| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (offset/limit=50 pagination, column sort + substring search, sensitive-column masking, safe cell formatting); audits `admin.db_browser.view` (`target_type=table_name`) |
+| **Schema**      | None (request — `sort`/`dir`/`q` are optional query args, no schema change) / None (response — server-rendered HTML; read-only)   |
+| **Template**    | `admin_portal/db/table.html` (breadcrumb + `#AdminDbTableSearchForm`/`#AdminDbTableSearch` search + `.admin-db-sort-link` sortable headers + `#AdminDbTableGrid` scrollable grid or `#AdminDbTableEmpty` empty-state; Previous/Next `<a href>` pagination carrying sort/dir/q) |
 | **JS Module**   | None (plain server-rendered page)                                                                                                 |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
 | **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |

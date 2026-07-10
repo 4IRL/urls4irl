@@ -17,6 +17,8 @@ class ADMIN_PORTAL_STRINGS:
         "Read-only view of every table. Select a table to browse its rows."
     )
     DB_EMPTY_TABLE: str = "This table has no rows."
+    DB_NO_SEARCH_RESULTS: str = "No rows match this search."
+    DB_SEARCH_PLACEHOLDER: str = "Search this table…"
     DB_ROW_COUNT_SINGULAR: str = "row"
     DB_ROW_COUNT_PLURAL: str = "rows"
     NAV_USERS: str = "Users"

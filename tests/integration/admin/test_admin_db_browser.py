@@ -39,6 +39,10 @@ _ROW_DETAIL_ID: bytes = b'id="AdminDbRowDetail"'
 
 _SECOND_USERNAME: str = "seconddbuser"
 _THIRD_USERNAME: str = "thirddbuser"
+# Alphabetical bookends used to prove sort direction and search filtering by
+# their rendered position/presence in the grid HTML.
+_SORT_FIRST_USERNAME: str = "aaadbuser"
+_SORT_LAST_USERNAME: str = "zzzdbuser"
 _SEEDED_EMAIL_DOMAIN: str = "@browser.example.com"
 _SEEDED_PASSWORD: str = "SuperSecret123!"
 _EVENT_REGISTRY_NAME: str = "admin_db_route_test_event"
@@ -180,6 +184,89 @@ def test_admin_db_table_offset_pagination_is_disjoint(
     assert _THIRD_USERNAME.encode() in first_page.data
     assert _SECOND_USERNAME.encode() not in third_offset_page.data
     assert _THIRD_USERNAME.encode() in third_offset_page.data
+
+
+def test_admin_db_table_sort_direction_reorders_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN two seeded users whose usernames are alphabetical bookends
+    WHEN the admin sorts the Users grid by username ascending vs descending
+    THEN the rendered row order flips: the alphabetically-last username
+         precedes the first under ``dir=desc`` and follows it under ``dir=asc``.
+    """
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        _seed_extra_user(_SORT_FIRST_USERNAME)
+        _seed_extra_user(_SORT_LAST_USERNAME)
+
+    desc_response = client.get(f"{_ADMIN_DB_USERS_URL}?sort=username&dir=desc")
+    asc_response = client.get(f"{_ADMIN_DB_USERS_URL}?sort=username&dir=asc")
+
+    assert desc_response.status_code == 200
+    assert asc_response.status_code == 200
+
+    desc_body = desc_response.data.decode()
+    asc_body = asc_response.data.decode()
+    assert desc_body.index(_SORT_LAST_USERNAME) < desc_body.index(_SORT_FIRST_USERNAME)
+    assert asc_body.index(_SORT_FIRST_USERNAME) < asc_body.index(_SORT_LAST_USERNAME)
+
+
+def test_admin_db_table_query_filters_rows(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN two seeded users with distinct usernames
+    WHEN the admin searches the Users grid for one username substring
+    THEN the matching username renders and the non-matching one is absent.
+    """
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        _seed_extra_user(_SORT_FIRST_USERNAME)
+        _seed_extra_user(_SORT_LAST_USERNAME)
+
+    response = client.get(f"{_ADMIN_DB_USERS_URL}?q={_SORT_FIRST_USERNAME}")
+
+    assert response.status_code == 200
+    assert _SORT_FIRST_USERNAME.encode() in response.data
+    assert _SORT_LAST_USERNAME.encode() not in response.data
+
+
+def test_admin_db_table_invalid_sort_falls_back_to_200(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, _ = login_admin_user_with_register
+
+    response = client.get(f"{_ADMIN_DB_USERS_URL}?sort=notacol")
+
+    assert response.status_code == 200
+
+
+def test_admin_db_table_grid_with_params_audits_once(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in admin user and an empty AuditLogs table
+    WHEN the admin views the Users grid with sort/dir/q params applied
+    THEN exactly one DB_BROWSER_VIEW audit row targets "Users" — the sort and
+         search params do not multiply the per-view audit.
+    """
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+
+    response = client.get(f"{_ADMIN_DB_USERS_URL}?sort=username&dir=desc&q=db")
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert AuditLog.query.count() == 1
+        audit_row: AuditLog | None = AuditLog.query.first()
+        assert audit_row is not None
+        assert audit_row.action == ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW
+        assert audit_row.target_type == _USERS_MODEL_NAME
 
 
 def test_every_mapped_model_is_browsable(

@@ -169,6 +169,43 @@
     font-weight: 600;
 }
 
+.admin-db-search-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.admin-db-search-form .admin-search-input {
+    flex: 0 1 420px;
+}
+
+.admin-db-search-btn {
+    background-color: var(--cardBackgroundColor);
+    color: var(--deckHeaderGreen);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+}
+
+.admin-db-search-btn:hover {
+    border-color: var(--deckHeaderGreen);
+}
+
+.admin-db-sort-link {
+    color: var(--cardURLTextColor);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.admin-db-sort-link:hover {
+    color: var(--UTubDescriptionColor);
+}
+
 /* ---- Health dashboard --------------------------------------------------- */
 
 .admin-health-grid {

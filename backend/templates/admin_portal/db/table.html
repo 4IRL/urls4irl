@@ -9,13 +9,23 @@
     {% endif %}
 </header>
 <div class="admin-panel">
+    <form id="AdminDbTableSearchForm" class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_db_table', table_name=table_page.table_name) }}" role="search">
+        <input type="search" id="AdminDbTableSearch" name="q" value="{{ table_page.query }}" class="admin-search-input" aria-label="Search this table" placeholder="{{ ADMIN_PORTAL_STRINGS.DB_SEARCH_PLACEHOLDER }}">
+        <input type="hidden" name="sort" value="{{ table_page.sort_key }}">
+        <input type="hidden" name="dir" value="{{ table_page.direction }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
     {% if table_page.rows %}
     <div class="admin-table-scroll">
         <table id="AdminDbTableGrid" class="admin-table">
             <thead>
                 <tr>
                     {% for column_key in table_page.column_keys %}
-                    <th>{{ column_key }}</th>
+                    <th>
+                        <a class="admin-db-sort-link"
+                           href="{{ url_for('admin.admin_db_table', table_name=table_page.table_name, sort=column_key, dir=('desc' if (column_key == table_page.sort_key and table_page.direction == 'asc') else 'asc'), q=table_page.query) }}"
+                           {% if column_key == table_page.sort_key %}aria-label="{{ column_key }}, sorted {{ table_page.direction }}ending"{% endif %}>{{ column_key }}{% if column_key == table_page.sort_key and table_page.direction == 'asc' %}<span> ▲</span>{% elif column_key == table_page.sort_key and table_page.direction == 'desc' %}<span> ▼</span>{% endif %}</a>
+                    </th>
                     {% endfor %}
                 </tr>
             </thead>
@@ -37,12 +47,14 @@
     <div class="admin-search-pagination">
         <span>{{ table_page.total_count }} {{ ADMIN_PORTAL_STRINGS.DB_ROW_COUNT_SINGULAR if table_page.total_count == 1 else ADMIN_PORTAL_STRINGS.DB_ROW_COUNT_PLURAL }}</span>
         {% if table_page.has_previous %}
-        <a href="{{ url_for('admin.admin_db_table', table_name=table_page.table_name, offset=table_page.previous_offset) }}">Previous</a>
+        <a href="{{ url_for('admin.admin_db_table', table_name=table_page.table_name, sort=table_page.sort_key, dir=table_page.direction, q=table_page.query, offset=table_page.previous_offset) }}">Previous</a>
         {% endif %}
         {% if table_page.has_next %}
-        <a href="{{ url_for('admin.admin_db_table', table_name=table_page.table_name, offset=table_page.next_offset) }}">Next</a>
+        <a href="{{ url_for('admin.admin_db_table', table_name=table_page.table_name, sort=table_page.sort_key, dir=table_page.direction, q=table_page.query, offset=table_page.next_offset) }}">Next</a>
         {% endif %}
     </div>
+    {% elif table_page.query %}
+    <p id="AdminDbTableEmpty" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
     {% else %}
     <p id="AdminDbTableEmpty" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_EMPTY_TABLE }}</p>
     {% endif %}

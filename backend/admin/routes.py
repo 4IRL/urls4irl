@@ -173,11 +173,17 @@ def admin_db() -> FlaskResponse:
 def admin_db_table(table_name: str) -> FlaskResponse:
     """One paginated grid page of ``table_name`` (50 rows/page).
 
-    Unknown tables 404 (and are not audited). Sensitive columns are excluded
-    by the service; every cell is HTML-escaped by Jinja autoescape.
+    Optional query params ``sort`` (column key), ``dir`` ("asc"/"desc"), and
+    ``q`` (substring search) shape the ordering and filtering. Unknown tables
+    404 (and are not audited). Sensitive columns are excluded by the service;
+    every cell is HTML-escaped by Jinja autoescape.
     """
     table_page = db_browser_service.get_table_page(
-        table_name=table_name, offset=_parse_offset_arg()
+        table_name=table_name,
+        offset=_parse_offset_arg(),
+        sort_key=request.args.get("sort"),
+        direction=request.args.get("dir", "asc"),
+        query=request.args.get("q", ""),
     )
     if table_page is None:
         abort(404)
