@@ -24,10 +24,6 @@
         <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_METRICS_REDIS }}</h2>
         {{ status_badge(snapshot.metrics_redis_status) }}
     </div>
-    <div id="AdminHealthDisk" class="admin-panel admin-health-card">
-        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_DISK_USED }}</h2>
-        <span class="admin-health-value">{% if snapshot.disk_used_percent is not none %}{{ snapshot.disk_used_percent }}%{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
-    </div>
     <div id="AdminHealthFlush" class="admin-panel admin-health-card">
         <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_FLUSH_LAST_SUCCESS }}</h2>
         <span class="admin-health-value">{{ timestamp_cell(snapshot.flush_last_success_at) }}</span>
@@ -58,6 +54,7 @@
         <span id="AdminHealthCpuLoad" class="admin-health-value">CPU load (1m): {{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNAVAILABLE }}</span>
         <span id="AdminHealthMemory" class="admin-health-value">Memory used: {{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNAVAILABLE }}</span>
         {% endif %}
+        <span id="AdminHealthDisk" class="admin-health-value">Disk used: {% if snapshot.disk_used_percent is not none %}{{ snapshot.disk_used_percent }}%{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
     </div>
 </div>
 <p id="AdminHealthCapturedAt" class="admin-health-captured">{{ snapshot.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>

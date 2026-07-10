@@ -29,7 +29,6 @@ class ADMIN_PORTAL_STRINGS:
     HEALTH_LABEL_DB_CONNECTIONS: str = "DB Connections"
     HEALTH_LABEL_SESSION_REDIS: str = "Session Redis"
     HEALTH_LABEL_METRICS_REDIS: str = "Metrics Redis"
-    HEALTH_LABEL_DISK_USED: str = "Disk Used"
     HEALTH_LABEL_FLUSH_LAST_SUCCESS: str = "Metrics Flush (sidecar)"
     HEALTH_LABEL_GAUGE_LAST_SAMPLE: str = "Gauge Sample (sidecar)"
     HEALTH_VALUE_UNKNOWN: str = "unknown"
