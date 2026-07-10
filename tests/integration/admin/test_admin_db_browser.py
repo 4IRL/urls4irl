@@ -26,6 +26,11 @@ _ADMIN_DB_USERS_URL: str = "/admin/db/Users"
 _ADMIN_DB_USERS_ROW_URL: str = "/admin/db/Users/1"
 _ADMIN_DB_UNKNOWN_TABLE_URL: str = "/admin/db/NotATable"
 _ADMIN_DB_UNKNOWN_ROW_URL: str = "/admin/db/Users/999999"
+_ADMIN_DB_GATED_URLS: list[str] = [
+    _ADMIN_DB_OVERVIEW_URL,
+    _ADMIN_DB_USERS_URL,
+    _ADMIN_DB_USERS_ROW_URL,
+]
 
 _PASSWORD_HASH_PREFIX: bytes = b"scrypt:"
 _USERS_MODEL_NAME: str = "Users"
@@ -334,10 +339,7 @@ def test_admin_db_row_rejects_post(
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    "url",
-    [_ADMIN_DB_OVERVIEW_URL, _ADMIN_DB_USERS_URL, _ADMIN_DB_USERS_ROW_URL],
-)
+@pytest.mark.parametrize("url", _ADMIN_DB_GATED_URLS)
 def test_admin_db_returns_403_for_non_admin_without_audit(
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
     url: str,
@@ -354,10 +356,12 @@ def test_admin_db_returns_403_for_non_admin_without_audit(
         assert AuditLog.query.count() == 0
 
 
-def test_admin_db_overview_redirects_anonymous_to_splash(
+@pytest.mark.parametrize("url", _ADMIN_DB_GATED_URLS)
+def test_admin_db_redirects_anonymous_to_splash(
     client: FlaskClient,
+    url: str,
 ) -> None:
-    response = client.get(_ADMIN_DB_OVERVIEW_URL)
+    response = client.get(url)
 
     assert response.status_code == 302
     assert response.location is not None
