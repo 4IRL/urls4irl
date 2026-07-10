@@ -2,6 +2,7 @@
    swapped into #AdminAuditLogResults by the native TS audit-log controller.
    Metadata expands via the native <details> element (zero JS, CSP-proof). #}
 {% if audit_page.entries %}
+<div class="admin-table-scroll">
 <table id="AdminAuditLogTable" class="admin-table">
     <thead>
         <tr>
@@ -33,6 +34,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 <div id="AdminAuditLogPagination" class="admin-search-pagination">
     <span id="AdminAuditLogCount">{{ audit_page.total_count }} entr{{ 'y' if audit_page.total_count == 1 else 'ies' }}</span>
     {% if audit_page.has_previous %}

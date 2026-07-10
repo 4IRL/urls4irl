@@ -17,12 +17,14 @@
         <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_TARGET_TYPE }}
             <input id="AdminAuditFilterTargetType" class="admin-search-input" type="search" name="target_type">
         </label>
-        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_SINCE }}
-            <input id="AdminAuditFilterSince" class="admin-search-input" type="date" name="since">
-        </label>
-        <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_UNTIL }}
-            <input id="AdminAuditFilterUntil" class="admin-search-input" type="date" name="until">
-        </label>
+        <div class="admin-audit-date-range">
+            <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_SINCE }}
+                <input id="AdminAuditFilterSince" class="admin-search-input" type="date" name="since">
+            </label>
+            <label>{{ ADMIN_PORTAL_STRINGS.AUDIT_LOG_FILTER_UNTIL }}
+                <input id="AdminAuditFilterUntil" class="admin-search-input" type="date" name="until">
+            </label>
+        </div>
     </form>
     <div id="AdminAuditLogResults"
          aria-live="polite">

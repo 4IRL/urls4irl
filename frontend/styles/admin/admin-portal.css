@@ -353,6 +353,23 @@
     max-width: 220px;
 }
 
+/* Keep the Since/Until date fields paired on one line at every width — as a
+   single flex item in the wrapping filter row it wraps as a unit, and the
+   inner 2-col grid keeps the two date inputs side by side even on phones. */
+.admin-audit-date-range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.admin-audit-date-range .admin-search-input {
+    max-width: none;
+    width: 100%;
+    min-width: 0;
+}
+
 .admin-audit-metadata summary {
     cursor: pointer;
     color: var(--deckHeaderGreen);

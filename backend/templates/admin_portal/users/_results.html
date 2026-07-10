@@ -1,6 +1,7 @@
 {# HTML fragment — rendered standalone by admin.admin_users_search and
    swapped into #AdminUserSearchResults by the native TS user-search controller. #}
 {% if search_page.users %}
+<div class="admin-table-scroll">
 <table id="AdminUserSearchTable" class="admin-table">
     <thead>
         <tr>
@@ -25,6 +26,7 @@
         {% endfor %}
     </tbody>
 </table>
+</div>
 <div id="AdminUserSearchPagination" class="admin-search-pagination">
     <span id="AdminUserSearchCount">{{ search_page.total_count }} match{{ 'es' if search_page.total_count != 1 else '' }}</span>
     {% if search_page.has_previous %}
