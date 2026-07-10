@@ -4,12 +4,12 @@ from flask import Blueprint, abort, render_template, request
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
 
+from backend.admin import db_browser_service
 from backend.admin.audit_service import (
     AuditLogFilters,
     DEFAULT_AUDIT_PAGE_LIMIT,
     query_audit_log,
 )
-from backend.admin import db_browser_service
 from backend.admin.health_service import collect_health_snapshot
 from backend.admin.user_service import (
     DEFAULT_SEARCH_LIMIT,
