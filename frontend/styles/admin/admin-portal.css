@@ -237,12 +237,14 @@
     border-color: var(--deckHeaderGreen);
 }
 
-.admin-user-link {
+.admin-user-link,
+.admin-db-row-link {
     color: var(--deckHeaderGreen);
     text-decoration: none;
 }
 
-.admin-user-link:hover {
+.admin-user-link:hover,
+.admin-db-row-link:hover {
     text-decoration: underline;
 }
 

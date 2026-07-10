@@ -24,7 +24,7 @@
                 <tr>
                     {% for cell in row.cells %}
                     {% if loop.first %}
-                    <td><a class="admin-user-link" href="{{ url_for('admin.admin_db_row', table_name=table_page.table_name, row_pk=row.pk_segment) }}">{{ cell }}</a></td>
+                    <td><a class="admin-db-row-link" href="{{ url_for('admin.admin_db_row', table_name=table_page.table_name, row_pk=row.pk_segment) }}">{{ cell }}</a></td>
                     {% else %}
                     <td>{{ cell }}</td>
                     {% endif %}

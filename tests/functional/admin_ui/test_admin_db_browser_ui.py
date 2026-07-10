@@ -36,10 +36,9 @@ _EMPTY_TABLE_NAME: str = "ApiRefreshTokens"
 _PASSWORD_COLUMN_HEADER: str = "Password"
 _SCRYPT_HASH_PREFIX: str = "scrypt:"
 
-# The first cell of each grid row links to that row's detail page. The link
-# currently borrows the user-scoped class; a later review item renames it to
-# `.admin-db-row-link`.
-_DB_ROW_LINK_SELECTOR: str = ".admin-user-link"
+# The first cell of each grid row links to that row's detail page via the
+# DB-row-scoped link class.
+_DB_ROW_LINK_SELECTOR: str = ".admin-db-row-link"
 
 
 def test_admin_db_browser_overview_happy_path(
