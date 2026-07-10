@@ -9,6 +9,7 @@ import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initNavbarBackdrop, initNavbarRouting } from "./lib/navbar-shared.js";
 import { initAuditLog } from "./admin/audit-log.js";
 import { initHealthMonitor } from "./admin/health-monitor.js";
+import { initAdminNavKeyboard } from "./admin/nav-keyboard.js";
 import { initUserSearch } from "./admin/user-search.js";
 
 registerJQueryPlugins();
@@ -18,6 +19,7 @@ $(document).ready(() => {
   initCookieBanner();
   initNavbarRouting();
   initNavbarBackdrop();
+  initAdminNavKeyboard();
   initHealthMonitor();
   initUserSearch();
   initAuditLog();

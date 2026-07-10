@@ -18,18 +18,22 @@
 }
 
 /* ---- Section nav ------------------------------------------------------- */
+/* Mirrors the metrics dashboard tablist (#MetricsTablist) exactly: rounded
+   chip container, raised splash-green active tab with underline, hover that
+   only brightens the label, green focus-visible outline, and mobile
+   horizontal-scroll instead of wrapping. See metrics-dashboard.css. */
 
 #AdminNav {
     background-color: var(--panelBackgroundColor);
     border: 1px solid var(--borderColor);
-    border-radius: 10px;
-    padding: 6px 10px;
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
 }
 
 .admin-nav-list {
     display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
+    gap: 0;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -37,23 +41,54 @@
 
 .admin-nav-link {
     display: inline-block;
-    padding: 8px 14px;
-    border-radius: 8px;
+    background-color: transparent;
+    border: 0;
+    padding: 8px 16px;
+    border-radius: 6px;
     color: var(--cardURLTextColor);
     text-decoration: none;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
 }
 
 .admin-nav-link:hover {
-    background-color: var(--defaultPageBackgroundColor);
-    color: var(--deckHeaderGreen);
+    color: var(--UTubDescriptionColor);
     text-decoration: none;
 }
 
 .admin-nav-link.active {
-    color: var(--deckHeaderGreen);
-    font-weight: 600;
-    box-shadow: inset 0 -2px 0 var(--deckHeaderGreen);
+    background-color: var(--cardBackgroundColor);
+    color: var(--splashGreen);
+    box-shadow: inset 0 -2px 0 var(--splashGreen);
+}
+
+.admin-nav-link:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* On phones the six links overflow the viewport. Contain the overflow to the
+   nav chip (horizontal scroll within its own width) instead of letting the
+   page overscroll horizontally. Desktop keeps the fit-content single row. */
+@media (max-width: 575.98px) {
+    #AdminNav {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .admin-nav-list {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    .admin-nav-link {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
 }
 
 /* ---- Page header ------------------------------------------------------- */
