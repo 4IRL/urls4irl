@@ -45,6 +45,7 @@ _SEEDED_USERNAME_BASE: str = "browseruser"
 _SEEDED_EMAIL_DOMAIN: str = "@browser.example.com"
 _SEEDED_PASSWORD: str = "SuperSecret123!"
 
+_SEEDED_REFRESH_TOKEN: str = "a-secret-refresh-token-value"
 _SEEDED_RESET_TOKEN: str = "a-secret-reset-token-value"
 _SEEDED_VALIDATION_TOKEN: str = "a-secret-validation-token-value"
 _SEEDED_OAUTH_PROVIDER: str = "google"
@@ -76,7 +77,7 @@ def _seed_refresh_token(user_id: int) -> ApiRefreshTokens:
     """Insert one refresh-token row owned by ``user_id``."""
     refresh_token = ApiRefreshTokens(
         user_id=user_id,
-        token="a-secret-refresh-token-value",
+        token=_SEEDED_REFRESH_TOKEN,
         family_id="family-abc",
         expires_at=datetime.datetime(2099, 1, 1, tzinfo=datetime.timezone.utc),
     )
@@ -284,6 +285,21 @@ def test_get_table_page_refresh_tokens_masks_token_column(
         assert table_page is not None
         assert table_page.total_count == 1
         assert _TOKEN_COLUMN_KEY not in table_page.column_keys
+
+
+def test_get_row_detail_refresh_tokens_masks_token_column(app: Flask) -> None:
+    with app.app_context():
+        seeded_user = _seed_users(1)[0]
+        refresh_token = _seed_refresh_token(user_id=seeded_user.id)
+        assert refresh_token.token == _SEEDED_REFRESH_TOKEN
+
+        row_detail = db_browser_service.get_row_detail(
+            table_name=_API_REFRESH_TOKENS_TABLE, raw_pk=str(refresh_token.id)
+        )
+
+        assert isinstance(row_detail, RowDetail)
+        detail_field_keys = {field.key for field in row_detail.fields}
+        assert _TOKEN_COLUMN_KEY not in detail_field_keys
 
 
 # ---------------------------------------------------------------------------
