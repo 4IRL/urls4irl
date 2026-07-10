@@ -6,10 +6,12 @@ import enum
 import json
 from dataclasses import dataclass
 
-from sqlalchemy import inspect
+from sqlalchemy import Enum as SQLEnum, String, inspect, or_
 from sqlalchemy.orm import ColumnProperty
+from sqlalchemy.sql.elements import ColumnElement
 
 from backend import db
+from backend.admin.user_service import LIKE_ESCAPE_CHAR, escape_like_wildcards
 
 # Imported for its side effect: backend/models/__init__.py imports every model
 # module, so the mapper registry iterated below is fully populated even in
@@ -21,6 +23,8 @@ _CELL_TRUNCATE_LENGTH: int = 120
 _NULL_PLACEHOLDER: str = "—"
 _TRUNCATION_SUFFIX: str = "…"
 _PK_SEGMENT_SEPARATOR: str = ","
+_SORT_DIRECTION_ASC: str = "asc"
+_SORT_DIRECTION_DESC: str = "desc"
 
 # Per-model column exclusions for sensitive data. The browser is read-only,
 # but password hashes and token/secret columns still must never render in a
@@ -62,6 +66,9 @@ class TablePage:
     total_count: int
     limit: int
     offset: int
+    sort_key: str
+    direction: str
+    query: str
 
     @property
     def has_previous(self) -> bool:
@@ -255,17 +262,98 @@ def list_tables() -> list[TableSummary]:
     ]
 
 
+def _resolve_sort_attr_key(model_class: type, sort_key: str | None) -> str:
+    """The visible-column attribute key to sort on, or the primary key fallback.
+
+    Invalid input is ignored rather than raising: a ``sort_key`` that is
+    ``None``, unknown, or a sensitive (hence non-visible) column falls back to
+    the first primary-key attribute so ordering is always well-defined.
+
+    Examples:
+        >>> # sort_key="username" for Users → "username"
+        >>> # sort_key="password" (sensitive) or "nope" (unknown) → "id"
+    """
+    visible_keys = {column.key for column in _visible_columns(model_class)}
+    if sort_key is not None and sort_key in visible_keys:
+        return sort_key
+    return _primary_key_attr_keys(model_class)[0]
+
+
+def _build_order_by(
+    model_class: type, *, sort_key: str, direction: str
+) -> list[ColumnElement]:
+    """Order-by clauses: the chosen column then every primary-key column.
+
+    The primary-key columns are always appended ascending so ties on the
+    chosen column resolve deterministically (stable pagination). ``direction``
+    only descends on an exact ``"desc"``; anything else ascends.
+    """
+    sort_attr = getattr(model_class, sort_key)
+    if direction == _SORT_DIRECTION_DESC:
+        primary_clause = sort_attr.desc()
+    else:
+        primary_clause = sort_attr.asc()
+    pk_clauses = [
+        getattr(model_class, pk_key) for pk_key in _primary_key_attr_keys(model_class)
+    ]
+    return [primary_clause, *pk_clauses]
+
+
+def _is_searchable_string_column(column_attr: ColumnProperty) -> bool:
+    """Whether ``column_attr`` maps to a text-like column safe for ILIKE search.
+
+    ``String`` covers the ``VARCHAR``/``TEXT`` family; SQLAlchemy's ``Enum``
+    subclasses ``String`` but is a closed set, so it is excluded. Numeric,
+    datetime, boolean, and JSON columns are all skipped.
+    """
+    column_type = column_attr.columns[0].type
+    return isinstance(column_type, String) and not isinstance(column_type, SQLEnum)
+
+
+def _build_search_filter(model_class: type, query: str) -> ColumnElement | None:
+    """An OR-of-ILIKE filter over visible string columns, or ``None``.
+
+    Returns ``None`` when the query is blank or the model has no searchable
+    string columns, in which case no filter is applied. Wildcards in the query
+    are escaped so ``"%"`` matches a literal percent rather than every row.
+    """
+    stripped_query = query.strip()
+    if not stripped_query:
+        return None
+    string_attrs = [
+        getattr(model_class, column.key)
+        for column in _visible_columns(model_class)
+        if _is_searchable_string_column(column)
+    ]
+    if not string_attrs:
+        return None
+    like_pattern = f"%{escape_like_wildcards(stripped_query)}%"
+    return or_(
+        *(
+            string_attr.ilike(like_pattern, escape=LIKE_ESCAPE_CHAR)
+            for string_attr in string_attrs
+        )
+    )
+
+
 def get_table_page(
     *,
     table_name: str,
     limit: int = _TABLE_GRID_LIMIT,
     offset: int = 0,
+    sort_key: str | None = None,
+    direction: str = _SORT_DIRECTION_ASC,
+    query: str = "",
 ) -> TablePage | None:
     """One page of ``table_name``'s rows, or ``None`` for an unknown table.
 
-    Rows are ordered by primary key for stable pagination; sensitive columns
-    are excluded from ``column_keys`` and every cell is truncated to the grid
-    display length.
+    Rows are ordered by the resolved ``sort_key`` (falling back to the primary
+    key for invalid/sensitive/absent input) with a primary-key tiebreaker for
+    deterministic pagination. A non-blank ``query`` filters rows by a
+    case-insensitive substring match across visible string columns, and
+    ``total_count`` reflects that filter. Sensitive columns are excluded from
+    ``column_keys`` (so they are neither sortable nor searchable), and every
+    cell is truncated to the grid display length.
     """
     model_class = _model_by_table_name().get(table_name)
     if model_class is None:
@@ -273,14 +361,25 @@ def get_table_page(
 
     visible_columns = _visible_columns(model_class)
     column_keys = [column.key for column in visible_columns]
-    total_count = db.session.query(model_class).count()
-    records = (
-        db.session.query(model_class)
-        .order_by(*inspect(model_class).primary_key)
-        .limit(limit)
-        .offset(offset)
-        .all()
+
+    resolved_sort_key = _resolve_sort_attr_key(model_class, sort_key)
+    normalized_direction = (
+        _SORT_DIRECTION_DESC
+        if direction == _SORT_DIRECTION_DESC
+        else _SORT_DIRECTION_ASC
     )
+    normalized_query = query.strip()
+    order_by = _build_order_by(
+        model_class, sort_key=resolved_sort_key, direction=normalized_direction
+    )
+
+    filtered_query = db.session.query(model_class)
+    search_filter = _build_search_filter(model_class, normalized_query)
+    if search_filter is not None:
+        filtered_query = filtered_query.filter(search_filter)
+
+    total_count = filtered_query.count()
+    records = filtered_query.order_by(*order_by).limit(limit).offset(offset).all()
     rows = [
         TableRow(
             pk_segment=_row_pk_segment(model_class, record),
@@ -300,6 +399,9 @@ def get_table_page(
         total_count=total_count,
         limit=limit,
         offset=offset,
+        sort_key=resolved_sort_key,
+        direction=normalized_direction,
+        query=normalized_query,
     )
 
 

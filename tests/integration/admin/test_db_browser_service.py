@@ -54,6 +54,13 @@ _SEEDED_OAUTH_PROVIDER_SUBJECT: str = "a-secret-provider-subject-value"
 
 _EVENT_REGISTRY_NAME: str = "db_browser_service_test_event"
 
+_ALPHA_USERNAME: str = "alphauser"
+_BETA_USERNAME: str = "betauser"
+_USERNAME_COLUMN_KEY: str = "username"
+_ROLE_COLUMN_KEY: str = "role"
+_ID_COLUMN_KEY: str = "id"
+_UNKNOWN_COLUMN_KEY: str = "not_a_real_column"
+
 
 def _seed_users(count: int) -> list[Users]:
     """Insert ``count`` validated users (ids assigned sequentially from 1).
@@ -72,6 +79,25 @@ def _seed_users(count: int) -> list[Users]:
         seeded_users.append(new_user)
     db.session.commit()
     return seeded_users
+
+
+def _seed_user_named(username: str) -> Users:
+    """Insert one validated user with the given username (email derived from it)."""
+    new_user = Users(
+        username=username,
+        email=f"{username}{_SEEDED_EMAIL_DOMAIN}",
+        plaintext_password=_SEEDED_PASSWORD,
+    )
+    new_user.email_validated = True
+    db.session.add(new_user)
+    db.session.commit()
+    return new_user
+
+
+def _usernames_in_order(table_page: TablePage) -> list[str]:
+    """The username cell of each row, in the page's row order."""
+    username_index = table_page.column_keys.index(_USERNAME_COLUMN_KEY)
+    return [row.cells[username_index] for row in table_page.rows]
 
 
 def _seed_refresh_token(user_id: int) -> ApiRefreshTokens:
@@ -423,3 +449,231 @@ def test_string_pk_row_detail_resolves(app: Flask) -> None:
         assert isinstance(row_detail, RowDetail)
         name_field = next(field for field in row_detail.fields if field.key == "name")
         assert name_field.value == _EVENT_REGISTRY_NAME
+
+
+# ---------------------------------------------------------------------------
+# get_table_page — sorting
+# ---------------------------------------------------------------------------
+
+
+def test_get_table_page_sorts_ascending_and_descending(app: Flask) -> None:
+    """
+    GIVEN two users seeded out of alphabetical order
+    WHEN get_table_page sorts by username asc then desc
+    THEN row order flips between the two directions.
+    """
+    with app.app_context():
+        _seed_user_named(_BETA_USERNAME)
+        _seed_user_named(_ALPHA_USERNAME)
+
+        ascending = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            sort_key=_USERNAME_COLUMN_KEY,
+            direction="asc",
+        )
+        descending = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            sort_key=_USERNAME_COLUMN_KEY,
+            direction="desc",
+        )
+
+        assert ascending is not None and descending is not None
+        assert _usernames_in_order(ascending) == [_ALPHA_USERNAME, _BETA_USERNAME]
+        assert _usernames_in_order(descending) == [_BETA_USERNAME, _ALPHA_USERNAME]
+
+
+def test_get_table_page_pk_tiebreaker_keeps_ties_deterministic(app: Flask) -> None:
+    """
+    GIVEN three users that all share the same role value
+    WHEN get_table_page sorts by role descending
+    THEN rows stay in ascending primary-key order despite the tie.
+    """
+    with app.app_context():
+        seeded_users = _seed_users(3)
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            sort_key=_ROLE_COLUMN_KEY,
+            direction="desc",
+        )
+
+        assert table_page is not None
+        assert [row.pk_segment for row in table_page.rows] == [
+            str(user.id) for user in seeded_users
+        ]
+
+
+def test_get_table_page_invalid_and_sensitive_sort_key_fall_back_to_pk(
+    app: Flask,
+) -> None:
+    """
+    GIVEN three seeded users
+    WHEN get_table_page is given an unknown column and a sensitive column
+    THEN both fall back to primary-key order without error, and the effective
+         sort_key echoes the primary key.
+    """
+    with app.app_context():
+        seeded_users = _seed_users(3)
+        expected_pk_order = [str(user.id) for user in seeded_users]
+
+        unknown_sort = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE, sort_key=_UNKNOWN_COLUMN_KEY
+        )
+        sensitive_sort = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE, sort_key=_PASSWORD_COLUMN_KEY
+        )
+
+        assert unknown_sort is not None and sensitive_sort is not None
+        assert [row.pk_segment for row in unknown_sort.rows] == expected_pk_order
+        assert [row.pk_segment for row in sensitive_sort.rows] == expected_pk_order
+        assert unknown_sort.sort_key == _ID_COLUMN_KEY
+        assert sensitive_sort.sort_key == _ID_COLUMN_KEY
+
+
+def test_get_table_page_direction_other_than_desc_sorts_ascending(app: Flask) -> None:
+    """
+    GIVEN two users seeded out of alphabetical order
+    WHEN get_table_page sorts by username with a nonsense direction
+    THEN it ascends and echoes direction "asc".
+    """
+    with app.app_context():
+        _seed_user_named(_BETA_USERNAME)
+        _seed_user_named(_ALPHA_USERNAME)
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            sort_key=_USERNAME_COLUMN_KEY,
+            direction="sideways",
+        )
+
+        assert table_page is not None
+        assert _usernames_in_order(table_page) == [_ALPHA_USERNAME, _BETA_USERNAME]
+        assert table_page.direction == "asc"
+
+
+# ---------------------------------------------------------------------------
+# get_table_page — search
+# ---------------------------------------------------------------------------
+
+
+def test_get_table_page_search_filters_to_matching_string_rows(app: Flask) -> None:
+    """
+    GIVEN an alpha and a beta user
+    WHEN get_table_page is queried for "alpha"
+    THEN only the alpha row is returned and total_count reflects the filter,
+         while a blank query returns all rows.
+    """
+    with app.app_context():
+        _seed_user_named(_ALPHA_USERNAME)
+        _seed_user_named(_BETA_USERNAME)
+
+        filtered = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE, query="alpha"
+        )
+        unfiltered = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE, query=""
+        )
+
+        assert filtered is not None and unfiltered is not None
+        assert filtered.total_count == 1
+        assert _usernames_in_order(filtered) == [_ALPHA_USERNAME]
+        assert unfiltered.total_count == 2
+
+
+def test_get_table_page_search_ignores_numeric_columns(app: Flask) -> None:
+    """
+    GIVEN a single user whose only digit-bearing column is its integer id
+    WHEN get_table_page is queried for that id value
+    THEN nothing matches, proving numeric columns are not searched.
+    """
+    with app.app_context():
+        seeded_user = _seed_user_named(_ALPHA_USERNAME)
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE, query=str(seeded_user.id)
+        )
+
+        assert table_page is not None
+        assert table_page.total_count == 0
+
+
+def test_get_table_page_search_escapes_wildcards(app: Flask) -> None:
+    """
+    GIVEN a seeded user
+    WHEN get_table_page is queried for a literal percent sign
+    THEN zero rows match (the "%" is escaped, not treated as a wildcard).
+    """
+    with app.app_context():
+        _seed_user_named(_ALPHA_USERNAME)
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE, query="%"
+        )
+
+        assert table_page is not None
+        assert table_page.total_count == 0
+
+
+def test_get_table_page_search_sort_and_offset_compose(app: Flask) -> None:
+    """
+    GIVEN four users all matching a shared substring
+    WHEN get_table_page combines that search with a descending username sort
+         across two offset pages
+    THEN each page holds the correct disjoint slice in descending order and
+         total_count reflects the filter.
+    """
+    with app.app_context():
+        _seed_users(4)
+
+        first_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            query=_SEEDED_USERNAME_BASE,
+            sort_key=_USERNAME_COLUMN_KEY,
+            direction="desc",
+            limit=2,
+            offset=0,
+        )
+        second_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            query=_SEEDED_USERNAME_BASE,
+            sort_key=_USERNAME_COLUMN_KEY,
+            direction="desc",
+            limit=2,
+            offset=2,
+        )
+
+        assert first_page is not None and second_page is not None
+        assert first_page.total_count == 4
+        assert _usernames_in_order(first_page) == [
+            f"{_SEEDED_USERNAME_BASE}3",
+            f"{_SEEDED_USERNAME_BASE}2",
+        ]
+        assert _usernames_in_order(second_page) == [
+            f"{_SEEDED_USERNAME_BASE}1",
+            f"{_SEEDED_USERNAME_BASE}0",
+        ]
+
+
+def test_get_table_page_echoes_sort_direction_and_query_state(app: Flask) -> None:
+    """
+    GIVEN a seeded user
+    WHEN get_table_page is called with a valid sort_key, desc direction, and a
+         padded query
+    THEN the returned page echoes the effective sort state and the stripped
+         query.
+    """
+    with app.app_context():
+        _seed_user_named(_ALPHA_USERNAME)
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_USERS_TABLE,
+            sort_key=_USERNAME_COLUMN_KEY,
+            direction="desc",
+            query="  alpha  ",
+        )
+
+        assert table_page is not None
+        assert table_page.sort_key == _USERNAME_COLUMN_KEY
+        assert table_page.direction == "desc"
+        assert table_page.query == "alpha"
+        assert table_page.total_count == 1
