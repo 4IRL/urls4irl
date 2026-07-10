@@ -8,7 +8,7 @@
 <div id="AdminDbTables" class="admin-quick-links">
     {% for table in tables %}
     <a class="admin-quick-link-card" href="{{ url_for('admin.admin_db_table', table_name=table.table_name) }}">
-        <h2>{{ table.display_name }}</h2>
+        <h2>{{ table.table_name }}</h2>
         <p>{{ table.row_count }} {{ ADMIN_PORTAL_STRINGS.DB_ROW_COUNT_SINGULAR if table.row_count == 1 else ADMIN_PORTAL_STRINGS.DB_ROW_COUNT_PLURAL }}</p>
     </a>
     {% endfor %}

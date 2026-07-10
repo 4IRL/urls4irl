@@ -40,7 +40,6 @@ class TableSummary:
     """One entry on the DB-browser overview: a table and its live row count."""
 
     table_name: str
-    display_name: str
     row_count: int
 
 
@@ -250,7 +249,6 @@ def list_tables() -> list[TableSummary]:
     return [
         TableSummary(
             table_name=model_class.__tablename__,
-            display_name=model_class.__tablename__,
             row_count=db.session.query(model_class).count(),
         )
         for model_class in _iter_model_classes()
