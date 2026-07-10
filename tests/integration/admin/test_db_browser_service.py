@@ -17,7 +17,10 @@ from backend.admin.db_browser_service import (
 )
 from backend.metrics.events import EventCategory
 from backend.models.api_refresh_tokens import ApiRefreshTokens
+from backend.models.email_validations import Email_Validations
 from backend.models.event_registry import Event_Registry
+from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import User_Role, Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
@@ -28,13 +31,24 @@ _USERS_TABLE: str = "Users"
 _API_REFRESH_TOKENS_TABLE: str = "ApiRefreshTokens"
 _UTUB_MEMBERS_TABLE: str = "UtubMembers"
 _EVENT_REGISTRY_TABLE: str = "EventRegistry"
+_FORGOT_PASSWORDS_TABLE: str = "ForgotPasswords"
+_EMAIL_VALIDATIONS_TABLE: str = "EmailValidations"
+_USER_OAUTH_IDENTITIES_TABLE: str = "UserOAuthIdentities"
 
 _PASSWORD_COLUMN_KEY: str = "password"
 _TOKEN_COLUMN_KEY: str = "token"
+_RESET_TOKEN_COLUMN_KEY: str = "reset_token"
+_VALIDATION_TOKEN_COLUMN_KEY: str = "validation_token"
+_PROVIDER_SUBJECT_COLUMN_KEY: str = "provider_subject"
 
 _SEEDED_USERNAME_BASE: str = "browseruser"
 _SEEDED_EMAIL_DOMAIN: str = "@browser.example.com"
 _SEEDED_PASSWORD: str = "SuperSecret123!"
+
+_SEEDED_RESET_TOKEN: str = "a-secret-reset-token-value"
+_SEEDED_VALIDATION_TOKEN: str = "a-secret-validation-token-value"
+_SEEDED_OAUTH_PROVIDER: str = "google"
+_SEEDED_OAUTH_PROVIDER_SUBJECT: str = "a-secret-provider-subject-value"
 
 _EVENT_REGISTRY_NAME: str = "db_browser_service_test_event"
 
@@ -69,6 +83,36 @@ def _seed_refresh_token(user_id: int) -> ApiRefreshTokens:
     db.session.add(refresh_token)
     db.session.commit()
     return refresh_token
+
+
+def _seed_forgot_password(user_id: int) -> Forgot_Passwords:
+    """Insert one forgot-password row owned by ``user_id``."""
+    forgot_password = Forgot_Passwords(reset_token=_SEEDED_RESET_TOKEN)
+    forgot_password.user_id = user_id
+    db.session.add(forgot_password)
+    db.session.commit()
+    return forgot_password
+
+
+def _seed_email_validation(user_id: int) -> Email_Validations:
+    """Insert one email-validation row owned by ``user_id``."""
+    email_validation = Email_Validations(validation_token=_SEEDED_VALIDATION_TOKEN)
+    email_validation.user_id = user_id
+    db.session.add(email_validation)
+    db.session.commit()
+    return email_validation
+
+
+def _seed_oauth_identity(user_id: int) -> UserOAuthIdentity:
+    """Insert one OAuth-identity row owned by ``user_id``."""
+    oauth_identity = UserOAuthIdentity(
+        provider=_SEEDED_OAUTH_PROVIDER,
+        provider_subject=_SEEDED_OAUTH_PROVIDER_SUBJECT,
+    )
+    oauth_identity.user_id = user_id
+    db.session.add(oauth_identity)
+    db.session.commit()
+    return oauth_identity
 
 
 def _seed_utub_member(user_id: int) -> Utub_Members:
@@ -240,6 +284,78 @@ def test_get_table_page_refresh_tokens_masks_token_column(
         assert table_page is not None
         assert table_page.total_count == 1
         assert _TOKEN_COLUMN_KEY not in table_page.column_keys
+
+
+# ---------------------------------------------------------------------------
+# Sensitive-column masking (grid + detail) for the remaining secret columns
+# ---------------------------------------------------------------------------
+
+
+def test_forgot_passwords_reset_token_masked_in_grid_and_detail(app: Flask) -> None:
+    with app.app_context():
+        seeded_user = _seed_users(1)[0]
+        forgot_password = _seed_forgot_password(user_id=seeded_user.id)
+        assert forgot_password.reset_token == _SEEDED_RESET_TOKEN
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_FORGOT_PASSWORDS_TABLE
+        )
+        assert isinstance(table_page, TablePage)
+        assert table_page.total_count == 1
+        assert _RESET_TOKEN_COLUMN_KEY not in table_page.column_keys
+
+        row_detail = db_browser_service.get_row_detail(
+            table_name=_FORGOT_PASSWORDS_TABLE, raw_pk=str(forgot_password.id)
+        )
+        assert isinstance(row_detail, RowDetail)
+        detail_field_keys = {field.key for field in row_detail.fields}
+        assert _RESET_TOKEN_COLUMN_KEY not in detail_field_keys
+
+
+def test_email_validations_validation_token_masked_in_grid_and_detail(
+    app: Flask,
+) -> None:
+    with app.app_context():
+        seeded_user = _seed_users(1)[0]
+        email_validation = _seed_email_validation(user_id=seeded_user.id)
+        assert email_validation.validation_token == _SEEDED_VALIDATION_TOKEN
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_EMAIL_VALIDATIONS_TABLE
+        )
+        assert isinstance(table_page, TablePage)
+        assert table_page.total_count == 1
+        assert _VALIDATION_TOKEN_COLUMN_KEY not in table_page.column_keys
+
+        row_detail = db_browser_service.get_row_detail(
+            table_name=_EMAIL_VALIDATIONS_TABLE, raw_pk=str(email_validation.id)
+        )
+        assert isinstance(row_detail, RowDetail)
+        detail_field_keys = {field.key for field in row_detail.fields}
+        assert _VALIDATION_TOKEN_COLUMN_KEY not in detail_field_keys
+
+
+def test_oauth_identity_provider_subject_masked_in_grid_and_detail(
+    app: Flask,
+) -> None:
+    with app.app_context():
+        seeded_user = _seed_users(1)[0]
+        oauth_identity = _seed_oauth_identity(user_id=seeded_user.id)
+        assert oauth_identity.provider_subject == _SEEDED_OAUTH_PROVIDER_SUBJECT
+
+        table_page = db_browser_service.get_table_page(
+            table_name=_USER_OAUTH_IDENTITIES_TABLE
+        )
+        assert isinstance(table_page, TablePage)
+        assert table_page.total_count == 1
+        assert _PROVIDER_SUBJECT_COLUMN_KEY not in table_page.column_keys
+
+        row_detail = db_browser_service.get_row_detail(
+            table_name=_USER_OAUTH_IDENTITIES_TABLE, raw_pk=str(oauth_identity.id)
+        )
+        assert isinstance(row_detail, RowDetail)
+        detail_field_keys = {field.key for field in row_detail.fields}
+        assert _PROVIDER_SUBJECT_COLUMN_KEY not in detail_field_keys
 
 
 # ---------------------------------------------------------------------------
