@@ -29,7 +29,7 @@ function link(id: string): HTMLAnchorElement {
   return document.getElementById(id) as HTMLAnchorElement;
 }
 
-function press(id: string, key: string): void {
+function press({ id, key }: { id: string; key: string }): void {
   $(`#${id}`).trigger($.Event("keydown", { key }));
 }
 
@@ -54,7 +54,7 @@ describe("admin nav keyboard", () => {
 
   it("ArrowRight moves focus and the tab stop to the next link", () => {
     link("AdminNavHealth").focus();
-    press("AdminNavHealth", "ArrowRight");
+    press({ id: "AdminNavHealth", key: "ArrowRight" });
 
     expect(document.activeElement).toBe(link("AdminNavDbBrowser"));
     expect(link("AdminNavDbBrowser").getAttribute("tabindex")).toBe("0");
@@ -63,7 +63,7 @@ describe("admin nav keyboard", () => {
 
   it("ArrowLeft moves focus to the previous link", () => {
     link("AdminNavHealth").focus();
-    press("AdminNavHealth", "ArrowLeft");
+    press({ id: "AdminNavHealth", key: "ArrowLeft" });
 
     expect(document.activeElement).toBe(link("AdminNavDashboard"));
     expect(link("AdminNavDashboard").getAttribute("tabindex")).toBe("0");
@@ -71,30 +71,30 @@ describe("admin nav keyboard", () => {
 
   it("ArrowLeft on the first link wraps to the last", () => {
     link("AdminNavDashboard").focus();
-    press("AdminNavDashboard", "ArrowLeft");
+    press({ id: "AdminNavDashboard", key: "ArrowLeft" });
 
     expect(document.activeElement).toBe(link("AdminNavMetrics"));
   });
 
   it("ArrowRight on the last link wraps to the first", () => {
     link("AdminNavMetrics").focus();
-    press("AdminNavMetrics", "ArrowRight");
+    press({ id: "AdminNavMetrics", key: "ArrowRight" });
 
     expect(document.activeElement).toBe(link("AdminNavDashboard"));
   });
 
   it("Home and End jump to the first and last links", () => {
     link("AdminNavUsers").focus();
-    press("AdminNavUsers", "End");
+    press({ id: "AdminNavUsers", key: "End" });
     expect(document.activeElement).toBe(link("AdminNavMetrics"));
 
-    press("AdminNavMetrics", "Home");
+    press({ id: "AdminNavMetrics", key: "Home" });
     expect(document.activeElement).toBe(link("AdminNavDashboard"));
   });
 
   it("ignores non-navigation keys", () => {
     link("AdminNavHealth").focus();
-    press("AdminNavHealth", "a");
+    press({ id: "AdminNavHealth", key: "a" });
 
     expect(document.activeElement).toBe(link("AdminNavHealth"));
     expect(link("AdminNavHealth").getAttribute("tabindex")).toBe("0");
