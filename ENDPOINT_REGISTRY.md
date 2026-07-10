@@ -774,21 +774,54 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### GET /admin/db/* (Flask-Admin read-only DB browser)
+### GET /admin/db (native read-only DB browser — overview)
 
-| Layer           | Location                                                                                                                                                                                                 |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | Flask-Admin generated views — `backend/admin/db_browser.py:init_db_browser` (`ProtectedAdminIndexView` at `/admin/db/`, one `ReadOnlyModelView` per mapped model at `/admin/db/<model>/` + `/details/`) |
-| **Decorators**  | `is_accessible()` gate on every view (`_AdminAccessMixin`): 302 → login for anonymous, 403 for non-admin — mirrors `@admin_login_required`                                                              |
-| **Service**     | Flask-Admin `contrib.sqla`; list views emit `audit.record(action="admin.db_browser.view", target_type=<ModelClass>)`                                                                                    |
-| **Schema**      | None — server-rendered HTML; read-only (`can_create/can_edit/can_delete/can_export = False` on every view; `Users.password` column excluded)                                                            |
-| **Template**    | Flask-Admin packaged Bootstrap4 templates (app portal templates live under `templates/admin_portal/` to avoid the `admin/*` template-name collision)                                                    |
-| **JS Module**   | None (Flask-Admin's own static assets; inline scripts nonce'd via `csp_nonce_generator`)                                                                                                                |
-| **CSRF**        | N/A — no mutating endpoints enabled                                                                                                                                                                     |
-| **Tests**       | `tests/integration/admin/test_admin_db_browser.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                                                                 |
-| **Route Const** | Flask-Admin endpoints `admin_db.index` / `admin_db_<model>.index_view`                                                                                                                                  |
-| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface                                                                                      |
-| **Deps**        | `Flask-Admin==2.2.0` (requirements-prod.txt; zero new transitive deps — flask/jinja2/markupsafe/werkzeug/wtforms already pinned)                                                                        |
+| Layer           | Location                                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_db`                                                                                               |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
+| **Service**     | `backend/admin/db_browser_service.py:list_tables` (introspects `db.Model.registry.mappers`; per-table `row_count`); audits `admin.db_browser.view` (`ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW`, no target) |
+| **Schema**      | None (request) / None (response — server-rendered HTML; read-only, no create/edit/delete/export surface)                          |
+| **Template**    | `admin_portal/db/index.html` (`.admin-quick-links` table-picker cards; `#AdminDbTables`, `#AdminDbBrowserTitle`)                  |
+| **JS Module**   | None (plain server-rendered page)                                                                                                 |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |
+| **Route Const** | None — handler hardcodes `/admin/db`; templates link via `url_for('admin.admin_db')`                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal) |
+
+---
+
+### GET /admin/db/<table_name> (native read-only DB browser — per-table grid)
+
+| Layer           | Location                                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_db_table` (query param: `offset`; 404 on unknown table)                                           |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
+| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (offset/limit=50 pagination, sensitive-column masking, safe cell formatting); audits `admin.db_browser.view` (`target_type=table_name`) |
+| **Schema**      | None (request) / None (response — server-rendered HTML; read-only)                                                                |
+| **Template**    | `admin_portal/db/table.html` (breadcrumb + `#AdminDbTableGrid` scrollable grid or `#AdminDbTableEmpty` empty-state; Previous/Next `<a href>` pagination) |
+| **JS Module**   | None (plain server-rendered page)                                                                                                 |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |
+| **Route Const** | None — handler hardcodes `/admin/db/<table_name>`; templates link via `url_for('admin.admin_db_table', table_name=...)`          |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal) |
+
+---
+
+### GET /admin/db/<table_name>/<path:row_pk> (native read-only DB browser — row detail)
+
+| Layer           | Location                                                                                                                          |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_db_row` (`<path:row_pk>` supports composite/string PKs; 404 on unknown table or row)             |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
+| **Service**     | `backend/admin/db_browser_service.py:get_row_detail` (parses/coerces PK segment, `db.session.get`, full untruncated formatted fields, sensitive-column masking); audits `admin.db_browser.view` (`target_type=table_name`, `target_id=row_pk`) |
+| **Schema**      | None (request) / None (response — server-rendered HTML; read-only)                                                                |
+| **Template**    | `admin_portal/db/row.html` (breadcrumb + `#AdminDbRowDetail` key/value table; long/JSON values in `<details class="admin-db-json">`) |
+| **JS Module**   | None (plain server-rendered page)                                                                                                 |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |
+| **Route Const** | None — handler hardcodes `/admin/db/<table_name>/<path:row_pk>`; templates link via `url_for('admin.admin_db_row', ...)`         |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal) |
 
 ---
 
