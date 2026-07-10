@@ -15,6 +15,7 @@ from tests.functional.locators import AdminPortalLocators as APL
 from tests.functional.playwright_utils import (
     create_user_session_and_provide_session_id,
     login_user_with_cookie_from_session,
+    wait_then_click_element,
     wait_then_get_element,
 )
 
@@ -34,6 +35,11 @@ _EMPTY_TABLE_NAME: str = "ApiRefreshTokens"
 # any seeded user may appear anywhere in the page body.
 _PASSWORD_COLUMN_HEADER: str = "Password"
 _SCRYPT_HASH_PREFIX: str = "scrypt:"
+
+# The first cell of each grid row links to that row's detail page. The link
+# currently borrows the user-scoped class; a later review item renames it to
+# `.admin-db-row-link`.
+_DB_ROW_LINK_SELECTOR: str = ".admin-user-link"
 
 
 def test_admin_db_browser_overview_happy_path(
@@ -166,3 +172,39 @@ def test_admin_db_browser_grid_returns_403_for_non_admin(
     assert navigation_response is not None
     assert navigation_response.status == 403
     assert page.locator(APL.DB_TABLE_GRID).count() == 0
+
+
+def test_admin_db_browser_row_detail_masks_password(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin user viewing the Users grid
+    WHEN the admin clicks the first row's primary-key link to open its
+         row-detail page
+    THEN the row-detail table renders and neither the password column header
+         nor any scrypt hash prefix leaks into the detail page.
+    """
+    login_admin_and_open_db_browser_table(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        table_name="Users",
+    )
+
+    wait_then_click_element(page=page, css_selector=_DB_ROW_LINK_SELECTOR)
+
+    row_detail_locator = wait_then_get_element(
+        page=page, css_selector=APL.DB_ROW_DETAIL
+    )
+    expect(row_detail_locator).to_be_visible()
+
+    body_text: str = page.locator("body").inner_text()
+    assert _PASSWORD_COLUMN_HEADER not in body_text
+    assert _SCRYPT_HASH_PREFIX not in body_text
