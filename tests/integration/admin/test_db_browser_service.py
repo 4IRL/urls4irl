@@ -15,15 +15,16 @@ from backend.admin.db_browser_service import (
     TableSummary,
     format_cell_value,
 )
-from backend.metrics.events import EventCategory
 from backend.models.api_refresh_tokens import ApiRefreshTokens
 from backend.models.email_validations import Email_Validations
-from backend.models.event_registry import Event_Registry
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import User_Role, Users
-from backend.models.utub_members import Member_Role, Utub_Members
-from backend.models.utubs import Utubs
+from backend.models.utub_members import Utub_Members
+from tests.integration.admin.seed_helpers import (
+    seed_event_registry_row,
+    seed_utub_member,
+)
 
 pytestmark = pytest.mark.admin
 
@@ -114,37 +115,6 @@ def _seed_oauth_identity(user_id: int) -> UserOAuthIdentity:
     db.session.add(oauth_identity)
     db.session.commit()
     return oauth_identity
-
-
-def _seed_utub_member(user_id: int) -> Utub_Members:
-    """Insert a Utub owned by ``user_id`` and add ``user_id`` as a member."""
-    new_utub = Utubs(
-        name="Browser Test UTub",
-        utub_creator=user_id,
-        utub_description="",
-    )
-    db.session.add(new_utub)
-    db.session.commit()
-    utub_member = Utub_Members(
-        utub_id=new_utub.id,
-        user_id=user_id,
-        member_role=Member_Role.CREATOR,
-    )
-    db.session.add(utub_member)
-    db.session.commit()
-    return utub_member
-
-
-def _seed_event_registry_row() -> Event_Registry:
-    """Insert one EventRegistry row (String primary key = ``name``)."""
-    event_row = Event_Registry(
-        name=_EVENT_REGISTRY_NAME,
-        category=EventCategory.DOMAIN,
-        description="Seeded for the DB-browser service string-PK test.",
-    )
-    db.session.add(event_row)
-    db.session.commit()
-    return event_row
 
 
 # ---------------------------------------------------------------------------
@@ -428,7 +398,7 @@ def test_composite_pk_segment_and_row_detail_resolve(
     app: Flask,
 ) -> None:
     with app.app_context():
-        utub_member = _seed_utub_member(user_id=1)
+        utub_member = seed_utub_member(user_id=1)
         expected_segment = f"{utub_member.utub_id},{utub_member.user_id}"
 
         assert (
@@ -445,7 +415,7 @@ def test_composite_pk_segment_and_row_detail_resolve(
 
 def test_string_pk_row_detail_resolves(app: Flask) -> None:
     with app.app_context():
-        _seed_event_registry_row()
+        seed_event_registry_row(name=_EVENT_REGISTRY_NAME)
 
         row_detail = db_browser_service.get_row_detail(
             table_name=_EVENT_REGISTRY_TABLE, raw_pk=_EVENT_REGISTRY_NAME

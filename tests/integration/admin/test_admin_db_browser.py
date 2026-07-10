@@ -8,15 +8,15 @@ from flask import Flask
 from flask.testing import FlaskClient
 
 from backend import db
-from backend.metrics.events import EventCategory
 from backend.models.audit_log import AuditLog
-from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
-from backend.models.utub_members import Member_Role, Utub_Members
-from backend.models.utubs import Utubs
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
     ADMIN_PORTAL_STRINGS,
+)
+from tests.integration.admin.seed_helpers import (
+    seed_event_registry_row,
+    seed_utub_member,
 )
 
 pytestmark = pytest.mark.admin
@@ -60,37 +60,6 @@ def _seed_extra_user(username: str) -> Users:
     db.session.add(extra_user)
     db.session.commit()
     return extra_user
-
-
-def _seed_utub_member(user_id: int) -> Utub_Members:
-    """Create a UTub owned by ``user_id`` and add them as a member (composite PK)."""
-    new_utub = Utubs(
-        name="Browser Route Test UTub",
-        utub_creator=user_id,
-        utub_description="",
-    )
-    db.session.add(new_utub)
-    db.session.commit()
-    utub_member = Utub_Members(
-        utub_id=new_utub.id,
-        user_id=user_id,
-        member_role=Member_Role.CREATOR,
-    )
-    db.session.add(utub_member)
-    db.session.commit()
-    return utub_member
-
-
-def _seed_event_registry_row() -> Event_Registry:
-    """Insert one EventRegistry row (String primary key = ``name``)."""
-    event_row = Event_Registry(
-        name=_EVENT_REGISTRY_NAME,
-        category=EventCategory.DOMAIN,
-        description="Seeded for the DB-browser route string-PK test.",
-    )
-    db.session.add(event_row)
-    db.session.commit()
-    return event_row
 
 
 # ---------------------------------------------------------------------------
@@ -288,7 +257,7 @@ def test_admin_db_row_composite_pk_resolves(
     client, _, _, app = login_admin_user_with_register
 
     with app.app_context():
-        utub_member = _seed_utub_member(user_id=1)
+        utub_member = seed_utub_member(user_id=1)
         pk_segment = f"{utub_member.utub_id},{utub_member.user_id}"
 
     response = client.get(f"/admin/db/UtubMembers/{pk_segment}")
@@ -302,7 +271,7 @@ def test_admin_db_row_string_pk_resolves(
     client, _, _, app = login_admin_user_with_register
 
     with app.app_context():
-        _seed_event_registry_row()
+        seed_event_registry_row(name=_EVENT_REGISTRY_NAME)
 
     response = client.get(f"/admin/db/EventRegistry/{_EVENT_REGISTRY_NAME}")
 
