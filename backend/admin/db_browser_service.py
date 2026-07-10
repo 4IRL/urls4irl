@@ -114,9 +114,14 @@ def _iter_model_classes() -> list[type]:
 
 
 def _model_by_table_name() -> dict[str, type]:
-    """Map each ``__tablename__`` to its model class for path resolution."""
+    """Map each ``__tablename__`` to its model class for path resolution.
+
+    Built straight from the mapper registry — the lookup is order-independent,
+    so no sort is applied (unlike ``_iter_model_classes()`` used for display).
+    """
     return {
-        model_class.__tablename__: model_class for model_class in _iter_model_classes()
+        mapper.class_.__tablename__: mapper.class_
+        for mapper in db.Model.registry.mappers  # type: ignore[attr-defined]
     }
 
 
