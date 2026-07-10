@@ -62,6 +62,52 @@ def test_admin_health_renders_title_and_grid_for_admin(
     expect(database_card_locator).to_contain_text(STATUS_UP)
 
 
+def test_admin_health_renders_operational_stat_cards(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin user and no seeded latency/metrics data
+    WHEN the admin opens /admin/health and the snapshot fragment loads
+    THEN the six new operational-stat cards render without error: the
+         always-populated DB-connections and system-resource (CPU/memory)
+         cards are visible, the flush-lag element is present, and the
+         metric-derived cards (slowest/busiest endpoint, 5xx error rate)
+         render their empty fallbacks.
+    """
+    login_admin_and_open_admin_health(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    # Wait for the health-monitor controller to fetch and swap in the fragment.
+    expect(
+        wait_then_get_element(page=page, css_selector=APL.HEALTH_GRID)
+    ).to_be_visible()
+
+    for always_present_selector in (
+        APL.HEALTH_DB_CONNECTIONS,
+        APL.HEALTH_CPU_LOAD,
+        APL.HEALTH_MEMORY,
+        APL.HEALTH_SLOWEST_ENDPOINT,
+        APL.HEALTH_ERROR_RATE,
+        APL.HEALTH_BUSIEST_ENDPOINT,
+    ):
+        expect(
+            wait_then_get_element(page=page, css_selector=always_present_selector)
+        ).to_be_visible()
+
+    # The flush-lag element is always emitted inside the flush sentinel card.
+    assert page.locator(APL.HEALTH_FLUSH_LAG).count() == 1
+
+
 def test_admin_health_returns_403_for_non_admin(
     page: Page,
     create_test_users,

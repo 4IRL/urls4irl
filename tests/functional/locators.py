@@ -595,6 +595,14 @@ class AdminPortalLocators(GenericPageLocator):
     HEALTH_SNAPSHOT_REGION = "#AdminHealthSnapshot"
     HEALTH_GRID = "#AdminHealthGrid"
     HEALTH_DATABASE_CARD = "#AdminHealthDatabase"
+    HEALTH_DB_CONNECTIONS = "#AdminHealthDbConnections"
+    HEALTH_FLUSH_LAG = "#AdminHealthFlushLag"
+    HEALTH_SLOWEST_ENDPOINT = "#AdminHealthSlowestEndpoint"
+    HEALTH_ERROR_RATE = "#AdminHealthErrorRate"
+    HEALTH_BUSIEST_ENDPOINT = "#AdminHealthBusiestEndpoint"
+    HEALTH_SYSTEM_RESOURCES = "#AdminHealthSystemResources"
+    HEALTH_CPU_LOAD = "#AdminHealthCpuLoad"
+    HEALTH_MEMORY = "#AdminHealthMemory"
     HEALTH_CAPTURED_AT = "#AdminHealthCapturedAt"
 
     # Users search page

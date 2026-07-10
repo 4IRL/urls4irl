@@ -33,6 +33,7 @@ class ADMIN_PORTAL_STRINGS:
     HEALTH_LABEL_FLUSH_LAST_SUCCESS: str = "Metrics Flush (sidecar)"
     HEALTH_LABEL_GAUGE_LAST_SAMPLE: str = "Gauge Sample (sidecar)"
     HEALTH_VALUE_UNKNOWN: str = "unknown"
+    HEALTH_VALUE_UNAVAILABLE: str = "unavailable"
     HEALTH_NEVER_RAN: str = "never"
     USERS_TITLE: str = "Users"
     USERS_SEARCH_PLACEHOLDER: str = "Search by username or email…"

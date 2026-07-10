@@ -222,8 +222,21 @@
 }
 
 .admin-health-value {
+    display: block;
     font-size: 1.2rem;
     color: var(--UTubDescriptionColor);
+}
+
+.admin-health-lag {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-health-stale {
+    color: #e05260;
+    font-weight: 600;
 }
 
 .admin-status-badge {
