@@ -44,6 +44,8 @@ class HomePageLocators(GenericPageLocator):
     LOGGED_IN_USERNAME_DESKTOP = "#userLoggedInDesktop"
     NAVBAR_ADMIN_METRICS = "#NavbarDropdownsHome #adminMetrics"
     NAVBAR_ADMIN_METRICS_LINK = "#adminMetricsLink"
+    NAVBAR_ADMIN_PORTAL = "#NavbarDropdownsHome #adminPortal"
+    NAVBAR_ADMIN_PORTAL_LINK = "#adminPortalLink"
     NAVBAR_USER_SETTINGS = "#NavbarDropdownsHome #userSettings"
     NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
     NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
