@@ -113,6 +113,15 @@
     gap: 14px;
 }
 
+/* The DB table picker's card titles are raw single-token __tablename__ values
+   (e.g. AnonymousLatencyDailyRollups) that cannot wrap; give this grid wider
+   columns than the dashboard quick-links so the longest names fit on one line
+   inside the card border. Kept single-column on phones by the mobile rule
+   below. */
+#AdminDbTables {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
 .admin-quick-link-card {
     display: block;
     background-color: var(--panelBackgroundColor);
@@ -396,7 +405,8 @@ details.admin-db-json > pre {
         padding: 10px;
     }
 
-    .admin-quick-links {
+    .admin-quick-links,
+    #AdminDbTables {
         grid-template-columns: 1fr;
     }
 }
