@@ -370,6 +370,27 @@
     min-width: 0;
 }
 
+/* iOS Safari renders native <input type="date"> with a fixed intrinsic width
+   that ignores width:100%, so the paired Since/Until fields overflow their grid
+   cells and visually overlap on phones. On small screens, drop the native
+   appearance so the inputs honor their column width; desktop keeps the native
+   calendar-picker control. */
+@media (max-width: 575.98px) {
+    .admin-audit-date-range .admin-search-input {
+        -webkit-appearance: none;
+        appearance: none;
+        /* appearance:none strips iOS's native date control, which then collapses
+           to near-zero height; pin it to the sibling text-input height (border-box:
+           20.4px line + 16px padding + 2px border ≈ 38px) so it renders normally. */
+        min-height: 38px;
+    }
+
+    .admin-audit-date-range .admin-search-input::-webkit-date-and-time-value {
+        text-align: left;
+        margin: 0;
+    }
+}
+
 .admin-audit-metadata summary {
     cursor: pointer;
     color: var(--deckHeaderGreen);
