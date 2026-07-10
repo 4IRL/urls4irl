@@ -73,12 +73,12 @@ From the user's feature/task description, identify:
 
 Read `references/research-prompts.md` for the full prompt definitions and expected JSON response format.
 
-Before launching subagents, create the `plans/<topic>/tmp/` directory.
+Before launching subagents, create the `plans/<topic>/research/` directory (permanent — not `tmp/`; see the Persistent Research Artifacts note below).
 
 Launch subagents **in parallel** using the Agent tool with **no `subagent_type`** (defaults to general-purpose). NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool. Each subagent:
 - Receives the user's task description, the research targets from 2a, and the path it must write its output to
 - Reads source files independently (the main agent does NOT pre-read files)
-- Writes its full findings JSON to `plans/<topic>/tmp/research-<focus>.md` (where `<focus>` describes the research area, e.g., `research-architecture.md`, `research-dependencies.md`, `research-request-chain.md`, `research-tests.md`, `research-schemas.md`)
+- Writes its full findings JSON to `plans/<topic>/research/research-<focus>.md` (where `<focus>` describes the research area, e.g., `research-architecture.md`, `research-dependencies.md`, `research-request-chain.md`, `research-tests.md`, `research-schemas.md`)
 - Returns only a one-line confirmation: `Written to <path>`
 
 Include this preamble in every subagent prompt:
@@ -89,7 +89,11 @@ Include this preamble in every subagent prompt:
 >
 > **Task:** `<user's task description>`. Affected modules/files: `<list from 2a>`.
 >
-> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/tmp/research-<focus>.md` **using the `Write` tool** (NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect — any heredoc or inline script containing `{` and quotes trips the brace+quote security prompt). Then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
+> Read the source files relevant to your research area. Write your complete findings to `plans/<topic>/research/research-<focus>.md` **using the `Write` tool** (NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect — any heredoc or inline script containing `{` and quotes trips the brace+quote security prompt). Then return only this one-line confirmation: `Written to <path>`. Every file path you cite must be one you actually read.
+
+### Persistent Research Artifacts (feeds `/plan-reviewer`)
+
+Unlike scratch files under `plans/<topic>/tmp/`, research files live at `plans/<topic>/research/` and are **never deleted** — same lifecycle as `plans/<topic>/mocks/`. `/plan-reviewer`'s subagents read the file(s) matching their role as grounding context before touching source, which skips the broad Glob/Grep discovery sweep the research subagents already paid for. This is why Step 2c and Step 3's cleanup below write/leave these files at `research/` instead of `tmp/`.
 
 | # | Subagent | Focus | Launch condition |
 |---|---|---|---|
@@ -105,7 +109,7 @@ All applicable subagents must launch in a **single message** for true parallelis
 ### 2c. Collect and Use Research Results
 
 After all subagents return their one-line confirmations:
-1. Read each `plans/<topic>/tmp/research-<focus>.md` file to compile findings
+1. Read each `plans/<topic>/research/research-<focus>.md` file to compile findings
 2. Parse each JSON response
 3. If any subagent fails or its file is missing/invalid, note the gap — do NOT skip the area; instead, read the minimum necessary files directly to fill the gap
 4. Use the structured findings to inform plan writing in Step 3 — the main agent should reference subagent findings (file paths, signatures, patterns) rather than re-reading those files
@@ -154,7 +158,7 @@ finished: false
 - **No forward references within a step.** If a step's to-do item calls or imports a function, that function must either already exist in the codebase or have been created earlier in the same step. If a function is first defined in step N, no to-do in steps 1–(N-1) may reference it. Check this before finalising step order.
 - **Mock every UI change.** If the plan adds or modifies any user-visible UI, you MUST follow the **UI Mockup Protocol** below — produce styled HTML mockup(s) as the visual base *before* finalizing the plan, and link them from the plan. Skipping mockups on a UI plan is not allowed.
 
-**Cleanup:** After the plan file is written, delete all files matching `plans/<topic>/tmp/research-*.md`. **Never delete anything under `plans/<topic>/mocks/`** — mockups are permanent plan artifacts.
+**Cleanup:** Nothing to delete for research — `plans/<topic>/research/*.md` and `plans/<topic>/mocks/` are both permanent plan artifacts and must never be deleted. (There is no more `tmp/research-*.md` to clean up — Step 2b now writes directly to `research/`.)
 
 **Sub-plan cross-link** (sub-plan mode only): after writing the sub-plan file, perform two cross-link operations:
 

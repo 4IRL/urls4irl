@@ -1,12 +1,12 @@
 ---
 name: plan-reviewer
-description: Review a plan file using up to 3 iterative passes of up to 7 parallel subagents with specialized expertise (Correctness, Full-Stack Trace, Ordering/Dependencies, Codebase Integration, Verification/Test Coverage, Completeness/Risk, UX/Accessibility/Edge Cases). Each pass auto-applies mechanical fixes, presents design decisions as interactive questions via AskUserQuestion, applies user choices, then loops into the next pass. Exits early if a pass finds 0 critical + 0 major. After Pass 3, remaining issues are tagged "resolve during implementation." The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in reviews/.
+description: Review a plan file using a scope-scaled panel (3, 6, or 7 parallel subagents depending on plan size — see Step 1e) over up to 2-3 iterative passes, with specialized expertise (Correctness, Full-Stack Trace, Ordering/Dependencies, Codebase Integration, Verification/Test Coverage, Completeness/Risk, UX/Accessibility/Edge Cases). Reviewers ground themselves in plan-creator's persisted research (plans/<topic>/research/) instead of re-discovering the same files. Each pass auto-applies mechanical fixes, presents design decisions as interactive questions via AskUserQuestion, applies user choices, then loops into the next pass. Exits early if a pass finds 0 critical + 0 major. After the tier's pass cap, remaining issues are tagged "resolve during implementation." The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in reviews/.
 argument-hint: Plan-name [scope]
 ---
 
-# Plan Review with Parallel Subagents (Up to 3 Passes)
+# Plan Review with Parallel Subagents (Scope-Scaled, Up to 3 Passes)
 
-Review a plan using up to 7 specialized subagents running in parallel, then merge their findings into a single review document. Automatically loops up to 3 passes, pausing between each pass for the user to answer design decisions via interactive `AskUserQuestion` prompts.
+Review a plan using a panel of specialized subagents running in parallel — 3, 6, or 7 depending on the plan's size/risk tier (Step 1e) — then merge their findings into a single review document. Automatically loops up to the tier's pass cap (2 for `small`, 3 for `medium`/`large`), pausing between each pass for the user to answer design decisions via interactive `AskUserQuestion` prompts.
 
 ## Branch Guard
 
@@ -18,18 +18,18 @@ Before starting, check the current branch:
    - Do NOT proceed until the user confirms and you've switched branches
 2. If already on a feature branch: proceed normally
 
-## Review Loop (Up to 3 Passes)
+## Review Loop (Up to `<pass-cap>` Passes)
 
-The review runs as a loop with up to 3 passes. Each pass executes Steps 2-8 below. Between passes, the user answers design decisions via `AskUserQuestion`. The loop exits early if:
+The review runs as a loop with up to `<pass-cap>` passes (Step 1e: 2 for `small`, 3 for `medium`/`large`). Each pass executes Steps 2-8 below. Between passes, the user answers design decisions via `AskUserQuestion`. The loop exits early if:
 
 - **A pass produces 0 critical + 0 major findings** → plan is clean, stop reviewing
-- **Pass 3 completes** → hard cap reached; any remaining issues are tagged "resolve during implementation" in the review document
+- **Pass `<pass-cap>` completes** → hard cap reached; any remaining issues are tagged "resolve during implementation" in the review document
 
-After the final pass (whether early exit or Pass 3), proceed to Step 9 (post-loop coherence check), then Steps 10-11 (root cause analysis and skill improvement) if prior reviews exist.
+After the final pass (whether early exit or hard cap), proceed to Step 9 (post-loop coherence check), then Steps 10-11 (root cause analysis and skill improvement) if prior reviews exist.
 
 ### Pass tracking
 
-Track the current pass number (1, 2, or 3). When writing to the review document:
+Track the current pass number (1 through `<pass-cap>`). When writing to the review document:
 - Pass 1: `## Review — <YYYY-MM-DD>`
 - Pass 2+: `## Review — <YYYY-MM-DD> (Pass N)`
 
@@ -69,9 +69,30 @@ Some invocations target a narrow re-review (e.g., "only re-review the metrics di
 
 Store `<scope>` (or null) for use in Step 2. It does not affect Step 2a (Prior-Fix Verifier), which always re-checks every prior fix regardless of scope.
 
-### Step 2: Launch 6 Parallel Review Subagents
+### Step 1e: Classify Review Scope
 
-Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI changes) using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from individual reference files — the orchestrator does NOT inline the full checklist or response format.
+Using the plan text already read in Step 1 (no extra subagent call), classify the plan once, before Pass 1, into `small` / `medium` / `large`. This is fixed for the whole invocation — it is not re-derived per pass.
+
+Compute these signals from the plan text:
+- `step_count` — number of `### N.` top-level headings under `## Steps`
+- `is_sub_plan` — a master plan was detected in Step 1c
+- `touches_ui` — the same signal already used to gate Subagent #7 (plan has a Mockup link / UI Mockup Protocol section / frontend-visible changes)
+- `touches_endpoints` — plan mentions route/blueprint/endpoint changes (`@bp.route`, "endpoint", "API route", request/response chain)
+- `touches_data_model` — plan mentions Pydantic schemas, SQLAlchemy models, or migrations
+
+Classify:
+
+| Tier | Condition | Panel | Pass cap |
+|---|---|---|---|
+| **Large** | `is_sub_plan` OR `step_count >= 9` | Full 7 (6 if `!touches_ui`) — current default | 3 (unchanged) |
+| **Small** | `step_count <= 3` AND none of `touches_ui`/`touches_endpoints`/`touches_data_model` | 3 agents: #1 Correctness, #4 Integration, #5 Verification | 2 |
+| **Medium** | everything else (the common case) | 6 (7 if `touches_ui`) — current default | 3 (unchanged) |
+
+Store `<review-tier>` and `<pass-cap>` for use in Step 2 (panel selection) and Step 8b (hard-cap check). Mention the tier and panel size in the Step 8a pass summary so the user can see why a plan got a lighter or heavier review.
+
+### Step 2: Launch Parallel Review Subagents
+
+Launch the subagents selected by `<review-tier>` (Step 1e) **in parallel** using the Agent tool with **minimal prompts**. Each subagent reads its own instructions from individual reference files — the orchestrator does NOT inline the full checklist or response format.
 
 **Subagent prompt template** (send this to each, filling in the blanks):
 
@@ -79,7 +100,7 @@ Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI c
 >
 > 1. Read `.claude/skills/plan-reviewer/references/common-response-format.md` for the response format and rules, then read `.claude/skills/plan-reviewer/references/<sa-file>` for your specific review checklist. Follow those instructions exactly.
 > 2. <If master plan detected:> Read the master plan at `<master-plan-path>` FIRST to understand cross-phase context — which phases precede/follow this one, and what shared invariants (types, contracts, data shapes) are staged across phases. Every finding about a "type that's too wide" or "shared module change" must be evaluated against the master's staging plan before being classified as a regression vs. intentional.
-> 3. Read the plan in full, then read the source files relevant to your review area.
+> 3. Read the plan in full. Then, **before independently discovering source files**, check `plans/<topic>/research/` for the research file(s) mapped to your role (see table below via `Glob(pattern: "plans/<topic>/research/research-*.md")`). If present, read them first — they already name the relevant files, signatures, and patterns from plan-creator's research phase, so you can skip the broad Glob/Grep discovery sweep. You must still open and `Read` each source file you cite as evidence before asserting a finding (research may be incomplete, stale, or the codebase may have changed since) — the research file saves the *discovery* step, not the verification step. If no research files exist (plan predates this workflow, or was hand-written), fall back to independent discovery exactly as before.
 > 4. Write your complete JSON response to `plans/<topic>/tmp/<role>.md` **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect (any heredoc or inline script with `{` + quotes trips the brace+quote security prompt).
 > 5. Return only: `Written to <path>`.
 >
@@ -91,25 +112,28 @@ Launch **all 7 subagents in parallel** (skip Subagent #7 if the plan has no UI c
 - Each subagent reads source files independently — the main agent does NOT pre-read files
 - All subagent launches must be in a **single message** for true parallelism
 - Use `model: sonnet` for all review subagents
-- Skip Subagent #7 (UX, Accessibility & Edge Cases) if the plan has no UI/frontend changes — it adds no value for backend-only plans
+- Only launch the subagents selected by `<review-tier>` (Step 1e) — for `small`, this means #2, #3, #6, and #7 are simply not launched this pass, not launched-then-discarded
+- Skip Subagent #7 (UX, Accessibility & Edge Cases) if the plan has no UI/frontend changes — it adds no value for backend-only plans (this is in addition to, not a substitute for, the tier-based skip)
 - NEVER use `subagent_type: "Explore"` — Explore agents cannot use the Write tool. Omit `subagent_type` (defaults to general-purpose)
 - If a `<scope>` directive is set (Step 1d), it constrains subagents' SOURCE FILE reads only — every subagent still reads the full plan file and evaluates every checklist item, returning PASS + empty findings where nothing in-scope applies
 
-Subagents (all launched in a single message):
+Subagents and the research file(s) each should check first (Step 3 of the prompt template above):
 
-| # | Name | SA reference file | Output filename |
-|---|---|---|---|
-| 1 | Correctness & Accuracy | `sa1-correctness.md` | `correctness.md` |
-| 2 | Full-Stack Trace | `sa2-full-stack-trace.md` | `full-stack-trace.md` |
-| 3 | Ordering, Dependencies & Cleanup | `sa3-ordering.md` | `ordering.md` |
-| 4 | Codebase Integration & Conventions | `sa4-integration.md` | `integration.md` |
-| 5 | Verification & Test Coverage | `sa5-verification.md` | `verification.md` |
-| 6 | Completeness, Risk & Specificity | `sa6-completeness.md` | `completeness.md` |
-| 7 | UX, Accessibility & Edge Cases | `sa7-ux-accessibility.md` | `ux-accessibility.md` |
+| # | Name | SA reference file | Output filename | Research file(s) to check first |
+|---|---|---|---|---|
+| 1 | Correctness & Accuracy | `sa1-correctness.md` | `correctness.md` | `research-architecture.md`, `research-schemas.md` |
+| 2 | Full-Stack Trace | `sa2-full-stack-trace.md` | `full-stack-trace.md` | `research-request-chain.md`, `research-dependencies.md` |
+| 3 | Ordering, Dependencies & Cleanup | `sa3-ordering.md` | `ordering.md` | `research-dependencies.md` |
+| 4 | Codebase Integration & Conventions | `sa4-integration.md` | `integration.md` | `research-architecture.md` |
+| 5 | Verification & Test Coverage | `sa5-verification.md` | `verification.md` | `research-tests.md` |
+| 6 | Completeness, Risk & Specificity | `sa6-completeness.md` | `completeness.md` | `research-schemas.md`, `research-dependencies.md` |
+| 7 | UX, Accessibility & Edge Cases | `sa7-ux-accessibility.md` | `ux-accessibility.md` | `research-ux-interaction.md` |
+
+Only the subagents selected by `<review-tier>` launch — for `small`, that's rows 1, 4, and 5.
 
 ### Step 2a: Prior-Fix Verifier (Pass 2+ only)
 
-On Pass 2 and Pass 3, launch a 7th subagent **in the same single message** as the 6 reviewers. This subagent reads the fix manifest (`plans/<topic>/tmp/fix-manifest.md`) — NOT the full review file — to get every applied mechanical fix and resolved DD from prior passes, and re-verifies each is actually present in the current plan text and resolves the originally-flagged root cause.
+On every pass after Pass 1 (up to `<pass-cap>`), launch one additional subagent **in the same single message** as that pass's reviewer panel. This subagent reads the fix manifest (`plans/<topic>/tmp/fix-manifest.md`) — NOT the full review file — to get every applied mechanical fix and resolved DD from prior passes, and re-verifies each is actually present in the current plan text and resolves the originally-flagged root cause.
 
 **Note:** A `<scope>` directive (Step 1d), if set, does NOT apply here — the Prior-Fix Verifier always re-verifies ALL prior fixes regardless of the current pass's scope, since a regression could occur outside the newly scoped area and the manifest read is already cheap.
 
@@ -127,7 +151,7 @@ Prompt template:
 
 ### Step 3: Collect and Validate Results
 
-After all subagents return their one-line confirmations, verify each expected `plans/<topic>/tmp/<role>.md` file exists. The role filenames are: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`, and `ux-accessibility.md` (if launched).
+After all subagents return their one-line confirmations, verify each expected `plans/<topic>/tmp/<role>.md` file exists — only for the roles actually launched per `<review-tier>` (Step 1e) and the UI skip. E.g. for `small`, only `correctness.md`, `integration.md`, and `verification.md` are expected; for `medium`/`large` it's the full set: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`, and `ux-accessibility.md` (if launched).
 
 **Use the Glob tool** (`Glob(pattern: "plans/<topic>/tmp/*.md")`) to check for the files — **never use Bash `ls` with brace expansion** (`{a,b,c}`) as it triggers sandbox security prompts.
 
@@ -136,11 +160,11 @@ For each file:
 
 ### Step 3b: Launch Coordinator Subagent
 
-After confirming all 6 files are present, launch a **single coordinator subagent** to deduplicate, conflict-detect, and produce the output files.
+After confirming all expected files (per `<review-tier>`) are present, launch a **single coordinator subagent** to deduplicate, conflict-detect, and produce the output files.
 
 The coordinator subagent prompt:
 
-> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The 6 reviewer files are at `plans/<topic>/tmp/` — specifically: `correctness.md`, `full-stack-trace.md`, `ordering.md`, `integration.md`, `verification.md`, `completeness.md`. Follow the coordinator workflow, then write:
+> Read `.claude/skills/plan-reviewer/references/coordinator.md` for the full coordinator instructions. The reviewer files launched this pass are at `plans/<topic>/tmp/`: `<list the actual filenames launched this pass, e.g. correctness.md, integration.md, verification.md for a small-tier pass>`. Follow the coordinator workflow, then write:
 >
 > 1. **`plans/<topic>/tmp/coordinator.md`** — the full JSON output (verdicts, summaries, files_read, findings) as specified in the reference file.
 > 2. **`plans/<topic>/tmp/coordinator-summary.md`** — a short summary for the orchestrator containing ONLY:
@@ -245,7 +269,7 @@ The writer subagent prompt:
 >
 > **Document structure:** Use `classification` and `sources` from each finding for attribution: `duplicate` → append `*(flagged by: Subagent A, Subagent B)*`; `conflict` → render as a design decision naming disagreeing subagents.
 >
-> **Coverage checklist mapping:** Mark `[x]` if the primary subagent for that area reported reading relevant files (check `files_read`):
+> **Coverage checklist mapping:** Mark `[x]` if the primary subagent for that area reported reading relevant files (check `files_read`). If the primary subagent for an area was not launched this pass (Step 1e tier skip, e.g. `small` tier omits #2/#3/#6/#7), mark that row `— (not launched, <tier> tier)` instead of leaving it blank or `[x]`.
 > - Imports → #3 Ordering | Type annotations → #1 Correctness | Error handling → #2 Full-Stack Trace
 > - Test coverage → #5 Verification | Breaking changes → #6 Completeness | Config → #4 Integration | Naming → #4 Integration
 > - Accessibility → #7 UX/Accessibility | Cross-feature interactions → #7 UX/Accessibility | Empty states → #7 UX/Accessibility
@@ -294,13 +318,13 @@ After the writer completes, evaluate:
    - **Yes** → Skip remaining passes. Print: "Pass N clean (0 critical, 0 major). Plan is ready for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension, e.g. `openapi-type-generation-pipeline`). Proceed to Step 9. (`plans/<topic>/tmp/` is NOT deleted yet — Step 9 needs `fix-manifest.md`; deletion happens at the end of Step 9.)
    - **No** → Continue to next pass.
 
-2. **Hard cap check**: Is this Pass 3?
-   - **Yes** → Stop reviewing. Print: "Pass 3 complete (hard cap). Remaining issues tagged for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension). Proceed to Step 9. (Same deferred deletion as above.)
+2. **Hard cap check**: Is this pass number equal to `<pass-cap>` (Step 1e — 2 for `small`, 3 for `medium`/`large`)?
+   - **Yes** → Stop reviewing. Print: "Pass N complete (hard cap for <review-tier> tier). Remaining issues tagged for implementation. Ready to run: `/run-plan <plan-filename>`" (where `<plan-filename>` is the plan file's basename without extension). Proceed to Step 9. (Same deferred deletion as above.)
    - **No** → Print: "Pass N complete. Starting Pass N+1..." and loop back to **Step 2**.
 
 ### Step 9: Post-Loop Coherence Check
 
-After the loop exits (early exit OR Pass 3 hard cap), launch one final lightweight subagent to verify the review document is internally consistent with the plan. `plans/<topic>/tmp/` is still present at this point — Step 8b intentionally deferred its deletion until after this step.
+After the loop exits (early exit OR `<pass-cap>` hard cap), launch one final lightweight subagent to verify the review document is internally consistent with the plan. `plans/<topic>/tmp/` is still present at this point — Step 8b intentionally deferred its deletion until after this step.
 
 Prompt template:
 
