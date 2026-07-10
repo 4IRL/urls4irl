@@ -124,16 +124,22 @@ def _visible_columns(model_class: type) -> list[ColumnProperty]:
     """Ordered column attributes of ``model_class`` minus its sensitive
     exclusions.
 
-    Returns the mapper's ``ColumnProperty`` objects (whose ``.key`` is the ORM
-    attribute name usable with ``getattr``), NOT raw ``Column`` objects (whose
-    ``.key`` is the physical DB column name).
+    Iterates ``model_class.__table__.columns`` — the true table/DDL order, so
+    the primary key (``id``) comes first, matching the grid mock. (The mapper's
+    own ``.columns`` collection is ordered by mapper-configuration order, which
+    can float mixin/late-bound columns like ``created_at`` ahead of ``id``, so
+    it is deliberately not used here.) Each ``Column`` is resolved back to its
+    ``ColumnProperty`` whose ``.key`` is the ORM attribute name usable with
+    ``getattr``, NOT the physical DB column name.
     """
+    mapper = inspect(model_class)
     excluded_keys = _SENSITIVE_COLUMN_EXCLUSIONS.get(model_class.__name__, [])
-    return [
-        column_attr
-        for column_attr in inspect(model_class).column_attrs
-        if column_attr.key not in excluded_keys
-    ]
+    visible_columns: list[ColumnProperty] = []
+    for column in model_class.__table__.columns:
+        column_attr = mapper.get_property_by_column(column)
+        if column_attr.key not in excluded_keys:
+            visible_columns.append(column_attr)
+    return visible_columns
 
 
 def _primary_key_attr_keys(model_class: type) -> list[str]:

@@ -618,6 +618,14 @@ class AdminPortalLocators(GenericPageLocator):
     AUDIT_METADATA_DETAILS = "details.admin-audit-metadata"
     AUDIT_LOG_EMPTY = "#AdminAuditLogEmpty"
 
+    # DB browser pages
+    DB_BROWSER_TITLE = "#AdminDbBrowserTitle"
+    DB_TABLES = "#AdminDbTables"
+    DB_TABLE_CARD = ".admin-quick-link-card"
+    DB_TABLE_GRID = "#AdminDbTableGrid"
+    DB_TABLE_EMPTY = "#AdminDbTableEmpty"
+    DB_ROW_DETAIL = "#AdminDbRowDetail"
+
 
 class SettingsPageLocators(GenericPageLocator):
     """A collector class for user settings page locators.
