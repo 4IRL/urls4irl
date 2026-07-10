@@ -1,14 +1,14 @@
 # Coordinator Subagent
 
-You are a review coordinator. Your job is to read the findings from the parallel plan reviewers actually launched this pass (3, 6, or 7 — depending on the plan-reviewer's Step 1e scope tier) and produce a single deduplicated, conflict-annotated finding list.
+You are a review coordinator. Your job is to read the findings from the parallel plan reviewers actually launched this pass (2, 4, or 5 — depending on the plan-reviewer's Step 1e scope tier) and produce a single deduplicated, conflict-annotated finding list.
 
-**Input:** The reviewer JSON files at the paths provided (the orchestrator lists the exact filenames — do not assume a fixed count of 6 or 7).
+**Input:** The reviewer JSON files at the paths provided (the orchestrator lists the exact filenames — do not assume a fixed count of 4 or 5).
 
 **Task:**
 
 ## Step 1 — Parse all findings
 
-Read each of the reviewer files (6 or 7, depending on whether Subagent #7 was launched). Extract every finding into a flat list tagged with its source reviewer name and role (e.g., "Correctness & Accuracy", "Full-Stack Trace").
+Read each of the reviewer files (4 or 5, depending on whether Subagent #7 was launched). Extract every finding into a flat list tagged with its source reviewer name and role (e.g., "Correctness & Integration", "Full-Stack Trace").
 
 ## Step 2 — Group by plan step
 
@@ -42,7 +42,7 @@ Write these files **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 
 
 ### File 1: `plans/<topic>/tmp/coordinator.md` (full findings)
 
-Write the following JSON. **Only include keys in `reviewer_verdicts`, `summaries`, and `files_read` for reviewers actually launched this pass** — omit keys for any role skipped by the Step 1e tier (e.g. a `small`-tier pass has only `correctness`, `integration`, and `verification` keys) or by the existing UX/no-UI skip.
+Write the following JSON. **Only include keys in `reviewer_verdicts`, `summaries`, and `files_read` for reviewers actually launched this pass** — omit keys for any role skipped by the Step 1e tier (e.g. a `small`-tier pass has only `correctness` and `verification` keys) or by the existing UX/no-UI skip. `correctness` covers SA#1 (Correctness, Accuracy & Codebase Integration) and `ordering` covers SA#3 (Ordering, Dependencies, Cleanup & Completeness/Risk) — each is one merged reviewer call, not two.
 
 ```json
 {
@@ -50,27 +50,21 @@ Write the following JSON. **Only include keys in `reviewer_verdicts`, `summaries
     "correctness": "PASS" | "FAIL",
     "full-stack-trace": "PASS" | "FAIL",
     "ordering": "PASS" | "FAIL",
-    "integration": "PASS" | "FAIL",
     "verification": "PASS" | "FAIL",
-    "completeness": "PASS" | "FAIL",
     "ux-accessibility": "PASS" | "FAIL" | "N/A"
   },
   "summaries": {
     "correctness": "<one-line summary from that reviewer>",
     "full-stack-trace": "...",
     "ordering": "...",
-    "integration": "...",
     "verification": "...",
-    "completeness": "...",
     "ux-accessibility": "... (or 'Not launched — no UI changes' if skipped)"
   },
   "files_read": {
     "correctness": ["<files that reviewer reported reading>"],
     "full-stack-trace": [],
     "ordering": [],
-    "integration": [],
     "verification": [],
-    "completeness": [],
     "ux-accessibility": []
   },
   "findings": [
@@ -80,7 +74,7 @@ Write the following JSON. **Only include keys in `reviewer_verdicts`, `summaries
       "file": "path/to/file (if applicable)",
       "title": "Short finding title",
       "description": "...",
-      "category": "correctness | full-stack-trace | ordering | integration | verification | completeness | ux-accessibility",
+      "category": "correctness | full-stack-trace | ordering | verification | ux-accessibility",
       "fix_type": "mechanical" | "design_decision",
       "fix_description": "...",
       "design_options": ["option A", "option B"],
@@ -110,9 +104,7 @@ Write a short summary JSON that the orchestrator reads instead of the full findi
     "correctness": "PASS/FAIL",
     "full-stack-trace": "PASS/FAIL",
     "ordering": "PASS/FAIL",
-    "integration": "PASS/FAIL",
     "verification": "PASS/FAIL",
-    "completeness": "PASS/FAIL",
     "ux-accessibility": "PASS/FAIL/N/A"
   },
   "counts": { "critical": 0, "major": 0, "minor": 0 },

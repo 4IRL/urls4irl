@@ -9,6 +9,7 @@ from backend.admin.audit_service import (
     DEFAULT_AUDIT_PAGE_LIMIT,
     query_audit_log,
 )
+from backend.admin import db_browser_service
 from backend.admin.health_service import collect_health_snapshot
 from backend.admin.user_service import (
     DEFAULT_SEARCH_LIMIT,
@@ -148,6 +149,71 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
         "admin_portal/users/detail.html",
         is_admin_portal=True,
         detail_user=detail_user,
+    )
+
+
+@admin.route("/admin/db", methods=["GET"])
+@admin_login_required
+def admin_db() -> FlaskResponse:
+    """Read-only DB-browser overview: every table and its live row count.
+
+    Native replacement for the removed Flask-Admin model list. Each table
+    links to its paginated grid. The page view is audited.
+    """
+    audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW)
+    return render_template(
+        "admin_portal/db/index.html",
+        is_admin_portal=True,
+        tables=db_browser_service.list_tables(),
+    )
+
+
+@admin.route("/admin/db/<table_name>", methods=["GET"])
+@admin_login_required
+def admin_db_table(table_name: str) -> FlaskResponse:
+    """One paginated grid page of ``table_name`` (50 rows/page).
+
+    Unknown tables 404 (and are not audited). Sensitive columns are excluded
+    by the service; every cell is HTML-escaped by Jinja autoescape.
+    """
+    table_page = db_browser_service.get_table_page(
+        table_name=table_name, offset=_parse_offset_arg()
+    )
+    if table_page is None:
+        abort(404)
+    audit.record(
+        actor_id=current_user.id,
+        action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW,
+        target_type=table_name,
+    )
+    return render_template(
+        "admin_portal/db/table.html",
+        is_admin_portal=True,
+        table_page=table_page,
+    )
+
+
+@admin.route("/admin/db/<table_name>/<path:row_pk>", methods=["GET"])
+@admin_login_required
+def admin_db_row(table_name: str, row_pk: str) -> FlaskResponse:
+    """Row-detail view: the full, untruncated field list for one row.
+
+    Unknown tables, unparseable PKs, and missing rows 404 (and are not
+    audited). Sensitive columns are excluded by the service.
+    """
+    row_detail = db_browser_service.get_row_detail(table_name=table_name, raw_pk=row_pk)
+    if row_detail is None:
+        abort(404)
+    audit.record(
+        actor_id=current_user.id,
+        action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW,
+        target_type=table_name,
+        target_id=row_pk,
+    )
+    return render_template(
+        "admin_portal/db/row.html",
+        is_admin_portal=True,
+        row_detail=row_detail,
     )
 
 

@@ -40,7 +40,7 @@ The subagent receives:
 - The review file path (`plans/<topic>/reviews/<plan-name>-review.md`)
 - The plan file path
 - The `### Missed-Finding Root Causes` table from Step 6
-- Paths to skill files: `.claude/skills/plan-reviewer/SKILL.md` and the individual subagent reference files in `.claude/skills/plan-reviewer/references/` (e.g., `sa1-correctness.md` through `sa6-completeness.md`)
+- Paths to skill files: `.claude/skills/plan-reviewer/SKILL.md` and the individual subagent reference files in `.claude/skills/plan-reviewer/references/` (`sa1-correctness.md`, `sa2-full-stack-trace.md`, `sa3-ordering.md`, `sa5-verification.md`, `sa7-ux-accessibility.md` — `sa1` and `sa3` each carry a Part A / Part B split covering two merged former roles)
 - Path to project CLAUDE.md
 - Path to memory index: `.claude/projects/-Users-ggpropersi-code-urls4irl/memory/MEMORY.md`
 
@@ -48,7 +48,7 @@ The subagent:
 
 1. **Reads all inputs**: review file (all passes), skill files, CLAUDE.md, memory index + any referenced memory files
 2. **For each missed finding from Step 6**, determines:
-   - **Which subagent (1-6) should have caught it** — based on the finding's category and the subagent checklists
+   - **Which subagent (1, 2, 3, 5, or 7) should have caught it** — based on the finding's category and the subagent checklists
    - **Why that subagent missed it** — maps to one of:
      - `prompt_gap`: The subagent's checklist doesn't cover this class of issue
      - `prompt_ambiguity`: The checklist covers it but the wording is too vague to enforce

@@ -303,6 +303,37 @@
     white-space: pre-wrap;
 }
 
+/* ---- DB browser ---------------------------------------------------------- */
+
+.admin-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-breadcrumb {
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-breadcrumb a {
+    color: var(--deckHeaderGreen);
+    text-decoration: none;
+}
+
+details.admin-db-json > summary {
+    color: var(--deckHeaderGreen);
+    cursor: pointer;
+}
+
+details.admin-db-json > pre {
+    margin: 6px 0 0;
+    background: var(--defaultPageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 8px;
+    white-space: pre-wrap;
+}
+
 @media (max-width: 575.98px) {
     #AdminPortal {
         padding: 10px;

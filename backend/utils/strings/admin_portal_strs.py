@@ -12,6 +12,13 @@ class ADMIN_PORTAL_STRINGS:
     NAV_DASHBOARD: str = "Dashboard"
     NAV_HEALTH: str = "System Health"
     NAV_DB_BROWSER: str = "DB Browser"
+    DB_BROWSER_TITLE: str = "Database Browser"
+    DB_BROWSER_SUBTITLE: str = (
+        "Read-only view of every table. Select a table to browse its rows."
+    )
+    DB_EMPTY_TABLE: str = "This table has no rows."
+    DB_ROW_COUNT_SINGULAR: str = "row"
+    DB_ROW_COUNT_PLURAL: str = "rows"
     NAV_USERS: str = "Users"
     NAV_AUDIT_LOG: str = "Audit Log"
     NAV_METRICS: str = "Metrics"

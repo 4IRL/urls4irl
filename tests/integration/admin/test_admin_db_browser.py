@@ -1,255 +1,367 @@
 from __future__ import annotations
 
 from typing import Tuple
-from urllib.parse import quote, urlsplit
+from urllib.parse import urlsplit
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
 from backend import db
+from backend.metrics.events import EventCategory
 from backend.models.audit_log import AuditLog
+from backend.models.event_registry import Event_Registry
 from backend.models.users import Users
-from backend.utils.strings.admin_portal_strs import ADMIN_AUDIT_ACTIONS
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
+from backend.utils.strings.admin_portal_strs import (
+    ADMIN_AUDIT_ACTIONS,
+    ADMIN_PORTAL_STRINGS,
+)
 
 pytestmark = pytest.mark.admin
 
-_ADMIN_DB_BROWSER_URL: str = "/admin/db/"
-_ADMIN_DB_BROWSER_USERS_URL: str = "/admin/db/users/"
-_ADMIN_DB_BROWSER_USERS_NEW_URL: str = "/admin/db/users/new/"
-_ADMIN_DB_BROWSER_USERS_DELETE_URL: str = "/admin/db/users/delete/"
-_ADMIN_DB_BROWSER_USERS_EXPORT_URL: str = "/admin/db/users/export/csv/"
+_ADMIN_DB_OVERVIEW_URL: str = "/admin/db"
+_ADMIN_DB_USERS_URL: str = "/admin/db/Users"
+_ADMIN_DB_USERS_ROW_URL: str = "/admin/db/Users/1"
+_ADMIN_DB_UNKNOWN_TABLE_URL: str = "/admin/db/NotATable"
+_ADMIN_DB_UNKNOWN_ROW_URL: str = "/admin/db/Users/999999"
+
 _PASSWORD_HASH_PREFIX: bytes = b"scrypt:"
 _USERS_MODEL_NAME: str = "Users"
-_USERS_AUDIT_ENDPOINT: str = f"admin_db_{_USERS_MODEL_NAME.lower()}.index_view"
+_OVERVIEW_TABLES_ID: bytes = b'id="AdminDbTables"'
+_ROW_DETAIL_ID: bytes = b'id="AdminDbRowDetail"'
+
+_SECOND_USERNAME: str = "seconddbuser"
+_THIRD_USERNAME: str = "thirddbuser"
+_SEEDED_EMAIL_DOMAIN: str = "@browser.example.com"
+_SEEDED_PASSWORD: str = "SuperSecret123!"
+_EVENT_REGISTRY_NAME: str = "admin_db_route_test_event"
 
 
-def test_admin_db_browser_index_returns_200_for_admin(
-    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
+def _seed_extra_user(username: str) -> Users:
+    """Insert one extra validated (non-logged-in) user.
+
+    The username only ever appears in a grid cell — never in the shared layout
+    topbar/modals that render the *logged-in* user — so it is a reliable proof
+    that a grid row rendered.
     """
-    GIVEN a logged-in admin user
-    WHEN the admin sends GET /admin/db/
-    THEN the response is 200 OK.
-    """
-    client, _, _, _ = login_admin_user_with_register
-
-    response = client.get(_ADMIN_DB_BROWSER_URL)
-
-    assert response.status_code == 200
-
-
-def test_admin_db_browser_users_list_returns_200_for_admin(
-    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """
-    GIVEN a logged-in admin user
-    WHEN the admin sends GET /admin/db/users/
-    THEN the response is 200 OK.
-    """
-    client, _, _, _ = login_admin_user_with_register
-
-    response = client.get(_ADMIN_DB_BROWSER_USERS_URL)
-
-    assert response.status_code == 200
+    extra_user = Users(
+        username=username,
+        email=f"{username}{_SEEDED_EMAIL_DOMAIN}",
+        plaintext_password=_SEEDED_PASSWORD,
+    )
+    extra_user.email_validated = True
+    db.session.add(extra_user)
+    db.session.commit()
+    return extra_user
 
 
-def test_admin_db_browser_users_list_creates_audit_log_row(
+def _seed_utub_member(user_id: int) -> Utub_Members:
+    """Create a UTub owned by ``user_id`` and add them as a member (composite PK)."""
+    new_utub = Utubs(
+        name="Browser Route Test UTub",
+        utub_creator=user_id,
+        utub_description="",
+    )
+    db.session.add(new_utub)
+    db.session.commit()
+    utub_member = Utub_Members(
+        utub_id=new_utub.id,
+        user_id=user_id,
+        member_role=Member_Role.CREATOR,
+    )
+    db.session.add(utub_member)
+    db.session.commit()
+    return utub_member
+
+
+def _seed_event_registry_row() -> Event_Registry:
+    """Insert one EventRegistry row (String primary key = ``name``)."""
+    event_row = Event_Registry(
+        name=_EVENT_REGISTRY_NAME,
+        category=EventCategory.DOMAIN,
+        description="Seeded for the DB-browser route string-PK test.",
+    )
+    db.session.add(event_row)
+    db.session.commit()
+    return event_row
+
+
+# ---------------------------------------------------------------------------
+# Overview
+# ---------------------------------------------------------------------------
+
+
+def test_admin_db_overview_returns_200_and_audits(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
     GIVEN an empty AuditLogs table and a logged-in admin user
-    WHEN the admin sends GET /admin/db/users/
-    THEN exactly one AuditLog row is created with action == DB_BROWSER_VIEW,
-         target_type == "Users", and actor_id == the admin's user id.
+    WHEN the admin sends GET /admin/db
+    THEN the response is 200 with the DB-browser title and table grid, and
+         exactly one DB_BROWSER_VIEW audit row is recorded with no target_type.
     """
     client, _, admin_user, app = login_admin_user_with_register
 
     with app.app_context():
-        rows_before: int = AuditLog.query.count()
-    assert rows_before == 0
+        assert AuditLog.query.count() == 0
 
-    client.get(_ADMIN_DB_BROWSER_USERS_URL)
+    response = client.get(_ADMIN_DB_OVERVIEW_URL)
+
+    assert response.status_code == 200
+    assert ADMIN_PORTAL_STRINGS.DB_BROWSER_TITLE.encode() in response.data
+    assert _OVERVIEW_TABLES_ID in response.data
 
     with app.app_context():
-        rows_after: int = AuditLog.query.count()
-        assert rows_after == 1
+        assert AuditLog.query.count() == 1
+        audit_row: AuditLog | None = AuditLog.query.first()
+        assert audit_row is not None
+        assert audit_row.action == ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW
+        assert audit_row.target_type is None
+        assert audit_row.actor_id == admin_user.id
+
+
+# ---------------------------------------------------------------------------
+# Table grid
+# ---------------------------------------------------------------------------
+
+
+def test_admin_db_table_grid_renders_rows_and_masks_password(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in admin user and a seeded non-logged-in user whose
+          scrypt-hashed passwords are stored
+    WHEN the admin sends GET /admin/db/Users
+    THEN the body contains the seeded username (proving a grid row rendered)
+         but NOT the password hash, and exactly one DB_BROWSER_VIEW audit row
+         targets "Users".
+    """
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+        _seed_extra_user(_SECOND_USERNAME)
+
+    response = client.get(_ADMIN_DB_USERS_URL)
+
+    assert response.status_code == 200
+    assert _SECOND_USERNAME.encode() in response.data
+    assert _PASSWORD_HASH_PREFIX not in response.data
+
+    with app.app_context():
+        assert AuditLog.query.count() == 1
         audit_row: AuditLog | None = AuditLog.query.first()
         assert audit_row is not None
         assert audit_row.action == ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW
         assert audit_row.target_type == _USERS_MODEL_NAME
-        assert audit_row.actor_id == admin_user.id
 
 
-def test_admin_db_browser_users_list_excludes_password_hash(
+def test_admin_db_table_unknown_table_returns_404_without_audit(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
-    """
-    GIVEN a logged-in admin user whose scrypt-hashed password is stored in the DB
-    WHEN the admin sends GET /admin/db/users/
-    THEN the response body does NOT contain any scrypt hash prefix (column excluded),
-         AND the admin's username IS present in the response (proving rows rendered).
-    """
-    client, _, admin_user, _ = login_admin_user_with_register
-    admin_username_bytes: bytes = admin_user.username.encode()
+    client, _, _, app = login_admin_user_with_register
 
-    response = client.get(_ADMIN_DB_BROWSER_USERS_URL)
+    response = client.get(_ADMIN_DB_UNKNOWN_TABLE_URL)
+
+    assert response.status_code == 404
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+
+
+def test_admin_db_table_invalid_offset_falls_back_to_zero(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, _ = login_admin_user_with_register
+
+    response = client.get(f"{_ADMIN_DB_USERS_URL}?offset=notanumber")
 
     assert response.status_code == 200
-    assert admin_username_bytes in response.data
-    assert _PASSWORD_HASH_PREFIX not in response.data
 
 
-def test_admin_db_browser_create_endpoint_not_accessible_for_admin(
+def test_admin_db_table_offset_pagination_is_disjoint(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN a logged-in admin user and a read-only model view with can_create=False
-    WHEN the admin sends GET /admin/db/users/new/
-    THEN the response status is NOT 200 (Flask-Admin redirects or 404s when
-         record creation is disabled).
+    GIVEN the admin (id 1) plus two seeded users (ids 2 and 3)
+    WHEN the admin browses the Users grid at offset 0 vs offset 2
+    THEN offset 0 shows both seeded usernames while offset 2 skips the first
+         seeded user (id 2) and still shows the second (id 3) — proving the
+         offset is applied and the pages are disjoint. Both seeded usernames
+         only ever appear in grid cells, never in the logged-in-user layout.
     """
-    client, _, _, _ = login_admin_user_with_register
-
-    response = client.get(_ADMIN_DB_BROWSER_USERS_NEW_URL)
-
-    assert response.status_code != 200
-
-
-def test_admin_db_browser_delete_does_not_remove_row(
-    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """
-    GIVEN a logged-in admin user and a read-only model view with can_delete=False
-    WHEN the admin sends POST /admin/db/users/delete/ with an existing user id
-    THEN the Users table row count is UNCHANGED regardless of the response status
-         (Flask-Admin rejects the deletion when can_delete is False).
-    """
-    client, _, admin_user, app = login_admin_user_with_register
+    client, _, _, app = login_admin_user_with_register
 
     with app.app_context():
-        count_before: int = Users.query.count()
-    assert count_before > 0
+        _seed_extra_user(_SECOND_USERNAME)
+        _seed_extra_user(_THIRD_USERNAME)
 
-    client.post(
-        _ADMIN_DB_BROWSER_USERS_DELETE_URL,
-        data={"id": admin_user.id},
-    )
+    first_page = client.get(_ADMIN_DB_USERS_URL)
+    third_offset_page = client.get(f"{_ADMIN_DB_USERS_URL}?offset=2")
 
-    with app.app_context():
-        count_after: int = Users.query.count()
-    assert count_after == count_before
+    assert first_page.status_code == 200
+    assert third_offset_page.status_code == 200
+    assert _SECOND_USERNAME.encode() in first_page.data
+    assert _THIRD_USERNAME.encode() in first_page.data
+    assert _SECOND_USERNAME.encode() not in third_offset_page.data
+    assert _THIRD_USERNAME.encode() in third_offset_page.data
 
 
-def test_admin_db_browser_export_endpoint_not_accessible_for_admin(
+def test_every_mapped_model_is_browsable(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN a logged-in admin user and a read-only model view with can_export=False
-    WHEN the admin sends GET /admin/db/users/export/csv/
-    THEN the response status is NOT 200 (Flask-Admin rejects the export when
-         can_export is False).
+    GIVEN a running application with the native DB browser mounted
+    WHEN the admin GETs /admin/db/<table_name> for every mapped model
+    THEN each grid page returns 200 (empty tables render an empty-state panel).
+         Behavior is asserted per model, not as a hardcoded count.
     """
-    client, _, _, _ = login_admin_user_with_register
-
-    response = client.get(_ADMIN_DB_BROWSER_USERS_EXPORT_URL)
-
-    assert response.status_code != 200
-
-
-def test_admin_db_browser_all_model_views_are_registered(
-    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """
-    GIVEN a running application with the DB browser mounted
-    WHEN the Flask url_map / view_functions are inspected
-    THEN every SQLAlchemy-mapped model class has a corresponding endpoint
-         `admin_db_<classname_lower>.index_view` registered in view_functions.
-         (Behavior is asserted per model, not as a hardcoded count.)
-    """
-    _, _, _, app = login_admin_user_with_register
+    client, _, _, app = login_admin_user_with_register
 
     with app.app_context():
-        model_classes = [
-            mapper.class_
+        table_names = [
+            mapper.class_.__tablename__
             for mapper in db.Model.registry.mappers  # type: ignore[attr-defined]
         ]
 
-    for model_class in model_classes:
-        expected_endpoint = f"admin_db_{model_class.__name__.lower()}.index_view"
-        assert expected_endpoint in app.view_functions, (
-            f"Flask-Admin endpoint '{expected_endpoint}' not found in "
-            f"view_functions for model {model_class.__name__!r}"
-        )
+    for table_name in table_names:
+        response = client.get(f"/admin/db/{table_name}")
+        assert (
+            response.status_code == 200
+        ), f"DB-browser grid for table {table_name!r} did not return 200"
 
 
-def test_admin_db_browser_index_returns_403_for_non_admin(
-    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+# ---------------------------------------------------------------------------
+# Row detail
+# ---------------------------------------------------------------------------
+
+
+def test_admin_db_row_detail_renders_and_audits(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
-    GIVEN an empty AuditLogs table and a logged-in non-admin user
-    WHEN the user sends GET /admin/db/
-    THEN the response is 403 Forbidden and no AuditLog rows are created.
+    GIVEN a logged-in admin user
+    WHEN the admin sends GET /admin/db/Users/1
+    THEN the row-detail table renders but the password hash does NOT, and
+         exactly one DB_BROWSER_VIEW audit row targets "Users" with
+         target_id == "1".
     """
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+
+    response = client.get(_ADMIN_DB_USERS_ROW_URL)
+
+    assert response.status_code == 200
+    assert _ROW_DETAIL_ID in response.data
+    assert _PASSWORD_HASH_PREFIX not in response.data
+
+    with app.app_context():
+        assert AuditLog.query.count() == 1
+        audit_row: AuditLog | None = AuditLog.query.first()
+        assert audit_row is not None
+        assert audit_row.action == ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW
+        assert audit_row.target_type == _USERS_MODEL_NAME
+        assert audit_row.target_id == "1"
+
+
+def test_admin_db_row_unknown_pk_returns_404(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, _ = login_admin_user_with_register
+
+    response = client.get(_ADMIN_DB_UNKNOWN_ROW_URL)
+
+    assert response.status_code == 404
+
+
+def test_admin_db_row_composite_pk_resolves(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        utub_member = _seed_utub_member(user_id=1)
+        pk_segment = f"{utub_member.utub_id},{utub_member.user_id}"
+
+    response = client.get(f"/admin/db/UtubMembers/{pk_segment}")
+
+    assert response.status_code == 200
+
+
+def test_admin_db_row_string_pk_resolves(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        _seed_event_registry_row()
+
+    response = client.get(f"/admin/db/EventRegistry/{_EVENT_REGISTRY_NAME}")
+
+    assert response.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Read-only guarantee (GET-only routes; no mutation surface exists)
+# ---------------------------------------------------------------------------
+
+
+def test_admin_db_table_rejects_post(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, _ = login_admin_user_with_register
+
+    response = client.post(_ADMIN_DB_USERS_URL)
+
+    assert response.status_code == 405
+
+
+def test_admin_db_row_rejects_post(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    client, _, _, _ = login_admin_user_with_register
+
+    response = client.post(_ADMIN_DB_USERS_ROW_URL)
+
+    assert response.status_code == 405
+
+
+# ---------------------------------------------------------------------------
+# Gating: non-admin 403, anonymous 302
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "url",
+    [_ADMIN_DB_OVERVIEW_URL, _ADMIN_DB_USERS_URL, _ADMIN_DB_USERS_ROW_URL],
+)
+def test_admin_db_returns_403_for_non_admin_without_audit(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    url: str,
+) -> None:
     client, _, _, app = login_first_user_with_register
 
     with app.app_context():
-        rows_before: int = AuditLog.query.count()
-    assert rows_before == 0
+        assert AuditLog.query.count() == 0
 
-    response = client.get(_ADMIN_DB_BROWSER_URL)
-
-    assert response.status_code == 403
-
-    with app.app_context():
-        rows_after: int = AuditLog.query.count()
-    assert rows_after == 0
-
-
-def test_admin_db_browser_users_list_returns_403_for_non_admin(
-    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
-) -> None:
-    """
-    GIVEN an empty AuditLogs table and a logged-in non-admin user
-    WHEN the user sends GET /admin/db/users/
-    THEN the response is 403 Forbidden and no AuditLog rows are created
-         (the audit record in index_view is never reached).
-    """
-    client, _, _, app = login_first_user_with_register
-
-    with app.app_context():
-        rows_before: int = AuditLog.query.count()
-    assert rows_before == 0
-
-    response = client.get(_ADMIN_DB_BROWSER_USERS_URL)
+    response = client.get(url)
 
     assert response.status_code == 403
-
     with app.app_context():
-        rows_after: int = AuditLog.query.count()
-    assert rows_after == 0
+        assert AuditLog.query.count() == 0
 
 
-def test_admin_db_browser_index_redirects_anonymous_to_splash(
+def test_admin_db_overview_redirects_anonymous_to_splash(
     client: FlaskClient,
 ) -> None:
-    """
-    GIVEN an anonymous (unauthenticated) browser session
-    WHEN the client sends GET /admin/db/
-    THEN the response is 302 and redirects away from /admin/db
-         (to the login page) with the original path in the `next` parameter.
-    """
-    response = client.get(_ADMIN_DB_BROWSER_URL)
+    response = client.get(_ADMIN_DB_OVERVIEW_URL)
 
     assert response.status_code == 302
     assert response.location is not None
 
     redirect_path = urlsplit(response.location).path
     assert not redirect_path.startswith("/admin")
-
-    encoded_next = quote(_ADMIN_DB_BROWSER_URL, safe="")
-    raw_next = _ADMIN_DB_BROWSER_URL
-    assert (
-        f"next={encoded_next}" in response.location
-        or f"next={raw_next}" in response.location
-    )
+    assert "next=" in response.location
