@@ -186,6 +186,7 @@ def remove_member_admin(
     if utub.utub_creator != target_user_id:
         # Case a: non-creator removal
         db.session.delete(membership)
+        utub.set_last_updated()
         audit.record(
             actor_id=actor_id,
             action=ADMIN_AUDIT_ACTIONS.MEMBER_REMOVE,
@@ -238,6 +239,7 @@ def remove_member_admin(
     utub.utub_creator = new_owner_id
     new_owner_membership.member_role = Member_Role.CREATOR
     db.session.delete(membership)
+    utub.set_last_updated()
     audit.record(
         actor_id=actor_id,
         action=ADMIN_AUDIT_ACTIONS.MEMBER_REMOVE,
@@ -288,11 +290,13 @@ def delete_url_in_utub_admin(
         )
 
     url_id: int = utub_url.url_id
+    containing_utub: Utubs = utub_url.utub
     db.session.query(Utub_Url_Tags).filter(
         Utub_Url_Tags.utub_url_id == utub_url_id,
         Utub_Url_Tags.utub_id == utub_id,
     ).delete()
     db.session.delete(utub_url)
+    containing_utub.set_last_updated()
     audit.record(
         actor_id=actor_id,
         action=ADMIN_AUDIT_ACTIONS.URL_DELETE,
@@ -342,6 +346,7 @@ def purge_url_globally(*, actor_id: int, url_id: int, reason: str) -> FlaskRespo
         db.session.query(Utub_Url_Tags).filter(
             Utub_Url_Tags.utub_url_id == utub_url.id,
         ).delete()
+        utub_url.utub.set_last_updated()
         db.session.delete(utub_url)
 
     audit.record(

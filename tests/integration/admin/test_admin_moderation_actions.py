@@ -669,8 +669,11 @@ def test_admin_mod_anonymous_returns_401(
     "url",
     [
         _MOD_UTUB_LOCK_URL.format(utub_id=99999),
+        _MOD_UTUB_UNLOCK_URL.format(utub_id=99999),
         _MOD_UTUB_DELETE_URL.format(utub_id=99999),
         _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
+        _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
+        _MOD_URL_PURGE_URL.format(url_id=99999),
     ],
 )
 def test_admin_mod_missing_reason_returns_400(
@@ -693,7 +696,11 @@ def test_admin_mod_missing_reason_returns_400(
     "url",
     [
         _MOD_UTUB_LOCK_URL.format(utub_id=99999),
+        _MOD_UTUB_UNLOCK_URL.format(utub_id=99999),
         _MOD_UTUB_DELETE_URL.format(utub_id=99999),
+        _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
+        _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
+        _MOD_URL_PURGE_URL.format(url_id=99999),
     ],
 )
 def test_admin_mod_whitespace_only_reason_returns_400(
@@ -716,7 +723,11 @@ def test_admin_mod_whitespace_only_reason_returns_400(
     "url",
     [
         _MOD_UTUB_LOCK_URL.format(utub_id=99999),
+        _MOD_UTUB_UNLOCK_URL.format(utub_id=99999),
         _MOD_UTUB_DELETE_URL.format(utub_id=99999),
+        _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
+        _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
+        _MOD_URL_PURGE_URL.format(url_id=99999),
     ],
 )
 def test_admin_mod_overlong_reason_returns_400(
@@ -962,3 +973,95 @@ def test_lock_gate_blocks_add_member_to_locked_utub(
     assert response.status_code == 403
     body = response.get_json()
     assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+
+
+def test_lock_gate_allows_member_to_leave_locked_utub(
+    add_multiple_users_to_utub_without_logging_in: None,
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a locked UTub the logged-in user is a non-creator member of
+    WHEN the user removes themselves (leaves the UTub)
+    THEN the leave succeeds (200) — lock freezes new content only, never
+         a member's ability to leave.
+    """
+    client, csrf, member_user, app = login_second_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.first()
+        utub.is_locked = True
+        db.session.commit()
+        utub_id = utub.id
+        membership_before: Utub_Members | None = Utub_Members.query.get(
+            (utub_id, member_user.id)
+        )
+        assert membership_before is not None
+
+    with app.app_context():
+        leave_path = url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=utub_id, user_id=member_user.id
+        )
+
+    response = client.delete(leave_path, headers={"X-CSRFToken": csrf})
+
+    assert response.status_code == 200
+    with app.app_context():
+        membership_after: Utub_Members | None = Utub_Members.query.get(
+            (utub_id, member_user.id)
+        )
+    assert membership_after is None
+
+
+def test_lock_gate_allows_creator_to_delete_locked_utub(
+    add_multiple_users_to_utub_without_logging_in: None,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a locked UTub the logged-in user created
+    WHEN the creator deletes the UTub
+    THEN the delete succeeds (200) — lock freezes new content only, never
+         the creator's ability to delete their UTub.
+    """
+    client, csrf, creator_user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter_by(utub_creator=creator_user.id).first()
+        utub.is_locked = True
+        db.session.commit()
+        utub_id = utub.id
+
+    with app.app_context():
+        delete_path = url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id)
+
+    response = client.delete(delete_path, headers={"X-CSRFToken": csrf})
+
+    assert response.status_code == 200
+    with app.app_context():
+        assert Utubs.query.get(utub_id) is None
+
+
+def test_admin_mod_url_delete_mismatched_utub_returns_404(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a Utub_Urls row that belongs to one UTub
+    WHEN POSTing the admin URL delete with a valid utub_url_id but a
+         DIFFERENT utub_id
+    THEN 404 — the cross-UTub guard requires both ids to match — and the
+         association row survives untouched.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    owning_utub = _seed_utub(app, admin_user.id)
+    other_utub = _seed_utub(app, admin_user.id)
+    _, utub_url = _seed_url(app, owning_utub.id, admin_user.id)
+    utub_url_id = utub_url.id
+
+    response = _post_mod(
+        client,
+        _MOD_URL_DELETE_URL.format(utub_id=other_utub.id, utub_url_id=utub_url_id),
+        csrf,
+    )
+
+    assert response.status_code == 404
+    with app.app_context():
+        assert Utub_Urls.query.get(utub_url_id) is not None

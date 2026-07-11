@@ -943,7 +943,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### POST /admin/mod/utub/\<int:utub_id>/lock
+### POST /admin/utubs/\<int:utub_id>/lock
 
 | Layer           | Location                                                                                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -960,7 +960,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### POST /admin/mod/utub/\<int:utub_id>/unlock
+### POST /admin/utubs/\<int:utub_id>/unlock
 
 | Layer           | Location                                                                                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -977,7 +977,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### DELETE /admin/mod/utub/\<int:utub_id>
+### POST /admin/utubs/\<int:utub_id>/delete
 
 | Layer           | Location                                                                                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -994,7 +994,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### DELETE /admin/mod/utub/\<int:utub_id>/member/\<int:target_user_id>
+### POST /admin/utubs/\<int:utub_id>/members/\<int:target_user_id>/remove
 
 | Layer           | Location                                                                                                                                                                            |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1011,7 +1011,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### DELETE /admin/mod/utub/\<int:utub_id>/url/\<int:utub_url_id>
+### POST /admin/utubs/\<int:utub_id>/urls/\<int:utub_url_id>/delete
 
 | Layer           | Location                                                                                                                                                    |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -1028,7 +1028,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
-### DELETE /admin/mod/url/\<int:url_id>
+### POST /admin/urls/\<int:url_id>/purge
 
 | Layer           | Location                                                                                                                                                                    |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
