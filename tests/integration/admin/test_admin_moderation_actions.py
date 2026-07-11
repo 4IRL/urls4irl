@@ -26,6 +26,8 @@ from backend.models.audit_log import AuditLog
 from backend.models.urls import Urls
 from backend.models.users import User_Role, Users
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.all_routes import ROUTES
@@ -52,6 +54,10 @@ _MOD_UTUB_DELETE_URL: str = "/admin/utubs/{utub_id}/delete"
 _MOD_MEMBER_REMOVE_URL: str = "/admin/utubs/{utub_id}/members/{user_id}/remove"
 _MOD_URL_DELETE_URL: str = "/admin/utubs/{utub_id}/urls/{utub_url_id}/delete"
 _MOD_URL_PURGE_URL: str = "/admin/urls/{url_id}/purge"
+_MOD_URL_TAG_REMOVE_URL: str = (
+    "/admin/utubs/{utub_id}/urls/{utub_url_id}/tags/{utub_tag_id}/remove"
+)
+_MOD_UTUB_TAG_DELETE_URL: str = "/admin/utubs/{utub_id}/tags/{utub_tag_id}/delete"
 
 _MOCK_REASON: str = "integration test moderation"
 _OVERLONG_REASON: str = "x" * 501
@@ -72,6 +78,8 @@ _ALL_MOD_URLS: list[str] = [
     _MOD_MEMBER_REMOVE_URL.format(utub_id=9999, user_id=9999),
     _MOD_URL_DELETE_URL.format(utub_id=9999, utub_url_id=9999),
     _MOD_URL_PURGE_URL.format(url_id=9999),
+    _MOD_URL_TAG_REMOVE_URL.format(utub_id=9999, utub_url_id=9999, utub_tag_id=9999),
+    _MOD_UTUB_TAG_DELETE_URL.format(utub_id=9999, utub_tag_id=9999),
 ]
 
 
@@ -125,6 +133,34 @@ def _seed_url(app: Flask, utub_id: int, user_id: int) -> tuple[Urls, Utub_Urls]:
         db.session.refresh(url)
         db.session.refresh(utub_url)
         return url, utub_url
+
+
+def _seed_utub_tag(
+    app: Flask, utub_id: int, created_by: int, tag_string: str = "moderate-me"
+) -> Utub_Tags:
+    """Create a Utub_Tags vocabulary row for a UTub, commit, and return it."""
+    with app.app_context():
+        utub_tag = Utub_Tags(
+            utub_id=utub_id, tag_string=tag_string, created_by=created_by
+        )
+        db.session.add(utub_tag)
+        db.session.commit()
+        db.session.refresh(utub_tag)
+        return utub_tag
+
+
+def _seed_url_tag(
+    app: Flask, utub_id: int, utub_url_id: int, utub_tag_id: int
+) -> Utub_Url_Tags:
+    """Create a Utub_Url_Tags application row, commit, and return it."""
+    with app.app_context():
+        url_tag = Utub_Url_Tags(
+            utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=utub_tag_id
+        )
+        db.session.add(url_tag)
+        db.session.commit()
+        db.session.refresh(url_tag)
+        return url_tag
 
 
 def _make_admin(app: Flask, user_id: int) -> None:
@@ -584,6 +620,205 @@ def test_admin_mod_purge_url_zero_utubs(
         assert AuditLog.query.count() == 1
 
 
+def test_admin_mod_url_tag_remove_happy_path(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTub with a URL that has one tag applied
+    WHEN POST /admin/utubs/<id>/urls/<utub_url_id>/tags/<utub_tag_id>/remove
+    THEN 200 JSON success; the Utub_Url_Tags row is gone; the Utub_Tags vocab
+         row is preserved; one audit row with action=url_tag.remove.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    _, utub_url = _seed_url(app, utub.id, admin_user.id)
+    utub_tag = _seed_utub_tag(app, utub.id, admin_user.id)
+    url_tag = _seed_url_tag(app, utub.id, utub_url.id, utub_tag.id)
+    url_tag_id = url_tag.id
+    utub_tag_id = utub_tag.id
+
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+        assert Utub_Url_Tags.query.get(url_tag_id) is not None
+
+    response = _post_mod(
+        client,
+        _MOD_URL_TAG_REMOVE_URL.format(
+            utub_id=utub.id, utub_url_id=utub_url.id, utub_tag_id=utub_tag_id
+        ),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.MOD_URL_TAG_REMOVE_SUCCESS
+
+    with app.app_context():
+        assert Utub_Url_Tags.query.get(url_tag_id) is None
+        # The vocabulary tag row is preserved.
+        assert Utub_Tags.query.get(utub_tag_id) is not None
+        assert AuditLog.query.count() == 1
+        audit_row: AuditLog | None = AuditLog.query.first()
+    assert audit_row is not None
+    assert audit_row.action == ADMIN_AUDIT_ACTIONS.URL_TAG_REMOVE
+    assert audit_row.actor_id == admin_user.id
+    assert audit_row.log_metadata is not None
+    assert audit_row.log_metadata.get("reason") == _MOCK_REASON
+    assert audit_row.log_metadata.get("utub_tag_id") == utub_tag_id
+
+
+def test_admin_mod_utub_tag_delete_happy_path(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTub tag applied to two URLs
+    WHEN POST /admin/utubs/<id>/tags/<utub_tag_id>/delete
+    THEN 200 JSON with count=2; the Utub_Tags row and ALL its Utub_Url_Tags
+         cascade-removed; one audit row with associations_removed=2.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    _, utub_url_one = _seed_url(app, utub.id, admin_user.id)
+    # Second URL must use a distinct url string (Urls.urlString is unique).
+    with app.app_context():
+        second_url = Urls(
+            normalized_url=valid_url_strings[1], current_user_id=admin_user.id
+        )
+        db.session.add(second_url)
+        db.session.flush()
+        second_utub_url = Utub_Urls(
+            utub_id=utub.id,
+            url_id=second_url.id,
+            user_id=admin_user.id,
+            url_title="Second URL",
+        )
+        db.session.add(second_utub_url)
+        db.session.commit()
+        second_utub_url_id = second_utub_url.id
+    utub_tag = _seed_utub_tag(app, utub.id, admin_user.id)
+    utub_tag_id = utub_tag.id
+    url_tag_one = _seed_url_tag(app, utub.id, utub_url_one.id, utub_tag_id)
+    url_tag_two = _seed_url_tag(app, utub.id, second_utub_url_id, utub_tag_id)
+    url_tag_one_id = url_tag_one.id
+    url_tag_two_id = url_tag_two.id
+
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+        assert Utub_Url_Tags.query.get(url_tag_one_id) is not None
+        assert Utub_Url_Tags.query.get(url_tag_two_id) is not None
+
+    response = _post_mod(
+        client,
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=utub.id, utub_tag_id=utub_tag_id),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert body["count"] == 2
+    assert body[
+        STD_JSON.MESSAGE
+    ] == ADMIN_ACTION_STRINGS.MOD_UTUB_TAG_DELETE_SUCCESS.format(count=2)
+
+    with app.app_context():
+        assert Utub_Tags.query.get(utub_tag_id) is None
+        assert Utub_Url_Tags.query.get(url_tag_one_id) is None
+        assert Utub_Url_Tags.query.get(url_tag_two_id) is None
+        assert AuditLog.query.count() == 1
+        audit_row: AuditLog | None = AuditLog.query.first()
+    assert audit_row is not None
+    assert audit_row.action == ADMIN_AUDIT_ACTIONS.UTUB_TAG_DELETE
+    assert audit_row.log_metadata is not None
+    assert audit_row.log_metadata.get("associations_removed") == 2
+    assert audit_row.log_metadata.get("reason") == _MOCK_REASON
+
+
+def test_admin_mod_utub_tag_delete_zero_associations(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTub tag applied to no URLs
+    WHEN POST /admin/utubs/<id>/tags/<utub_tag_id>/delete
+    THEN 200 JSON with count=0; the Utub_Tags row is gone; one audit row.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    utub = _seed_utub(app, admin_user.id)
+    utub_tag = _seed_utub_tag(app, utub.id, admin_user.id)
+    utub_tag_id = utub_tag.id
+
+    response = _post_mod(
+        client,
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=utub.id, utub_tag_id=utub_tag_id),
+        csrf,
+    )
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["count"] == 0
+    with app.app_context():
+        assert Utub_Tags.query.get(utub_tag_id) is None
+        assert AuditLog.query.count() == 1
+
+
+def test_admin_mod_url_tag_remove_mismatched_utub_returns_404(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a URL-tag application in one UTub
+    WHEN POSTing url-tag-remove with a valid tag but a DIFFERENT utub_id
+    THEN 404 — the cross-UTub guard requires all three ids to match — and the
+         association row survives untouched.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    owning_utub = _seed_utub(app, admin_user.id)
+    other_utub = _seed_utub(app, admin_user.id)
+    _, utub_url = _seed_url(app, owning_utub.id, admin_user.id)
+    utub_tag = _seed_utub_tag(app, owning_utub.id, admin_user.id)
+    url_tag = _seed_url_tag(app, owning_utub.id, utub_url.id, utub_tag.id)
+    url_tag_id = url_tag.id
+
+    response = _post_mod(
+        client,
+        _MOD_URL_TAG_REMOVE_URL.format(
+            utub_id=other_utub.id, utub_url_id=utub_url.id, utub_tag_id=utub_tag.id
+        ),
+        csrf,
+    )
+
+    assert response.status_code == 404
+    with app.app_context():
+        assert Utub_Url_Tags.query.get(url_tag_id) is not None
+        assert AuditLog.query.count() == 0
+
+
+def test_admin_mod_utub_tag_delete_mismatched_utub_returns_404(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a UTub tag owned by one UTub
+    WHEN POSTing utub-tag-delete with a valid tag id but a DIFFERENT utub_id
+    THEN 404 and the tag survives untouched.
+    """
+    client, csrf, admin_user, app = login_admin_user_with_register
+    owning_utub = _seed_utub(app, admin_user.id)
+    other_utub = _seed_utub(app, admin_user.id)
+    utub_tag = _seed_utub_tag(app, owning_utub.id, admin_user.id)
+    utub_tag_id = utub_tag.id
+
+    response = _post_mod(
+        client,
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=other_utub.id, utub_tag_id=utub_tag_id),
+        csrf,
+    )
+
+    assert response.status_code == 404
+    with app.app_context():
+        assert Utub_Tags.query.get(utub_tag_id) is not None
+        assert AuditLog.query.count() == 0
+
+
 # ---------------------------------------------------------------------------
 # 404 tests for missing targets
 # ---------------------------------------------------------------------------
@@ -598,6 +833,10 @@ def test_admin_mod_purge_url_zero_utubs(
         _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
         _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
         _MOD_URL_PURGE_URL.format(url_id=99999),
+        _MOD_URL_TAG_REMOVE_URL.format(
+            utub_id=99999, utub_url_id=99999, utub_tag_id=99999
+        ),
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=99999, utub_tag_id=99999),
     ],
 )
 def test_admin_mod_missing_target_returns_404(
@@ -674,6 +913,10 @@ def test_admin_mod_anonymous_returns_401(
         _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
         _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
         _MOD_URL_PURGE_URL.format(url_id=99999),
+        _MOD_URL_TAG_REMOVE_URL.format(
+            utub_id=99999, utub_url_id=99999, utub_tag_id=99999
+        ),
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=99999, utub_tag_id=99999),
     ],
 )
 def test_admin_mod_missing_reason_returns_400(
@@ -701,6 +944,10 @@ def test_admin_mod_missing_reason_returns_400(
         _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
         _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
         _MOD_URL_PURGE_URL.format(url_id=99999),
+        _MOD_URL_TAG_REMOVE_URL.format(
+            utub_id=99999, utub_url_id=99999, utub_tag_id=99999
+        ),
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=99999, utub_tag_id=99999),
     ],
 )
 def test_admin_mod_whitespace_only_reason_returns_400(
@@ -728,6 +975,10 @@ def test_admin_mod_whitespace_only_reason_returns_400(
         _MOD_MEMBER_REMOVE_URL.format(utub_id=99999, user_id=99999),
         _MOD_URL_DELETE_URL.format(utub_id=99999, utub_url_id=99999),
         _MOD_URL_PURGE_URL.format(url_id=99999),
+        _MOD_URL_TAG_REMOVE_URL.format(
+            utub_id=99999, utub_url_id=99999, utub_tag_id=99999
+        ),
+        _MOD_UTUB_TAG_DELETE_URL.format(utub_id=99999, utub_tag_id=99999),
     ],
 )
 def test_admin_mod_overlong_reason_returns_400(

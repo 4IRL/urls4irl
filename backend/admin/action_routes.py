@@ -26,9 +26,11 @@ from backend.admin.constants import AdminActionErrorCodes
 from backend.admin.moderation_service import (
     delete_url_in_utub_admin,
     delete_utub_admin,
+    delete_utub_tag_admin,
     lock_utub,
     purge_url_globally,
     remove_member_admin,
+    remove_tag_from_url_admin,
     unlock_utub,
 )
 from backend.admin.ops_service import (
@@ -363,6 +365,71 @@ def admin_url_purge(
     return purge_url_globally(
         actor_id=current_user.id,
         url_id=url_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route(
+    "/admin/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id>/remove",
+    methods=["POST"],
+)
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Remove a single tag application from a specific URL in a UTub. "
+        "Deletes only the Utub_Url_Tags association; the UTub's tag vocabulary "
+        "row is preserved and the tag stays applied to any other URLs."
+    ),
+    status_codes=_MOD_STATUS_CODES,
+)
+def admin_url_tag_remove(
+    utub_id: int,
+    utub_url_id: int,
+    utub_tag_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Remove one tag from one URL in a UTub."""
+    return remove_tag_from_url_admin(
+        actor_id=current_user.id,
+        utub_id=utub_id,
+        utub_url_id=utub_url_id,
+        utub_tag_id=utub_tag_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route(
+    "/admin/utubs/<int:utub_id>/tags/<int:utub_tag_id>/delete", methods=["POST"]
+)
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Delete a tag from a UTub's tag vocabulary. Cascades to remove the tag "
+        "from every URL it is applied to. Returns count=number of URL "
+        "applications removed."
+    ),
+    status_codes=_MOD_STATUS_CODES,
+)
+def admin_utub_tag_delete(
+    utub_id: int,
+    utub_tag_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Delete a UTub tag and cascade-remove its URL applications."""
+    return delete_utub_tag_admin(
+        actor_id=current_user.id,
+        utub_id=utub_id,
+        utub_tag_id=utub_tag_id,
         reason=admin_reason_required_request.reason,
     )
 
