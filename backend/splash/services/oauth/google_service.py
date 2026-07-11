@@ -20,6 +20,7 @@ from backend.splash.constants import (
     LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION,
     LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
     LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
+    LOGIN_FAILURE_REASON_SUSPENDED,
     OAuthErrorCodes,
 )
 from backend.splash.services.oauth.account_service import (
@@ -29,6 +30,7 @@ from backend.splash.services.oauth.account_service import (
 from backend.splash.services.oauth.constants import Provider
 from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
+from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
     EMAIL_COLLISION_MESSAGE,
@@ -170,6 +172,20 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             "pages/splash.html",
             oauth_email_collision=True,
             oauth_reject_message=EMAIL_COLLISION_MESSAGE,
+        )
+
+    if resolved_user.is_suspended:
+        # Suspended accounts never reach an authenticated session; mirrors
+        # the password-login gate. Rendered through the shared OAuth reject
+        # banner so the splash page shows the suspension message.
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_SUSPENDED},
+        )
+        return render_template(
+            "pages/splash.html",
+            oauth_generic_failure=True,
+            oauth_reject_message=USER_FAILURE.ACCOUNT_SUSPENDED,
         )
 
     login_user(resolved_user)

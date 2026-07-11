@@ -8,7 +8,7 @@ from authlib.integrations.flask_client import OAuth
 from flask import Flask, Response, abort, current_app, g, request, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_login import LoginManager
+from flask_login import LoginManager, user_logged_in
 from flask_migrate import Migrate
 from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
@@ -36,9 +36,11 @@ from backend.cli.mock_options import register_mocks_db_cli
 from backend.cli.openapi import register_openapi_cli
 from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
-from backend.models.users import User_Role
+from backend.models.users import User_Role, Users
+from backend.utils.datetime_utils import utc_now
 from backend.utils.oauth_config import should_register_google_oauth
 from backend.utils.strings.config_strs import CONFIG_ENVS
+from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY
 
 
 class ViteManifestEntry(TypedDict):
@@ -284,6 +286,13 @@ def create_app(
 
         assert models
         migrate.init_app(app)
+
+    @user_logged_in.connect_via(app)
+    def stamp_session_issued_at(sender_app: Flask, user: Users) -> None:
+        # Stamped on EVERY login (password, OAuth, registration, email
+        # validation) so the user_loader can reject sessions issued before
+        # Users.sessionsInvalidatedAt — the admin web-session kill switch.
+        session[SESSION_ISSUED_AT_KEY] = utc_now().timestamp()
 
     add_security_headers(app)
     init_metrics_middleware(app)

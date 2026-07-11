@@ -6503,13 +6503,14 @@
       },
       "ApiAuthErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5],
+        "enum": [1, 2, 3, 4, 5, 6],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "INVALID_REFRESH_TOKEN",
           "REFRESH_TOKEN_REUSE_DETECTED",
           "INVALID_GOOGLE_TOKEN",
-          "OAUTH_EMAIL_COLLISION"
+          "OAUTH_EMAIL_COLLISION",
+          "ACCOUNT_SUSPENDED"
         ],
         "description": "Error codes for ApiAuthErrorCodes"
       },
@@ -8535,10 +8536,11 @@
       },
       "LoginErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
+        "enum": [1, 2, 3],
         "x-enum-varnames": [
           "ACCOUNT_NOT_EMAIL_VALIDATED",
-          "INVALID_FORM_INPUT"
+          "INVALID_FORM_INPUT",
+          "ACCOUNT_SUSPENDED"
         ],
         "description": "Error codes for LoginErrorCodes"
       },

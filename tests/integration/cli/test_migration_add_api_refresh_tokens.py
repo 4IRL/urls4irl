@@ -81,12 +81,16 @@ def test_add_api_refresh_tokens_migration_upgrade_and_downgrade(runner):
     cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
 
     with app.app_context():
-        command.upgrade(_build_alembic_config(), _PRE_API_REFRESH_TOKENS_REVISION)
+        # Seed at head (the ORM models match the head schema — seeding at a
+        # historical revision would fail on columns added by later
+        # migrations), then downgrade to the pre-ApiRefreshTokens revision so
+        # the migration under test is exercised against a populated dataset.
+        command.upgrade(_build_alembic_config(), "head")
+        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+        command.downgrade(_build_alembic_config(), _PRE_API_REFRESH_TOKENS_REVISION)
 
         inspector = inspect(db.engine)
         assert not inspector.has_table(_API_REFRESH_TOKENS_TABLE)
-
-        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
 
         with db.engine.connect() as connection:
             row_counts_before_roundtrip = _capture_row_counts(connection)

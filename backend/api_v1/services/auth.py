@@ -34,6 +34,7 @@ from backend.splash.constants import (
     LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE,
     LOGIN_FAILURE_REASON_OAUTH_ONLY,
     LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
+    LOGIN_FAILURE_REASON_SUSPENDED,
     LOGIN_FAILURE_REASON_UNKNOWN_USER,
 )
 from backend.splash.services.oauth.account_service import (
@@ -128,6 +129,19 @@ def login_user_for_api(*, username: str, password: str) -> FlaskResponse:
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
             error_code=ApiAuthErrorCodes.INVALID_FORM_INPUT,
+        )
+
+    if user.is_suspended:
+        # Suspended accounts never receive tokens; mirrors the web login gate.
+        warning_log(f"Suspended User={user.id} attempted /api/v1 login")
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_SUSPENDED},
+        )
+        return build_message_error_response(
+            message=USER_FAILURE.ACCOUNT_SUSPENDED,
+            error_code=ApiAuthErrorCodes.ACCOUNT_SUSPENDED,
+            status_code=403,
         )
 
     if not user.email_validated:
@@ -295,6 +309,20 @@ def google_auth_for_api(*, id_token: str) -> FlaskResponse:
             message=EMAIL_COLLISION_MESSAGE,
             error_code=ApiAuthErrorCodes.OAUTH_EMAIL_COLLISION,
             status_code=409,
+        )
+
+    if resolved_user.is_suspended:
+        warning_log(
+            f"Suspended User={resolved_user.id} attempted /api/v1 Google sign-in"
+        )
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_SUSPENDED},
+        )
+        return build_message_error_response(
+            message=USER_FAILURE.ACCOUNT_SUSPENDED,
+            error_code=ApiAuthErrorCodes.ACCOUNT_SUSPENDED,
+            status_code=403,
         )
 
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": _LOGIN_METHOD_GOOGLE})

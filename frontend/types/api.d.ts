@@ -1278,7 +1278,7 @@ export interface components {
      * @description Error codes for ApiAuthErrorCodes
      * @enum {integer}
      */
-    ApiAuthErrorCodes: 1 | 2 | 3 | 4 | 5;
+    ApiAuthErrorCodes: 1 | 2 | 3 | 4 | 5 | 6;
     ApiRefreshRequest: {
       /** @description The refresh token to rotate for a new token pair */
       refreshToken: string;
@@ -2273,7 +2273,7 @@ export interface components {
      * @description Error codes for LoginErrorCodes
      * @enum {integer}
      */
-    LoginErrorCodes: 1 | 2;
+    LoginErrorCodes: 1 | 2 | 3;
     EmailValidationResponseSchema: {
       /**
        * @description Response status: Success, Failure, or No change

@@ -226,6 +226,38 @@ describe("login-form double-submit guard", () => {
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
   });
 
+  it("shows the suspended-account banner and re-enables #submit on a 403 JSON failure", async () => {
+    const { showSplashModalAlertBanner } = await import("../init.js");
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#LoginModal");
+    initLoginForm($modal);
+    $modal.find("#submit").trigger("click");
+    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
+
+    mockDeferred.reject(
+      {
+        status: 403,
+        responseJSON: {
+          errorCode: 3,
+          message: "This account has been suspended.",
+        },
+        getResponseHeader: vi.fn(),
+      },
+      "error",
+      "Forbidden",
+    );
+
+    expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
+      $modal,
+      "This account has been suspended.",
+      "danger",
+    );
+    expect($modal.find("#submit").attr("disabled")).toBeUndefined();
+    expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+  });
+
   it("re-enables #submit when failure JSON has no errorCode", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);

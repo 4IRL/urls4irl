@@ -19,13 +19,34 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.api_auth_strs import API_AUTH
 from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY
 
 users = Blueprint("users", __name__)
 
 
 @login_manager.user_loader
-def load_user(user_id) -> Users:
-    return Users.query.get(int(user_id))
+def load_user(user_id) -> Users | None:
+    """Resolve the session cookie's user, enforcing account-state gates.
+
+    Returns None (anonymous) when the account is suspended, or when the
+    session was issued before ``Users.sessionsInvalidatedAt`` — the admin
+    portal's per-user web-session kill switch. A session with no issued-at
+    stamp (predating the stamp mechanism) is rejected once any invalidation
+    has been requested, which is the safe default.
+    """
+    user: Users | None = Users.query.get(int(user_id))
+    if user is None:
+        return None
+    if user.is_suspended:
+        return None
+    if user.sessions_invalidated_at is not None:
+        session_issued_at = session.get(SESSION_ISSUED_AT_KEY)
+        if (
+            session_issued_at is None
+            or float(session_issued_at) < user.sessions_invalidated_at.timestamp()
+        ):
+            return None
+    return user
 
 
 @login_manager.request_loader
@@ -54,8 +75,13 @@ def load_user_from_request(incoming_request: Request) -> Users | None:
 
     bearer_token = authorization_header[len(API_AUTH.BEARER_PREFIX) :]
     bearer_user: Users | None = decode_access_token(token=bearer_token)
-    if bearer_user is not None:
-        setattr(g, API_AUTH.BEARER_AUTHENTICATED_G_KEY, True)
+    if bearer_user is None:
+        return None
+    if bearer_user.is_suspended:
+        # A still-unexpired access token dies immediately on suspension;
+        # refresh tokens are bulk-revoked by the suspend action itself.
+        return None
+    setattr(g, API_AUTH.BEARER_AUTHENTICATED_G_KEY, True)
     return bearer_user
 
 

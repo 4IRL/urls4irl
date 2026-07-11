@@ -8,6 +8,7 @@ LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION = "oauth_email_collision"
 LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED = "oauth_consent_declined"
 LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE = "oauth_generic_failure"
 LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL = "oauth_unverified_email"
+LOGIN_FAILURE_REASON_SUSPENDED = "suspended"
 
 
 class EmailValidationErrorCodes(IntEnum):
@@ -27,6 +28,7 @@ class ForgotPasswordErrorCodes(IntEnum):
 class LoginErrorCodes(IntEnum):
     ACCOUNT_NOT_EMAIL_VALIDATED = 1
     INVALID_FORM_INPUT = 2
+    ACCOUNT_SUSPENDED = 3
 
 
 class OAuthErrorCodes(IntEnum):

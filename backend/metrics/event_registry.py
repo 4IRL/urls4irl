@@ -195,6 +195,7 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
                 "oauth_consent_declined",
                 "oauth_generic_failure",
                 "oauth_unverified_email",
+                "suspended",
             ),
         },
     ),
