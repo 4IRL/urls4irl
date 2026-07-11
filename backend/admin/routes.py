@@ -164,15 +164,18 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
 @admin.route("/admin/system-operations", methods=["GET"])
 @admin_login_required
 def admin_system_operations() -> FlaskResponse:
-    """Placeholder for the System Operations tab.
+    """Server-rendered page hosting the six global operations cards.
 
-    The shared nav partial references ``admin.admin_system_operations`` via
-    ``url_for``, so the endpoint must exist for every admin page to render.
-    The full page (the six ops cards relocated off System Health, plus its
-    audit row) is built in a later phase; this thin stub only satisfies the
-    nav link until then.
+    Each card POSTs to its own audited ops endpoint (metrics flush, gauge
+    sample, audit purge, verify tables, backup trigger, short-urls sync);
+    rendering this page mutates nothing and only records the page view.
     """
-    return FlaskResponse(ADMIN_PORTAL_STRINGS.SYSTEM_OPS_TITLE, mimetype="text/plain")
+    audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.SYSTEM_OPS_VIEW)
+    db.session.commit()
+    return render_template(
+        "admin_portal/system_operations/index.html",
+        is_admin_portal=True,
+    )
 
 
 @admin.route("/admin/utubs", methods=["GET"])

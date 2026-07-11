@@ -10,6 +10,10 @@
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_HEALTH }}</h2>
         <p>Database, Redis, connections, disk, and sidecar cron status.</p>
     </a>
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_system_operations') }}">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_SYSTEM_OPS }}</h2>
+        <p>Global maintenance triggers: metrics flush, backup, table verification, and more.</p>
+    </a>
     <a class="admin-quick-link-card" href="{{ url_for('admin.admin_db') }}">
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</h2>
         <p>Read-only browser over every database table.</p>

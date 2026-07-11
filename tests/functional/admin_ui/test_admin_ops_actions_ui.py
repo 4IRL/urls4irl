@@ -7,7 +7,7 @@ from playwright.sync_api import Page, expect
 from backend.config import ConfigTestUI
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.admin_ui.playwright_utils import (
-    login_admin_and_open_admin_health,
+    login_admin_and_open_system_operations,
 )
 from tests.functional.locators import AdminPortalLocators as APL
 from tests.functional.playwright_utils import wait_then_get_element
@@ -26,14 +26,14 @@ def test_admin_ops_verify_tables_happy_path(
     provide_config: ConfigTestUI,
 ) -> None:
     """
-    GIVEN a logged-in admin user on /admin/health
+    GIVEN a logged-in admin user on /admin/system-operations
     WHEN the admin clicks the Verify Tables ops button, types a reason into
          the confirm modal, and confirms
     THEN the confirm modal opens with the verify-tables title, the POST
          succeeds, and the inline result beneath the Verify button shows the
          all-tables-present message.
     """
-    login_admin_and_open_admin_health(
+    login_admin_and_open_system_operations(
         app=provide_app,
         context=page.context,
         page=page,
@@ -67,7 +67,7 @@ def test_admin_ops_verify_tables_happy_path(
     expect(result_region_locator).to_have_text(UI_TEST_STRINGS.ADMIN_OPS_VERIFY_OK)
 
 
-def test_admin_health_backup_card_and_trigger_button_render(
+def test_admin_ops_backup_trigger_button_renders(
     page: Page,
     create_test_users,
     provide_app: Flask,
@@ -75,12 +75,13 @@ def test_admin_health_backup_card_and_trigger_button_render(
     provide_config: ConfigTestUI,
 ) -> None:
     """
-    GIVEN a logged-in admin user on /admin/health
-    WHEN the health snapshot fragment loads
-    THEN the Daily Backup status card renders (showing "never" when no backup
-         has been stamped) and the Trigger Backup ops button is present.
+    GIVEN a logged-in admin user on /admin/system-operations
+    WHEN the Operations panel renders
+    THEN the Trigger Backup ops button is present and visible. (The Daily
+         Backup status card lives on /admin/health and is covered by the
+         health UI suite.)
     """
-    login_admin_and_open_admin_health(
+    login_admin_and_open_system_operations(
         app=provide_app,
         context=page.context,
         page=page,
@@ -88,11 +89,6 @@ def test_admin_health_backup_card_and_trigger_button_render(
         user_id=DEFAULT_ADMIN_USER_ID,
         config=provide_config,
     )
-
-    backup_card_locator = wait_then_get_element(
-        page=page, css_selector=APL.HEALTH_BACKUP_CARD
-    )
-    expect(backup_card_locator).to_be_visible()
 
     trigger_button_locator = wait_then_get_element(
         page=page, css_selector=APL.OPS_BACKUP_TRIGGER_BTN
@@ -108,12 +104,12 @@ def test_admin_ops_cards_render_descriptions(
     provide_config: ConfigTestUI,
 ) -> None:
     """
-    GIVEN a logged-in admin user on /admin/health
+    GIVEN a logged-in admin user on /admin/system-operations
     WHEN the Operations panel renders
     THEN each operation shows as a card with an always-visible one-line
          description (the Verify Tables description is asserted specifically).
     """
-    login_admin_and_open_admin_health(
+    login_admin_and_open_system_operations(
         app=provide_app,
         context=page.context,
         page=page,
@@ -141,12 +137,12 @@ def test_admin_ops_reason_required(
     provide_config: ConfigTestUI,
 ) -> None:
     """
-    GIVEN a logged-in admin user on /admin/health
+    GIVEN a logged-in admin user on /admin/system-operations
     WHEN the admin opens the Verify Tables modal and submits without a reason
     THEN the modal alert banner shows the reason-required message and no inline
          result is created (the ops POST never fired).
     """
-    login_admin_and_open_admin_health(
+    login_admin_and_open_system_operations(
         app=provide_app,
         context=page.context,
         page=page,
@@ -181,12 +177,12 @@ def test_admin_ops_modal_dismiss_makes_no_request(
     provide_config: ConfigTestUI,
 ) -> None:
     """
-    GIVEN a logged-in admin user on /admin/health with the verify-tables
+    GIVEN a logged-in admin user on /admin/system-operations with the verify-tables
           confirm modal open
     WHEN the admin dismisses the modal without confirming
     THEN no inline result is created — no ops POST was performed.
     """
-    login_admin_and_open_admin_health(
+    login_admin_and_open_system_operations(
         app=provide_app,
         context=page.context,
         page=page,

@@ -13,6 +13,7 @@ from tests.functional.playwright_utils import (
 
 ADMIN_PORTAL_PATH: str = "/admin"
 ADMIN_HEALTH_PATH: str = "/admin/health"
+ADMIN_SYSTEM_OPS_PATH: str = "/admin/system-operations"
 ADMIN_DB_BROWSER_PATH: str = "/admin/db"
 ADMIN_DB_BROWSER_USERS_PATH: str = "/admin/db/Users"
 ADMIN_USERS_PATH: str = "/admin/users"
@@ -181,6 +182,32 @@ def login_admin_and_open_admin_health(
         context=context, session_id=session_id, base_url=f"{base_url}{port}"
     )
     page.goto(f"{base_url}{port}{ADMIN_HEALTH_PATH}")
+
+
+def login_admin_and_open_system_operations(
+    *,
+    app: Flask,
+    context: BrowserContext,
+    page: Page,
+    port: int,
+    user_id: int,
+    config: ConfigTestUI,
+) -> None:
+    """Promote `user_id` to ADMIN, log them in via session cookie, then
+    navigate the page directly to the System Operations page.
+
+    Mirrors ``login_admin_and_open_admin_health`` exactly but targets
+    ``ADMIN_SYSTEM_OPS_PATH`` so callers do not need to construct the URL.
+    """
+    promote_user_to_admin(app=app, user_id=user_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
+    base_url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    )
+    login_user_with_cookie_from_session(
+        context=context, session_id=session_id, base_url=f"{base_url}{port}"
+    )
+    page.goto(f"{base_url}{port}{ADMIN_SYSTEM_OPS_PATH}")
 
 
 def login_admin_and_open_user_detail(

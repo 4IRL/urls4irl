@@ -73,6 +73,7 @@ class ADMIN_ROUTES:
     PORTAL = _ADMIN + "admin_portal"
     HEALTH_PAGE = _ADMIN + "admin_health"
     HEALTH_SNAPSHOT = _ADMIN + "admin_health_snapshot"
+    SYSTEM_OPERATIONS_PAGE = _ADMIN + "admin_system_operations"
     USERS_PAGE = _ADMIN + "admin_users"
     USERS_SEARCH = _ADMIN + "admin_users_search"
     USER_DETAIL = _ADMIN + "admin_user_detail"
