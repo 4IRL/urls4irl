@@ -66,6 +66,39 @@ def test_admin_ops_verify_tables_happy_path(
     expect(result_region_locator).to_have_text(UI_TEST_STRINGS.ADMIN_OPS_VERIFY_OK)
 
 
+def test_admin_health_backup_card_and_trigger_button_render(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin user on /admin/health
+    WHEN the health snapshot fragment loads
+    THEN the Daily Backup status card renders (showing "never" when no backup
+         has been stamped) and the Trigger Backup ops button is present.
+    """
+    login_admin_and_open_admin_health(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    backup_card_locator = wait_then_get_element(
+        page=page, css_selector=APL.HEALTH_BACKUP_CARD
+    )
+    expect(backup_card_locator).to_be_visible()
+
+    trigger_button_locator = wait_then_get_element(
+        page=page, css_selector=APL.OPS_BACKUP_TRIGGER_BTN
+    )
+    expect(trigger_button_locator).to_be_visible()
+
+
 def test_admin_ops_modal_dismiss_makes_no_request(
     page: Page,
     create_test_users,

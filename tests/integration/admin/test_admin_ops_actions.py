@@ -41,6 +41,7 @@ _OPS_GAUGE_SAMPLE_URL: str = "/admin/ops/gauge-sample"
 _OPS_AUDIT_PURGE_URL: str = "/admin/ops/audit-purge"
 _OPS_VERIFY_TABLES_URL: str = "/admin/ops/verify-tables"
 _OPS_SHORT_URLS_SYNC_URL: str = "/admin/ops/short-urls-sync"
+_OPS_BACKUP_TRIGGER_URL: str = "/admin/ops/backup-trigger"
 
 _ALL_OPS_URLS: list[str] = [
     _OPS_METRICS_FLUSH_URL,
@@ -48,6 +49,7 @@ _ALL_OPS_URLS: list[str] = [
     _OPS_AUDIT_PURGE_URL,
     _OPS_VERIFY_TABLES_URL,
     _OPS_SHORT_URLS_SYNC_URL,
+    _OPS_BACKUP_TRIGGER_URL,
 ]
 
 _MOCK_FLUSH_ROWS: int = 5
@@ -200,6 +202,9 @@ def test_admin_ops_audit_purge_happy_path(
     assert audit_row is not None
     assert audit_row.action == ADMIN_AUDIT_ACTIONS.OPS_AUDIT_PURGE
     assert audit_row.actor_id == admin_user.id
+    assert audit_row.log_metadata is not None
+    # The single row is the self-audit written BEFORE the delete ran.
+    assert "retention_days" in audit_row.log_metadata
 
 
 def test_admin_ops_verify_tables_happy_path(
@@ -481,3 +486,101 @@ def test_admin_ops_short_urls_sync_adds_domains_to_redis(
     assert response.status_code == 200
     assert main_redis.sismember(SHORT_URLS, _FAKE_SHORT_DOMAIN_A)
     assert main_redis.sismember(SHORT_URLS, _FAKE_SHORT_DOMAIN_B)
+
+
+# ---------------------------------------------------------------------------
+# Backup trigger (cross-container flag)
+# ---------------------------------------------------------------------------
+
+
+def test_admin_ops_backup_trigger_sets_flag_and_audits(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    provide_metrics_redis: Redis | None,
+) -> None:
+    """
+    GIVEN a logged-in admin user, a real metrics Redis, and no pending request
+    WHEN POST /admin/ops/backup-trigger with a reason
+    THEN the trigger flag key is set with a TTL, the success message is
+         returned, and one audit row records the trigger with the reason.
+
+    Skipped when metrics Redis is not configured in the test environment.
+    """
+    metrics_redis = provide_metrics_redis
+    if metrics_redis is None:
+        pytest.skip("metrics Redis not configured in test environment")
+
+    client, csrf, admin_user, app = login_admin_user_with_register
+
+    assert metrics_redis.get(METRICS_REDIS.BACKUP_TRIGGER_KEY) is None
+    with app.app_context():
+        rows_before: int = AuditLog.query.count()
+    assert rows_before == 0
+
+    try:
+        response = _post_ops(client, _OPS_BACKUP_TRIGGER_URL, csrf, reason=_MOCK_REASON)
+
+        assert response.status_code == 200
+        body = response.get_json()
+        assert body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_SUCCESS
+
+        flag_value = metrics_redis.get(METRICS_REDIS.BACKUP_TRIGGER_KEY)
+        assert flag_value is not None
+        flag_ttl = metrics_redis.ttl(METRICS_REDIS.BACKUP_TRIGGER_KEY)
+        assert 0 < flag_ttl <= ops_service.BACKUP_TRIGGER_TTL_SECONDS
+
+        with app.app_context():
+            rows_after: int = AuditLog.query.count()
+            assert rows_after == 1
+            audit_row: AuditLog | None = AuditLog.query.first()
+        assert audit_row is not None
+        assert audit_row.action == ADMIN_AUDIT_ACTIONS.OPS_BACKUP_TRIGGER
+        assert audit_row.actor_id == admin_user.id
+        assert audit_row.log_metadata is not None
+        assert audit_row.log_metadata.get("reason") == _MOCK_REASON
+    finally:
+        metrics_redis.delete(METRICS_REDIS.BACKUP_TRIGGER_KEY)
+
+
+def test_admin_ops_backup_trigger_idempotent_while_pending(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    provide_metrics_redis: Redis | None,
+) -> None:
+    """
+    GIVEN a logged-in admin user and a backup request already pending
+    WHEN POST /admin/ops/backup-trigger a second time
+    THEN the response is 200 with the already-pending message, the original
+         flag value is untouched, and NO additional audit row is written
+         (nothing was triggered).
+    """
+    metrics_redis = provide_metrics_redis
+    if metrics_redis is None:
+        pytest.skip("metrics Redis not configured in test environment")
+
+    client, csrf, _, app = login_admin_user_with_register
+
+    try:
+        first_response = _post_ops(client, _OPS_BACKUP_TRIGGER_URL, csrf)
+        assert first_response.status_code == 200
+        original_flag_value = metrics_redis.get(METRICS_REDIS.BACKUP_TRIGGER_KEY)
+        assert original_flag_value is not None
+        with app.app_context():
+            rows_after_first: int = AuditLog.query.count()
+        assert rows_after_first == 1
+
+        second_response = _post_ops(client, _OPS_BACKUP_TRIGGER_URL, csrf)
+
+        assert second_response.status_code == 200
+        second_body = second_response.get_json()
+        assert (
+            second_body[STD_JSON.MESSAGE]
+            == ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_ALREADY_PENDING
+        )
+        assert (
+            metrics_redis.get(METRICS_REDIS.BACKUP_TRIGGER_KEY) == original_flag_value
+        )
+        with app.app_context():
+            rows_after_second: int = AuditLog.query.count()
+        assert rows_after_second == 1
+    finally:
+        metrics_redis.delete(METRICS_REDIS.BACKUP_TRIGGER_KEY)

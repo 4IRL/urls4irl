@@ -13,7 +13,10 @@ from backend.db import get_missing_tables
 from backend.extensions import audit
 from backend.schemas.admin_actions import AdminOpsActionResponseSchema
 from backend.schemas.errors import build_message_error_response
-from backend.utils.short_urls import sync_short_url_domains_to_redis
+from backend.utils.short_urls import (
+    ShortUrlSyncError,
+    sync_short_url_domains_to_redis,
+)
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_ACTION_STRINGS,
     ADMIN_AUDIT_ACTIONS,
@@ -21,12 +24,15 @@ from backend.utils.strings.admin_portal_strs import (
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.metrics_strs import METRICS_REDIS
-
 from scripts.flush_metrics import run_flush
 from scripts.purge_audit_log import AUDIT_LOG_RETENTION_DAYS, run_purge
 from scripts.sample_gauges import run_sample
 
 _MEMORY_URI: str = "memory://"
+# A pending backup request older than this has clearly been missed by the
+# per-minute poller (workflow container down); let it age out rather than
+# firing a surprise backup much later.
+BACKUP_TRIGGER_TTL_SECONDS: int = 900
 
 
 def _build_metrics_redis() -> Redis | None:
@@ -287,6 +293,72 @@ def trigger_verify_tables(*, actor_id: int, reason: str | None) -> FlaskResponse
     ).to_response()
 
 
+def trigger_backup(*, actor_id: int, reason: str | None) -> FlaskResponse:
+    """Request an on-demand run of the backup pipeline (cross-container).
+
+    Sets a short-TTL trigger flag in the metrics Redis; the workflow
+    container's per-minute cron poller (scripts/run_backup_if_requested.py)
+    consumes it with GETDEL and runs daily-docker.sh. Idempotent: when a
+    request is already pending, no new flag is set, no audit row is written
+    (nothing was triggered), and a clear already-pending message is returned.
+
+    Args:
+        actor_id: ID of the admin user requesting the backup.
+        reason: Optional free-text reason recorded in the audit log.
+
+    Returns:
+        200 JSON envelope on success or when a request is already pending.
+        503 when metrics Redis is not configured.
+        500 on unexpected Redis error.
+    """
+    metrics_redis = _build_metrics_redis()
+    if metrics_redis is None:
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_UNAVAILABLE,
+            error_code=AdminActionErrorCodes.UNKNOWN_ERROR,
+            status_code=503,
+        )
+
+    try:
+        flag_was_set = bool(
+            metrics_redis.set(
+                METRICS_REDIS.BACKUP_TRIGGER_KEY,
+                str(int(time.time())),
+                nx=True,
+                ex=BACKUP_TRIGGER_TTL_SECONDS,
+            )
+        )
+    except Exception as trigger_error:
+        warning_log(f"admin ops: backup trigger failed: {trigger_error}")
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_ERROR,
+            error_code=AdminActionErrorCodes.UNKNOWN_ERROR,
+            status_code=500,
+        )
+    finally:
+        try:
+            metrics_redis.close()
+        except Exception:
+            pass
+
+    if not flag_was_set:
+        return AdminOpsActionResponseSchema(
+            status=STD_JSON.SUCCESS,
+            message=ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_ALREADY_PENDING,
+        ).to_response()
+
+    audit.record(
+        actor_id=actor_id,
+        action=ADMIN_AUDIT_ACTIONS.OPS_BACKUP_TRIGGER,
+        metadata={"reason": reason},
+    )
+    db.session.commit()
+    return AdminOpsActionResponseSchema(
+        status=STD_JSON.SUCCESS,
+        message=ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_SUCCESS,
+    ).to_response()
+
+
 def trigger_short_urls_sync(*, actor_id: int, reason: str | None) -> FlaskResponse:
     """Regenerate the short-URL domain Redis set from the canonical GitHub list.
 
@@ -313,20 +385,14 @@ def trigger_short_urls_sync(*, actor_id: int, reason: str | None) -> FlaskRespon
         )
 
     redis_client = Redis.from_url(redis_uri)
-    added_count: int | None
+    added_count: int
     try:
         added_count = sync_short_url_domains_to_redis(redis_client=redis_client)
-    finally:
-        try:
-            redis_client.close()
-        except Exception:
-            pass
-
-    if added_count is None:
+    except ShortUrlSyncError as sync_error:
         audit.record(
             actor_id=actor_id,
             action=ADMIN_AUDIT_ACTIONS.OPS_SHORT_URLS_SYNC,
-            metadata={"reason": reason, "error": "fetch_or_parse_failed"},
+            metadata={"reason": reason, "error": str(sync_error)},
         )
         db.session.commit()
         return build_message_error_response(
@@ -334,6 +400,24 @@ def trigger_short_urls_sync(*, actor_id: int, reason: str | None) -> FlaskRespon
             error_code=AdminActionErrorCodes.UNKNOWN_ERROR,
             status_code=502,
         )
+    except Exception as unexpected_error:
+        warning_log(f"admin ops: short URL sync failed: {unexpected_error}")
+        audit.record(
+            actor_id=actor_id,
+            action=ADMIN_AUDIT_ACTIONS.OPS_SHORT_URLS_SYNC,
+            metadata={"reason": reason, "error": str(unexpected_error)},
+        )
+        db.session.commit()
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.OPS_SHORT_URLS_SYNC_ERROR,
+            error_code=AdminActionErrorCodes.UNKNOWN_ERROR,
+            status_code=500,
+        )
+    finally:
+        try:
+            redis_client.close()
+        except Exception:
+            pass
 
     audit.record(
         actor_id=actor_id,

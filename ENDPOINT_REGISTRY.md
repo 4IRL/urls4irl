@@ -926,6 +926,23 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### POST /admin/ops/backup-trigger
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_backup_trigger`                                                                                       |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_backup` — sets the short-TTL `metrics:backup:trigger_requested` flag consumed by the workflow container's per-minute poller (`scripts/run_backup_if_requested.py`); idempotent while pending; 503 when metrics Redis is absent |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminActionRequest` / Response: `backend/schemas/admin_actions.py:AdminOpsActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="backup-trigger"`; last-success card in `admin_portal/_health_snapshot.html`) |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py`, `tests/integration/admin/test_backup_trigger_scripts.py` (marker: `admin`)                 |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_BACKUP_TRIGGER`                                                                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
 ## Contact Blueprint
 
 ### GET /contact

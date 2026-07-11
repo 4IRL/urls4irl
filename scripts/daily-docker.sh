@@ -125,4 +125,14 @@ fi
   --remote-monthly "${REMOTE_DB_MONTHLY_STATUS:-skip}" \
   --remote-logs "${REMOTE_LOGS_STATUS:-skip}" || true
 
+# Stamp the backup last-success sentinel in the metrics Redis (read by the
+# admin health dashboard). Best-effort: a Redis hiccup never fails the
+# pipeline. METRICS_REDIS_URI is passed explicitly because the environment
+# file above is sourced without allexport.
+if [[ "$database_backed_up" == "true" ]]; then
+  if ! METRICS_REDIS_URI="${METRICS_REDIS_URI:-}" /opt/metrics-venv/bin/python "$SCRIPT_DIR/backup_sentinel.py"; then
+    echo "Warning: backup last-success sentinel stamp failed"
+  fi
+fi
+
 exit $remote_exit

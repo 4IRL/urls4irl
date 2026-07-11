@@ -88,6 +88,15 @@ class ADMIN_PORTAL_STRINGS:
         "This re-fetches and re-adds all short-URL domains."
     )
     OPS_SHORT_URLS_SYNC_SUBMIT: str = "Sync"
+    OPS_BACKUP_TRIGGER_LABEL: str = "Trigger Backup"
+    OPS_BACKUP_TRIGGER_CONFIRM_TITLE: str = "Trigger Backup?"
+    OPS_BACKUP_TRIGGER_CONFIRM_BODY: str = (
+        "Request an on-demand run of the full backup pipeline. "
+        "The workflow container polls for the request every minute "
+        "and runs the same pipeline as the nightly 1 AM backup."
+    )
+    OPS_BACKUP_TRIGGER_SUBMIT: str = "Trigger"
+    HEALTH_LABEL_BACKUP_LAST_SUCCESS: str = "Daily Backup (sidecar)"
 
 
 class ADMIN_ACTION_STRINGS:
@@ -127,6 +136,14 @@ class ADMIN_ACTION_STRINGS:
     )
     OPS_SHORT_URLS_SYNC_UNAVAILABLE: str = "Redis is not configured."
     OPS_SHORT_URLS_SYNC_ERROR: str = "Short URL sync failed. Check the server logs."
+    OPS_BACKUP_TRIGGER_SUCCESS: str = (
+        "Backup requested. The workflow container will start it within one minute."
+    )
+    OPS_BACKUP_TRIGGER_ALREADY_PENDING: str = (
+        "A backup request is already pending. No new request was made."
+    )
+    OPS_BACKUP_TRIGGER_UNAVAILABLE: str = "Metrics Redis is not configured."
+    OPS_BACKUP_TRIGGER_ERROR: str = "Backup trigger failed. Check the server logs."
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -144,3 +161,4 @@ class ADMIN_AUDIT_ACTIONS:
     OPS_AUDIT_PURGE: str = "admin.ops.audit_purge"
     OPS_VERIFY_TABLES: str = "admin.ops.verify_tables"
     OPS_SHORT_URLS_SYNC: str = "admin.ops.short_urls_sync"
+    OPS_BACKUP_TRIGGER: str = "admin.ops.backup_trigger"

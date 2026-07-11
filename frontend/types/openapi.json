@@ -366,6 +366,96 @@
         }
       }
     },
+    "/admin/ops/backup-trigger": {
+      "post": {
+        "operationId": "adminOpsBackupTrigger",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Request an on-demand backup run. Sets a short-TTL Redis flag the workflow container's per-minute poller consumes to start the backup pipeline. Idempotent while a request is pending.",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminActionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
     "/admin/ops/short-urls-sync": {
       "post": {
         "operationId": "adminOpsShortUrlsSync",

@@ -609,6 +609,8 @@ class AdminPortalLocators(GenericPageLocator):
     OPS_SECTION = "#AdminOpsSection"
     OPS_VERIFY_TABLES_BTN = "#AdminOpsVerifyTablesBtn"
     OPS_METRICS_FLUSH_BTN = "#AdminOpsMetricsFlushBtn"
+    OPS_BACKUP_TRIGGER_BTN = "#AdminOpsBackupTriggerBtn"
+    HEALTH_BACKUP_CARD = "#AdminHealthBackup"
     ACTION_RESULT_REGION = "#AdminActionResult"
     ACTION_CONFIRM_MODAL = "#confirmModal"
     ACTION_MODAL_TITLE = "#confirmModalTitle"

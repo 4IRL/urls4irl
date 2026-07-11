@@ -37,6 +37,10 @@ _SERVER_ERROR_STATUS_THRESHOLD: int = 500
 # Flush-worker liveness threshold: a flush sentinel older than this many seconds
 # means the Redis -> Postgres flush cron has not completed a run recently.
 _FLUSH_STALE_THRESHOLD_SECONDS: int = 900
+# Backup staleness threshold: the daily backup cron runs at 1 AM, so a
+# last-success sentinel older than 26 hours (24h cadence + 2h grace) means a
+# scheduled backup was missed or failed.
+_BACKUP_STALE_THRESHOLD_SECONDS: int = 26 * 3600
 
 # Host memory is read from the Linux procfs meminfo pseudo-file.
 _MEMINFO_PATH: str = "/proc/meminfo"
@@ -100,6 +104,9 @@ class HealthSnapshot:
     flush_lag_seconds: int | None
     flush_is_stale: bool
     gauge_last_sample_at: datetime | None
+    backup_last_success_at: datetime | None
+    backup_lag_seconds: int | None
+    backup_is_stale: bool
     slowest_endpoint: SlowestEndpoint | None
     error_rate: ErrorRate | None
     busiest_endpoint: BusiestEndpoint | None
@@ -148,32 +155,36 @@ def _epoch_bytes_to_datetime(epoch_bytes: bytes | None) -> datetime | None:
         return None
 
 
-def _probe_metrics_redis() -> tuple[str, datetime | None, datetime | None]:
-    """Return (status, flush last-success, gauge last-sample) for the
-    metrics Redis.
+def _probe_metrics_redis() -> (
+    tuple[str, datetime | None, datetime | None, datetime | None]
+):
+    """Return (status, flush last-success, gauge last-sample, backup
+    last-success) for the metrics Redis.
 
-    The two timestamps are the workflow sidecar's liveness sentinels —
-    ``flush_metrics.py`` and ``sample_gauges.py`` stamp them after each
-    successful cron run, so they double as "sidecar cron last ran" signals
-    readable from the web container.
+    The three timestamps are the workflow sidecar's liveness sentinels —
+    ``flush_metrics.py``, ``sample_gauges.py``, and ``backup_sentinel.py``
+    (via ``daily-docker.sh``) stamp them after each successful run, so they
+    double as "sidecar cron last ran" signals readable from the web container.
     """
     metrics_uri: str | None = current_app.config.get(CONFIG_ENVS.METRICS_REDIS_URI)
     if not metrics_uri or metrics_uri == _MEMORY_URI:
-        return STATUS_NOT_CONFIGURED, None, None
+        return STATUS_NOT_CONFIGURED, None, None, None
     metrics_redis: Redis | None = None
     try:
         metrics_redis = Redis.from_url(metrics_uri)
         metrics_redis.ping()
         flush_epoch = metrics_redis.get(METRICS_REDIS.FLUSH_LAST_SUCCESS_KEY)
         gauge_epoch = metrics_redis.get(METRICS_REDIS.GAUGE_LAST_SUCCESS_KEY)
+        backup_epoch = metrics_redis.get(METRICS_REDIS.BACKUP_LAST_SUCCESS_KEY)
         return (
             STATUS_UP,
             _epoch_bytes_to_datetime(flush_epoch),
             _epoch_bytes_to_datetime(gauge_epoch),
+            _epoch_bytes_to_datetime(backup_epoch),
         )
     except Exception as redis_error:
         warning_log(f"health snapshot: metrics redis probe failed: {redis_error}")
-        return STATUS_DOWN, None, None
+        return STATUS_DOWN, None, None, None
     finally:
         if metrics_redis is not None:
             try:
@@ -365,15 +376,24 @@ def collect_health_snapshot() -> HealthSnapshot:
         _probe_database()
     )
     session_redis_status = _probe_session_redis()
-    metrics_redis_status, flush_last_success_at, gauge_last_sample_at = (
-        _probe_metrics_redis()
-    )
+    (
+        metrics_redis_status,
+        flush_last_success_at,
+        gauge_last_sample_at,
+        backup_last_success_at,
+    ) = _probe_metrics_redis()
 
     flush_lag_seconds: int | None = None
     flush_is_stale: bool = False
     if flush_last_success_at is not None:
         flush_lag_seconds = int((captured_at - flush_last_success_at).total_seconds())
         flush_is_stale = flush_lag_seconds > _FLUSH_STALE_THRESHOLD_SECONDS
+
+    backup_lag_seconds: int | None = None
+    backup_is_stale: bool = False
+    if backup_last_success_at is not None:
+        backup_lag_seconds = int((captured_at - backup_last_success_at).total_seconds())
+        backup_is_stale = backup_lag_seconds > _BACKUP_STALE_THRESHOLD_SECONDS
 
     return HealthSnapshot(
         database_status=database_status,
@@ -386,6 +406,9 @@ def collect_health_snapshot() -> HealthSnapshot:
         flush_lag_seconds=flush_lag_seconds,
         flush_is_stale=flush_is_stale,
         gauge_last_sample_at=gauge_last_sample_at,
+        backup_last_success_at=backup_last_success_at,
+        backup_lag_seconds=backup_lag_seconds,
+        backup_is_stale=backup_is_stale,
         slowest_endpoint=_probe_slowest_endpoint(),
         error_rate=_probe_error_rate(),
         busiest_endpoint=_probe_busiest_endpoint(),

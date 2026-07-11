@@ -13,6 +13,7 @@ from flask_login import current_user
 from backend.admin.constants import AdminActionErrorCodes
 from backend.admin.ops_service import (
     trigger_audit_purge,
+    trigger_backup,
     trigger_gauge_sample,
     trigger_metrics_flush,
     trigger_short_urls_sync,
@@ -123,6 +124,31 @@ def admin_ops_verify_tables(
 ) -> FlaskResponse:
     """Check for missing tables and return the missing-table count."""
     return trigger_verify_tables(
+        actor_id=current_user.id,
+        reason=admin_action_request.reason,
+    )
+
+
+@admin.route("/admin/ops/backup-trigger", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminActionRequest,
+    response_schema=AdminOpsActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Request an on-demand backup run. Sets a short-TTL Redis flag the "
+        "workflow container's per-minute poller consumes to start the "
+        "backup pipeline. Idempotent while a request is pending."
+    ),
+    status_codes=_OPS_STATUS_CODES,
+)
+def admin_ops_backup_trigger(
+    admin_action_request: AdminActionRequest,
+) -> FlaskResponse:
+    """Request an on-demand backup pipeline run via the cross-container flag."""
+    return trigger_backup(
         actor_id=current_user.id,
         reason=admin_action_request.reason,
     )

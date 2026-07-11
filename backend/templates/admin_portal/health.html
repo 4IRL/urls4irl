@@ -56,6 +56,16 @@
             {{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_LABEL }}
         </button>
         <button type="button"
+                id="AdminOpsBackupTriggerBtn"
+                class="btn btn-warning admin-ops-btn"
+                data-admin-action="backup-trigger"
+                data-action-url="{{ url_for('admin.admin_ops_backup_trigger') }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_SUBMIT }}">
+            {{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_LABEL }}
+        </button>
+        <button type="button"
                 id="AdminOpsShortUrlsSyncBtn"
                 class="btn btn-secondary admin-ops-btn"
                 data-admin-action="short-urls-sync"

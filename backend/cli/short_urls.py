@@ -3,7 +3,10 @@ import redis
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 
-from backend.utils.short_urls import sync_short_url_domains_to_redis
+from backend.utils.short_urls import (
+    ShortUrlSyncError,
+    sync_short_url_domains_to_redis,
+)
 from backend.utils.strings.config_strs import CONFIG_ENVS as ENV
 
 HELP_SUMMARY_SHORT_URL = """Add list of short URL domains to redis."""
@@ -25,9 +28,10 @@ def add_short_url_domains_to_redis():
             return
 
     redis_client = redis.Redis.from_url(url=redis_uri)  # type: ignore[arg-type]
-    added_count = sync_short_url_domains_to_redis(redis_client=redis_client)
-    if added_count is None:
-        print("Unable to perform request to get short URL domains.")
+    try:
+        added_count = sync_short_url_domains_to_redis(redis_client=redis_client)
+    except ShortUrlSyncError as sync_error:
+        print(str(sync_error))
         return
 
     if added_count == 0:
