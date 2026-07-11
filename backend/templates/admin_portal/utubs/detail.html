@@ -15,8 +15,8 @@
             <tr><th>Name</th><td id="AdminUtubDetailName">{{ detail_utub.name }}</td></tr>
             <tr><th>Creator</th><td id="AdminUtubDetailCreator">{{ creator_username }}</td></tr>
             <tr><th>Locked</th><td id="AdminUtubDetailLocked">{{ 'yes' if detail_utub.is_locked else 'no' }}</td></tr>
-            <tr><th>Members</th><td id="AdminUtubDetailMemberCount">{{ detail_utub.members | length }}</td></tr>
-            <tr><th>URLs</th><td id="AdminUtubDetailUrlCount">{{ detail_utub.utub_urls | length }}</td></tr>
+            <tr><th>Members</th><td id="AdminUtubDetailMemberCount">{{ members_page.total_count }}</td></tr>
+            <tr><th>URLs</th><td id="AdminUtubDetailUrlCount">{{ urls_page.total_count }}</td></tr>
             <tr><th>Created</th><td id="AdminUtubDetailCreated">{{ detail_utub.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td></tr>
         </tbody>
     </table>
@@ -61,7 +61,7 @@
 </div>
 <div id="AdminUtubDetailMembersPanel" class="admin-panel">
     <h2 id="AdminUtubDetailMembersHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_MEMBERS_HEADING }}</h2>
-    {% if detail_utub.members %}
+    {% if members_page.total_count %}
     <table id="AdminUtubDetailMembersTable" class="admin-table">
         <thead>
             <tr>
@@ -71,7 +71,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for member in detail_utub.members %}
+            {% for member in members_page.rows %}
             <tr>
                 <td>{{ member.to_user.username }}</td>
                 <td>{{ member.member_role.value }}</td>
@@ -96,13 +96,22 @@
             {% endfor %}
         </tbody>
     </table>
+    <div id="AdminUtubDetailMembersPagination" class="admin-search-pagination">
+        <span>Showing {{ members_page.showing_start }}&ndash;{{ members_page.showing_end }} of {{ members_page.total_count }}</span>
+        {% if members_page.has_previous %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.previous_offset, urls_offset=urls_page.offset) }}">Previous</a>
+        {% endif %}
+        {% if members_page.has_next %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.next_offset, urls_offset=urls_page.offset) }}">Next</a>
+        {% endif %}
+    </div>
     {% else %}
     <p id="AdminUtubDetailNoMembers">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_MEMBERS }}</p>
     {% endif %}
 </div>
 <div id="AdminUtubDetailUrlsPanel" class="admin-panel">
     <h2 id="AdminUtubDetailUrlsHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_URLS_HEADING }}</h2>
-    {% if detail_utub.utub_urls %}
+    {% if urls_page.total_count %}
     <table id="AdminUtubDetailUrlsTable" class="admin-table">
         <thead>
             <tr>
@@ -113,7 +122,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for utub_url in detail_utub.utub_urls %}
+            {% for utub_url in urls_page.rows %}
             <tr>
                 <td>{{ utub_url.id }}</td>
                 <td>{{ utub_url.standalone_url.url_string }}</td>
@@ -145,6 +154,15 @@
             {% endfor %}
         </tbody>
     </table>
+    <div id="AdminUtubDetailUrlsPagination" class="admin-search-pagination">
+        <span>Showing {{ urls_page.showing_start }}&ndash;{{ urls_page.showing_end }} of {{ urls_page.total_count }}</span>
+        {% if urls_page.has_previous %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.previous_offset) }}">Previous</a>
+        {% endif %}
+        {% if urls_page.has_next %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.next_offset) }}">Next</a>
+        {% endif %}
+    </div>
     {% else %}
     <p id="AdminUtubDetailNoUrls">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_URLS }}</p>
     {% endif %}

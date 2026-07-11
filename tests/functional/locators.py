@@ -641,6 +641,8 @@ class AdminPortalLocators(GenericPageLocator):
     UTUB_DETAIL_TITLE = "#AdminUtubDetailTitle"
     UTUB_DETAIL_MEMBERS_TABLE = "#AdminUtubDetailMembersTable"
     UTUB_DETAIL_URLS_TABLE = "#AdminUtubDetailUrlsTable"
+    UTUB_DETAIL_MEMBERS_PAGINATION = "#AdminUtubDetailMembersPagination"
+    UTUB_DETAIL_URLS_PAGINATION = "#AdminUtubDetailUrlsPagination"
     UTUB_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
     # Moderation controls on the UTub-detail page (page-agnostic, scoped by
     # data-admin-action value shared across the admin-actions controller).

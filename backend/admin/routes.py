@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from flask import Blueprint, abort, render_template, request
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
@@ -21,6 +23,8 @@ from backend.admin.user_service import (
 from backend.api_common.auth_decorators import admin_login_required
 from backend.extensions import audit
 from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.admin_portal_strs import (
@@ -28,7 +32,48 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_PORTAL_STRINGS,
 )
 
+_DETAIL_TABLE_PAGE_SIZE: int = 50
+
 admin = Blueprint("admin", __name__)
+
+
+@dataclass(frozen=True)
+class _DetailTablePage:
+    """One page of a UTub-detail relationship table (members or URLs).
+
+    Holds the sliced page rows plus the offset/limit/total needed to render
+    the "showing X-Y of N" span and Previous/Next links, mirroring the
+    ``TablePage`` pagination math used by the UTub list page.
+    """
+
+    rows: list[Utub_Members] | list[Utub_Urls]
+    total_count: int
+    offset: int
+    limit: int
+
+    @property
+    def has_previous(self) -> bool:
+        return self.offset > 0
+
+    @property
+    def has_next(self) -> bool:
+        return self.offset + self.limit < self.total_count
+
+    @property
+    def previous_offset(self) -> int:
+        return max(self.offset - self.limit, 0)
+
+    @property
+    def next_offset(self) -> int:
+        return self.offset + self.limit
+
+    @property
+    def showing_start(self) -> int:
+        return self.offset + 1 if self.total_count else 0
+
+    @property
+    def showing_end(self) -> int:
+        return min(self.offset + self.limit, self.total_count)
 
 
 @admin.context_processor
@@ -235,6 +280,38 @@ def admin_utub_detail(utub_id: int) -> FlaskResponse:
     creator = Users.query.get(detail_utub.utub_creator)
     if creator is not None:
         creator_username = creator.username
+
+    members_offset = _parse_offset_arg("members_offset")
+    urls_offset = _parse_offset_arg("urls_offset")
+    members_total = Utub_Members.query.filter_by(utub_id=detail_utub.id).count()
+    members_rows = (
+        Utub_Members.query.filter_by(utub_id=detail_utub.id)
+        .order_by(Utub_Members.user_id)
+        .limit(_DETAIL_TABLE_PAGE_SIZE)
+        .offset(members_offset)
+        .all()
+    )
+    urls_total = Utub_Urls.query.filter_by(utub_id=detail_utub.id).count()
+    urls_rows = (
+        Utub_Urls.query.filter_by(utub_id=detail_utub.id)
+        .order_by(Utub_Urls.id)
+        .limit(_DETAIL_TABLE_PAGE_SIZE)
+        .offset(urls_offset)
+        .all()
+    )
+    members_page = _DetailTablePage(
+        rows=members_rows,
+        total_count=members_total,
+        offset=members_offset,
+        limit=_DETAIL_TABLE_PAGE_SIZE,
+    )
+    urls_page = _DetailTablePage(
+        rows=urls_rows,
+        total_count=urls_total,
+        offset=urls_offset,
+        limit=_DETAIL_TABLE_PAGE_SIZE,
+    )
+
     audit.record(
         actor_id=current_user.id,
         action=ADMIN_AUDIT_ACTIONS.UTUB_VIEW,
@@ -247,6 +324,8 @@ def admin_utub_detail(utub_id: int) -> FlaskResponse:
         is_admin_portal=True,
         detail_utub=detail_utub,
         creator_username=creator_username,
+        members_page=members_page,
+        urls_page=urls_page,
     )
 
 
@@ -324,9 +403,9 @@ def admin_db_row(table_name: str, row_pk: str) -> FlaskResponse:
     )
 
 
-def _parse_offset_arg() -> int:
+def _parse_offset_arg(arg_name: str = "offset") -> int:
     try:
-        return max(int(request.args.get("offset", "0")), 0)
+        return max(int(request.args.get(arg_name, "0")), 0)
     except ValueError:
         return 0
 
