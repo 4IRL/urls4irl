@@ -637,6 +637,20 @@ class AdminPortalLocators(GenericPageLocator):
     UTUB_ROW_LINK = "#AdminUtubTableGrid .admin-db-row-link"
     UTUB_TABLE_EMPTY = "#AdminUtubTableEmpty"
 
+    # UTub detail page (aggregated moderation surface)
+    UTUB_DETAIL_TITLE = "#AdminUtubDetailTitle"
+    UTUB_DETAIL_MEMBERS_TABLE = "#AdminUtubDetailMembersTable"
+    UTUB_DETAIL_URLS_TABLE = "#AdminUtubDetailUrlsTable"
+    UTUB_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
+    # Moderation controls on the UTub-detail page (page-agnostic, scoped by
+    # data-admin-action value shared across the admin-actions controller).
+    UTUB_DETAIL_MOD_LOCK_BTN = '[data-admin-action="utub-lock"]'
+    UTUB_DETAIL_MOD_UNLOCK_BTN = '[data-admin-action="utub-unlock"]'
+    UTUB_DETAIL_MOD_DELETE_BTN = '[data-admin-action="utub-delete"]'
+    UTUB_DETAIL_MOD_MEMBER_REMOVE_BTN = '[data-admin-action="member-remove"]'
+    UTUB_DETAIL_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
+    UTUB_DETAIL_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
+
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
@@ -682,14 +696,6 @@ class AdminPortalLocators(GenericPageLocator):
 
     # Admin-action modal alert banner (reason-required / server-error messages)
     ACTION_MODAL_ALERT_BANNER = "#HomeModalAlertBanner"
-
-    # DB row detail moderation section
-    DB_ROW_MOD_SECTION = "#AdminDbRowModSection"
-    DB_ROW_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
-    DB_ROW_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
-    DB_ROW_MOD_URL_PURGE_RESULT = (
-        '[data-admin-action="url-purge"] + .admin-action-inline-result'
-    )
 
     # Audit log page
     AUDIT_LOG_TITLE = "#AdminAuditLogTitle"

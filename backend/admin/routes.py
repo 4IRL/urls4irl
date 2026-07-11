@@ -20,6 +20,8 @@ from backend.admin.user_service import (
 )
 from backend.api_common.auth_decorators import admin_login_required
 from backend.extensions import audit
+from backend.models.users import Users
+from backend.models.utubs import Utubs
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
@@ -217,15 +219,35 @@ def admin_utubs() -> FlaskResponse:
 @admin.route("/admin/utubs/<int:utub_id>", methods=["GET"])
 @admin_login_required
 def admin_utub_detail(utub_id: int) -> FlaskResponse:
-    """Placeholder for the per-UTub detail page (fleshed out in a later phase).
+    """Aggregated detail page for one UTub: info panel, members, and URLs.
 
-    The UTub Actions list links each row to ``admin.admin_utub_detail`` via
-    ``url_for``, so the endpoint must exist for the list template to render
-    without a ``BuildError``. The full aggregated detail page (info panel,
-    members table, URLs table, and moderation actions) is built in the next
-    phase; this thin stub only satisfies the row link until then.
+    Renders the UTub's own relationships (``members`` and ``utub_urls``) so the
+    lock/unlock, delete, remove-member, remove-URL, and purge-URL moderation
+    controls source their ids directly from the loaded UTub. The creator's
+    username is resolved from ``utub_creator``. Missing UTubs 404. The page view
+    is audited; each mutation POSTs to its own audited endpoint — rendering this
+    page mutates nothing.
     """
-    return FlaskResponse(str(utub_id), mimetype="text/plain")
+    detail_utub = Utubs.query.get(utub_id)
+    if detail_utub is None:
+        abort(404)
+    creator_username: str | None = None
+    creator = Users.query.get(detail_utub.utub_creator)
+    if creator is not None:
+        creator_username = creator.username
+    audit.record(
+        actor_id=current_user.id,
+        action=ADMIN_AUDIT_ACTIONS.UTUB_VIEW,
+        target_type="Utub",
+        target_id=str(utub_id),
+    )
+    db.session.commit()
+    return render_template(
+        "admin_portal/utubs/detail.html",
+        is_admin_portal=True,
+        detail_utub=detail_utub,
+        creator_username=creator_username,
+    )
 
 
 @admin.route("/admin/db", methods=["GET"])

@@ -161,6 +161,7 @@ class ADMIN_PORTAL_STRINGS:
         "If the user is the sole member, the UTub will be deleted."
     )
     MOD_MEMBER_REMOVE_SUBMIT: str = "Remove"
+    MOD_MEMBER_REMOVE_CREATOR_NA: str = "Creator — remove via delete."
     MOD_URL_DELETE_LABEL: str = "Remove from UTub"
     MOD_URL_DELETE_CONFIRM_TITLE: str = "Remove URL from UTub?"
     MOD_URL_DELETE_CONFIRM_BODY: str = (
