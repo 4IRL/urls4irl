@@ -841,6 +841,57 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### GET /admin/system-operations
+
+| Layer           | Location                                                                                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_system_operations`                                                                                                                                                                 |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                            |
+| **Service**     | `render_template()` direct; audits `admin.system_ops.view` (`ADMIN_AUDIT_ACTIONS.SYSTEM_OPS_VIEW`, no target)                                                                                                     |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                                                                                                     |
+| **Template**    | `admin_portal/system_operations/index.html` (extends `admin_portal/base.html`; the six `.admin-ops-card` blocks moved verbatim off `health.html`; buttons `#AdminOpsMetricsFlushBtn`…`#AdminOpsShortUrlsSyncBtn`) |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` ops buttons; shared confirm-modal + AJAX controller)                                                                                     |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_system_operations_page.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_ops_actions_ui.py` (marker: `admin_ui`)                                                   |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.SYSTEM_OPERATIONS_PAGE`                                                                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `SYSTEM_OPS_VIEW` audit is the domain signal)                                                                              |
+
+---
+
+### GET /admin/utubs
+
+| Layer           | Location                                                                                                                                                                                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_utubs` (query params: `q`, `sort`, `dir`, `offset`)                                                                                                                                                                                                             |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                                                         |
+| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (reused DB-browser table service over the `Utubs` table: offset/limit pagination, column sort + substring search, safe cell formatting); audits `admin.utub.list` (`ADMIN_AUDIT_ACTIONS.UTUB_LIST`) with `{query, result_count}` metadata |
+| **Schema**      | None (request — `q`/`sort`/`dir`/`offset` optional query args) / None (response — server-rendered HTML grid; read-only list)                                                                                                                                                                   |
+| **Template**    | `admin_portal/utubs/index.html` (mirrors `admin_portal/db/table.html`: `#AdminUtubTableSearch` search form + sort links + `#AdminUtubTableGrid` grid or empty-state; each row's first cell links to `url_for('admin.admin_utub_detail', utub_id=…)`)                                           |
+| **JS Module**   | None (plain server-rendered form-submit page)                                                                                                                                                                                                                                                  |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                                                             |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.UTUBS_PAGE`                                                                                                                                                                                                                                          |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `UTUB_LIST` audit is the domain signal)                                                                                                                                                                 |
+
+---
+
+### GET /admin/utubs/\<int:utub_id>
+
+| Layer           | Location                                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_utub_detail` (404 on unknown utub id)                                                                                                                                                                                   |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                 |
+| **Service**     | `render_template()` direct (aggregates the UTub's own `members` + `utub_urls` relationships; creator username resolved via `Users.query.get`); audits `admin.utub.view` (`ADMIN_AUDIT_ACTIONS.UTUB_VIEW`, `target_type="Utub"`, `target_id=<utub_id>`) |
+| **Schema**      | None (request) / None (response — HTML page)                                                                                                                                                                                                           |
+| **Template**    | `admin_portal/utubs/detail.html` (info panel + Members table with `member-remove` + URLs table with `url-delete`/`url-purge`; lock/unlock + delete-utub action bar)                                                                                    |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` moderation buttons)                                                                                                                                                           |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                     |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.UTUB_DETAIL`                                                                                                                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `UTUB_VIEW` audit is the domain signal)                                                                                                                         |
+
+---
+
 ### POST /admin/ops/metrics-flush
 
 | Layer           | Location                                                                                                                                        |
@@ -849,7 +900,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
 | **Service**     | `backend/admin/ops_service.py:trigger_metrics_flush` — acquires flush lock, calls `run_flush`, audits result                                    |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="metrics-flush"`)                                              |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="metrics-flush"`)                             |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons; shared confirm-modal + AJAX controller)                       |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                            |
 | **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
@@ -866,7 +917,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
 | **Service**     | `backend/admin/ops_service.py:trigger_gauge_sample` — calls `run_sample`, stamps GAUGE_LAST_SUCCESS_KEY sentinel, audits result                 |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="gauge-sample"`)                                               |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="gauge-sample"`)                              |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                            |
 | **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
@@ -883,7 +934,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
 | **Service**     | `backend/admin/ops_service.py:trigger_audit_purge` — self-audits + commits BEFORE calling `run_purge` (window-only; never purge-all)            |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="audit-purge"`)                                                |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="audit-purge"`)                               |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                            |
 | **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
@@ -900,7 +951,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
 | **Service**     | `backend/admin/ops_service.py:trigger_verify_tables` — read-only `get_missing_tables()` check; never touches auto-repair or DROP SCHEMA path    |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="verify-tables"`)                                              |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="verify-tables"`)                             |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                            |
 | **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
@@ -917,7 +968,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
 | **Service**     | `backend/admin/ops_service.py:trigger_short_urls_sync` — calls `sync_short_url_domains_to_redis` via main Redis; 503 when REDIS_URI is absent   |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="short-urls-sync"`)                                            |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="short-urls-sync"`)                           |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                            |
 | **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
@@ -934,7 +985,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
 | **Service**     | `backend/admin/ops_service.py:trigger_backup` — sets the short-TTL `metrics:backup:trigger_requested` flag consumed by the workflow container's per-minute poller (`scripts/run_backup_if_requested.py`); idempotent while pending; 503 when metrics Redis is absent |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="backup-trigger"`; last-success card in `admin_portal/_health_snapshot.html`) |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="backup-trigger"`; last-success card in `admin_portal/_health_snapshot.html`) |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                            |
 | **Tests**       | `tests/integration/admin/test_admin_ops_actions.py`, `tests/integration/admin/test_backup_trigger_scripts.py` (marker: `admin`)                 |
@@ -951,7 +1002,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:lock_utub` — sets `isLocked=True`; idempotent (200 no-op if already locked); audits on real state change               |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
-| **Template**    | `admin_portal/users/detail.html` (Lock button in UTub memberships Moderation column)                                                                        |
+| **Template**    | `admin_portal/utubs/detail.html` (Lock button in the UTub-detail action bar)                                                                                |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
@@ -968,7 +1019,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:unlock_utub` — sets `isLocked=False`; idempotent (200 no-op if already unlocked); audits on real state change          |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
-| **Template**    | `admin_portal/users/detail.html` (Unlock button in UTub memberships Moderation column when UTub is locked)                                                  |
+| **Template**    | `admin_portal/utubs/detail.html` (Unlock button in the UTub-detail action bar when the UTub is locked)                                                      |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
@@ -985,7 +1036,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:delete_utub_admin` — deletes UTub (cascade removes members/URLs/tags); audits with utub name; 404 if not found         |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
-| **Template**    | `admin_portal/users/detail.html` (Delete UTub button in UTub memberships Moderation column)                                                                 |
+| **Template**    | `admin_portal/utubs/detail.html` (Delete UTub button in the UTub-detail action bar)                                                                         |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
@@ -1002,7 +1053,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                              |
 | **Service**     | `backend/admin/moderation_service.py:remove_member_admin` — removes member; if creator is removed, promotes CO_CREATOR or MEMBER; if sole member, deletes UTub; 404 if not found   |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                             |
-| **Template**    | `admin_portal/users/detail.html` (Remove Member button in UTub memberships Moderation column)                                                                                       |
+| **Template**    | `admin_portal/utubs/detail.html` (Remove Member button per non-creator row in the UTub-detail Members table)                                                                        |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                   |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                                |
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                         |
@@ -1019,7 +1070,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:delete_url_in_utub_admin` — removes Utub_Url_Tags then Utub_Urls row; leaves Urls canonical row intact; 404 if absent  |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
-| **Template**    | `admin_portal/db/row.html` (Remove from UTub button in UtubUrls row-detail moderation section)                                                              |
+| **Template**    | `admin_portal/utubs/detail.html` (Remove from UTub button per row in the UTub-detail URLs table)                                                            |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`)                                                                               |
@@ -1036,7 +1087,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:purge_url_globally` — removes all Utub_Url_Tags + Utub_Urls associations across every UTub; leaves the canonical Urls row; 404 if absent |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                     |
-| **Template**    | `admin_portal/db/row.html` (Purge from all UTubs button in Urls row-detail moderation section)                                                                              |
+| **Template**    | `admin_portal/utubs/detail.html` (Purge from all UTubs button per row in the UTub-detail URLs table)                                                                        |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                        |
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                 |
