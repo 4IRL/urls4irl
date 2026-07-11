@@ -462,6 +462,11 @@ details.admin-db-json > pre {
     margin-left: 4px;
 }
 
+.admin-muted {
+    color: var(--cardURLTextColor);
+    font-size: 0.9rem;
+}
+
 @media (max-width: 575.98px) {
     #AdminPortal {
         padding: 10px;

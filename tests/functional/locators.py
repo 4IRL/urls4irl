@@ -636,6 +636,17 @@ class AdminPortalLocators(GenericPageLocator):
     USER_DETAIL_MOD_DELETE_UTUB_BTN = '[data-admin-action="utub-delete"]'
     USER_DETAIL_MOD_REMOVE_MEMBER_BTN = '[data-admin-action="member-remove"]'
 
+    # User-detail Suspended row and account-lifecycle action panel
+    USER_DETAIL_SUSPENDED = "#AdminUserDetailSuspended"
+    USER_DETAIL_ACCOUNT_ACTIONS = "#AdminUserAccountActions"
+    USER_DETAIL_ACCOUNT_ACTIONS_HEADING = "#AdminUserAccountActionsHeading"
+    USER_DETAIL_SELF_ACTIONS_NOTE = "#AdminUserSelfActionsNote"
+    USER_DETAIL_ACCOUNT_SUSPEND_BTN = '[data-admin-action="user-suspend"]'
+    USER_DETAIL_ACCOUNT_UNSUSPEND_BTN = '[data-admin-action="user-unsuspend"]'
+    USER_DETAIL_ACCOUNT_KILL_SESSIONS_BTN = '[data-admin-action="user-kill-sessions"]'
+    USER_DETAIL_ACCOUNT_FORCE_RESET_BTN = '[data-admin-action="user-force-reset"]'
+    USER_DETAIL_ACCOUNT_FORCE_RESET_NA = "#AdminUserForceResetNA"
+
     # Admin-action modal alert banner (reason-required / server-error messages)
     ACTION_MODAL_ALERT_BANNER = "#HomeModalAlertBanner"
 

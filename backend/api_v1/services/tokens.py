@@ -167,15 +167,25 @@ def revoke_refresh_token_family(*, presented_token: str) -> bool:
     return True
 
 
+def mark_all_refresh_tokens_revoked_for_user(*, user_id: int) -> int:
+    """Mark every unrevoked refresh token for the user as revoked; never commits.
+
+    The caller owns the ``db.session.commit()``. Returns the count of rows
+    marked revoked so the caller can include it in audit metadata.
+    """
+    revoked_count: int = ApiRefreshTokens.query.filter(
+        ApiRefreshTokens.user_id == user_id,
+        ApiRefreshTokens.revoked_at.is_(None),
+    ).update({ApiRefreshTokens.revoked_at: utc_now()}, synchronize_session=False)
+    return revoked_count
+
+
 def revoke_all_refresh_tokens_for_user(*, user_id: int) -> int:
     """Log out everywhere: revoke every unrevoked refresh token for the user.
 
     Returns the number of rows revoked.
     """
-    revoked_count = ApiRefreshTokens.query.filter(
-        ApiRefreshTokens.user_id == user_id,
-        ApiRefreshTokens.revoked_at.is_(None),
-    ).update({ApiRefreshTokens.revoked_at: utc_now()}, synchronize_session=False)
+    revoked_count: int = mark_all_refresh_tokens_revoked_for_user(user_id=user_id)
     db.session.commit()
     return revoked_count
 

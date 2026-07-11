@@ -1045,6 +1045,70 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### POST /admin/users/\<int:target_user_id>/suspend
+
+| Layer           | Location                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_suspend`                                                                                                                                              |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                           |
+| **Service**     | `backend/admin/account_service.py:suspend_user` — sets `isSuspended=True`, stamps `sessionsInvalidatedAt`, revokes API tokens; idempotent (200 no-op if already suspended); guards: self-action 403, last-admin 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                          |
+| **Template**    | `admin_portal/users/detail.html` (Suspend button in Account Actions panel)                                                                                                                       |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                        |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                     |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/unsuspend
+
+| Layer           | Location                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_unsuspend`                                                                                                                          |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                         |
+| **Service**     | `backend/admin/account_service.py:unsuspend_user` — sets `isSuspended=False`; idempotent (200 no-op if not suspended); guard: self-action 403                                  |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                        |
+| **Template**    | `admin_portal/users/detail.html` (Unsuspend button in Account Actions panel)                                                                                                   |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                              |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                           |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                      |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                   |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/force-reset
+
+| Layer           | Location                                                                                                                                                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_force_reset`                                                                                                                                                                            |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                             |
+| **Service**     | `backend/admin/account_service.py:force_password_reset` — creates/resets `Forgot_Passwords` (bypasses rate limits), sends reset email, kills sessions + revokes tokens; 400 for OAuth-only; 502 on email failure (rollback); guard: self-action 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                             |
+| **Template**    | `admin_portal/users/detail.html` (Force Password Reset button in Account Actions panel)                                                                                                                                            |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                  |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                               |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                                                          |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                       |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/kill-sessions
+
+| Layer           | Location                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_kill_sessions`                                                                                                             |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                |
+| **Service**     | `backend/admin/account_service.py:kill_user_sessions` — stamps `sessionsInvalidatedAt`, revokes API tokens; NOT idempotent (always acts, always audits); guard: self-action 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`               |
+| **Template**    | `admin_portal/users/detail.html` (Kill Sessions button in Account Actions panel)                                                                                      |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                     |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                          |
+
+---
+
 ## Contact Blueprint
 
 ### GET /contact

@@ -1042,6 +1042,376 @@
         }
       }
     },
+    "/admin/users/{target_user_id}/suspend": {
+      "post": {
+        "operationId": "adminUserSuspend",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Suspend a user account, invalidating all web sessions and revoking API tokens. Idempotent: already-suspended users return a no-op 200 with no audit row. Guards: self-action 403; last-admin 403 when no other unsuspended admin exists.",
+        "parameters": [
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/users/{target_user_id}/unsuspend": {
+      "post": {
+        "operationId": "adminUserUnsuspend",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Lift a user's suspension, restoring their ability to log in. Idempotent: users who are not suspended return a no-op 200 with no audit row. Guard: self-action 403.",
+        "parameters": [
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/users/{target_user_id}/force-reset": {
+      "post": {
+        "operationId": "adminUserForceReset",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Force a password-reset email for a user and invalidate all their sessions. Bypasses rate limits entirely. Returns 400 for OAuth-only accounts (no local password). Returns 502 if the email send fails (no DB changes are committed). Guard: self-action 403.",
+        "parameters": [
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/users/{target_user_id}/kill-sessions": {
+      "post": {
+        "operationId": "adminUserKillSessions",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Invalidate all web sessions and revoke all API refresh tokens for a user. Not idempotent \u2014 always acts and always records an audit row. Guard: self-action 403.",
+        "parameters": [
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
     "/api/v1/me": {
       "get": {
         "operationId": "apiV1GetMe",
@@ -6390,13 +6760,16 @@
       },
       "AdminActionErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
           "SELF_ACTION_FORBIDDEN",
           "ALREADY_IN_TARGET_STATE",
-          "TARGET_NOT_FOUND"
+          "TARGET_NOT_FOUND",
+          "OAUTH_ONLY_ACCOUNT",
+          "LAST_ADMIN_FORBIDDEN",
+          "EMAIL_SEND_FAILURE"
         ],
         "description": "Error codes for AdminActionErrorCodes"
       },

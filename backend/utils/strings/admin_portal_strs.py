@@ -144,6 +144,43 @@ class ADMIN_PORTAL_STRINGS:
         "This action cannot be undone."
     )
     MOD_URL_PURGE_SUBMIT: str = "Purge"
+    # Account lifecycle section — user-detail action buttons (Jinja-only; not bridged to JS)
+    ACCOUNT_SECTION_TITLE: str = "Account Actions"
+    ACCOUNT_SELF_ACTIONS_NA: str = (
+        "Account actions are not available for your own account."
+    )
+    ACCOUNT_SUSPEND_LABEL: str = "Suspend"
+    ACCOUNT_SUSPEND_CONFIRM_TITLE: str = "Suspend Account?"
+    ACCOUNT_SUSPEND_CONFIRM_BODY: str = (
+        "Suspend this user account. This blocks the user from logging in and "
+        "immediately kills all active sessions and revokes all API tokens. "
+        "The account can be restored with Unsuspend."
+    )
+    ACCOUNT_SUSPEND_SUBMIT: str = "Suspend"
+    ACCOUNT_UNSUSPEND_LABEL: str = "Unsuspend"
+    ACCOUNT_UNSUSPEND_CONFIRM_TITLE: str = "Unsuspend Account?"
+    ACCOUNT_UNSUSPEND_CONFIRM_BODY: str = (
+        "Lift the suspension on this user account, restoring their ability to "
+        "log in. Existing sessions remain killed — the user will need to log in again."
+    )
+    ACCOUNT_UNSUSPEND_SUBMIT: str = "Unsuspend"
+    ACCOUNT_KILL_SESSIONS_LABEL: str = "Kill Sessions"
+    ACCOUNT_KILL_SESSIONS_CONFIRM_TITLE: str = "Kill Sessions?"
+    ACCOUNT_KILL_SESSIONS_CONFIRM_BODY: str = (
+        "Immediately invalidate all active web sessions and revoke all API "
+        "refresh tokens for this user. The user will be logged out everywhere "
+        "they are currently signed in."
+    )
+    ACCOUNT_KILL_SESSIONS_SUBMIT: str = "Kill Sessions"
+    ACCOUNT_FORCE_RESET_LABEL: str = "Force Password Reset"
+    ACCOUNT_FORCE_RESET_CONFIRM_TITLE: str = "Force Password Reset?"
+    ACCOUNT_FORCE_RESET_CONFIRM_BODY: str = (
+        "Send a password-reset email to this user and immediately log them out "
+        "everywhere. All active web sessions are killed and all API tokens are "
+        "revoked. This bypasses rate limits."
+    )
+    ACCOUNT_FORCE_RESET_SUBMIT: str = "Force Reset"
+    ACCOUNT_FORCE_RESET_NA: str = "OAuth-only account — no local password to reset."
 
 
 class ADMIN_ACTION_STRINGS:
@@ -207,6 +244,24 @@ class ADMIN_ACTION_STRINGS:
     )
     MOD_URL_DELETE_SUCCESS: str = "URL removed from UTub successfully."
     MOD_URL_PURGE_SUCCESS: str = "URL purged from {count} UTub(s)."
+    # Account lifecycle action backend response messages (not bridged to JS)
+    LAST_ADMIN_FORBIDDEN: str = (
+        "Cannot perform this action: no other active admin exists."
+    )
+    ACCOUNT_SUSPEND_SUCCESS: str = "User suspended successfully."
+    ACCOUNT_SUSPEND_NOOP: str = "User is already suspended. No change made."
+    ACCOUNT_UNSUSPEND_SUCCESS: str = "User unsuspended successfully."
+    ACCOUNT_UNSUSPEND_NOOP: str = "User is not suspended. No change made."
+    ACCOUNT_KILL_SESSIONS_SUCCESS: str = (
+        "Sessions killed. {count} API token(s) revoked."
+    )
+    ACCOUNT_FORCE_RESET_SUCCESS: str = "Password reset email sent and sessions killed."
+    ACCOUNT_FORCE_RESET_OAUTH_ONLY: str = (
+        "This account uses OAuth only and has no password to reset."
+    )
+    ACCOUNT_FORCE_RESET_EMAIL_FAILURE: str = (
+        "Password reset email failed to send. No changes were committed."
+    )
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -232,3 +287,8 @@ class ADMIN_AUDIT_ACTIONS:
     MEMBER_REMOVE: str = "admin.member.remove"
     URL_DELETE: str = "admin.url.delete"
     URL_PURGE: str = "admin.url.purge"
+    # Account lifecycle actions
+    USER_SUSPEND: str = "admin.user.suspend"
+    USER_UNSUSPEND: str = "admin.user.unsuspend"
+    USER_FORCE_RESET: str = "admin.user.force_reset"
+    USER_KILL_SESSIONS: str = "admin.user.kill_sessions"

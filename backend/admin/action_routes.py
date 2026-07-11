@@ -10,6 +10,12 @@ from __future__ import annotations
 
 from flask_login import current_user
 
+from backend.admin.account_service import (
+    force_password_reset,
+    kill_user_sessions,
+    suspend_user,
+    unsuspend_user,
+)
 from backend.admin.constants import AdminActionErrorCodes
 from backend.admin.moderation_service import (
     delete_url_in_utub_admin,
@@ -354,5 +360,133 @@ def admin_url_purge(
     return purge_url_globally(
         actor_id=current_user.id,
         url_id=url_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+_ACCOUNT_STATUS_CODES = {
+    200: AdminActionResponseSchema,
+    400: ErrorResponse,
+    401: ErrorResponse,
+    403: ErrorResponse,
+    404: ErrorResponse,
+}
+
+_ACCOUNT_FORCE_RESET_STATUS_CODES = {
+    200: AdminActionResponseSchema,
+    400: ErrorResponse,
+    401: ErrorResponse,
+    403: ErrorResponse,
+    404: ErrorResponse,
+    502: ErrorResponse,
+}
+
+
+@admin.route("/admin/users/<int:target_user_id>/suspend", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Suspend a user account, invalidating all web sessions and revoking API tokens. "
+        "Idempotent: already-suspended users return a no-op 200 with no audit row. "
+        "Guards: self-action 403; last-admin 403 when no other unsuspended admin exists."
+    ),
+    status_codes=_ACCOUNT_STATUS_CODES,
+)
+def admin_user_suspend(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Suspend a user account and kill all their sessions."""
+    return suspend_user(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/users/<int:target_user_id>/unsuspend", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Lift a user's suspension, restoring their ability to log in. "
+        "Idempotent: users who are not suspended return a no-op 200 with no audit row. "
+        "Guard: self-action 403."
+    ),
+    status_codes=_ACCOUNT_STATUS_CODES,
+)
+def admin_user_unsuspend(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Unsuspend a user account so they can log in again."""
+    return unsuspend_user(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/users/<int:target_user_id>/force-reset", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Force a password-reset email for a user and invalidate all their sessions. "
+        "Bypasses rate limits entirely. "
+        "Returns 400 for OAuth-only accounts (no local password). "
+        "Returns 502 if the email send fails (no DB changes are committed). "
+        "Guard: self-action 403."
+    ),
+    status_codes=_ACCOUNT_FORCE_RESET_STATUS_CODES,
+)
+def admin_user_force_reset(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Force-send a password-reset email and kill all user sessions."""
+    return force_password_reset(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/users/<int:target_user_id>/kill-sessions", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Invalidate all web sessions and revoke all API refresh tokens for a user. "
+        "Not idempotent — always acts and always records an audit row. "
+        "Guard: self-action 403."
+    ),
+    status_codes=_ACCOUNT_STATUS_CODES,
+)
+def admin_user_kill_sessions(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Kill all sessions and revoke all API tokens for a user."""
+    return kill_user_sessions(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
         reason=admin_reason_required_request.reason,
     )
