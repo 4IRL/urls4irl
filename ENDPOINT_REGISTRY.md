@@ -1109,6 +1109,70 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### POST /admin/users/\<int:target_user_id>/erase
+
+| Layer           | Location                                                                                                                                                                                                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_erase`                                                                                                                                                                                                                                                                                    |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                                                               |
+| **Service**     | `backend/admin/account_data_service.py:erase_user` — anonymizes username/email/password to tombstone identity, deletes OAuth/email-validation/forgot-password/contact-form child rows, kills sessions, resolves UTub memberships (solo deleted, created transferred, member-only removed); idempotent; guards: self-action 403, last-admin 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                                                              |
+| **Template**    | `admin_portal/users/detail.html` (Erase button in Account Actions panel)                                                                                                                                                                                                                                                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                                                    |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                                                                 |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                                                                                       |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                                                                                         |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/oauth/\<int:identity_id>/unlink
+
+| Layer           | Location                                                                                                                                                                                                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_oauth_unlink`                                                                                                                                                                                                                   |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                     |
+| **Service**     | `backend/admin/account_data_service.py:unlink_oauth_identity` — deletes the identity row; 403 when it is the last credential (no password + last OAuth identity); 404 when identity does not belong to the target user; guard: self-action 403                              |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                    |
+| **Template**    | `admin_portal/users/detail.html` (Unlink button per OAuth identity in Account Actions panel)                                                                                                                                                                               |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                          |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                       |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                               |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/email/verify
+
+| Layer           | Location                                                                                                                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_email_verify`                                                                                                                                                                         |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                           |
+| **Service**     | `backend/admin/account_data_service.py:mark_email_verified` — sets `emailValidated=True`, deletes `Email_Validations` row if present; idempotent (200 no-op if already verified); guard: self-action 403                         |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                          |
+| **Template**    | `admin_portal/users/detail.html` (Mark Verified button in Account Actions panel)                                                                                                                                                 |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                     |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/email/resend
+
+| Layer           | Location                                                                                                                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_email_resend`                                                                                                                                                                                                                                         |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                           |
+| **Service**     | `backend/admin/account_data_service.py:resend_verification_email` — creates/refreshes `Email_Validations` row (bypasses rate limits), sends confirmation email via `send_account_email_confirmation`; 200 no-op if already verified; 502 on email failure (rollback); guard: self-action 403     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                          |
+| **Template**    | `admin_portal/users/detail.html` (Resend Verification button in Account Actions panel)                                                                                                                                                                                                           |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                                                     |
+
+---
+
 ## Contact Blueprint
 
 ### GET /contact

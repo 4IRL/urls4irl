@@ -12,6 +12,7 @@ from backend.admin.audit_service import (
     query_audit_log,
 )
 from backend.admin.health_service import collect_health_snapshot
+from backend.admin.account_data_service import is_tombstoned
 from backend.admin.user_service import (
     DEFAULT_SEARCH_LIMIT,
     get_user_detail,
@@ -138,8 +139,10 @@ def admin_users_search() -> FlaskResponse:
 @admin.route("/admin/users/<int:user_id>", methods=["GET"])
 @admin_login_required
 def admin_user_detail(user_id: int) -> FlaskResponse:
-    """Read-only detail page for one user: metadata, role, email-validated
-    status, and UTub memberships. No mutating actions exist on this page."""
+    """Detail page for one user: metadata, role, email-validated status,
+    OAuth identities, and UTub memberships, plus the account-action and
+    moderation controls (each mutation POSTs to its own audited endpoint —
+    rendering this page itself mutates nothing)."""
     detail_user = get_user_detail(user_id=user_id)
     if detail_user is None:
         abort(404)
@@ -154,6 +157,7 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
         "admin_portal/users/detail.html",
         is_admin_portal=True,
         detail_user=detail_user,
+        is_erased=is_tombstoned(user=detail_user),
     )
 
 

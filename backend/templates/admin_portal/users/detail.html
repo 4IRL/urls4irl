@@ -17,6 +17,7 @@
             <tr><th>Created</th><td id="AdminUserDetailCreated">{{ detail_user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td></tr>
             <tr><th>OAuth Identities</th><td id="AdminUserDetailOauth">{{ detail_user.oauth_identities | length }}</td></tr>
             <tr><th>Local Password Set</th><td id="AdminUserDetailHasPassword">{{ 'yes' if detail_user.password is not none else 'no' }}</td></tr>
+            <tr><th>Erased</th><td id="AdminUserDetailErased">{{ 'yes' if is_erased else 'no' }}</td></tr>
         </tbody>
     </table>
 </div>
@@ -76,6 +77,91 @@
         </button>
         {% endif %}
     </div>
+    <div class="admin-mod-cell">
+        {% if is_erased %}
+        <span id="AdminUserErasedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASED_NA }}</span>
+        {% else %}
+        <button type="button"
+                class="btn btn-sm btn-danger admin-mod-btn"
+                data-admin-action="user-erase"
+                data-action-url="{{ url_for('admin.admin_user_erase', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_LABEL }}
+        </button>
+        {% endif %}
+        {% if detail_user.email_validated %}
+        <span id="AdminUserEmailVerifiedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFIED_NA }}</span>
+        {% else %}
+        <button type="button"
+                class="btn btn-sm btn-secondary admin-mod-btn"
+                data-admin-action="user-email-verify"
+                data-action-url="{{ url_for('admin.admin_user_email_verify', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_LABEL }}
+        </button>
+        <button type="button"
+                class="btn btn-sm btn-secondary admin-mod-btn"
+                data-admin-action="user-email-resend"
+                data-action-url="{{ url_for('admin.admin_user_email_resend', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_SUBMIT }}"
+                data-reason-required="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_LABEL }}
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+<div id="AdminUserOauthIdentities" class="admin-panel">
+    <h2 id="AdminUserOauthIdentitiesHeading">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_OAUTH_SECTION_TITLE }}</h2>
+    {% if detail_user.oauth_identities %}
+    <table id="AdminUserOauthTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Linked</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for identity in detail_user.oauth_identities %}
+            <tr>
+                <td>{{ identity.provider }}</td>
+                <td>{{ identity.linked_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+                <td class="admin-mod-cell">
+                    {% if detail_user.id != current_user.id %}
+                        {% if detail_user.password is none and detail_user.oauth_identities | length == 1 %}
+                        <span id="AdminUserUnlinkNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_NA }}</span>
+                        {% else %}
+                        <button type="button"
+                                class="btn btn-sm btn-danger admin-mod-btn"
+                                data-admin-action="oauth-unlink"
+                                data-action-url="{{ url_for('admin.admin_user_oauth_unlink', target_user_id=detail_user.id, identity_id=identity.id) }}"
+                                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_CONFIRM_TITLE }}"
+                                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_CONFIRM_BODY }}"
+                                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_SUBMIT }}"
+                                data-reason-required="true"
+                                data-reload-on-success="true">
+                            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_LABEL }}
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p id="AdminUserNoOauthIdentities">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_OAUTH_NONE }}</p>
     {% endif %}
 </div>
 <div id="AdminUserMemberships" class="admin-panel">

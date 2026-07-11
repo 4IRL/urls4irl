@@ -636,6 +636,8 @@ class AdminPortalLocators(GenericPageLocator):
     USER_DETAIL_MOD_DELETE_UTUB_BTN = '[data-admin-action="utub-delete"]'
     USER_DETAIL_MOD_REMOVE_MEMBER_BTN = '[data-admin-action="member-remove"]'
 
+    # User-detail info rows
+    USER_DETAIL_EMAIL_VALIDATED = "#AdminUserDetailEmailValidated"
     # User-detail Suspended row and account-lifecycle action panel
     USER_DETAIL_SUSPENDED = "#AdminUserDetailSuspended"
     USER_DETAIL_ACCOUNT_ACTIONS = "#AdminUserAccountActions"
@@ -646,6 +648,19 @@ class AdminPortalLocators(GenericPageLocator):
     USER_DETAIL_ACCOUNT_KILL_SESSIONS_BTN = '[data-admin-action="user-kill-sessions"]'
     USER_DETAIL_ACCOUNT_FORCE_RESET_BTN = '[data-admin-action="user-force-reset"]'
     USER_DETAIL_ACCOUNT_FORCE_RESET_NA = "#AdminUserForceResetNA"
+    # Account data actions (erase / OAuth unlink / email verification)
+    USER_DETAIL_ERASED = "#AdminUserDetailErased"
+    USER_DETAIL_ACCOUNT_ERASE_BTN = '[data-admin-action="user-erase"]'
+    USER_DETAIL_ACCOUNT_ERASED_NA = "#AdminUserErasedNA"
+    USER_DETAIL_ACCOUNT_EMAIL_VERIFY_BTN = '[data-admin-action="user-email-verify"]'
+    USER_DETAIL_ACCOUNT_EMAIL_VERIFIED_NA = "#AdminUserEmailVerifiedNA"
+    USER_DETAIL_ACCOUNT_EMAIL_RESEND_BTN = '[data-admin-action="user-email-resend"]'
+    # OAuth identities panel
+    USER_DETAIL_OAUTH_PANEL = "#AdminUserOauthIdentities"
+    USER_DETAIL_OAUTH_TABLE = "#AdminUserOauthTable"
+    USER_DETAIL_OAUTH_UNLINK_BTN = '[data-admin-action="oauth-unlink"]'
+    USER_DETAIL_OAUTH_UNLINK_NA = "#AdminUserUnlinkNA"
+    USER_DETAIL_NO_OAUTH = "#AdminUserNoOauthIdentities"
 
     # Admin-action modal alert banner (reason-required / server-error messages)
     ACTION_MODAL_ALERT_BANNER = "#HomeModalAlertBanner"

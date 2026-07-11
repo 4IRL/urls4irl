@@ -10,6 +10,12 @@ from __future__ import annotations
 
 from flask_login import current_user
 
+from backend.admin.account_data_service import (
+    erase_user,
+    mark_email_verified,
+    resend_verification_email,
+    unlink_oauth_identity,
+)
 from backend.admin.account_service import (
     force_password_reset,
     kill_user_sessions,
@@ -486,6 +492,126 @@ def admin_user_kill_sessions(
 ) -> FlaskResponse:
     """Kill all sessions and revoke all API tokens for a user."""
     return kill_user_sessions(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/users/<int:target_user_id>/erase", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Erase a user account (anonymize-in-place): scrub username/email/"
+        "password to a tombstone identity, delete OAuth/email-validation/"
+        "forgot-password/contact-form child rows, kill all sessions, and "
+        "resolve UTub memberships (solo UTubs deleted, created UTubs "
+        "transferred, other memberships removed). Idempotent for an "
+        "already-erased user. Guards: self-action 403, last-admin 403."
+    ),
+    status_codes=_ACCOUNT_STATUS_CODES,
+)
+def admin_user_erase(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Erase a user account: anonymize-in-place with membership resolution."""
+    return erase_user(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route(
+    "/admin/users/<int:target_user_id>/oauth/<int:identity_id>/unlink",
+    methods=["POST"],
+)
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Unlink a specific OAuth identity from a user account. "
+        "Returns 403 when the identity is the account's only login method "
+        "(no local password and it is the last OAuth identity). "
+        "Returns 404 when the identity does not belong to the target user. "
+        "Guard: self-action 403."
+    ),
+    status_codes=_ACCOUNT_STATUS_CODES,
+)
+def admin_user_oauth_unlink(
+    target_user_id: int,
+    identity_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Unlink an OAuth identity from a user account."""
+    return unlink_oauth_identity(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        identity_id=identity_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/users/<int:target_user_id>/email/verify", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Mark a user's email address as verified and delete any pending "
+        "Email_Validations row. Idempotent: already-verified users return a "
+        "no-op 200 with no audit row. Guard: self-action 403."
+    ),
+    status_codes=_ACCOUNT_STATUS_CODES,
+)
+def admin_user_email_verify(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Mark a user's email as verified and remove the pending validation row."""
+    return mark_email_verified(
+        actor_id=current_user.id,
+        target_user_id=target_user_id,
+        reason=admin_reason_required_request.reason,
+    )
+
+
+@admin.route("/admin/users/<int:target_user_id>/email/resend", methods=["POST"])
+@admin_required
+@api_route(
+    request_schema=AdminReasonRequiredRequest,
+    response_schema=AdminActionResponseSchema,
+    error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
+    error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
+    tags=[OPEN_API.ADMIN],
+    description=(
+        "Resend the email-verification link for an unverified user. Bypasses "
+        "all rate limits: creates or refreshes the Email_Validations row "
+        "(resets attempt counters, generates a fresh token). Returns 200 no-op "
+        "when the user is already verified. Returns 502 if the email send fails "
+        "(all DB changes rolled back). Guard: self-action 403."
+    ),
+    status_codes=_ACCOUNT_FORCE_RESET_STATUS_CODES,
+)
+def admin_user_email_resend(
+    target_user_id: int,
+    admin_reason_required_request: AdminReasonRequiredRequest,
+) -> FlaskResponse:
+    """Resend the email-verification link and reset rate-limit counters."""
+    return resend_verification_email(
         actor_id=current_user.id,
         target_user_id=target_user_id,
         reason=admin_reason_required_request.reason,

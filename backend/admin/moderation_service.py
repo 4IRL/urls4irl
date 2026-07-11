@@ -28,6 +28,32 @@ from backend.utils.strings.admin_portal_strs import (
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
 
+def select_ownership_transfer_target(
+    *, other_members: list[Utub_Members]
+) -> Utub_Members:
+    """Pick the deterministic new owner for a UTub whose creator is departing.
+
+    Prefers the CO_CREATOR with the lowest user id; falls back to the lowest
+    user id among all remaining members. Shared by admin member removal and
+    account erasure so both resolve creator departure identically.
+
+    Args:
+        other_members: Remaining memberships, excluding the departing creator.
+            Must be non-empty.
+
+    Returns:
+        The membership row of the chosen new owner.
+    """
+    co_creators: list[Utub_Members] = [
+        member
+        for member in other_members
+        if member.member_role == Member_Role.CO_CREATOR
+    ]
+    if co_creators:
+        return min(co_creators, key=lambda member: member.user_id)
+    return min(other_members, key=lambda member: member.user_id)
+
+
 def lock_utub(*, actor_id: int, utub_id: int, reason: str) -> FlaskResponse:
     """Lock a UTub, preventing new content from being added.
 
@@ -222,19 +248,9 @@ def remove_member_admin(
         ).to_response()
 
     # Case b: creator with other members — transfer ownership.
-    # Prefer CO_CREATOR with the lowest user_id, else lowest user_id among MEMBERs.
-    co_creators: list[Utub_Members] = [
-        member
-        for member in other_members
-        if member.member_role == Member_Role.CO_CREATOR
-    ]
-    if co_creators:
-        new_owner_membership: Utub_Members = min(
-            co_creators, key=lambda member: member.user_id
-        )
-    else:
-        new_owner_membership = min(other_members, key=lambda member: member.user_id)
-
+    new_owner_membership: Utub_Members = select_ownership_transfer_target(
+        other_members=other_members
+    )
     new_owner_id: int = new_owner_membership.user_id
     utub.utub_creator = new_owner_id
     new_owner_membership.member_role = Member_Role.CREATOR

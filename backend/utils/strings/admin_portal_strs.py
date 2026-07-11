@@ -181,6 +181,44 @@ class ADMIN_PORTAL_STRINGS:
     )
     ACCOUNT_FORCE_RESET_SUBMIT: str = "Force Reset"
     ACCOUNT_FORCE_RESET_NA: str = "OAuth-only account — no local password to reset."
+    # Account data actions — erase, email-verify, email-resend (Jinja-only; not bridged to JS)
+    ACCOUNT_ERASE_LABEL: str = "Erase Account"
+    ACCOUNT_ERASE_CONFIRM_TITLE: str = "Erase Account?"
+    ACCOUNT_ERASE_CONFIRM_BODY: str = (
+        "PII is scrubbed immediately from the live database: username, email, and "
+        "password are replaced with anonymized tombstone values. "
+        "The action cannot be undone. "
+        "Audit rows and backups retain the original data for up to 90 days until they age out."
+    )
+    ACCOUNT_ERASE_SUBMIT: str = "Erase"
+    ACCOUNT_ERASED_NA: str = "Account already erased."
+    ACCOUNT_EMAIL_VERIFY_LABEL: str = "Mark Email Verified"
+    ACCOUNT_EMAIL_VERIFY_CONFIRM_TITLE: str = "Mark Email Verified?"
+    ACCOUNT_EMAIL_VERIFY_CONFIRM_BODY: str = (
+        "Mark this user's email address as verified and delete any pending "
+        "email-validation row. Idempotent: already-verified users are unaffected."
+    )
+    ACCOUNT_EMAIL_VERIFY_SUBMIT: str = "Verify"
+    ACCOUNT_EMAIL_VERIFIED_NA: str = "Email already verified."
+    ACCOUNT_EMAIL_RESEND_LABEL: str = "Resend Verification Email"
+    ACCOUNT_EMAIL_RESEND_CONFIRM_TITLE: str = "Resend Verification Email?"
+    ACCOUNT_EMAIL_RESEND_CONFIRM_BODY: str = (
+        "Resend the email-verification link for this user, bypassing rate limits. "
+        "Creates or resets the pending validation row with a fresh token."
+    )
+    ACCOUNT_EMAIL_RESEND_SUBMIT: str = "Resend"
+    # OAuth identities panel (Jinja-only; not bridged to JS)
+    ACCOUNT_OAUTH_SECTION_TITLE: str = "OAuth Identities"
+    ACCOUNT_OAUTH_NONE: str = "No OAuth identities linked."
+    ACCOUNT_UNLINK_LABEL: str = "Unlink"
+    ACCOUNT_UNLINK_CONFIRM_TITLE: str = "Unlink OAuth Identity?"
+    ACCOUNT_UNLINK_CONFIRM_BODY: str = (
+        "Remove this OAuth identity from the account. "
+        "The user will no longer be able to sign in with this provider. "
+        "Cannot unlink the last login method."
+    )
+    ACCOUNT_UNLINK_SUBMIT: str = "Unlink"
+    ACCOUNT_UNLINK_NA: str = "Last login method — cannot unlink."
 
 
 class ADMIN_ACTION_STRINGS:
@@ -262,6 +300,24 @@ class ADMIN_ACTION_STRINGS:
     ACCOUNT_FORCE_RESET_EMAIL_FAILURE: str = (
         "Password reset email failed to send. No changes were committed."
     )
+    # Account data action backend response messages (not bridged to JS)
+    ACCOUNT_ERASE_SUCCESS: str = (
+        "User erased. PII scrubbed, sessions killed, memberships resolved."
+    )
+    ACCOUNT_ERASE_NOOP: str = "User is already erased. No change made."
+    ACCOUNT_UNLINK_SUCCESS: str = "OAuth identity ({provider}) unlinked."
+    ACCOUNT_UNLINK_LAST_CREDENTIAL: str = (
+        "Cannot unlink: this is the account's only login method."
+    )
+    ACCOUNT_EMAIL_VERIFY_SUCCESS: str = "Email marked as verified."
+    ACCOUNT_EMAIL_VERIFY_NOOP: str = "Email is already verified. No change made."
+    ACCOUNT_EMAIL_RESEND_SUCCESS: str = "Verification email sent."
+    ACCOUNT_EMAIL_RESEND_ALREADY_VERIFIED: str = (
+        "Email is already verified. No email sent."
+    )
+    ACCOUNT_EMAIL_RESEND_FAILURE: str = (
+        "Verification email failed to send. No changes were committed."
+    )
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -292,3 +348,8 @@ class ADMIN_AUDIT_ACTIONS:
     USER_UNSUSPEND: str = "admin.user.unsuspend"
     USER_FORCE_RESET: str = "admin.user.force_reset"
     USER_KILL_SESSIONS: str = "admin.user.kill_sessions"
+    # Account data actions
+    USER_ERASE: str = "admin.user.erase"
+    OAUTH_UNLINK: str = "admin.user.oauth_unlink"
+    EMAIL_VERIFY: str = "admin.user.email_verify"
+    EMAIL_RESEND: str = "admin.user.email_resend"
