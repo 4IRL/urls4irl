@@ -318,6 +318,9 @@ class ADMIN_ACTION_STRINGS:
     ACCOUNT_EMAIL_RESEND_FAILURE: str = (
         "Verification email failed to send. No changes were committed."
     )
+    ACCOUNT_TARGET_ERASED: str = (
+        "This account has been erased. Email actions are not available."
+    )
 
 
 class ADMIN_AUDIT_ACTIONS:

@@ -13,3 +13,4 @@ class AdminActionErrorCodes(IntEnum):
     LAST_ADMIN_FORBIDDEN = 7
     EMAIL_SEND_FAILURE = 8
     LAST_CREDENTIAL_FORBIDDEN = 9
+    TARGET_ERASED = 10

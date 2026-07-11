@@ -7138,7 +7138,7 @@
       },
       "AdminActionErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -7148,7 +7148,8 @@
           "OAUTH_ONLY_ACCOUNT",
           "LAST_ADMIN_FORBIDDEN",
           "EMAIL_SEND_FAILURE",
-          "LAST_CREDENTIAL_FORBIDDEN"
+          "LAST_CREDENTIAL_FORBIDDEN",
+          "TARGET_ERASED"
         ],
         "description": "Error codes for AdminActionErrorCodes"
       },

@@ -93,6 +93,7 @@
             {{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_LABEL }}
         </button>
         {% endif %}
+        {% if not is_erased %}
         {% if detail_user.email_validated %}
         <span id="AdminUserEmailVerifiedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFIED_NA }}</span>
         {% else %}
@@ -117,6 +118,7 @@
                 data-reason-required="true">
             {{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_LABEL }}
         </button>
+        {% endif %}
         {% endif %}
     </div>
     {% endif %}

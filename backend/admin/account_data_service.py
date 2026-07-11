@@ -304,7 +304,7 @@ def mark_email_verified(
 
     Returns:
         200 JSON envelope on success or no-op.
-        403 when actor targets themselves.
+        403 when actor targets themselves or the target account is erased.
         404 when the target user does not exist.
     """
     self_action_error: FlaskResponse | None = reject_self_action(
@@ -319,6 +319,13 @@ def mark_email_verified(
             message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
             error_code=AdminActionErrorCodes.TARGET_NOT_FOUND,
             status_code=404,
+        )
+
+    if is_tombstoned(user=target_user):
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.ACCOUNT_TARGET_ERASED,
+            error_code=AdminActionErrorCodes.TARGET_ERASED,
+            status_code=403,
         )
 
     if target_user.email_validated:
@@ -368,7 +375,7 @@ def resend_verification_email(
 
     Returns:
         200 JSON envelope on success or already-verified no-op.
-        403 when actor targets themselves.
+        403 when actor targets themselves or the target account is erased.
         404 when the target user does not exist.
         502 when the verification email fails to send (changes rolled back).
     """
@@ -384,6 +391,13 @@ def resend_verification_email(
             message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
             error_code=AdminActionErrorCodes.TARGET_NOT_FOUND,
             status_code=404,
+        )
+
+    if is_tombstoned(user=target_user):
+        return build_message_error_response(
+            message=ADMIN_ACTION_STRINGS.ACCOUNT_TARGET_ERASED,
+            error_code=AdminActionErrorCodes.TARGET_ERASED,
+            status_code=403,
         )
 
     if target_user.email_validated:
@@ -406,7 +420,8 @@ def resend_verification_email(
         target_user.email_confirm = email_validation_row
         db.session.add(email_validation_row)
 
-    # Flush so the Email_Validations row gets an ID if new, before building the URL.
+    # Flush pending row/token changes so the email-send failure path below can
+    # discard them with a clean rollback boundary.
     db.session.flush()
 
     confirmation_url: str = url_for(

@@ -458,6 +458,10 @@ details.admin-db-json > pre {
     white-space: nowrap;
 }
 
+.admin-mod-cell + .admin-mod-cell {
+    margin-top: 8px;
+}
+
 .admin-mod-btn + .admin-mod-btn {
     margin-left: 4px;
 }

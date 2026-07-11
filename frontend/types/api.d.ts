@@ -1360,7 +1360,7 @@ export interface components {
      * @description Error codes for AdminActionErrorCodes
      * @enum {integer}
      */
-    AdminActionErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+    AdminActionErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
     AdminReasonRequiredRequest: {
       /** @description Required reason for this admin action (max 500 characters). Whitespace-only values are rejected. */
       reason: string;

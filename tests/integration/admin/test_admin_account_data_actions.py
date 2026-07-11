@@ -20,6 +20,7 @@ from backend import db
 from backend.admin.account_data_service import (
     TOMBSTONE_EMAIL_DOMAIN,
     TOMBSTONE_USERNAME_PREFIX,
+    erase_user,
 )
 from backend.admin.constants import AdminActionErrorCodes
 from backend.api_v1.services.tokens import issue_refresh_token
@@ -29,7 +30,7 @@ from backend.models.audit_log import AuditLog
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.email_validations import Email_Validations
 from backend.models.user_oauth_identities import UserOAuthIdentity
-from backend.models.users import Users
+from backend.models.users import User_Role, Users
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utubs import Utubs
 from backend.utils.strings.admin_portal_strs import (
@@ -457,6 +458,81 @@ def test_admin_erase_user_idempotent_noop(
 
     with app.app_context():
         assert AuditLog.query.count() == 1
+
+
+# ---------------------------------------------------------------------------
+# ERASURE: service-level last-admin guard — erasing the only admin is blocked
+# ---------------------------------------------------------------------------
+
+
+def test_service_last_admin_guard_blocks_erase_of_only_admin(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN one admin who is the only active (non-suspended) admin
+    WHEN erase_user is called directly (bypassing HTTP) with a different actor_id
+    THEN service returns 403 with LAST_ADMIN_FORBIDDEN message and error code;
+         no audit row; the admin is NOT tombstoned.
+
+    GIVEN a second active admin is then added
+    WHEN erase_user is called again with the same arguments
+    THEN service returns 200 and the target admin is tombstoned.
+
+    The guard is unreachable over HTTP for erase (the acting admin is always a
+    distinct active admin, so the target is never the last one), matching the
+    suspend guard — hence the direct service-level call with a fake actor id.
+    """
+    _, _, admin_user, app = login_admin_user_with_register
+    fake_actor_id: int = 99999  # bypasses self-action check; does not need to exist
+
+    # Only one admin — guard must block.
+    with app.app_context():
+        response_single_admin = erase_user(
+            actor_id=fake_actor_id,
+            target_user_id=admin_user.id,
+            reason=_MOCK_REASON,
+        )
+
+    assert response_single_admin[1] == 403
+    blocked_body = response_single_admin[0].get_json()
+    assert blocked_body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert blocked_body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.LAST_ADMIN_FORBIDDEN
+    assert blocked_body[STD_JSON.ERROR_CODE] == int(
+        AdminActionErrorCodes.LAST_ADMIN_FORBIDDEN
+    )
+
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+        untouched_admin: Users = Users.query.get(admin_user.id)
+        assert untouched_admin.username == admin_user.username
+
+    # Add a second active admin — guard must now pass and the erase completes.
+    with app.app_context():
+        second_admin = Users(
+            username="second_admin_p7",
+            email="second_admin_p7@test.com",
+            plaintext_password=_TARGET_PLAINTEXT_PASSWORD,
+        )
+        second_admin.role = User_Role.ADMIN
+        second_admin.email_validated = True
+        db.session.add(second_admin)
+        db.session.commit()
+
+    with app.app_context():
+        response_two_admins = erase_user(
+            actor_id=fake_actor_id,
+            target_user_id=admin_user.id,
+            reason=_MOCK_REASON,
+        )
+
+    assert response_two_admins[1] == 200
+    passed_body = response_two_admins[0].get_json()
+    assert passed_body[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert passed_body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.ACCOUNT_ERASE_SUCCESS
+
+    with app.app_context():
+        erased_admin: Users = Users.query.get(admin_user.id)
+        assert erased_admin.username == f"{TOMBSTONE_USERNAME_PREFIX}{admin_user.id}"
 
 
 # ---------------------------------------------------------------------------
@@ -905,6 +981,53 @@ def test_admin_email_resend_already_verified_noop(
 
     with app.app_context():
         assert AuditLog.query.count() == 0
+
+
+# ---------------------------------------------------------------------------
+# EMAIL ACTIONS: erased (tombstoned) target returns 403, no audit, no change
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("email_url_template", [_EMAIL_VERIFY_URL, _EMAIL_RESEND_URL])
+def test_admin_email_actions_erased_target_return_403(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    email_url_template: str,
+) -> None:
+    """
+    GIVEN an erased (tombstoned) target user, whose email_validated was reset to
+          False by the erasure
+    WHEN POST /admin/users/<id>/email/verify or /email/resend
+    THEN 403 with TARGET_ERASED error code; only the erase audit row exists;
+         the tombstone stays unverified and no Email_Validations row appears.
+    """
+    client, csrf, _, app = login_admin_user_with_register
+    target = _seed_target_user_with_password(app)
+
+    erase_response = _post_account(
+        client, _ERASE_URL.format(target_user_id=target.id), csrf
+    )
+    assert erase_response.status_code == 200
+
+    with app.app_context():
+        erased_target: Users = Users.query.get(target.id)
+        assert not erased_target.email_validated
+        assert AuditLog.query.count() == 1
+
+    response = _post_account(
+        client, email_url_template.format(target_user_id=target.id), csrf
+    )
+
+    assert response.status_code == 403
+    body = response.get_json()
+    assert body[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert body[STD_JSON.MESSAGE] == ADMIN_ACTION_STRINGS.ACCOUNT_TARGET_ERASED
+    assert body[STD_JSON.ERROR_CODE] == int(AdminActionErrorCodes.TARGET_ERASED)
+
+    with app.app_context():
+        assert AuditLog.query.count() == 1
+        refreshed_target: Users = Users.query.get(target.id)
+        assert not refreshed_target.email_validated
+        assert Email_Validations.query.filter_by(user_id=target.id).first() is None
 
 
 # ---------------------------------------------------------------------------
