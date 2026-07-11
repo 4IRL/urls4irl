@@ -485,6 +485,9 @@ def test_service_last_admin_guard_blocks_erase_of_only_admin(
     _, _, admin_user, app = login_admin_user_with_register
     fake_actor_id: int = 99999  # bypasses self-action check; does not need to exist
 
+    with app.app_context():
+        assert AuditLog.query.count() == 0
+
     # Only one admin — guard must block.
     with app.app_context():
         response_single_admin = erase_user(
