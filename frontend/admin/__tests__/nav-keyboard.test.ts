@@ -17,8 +17,10 @@ const NAV_HTML = `
     <ul class="admin-nav-list">
       <li><a id="AdminNavDashboard" class="admin-nav-link" href="/admin">Dashboard</a></li>
       <li><a id="AdminNavHealth" class="admin-nav-link active" href="/admin/health">Health</a></li>
+      <li><a id="AdminNavSystemOps" class="admin-nav-link" href="/admin/system-operations">System Operations</a></li>
+      <li><a id="AdminNavUsers" class="admin-nav-link" href="/admin/users">User Actions</a></li>
+      <li><a id="AdminNavUtubActions" class="admin-nav-link" href="/admin/utubs">UTub Actions</a></li>
       <li><a id="AdminNavDbBrowser" class="admin-nav-link" href="/admin/db">DB</a></li>
-      <li><a id="AdminNavUsers" class="admin-nav-link" href="/admin/users">Users</a></li>
       <li><a id="AdminNavAuditLog" class="admin-nav-link" href="/admin/audit-log">Audit</a></li>
       <li><a id="AdminNavMetrics" class="admin-nav-link" href="/admin/metrics">Metrics</a></li>
     </ul>
@@ -56,8 +58,8 @@ describe("admin nav keyboard", () => {
     link("AdminNavHealth").focus();
     press({ id: "AdminNavHealth", key: "ArrowRight" });
 
-    expect(document.activeElement).toBe(link("AdminNavDbBrowser"));
-    expect(link("AdminNavDbBrowser").getAttribute("tabindex")).toBe("0");
+    expect(document.activeElement).toBe(link("AdminNavSystemOps"));
+    expect(link("AdminNavSystemOps").getAttribute("tabindex")).toBe("0");
     expect(link("AdminNavHealth").getAttribute("tabindex")).toBe("-1");
   });
 

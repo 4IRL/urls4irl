@@ -654,13 +654,10 @@ class AdminPortalLocators(GenericPageLocator):
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
+    # Read-only UTub memberships list (moderation buttons relocated to UTub-detail)
     USER_DETAIL_MEMBERSHIPS_TABLE = "#AdminUserMembershipsTable"
+    USER_DETAIL_NO_MEMBERSHIPS = "#AdminUserNoMemberships"
     USER_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
-    # Moderation controls on the user-detail page (row-scoped by data-admin-action value)
-    USER_DETAIL_MOD_LOCK_BTN = '[data-admin-action="utub-lock"]'
-    USER_DETAIL_MOD_UNLOCK_BTN = '[data-admin-action="utub-unlock"]'
-    USER_DETAIL_MOD_DELETE_UTUB_BTN = '[data-admin-action="utub-delete"]'
-    USER_DETAIL_MOD_REMOVE_MEMBER_BTN = '[data-admin-action="member-remove"]'
 
     # User-detail info rows
     USER_DETAIL_EMAIL_VALIDATED = "#AdminUserDetailEmailValidated"
