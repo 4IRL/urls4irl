@@ -4,6 +4,91 @@
  */
 
 export interface paths {
+  "/admin/ops/metrics-flush": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Trigger an immediate Redis-to-Postgres metrics counter flush */
+    post: operations["adminOpsMetricsFlush"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/ops/gauge-sample": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Trigger an immediate gauge sample run for all registered gauges */
+    post: operations["adminOpsGaugeSample"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/ops/audit-purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Run the audit-log retention purge (window-only, never purge-all). The purge trigger itself is always recorded in the audit log first. */
+    post: operations["adminOpsAuditPurge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/ops/verify-tables": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Check for missing database tables (read-only). Never triggers the DROP SCHEMA auto-repair path. */
+    post: operations["adminOpsVerifyTables"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/ops/short-urls-sync": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Regenerate the short-URL domain Redis set from the canonical GitHub list */
+    post: operations["adminOpsShortUrlsSync"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/me": {
     parameters: {
       query?: never;
@@ -960,16 +1045,27 @@ export interface components {
       /** @description Human-readable response message, if applicable */
       message?: string;
     };
-    /** @description Authenticated user's profile for the mobile /api/v1 surface. */
-    ApiUserProfileSchema: {
-      /** @description Unique user ID */
-      id: number;
-      /** @description Username of the user */
-      username: string;
-      /** @description Email address of the user */
-      email: string;
-      /** @description Whether the user's email address has been validated */
-      emailValidated: boolean;
+    AdminActionRequest: {
+      /**
+       * @description Optional reason for this admin action (max 500 characters). Empty or whitespace-only strings are treated as no reason provided.
+       * @default null
+       */
+      reason: string | null;
+    };
+    /** @description Envelope returned by every admin ops-action endpoint on success. */
+    AdminOpsActionResponseSchema: {
+      /**
+       * @description Response status, always Success
+       * @constant
+       */
+      status: "Success";
+      /** @description Human-readable summary of the operation result */
+      message: string;
+      /**
+       * @description Rows or items affected by the operation, when applicable
+       * @default null
+       */
+      count: number | null;
     };
     ErrorResponse: {
       /**
@@ -1001,6 +1097,25 @@ export interface components {
        * @default null
        */
       urlString: string | null;
+    };
+    ErrorResponse_AdminActionErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["AdminActionErrorCodes"];
+    };
+    /**
+     * @description Error codes for AdminActionErrorCodes
+     * @enum {integer}
+     */
+    AdminActionErrorCodes: 1 | 2 | 3;
+    /** @description Authenticated user's profile for the mobile /api/v1 surface. */
+    ApiUserProfileSchema: {
+      /** @description Unique user ID */
+      id: number;
+      /** @description Username of the user */
+      username: string;
+      /** @description Email address of the user */
+      email: string;
+      /** @description Whether the user's email address has been validated */
+      emailValidated: boolean;
     };
     /**
      * @description Mobile /api/v1 login body — identical fields/validation to the web
@@ -2113,6 +2228,351 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  adminOpsMetricsFlush: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminActionRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Service unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminOpsGaugeSample: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminActionRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Service unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminOpsAuditPurge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminActionRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Service unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminOpsVerifyTables: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminActionRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Service unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminOpsShortUrlsSync: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminActionRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Service unavailable */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   apiV1GetMe: {
     parameters: {
       query?: never;

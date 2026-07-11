@@ -82,6 +82,7 @@ COPY --chown=u4i-host:u4i-host-group docker/startup-flask.sh ./
 COPY --chown=u4i-host:u4i-host-group run.py ./
 COPY --chown=u4i-host:u4i-host-group backend/ ./backend/
 COPY --chown=u4i-host:u4i-host-group migrations/ ./migrations/
+COPY --chown=u4i-host:u4i-host-group scripts/ ./scripts/
 
 # Copy built frontend assets from frontend-builder stage
 COPY --from=frontend-builder --chown=u4i-host:u4i-host-group /build/backend/static/dist/ ./backend/static/dist/

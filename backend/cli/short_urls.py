@@ -1,19 +1,12 @@
-import requests
+import redis
 
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
-import redis
-from redis.client import Redis
 
+from backend.utils.short_urls import sync_short_url_domains_to_redis
 from backend.utils.strings.config_strs import CONFIG_ENVS as ENV
-from backend.utils.strings.url_validation_strs import SHORT_URLS
-from backend.utils.strings.url_validation_strs import CUSTOM_SHORT_URLS
 
 HELP_SUMMARY_SHORT_URL = """Add list of short URL domains to redis."""
-SHORT_URL_DOMAINS_LIST = (
-    "https://raw.githubusercontent.com/PeterDaveHello/url-shorteners/master/list"
-)
-
 
 short_urls_cli = AppGroup(
     "shorturls",
@@ -31,40 +24,17 @@ def add_short_url_domains_to_redis():
             print("No valid Redis URI provided, exiting here.")
             return
 
-    try:
-        response = requests.get(SHORT_URL_DOMAINS_LIST, timeout=10)
-
-        short_urls_raw = response.content
-        if not short_urls_raw:
-            print("Unable to parse content of response.")
-            return
-
-        short_urls = short_urls_raw.splitlines()
-        if not short_urls or len(short_urls) < 11:
-            print("No content found with splitlines when parsing short URL domains.")
-            return
-
-        # Remove title block from list
-        short_urls = short_urls[11:]
-
-        short_urls_strs = [str(val.decode()) for val in short_urls] + [
-            short for short in CUSTOM_SHORT_URLS
-        ]
-
-        redis_client: Redis = redis.Redis.from_url(url=redis_uri)  # type: ignore
-        added = redis_client.sadd(SHORT_URLS, *short_urls_strs)
-        if added == 0:
-            print("No new domains added.")
-            return
-
-        print(f"Added {added} new short URL domains to Redis.")
+    redis_client = redis.Redis.from_url(url=redis_uri)  # type: ignore[arg-type]
+    added_count = sync_short_url_domains_to_redis(redis_client=redis_client)
+    if added_count is None:
+        print("Unable to perform request to get short URL domains.")
         return
 
-    except requests.RequestException:
-        print("Unable to perform request to get short URL domains.")
+    if added_count == 0:
+        print("No new domains added.")
+        return
 
-    except Exception as e:
-        print(f"Unknown exception when generating short URL domain list. {str(e)}")
+    print(f"Added {added_count} new short URL domains to Redis.")
 
 
 def register_short_urls_cli(app: Flask):

@@ -107,6 +107,33 @@ describe("admin-actions confirm-modal controller", () => {
     expect($("#AdminActionResult").hasClass("alert-success")).toBe(true);
   });
 
+  it("POSTs an empty-string reason and falls back to the default success message when the response has none", () => {
+    const successXhr = createMockXhr({ status: 200 });
+    const chainable = createMockJqXHRChainable({
+      done: (callback: unknown) => {
+        (
+          callback as (
+            response: unknown,
+            _textStatus: unknown,
+            xhr: JQuery.jqXHR,
+          ) => void
+        )({ status: "Success" }, "success", successXhr);
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
+
+    openModalViaButtonClick();
+    $("#modalSubmit").trigger("click");
+
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith(
+      "post",
+      ACTION_URL,
+      { reason: "" },
+      30000,
+    );
+    expect($("#AdminActionResult").text()).toBe("Action completed.");
+  });
+
   it("blocks submission and shows the required-reason message when reason is required but empty", () => {
     $("#TestActionButton").attr("data-reason-required", "true");
 

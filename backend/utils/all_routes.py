@@ -78,6 +78,12 @@ class ADMIN_ROUTES:
     USER_DETAIL = _ADMIN + "admin_user_detail"
     AUDIT_LOG_PAGE = _ADMIN + "admin_audit_log"
     AUDIT_LOG_ROWS = _ADMIN + "admin_audit_log_rows"
+    # Ops action endpoints
+    OPS_METRICS_FLUSH = _ADMIN + "admin_ops_metrics_flush"
+    OPS_GAUGE_SAMPLE = _ADMIN + "admin_ops_gauge_sample"
+    OPS_AUDIT_PURGE = _ADMIN + "admin_ops_audit_purge"
+    OPS_VERIFY_TABLES = _ADMIN + "admin_ops_verify_tables"
+    OPS_SHORT_URLS_SYNC = _ADMIN + "admin_ops_short_urls_sync"
 
 
 class SEARCH_ROUTES:

@@ -118,6 +118,7 @@ const appConfig = {
     ADMIN_ACTION_GENERIC_ERROR: "Action failed. Check the server logs.",
     ADMIN_ACTION_SUBMIT_DEFAULT: "Confirm",
     ADMIN_ACTION_DISMISS: "Cancel",
+    ADMIN_ACTION_SUCCESS_DEFAULT: "Action completed.",
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
     EDIT_URL_TITLE_TOOLTIP: "Edit URL title",
     INVALID_URL: "This is not a valid URL.",

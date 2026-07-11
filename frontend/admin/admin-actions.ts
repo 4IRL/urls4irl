@@ -16,6 +16,7 @@
  *   data-confirm-body        modal body text (required)
  *   data-submit-text         submit button label (default: bridged "Confirm")
  *   data-reason-required     "true" to require a non-empty reason
+ *                            (reason is always POSTed; empty string when blank)
  *   data-reload-on-success   "true" to reload the page after a 200
  *   data-timeout-ms          AJAX timeout override (default 30000)
  */
@@ -162,8 +163,9 @@ function submitAdminAction(actionConfig: AdminActionConfig): void {
   hideModalAlert();
   $("#modalSubmit").prop("disabled", true);
 
-  const payload: Record<string, unknown> =
-    reasonValue === "" ? {} : { reason: reasonValue };
+  // Always include the reason key — ajaxCall omits the body entirely for an
+  // empty object, and api_route rejects body-less JSON POSTs with a 400.
+  const payload: Record<string, unknown> = { reason: reasonValue };
   const request = ajaxCall(
     "post",
     actionConfig.actionUrl,
@@ -184,7 +186,7 @@ function submitAdminAction(actionConfig: AdminActionConfig): void {
     }
     renderActionResult({
       message:
-        response?.message ?? APP_CONFIG.strings.ADMIN_ACTION_SUBMIT_DEFAULT,
+        response?.message ?? APP_CONFIG.strings.ADMIN_ACTION_SUCCESS_DEFAULT,
       isError: false,
     });
   });

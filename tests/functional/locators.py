@@ -605,6 +605,16 @@ class AdminPortalLocators(GenericPageLocator):
     HEALTH_MEMORY = "#AdminHealthMemory"
     HEALTH_CAPTURED_AT = "#AdminHealthCapturedAt"
 
+    # Ops actions (health page) + shared admin-action modal elements
+    OPS_SECTION = "#AdminOpsSection"
+    OPS_VERIFY_TABLES_BTN = "#AdminOpsVerifyTablesBtn"
+    OPS_METRICS_FLUSH_BTN = "#AdminOpsMetricsFlushBtn"
+    ACTION_RESULT_REGION = "#AdminActionResult"
+    ACTION_CONFIRM_MODAL = "#confirmModal"
+    ACTION_MODAL_TITLE = "#confirmModalTitle"
+    ACTION_MODAL_SUBMIT = "#modalSubmit"
+    ACTION_REASON_INPUT = "#AdminActionReasonInput"
+
     # Users search page
     USERS_TITLE = "#AdminUsersTitle"
     USER_SEARCH_INPUT = "#AdminUserSearchInput"

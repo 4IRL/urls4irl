@@ -841,6 +841,91 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### POST /admin/ops/metrics-flush
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_metrics_flush`                                                                                        |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_metrics_flush` — acquires flush lock, calls `run_flush`, audits result                                    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminActionRequest` / Response: `backend/schemas/admin_actions.py:AdminOpsActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="metrics-flush"`)                                              |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons; shared confirm-modal + AJAX controller)                       |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_METRICS_FLUSH`                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/gauge-sample
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_gauge_sample`                                                                                         |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_gauge_sample` — calls `run_sample`, stamps GAUGE_LAST_SUCCESS_KEY sentinel, audits result                 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminActionRequest` / Response: `backend/schemas/admin_actions.py:AdminOpsActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="gauge-sample"`)                                               |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_GAUGE_SAMPLE`                                                                                    |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/audit-purge
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_audit_purge`                                                                                          |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_audit_purge` — self-audits + commits BEFORE calling `run_purge` (window-only; never purge-all)            |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminActionRequest` / Response: `backend/schemas/admin_actions.py:AdminOpsActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="audit-purge"`)                                                |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_AUDIT_PURGE`                                                                                     |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/verify-tables
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_verify_tables`                                                                                        |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_verify_tables` — read-only `get_missing_tables()` check; never touches auto-repair or DROP SCHEMA path    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminActionRequest` / Response: `backend/schemas/admin_actions.py:AdminOpsActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="verify-tables"`)                                              |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_VERIFY_TABLES`                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/short-urls-sync
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_short_urls_sync`                                                                                      |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_short_urls_sync` — calls `sync_short_url_domains_to_redis` via main Redis; 503 when REDIS_URI is absent   |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminActionRequest` / Response: `backend/schemas/admin_actions.py:AdminOpsActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/health.html` via `data-admin-action="short-urls-sync"`)                                            |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_SHORT_URLS_SYNC`                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
 ## Contact Blueprint
 
 ### GET /contact

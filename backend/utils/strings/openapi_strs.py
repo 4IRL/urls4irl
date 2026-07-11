@@ -1,3 +1,4 @@
+ADMIN = "admin"
 AUTH = "auth"
 CONTACT = "contact"
 MEMBERS = "members"
@@ -11,6 +12,7 @@ UTUBS = "utubs"
 
 
 class OPEN_API:
+    ADMIN = ADMIN
     AUTH = AUTH
     CONTACT = CONTACT
     MEMBERS = MEMBERS
