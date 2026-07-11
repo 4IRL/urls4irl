@@ -132,19 +132,23 @@ def test_run_backup_pipeline_invokes_bash_with_script_path(
     monkeypatch: pytest.MonkeyPatch,
 ):
     """
-    GIVEN subprocess.run monkeypatched to capture its argv
+    GIVEN subprocess.run monkeypatched to capture its argv and env
     WHEN run_backup_pipeline() is called with a script path
-    THEN bash is invoked with exactly that path and the exit code is
-         propagated back to the caller.
+    THEN bash is invoked with exactly that path, the subprocess env carries
+         BACKUP_TRIGGER_SOURCE=manual, and the exit code is propagated back.
     """
     captured_argv: list[list[str]] = []
+    captured_env: list[dict[str, str] | None] = []
 
     class _FakeCompletedProcess:
         returncode = 7
 
-    def _fake_run(argv: list[str], check: bool) -> _FakeCompletedProcess:
+    def _fake_run(
+        argv: list[str], check: bool, env: dict[str, str] | None = None
+    ) -> _FakeCompletedProcess:
         assert not check
         captured_argv.append(argv)
+        captured_env.append(env)
         return _FakeCompletedProcess()
 
     monkeypatch.setattr("scripts.run_backup_if_requested.subprocess.run", _fake_run)
@@ -153,3 +157,5 @@ def test_run_backup_pipeline_invokes_bash_with_script_path(
 
     assert exit_code == 7
     assert captured_argv == [["/bin/bash", "/app/daily-docker.sh"]]
+    assert captured_env[0] is not None
+    assert captured_env[0]["BACKUP_TRIGGER_SOURCE"] == "manual"

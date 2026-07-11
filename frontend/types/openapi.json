@@ -22,7 +22,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminActionRequest"
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
               }
             }
           }
@@ -112,7 +112,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminActionRequest"
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
               }
             }
           }
@@ -202,7 +202,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminActionRequest"
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
               }
             }
           }
@@ -292,7 +292,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminActionRequest"
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
               }
             }
           }
@@ -382,7 +382,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminActionRequest"
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
               }
             }
           }
@@ -472,7 +472,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/AdminActionRequest"
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
               }
             }
           }
@@ -7007,21 +7007,14 @@
         },
         "required": ["status"]
       },
-      "AdminActionRequest": {
+      "AdminReasonRequiredRequest": {
         "properties": {
           "reason": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Optional reason for this admin action (max 500 characters). Empty or whitespace-only strings are treated as no reason provided."
+            "description": "Required reason for this admin action (max 500 characters). Whitespace-only values are rejected.",
+            "type": "string"
           }
         },
+        "required": ["reason"],
         "type": "object"
       },
       "AdminActionResponseSchema": {
@@ -7152,16 +7145,6 @@
           "TARGET_ERASED"
         ],
         "description": "Error codes for AdminActionErrorCodes"
-      },
-      "AdminReasonRequiredRequest": {
-        "properties": {
-          "reason": {
-            "description": "Required reason for this admin action (max 500 characters). Whitespace-only values are rejected.",
-            "type": "string"
-          }
-        },
-        "required": ["reason"],
-        "type": "object"
       },
       "ApiUserProfileSchema": {
         "description": "Authenticated user's profile for the mobile /api/v1 surface.",

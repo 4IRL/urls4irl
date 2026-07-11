@@ -37,8 +37,10 @@ const ADMIN_ACTION_HTML = `
     data-confirm-body="${CONFIRM_BODY}"
     data-submit-text="${SUBMIT_TEXT}"
   ></button>
-  <div id="AdminActionResult" class="hidden"></div>
 `;
+
+const INLINE_RESULT_SELECTOR =
+  "#TestActionButton + .admin-action-inline-result";
 
 let modalCalls: string[];
 
@@ -103,8 +105,8 @@ describe("admin-actions confirm-modal controller", () => {
       30000,
     );
     expect(modalCalls).toContain("hide");
-    expect($("#AdminActionResult").text()).toBe(SUCCESS_MESSAGE);
-    expect($("#AdminActionResult").hasClass("alert-success")).toBe(true);
+    expect($(INLINE_RESULT_SELECTOR).text()).toBe(SUCCESS_MESSAGE);
+    expect($(INLINE_RESULT_SELECTOR).hasClass("is-success")).toBe(true);
   });
 
   it("POSTs an empty-string reason and falls back to the default success message when the response has none", () => {
@@ -131,7 +133,7 @@ describe("admin-actions confirm-modal controller", () => {
       { reason: "" },
       30000,
     );
-    expect($("#AdminActionResult").text()).toBe("Action completed.");
+    expect($(INLINE_RESULT_SELECTOR).text()).toBe("Action completed.");
   });
 
   it("blocks submission and shows the required-reason message when reason is required but empty", () => {

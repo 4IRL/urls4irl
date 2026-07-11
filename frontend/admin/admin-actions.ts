@@ -5,9 +5,10 @@
  * `data-*` contract (URLs and copy come from Jinja via url_for — never
  * hardcoded here). Clicking a button opens the shared #confirmModal,
  * optionally collects a reason, and POSTs to the action URL via ajaxCall.
- * Success copy renders into the page's #AdminActionResult region (or the
- * page reloads when `data-reload-on-success` is set); failures surface in
- * the modal alert banner.
+ * Success copy renders inline directly beneath the button that triggered the
+ * action (or the page reloads when `data-reload-on-success` is set) so the
+ * confirmation is visible right where the admin tapped — no scrolling back to
+ * a shared region. Failures surface in the modal alert banner.
  *
  * data-* contract on each action button:
  *   data-admin-action        unique action key (used for event namespacing)
@@ -30,7 +31,7 @@ const CLICK_NAMESPACE = "click.adminActions";
 const HIDDEN_NAMESPACE = "hidden.bs.modal.adminActions";
 const REASON_WRAPPER_ID = "AdminActionReasonWrapper";
 const REASON_INPUT_ID = "AdminActionReasonInput";
-const RESULT_REGION_ID = "AdminActionResult";
+const INLINE_RESULT_CLASS = "admin-action-inline-result";
 const DEFAULT_TIMEOUT_MS = 30000;
 
 interface AdminActionConfig {
@@ -60,9 +61,10 @@ export function initAdminActions(): void {
     .off(CLICK_NAMESPACE, ACTION_SELECTOR)
     .on(CLICK_NAMESPACE, ACTION_SELECTOR, function (event: JQuery.ClickEvent) {
       event.preventDefault();
-      const actionConfig = readActionConfig(event.currentTarget as HTMLElement);
+      const triggerEl = event.currentTarget as HTMLElement;
+      const actionConfig = readActionConfig(triggerEl);
       if (actionConfig === null) return;
-      openConfirmModal(actionConfig);
+      openConfirmModal({ actionConfig, triggerEl });
     });
 }
 
@@ -84,7 +86,13 @@ function readActionConfig(buttonEl: HTMLElement): AdminActionConfig | null {
   };
 }
 
-function openConfirmModal(actionConfig: AdminActionConfig): void {
+function openConfirmModal({
+  actionConfig,
+  triggerEl,
+}: {
+  actionConfig: AdminActionConfig;
+  triggerEl: HTMLElement;
+}): void {
   hideModalAlert();
   $("#confirmModalTitle").text(actionConfig.confirmTitle);
 
@@ -110,7 +118,7 @@ function openConfirmModal(actionConfig: AdminActionConfig): void {
     .prop("disabled", false)
     .offAndOn("click", function (event: JQuery.TriggeredEvent) {
       event.preventDefault();
-      submitAdminAction(actionConfig);
+      submitAdminAction({ actionConfig, triggerEl });
     });
 
   $("#confirmModal").offAndOnExact(HIDDEN_NAMESPACE, function () {
@@ -153,7 +161,13 @@ function removeReasonField(): void {
   $(`#${REASON_WRAPPER_ID}`).remove();
 }
 
-function submitAdminAction(actionConfig: AdminActionConfig): void {
+function submitAdminAction({
+  actionConfig,
+  triggerEl,
+}: {
+  actionConfig: AdminActionConfig;
+  triggerEl: HTMLElement;
+}): void {
   const reasonValue = String($(`#${REASON_INPUT_ID}`).val() ?? "").trim();
   if (actionConfig.reasonRequired && reasonValue === "") {
     showModalAlert(APP_CONFIG.strings.ADMIN_ACTION_REASON_REQUIRED);
@@ -188,6 +202,7 @@ function submitAdminAction(actionConfig: AdminActionConfig): void {
       message:
         response?.message ?? APP_CONFIG.strings.ADMIN_ACTION_SUCCESS_DEFAULT,
       isError: false,
+      triggerEl,
     });
   });
 
@@ -207,17 +222,41 @@ function extractErrorMessage(xhr: JQuery.jqXHR): string {
 function renderActionResult({
   message,
   isError,
+  triggerEl,
 }: {
   message: string;
   isError: boolean;
+  triggerEl: HTMLElement;
 }): void {
-  const resultRegion = $(`#${RESULT_REGION_ID}`);
-  if (resultRegion.length === 0) return;
-  resultRegion
+  const inlineResult = ensureInlineResult(triggerEl);
+  if (inlineResult === null) return;
+  inlineResult
     .removeClass()
-    .addClass(isError ? "alert alert-danger" : "alert alert-success")
+    .addClass(`${INLINE_RESULT_CLASS} ${isError ? "is-error" : "is-success"}`)
     .text(message)
     .show();
+  inlineResult[0]?.scrollIntoView({ block: "nearest" });
+}
+
+/**
+ * Return the inline result element that sits immediately after the triggering
+ * button, creating it on first use. Rendering the result as the button's next
+ * sibling keeps the confirmation right where the admin acted — inside the ops
+ * card on the health page, or directly below the account-action button on the
+ * user-detail page.
+ */
+function ensureInlineResult(triggerEl: HTMLElement): JQuery | null {
+  const triggerButton = $(triggerEl);
+  if (triggerButton.length === 0) return null;
+  let inlineResult = triggerButton.next(`.${INLINE_RESULT_CLASS}`);
+  if (inlineResult.length === 0) {
+    inlineResult = $("<div>", {
+      class: `${INLINE_RESULT_CLASS} hidden`,
+      "aria-live": "polite",
+    });
+    triggerButton.after(inlineResult);
+  }
+  return inlineResult;
 }
 
 function showModalAlert(message: string): void {

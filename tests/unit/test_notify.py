@@ -15,11 +15,13 @@ from scripts.notify import (
     HEALTH_STALE_GLYPH,
     HEALTH_UNKNOWN_GLYPH,
     HEALTH_STALE_AFTER_SECONDS,
+    MANUAL_TRIGGER_MARKER,
     MESSAGE_PREFIX,
     RESTRICTED_CURL_BINARY,
     STATUS_FAILURE,
     STATUS_INFO,
     STATUS_SUCCESS,
+    TRIGGER_MANUAL,
     build_message,
     build_summary_message,
     clear_failure_and_should_notify_recovery,
@@ -176,6 +178,41 @@ def test_build_message_info_status_single_prefix():
     )
 
 
+def test_build_message_manual_trigger_inserts_marker():
+    """
+    GIVEN a manual trigger
+    WHEN building a failure message with a detail
+    THEN the (manual) marker sits between the status and the detail clause.
+    """
+    assert build_message(
+        job="DB_BACKUP",
+        status=STATUS_FAILURE,
+        detail="oops",
+        trigger=TRIGGER_MANUAL,
+    ) == (f"{MESSAGE_PREFIX}DB_BACKUP FAILURE {MANUAL_TRIGGER_MARKER} — oops")
+
+
+def test_build_message_scheduled_trigger_omits_marker():
+    """
+    GIVEN the default (scheduled) trigger
+    WHEN building a message
+    THEN no manual marker appears (unchanged from the pre-trigger behavior).
+    """
+    assert MANUAL_TRIGGER_MARKER not in build_message(
+        job="DB_BACKUP", status=STATUS_SUCCESS
+    )
+
+
+def test_build_message_invalid_trigger_raises():
+    """
+    GIVEN an unrecognized trigger token
+    WHEN building a message
+    THEN a ValueError is raised before any message is produced.
+    """
+    with pytest.raises(ValueError):
+        build_message(job="DAILY", status=STATUS_SUCCESS, trigger="cron")
+
+
 # ---------------------------------------------------------------------------
 # build_summary_message
 # ---------------------------------------------------------------------------
@@ -201,6 +238,43 @@ def test_build_summary_message_all_ok_with_monthly_skip():
     assert "✅ ☁️ R2 daily" in message
     assert "💤 ☁️ R2 monthly" in message
     assert "✅ ☁️ R2 logs" in message
+
+
+def test_build_summary_message_manual_trigger_uses_manual_title():
+    """
+    GIVEN an all-ok run flagged as a manual trigger
+    WHEN building the summary
+    THEN the title reads "Manual Backup" (not "Daily Backup") so an admin's
+         Trigger Backup run is distinguishable, and the exit code is unchanged.
+    """
+    message, exit_code = build_summary_message(
+        database_ok=True,
+        logs_ok=True,
+        remote_db="ok",
+        remote_monthly="skip",
+        remote_logs="ok",
+        trigger=TRIGGER_MANUAL,
+    )
+    assert exit_code == 0
+    assert message.startswith("**Manual Backup — SUCCESS**")
+    assert "Daily Backup" not in message
+
+
+def test_build_summary_message_invalid_trigger_raises():
+    """
+    GIVEN an unrecognized trigger token
+    WHEN building the summary
+    THEN a ValueError is raised.
+    """
+    with pytest.raises(ValueError):
+        build_summary_message(
+            database_ok=True,
+            logs_ok=True,
+            remote_db="ok",
+            remote_monthly="skip",
+            remote_logs="ok",
+            trigger="cron",
+        )
 
 
 def test_build_summary_message_database_failure():

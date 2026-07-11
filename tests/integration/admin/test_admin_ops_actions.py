@@ -84,9 +84,14 @@ def _post_ops(
     client: FlaskClient,
     url: str,
     csrf: str,
-    reason: str | None = None,
+    reason: str | None = _MOCK_REASON,
 ) -> object:
-    """POST an ops-action endpoint with an optional reason payload."""
+    """POST an ops-action endpoint with a reason payload.
+
+    Every ops action now requires a non-empty reason (same contract as the
+    account/moderation actions), so the default carries a valid mock reason.
+    Pass ``reason=None`` to omit it and exercise the required-field rejection.
+    """
     payload: dict = {}
     if reason is not None:
         payload["reason"] = reason
@@ -327,6 +332,38 @@ def test_admin_ops_anonymous_returns_401(
 # ---------------------------------------------------------------------------
 # Request-schema validation tests
 # ---------------------------------------------------------------------------
+
+
+def test_admin_ops_missing_reason_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in admin user sending no reason at all
+    WHEN POST /admin/ops/verify-tables with an empty JSON body
+    THEN the response is 400 JSON — ops actions now require a non-empty reason,
+         so the request schema rejects the missing field before any work runs.
+    """
+    client, csrf, _, _ = login_admin_user_with_register
+
+    response = _post_ops(client, _OPS_VERIFY_TABLES_URL, csrf, reason=None)
+
+    assert response.status_code == 400
+
+
+def test_admin_ops_whitespace_reason_returns_400(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in admin user sending a whitespace-only reason
+    WHEN POST /admin/ops/verify-tables with reason="   "
+    THEN the response is 400 JSON — the required-reason validator rejects
+         whitespace-only values just as it does for account/moderation actions.
+    """
+    client, csrf, _, _ = login_admin_user_with_register
+
+    response = _post_ops(client, _OPS_VERIFY_TABLES_URL, csrf, reason="   ")
+
+    assert response.status_code == 400
 
 
 def test_admin_ops_reason_too_long_returns_400(

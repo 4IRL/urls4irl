@@ -4,7 +4,6 @@
 <header id="AdminUserDetailHeader" class="admin-page-header">
     <h1 id="AdminUserDetailTitle">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_TITLE }}: {{ detail_user.username }}</h1>
 </header>
-<div id="AdminActionResult" class="hidden" aria-live="polite"></div>
 <div id="AdminUserDetailPanel" class="admin-panel">
     <table id="AdminUserDetailTable" class="admin-table">
         <tbody>
@@ -29,7 +28,7 @@
     <div class="admin-mod-cell">
         {% if detail_user.is_suspended %}
         <button type="button"
-                class="btn btn-sm btn-secondary admin-mod-btn"
+                class="admin-action-btn admin-mod-btn"
                 data-admin-action="user-unsuspend"
                 data-action-url="{{ url_for('admin.admin_user_unsuspend', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNSUSPEND_CONFIRM_TITLE }}"
@@ -41,7 +40,7 @@
         </button>
         {% else %}
         <button type="button"
-                class="btn btn-sm btn-danger admin-mod-btn"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                 data-admin-action="user-suspend"
                 data-action-url="{{ url_for('admin.admin_user_suspend', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_SUSPEND_CONFIRM_TITLE }}"
@@ -53,7 +52,7 @@
         </button>
         {% endif %}
         <button type="button"
-                class="btn btn-sm btn-warning admin-mod-btn"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                 data-admin-action="user-kill-sessions"
                 data-action-url="{{ url_for('admin.admin_user_kill_sessions', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_KILL_SESSIONS_CONFIRM_TITLE }}"
@@ -66,7 +65,7 @@
         <span id="AdminUserForceResetNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_NA }}</span>
         {% else %}
         <button type="button"
-                class="btn btn-sm btn-warning admin-mod-btn"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                 data-admin-action="user-force-reset"
                 data-action-url="{{ url_for('admin.admin_user_force_reset', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_CONFIRM_TITLE }}"
@@ -82,7 +81,7 @@
         <span id="AdminUserErasedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASED_NA }}</span>
         {% else %}
         <button type="button"
-                class="btn btn-sm btn-danger admin-mod-btn"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                 data-admin-action="user-erase"
                 data-action-url="{{ url_for('admin.admin_user_erase', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_CONFIRM_TITLE }}"
@@ -98,7 +97,7 @@
         <span id="AdminUserEmailVerifiedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFIED_NA }}</span>
         {% else %}
         <button type="button"
-                class="btn btn-sm btn-secondary admin-mod-btn"
+                class="admin-action-btn admin-mod-btn"
                 data-admin-action="user-email-verify"
                 data-action-url="{{ url_for('admin.admin_user_email_verify', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_CONFIRM_TITLE }}"
@@ -109,7 +108,7 @@
             {{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_LABEL }}
         </button>
         <button type="button"
-                class="btn btn-sm btn-secondary admin-mod-btn"
+                class="admin-action-btn admin-mod-btn"
                 data-admin-action="user-email-resend"
                 data-action-url="{{ url_for('admin.admin_user_email_resend', target_user_id=detail_user.id) }}"
                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_CONFIRM_TITLE }}"
@@ -145,7 +144,7 @@
                         <span id="AdminUserUnlinkNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_NA }}</span>
                         {% else %}
                         <button type="button"
-                                class="btn btn-sm btn-danger admin-mod-btn"
+                                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                                 data-admin-action="oauth-unlink"
                                 data-action-url="{{ url_for('admin.admin_user_oauth_unlink', target_user_id=detail_user.id, identity_id=identity.id) }}"
                                 data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_CONFIRM_TITLE }}"
@@ -192,7 +191,7 @@
                 <td class="admin-mod-cell">
                     {% if membership.to_utub.is_locked %}
                     <button type="button"
-                            class="btn btn-sm btn-secondary admin-mod-btn"
+                            class="admin-action-btn admin-mod-btn"
                             data-admin-action="utub-unlock"
                             data-action-url="{{ url_for('admin.admin_utub_unlock', utub_id=membership.to_utub.id) }}"
                             data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_CONFIRM_TITLE }}"
@@ -204,7 +203,7 @@
                     </button>
                     {% else %}
                     <button type="button"
-                            class="btn btn-sm btn-warning admin-mod-btn"
+                            class="admin-action-btn admin-mod-btn"
                             data-admin-action="utub-lock"
                             data-action-url="{{ url_for('admin.admin_utub_lock', utub_id=membership.to_utub.id) }}"
                             data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_CONFIRM_TITLE }}"
@@ -216,7 +215,7 @@
                     </button>
                     {% endif %}
                     <button type="button"
-                            class="btn btn-sm btn-danger admin-mod-btn"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                             data-admin-action="utub-delete"
                             data-action-url="{{ url_for('admin.admin_utub_delete', utub_id=membership.to_utub.id) }}"
                             data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_CONFIRM_TITLE }}"
@@ -227,7 +226,7 @@
                         {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_LABEL }}
                     </button>
                     <button type="button"
-                            class="btn btn-sm btn-danger admin-mod-btn"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
                             data-admin-action="member-remove"
                             data-action-url="{{ url_for('admin.admin_member_remove', utub_id=membership.to_utub.id, target_user_id=detail_user.id) }}"
                             data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_CONFIRM_TITLE }}"

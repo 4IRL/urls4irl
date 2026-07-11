@@ -106,8 +106,8 @@ def test_admin_account_kill_sessions_happy_path(
     """
     GIVEN an admin viewing a non-admin user's detail page
     WHEN the admin clicks Kill Sessions, enters a reason, and confirms
-    THEN the #AdminActionResult region becomes visible and contains the
-         expected success substring (no page reload for kill-sessions).
+    THEN the inline result beneath the Kill Sessions button becomes visible and
+         contains the expected success substring (no page reload for kill-sessions).
     """
     login_admin_and_open_user_detail(
         app=provide_app,
@@ -141,9 +141,9 @@ def test_admin_account_kill_sessions_happy_path(
 
     page.click(APL.ACTION_MODAL_SUBMIT)
 
-    # No reload-on-success for kill-sessions; success renders in #AdminActionResult
+    # No reload-on-success for kill-sessions; success renders inline beneath the button
     result_region = wait_then_get_element(
-        page=page, css_selector=APL.ACTION_RESULT_REGION
+        page=page, css_selector=APL.USER_DETAIL_ACCOUNT_KILL_SESSIONS_RESULT
     )
     expect(result_region).to_be_visible()
     expect(result_region).to_contain_text(
@@ -281,8 +281,9 @@ def test_admin_account_force_password_reset_happy_path(
     GIVEN an admin viewing a non-OAuth user's detail page with no existing
          Forgot_Passwords row
     WHEN the admin clicks Force Password Reset, enters a reason, and confirms
-    THEN the #AdminActionResult region becomes visible with the success message
-         and a Forgot_Passwords row is created for the target user in the DB.
+    THEN the inline result beneath the Force Password Reset button becomes visible
+         with the success message and a Forgot_Passwords row is created for the
+         target user in the DB.
     """
     login_admin_and_open_user_detail(
         app=provide_app,
@@ -316,9 +317,9 @@ def test_admin_account_force_password_reset_happy_path(
 
     page.click(APL.ACTION_MODAL_SUBMIT)
 
-    # No reload-on-success for force-reset; success renders in #AdminActionResult
+    # No reload-on-success for force-reset; success renders inline beneath the button
     result_region = wait_then_get_element(
-        page=page, css_selector=APL.ACTION_RESULT_REGION
+        page=page, css_selector=APL.USER_DETAIL_ACCOUNT_FORCE_RESET_RESULT
     )
     expect(result_region).to_be_visible()
     expect(result_region).to_contain_text(

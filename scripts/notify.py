@@ -40,6 +40,14 @@ STATUS_FAILURE: str = "FAILURE"
 STATUS_RECOVERED: str = "RECOVERED"
 STATUS_INFO: str = "INFO"
 
+# What kicked off a backup run: the 1 AM cron ("scheduled") or an admin's
+# "Trigger Backup" action ("manual"). Surfaced in every backup Discord message
+# so a manual run is distinguishable from the nightly one at a glance.
+TRIGGER_SCHEDULED: str = "scheduled"
+TRIGGER_MANUAL: str = "manual"
+MANUAL_TRIGGER_MARKER: str = "(manual)"
+_ALLOWED_TRIGGERS: frozenset[str] = frozenset((TRIGGER_SCHEDULED, TRIGGER_MANUAL))
+
 STATUS_OK_GLYPH: str = "✅"
 STATUS_FAIL_GLYPH: str = "❌"
 STATUS_SKIP_GLYPH: str = "💤"
@@ -54,6 +62,7 @@ AREA_REMOTE: str = "☁️"
 AREA_METRICS: str = "📊"
 
 SUMMARY_TITLE_TEMPLATE: str = "**Daily Backup — {status}**"
+SUMMARY_TITLE_MANUAL_TEMPLATE: str = "**Manual Backup — {status}**"
 METRICS_HEADER_TEMPLATE: str = "**Metrics — {verdict}**"
 METRICS_VERDICT_HEALTHY: str = "HEALTHY"
 METRICS_VERDICT_STALE: str = "STALE"
@@ -132,13 +141,29 @@ def sanitize_message(raw: str) -> str:
     return result
 
 
-def build_message(*, job: str, status: str, detail: str = "") -> str:
-    """Build a single-line ``DOCKER: <job> <status>[ — <detail>]`` message.
+def _validate_trigger(trigger: str) -> None:
+    """Raise ``ValueError`` for an unexpected trigger token."""
+    if trigger not in _ALLOWED_TRIGGERS:
+        raise ValueError(
+            f"unexpected trigger {trigger!r}; "
+            f"expected one of {sorted(_ALLOWED_TRIGGERS)}"
+        )
 
-    The detail clause is only appended when ``detail`` is non-empty. The result
-    is passed through ``sanitize_message`` once. Pure.
+
+def build_message(
+    *, job: str, status: str, detail: str = "", trigger: str = TRIGGER_SCHEDULED
+) -> str:
+    """Build a single-line ``DOCKER: <job> <status>[ (manual)][ — <detail>]`` message.
+
+    The ``(manual)`` marker is inserted only when ``trigger`` is ``"manual"``,
+    so an admin-triggered backup failure is distinguishable from a scheduled
+    one. The detail clause is only appended when ``detail`` is non-empty. The
+    result is passed through ``sanitize_message`` once. Pure.
     """
+    _validate_trigger(trigger)
     message = f"{MESSAGE_PREFIX}{job} {status}"
+    if trigger == TRIGGER_MANUAL:
+        message = f"{message} {MANUAL_TRIGGER_MARKER}"
     if detail:
         message = f"{message} — {detail}"
     return sanitize_message(message)
@@ -165,6 +190,7 @@ def build_summary_message(
     remote_db: str,
     remote_monthly: str,
     remote_logs: str,
+    trigger: str = TRIGGER_SCHEDULED,
 ) -> tuple[str, int]:
     """Build the itemized end-of-run backup digest (BACKUP SECTION ONLY).
 
@@ -172,13 +198,17 @@ def build_summary_message(
     tokens, where ``skip`` means the sub-step legitimately did not run (e.g.
     ``remote_monthly`` on a non-1st-of-month day, or a remote leg bypassed
     because its local stage failed, or the whole remote leg skipped in dev
-    mode). Returns ``(message, exit_code)`` where ``exit_code == 0`` iff both
-    local stages succeeded AND no remote sub-step is ``fail`` — a ``skip`` is
-    not a failure. Raises ``ValueError`` on an unexpected ``remote_*`` token.
+    mode). ``trigger`` selects the digest title: ``"scheduled"`` -> "Daily
+    Backup", ``"manual"`` -> "Manual Backup" (an admin's Trigger Backup action).
+    Returns ``(message, exit_code)`` where ``exit_code == 0`` iff both local
+    stages succeeded AND no remote sub-step is ``fail`` — a ``skip`` is not a
+    failure. Raises ``ValueError`` on an unexpected ``remote_*`` or ``trigger``
+    token.
 
     Returns un-sanitized real-newline text; ``main()`` sanitizes the fully
     composed message (both sections joined) exactly once. Pure.
     """
+    _validate_trigger(trigger)
     local_failed = (not database_ok) or (not logs_ok)
     remote_failed = any(
         status == _REMOTE_STATUS_FAIL
@@ -190,8 +220,13 @@ def build_summary_message(
     db_glyph = STATUS_OK_GLYPH if database_ok else STATUS_FAIL_GLYPH
     logs_glyph = STATUS_OK_GLYPH if logs_ok else STATUS_FAIL_GLYPH
 
+    title_template = (
+        SUMMARY_TITLE_MANUAL_TEMPLATE
+        if trigger == TRIGGER_MANUAL
+        else SUMMARY_TITLE_TEMPLATE
+    )
     lines = [
-        SUMMARY_TITLE_TEMPLATE.format(status=status_word),
+        title_template.format(status=status_word),
         f"{db_glyph} {AREA_DB} {DATABASE_LABEL}",
         f"{logs_glyph} {AREA_LOGS} {LOGS_LABEL}",
         f"{_remote_glyph(remote_db)} {AREA_REMOTE} {REMOTE_DB_LABEL}",
@@ -465,6 +500,11 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--remote-logs", choices=("ok", "fail", "skip"), default=_REMOTE_STATUS_SKIP
     )
+    parser.add_argument(
+        "--trigger",
+        choices=(TRIGGER_SCHEDULED, TRIGGER_MANUAL),
+        default=TRIGGER_SCHEDULED,
+    )
     return parser
 
 
@@ -483,6 +523,7 @@ def main(argv: list[str]) -> int:
             remote_db=args.remote_db,
             remote_monthly=args.remote_monthly,
             remote_logs=args.remote_logs,
+            trigger=args.trigger,
         )
         redis_client = _build_metrics_redis_client()
         metrics_section = read_metrics_health(
@@ -493,7 +534,9 @@ def main(argv: list[str]) -> int:
         send(payload, production=production, notification_url=notification_url)
         return exit_code
 
-    message = build_message(job=args.job, status=args.status, detail=args.detail)
+    message = build_message(
+        job=args.job, status=args.status, detail=args.detail, trigger=args.trigger
+    )
     return send(message, production=production, notification_url=notification_url)
 
 

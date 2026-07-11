@@ -69,6 +69,11 @@ METRICS_REDIS = _metrics_strs_module.METRICS_REDIS
 # auto-expires so a crashed poller can never wedge future triggers.
 TRIGGER_LOCK_TTL_SECONDS: int = 3600
 
+# Env var daily-docker.sh reads to label the Discord notification. This poller
+# only ever runs on-demand admin triggers, so it always marks the run "manual".
+BACKUP_TRIGGER_SOURCE_ENV: str = "BACKUP_TRIGGER_SOURCE"
+MANUAL_TRIGGER_SOURCE: str = "manual"
+
 _BACKUP_SCRIPT_CANDIDATES: tuple[Path, ...] = (
     Path("/app/daily-docker.sh"),
     Path(__file__).resolve().parent / "daily-docker.sh",
@@ -119,10 +124,14 @@ def run_backup_pipeline(*, backup_script_path: Path) -> int:
     """Run the backup pipeline synchronously; return its exit code.
 
     daily-docker.sh manages its own logging (per-day workflow logfile) and
-    Discord notifications, so this poller only records the exit code.
+    Discord notifications, so this poller only records the exit code. The
+    subprocess env is tagged ``BACKUP_TRIGGER_SOURCE=manual`` so the pipeline's
+    Discord messages identify this as an admin-triggered run rather than the
+    nightly scheduled one.
     """
+    pipeline_env = {**os.environ, BACKUP_TRIGGER_SOURCE_ENV: MANUAL_TRIGGER_SOURCE}
     completed_process = subprocess.run(
-        ["/bin/bash", str(backup_script_path)], check=False
+        ["/bin/bash", str(backup_script_path)], check=False, env=pipeline_env
     )
     return completed_process.returncode
 

@@ -124,6 +124,15 @@ This is the artifact that makes the master plan executable by a single autonomou
 
 Read `references/execution-prompt-template.md` in full — it contains the template structure and fill-in guidance. Fill in every placeholder from the master plan you just wrote (title, branch name, topic, phase count, scope boundaries, verification commands, ordering constraints) and write the result to `plans/<topic>/<name>-execution-prompt.md`. Include the template's `## Status` block (`finished: false`) above `## Prompt` verbatim — do not drop it; it's what lets `/plan-list` track this file the same way it tracks the master plan.
 
+If any phase touches user-visible UI, keep the template's Boundaries rule intact: new UI must fit
+the app's existing color palette, component patterns, and interaction conventions — never stand
+apart as its own look. Phases without a design doc or pre-existing mockup pinning down their UI
+shape still owe a lightweight mock (real CSS/theme values, no invented styling) before the
+orchestrator implements them. This is a hard constraint the orchestrator resolves itself by
+grepping real theme/component values, not a check-in point — autonomous execution stays fully
+unattended here; "match existing conventions" is always the right call, so there's nothing to ask
+about.
+
 The template's `## Prompt` section is what later gets handed to the orchestrator **verbatim**, via a separate `Agent` tool call with `model: "fable"`. Everything above `## Prompt` in the generated file is reference/resume scaffolding for whoever launches or re-launches the run — it is never itself sent to the agent.
 
 ## Step 8: Create GitHub Issue

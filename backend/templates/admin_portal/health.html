@@ -10,72 +10,101 @@
 </div>
 <section id="AdminOpsSection" class="admin-ops-section mt-4">
     <h2 id="AdminOpsSectionTitle" class="admin-section-heading">{{ ADMIN_PORTAL_STRINGS.OPS_SECTION_TITLE }}</h2>
-    <div id="AdminActionResult" class="hidden" aria-live="polite"></div>
-    <div id="AdminOpsButtons" class="admin-ops-buttons d-flex flex-wrap gap-2 mt-3">
-        <button type="button"
-                id="AdminOpsMetricsFlushBtn"
-                class="btn btn-primary admin-ops-btn"
-                data-admin-action="metrics-flush"
-                data-action-url="{{ url_for('admin.admin_ops_metrics_flush') }}"
-                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_CONFIRM_TITLE }}"
-                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_CONFIRM_BODY }}"
-                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_SUBMIT }}"
-                data-timeout-ms="60000">
-            {{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_LABEL }}
-        </button>
-        <button type="button"
-                id="AdminOpsGaugeSampleBtn"
-                class="btn btn-primary admin-ops-btn"
-                data-admin-action="gauge-sample"
-                data-action-url="{{ url_for('admin.admin_ops_gauge_sample') }}"
-                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_CONFIRM_TITLE }}"
-                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_CONFIRM_BODY }}"
-                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_SUBMIT }}"
-                data-timeout-ms="60000">
-            {{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_LABEL }}
-        </button>
-        <button type="button"
-                id="AdminOpsAuditPurgeBtn"
-                class="btn btn-warning admin-ops-btn"
-                data-admin-action="audit-purge"
-                data-action-url="{{ url_for('admin.admin_ops_audit_purge') }}"
-                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_CONFIRM_TITLE }}"
-                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_CONFIRM_BODY }}"
-                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_SUBMIT }}"
-                data-timeout-ms="60000">
-            {{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_LABEL }}
-        </button>
-        <button type="button"
-                id="AdminOpsVerifyTablesBtn"
-                class="btn btn-secondary admin-ops-btn"
-                data-admin-action="verify-tables"
-                data-action-url="{{ url_for('admin.admin_ops_verify_tables') }}"
-                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_CONFIRM_TITLE }}"
-                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_CONFIRM_BODY }}"
-                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_SUBMIT }}">
-            {{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_LABEL }}
-        </button>
-        <button type="button"
-                id="AdminOpsBackupTriggerBtn"
-                class="btn btn-warning admin-ops-btn"
-                data-admin-action="backup-trigger"
-                data-action-url="{{ url_for('admin.admin_ops_backup_trigger') }}"
-                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_CONFIRM_TITLE }}"
-                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_CONFIRM_BODY }}"
-                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_SUBMIT }}">
-            {{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_LABEL }}
-        </button>
-        <button type="button"
-                id="AdminOpsShortUrlsSyncBtn"
-                class="btn btn-secondary admin-ops-btn"
-                data-admin-action="short-urls-sync"
-                data-action-url="{{ url_for('admin.admin_ops_short_urls_sync') }}"
-                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_CONFIRM_TITLE }}"
-                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_CONFIRM_BODY }}"
-                data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_SUBMIT }}"
-                data-timeout-ms="30000">
-            {{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_LABEL }}
-        </button>
+    <div id="AdminOpsButtons" class="admin-ops-cards">
+        <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsMetricsFlushBtn"
+                    class="admin-action-btn"
+                    data-admin-action="metrics-flush"
+                    data-action-url="{{ url_for('admin.admin_ops_metrics_flush') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_SUBMIT }}"
+                    data-reason-required="true"
+                    data-timeout-ms="60000">
+                {{ ADMIN_PORTAL_STRINGS.OPS_METRICS_FLUSH_SUBMIT }}
+            </button>
+        </div>
+        <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsGaugeSampleBtn"
+                    class="admin-action-btn"
+                    data-admin-action="gauge-sample"
+                    data-action-url="{{ url_for('admin.admin_ops_gauge_sample') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_SUBMIT }}"
+                    data-reason-required="true"
+                    data-timeout-ms="60000">
+                {{ ADMIN_PORTAL_STRINGS.OPS_GAUGE_SAMPLE_SUBMIT }}
+            </button>
+        </div>
+        <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsAuditPurgeBtn"
+                    class="admin-action-btn admin-action-btn--danger"
+                    data-admin-action="audit-purge"
+                    data-action-url="{{ url_for('admin.admin_ops_audit_purge') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_SUBMIT }}"
+                    data-reason-required="true"
+                    data-timeout-ms="60000">
+                {{ ADMIN_PORTAL_STRINGS.OPS_AUDIT_PURGE_SUBMIT }}
+            </button>
+        </div>
+        <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsVerifyTablesBtn"
+                    class="admin-action-btn"
+                    data-admin-action="verify-tables"
+                    data-action-url="{{ url_for('admin.admin_ops_verify_tables') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_SUBMIT }}"
+                    data-reason-required="true">
+                {{ ADMIN_PORTAL_STRINGS.OPS_VERIFY_TABLES_SUBMIT }}
+            </button>
+        </div>
+        <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsBackupTriggerBtn"
+                    class="admin-action-btn"
+                    data-admin-action="backup-trigger"
+                    data-action-url="{{ url_for('admin.admin_ops_backup_trigger') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_SUBMIT }}"
+                    data-reason-required="true">
+                {{ ADMIN_PORTAL_STRINGS.OPS_BACKUP_TRIGGER_SUBMIT }}
+            </button>
+        </div>
+        <div class="admin-ops-card">
+            <h3>{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_LABEL }}</h3>
+            <p class="admin-ops-card-desc">{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_DESC }}</p>
+            <button type="button"
+                    id="AdminOpsShortUrlsSyncBtn"
+                    class="admin-action-btn"
+                    data-admin-action="short-urls-sync"
+                    data-action-url="{{ url_for('admin.admin_ops_short_urls_sync') }}"
+                    data-confirm-title="{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_CONFIRM_TITLE }}"
+                    data-confirm-body="{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_CONFIRM_BODY }}"
+                    data-submit-text="{{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_SUBMIT }}"
+                    data-reason-required="true"
+                    data-timeout-ms="30000">
+                {{ ADMIN_PORTAL_STRINGS.OPS_SHORT_URLS_SYNC_SUBMIT }}
+            </button>
+        </div>
     </div>
 </section>
 {% endblock %}

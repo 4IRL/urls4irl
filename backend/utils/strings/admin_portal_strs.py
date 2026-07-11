@@ -51,6 +51,16 @@ class ADMIN_PORTAL_STRINGS:
     AUDIT_LOG_METADATA_SUMMARY: str = "metadata"
     # Ops section — health page operational action buttons (Jinja-only; not bridged to JS)
     OPS_SECTION_TITLE: str = "Operations"
+    # One-line card descriptions shown beneath each operation title. Concise
+    # summaries of the confirm-body copy, always visible on the health page.
+    OPS_METRICS_FLUSH_DESC: str = "Force an immediate Redis-to-Postgres metrics flush."
+    OPS_GAUGE_SAMPLE_DESC: str = "Sample all registered gauges to the database now."
+    OPS_AUDIT_PURGE_DESC: str = "Delete audit log entries older than 90 days."
+    OPS_VERIFY_TABLES_DESC: str = "Check for missing database tables (read-only)."
+    OPS_SHORT_URLS_SYNC_DESC: str = (
+        "Rebuild the short-URL domain set from the canonical list."
+    )
+    OPS_BACKUP_TRIGGER_DESC: str = "Request an on-demand full backup pipeline run."
     OPS_METRICS_FLUSH_LABEL: str = "Flush Metrics"
     OPS_METRICS_FLUSH_CONFIRM_TITLE: str = "Flush Metrics?"
     OPS_METRICS_FLUSH_CONFIRM_BODY: str = (

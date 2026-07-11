@@ -47,7 +47,7 @@ def _build_metrics_redis() -> Redis | None:
     return Redis.from_url(metrics_uri)
 
 
-def trigger_metrics_flush(*, actor_id: int, reason: str | None) -> FlaskResponse:
+def trigger_metrics_flush(*, actor_id: int, reason: str) -> FlaskResponse:
     """Trigger an immediate Redis-to-Postgres metrics counter flush.
 
     Acquires the same distributed lock the cron worker uses; returns count=0
@@ -56,7 +56,7 @@ def trigger_metrics_flush(*, actor_id: int, reason: str | None) -> FlaskResponse
 
     Args:
         actor_id: ID of the admin user triggering the flush.
-        reason: Optional free-text reason recorded in the audit log.
+        reason: Required human-readable reason recorded in the audit log.
 
     Returns:
         200 JSON envelope with count=rows flushed on success.
@@ -110,7 +110,7 @@ def trigger_metrics_flush(*, actor_id: int, reason: str | None) -> FlaskResponse
     ).to_response()
 
 
-def trigger_gauge_sample(*, actor_id: int, reason: str | None) -> FlaskResponse:
+def trigger_gauge_sample(*, actor_id: int, reason: str) -> FlaskResponse:
     """Trigger an immediate gauge sample run against all registered gauges.
 
     Calls run_sample() which commits its own INSERT batch, then stamps the
@@ -120,7 +120,7 @@ def trigger_gauge_sample(*, actor_id: int, reason: str | None) -> FlaskResponse:
 
     Args:
         actor_id: ID of the admin user triggering the sample.
-        reason: Optional free-text reason recorded in the audit log.
+        reason: Required human-readable reason recorded in the audit log.
 
     Returns:
         200 JSON envelope with count=gauges sampled on success.
@@ -185,7 +185,7 @@ def trigger_gauge_sample(*, actor_id: int, reason: str | None) -> FlaskResponse:
     ).to_response()
 
 
-def trigger_audit_purge(*, actor_id: int, reason: str | None) -> FlaskResponse:
+def trigger_audit_purge(*, actor_id: int, reason: str) -> FlaskResponse:
     """Run the audit-log retention purge (window-only, never purge-all).
 
     Writes the purge's own audit row and commits BEFORE running run_purge(),
@@ -197,7 +197,7 @@ def trigger_audit_purge(*, actor_id: int, reason: str | None) -> FlaskResponse:
 
     Args:
         actor_id: ID of the admin user triggering the purge.
-        reason: Optional free-text reason recorded in the audit log.
+        reason: Required human-readable reason recorded in the audit log.
 
     Returns:
         200 JSON envelope with count=rows deleted on success.
@@ -243,7 +243,7 @@ def trigger_audit_purge(*, actor_id: int, reason: str | None) -> FlaskResponse:
     ).to_response()
 
 
-def trigger_verify_tables(*, actor_id: int, reason: str | None) -> FlaskResponse:
+def trigger_verify_tables(*, actor_id: int, reason: str) -> FlaskResponse:
     """Check for missing database tables (read-only).
 
     Uses get_missing_tables() to compare SQLAlchemy metadata against the live
@@ -251,7 +251,7 @@ def trigger_verify_tables(*, actor_id: int, reason: str | None) -> FlaskResponse
 
     Args:
         actor_id: ID of the admin user requesting the check.
-        reason: Optional free-text reason recorded in the audit log.
+        reason: Required human-readable reason recorded in the audit log.
 
     Returns:
         200 JSON envelope with count=missing table count on success.
@@ -293,7 +293,7 @@ def trigger_verify_tables(*, actor_id: int, reason: str | None) -> FlaskResponse
     ).to_response()
 
 
-def trigger_backup(*, actor_id: int, reason: str | None) -> FlaskResponse:
+def trigger_backup(*, actor_id: int, reason: str) -> FlaskResponse:
     """Request an on-demand run of the backup pipeline (cross-container).
 
     Sets a short-TTL trigger flag in the metrics Redis; the workflow
@@ -304,7 +304,7 @@ def trigger_backup(*, actor_id: int, reason: str | None) -> FlaskResponse:
 
     Args:
         actor_id: ID of the admin user requesting the backup.
-        reason: Optional free-text reason recorded in the audit log.
+        reason: Required human-readable reason recorded in the audit log.
 
     Returns:
         200 JSON envelope on success or when a request is already pending.
@@ -359,7 +359,7 @@ def trigger_backup(*, actor_id: int, reason: str | None) -> FlaskResponse:
     ).to_response()
 
 
-def trigger_short_urls_sync(*, actor_id: int, reason: str | None) -> FlaskResponse:
+def trigger_short_urls_sync(*, actor_id: int, reason: str) -> FlaskResponse:
     """Regenerate the short-URL domain Redis set from the canonical GitHub list.
 
     Builds a Redis client from config REDIS_URI (main Redis, not metrics Redis)
@@ -368,7 +368,7 @@ def trigger_short_urls_sync(*, actor_id: int, reason: str | None) -> FlaskRespon
 
     Args:
         actor_id: ID of the admin user triggering the sync.
-        reason: Optional free-text reason recorded in the audit log.
+        reason: Required human-readable reason recorded in the audit log.
 
     Returns:
         200 JSON envelope with count=newly added domains on success.

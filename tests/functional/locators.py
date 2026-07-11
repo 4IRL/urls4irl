@@ -610,8 +610,12 @@ class AdminPortalLocators(GenericPageLocator):
     OPS_VERIFY_TABLES_BTN = "#AdminOpsVerifyTablesBtn"
     OPS_METRICS_FLUSH_BTN = "#AdminOpsMetricsFlushBtn"
     OPS_BACKUP_TRIGGER_BTN = "#AdminOpsBackupTriggerBtn"
+    OPS_CARD_DESC = ".admin-ops-card-desc"
     HEALTH_BACKUP_CARD = "#AdminHealthBackup"
-    ACTION_RESULT_REGION = "#AdminActionResult"
+    # Non-reloading actions render their result inline, immediately after the
+    # triggering button (button-scoped via the adjacent-sibling combinator).
+    ACTION_INLINE_RESULT = ".admin-action-inline-result"
+    OPS_VERIFY_TABLES_RESULT = "#AdminOpsVerifyTablesBtn + .admin-action-inline-result"
     ACTION_CONFIRM_MODAL = "#confirmModal"
     ACTION_MODAL_TITLE = "#confirmModalTitle"
     ACTION_MODAL_SUBMIT = "#modalSubmit"
@@ -648,6 +652,12 @@ class AdminPortalLocators(GenericPageLocator):
     USER_DETAIL_ACCOUNT_KILL_SESSIONS_BTN = '[data-admin-action="user-kill-sessions"]'
     USER_DETAIL_ACCOUNT_FORCE_RESET_BTN = '[data-admin-action="user-force-reset"]'
     USER_DETAIL_ACCOUNT_FORCE_RESET_NA = "#AdminUserForceResetNA"
+    USER_DETAIL_ACCOUNT_KILL_SESSIONS_RESULT = (
+        '[data-admin-action="user-kill-sessions"] + .admin-action-inline-result'
+    )
+    USER_DETAIL_ACCOUNT_FORCE_RESET_RESULT = (
+        '[data-admin-action="user-force-reset"] + .admin-action-inline-result'
+    )
     # Account data actions (erase / OAuth unlink / email verification)
     USER_DETAIL_ERASED = "#AdminUserDetailErased"
     USER_DETAIL_ACCOUNT_ERASE_BTN = '[data-admin-action="user-erase"]'
@@ -669,6 +679,9 @@ class AdminPortalLocators(GenericPageLocator):
     DB_ROW_MOD_SECTION = "#AdminDbRowModSection"
     DB_ROW_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
     DB_ROW_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
+    DB_ROW_MOD_URL_PURGE_RESULT = (
+        '[data-admin-action="url-purge"] + .admin-action-inline-result'
+    )
 
     # Audit log page
     AUDIT_LOG_TITLE = "#AdminAuditLogTitle"

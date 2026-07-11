@@ -45,10 +45,7 @@ from backend.api_common.parse_request import api_route
 from backend.api_common.responses import FlaskResponse
 from backend.schemas.admin_actions import AdminActionResponseSchema
 from backend.schemas.errors import ErrorResponse
-from backend.schemas.requests.admin_actions import (
-    AdminActionRequest,
-    AdminReasonRequiredRequest,
-)
+from backend.schemas.requests.admin_actions import AdminReasonRequiredRequest
 from backend.utils.strings.admin_portal_strs import ADMIN_ACTION_STRINGS
 from backend.utils.strings.openapi_strs import OPEN_API
 
@@ -65,7 +62,7 @@ _OPS_STATUS_CODES = {
 @admin.route("/admin/ops/metrics-flush", methods=["POST"])
 @admin_required
 @api_route(
-    request_schema=AdminActionRequest,
+    request_schema=AdminReasonRequiredRequest,
     response_schema=AdminActionResponseSchema,
     error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
     error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
@@ -74,19 +71,19 @@ _OPS_STATUS_CODES = {
     status_codes=_OPS_STATUS_CODES,
 )
 def admin_ops_metrics_flush(
-    admin_action_request: AdminActionRequest,
+    admin_reason_required_request: AdminReasonRequiredRequest,
 ) -> FlaskResponse:
     """Trigger an immediate metrics flush and return the row count."""
     return trigger_metrics_flush(
         actor_id=current_user.id,
-        reason=admin_action_request.reason,
+        reason=admin_reason_required_request.reason,
     )
 
 
 @admin.route("/admin/ops/gauge-sample", methods=["POST"])
 @admin_required
 @api_route(
-    request_schema=AdminActionRequest,
+    request_schema=AdminReasonRequiredRequest,
     response_schema=AdminActionResponseSchema,
     error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
     error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
@@ -95,19 +92,19 @@ def admin_ops_metrics_flush(
     status_codes=_OPS_STATUS_CODES,
 )
 def admin_ops_gauge_sample(
-    admin_action_request: AdminActionRequest,
+    admin_reason_required_request: AdminReasonRequiredRequest,
 ) -> FlaskResponse:
     """Trigger an immediate gauge sample and return the gauge count."""
     return trigger_gauge_sample(
         actor_id=current_user.id,
-        reason=admin_action_request.reason,
+        reason=admin_reason_required_request.reason,
     )
 
 
 @admin.route("/admin/ops/audit-purge", methods=["POST"])
 @admin_required
 @api_route(
-    request_schema=AdminActionRequest,
+    request_schema=AdminReasonRequiredRequest,
     response_schema=AdminActionResponseSchema,
     error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
     error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
@@ -119,19 +116,19 @@ def admin_ops_gauge_sample(
     status_codes=_OPS_STATUS_CODES,
 )
 def admin_ops_audit_purge(
-    admin_action_request: AdminActionRequest,
+    admin_reason_required_request: AdminReasonRequiredRequest,
 ) -> FlaskResponse:
     """Run the 90-day audit-log retention purge and return the deleted row count."""
     return trigger_audit_purge(
         actor_id=current_user.id,
-        reason=admin_action_request.reason,
+        reason=admin_reason_required_request.reason,
     )
 
 
 @admin.route("/admin/ops/verify-tables", methods=["POST"])
 @admin_required
 @api_route(
-    request_schema=AdminActionRequest,
+    request_schema=AdminReasonRequiredRequest,
     response_schema=AdminActionResponseSchema,
     error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
     error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
@@ -143,19 +140,19 @@ def admin_ops_audit_purge(
     status_codes=_OPS_STATUS_CODES,
 )
 def admin_ops_verify_tables(
-    admin_action_request: AdminActionRequest,
+    admin_reason_required_request: AdminReasonRequiredRequest,
 ) -> FlaskResponse:
     """Check for missing tables and return the missing-table count."""
     return trigger_verify_tables(
         actor_id=current_user.id,
-        reason=admin_action_request.reason,
+        reason=admin_reason_required_request.reason,
     )
 
 
 @admin.route("/admin/ops/backup-trigger", methods=["POST"])
 @admin_required
 @api_route(
-    request_schema=AdminActionRequest,
+    request_schema=AdminReasonRequiredRequest,
     response_schema=AdminActionResponseSchema,
     error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
     error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
@@ -168,19 +165,19 @@ def admin_ops_verify_tables(
     status_codes=_OPS_STATUS_CODES,
 )
 def admin_ops_backup_trigger(
-    admin_action_request: AdminActionRequest,
+    admin_reason_required_request: AdminReasonRequiredRequest,
 ) -> FlaskResponse:
     """Request an on-demand backup pipeline run via the cross-container flag."""
     return trigger_backup(
         actor_id=current_user.id,
-        reason=admin_action_request.reason,
+        reason=admin_reason_required_request.reason,
     )
 
 
 @admin.route("/admin/ops/short-urls-sync", methods=["POST"])
 @admin_required
 @api_route(
-    request_schema=AdminActionRequest,
+    request_schema=AdminReasonRequiredRequest,
     response_schema=AdminActionResponseSchema,
     error_message=ADMIN_ACTION_STRINGS.GENERIC_ERROR,
     error_code=AdminActionErrorCodes.INVALID_FORM_INPUT,
@@ -189,12 +186,12 @@ def admin_ops_backup_trigger(
     status_codes=_OPS_STATUS_CODES,
 )
 def admin_ops_short_urls_sync(
-    admin_action_request: AdminActionRequest,
+    admin_reason_required_request: AdminReasonRequiredRequest,
 ) -> FlaskResponse:
     """Sync short-URL domains to Redis and return the count of newly added domains."""
     return trigger_short_urls_sync(
         actor_id=current_user.id,
-        reason=admin_action_request.reason,
+        reason=admin_reason_required_request.reason,
     )
 
 

@@ -1300,12 +1300,9 @@ export interface components {
       /** @description Human-readable response message, if applicable */
       message?: string;
     };
-    AdminActionRequest: {
-      /**
-       * @description Optional reason for this admin action (max 500 characters). Empty or whitespace-only strings are treated as no reason provided.
-       * @default null
-       */
-      reason: string | null;
+    AdminReasonRequiredRequest: {
+      /** @description Required reason for this admin action (max 500 characters). Whitespace-only values are rejected. */
+      reason: string;
     };
     /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
     AdminActionResponseSchema: {
@@ -1361,10 +1358,6 @@ export interface components {
      * @enum {integer}
      */
     AdminActionErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-    AdminReasonRequiredRequest: {
-      /** @description Required reason for this admin action (max 500 characters). Whitespace-only values are rejected. */
-      reason: string;
-    };
     /** @description Authenticated user's profile for the mobile /api/v1 surface. */
     ApiUserProfileSchema: {
       /** @description Unique user ID */
@@ -2496,7 +2489,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        "application/json": components["schemas"]["AdminActionRequest"];
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
       };
     };
     responses: {
@@ -2565,7 +2558,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        "application/json": components["schemas"]["AdminActionRequest"];
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
       };
     };
     responses: {
@@ -2634,7 +2627,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        "application/json": components["schemas"]["AdminActionRequest"];
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
       };
     };
     responses: {
@@ -2703,7 +2696,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        "application/json": components["schemas"]["AdminActionRequest"];
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
       };
     };
     responses: {
@@ -2772,7 +2765,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        "application/json": components["schemas"]["AdminActionRequest"];
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
       };
     };
     responses: {
@@ -2841,7 +2834,7 @@ export interface operations {
     };
     requestBody?: {
       content: {
-        "application/json": components["schemas"]["AdminActionRequest"];
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
       };
     };
     responses: {

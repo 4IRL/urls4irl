@@ -151,8 +151,9 @@ def test_admin_mod_url_purge_control_and_happy_path(
          exists in at least one UTub
     WHEN the purge button is present and the admin clicks it, enters a reason,
          and confirms
-    THEN the #AdminActionResult region shows a success message containing
-         "URL purged from" and the DB contains no UtubUrls rows for that URL.
+    THEN the inline result beneath the purge button shows a success message
+         containing "URL purged from" and the DB contains no UtubUrls rows for
+         that URL.
     """
     # Retrieve the first seeded URL's id within the app context
     with provide_app.app_context():
@@ -197,9 +198,9 @@ def test_admin_mod_url_purge_control_and_happy_path(
 
     page.click(APL.ACTION_MODAL_SUBMIT)
 
-    # No reload-on-success for url-purge; success renders in #AdminActionResult
+    # No reload-on-success for url-purge; success renders inline beneath the button
     result_region = wait_then_get_element(
-        page=page, css_selector=APL.ACTION_RESULT_REGION
+        page=page, css_selector=APL.DB_ROW_MOD_URL_PURGE_RESULT
     )
     expect(result_region).to_be_visible()
     expect(result_region).to_contain_text(
