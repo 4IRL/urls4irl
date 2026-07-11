@@ -4,6 +4,7 @@ from flask import Blueprint, abort, render_template, request
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
 
+from backend import db
 from backend.admin import db_browser_service
 from backend.admin.audit_service import (
     AuditLogFilters,
@@ -48,6 +49,7 @@ def admin_portal() -> FlaskResponse:
     matching the established `/admin/metrics` gating semantics.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.PORTAL_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/index.html",
         is_admin_portal=True,
@@ -64,6 +66,7 @@ def admin_health() -> FlaskResponse:
     this route only renders the shell and audits the page view.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.HEALTH_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/health.html",
         is_admin_portal=True,
@@ -125,6 +128,7 @@ def admin_users_search() -> FlaskResponse:
             "result_count": search_page.total_count,
         },
     )
+    db.session.commit()
     return render_template(
         "admin_portal/users/_results.html",
         search_page=search_page,
@@ -145,6 +149,7 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
         target_type="User",
         target_id=str(user_id),
     )
+    db.session.commit()
     return render_template(
         "admin_portal/users/detail.html",
         is_admin_portal=True,
@@ -161,6 +166,7 @@ def admin_db() -> FlaskResponse:
     links to its paginated grid. The page view is audited.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/db/index.html",
         is_admin_portal=True,
@@ -192,6 +198,7 @@ def admin_db_table(table_name: str) -> FlaskResponse:
         action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW,
         target_type=table_name,
     )
+    db.session.commit()
     return render_template(
         "admin_portal/db/table.html",
         is_admin_portal=True,
@@ -216,6 +223,7 @@ def admin_db_row(table_name: str, row_pk: str) -> FlaskResponse:
         target_type=table_name,
         target_id=row_pk,
     )
+    db.session.commit()
     return render_template(
         "admin_portal/db/row.html",
         is_admin_portal=True,
@@ -251,6 +259,7 @@ def admin_audit_log() -> FlaskResponse:
     an audited action.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.AUDIT_LOG_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/audit_log/index.html",
         is_admin_portal=True,

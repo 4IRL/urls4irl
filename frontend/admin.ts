@@ -7,6 +7,7 @@ import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initNavbarBackdrop, initNavbarRouting } from "./lib/navbar-shared.js";
+import { initAdminActions } from "./admin/admin-actions.js";
 import { initAuditLog } from "./admin/audit-log.js";
 import { initHealthMonitor } from "./admin/health-monitor.js";
 import { initAdminNavKeyboard } from "./admin/nav-keyboard.js";
@@ -23,4 +24,5 @@ $(document).ready(() => {
   initHealthMonitor();
   initUserSearch();
   initAuditLog();
+  initAdminActions();
 });

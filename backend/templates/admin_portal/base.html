@@ -1,5 +1,7 @@
 {% extends "pages/layout.html" %}
-{% block modal_extender %}{% endblock %}
+{% block modal_extender %}
+{% include 'modals/homeModalBase.html' %}
+{% endblock %}
 {% block mainbody %}
 <main id="AdminPortal">
     {% include 'admin_portal/_nav.html' %}

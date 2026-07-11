@@ -2,10 +2,13 @@
 
 Covers:
   - Model round-trip: every column persists and is queryable.
-  - audit.record() happy path: row is committed, not just pending.
+  - audit.record() is flush-only: the row is visible in-session but is
+    discarded by a caller rollback — the caller owns the commit.
+  - audit.record() + caller commit persists the row.
   - audit.record() with only required args: nullable columns default to None.
-  - audit.record() failure path: commit error is swallowed, nothing persists,
-    and the specific warning is emitted.
+  - audit.record() failure path: the failed audit write rolls back only its
+    own savepoint — the caller's pending mutation survives and commits — and
+    the specific warning is emitted without any exception propagating.
 """
 
 from __future__ import annotations
@@ -18,13 +21,16 @@ from flask import Flask
 from backend import db
 from backend.extensions import audit
 from backend.models.audit_log import AuditLog
+from backend.models.users import Users
 
 pytestmark = pytest.mark.admin
 
 ACTION_TEST = "admin.test.action"
 ACTION_TEST_MINIMAL = "admin.test.minimal"
+ACTION_OVER_COLUMN_LIMIT = "admin.test." + ("x" * 100)
 METADATA_DICT: dict = {"query": "foo", "extra": 42}
 TARGET_TYPE_USER = "User"
+MUTATED_USERNAME = "MutatedByCaller"
 
 
 def test_audit_log_model_round_trip(app: Flask, register_first_user):
@@ -63,14 +69,34 @@ def test_audit_log_model_round_trip(app: Flask, register_first_user):
     assert queried_entry.created_at.tzinfo is not None
 
 
-def test_audit_record_happy_path(app: Flask, register_first_user):
+def test_audit_record_is_flush_only(app: Flask, register_first_user):
     """
     GIVEN a registered user and an empty AuditLogs table
-    WHEN audit.record() is called with actor_id, action, target_type,
-         target_id, and metadata
-    THEN exactly one AuditLog row exists with those values, and the row is
-         visible after session.expunge_all() — confirming it was committed,
-         not merely pending.
+    WHEN audit.record() is called and the caller then rolls back
+    THEN the row was visible in-session after the call (flushed) but is gone
+         after the rollback — proving record() never commits and the caller
+         owns the transaction.
+    """
+    _, registered_user = register_first_user
+    actor_id: int = registered_user.id
+
+    assert AuditLog.query.count() == 0
+
+    audit.record(actor_id=actor_id, action=ACTION_TEST)
+
+    assert AuditLog.query.count() == 1
+
+    db.session.rollback()
+
+    assert AuditLog.query.count() == 0
+
+
+def test_audit_record_persists_with_caller_commit(app: Flask, register_first_user):
+    """
+    GIVEN a registered user and an empty AuditLogs table
+    WHEN audit.record() is called with all args and the caller commits
+    THEN exactly one AuditLog row exists with those values, visible after
+         session.expunge_all() — confirming it was committed by the caller.
     """
     _, registered_user = register_first_user
     actor_id: int = registered_user.id
@@ -84,6 +110,7 @@ def test_audit_record_happy_path(app: Flask, register_first_user):
         target_id=str(actor_id),
         metadata=METADATA_DICT,
     )
+    db.session.commit()
 
     db.session.expunge_all()
 
@@ -101,7 +128,8 @@ def test_audit_record_happy_path(app: Flask, register_first_user):
 def test_audit_record_optional_args_default_to_none(app: Flask, register_first_user):
     """
     GIVEN a registered user and an empty AuditLogs table
-    WHEN audit.record() is called with only the required actor_id and action
+    WHEN audit.record() is called with only the required actor_id and action,
+         and the caller commits
     THEN exactly one row is persisted and target_type, target_id, and
          log_metadata are all None.
     """
@@ -111,6 +139,7 @@ def test_audit_record_optional_args_default_to_none(app: Flask, register_first_u
     assert AuditLog.query.count() == 0
 
     audit.record(actor_id=actor_id, action=ACTION_TEST_MINIMAL)
+    db.session.commit()
 
     audit_rows = AuditLog.query.all()
     assert len(audit_rows) == 1
@@ -123,27 +152,63 @@ def test_audit_record_optional_args_default_to_none(app: Flask, register_first_u
     assert audit_row.log_metadata is None
 
 
-def test_audit_record_failure_does_not_propagate(app: Flask, register_first_user):
+def test_audit_record_failure_does_not_roll_back_caller_mutation(
+    app: Flask, register_first_user
+):
     """
-    GIVEN a registered user and a db.session.commit patched to raise
-    WHEN audit.record() is called
-    THEN no exception propagates to the caller, no AuditLog row persists after
-         rollback, and the warning "audit.record failed for action=<action>"
-         is emitted — confirming the failure path is silenced and logged.
+    GIVEN a registered user with a pending (uncommitted) username mutation
+    WHEN audit.record() fails at flush time (action exceeds the 100-char
+         column limit, rejected by Postgres inside the audit savepoint)
+    THEN no exception propagates, the specific warning is emitted, the
+         caller's mutation still commits successfully, and no AuditLog row
+         persists — the audit failure rolled back only its own savepoint.
+    """
+    _, registered_user = register_first_user
+    actor_id: int = registered_user.id
+
+    assert AuditLog.query.count() == 0
+    assert registered_user.username != MUTATED_USERNAME
+
+    registered_user.username = MUTATED_USERNAME
+
+    with patch("backend.extensions.audit.record.warning_log") as mock_warning_log:
+        audit.record(actor_id=actor_id, action=ACTION_OVER_COLUMN_LIMIT)
+
+    db.session.commit()
+    db.session.expunge_all()
+
+    persisted_user = Users.query.get(actor_id)
+    assert persisted_user is not None
+    assert persisted_user.username == MUTATED_USERNAME
+    assert AuditLog.query.count() == 0
+
+    mock_warning_log.assert_called_once()
+    warning_message: str = mock_warning_log.call_args[0][0]
+    assert (
+        f"audit.record failed for action={ACTION_OVER_COLUMN_LIMIT}" in warning_message
+    )
+
+
+def test_caller_rollback_discards_pending_audit_row(app: Flask, register_first_user):
+    """
+    GIVEN a registered user and a successfully flushed audit.record() call
+    WHEN the caller's own flow fails and it rolls back the session
+    THEN the audit row is discarded along with the caller's writes — the
+         audit row and the mutation share one transaction atomically.
     """
     _, registered_user = register_first_user
     actor_id: int = registered_user.id
 
     assert AuditLog.query.count() == 0
 
-    with patch("backend.extensions.audit.record.warning_log") as mock_warning_log:
-        with patch.object(
-            db.session, "commit", side_effect=RuntimeError("forced commit failure")
-        ):
-            audit.record(actor_id=actor_id, action=ACTION_TEST)
+    registered_user.username = MUTATED_USERNAME
+    audit.record(actor_id=actor_id, action=ACTION_TEST)
+
+    assert AuditLog.query.count() == 1
+
+    db.session.rollback()
 
     assert AuditLog.query.count() == 0
-
-    mock_warning_log.assert_called_once()
-    warning_message: str = mock_warning_log.call_args[0][0]
-    assert f"audit.record failed for action={ACTION_TEST}" in warning_message
+    refreshed_user = Users.query.get(actor_id)
+    assert refreshed_user is not None
+    assert refreshed_user.username != MUTATED_USERNAME

@@ -51,6 +51,27 @@ class ADMIN_PORTAL_STRINGS:
     AUDIT_LOG_METADATA_SUMMARY: str = "metadata"
 
 
+class ADMIN_ACTION_STRINGS:
+    """Strings for the admin mutation-action surface.
+
+    ``REASON_LABEL``, ``REASON_REQUIRED``, ``GENERIC_ERROR``,
+    ``SUBMIT_DEFAULT``, and ``DISMISS`` ARE bridged into
+    ``generate_strings_js()`` / ``APP_CONFIG.strings`` — the shared
+    admin-actions TypeScript controller renders them into the confirm modal.
+    The remaining members are backend-only JSON response messages, surfaced
+    verbatim from the response envelope.
+    """
+
+    REASON_LABEL: str = "Reason"
+    REASON_REQUIRED: str = "A reason is required for this action."
+    GENERIC_ERROR: str = "Action failed. Check the server logs."
+    SUBMIT_DEFAULT: str = "Confirm"
+    DISMISS: str = "Cancel"
+    SELF_ACTION_FORBIDDEN: str = (
+        "Admins cannot perform this action on their own account."
+    )
+
+
 class ADMIN_AUDIT_ACTIONS:
     """Closed set of ``AuditLogs.action`` values emitted by the admin portal."""
 

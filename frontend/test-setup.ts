@@ -113,6 +113,11 @@ const appConfig = {
     DEVICE_TYPE_DIM_KEY: "device_type",
   },
   strings: {
+    ADMIN_ACTION_REASON_LABEL: "Reason",
+    ADMIN_ACTION_REASON_REQUIRED: "A reason is required for this action.",
+    ADMIN_ACTION_GENERIC_ERROR: "Action failed. Check the server logs.",
+    ADMIN_ACTION_SUBMIT_DEFAULT: "Confirm",
+    ADMIN_ACTION_DISMISS: "Cancel",
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
     EDIT_URL_TITLE_TOOLTIP: "Edit URL title",
     INVALID_URL: "This is not a valid URL.",
