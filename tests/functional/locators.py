@@ -585,8 +585,10 @@ class AdminPortalLocators(GenericPageLocator):
     NAV = "#AdminNav"
     NAV_DASHBOARD = "#AdminNavDashboard"
     NAV_HEALTH = "#AdminNavHealth"
+    NAV_SYSTEM_OPS = "#AdminNavSystemOps"
     NAV_DB_BROWSER = "#AdminNavDbBrowser"
-    NAV_USERS = "#AdminNavUsers"
+    NAV_USER_ACTIONS = "#AdminNavUsers"
+    NAV_UTUB_ACTIONS = "#AdminNavUtubActions"
     NAV_AUDIT_LOG = "#AdminNavAuditLog"
     NAV_METRICS = "#AdminNavMetrics"
 

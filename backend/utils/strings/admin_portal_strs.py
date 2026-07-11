@@ -21,9 +21,31 @@ class ADMIN_PORTAL_STRINGS:
     DB_SEARCH_PLACEHOLDER: str = "Search this table…"
     DB_ROW_COUNT_SINGULAR: str = "row"
     DB_ROW_COUNT_PLURAL: str = "rows"
-    NAV_USERS: str = "Users"
+    NAV_SYSTEM_OPS: str = "System Operations"
+    NAV_USER_ACTIONS: str = "User Actions"
+    NAV_UTUB_ACTIONS: str = "UTub Actions"
     NAV_AUDIT_LOG: str = "Audit Log"
     NAV_METRICS: str = "Metrics"
+    # System Operations page (Jinja-only; not bridged to JS)
+    SYSTEM_OPS_TITLE: str = "System Operations"
+    SYSTEM_OPS_SUBTITLE: str = (
+        "Global maintenance triggers. Each records an audit entry with your reason."
+    )
+    # User Actions page header copy (Jinja-only; not bridged to JS)
+    USER_ACTIONS_TITLE: str = "User Actions"
+    USER_ACTIONS_SUBTITLE: str = (
+        "Search a user to manage their account, sessions, and OAuth identities."
+    )
+    # UTub Actions list + UTub-detail pages (Jinja-only; not bridged to JS)
+    UTUB_ACTIONS_TITLE: str = "UTub Actions"
+    UTUB_ACTIONS_SUBTITLE: str = (
+        "Search a UTub to lock, delete, remove a member, or manage its URLs."
+    )
+    UTUB_DETAIL_TITLE: str = "UTub"
+    UTUB_DETAIL_MEMBERS_HEADING: str = "Members"
+    UTUB_DETAIL_URLS_HEADING: str = "URLs"
+    UTUB_DETAIL_NO_MEMBERS: str = "This UTub has no members."
+    UTUB_DETAIL_NO_URLS: str = "This UTub has no URLs."
     HEALTH_TITLE: str = "System Health"
     HEALTH_LABEL_DATABASE: str = "Database"
     HEALTH_LABEL_DB_CONNECTIONS: str = "DB Connections"
@@ -342,6 +364,9 @@ class ADMIN_AUDIT_ACTIONS:
     USER_SEARCH: str = "admin.user.search"
     USER_VIEW: str = "admin.user.view"
     AUDIT_LOG_VIEW: str = "admin.audit_log.view"
+    SYSTEM_OPS_VIEW: str = "admin.system_ops.view"
+    UTUB_LIST: str = "admin.utub.list"
+    UTUB_VIEW: str = "admin.utub.view"
     # Ops actions
     OPS_METRICS_FLUSH: str = "admin.ops.metrics_flush"
     OPS_GAUGE_SAMPLE: str = "admin.ops.gauge_sample"

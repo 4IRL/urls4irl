@@ -161,6 +161,34 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
     )
 
 
+@admin.route("/admin/system-operations", methods=["GET"])
+@admin_login_required
+def admin_system_operations() -> FlaskResponse:
+    """Placeholder for the System Operations tab.
+
+    The shared nav partial references ``admin.admin_system_operations`` via
+    ``url_for``, so the endpoint must exist for every admin page to render.
+    The full page (the six ops cards relocated off System Health, plus its
+    audit row) is built in a later phase; this thin stub only satisfies the
+    nav link until then.
+    """
+    return FlaskResponse(ADMIN_PORTAL_STRINGS.SYSTEM_OPS_TITLE, mimetype="text/plain")
+
+
+@admin.route("/admin/utubs", methods=["GET"])
+@admin_login_required
+def admin_utubs() -> FlaskResponse:
+    """Placeholder for the UTub Actions tab.
+
+    The shared nav partial references ``admin.admin_utubs`` via ``url_for``,
+    so the endpoint must exist for every admin page to render. The full
+    searchable list (reusing the DB browser's table service, plus its audit
+    row) is built in a later phase; this thin stub only satisfies the nav
+    link until then.
+    """
+    return FlaskResponse(ADMIN_PORTAL_STRINGS.UTUB_ACTIONS_TITLE, mimetype="text/plain")
+
+
 @admin.route("/admin/db", methods=["GET"])
 @admin_login_required
 def admin_db() -> FlaskResponse:

@@ -60,9 +60,9 @@ def test_admin_portal_renders_title_and_nav_for_admin(
     expect(nav_db_browser).to_be_visible()
     expect(nav_db_browser).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_DB_BROWSER)
 
-    nav_users = wait_then_get_element(page=page, css_selector=APL.NAV_USERS)
+    nav_users = wait_then_get_element(page=page, css_selector=APL.NAV_USER_ACTIONS)
     expect(nav_users).to_be_visible()
-    expect(nav_users).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_USERS)
+    expect(nav_users).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_USER_ACTIONS)
 
     nav_audit_log = wait_then_get_element(page=page, css_selector=APL.NAV_AUDIT_LOG)
     expect(nav_audit_log).to_be_visible()
