@@ -6,7 +6,7 @@ Each subagent is a **research-only** general-purpose agent that explores the cod
 
 ## Response Format (all subagents)
 
-> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/tmp/research-<focus>.md`) **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
+> **File delivery:** Write your complete response to the file path provided in your prompt (`plans/<topic>/research/research-<focus>.md`) **using the `Write` tool** — NEVER `cat <<EOF`, `python3 << 'EOF'`, `cat >`, `tee`, `printf >`, `echo >`, or any Bash heredoc/redirect. Any heredoc or inline script containing `{` and quotes triggers the brace+quote security prompt; the `Write` tool bypasses this. Return only this one-line confirmation: `Written to <path>`. The orchestrator will read the file. The format below is unchanged.
 
 ```json
 {
@@ -126,9 +126,11 @@ Rules:
 
 ---
 
-## Subagent 3: Request/Response Chain Tracing
+## Subagent 3: Request/Response Chain Tracing (Conditional)
 
 **Role:** For every endpoint the plan will touch, trace the full request/response cycle through all layers so no link is missed.
+
+**Launch condition:** Only launch this subagent when the task creates, modifies, or removes an HTTP endpoint. Skip for backend-internal, CLI-only, or data-layer-only tasks that touch no route.
 
 **What to read:**
 - Route handler files for affected endpoints

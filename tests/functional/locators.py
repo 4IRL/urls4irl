@@ -44,6 +44,8 @@ class HomePageLocators(GenericPageLocator):
     LOGGED_IN_USERNAME_DESKTOP = "#userLoggedInDesktop"
     NAVBAR_ADMIN_METRICS = "#NavbarDropdownsHome #adminMetrics"
     NAVBAR_ADMIN_METRICS_LINK = "#adminMetricsLink"
+    NAVBAR_ADMIN_PORTAL = "#NavbarDropdownsHome #adminPortal"
+    NAVBAR_ADMIN_PORTAL_LINK = "#adminPortalLink"
     NAVBAR_USER_SETTINGS = "#NavbarDropdownsHome #userSettings"
     NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
     NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
@@ -564,6 +566,75 @@ class MetricsDashboardLocators(GenericPageLocator):
     )
     LATENCY_APPROXIMATE_NOTE = "#MetricsLatencyGrid .latency-approximate-note"
     LATENCY_DAILY_RESOLUTION_NOTE = "#MetricsLatencyGrid .latency-daily-note"
+
+
+class AdminPortalLocators(GenericPageLocator):
+    """A collector class for admin portal landing page locators.
+
+    Selectors mirror the IDs defined in
+    `backend/templates/admin_portal/index.html` and
+    `backend/templates/admin_portal/_nav.html`.
+    """
+
+    # Page-level containers
+    PORTAL_TITLE = "#AdminPortalTitle"
+    PORTAL_SUBTITLE = "#AdminPortalSubtitle"
+    QUICK_LINKS = "#AdminQuickLinks"
+
+    # Navigation shell
+    NAV = "#AdminNav"
+    NAV_DASHBOARD = "#AdminNavDashboard"
+    NAV_HEALTH = "#AdminNavHealth"
+    NAV_DB_BROWSER = "#AdminNavDbBrowser"
+    NAV_USERS = "#AdminNavUsers"
+    NAV_AUDIT_LOG = "#AdminNavAuditLog"
+    NAV_METRICS = "#AdminNavMetrics"
+
+    # Health dashboard page
+    HEALTH_TITLE = "#AdminHealthTitle"
+    HEALTH_SNAPSHOT_REGION = "#AdminHealthSnapshot"
+    HEALTH_GRID = "#AdminHealthGrid"
+    HEALTH_DATABASE_CARD = "#AdminHealthDatabase"
+    HEALTH_DB_CONNECTIONS = "#AdminHealthDbConnections"
+    HEALTH_FLUSH_LAG = "#AdminHealthFlushLag"
+    HEALTH_SLOWEST_ENDPOINT = "#AdminHealthSlowestEndpoint"
+    HEALTH_ERROR_RATE = "#AdminHealthErrorRate"
+    HEALTH_BUSIEST_ENDPOINT = "#AdminHealthBusiestEndpoint"
+    HEALTH_SYSTEM_RESOURCES = "#AdminHealthSystemResources"
+    HEALTH_CPU_LOAD = "#AdminHealthCpuLoad"
+    HEALTH_MEMORY = "#AdminHealthMemory"
+    HEALTH_CAPTURED_AT = "#AdminHealthCapturedAt"
+
+    # Users search page
+    USERS_TITLE = "#AdminUsersTitle"
+    USER_SEARCH_INPUT = "#AdminUserSearchInput"
+    USER_SEARCH_RESULTS = "#AdminUserSearchResults"
+    USER_SEARCH_TABLE = "#AdminUserSearchTable"
+    USER_SEARCH_ROW = "tr.admin-user-row"
+    USER_SEARCH_EMPTY = "#AdminUserSearchEmpty"
+
+    # User detail page
+    USER_DETAIL_TITLE = "#AdminUserDetailTitle"
+    USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
+
+    # Audit log page
+    AUDIT_LOG_TITLE = "#AdminAuditLogTitle"
+    AUDIT_FILTER_ACTION = "#AdminAuditFilterAction"
+    AUDIT_LOG_RESULTS = "#AdminAuditLogResults"
+    AUDIT_LOG_TABLE = "#AdminAuditLogTable"
+    AUDIT_LOG_ROW = "tr.admin-audit-row"
+    AUDIT_METADATA_DETAILS = "details.admin-audit-metadata"
+    AUDIT_LOG_EMPTY = "#AdminAuditLogEmpty"
+
+    # DB browser pages
+    DB_BROWSER_TITLE = "#AdminDbBrowserTitle"
+    DB_TABLES = "#AdminDbTables"
+    DB_TABLE_CARD = ".admin-quick-link-card"
+    DB_TABLE_GRID = "#AdminDbTableGrid"
+    DB_TABLE_EMPTY = "#AdminDbTableEmpty"
+    DB_ROW_DETAIL = "#AdminDbRowDetail"
+    DB_TABLE_SEARCH = "#AdminDbTableSearch"
+    DB_SORT_LINK = ".admin-db-sort-link"
 
 
 class SettingsPageLocators(GenericPageLocator):

@@ -46,7 +46,7 @@ Once intent is clear, determine the minimal, faithful edit to the plan that fulf
 Immediately after applying the edit, adopt the role of a **distinguished staff engineer** and answer these questions concisely:
 
 1. **Faithful?** Does the edit fully implement what the review item asked for — no more, no less?
-2. **Correct?** Is the change accurate given the actual codebase (file paths, APIs, model shapes)?
+2. **Correct?** Is the change accurate given the actual codebase (file paths, APIs, model shapes)? If the edit references a name defined elsewhere in the same class/module/function scope, trace the actual runtime evaluation order — not just textual presence in the file (e.g. a Python class body executes top-to-bottom at class-definition time, so a class attribute referenced inside `__table_args__` before its own line is undefined regardless of file proximity).
 3. **Coherent?** Does the updated plan text read clearly and consistently with surrounding steps?
 4. **Risk?** Does the edit introduce any new ambiguity, contradiction, or gap?
 

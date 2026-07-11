@@ -270,10 +270,11 @@ Omit `### To-Do: Mechanical Fixes` if there are no mechanical findings. Omit `##
 
 | Verdict | Meaning |
 |---|---|
-| **PUSHED** | All PASS, no findings |
 | **PUSHED WITH MINOR FINDINGS** | All PASS, minor findings recorded but no fixes needed |
 | **RESOLVED — PUSHED** | Had FAILs, all fixed (mechanical + DDs), re-review passed, pushed |
 | **BLOCKED** | FAILs remain after 2 fix rounds, or re-review still fails |
+
+**No review file at all** is the outcome for "ALL PASS, no findings" (per Step 4b) — that case proceeds straight to Step 7d/8 and never reaches Step 5, so no verdict label is written.
 
 #### TO-DO Item Guidelines
 
@@ -402,6 +403,12 @@ After the subagent returns:
 1. Read the review file to confirm DD items are crossed off
 2. Report to user: `"Applied N of M design decisions."`
 
+#### Fix-Round Policy (shared by Steps 7c and 7d)
+
+`fix_round` starts at 1 (set in Step 4b) and is shared across re-review (7c) and test-gate (7d) failures — either can increment it, and both cap at the same total. On a failure in either step:
+- If `fix_round <= 2`: increment `fix_round`, write the new findings to the review file (append as next `## Review N+1` section), classify into mechanical/design, loop back to Step 6 (mechanical fixes) / Step 7a (design decisions), then retry whichever step failed.
+- If `fix_round > 2`: **BLOCK**. Update review file verdict to `**BLOCKED**`. Inform user with review file path. Do NOT push.
+
 #### Step 7c: Re-Review (verification pass)
 
 After all fixes (mechanical + design decisions) are applied and committed:
@@ -438,10 +445,7 @@ Write results to the same `<tmp-dir>/<role>.md` files.
 
 Evaluate re-review results:
 - **All now PASS**: Update review file verdict to `**RESOLVED — PUSHED**`. Proceed to Step 7d (test gate), then Step 8 (push).
-- **Still FAIL with new findings**:
-  - Increment `fix_round`
-  - If `fix_round <= 2`: Write new findings to review file (append as next `## Review N+1` section), classify into mechanical/design, loop back to Step 6 for mechanical fixes / Step 7a for design decisions
-  - If `fix_round > 2`: **BLOCK**. Update review file verdict to `**BLOCKED**`. Inform user with review file path. Do NOT push.
+- **Still FAIL with new findings**: apply the **Fix-Round Policy** above.
 
 ### 7d. Mandatory Test Verification Gate (NEVER SKIP)
 
@@ -473,9 +477,7 @@ Notes:
 **2. Evaluate** — a suite passes only if its summary shows `0 failed` and `0 errored`:
 
 - **All green** → record `Test gate: PASS` with each suite + counts in the review file, then proceed to Step 8 (Push).
-- **Any red** → **do NOT push.** Append the failing tests to the review file as a new `## Review N+1` section, classify into mechanical/design (Step 4b rules), increment `fix_round`, and:
-  - `fix_round <= 2`: loop back to Step 6 (mechanical) / Step 7a (design) to fix, then **re-run this gate**.
-  - `fix_round > 2`: **BLOCK** — set verdict `**BLOCKED**`, tell the user the review path and the failing test names, do not push.
+- **Any red** → **do NOT push.** Append the failing tests to the review file as a new `## Review N+1` section, classify into mechanical/design (Step 4b rules), then apply the **Fix-Round Policy** above (Step 7c) — on the retry path, re-run this gate rather than Step 7c.
 - **A suite cannot run** (containers down, infra error, timeout) → STOP and tell the user. Never push on an unrun gate. (Check `docker compose ps`; restart `selenium`/`web`/`test-db` as CLAUDE.md prescribes, then retry once.)
 
 ### 8. Push
@@ -667,14 +669,9 @@ Output:
 
 ## Important Notes
 
-- **Reviewers assume tests passed; the orchestrator re-verifies.** Review *subagents* should still not flag "tests might fail" or "untested at runtime" — they review code quality, not runtime. The Test Coverage reviewer focuses on whether the diff includes sufficient test code for new/changed behavior, not whether existing tests pass. BUT the assumption that "all test suites passed before commit" is **not** trusted as the push gate: because `/git-push` itself mutates code (Step 6/7b) and often adds tests, the orchestrator's **Step 7d gate** independently re-runs the affected suites before pushing. A subagent's "passed" is never the push gate; the Step 7d run is.
-- Never push to `main` or `master` — warn the user and abort
-- Never force-push
-- If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code
-- Push review file lives at `<plan-dir>/reviews/push-review-<branch>.md`, where `<plan-dir>` was resolved by the plan-folder-resolver subagent in Step 2. **Never store final documents (reviews, plans) in `plans/tmp/`.**
-- All subagent launches must be in a single message for true parallelism
-- If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error
-- **All design decisions must be resolved before pushing.** The skill blocks until the user has answered every DD via `AskUserQuestion`. There is no "skip" or "defer" option.
-- **Max 2 fix-review rounds.** After fixes are applied (Step 6 + 7b), a re-review runs (Step 7c) and then the **Step 7d test gate** runs. If either surfaces new issues, the cycle repeats up to 2 times total (the `fix_round` counter is shared across re-review and gate failures). After 2 rounds, the skill blocks. The Step 7d gate must pass before any push — no push happens on an unrun or red gate.
-- **`/run-review` is launched as a subagent** for both mechanical fixes (Step 6) and design decision fixes (Step 7b). It runs the full `/next-step-taker` pipeline per item (validate, review, test, commit). The main `/git-push` agent orchestrates but never directly edits source files.
-- **The coordinator subagent (Step 4a) guarantees non-contradictory mechanical fix items.** Any finding where two reviewers suggest incompatible changes to the same code is escalated to a design decision before `/run-review` runs — so `/run-review` never receives items that would conflict with each other.
+Novel rules not stated elsewhere in this file:
+- If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code.
+- All subagent launches must be in a single message for true parallelism.
+- If a subagent fails to return valid JSON (or its output file is missing/unreadable), treat it as FAIL with a note about the parse error.
+
+Everything else governing this workflow is fully specified at its point of use — see: reviewer-vs-gate trust boundary (Step 7d), never push to `main`/never force-push (Step 8), push review file location (Step 5), DD resolution requirement (Step 7a), the shared `fix_round <= 2` cap (Steps 7c/7d), `/run-review` subagent delegation (Steps 6/7b), and the coordinator's conflict escalation (Step 4a).

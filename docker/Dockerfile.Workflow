@@ -65,6 +65,7 @@ COPY --chown=workflow:workflow scripts/backup_maintenance.py /app/backup_mainten
 COPY --chown=workflow:workflow scripts/flush_metrics.py /app/flush_metrics.py
 COPY --chown=workflow:workflow scripts/check_flush_liveness.py /app/check_flush_liveness.py
 COPY --chown=workflow:workflow scripts/sample_gauges.py /app/sample_gauges.py
+COPY --chown=workflow:workflow scripts/purge_audit_log.py /app/purge_audit_log.py
 COPY --chown=workflow:workflow scripts/notify.py /app/scripts/notify.py
 COPY --chown=workflow:workflow backend/extensions/metrics/buckets.py /app/backend/extensions/metrics/buckets.py
 COPY --chown=workflow:workflow backend/metrics/gauges.py /app/backend/metrics/gauges.py
@@ -79,6 +80,7 @@ RUN chmod +x /app/*.sh \
     && chmod +x /app/flush_metrics.py \
     && chmod +x /app/check_flush_liveness.py \
     && chmod +x /app/sample_gauges.py \
+    && chmod +x /app/purge_audit_log.py \
     && chmod +x /app/scripts/notify.py \
     && chmod +x /usr/bin/restricted_curl \
     && mv /usr/bin/curl /usr/bin/curl.real \

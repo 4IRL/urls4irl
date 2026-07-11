@@ -98,8 +98,9 @@ def test_navbar_hamburger_desktop_regular_member(
     viewport_width = page.evaluate("() => window.innerWidth")
     assert dropdown_box["width"] < viewport_width / 2
 
-    # A non-admin never renders the Admin · Metrics entry.
+    # A non-admin never renders the Admin · Metrics or Admin · Portal entries.
     assert page.locator(HPL.NAVBAR_ADMIN_METRICS).count() == 0
+    assert page.locator(HPL.NAVBAR_ADMIN_PORTAL).count() == 0
 
 
 def test_navbar_hamburger_desktop_admin_member(
@@ -110,7 +111,7 @@ def test_navbar_hamburger_desktop_admin_member(
 
     GIVEN a logged-in ADMIN user on the desktop home page
     WHEN they open the always-visible navbar hamburger dropdown
-    THEN the dropdown contains both Admin · Metrics and Logout
+    THEN the dropdown contains Admin · Metrics, Admin · Portal, and Logout
     """
     app = provide_app
     # User 1 is seeded with the ADMIN role.
@@ -120,6 +121,7 @@ def test_navbar_hamburger_desktop_admin_member(
     click_on_navbar(page=page)
 
     wait_then_get_element(page=page, css_selector=HPL.NAVBAR_ADMIN_METRICS)
+    wait_then_get_element(page=page, css_selector=HPL.NAVBAR_ADMIN_PORTAL)
     wait_then_get_element(page=page, css_selector=HPL.NAVBAR_LOGOUT)
 
 

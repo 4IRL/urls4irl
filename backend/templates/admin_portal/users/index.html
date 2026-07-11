@@ -1,0 +1,19 @@
+{% extends "admin_portal/base.html" %}
+{% set active_nav = 'users' %}
+{% block admin_content %}
+<header id="AdminUsersHeader" class="admin-page-header">
+    <h1 id="AdminUsersTitle">{{ ADMIN_PORTAL_STRINGS.USERS_TITLE }}</h1>
+</header>
+<div class="admin-panel">
+    <input id="AdminUserSearchInput"
+           class="admin-search-input"
+           type="search"
+           name="q"
+           placeholder="{{ ADMIN_PORTAL_STRINGS.USERS_SEARCH_PLACEHOLDER }}"
+           aria-label="{{ ADMIN_PORTAL_STRINGS.USERS_SEARCH_ARIA }}"
+           data-search-url="{{ url_for('admin.admin_users_search') }}">
+    <div id="AdminUserSearchResults"
+         aria-live="polite">
+    </div>
+</div>
+{% endblock %}

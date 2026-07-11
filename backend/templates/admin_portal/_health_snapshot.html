@@ -1,0 +1,60 @@
+{# HTML fragment — rendered standalone by admin.admin_health_snapshot and
+   swapped into #AdminHealthSnapshot by the native TS health-monitor controller;
+   deliberately does NOT extend any base template. #}
+{% macro status_badge(status) %}
+<span class="admin-status-badge {% if status == 'up' %}status-up{% elif status == 'down' %}status-down{% else %}status-neutral{% endif %}">{{ status }}</span>
+{% endmacro %}
+{% macro timestamp_cell(moment) %}
+{% if moment is not none %}{{ moment.strftime('%Y-%m-%d %H:%M:%S UTC') }}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_NEVER_RAN }}{% endif %}
+{% endmacro %}
+<div id="AdminHealthGrid" class="admin-health-grid">
+    <div id="AdminHealthDatabase" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_DATABASE }}</h2>
+        {{ status_badge(snapshot.database_status) }}
+    </div>
+    <div id="AdminHealthDbConnections" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_DB_CONNECTIONS }}</h2>
+        <span class="admin-health-value">{% if snapshot.database_connection_count is not none %}{{ snapshot.database_connection_count }}{% if snapshot.database_max_connections is not none %} / {{ snapshot.database_max_connections }} ({{ (100 * snapshot.database_connection_count / snapshot.database_max_connections) | round(0) }}%){% endif %}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
+    </div>
+    <div id="AdminHealthSessionRedis" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_SESSION_REDIS }}</h2>
+        {{ status_badge(snapshot.session_redis_status) }}
+    </div>
+    <div id="AdminHealthMetricsRedis" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_METRICS_REDIS }}</h2>
+        {{ status_badge(snapshot.metrics_redis_status) }}
+    </div>
+    <div id="AdminHealthFlush" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_FLUSH_LAST_SUCCESS }}</h2>
+        <span class="admin-health-value">{{ timestamp_cell(snapshot.flush_last_success_at) }}</span>
+        <span id="AdminHealthFlushLag" class="admin-health-lag{% if snapshot.flush_is_stale %} admin-health-stale{% endif %}">{% if snapshot.flush_lag_seconds is not none %}{{ snapshot.flush_lag_seconds }}s ago{% if snapshot.flush_is_stale %} · STALE{% endif %}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_NEVER_RAN }}{% endif %}</span>
+    </div>
+    <div id="AdminHealthGauge" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_GAUGE_LAST_SAMPLE }}</h2>
+        <span class="admin-health-value">{{ timestamp_cell(snapshot.gauge_last_sample_at) }}</span>
+    </div>
+    <div id="AdminHealthSlowestEndpoint" class="admin-panel admin-health-card">
+        <h2>Slowest Endpoint (p95, 7d)</h2>
+        <span class="admin-health-value">{% if snapshot.slowest_endpoint is not none %}{% if snapshot.slowest_endpoint.approximate %}~{% endif %}{{ snapshot.slowest_endpoint.endpoint }} {{ snapshot.slowest_endpoint.method }} — {{ snapshot.slowest_endpoint.p95_ms | round(0) }} ms{% else %}No latency data yet{% endif %}</span>
+    </div>
+    <div id="AdminHealthErrorRate" class="admin-panel admin-health-card">
+        <h2>5xx Errors (24h)</h2>
+        <span class="admin-health-value">{% if snapshot.error_rate is not none %}{% if snapshot.error_rate.total_count == 0 %}0 (no traffic){% else %}{{ snapshot.error_rate.error_count }} ({{ (snapshot.error_rate.rate * 100) | round(2) }}%){% endif %}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
+    </div>
+    <div id="AdminHealthBusiestEndpoint" class="admin-panel admin-health-card">
+        <h2>Busiest Endpoint (24h)</h2>
+        <span class="admin-health-value">{% if snapshot.busiest_endpoint is not none %}{{ snapshot.busiest_endpoint.endpoint }} {{ snapshot.busiest_endpoint.method }} — {{ snapshot.busiest_endpoint.hit_count }} hits{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
+    </div>
+    <div id="AdminHealthSystemResources" class="admin-panel admin-health-card">
+        <h2>System Resources (host)</h2>
+        {% if snapshot.system_resources is not none %}
+        <span id="AdminHealthCpuLoad" class="admin-health-value">CPU load (1m): {{ snapshot.system_resources.load_avg_1m | round(2) }}</span>
+        <span id="AdminHealthMemory" class="admin-health-value">Memory used: {{ snapshot.system_resources.memory_used_percent }}%</span>
+        {% else %}
+        <span id="AdminHealthCpuLoad" class="admin-health-value">CPU load (1m): {{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNAVAILABLE }}</span>
+        <span id="AdminHealthMemory" class="admin-health-value">Memory used: {{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNAVAILABLE }}</span>
+        {% endif %}
+        <span id="AdminHealthDisk" class="admin-health-value">Disk used: {% if snapshot.disk_used_percent is not none %}{{ snapshot.disk_used_percent }}%{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_VALUE_UNKNOWN }}{% endif %}</span>
+    </div>
+</div>
+<p id="AdminHealthCapturedAt" class="admin-health-captured">{{ snapshot.captured_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</p>

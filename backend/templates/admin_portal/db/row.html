@@ -1,0 +1,24 @@
+{% extends "admin_portal/base.html" %}
+{% set active_nav = 'db' %}
+{% block admin_content %}
+<header id="AdminDbRowHeader" class="admin-page-header">
+    <div class="admin-breadcrumb"><a href="{{ url_for('admin.admin_db') }}">{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</a> / <a href="{{ url_for('admin.admin_db_table', table_name=row_detail.table_name) }}">{{ row_detail.table_name }}</a> / {{ row_detail.pk_segment }}</div>
+    <h1>{{ row_detail.table_name }} — {{ row_detail.pk_segment }}</h1>
+</header>
+<div class="admin-panel">
+    <table id="AdminDbRowDetail" class="admin-table">
+        <tbody>
+            {% for field in row_detail.fields %}
+            <tr>
+                <th>{{ field.key }}</th>
+                <td>
+                    {% if field.value | length > 80 %}
+                    <details class="admin-db-json"><summary>{{ field.key }}</summary><pre>{{ field.value }}</pre></details>
+                    {% else %}{{ field.value }}{% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

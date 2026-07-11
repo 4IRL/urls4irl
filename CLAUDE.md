@@ -60,7 +60,7 @@ Review files are stored at the project root level (`reviews/`), NOT under the `p
 3. **Full three-way registry alignment is mandatory for any new event:** `EventName` (`events.py`) + `EVENT_REGISTRY` (`event_registry.py`) + `DIMENSION_MODELS`/dim model (`dimension_models.py`) + `EVENT_NAME_TO_RESOURCE` (`resources.py`). The dim model's `Literal[...]` must exactly match the registry `dimensions` tuple. Then run `make audit` (must exit 0) and `make generate-types` (stage regenerated `frontend/types/*`).
 4. **Watch for resource-set fallout.** Introducing a `Resource` into a new category (e.g. adding `Resource.SEARCH` to DOMAIN) can flip previously-invalid `(category, resource)` query pairs to valid — update any negative dashboard/query tests that asserted the old invalid pair. Run the metrics query/service/CLI integration suites, not just unit, after such a change.
 
-Performance/latency is **not** measured anywhere today (the system is count-and-dimension only — no timers, histograms, or p95). Do not assume response-time shows on the dashboard; adding it is a net-new metric type and a separate effort.
+Performance/latency **is** measured. `backend/extensions/request_timing.py` records per-request durations into `Anonymous_Latency_Samples` (raw, ~35-day retention via `LATENCY_RAW_RETENTION_DAYS`), which the Flask-less flush worker rolls up nightly into `Anonymous_Latency_Daily_Rollups` (stored p50/p95/p99 per endpoint×method). Query it via `backend/metrics/query_service.py` `latency_percentiles(...)` (rows ordered by p95 desc; `.approximate=True` when served from rollups) / `latency_timeseries(...)`. It surfaces in the metrics dashboard's "Backend Performance" tab and, as a "slowest endpoint (p95)" headline stat, on the admin system-health dashboard (`backend/admin/health_service.py`). The single latency metric today is `LatencyMetricName.API_REQUEST_DURATION` (`"api_request_duration"`).
 
 ### `.claude/`, `CLAUDE.md`, and `.gitignore`
 
@@ -370,7 +370,7 @@ pytest tests/unit/test_foo.py # single test file
 pytest -k "test_name"         # single test by name
 ```
 
-Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`, `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`, `metrics_ui`, `settings_ui`, `search_ui`
+Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`, `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`, `metrics_ui`, `settings_ui`, `search_ui`, `mobile_api`, `admin`, `admin_ui`
 
 **Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
 

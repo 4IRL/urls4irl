@@ -1,0 +1,450 @@
+/*
+ * Admin portal shell styles — nav bar, page headers, quick-link cards, and
+ * shared panel styling for the admin sub-pages (health, users, audit log).
+ * Uses the same design tokens as frontend/styles/admin/metrics-dashboard.css
+ * (splash-green accents, panel cards on the page background).
+ */
+
+#AdminPortal {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    background-color: var(--defaultPageBackgroundColor);
+    color: var(--UTubDescriptionColor);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+/* ---- Section nav ------------------------------------------------------- */
+/* Mirrors the metrics dashboard tablist (#MetricsTablist) exactly: rounded
+   chip container, raised splash-green active tab with underline, hover that
+   only brightens the label, green focus-visible outline, and mobile
+   horizontal-scroll instead of wrapping. See metrics-dashboard.css. */
+
+#AdminNav {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+}
+
+.admin-nav-list {
+    display: flex;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.admin-nav-link {
+    display: inline-block;
+    background-color: transparent;
+    border: 0;
+    padding: 8px 16px;
+    border-radius: 6px;
+    color: var(--cardURLTextColor);
+    text-decoration: none;
+    font-size: 0.92rem;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+}
+
+.admin-nav-link:hover {
+    color: var(--UTubDescriptionColor);
+    text-decoration: none;
+}
+
+.admin-nav-link.active {
+    background-color: var(--cardBackgroundColor);
+    color: var(--splashGreen);
+    box-shadow: inset 0 -2px 0 var(--splashGreen);
+}
+
+.admin-nav-link:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+/* On phones the six links overflow the viewport. Contain the overflow to the
+   nav chip (horizontal scroll within its own width) instead of letting the
+   page overscroll horizontally. Desktop keeps the fit-content single row. */
+@media (max-width: 575.98px) {
+    #AdminNav {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .admin-nav-list {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x proximity;
+    }
+
+    .admin-nav-link {
+        flex: 0 0 auto;
+        scroll-snap-align: start;
+    }
+}
+
+/* ---- Page header ------------------------------------------------------- */
+
+.admin-page-header h1 {
+    margin: 0;
+    font-weight: 300;
+    font-size: 1.9rem;
+    color: var(--deckHeaderGreen);
+}
+
+.admin-page-header p {
+    margin: 4px 0 0;
+    color: var(--cardURLTextColor);
+}
+
+/* ---- Quick-link cards -------------------------------------------------- */
+
+.admin-quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 14px;
+}
+
+/* The DB table picker's card titles are raw single-token __tablename__ values
+   (e.g. AnonymousLatencyDailyRollups) that cannot wrap; give this grid wider
+   columns than the dashboard quick-links so the longest names fit on one line
+   inside the card border. Kept single-column on phones by the mobile rule
+   below. */
+#AdminDbTables {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.admin-quick-link-card {
+    display: block;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 10px;
+    padding: 16px;
+    color: var(--UTubDescriptionColor);
+    text-decoration: none;
+}
+
+.admin-quick-link-card:hover {
+    border-color: var(--deckHeaderGreen);
+    text-decoration: none;
+}
+
+.admin-quick-link-card h2 {
+    margin: 0 0 6px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--deckHeaderGreen);
+}
+
+.admin-quick-link-card p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--cardURLTextColor);
+}
+
+/* ---- Shared panel + table styling for admin sub-pages ------------------ */
+
+.admin-panel {
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.admin-table th,
+.admin-table td {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--borderColor);
+    color: var(--UTubDescriptionColor);
+}
+
+.admin-table th {
+    color: var(--cardURLTextColor);
+    font-weight: 600;
+}
+
+.admin-db-search-form {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 14px;
+}
+
+.admin-db-search-form .admin-search-input {
+    flex: 0 1 420px;
+    /* The shared .admin-search-input carries margin-bottom: 14px for the
+       standalone users-search layout; inside this flex row it would shift the
+       input above the Search button's baseline. Zero it (mirrors
+       .admin-audit-filters .admin-search-input). */
+    margin-bottom: 0;
+}
+
+.admin-db-search-btn {
+    background-color: var(--cardBackgroundColor);
+    color: var(--deckHeaderGreen);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    transition: border-color 0.15s;
+}
+
+.admin-db-search-btn:hover {
+    border-color: var(--deckHeaderGreen);
+}
+
+.admin-db-sort-link {
+    color: var(--cardURLTextColor);
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.admin-db-sort-link:hover {
+    color: var(--UTubDescriptionColor);
+}
+
+/* ---- Health dashboard --------------------------------------------------- */
+
+.admin-health-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+}
+
+.admin-health-card h2 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--cardURLTextColor);
+}
+
+.admin-health-value {
+    display: block;
+    font-size: 1rem;
+    color: var(--UTubDescriptionColor);
+}
+
+.admin-health-lag {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-health-stale {
+    color: #e05260;
+    font-weight: 600;
+}
+
+.admin-status-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.admin-status-badge.status-up {
+    color: var(--deckHeaderGreen);
+    border: 1px solid var(--deckHeaderGreen);
+}
+
+.admin-status-badge.status-down {
+    color: #e05260;
+    border: 1px solid #e05260;
+}
+
+.admin-status-badge.status-neutral {
+    color: var(--cardURLTextColor);
+    border: 1px solid var(--borderColor);
+}
+
+.admin-health-captured {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--cardURLTextColor);
+}
+
+/* ---- User search --------------------------------------------------------- */
+
+.admin-search-input {
+    width: 100%;
+    max-width: 420px;
+    margin-bottom: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--borderColor);
+    border-radius: 8px;
+    background-color: var(--defaultPageBackgroundColor);
+    color: var(--UTubDescriptionColor);
+}
+
+.admin-search-input:focus {
+    outline: none;
+    border-color: var(--deckHeaderGreen);
+}
+
+.admin-user-link,
+.admin-db-row-link {
+    color: var(--deckHeaderGreen);
+    text-decoration: none;
+}
+
+.admin-user-link:hover,
+.admin-db-row-link:hover {
+    text-decoration: underline;
+}
+
+.admin-search-pagination {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+    margin-top: 12px;
+    font-size: 0.9rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-search-pagination a {
+    color: var(--deckHeaderGreen);
+    cursor: pointer;
+}
+
+.admin-search-empty {
+    margin: 0;
+    color: var(--cardURLTextColor);
+}
+
+/* ---- Audit log ----------------------------------------------------------- */
+
+.admin-audit-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.admin-audit-filters label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-audit-filters .admin-search-input {
+    margin-bottom: 0;
+    max-width: 220px;
+}
+
+/* Keep the Since/Until date fields paired on one line at every width — as a
+   single flex item in the wrapping filter row it wraps as a unit, and the
+   inner 2-col grid keeps the two date inputs side by side even on phones. */
+.admin-audit-date-range {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.admin-audit-date-range .admin-search-input {
+    max-width: none;
+    width: 100%;
+    min-width: 0;
+}
+
+/* iOS Safari renders native <input type="date"> with a fixed intrinsic width
+   that ignores width:100%, so the paired Since/Until fields overflow their grid
+   cells and visually overlap on phones. On small screens, drop the native
+   appearance so the inputs honor their column width; desktop keeps the native
+   calendar-picker control. */
+@media (max-width: 575.98px) {
+    .admin-audit-date-range .admin-search-input {
+        -webkit-appearance: none;
+        appearance: none;
+        /* appearance:none strips iOS's native date control, which then collapses
+           to near-zero height; pin it to the sibling text-input height (border-box:
+           20.4px line + 16px padding + 2px border ≈ 38px) so it renders normally. */
+        min-height: 38px;
+    }
+
+    .admin-audit-date-range .admin-search-input::-webkit-date-and-time-value {
+        text-align: left;
+        margin: 0;
+    }
+}
+
+.admin-audit-metadata summary {
+    cursor: pointer;
+    color: var(--deckHeaderGreen);
+}
+
+.admin-audit-metadata pre {
+    margin: 6px 0 0;
+    padding: 8px;
+    background-color: var(--defaultPageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    color: var(--UTubDescriptionColor);
+    font-size: 0.8rem;
+    white-space: pre-wrap;
+}
+
+/* ---- DB browser ---------------------------------------------------------- */
+
+.admin-table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.admin-breadcrumb {
+    font-size: 0.85rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-breadcrumb a {
+    color: var(--deckHeaderGreen);
+    text-decoration: none;
+}
+
+details.admin-db-json > summary {
+    color: var(--deckHeaderGreen);
+    cursor: pointer;
+}
+
+details.admin-db-json > pre {
+    margin: 6px 0 0;
+    background: var(--defaultPageBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 8px;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 575.98px) {
+    #AdminPortal {
+        padding: 10px;
+    }
+
+    .admin-quick-links,
+    #AdminDbTables {
+        grid-template-columns: 1fr;
+    }
+}

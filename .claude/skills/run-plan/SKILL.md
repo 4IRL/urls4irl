@@ -130,29 +130,30 @@ When any test run (smoke test, final suite, or step validation) reports failures
 
 When all steps are done or the plan is marked finished:
 
-1. **Run the full test suite via subagents** — sequentially, never simultaneously:
+1. **Determine frontend scope.** Run `git diff origin/main...HEAD --name-only` to check whether the branch touched any JS, template, or CSS files. Store this as `<touched-frontend>` — it gates both the UI subagent below and the screenshot step.
+2. **Run the full test suite via subagents** — sequentially, never simultaneously:
    - Spawn integration test subagent: `make test-integration-parallel`. Write output to `/tmp/claude/final-integration-results.txt`.
-   - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `/tmp/claude/final-ui-results.txt`.
-   - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
+   - After it completes, if `<touched-frontend>` is true, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `/tmp/claude/final-ui-results.txt`. If `<touched-frontend>` is false, skip this and note "UI suite skipped — no frontend files changed" in the final report.
+   - **Always use `test-ui-parallel-built`** when the UI subagent runs — UI tests must run against built Vite assets, never the dev server.
    - **CRITICAL:** Tell each test subagent that every Bash call running `make` or `docker` MUST set `dangerouslyDisableSandbox: true`. Include an example: `Bash(command: "make test-integration-parallel > \"/tmp/claude/final-integration-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`.
    - Main agent reads each result file to determine pass/fail.
    - **Investigate every failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times.
-2. If failures exist, enter the **Test Fix Loop** (Section 2e).
-3. **UI Verification Screenshot (mandatory when the plan touched any UI — JS, templates, or CSS).** Before the final report, capture and provide a Playwright screenshot of the **actual built feature** so the user sees the rendered result, not just a green suite. This catches what tests miss (e.g. CSS that compiles and passes assertions but renders invisibly).
-   - The `test-ui-parallel-built` run in Step 3.1 already rebuilt and brought up the stack with built assets, so the app is live at `http://127.0.0.1:8659/` — capture against that state.
+3. If failures exist, enter the **Test Fix Loop** (Section 2e).
+4. **UI Verification Screenshot.** If `<touched-frontend>` is true, do the following before the final report; otherwise skip to the next item. Capture and provide a Playwright screenshot of the **actual built feature** so the user sees the rendered result, not just a green suite. This catches what tests miss (e.g. CSS that compiles and passes assertions but renders invisibly).
+   - The `test-ui-parallel-built` run above already rebuilt and brought up the stack with built assets, so the app is live at `http://127.0.0.1:8659/` — capture against that state.
    - Use the `login-with-playright` skill to reach the home page. For a mobile feature, resize the viewport to a mobile width (e.g. 420px) first. Capture the key state(s) of the change (e.g. open AND closed for a toggle/sheet).
    - Save under `plans/<topic>/screenshots/` (gitignored) and surface the image to the user with `SendUserFile` — never just report a path.
    - The image MUST be of the implemented feature, NOT the upfront design mock. If the app cannot be brought up, say so explicitly rather than silently skipping.
-4. **Clean up** all temp test output files.
-5. **Delete all files in `plans/<topic>/tmp/`** — this is the subagent communication directory created during the run; it is not needed after completion.
-6. Report final summary:
+5. **Clean up** all temp test output files.
+6. **Delete all files in `plans/<topic>/tmp/`** — this is the subagent communication directory created during the run; it is not needed after completion.
+7. Report final summary:
 
 ```
 Plan "<name>" — COMPLETE
 
 Steps completed this run: X
 Total steps: Y
-Test results: integration PASS/FAIL, UI PASS/FAIL
+Test results: integration PASS/FAIL, UI PASS/FAIL/SKIPPED (no frontend changes)
 
 All changes committed. Ready for /git-push when you are.
 ```
@@ -176,7 +177,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 - **Tests run via synchronous Bash inside subagents.** Subagents invoke `make test-*` synchronously (with `dangerouslyDisableSandbox: true`) and block until it exits. The orchestrator waits for the subagent's Agent-tool reply — that reply IS the completion signal. Do not poll the subagent's result file while the subagent is still in flight, do not arm a Monitor on it, and do not reach into a container to inspect process state (`docker compose exec ... pgrep`, raw `ps`, etc.). After the subagent replies, the orchestrator may read `/tmp/claude/test-*.txt` for full output.
 - **Each subagent runs the full /next-step-taker workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
 - **Test output goes to temp files** — test runner subagents write output to `/tmp/claude/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
-- **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`; `grep` runs bare and sandboxed (never `dangerouslyDisableSandbox` on grep — it forces an un-suppressible prompt). Include this rule in all subagent prompts.
+- **Sandbox discipline** — see Sandbox Rules above; include in all subagent prompts.
 - If a step modifies the plan itself (e.g., adds sub-steps), the main agent re-reads the plan before continuing.
 - When stopping on a blocker, report: which step failed, what was tried, what needs user input.
-- **Investigate every test failure** — never dismiss a failure as "pre-existing" or "flaky" because the test file wasn't modified on this branch. Current changes can break tests indirectly (shared fixtures, CSS/selector changes, templates, timing, imports). For each failure: read the traceback, check if branch changes could affect the failing path, and either fix it or confirm it's unrelated by rerunning in isolation 2-3 times. Include this rule in all subagent prompts that run or evaluate tests.
+- **Investigate every test failure** — see the Step 3.1 rule above (never dismiss as "pre-existing"/"flaky"; trace, fix, or confirm unrelated via isolation reruns). Include this rule in all subagent prompts that run or evaluate tests.
