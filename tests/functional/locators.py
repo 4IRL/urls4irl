@@ -631,6 +631,12 @@ class AdminPortalLocators(GenericPageLocator):
     USER_SEARCH_ROW = "tr.admin-user-row"
     USER_SEARCH_EMPTY = "#AdminUserSearchEmpty"
 
+    # UTub Actions list page (reuses the DB browser's table service)
+    UTUB_TABLE_GRID = "#AdminUtubTableGrid"
+    UTUB_TABLE_SEARCH = "#AdminUtubTableSearch"
+    UTUB_ROW_LINK = "#AdminUtubTableGrid .admin-db-row-link"
+    UTUB_TABLE_EMPTY = "#AdminUtubTableEmpty"
+
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"

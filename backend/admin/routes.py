@@ -181,15 +181,51 @@ def admin_system_operations() -> FlaskResponse:
 @admin.route("/admin/utubs", methods=["GET"])
 @admin_login_required
 def admin_utubs() -> FlaskResponse:
-    """Placeholder for the UTub Actions tab.
+    """Searchable, sortable, paginated list of UTubs for the UTub Actions tab.
 
-    The shared nav partial references ``admin.admin_utubs`` via ``url_for``,
-    so the endpoint must exist for every admin page to render. The full
-    searchable list (reusing the DB browser's table service, plus its audit
-    row) is built in a later phase; this thin stub only satisfies the nav
-    link until then.
+    Reuses the DB browser's generic table service (``get_table_page`` over the
+    ``Utubs`` table) rather than a bespoke search endpoint, so the grid mirrors
+    the DB browser's raw-column rendering. Query params ``q``/``sort``/``dir``/
+    ``offset`` shape the search, ordering, and pagination exactly as
+    ``admin_db_table``. Each row links to the per-UTub detail page. The page
+    view is audited with the query and result count.
     """
-    return FlaskResponse(ADMIN_PORTAL_STRINGS.UTUB_ACTIONS_TITLE, mimetype="text/plain")
+    search_query: str = request.args.get("q", "")
+    table_page = db_browser_service.get_table_page(
+        table_name="Utubs",
+        offset=_parse_offset_arg(),
+        sort_key=request.args.get("sort"),
+        direction=request.args.get("dir", "asc"),
+        query=search_query,
+    )
+    audit.record(
+        actor_id=current_user.id,
+        action=ADMIN_AUDIT_ACTIONS.UTUB_LIST,
+        metadata={
+            "query": table_page.query,
+            "result_count": table_page.total_count,
+        },
+    )
+    db.session.commit()
+    return render_template(
+        "admin_portal/utubs/index.html",
+        is_admin_portal=True,
+        table_page=table_page,
+    )
+
+
+@admin.route("/admin/utubs/<int:utub_id>", methods=["GET"])
+@admin_login_required
+def admin_utub_detail(utub_id: int) -> FlaskResponse:
+    """Placeholder for the per-UTub detail page (fleshed out in a later phase).
+
+    The UTub Actions list links each row to ``admin.admin_utub_detail`` via
+    ``url_for``, so the endpoint must exist for the list template to render
+    without a ``BuildError``. The full aggregated detail page (info panel,
+    members table, URLs table, and moderation actions) is built in the next
+    phase; this thin stub only satisfies the row link until then.
+    """
+    return FlaskResponse(str(utub_id), mimetype="text/plain")
 
 
 @admin.route("/admin/db", methods=["GET"])

@@ -77,6 +77,8 @@ class ADMIN_ROUTES:
     USERS_PAGE = _ADMIN + "admin_users"
     USERS_SEARCH = _ADMIN + "admin_users_search"
     USER_DETAIL = _ADMIN + "admin_user_detail"
+    UTUBS_PAGE = _ADMIN + "admin_utubs"
+    UTUB_DETAIL = _ADMIN + "admin_utub_detail"
     AUDIT_LOG_PAGE = _ADMIN + "admin_audit_log"
     AUDIT_LOG_ROWS = _ADMIN + "admin_audit_log_rows"
     # Ops action endpoints
