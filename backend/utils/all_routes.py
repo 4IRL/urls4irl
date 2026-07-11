@@ -85,6 +85,13 @@ class ADMIN_ROUTES:
     OPS_VERIFY_TABLES = _ADMIN + "admin_ops_verify_tables"
     OPS_SHORT_URLS_SYNC = _ADMIN + "admin_ops_short_urls_sync"
     OPS_BACKUP_TRIGGER = _ADMIN + "admin_ops_backup_trigger"
+    # Content moderation endpoints
+    MOD_UTUB_LOCK = _ADMIN + "admin_utub_lock"
+    MOD_UTUB_UNLOCK = _ADMIN + "admin_utub_unlock"
+    MOD_UTUB_DELETE = _ADMIN + "admin_utub_delete"
+    MOD_MEMBER_REMOVE = _ADMIN + "admin_member_remove"
+    MOD_URL_DELETE = _ADMIN + "admin_url_delete"
+    MOD_URL_PURGE = _ADMIN + "admin_url_purge"
 
 
 class SEARCH_ROUTES:

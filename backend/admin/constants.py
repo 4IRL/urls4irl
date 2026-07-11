@@ -7,3 +7,5 @@ class AdminActionErrorCodes(IntEnum):
     UNKNOWN_ERROR = 1
     INVALID_FORM_INPUT = 2
     SELF_ACTION_FORBIDDEN = 3
+    ALREADY_IN_TARGET_STATE = 4
+    TARGET_NOT_FOUND = 5

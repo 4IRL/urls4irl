@@ -97,6 +97,53 @@ class ADMIN_PORTAL_STRINGS:
     )
     OPS_BACKUP_TRIGGER_SUBMIT: str = "Trigger"
     HEALTH_LABEL_BACKUP_LAST_SUCCESS: str = "Daily Backup (sidecar)"
+    # Moderation section — user-detail and DB-row action buttons (Jinja-only; not bridged to JS)
+    MOD_SECTION_TITLE: str = "Moderation"
+    MOD_LOCKED_BADGE: str = "locked"
+    MOD_UTUB_LOCK_LABEL: str = "Lock UTub"
+    MOD_UTUB_LOCK_CONFIRM_TITLE: str = "Lock UTub?"
+    MOD_UTUB_LOCK_CONFIRM_BODY: str = (
+        "Prevent new URLs, tags, and members from being added to this UTub. "
+        "Existing content is preserved. The action can be reversed with Unlock."
+    )
+    MOD_UTUB_LOCK_SUBMIT: str = "Lock"
+    MOD_UTUB_UNLOCK_LABEL: str = "Unlock UTub"
+    MOD_UTUB_UNLOCK_CONFIRM_TITLE: str = "Unlock UTub?"
+    MOD_UTUB_UNLOCK_CONFIRM_BODY: str = (
+        "Re-enable content writes for this UTub. "
+        "Members will be able to add URLs, tags, and new members again."
+    )
+    MOD_UTUB_UNLOCK_SUBMIT: str = "Unlock"
+    MOD_UTUB_DELETE_LABEL: str = "Delete UTub"
+    MOD_UTUB_DELETE_CONFIRM_TITLE: str = "Delete UTub?"
+    MOD_UTUB_DELETE_CONFIRM_BODY: str = (
+        "Permanently delete this UTub and all its members, URLs, and tags. "
+        "This action cannot be undone."
+    )
+    MOD_UTUB_DELETE_SUBMIT: str = "Delete"
+    MOD_MEMBER_REMOVE_LABEL: str = "Remove Member"
+    MOD_MEMBER_REMOVE_CONFIRM_TITLE: str = "Remove Member?"
+    MOD_MEMBER_REMOVE_CONFIRM_BODY: str = (
+        "Remove this user from the UTub. If the user is the creator and other "
+        "members exist, ownership transfers to the next eligible member. "
+        "If the user is the sole member, the UTub will be deleted."
+    )
+    MOD_MEMBER_REMOVE_SUBMIT: str = "Remove"
+    MOD_URL_DELETE_LABEL: str = "Remove from UTub"
+    MOD_URL_DELETE_CONFIRM_TITLE: str = "Remove URL from UTub?"
+    MOD_URL_DELETE_CONFIRM_BODY: str = (
+        "Remove this URL association from its UTub. "
+        "The canonical URL record is preserved and the URL may still appear in other UTubs."
+    )
+    MOD_URL_DELETE_SUBMIT: str = "Remove"
+    MOD_URL_PURGE_LABEL: str = "Purge from all UTubs"
+    MOD_URL_PURGE_CONFIRM_TITLE: str = "Purge URL from all UTubs?"
+    MOD_URL_PURGE_CONFIRM_BODY: str = (
+        "Remove this URL from every UTub that contains it. "
+        "The canonical URL record is preserved, but all UTub associations and their tags are deleted. "
+        "This action cannot be undone."
+    )
+    MOD_URL_PURGE_SUBMIT: str = "Purge"
 
 
 class ADMIN_ACTION_STRINGS:
@@ -144,6 +191,22 @@ class ADMIN_ACTION_STRINGS:
     )
     OPS_BACKUP_TRIGGER_UNAVAILABLE: str = "Metrics Redis is not configured."
     OPS_BACKUP_TRIGGER_ERROR: str = "Backup trigger failed. Check the server logs."
+    # Moderation action backend response messages (not bridged to JS)
+    MOD_TARGET_NOT_FOUND: str = "Target not found."
+    MOD_UTUB_LOCK_SUCCESS: str = "UTub locked successfully."
+    MOD_UTUB_LOCK_NOOP: str = "UTub is already locked. No change made."
+    MOD_UTUB_UNLOCK_SUCCESS: str = "UTub unlocked successfully."
+    MOD_UTUB_UNLOCK_NOOP: str = "UTub is already unlocked. No change made."
+    MOD_UTUB_DELETE_SUCCESS: str = "UTub deleted successfully."
+    MOD_MEMBER_REMOVE_SUCCESS: str = "Member removed successfully."
+    MOD_MEMBER_REMOVE_TRANSFERRED: str = (
+        "Member removed. UTub ownership transferred to user {user_id}."
+    )
+    MOD_MEMBER_REMOVE_UTUB_DELETED: str = (
+        "Member removed. UTub deleted (sole member was creator)."
+    )
+    MOD_URL_DELETE_SUCCESS: str = "URL removed from UTub successfully."
+    MOD_URL_PURGE_SUCCESS: str = "URL purged from {count} UTub(s)."
 
 
 class ADMIN_AUDIT_ACTIONS:
@@ -162,3 +225,10 @@ class ADMIN_AUDIT_ACTIONS:
     OPS_VERIFY_TABLES: str = "admin.ops.verify_tables"
     OPS_SHORT_URLS_SYNC: str = "admin.ops.short_urls_sync"
     OPS_BACKUP_TRIGGER: str = "admin.ops.backup_trigger"
+    # Content moderation actions
+    UTUB_LOCK: str = "admin.utub.lock"
+    UTUB_UNLOCK: str = "admin.utub.unlock"
+    UTUB_DELETE: str = "admin.utub.delete"
+    MEMBER_REMOVE: str = "admin.member.remove"
+    URL_DELETE: str = "admin.url.delete"
+    URL_PURGE: str = "admin.url.purge"

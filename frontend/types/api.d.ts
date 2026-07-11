@@ -106,6 +106,108 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/admin/utubs/{utub_id}/lock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Lock a UTub, preventing new content (URLs, tags, members) from being added. Idempotent: already-locked UTubs return a no-op 200 with no audit row. */
+    post: operations["adminUtubLock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/utubs/{utub_id}/unlock": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Unlock a previously locked UTub, re-enabling content writes. Idempotent: already-unlocked UTubs return a no-op 200 with no audit row. */
+    post: operations["adminUtubUnlock"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/utubs/{utub_id}/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Permanently delete a UTub and all its members, URLs, and tags via ORM cascade. */
+    post: operations["adminUtubDelete"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/utubs/{utub_id}/members/{target_user_id}/remove": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Remove a member from a UTub. If the target is the creator and other members exist, ownership is transferred to the lowest-user-id CO_CREATOR (or MEMBER). If the target is the sole member and creator, the UTub is deleted. */
+    post: operations["adminMemberRemove"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/utubs/{utub_id}/urls/{utub_url_id}/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Delete a specific URL association from a UTub. Removes the Utub_Url_Tags rows for that association atomically. The Urls table row is preserved. */
+    post: operations["adminUrlDelete"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/admin/urls/{url_id}/purge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Remove a URL from every UTub it appears in. The Urls row is preserved; only Utub_Urls associations and their tags are removed. Returns count=number of UTubs affected (may be 0). */
+    post: operations["adminUrlPurge"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/me": {
     parameters: {
       query?: never;
@@ -1069,8 +1171,8 @@ export interface components {
        */
       reason: string | null;
     };
-    /** @description Envelope returned by every admin ops-action endpoint on success. */
-    AdminOpsActionResponseSchema: {
+    /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+    AdminActionResponseSchema: {
       /**
        * @description Response status, always Success
        * @constant
@@ -1122,7 +1224,11 @@ export interface components {
      * @description Error codes for AdminActionErrorCodes
      * @enum {integer}
      */
-    AdminActionErrorCodes: 1 | 2 | 3;
+    AdminActionErrorCodes: 1 | 2 | 3 | 4 | 5;
+    AdminReasonRequiredRequest: {
+      /** @description Required reason for this admin action (max 500 characters). Whitespace-only values are rejected. */
+      reason: string;
+    };
     /** @description Authenticated user's profile for the mobile /api/v1 surface. */
     ApiUserProfileSchema: {
       /** @description Unique user ID */
@@ -1223,7 +1329,7 @@ export interface components {
      * @description Error codes for URLTagErrorCodes
      * @enum {integer}
      */
-    URLTagErrorCodes: 1 | 2;
+    URLTagErrorCodes: 1 | 2 | 3;
     AddTagsRequest: {
       /**
        * @description Tags to apply to the URL
@@ -1264,7 +1370,7 @@ export interface components {
      * @description Error codes for UTubTagErrorCodes
      * @enum {integer}
      */
-    UTubTagErrorCodes: 1 | 2;
+    UTubTagErrorCodes: 1 | 2 | 3;
     UtubTagDeletedFromUtubResponseSchema: {
       /** @description Tag that was deleted from the UTub */
       utubTag: components["schemas"]["UtubTagOnAddDeleteSchema"];
@@ -1316,7 +1422,7 @@ export interface components {
      * @description Error codes for URLErrorCodes
      * @enum {integer}
      */
-    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
+    URLErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
     UtubUrlDetailSchema: {
       /** @description Unique ID of the URL within the UTub */
       utubUrlID: number;
@@ -1421,7 +1527,7 @@ export interface components {
      * @description Error codes for UTubMembersErrorCodes
      * @enum {integer}
      */
-    UTubMembersErrorCodes: 1 | 2;
+    UTubMembersErrorCodes: 1 | 2 | 3;
     CreateUTubRequest: {
       /** @description Name of the UTub to create */
       utubName: string;
@@ -2258,13 +2364,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -2327,13 +2433,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -2396,13 +2502,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -2465,13 +2571,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -2534,13 +2640,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -2603,13 +2709,13 @@ export interface operations {
       };
     };
     responses: {
-      /** @description Envelope returned by every admin ops-action endpoint on success. */
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
       200: {
         headers: {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["AdminOpsActionResponseSchema"];
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
         };
       };
       /** @description Bad request */
@@ -2650,6 +2756,326 @@ export interface operations {
       };
       /** @description Service unavailable */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminUtubLock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminUtubUnlock: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminUtubDelete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminMemberRemove: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        target_user_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminUrlDelete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        utub_id: number;
+        utub_url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  adminUrlPurge: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        url_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["AdminReasonRequiredRequest"];
+      };
+    };
+    responses: {
+      /** @description Envelope returned by every admin action endpoint (ops and moderation) on success. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AdminActionResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_AdminActionErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

@@ -10,8 +10,8 @@ from backend.schemas.base import BaseSchema
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
 
-class AdminOpsActionResponseSchema(BaseSchema):
-    """Envelope returned by every admin ops-action endpoint on success."""
+class AdminActionResponseSchema(BaseSchema):
+    """Envelope returned by every admin action endpoint (ops and moderation) on success."""
 
     status: Literal["Success"] = Field(
         alias=STD_JSON.STATUS,

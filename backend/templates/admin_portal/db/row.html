@@ -5,6 +5,7 @@
     <div class="admin-breadcrumb"><a href="{{ url_for('admin.admin_db') }}">{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</a> / <a href="{{ url_for('admin.admin_db_table', table_name=row_detail.table_name) }}">{{ row_detail.table_name }}</a> / {{ row_detail.pk_segment }}</div>
     <h1>{{ row_detail.table_name }} — {{ row_detail.pk_segment }}</h1>
 </header>
+<div id="AdminActionResult" class="hidden" aria-live="polite"></div>
 <div class="admin-panel">
     <table id="AdminDbRowDetail" class="admin-table">
         <tbody>
@@ -21,4 +22,39 @@
         </tbody>
     </table>
 </div>
+{% if row_detail.table_name == 'Urls' %}
+<section id="AdminDbRowModSection" class="admin-panel mt-4">
+    <h2 class="admin-section-heading">{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</h2>
+    <div class="mt-3">
+        <button type="button"
+                class="btn btn-danger admin-mod-btn"
+                data-admin-action="url-purge"
+                data-action-url="{{ url_for('admin.admin_url_purge', url_id=row_detail.pk_segment) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_SUBMIT }}"
+                data-reason-required="true">
+            {{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_LABEL }}
+        </button>
+    </div>
+</section>
+{% elif row_detail.table_name == 'UtubUrls' %}
+{% set ns = namespace(utub_id='') %}
+{% for field in row_detail.fields %}{% if field.key == 'utub_id' %}{% set ns.utub_id = field.value %}{% endif %}{% endfor %}
+<section id="AdminDbRowModSection" class="admin-panel mt-4">
+    <h2 class="admin-section-heading">{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</h2>
+    <div class="mt-3">
+        <button type="button"
+                class="btn btn-danger admin-mod-btn"
+                data-admin-action="url-delete"
+                data-action-url="{{ url_for('admin.admin_url_delete', utub_id=ns.utub_id, utub_url_id=row_detail.pk_segment) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_SUBMIT }}"
+                data-reason-required="true">
+            {{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_LABEL }}
+        </button>
+    </div>
+</section>
+{% endif %}
 {% endblock %}

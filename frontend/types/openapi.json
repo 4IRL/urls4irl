@@ -29,11 +29,11 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
                 }
               }
             }
@@ -119,11 +119,11 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
                 }
               }
             }
@@ -209,11 +209,11 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
                 }
               }
             }
@@ -299,11 +299,11 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
                 }
               }
             }
@@ -389,11 +389,11 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
                 }
               }
             }
@@ -479,11 +479,11 @@
         },
         "responses": {
           "200": {
-            "description": "Envelope returned by every admin ops-action endpoint on success.",
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AdminOpsActionResponseSchema"
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
                 }
               }
             }
@@ -530,6 +530,502 @@
           },
           "503": {
             "description": "Service unavailable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/utubs/{utub_id}/lock": {
+      "post": {
+        "operationId": "adminUtubLock",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Lock a UTub, preventing new content (URLs, tags, members) from being added. Idempotent: already-locked UTubs return a no-op 200 with no audit row.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/utubs/{utub_id}/unlock": {
+      "post": {
+        "operationId": "adminUtubUnlock",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Unlock a previously locked UTub, re-enabling content writes. Idempotent: already-unlocked UTubs return a no-op 200 with no audit row.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/utubs/{utub_id}/delete": {
+      "post": {
+        "operationId": "adminUtubDelete",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Permanently delete a UTub and all its members, URLs, and tags via ORM cascade.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/utubs/{utub_id}/members/{target_user_id}/remove": {
+      "post": {
+        "operationId": "adminMemberRemove",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Remove a member from a UTub. If the target is the creator and other members exist, ownership is transferred to the lowest-user-id CO_CREATOR (or MEMBER). If the target is the sole member and creator, the UTub is deleted.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "target_user_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/utubs/{utub_id}/urls/{utub_url_id}/delete": {
+      "post": {
+        "operationId": "adminUrlDelete",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Delete a specific URL association from a UTub. Removes the Utub_Url_Tags rows for that association atomically. The Urls table row is preserved.",
+        "parameters": [
+          {
+            "name": "utub_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "utub_url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "AdminActionErrorCodes": {
+            "$ref": "#/components/schemas/AdminActionErrorCodes"
+          }
+        }
+      }
+    },
+    "/admin/urls/{url_id}/purge": {
+      "post": {
+        "operationId": "adminUrlPurge",
+        "tags": ["admin"],
+        "security": [
+          {
+            "sessionAuth": [],
+            "adminSession": [],
+            "csrfToken": []
+          }
+        ],
+        "description": "Remove a URL from every UTub it appears in. The Urls row is preserved; only Utub_Urls associations and their tags are removed. Returns count=number of UTubs affected (may be 0).",
+        "parameters": [
+          {
+            "name": "url_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminReasonRequiredRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActionResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_AdminActionErrorCodes"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found",
             "content": {
               "application/json": {
                 "schema": {
@@ -5780,8 +6276,8 @@
         },
         "type": "object"
       },
-      "AdminOpsActionResponseSchema": {
-        "description": "Envelope returned by every admin ops-action endpoint on success.",
+      "AdminActionResponseSchema": {
+        "description": "Envelope returned by every admin action endpoint (ops and moderation) on success.",
         "properties": {
           "status": {
             "const": "Success",
@@ -5894,13 +6390,25 @@
       },
       "AdminActionErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3],
+        "enum": [1, 2, 3, 4, 5],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
-          "SELF_ACTION_FORBIDDEN"
+          "SELF_ACTION_FORBIDDEN",
+          "ALREADY_IN_TARGET_STATE",
+          "TARGET_NOT_FOUND"
         ],
         "description": "Error codes for AdminActionErrorCodes"
+      },
+      "AdminReasonRequiredRequest": {
+        "properties": {
+          "reason": {
+            "description": "Required reason for this admin action (max 500 characters). Whitespace-only values are rejected.",
+            "type": "string"
+          }
+        },
+        "required": ["reason"],
+        "type": "object"
       },
       "ApiUserProfileSchema": {
         "description": "Authenticated user's profile for the mobile /api/v1 surface.",
@@ -6119,8 +6627,12 @@
       },
       "URLTagErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "UNKNOWN_EXCEPTION",
+          "INVALID_FORM_INPUT",
+          "UTUB_IS_LOCKED"
+        ],
         "description": "Error codes for URLTagErrorCodes"
       },
       "AddTagsRequest": {
@@ -6211,8 +6723,12 @@
       },
       "UTubTagErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "UNKNOWN_EXCEPTION",
+          "INVALID_FORM_INPUT",
+          "UTUB_IS_LOCKED"
+        ],
         "description": "Error codes for UTubTagErrorCodes"
       },
       "UtubTagDeletedFromUtubResponseSchema": {
@@ -6330,7 +6846,7 @@
       },
       "URLErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7],
+        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
         "x-enum-varnames": [
           "UNKNOWN_ERROR",
           "INVALID_FORM_INPUT",
@@ -6338,7 +6854,8 @@
           "INVALID_URL_ERROR",
           "UNEXPECTED_VALIDATION_ERROR",
           "URL_ALREADY_IN_UTUB_ERROR",
-          "EMPTY_URL"
+          "EMPTY_URL",
+          "UTUB_IS_LOCKED"
         ],
         "description": "Error codes for URLErrorCodes"
       },
@@ -6602,8 +7119,12 @@
       },
       "UTubMembersErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": ["UNKNOWN_EXCEPTION", "INVALID_FORM_INPUT"],
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "UNKNOWN_EXCEPTION",
+          "INVALID_FORM_INPUT",
+          "UTUB_IS_LOCKED"
+        ],
         "description": "Error codes for UTubMembersErrorCodes"
       },
       "CreateUTubRequest": {

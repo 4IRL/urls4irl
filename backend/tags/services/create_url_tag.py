@@ -24,8 +24,10 @@ from backend.schemas.tags import (
     UtubTagOnAddDeleteSchema,
     UtubTagSchema,
 )
+from backend.tags.constants import URLTagErrorCodes
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 
 
 @dataclass
@@ -61,6 +63,12 @@ def add_tag_to_url_if_valid(
             400 (at tag limit)
             400 (tag already on URL)
     """
+    if utub.is_locked:
+        return build_message_error_response(
+            message=UTUB_FAILURE.UTUB_IS_LOCKED,
+            error_code=URLTagErrorCodes.UTUB_IS_LOCKED,
+            status_code=403,
+        )
     tag_to_add = tag_string.strip()
 
     if _url_is_at_url_tag_limit(utub, utub_url):
@@ -209,6 +217,12 @@ def add_batch_tags_to_existing_url(
             200 (success — including the all-already-applied no-op case)
             400 (applying the batch would exceed the per-URL tag limit)
     """
+    if utub.is_locked:
+        return build_message_error_response(
+            message=UTUB_FAILURE.UTUB_IS_LOCKED,
+            error_code=URLTagErrorCodes.UTUB_IS_LOCKED,
+            status_code=403,
+        )
     # The explicit rollback guarantees that a mid-batch exception discards both
     # the flushed vocabulary rows and any association writes, rather than relying
     # on the request-teardown rollback (which the test harness's SAVEPOINT does

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, text
 
 from backend import db
 from backend.models.utub_members import Utub_Members
@@ -32,6 +32,13 @@ class Utubs(db.Model):
         String(UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH),
         nullable=True,
         name="utubDescription",
+    )
+    is_locked: bool = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
+        name="isLocked",
     )
     utub_tags: list[Utub_Tags] = db.relationship(
         "Utub_Tags", cascade="all, delete, delete-orphan", passive_deletes=True

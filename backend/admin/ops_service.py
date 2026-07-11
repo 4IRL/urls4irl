@@ -11,7 +11,7 @@ from backend.api_common.responses import FlaskResponse
 from backend.app_logger import warning_log
 from backend.db import get_missing_tables
 from backend.extensions import audit
-from backend.schemas.admin_actions import AdminOpsActionResponseSchema
+from backend.schemas.admin_actions import AdminActionResponseSchema
 from backend.schemas.errors import build_message_error_response
 from backend.utils.short_urls import (
     ShortUrlSyncError,
@@ -103,7 +103,7 @@ def trigger_metrics_flush(*, actor_id: int, reason: str | None) -> FlaskResponse
         metadata={"reason": reason, "rows_flushed": rows_flushed},
     )
     db.session.commit()
-    return AdminOpsActionResponseSchema(
+    return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.OPS_FLUSH_SUCCESS.format(count=rows_flushed),
         count=rows_flushed,
@@ -178,7 +178,7 @@ def trigger_gauge_sample(*, actor_id: int, reason: str | None) -> FlaskResponse:
         metadata={"reason": reason, "gauges_sampled": gauge_count},
     )
     db.session.commit()
-    return AdminOpsActionResponseSchema(
+    return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.OPS_GAUGE_SUCCESS.format(count=gauge_count),
         count=gauge_count,
@@ -236,7 +236,7 @@ def trigger_audit_purge(*, actor_id: int, reason: str | None) -> FlaskResponse:
         except Exception:
             pass
 
-    return AdminOpsActionResponseSchema(
+    return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.OPS_PURGE_SUCCESS.format(count=deleted_count),
         count=deleted_count,
@@ -286,7 +286,7 @@ def trigger_verify_tables(*, actor_id: int, reason: str | None) -> FlaskResponse
         metadata={"reason": reason, "missing_tables": missing_tables},
     )
     db.session.commit()
-    return AdminOpsActionResponseSchema(
+    return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=message,
         count=len(missing_tables),
@@ -342,7 +342,7 @@ def trigger_backup(*, actor_id: int, reason: str | None) -> FlaskResponse:
             pass
 
     if not flag_was_set:
-        return AdminOpsActionResponseSchema(
+        return AdminActionResponseSchema(
             status=STD_JSON.SUCCESS,
             message=ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_ALREADY_PENDING,
         ).to_response()
@@ -353,7 +353,7 @@ def trigger_backup(*, actor_id: int, reason: str | None) -> FlaskResponse:
         metadata={"reason": reason},
     )
     db.session.commit()
-    return AdminOpsActionResponseSchema(
+    return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.OPS_BACKUP_TRIGGER_SUCCESS,
     ).to_response()
@@ -425,7 +425,7 @@ def trigger_short_urls_sync(*, actor_id: int, reason: str | None) -> FlaskRespon
         metadata={"reason": reason, "added_count": added_count},
     )
     db.session.commit()
-    return AdminOpsActionResponseSchema(
+    return AdminActionResponseSchema(
         status=STD_JSON.SUCCESS,
         message=ADMIN_ACTION_STRINGS.OPS_SHORT_URLS_SYNC_SUCCESS.format(
             count=added_count

@@ -4,6 +4,7 @@
 <header id="AdminUserDetailHeader" class="admin-page-header">
     <h1 id="AdminUserDetailTitle">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_TITLE }}: {{ detail_user.username }}</h1>
 </header>
+<div id="AdminActionResult" class="hidden" aria-live="polite"></div>
 <div id="AdminUserDetailPanel" class="admin-panel">
     <table id="AdminUserDetailTable" class="admin-table">
         <tbody>
@@ -27,14 +28,69 @@
                 <th>UTub ID</th>
                 <th>UTub Name</th>
                 <th>Member Role</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
             </tr>
         </thead>
         <tbody>
             {% for membership in detail_user.utubs_is_member_of %}
             <tr>
                 <td>{{ membership.to_utub.id }}</td>
-                <td>{{ membership.to_utub.name }}</td>
+                <td>
+                    {{ membership.to_utub.name }}
+                    {% if membership.to_utub.is_locked %}
+                    <span class="admin-locked-badge">{{ ADMIN_PORTAL_STRINGS.MOD_LOCKED_BADGE }}</span>
+                    {% endif %}
+                </td>
                 <td>{{ membership.member_role.value }}</td>
+                <td class="admin-mod-cell">
+                    {% if membership.to_utub.is_locked %}
+                    <button type="button"
+                            class="btn btn-sm btn-secondary admin-mod-btn"
+                            data-admin-action="utub-unlock"
+                            data-action-url="{{ url_for('admin.admin_utub_unlock', utub_id=membership.to_utub.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_LABEL }}
+                    </button>
+                    {% else %}
+                    <button type="button"
+                            class="btn btn-sm btn-warning admin-mod-btn"
+                            data-admin-action="utub-lock"
+                            data-action-url="{{ url_for('admin.admin_utub_lock', utub_id=membership.to_utub.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_LABEL }}
+                    </button>
+                    {% endif %}
+                    <button type="button"
+                            class="btn btn-sm btn-danger admin-mod-btn"
+                            data-admin-action="utub-delete"
+                            data-action-url="{{ url_for('admin.admin_utub_delete', utub_id=membership.to_utub.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_LABEL }}
+                    </button>
+                    <button type="button"
+                            class="btn btn-sm btn-danger admin-mod-btn"
+                            data-admin-action="member-remove"
+                            data-action-url="{{ url_for('admin.admin_member_remove', utub_id=membership.to_utub.id, target_user_id=detail_user.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_LABEL }}
+                    </button>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

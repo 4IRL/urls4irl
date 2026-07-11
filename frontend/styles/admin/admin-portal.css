@@ -438,6 +438,30 @@ details.admin-db-json > pre {
     white-space: pre-wrap;
 }
 
+/* ---- Content-moderation controls --------------------------------------- */
+
+.admin-locked-badge {
+    display: inline-block;
+    background-color: var(--bs-warning-bg-subtle, #fff3cd);
+    color: var(--bs-warning-text-emphasis, #664d03);
+    border: 1px solid var(--bs-warning-border-subtle, #ffecb5);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.admin-mod-cell {
+    white-space: nowrap;
+}
+
+.admin-mod-btn + .admin-mod-btn {
+    margin-left: 4px;
+}
+
 @media (max-width: 575.98px) {
     #AdminPortal {
         padding: 10px;

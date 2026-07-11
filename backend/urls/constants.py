@@ -9,6 +9,7 @@ class URLErrorCodes(IntEnum):
     UNEXPECTED_VALIDATION_ERROR = 5
     URL_ALREADY_IN_UTUB_ERROR = 6
     EMPTY_URL = 7
+    UTUB_IS_LOCKED = 8
 
 
 class URLState(IntEnum):

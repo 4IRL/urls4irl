@@ -32,6 +32,7 @@ class UTUB_SUCCESS(UTUB_GENERAL):
 
 
 # Strings for utub failure
+UTUB_IS_LOCKED = "This UTub is locked. New content cannot be added."
 UNABLE_TO_MAKE_UTUB = "Unable to make a UTub with that information."
 UNABLE_TO_MODIFY_UTUB_NAME = "Unable to modify UTub name."
 UNABLE_TO_MODIFY_UTUB_DESC = "Unable to modify UTub description."
@@ -42,6 +43,7 @@ UTUB_NAME_EMPTY = "Name cannot contain only spaces or be empty."
 
 
 class UTUB_FAILURE(UTUB_GENERAL, FAILURE_GENERAL):
+    UTUB_IS_LOCKED = UTUB_IS_LOCKED
     UNABLE_TO_MODIFY_UTUB_NAME = UNABLE_TO_MODIFY_UTUB_NAME
     UNABLE_TO_MAKE_UTUB = UNABLE_TO_MAKE_UTUB
     UNABLE_TO_MODIFY_UTUB_DESC = UNABLE_TO_MODIFY_UTUB_DESC

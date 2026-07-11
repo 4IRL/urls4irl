@@ -628,6 +628,21 @@ class AdminPortalLocators(GenericPageLocator):
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
+    USER_DETAIL_MEMBERSHIPS_TABLE = "#AdminUserMembershipsTable"
+    USER_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
+    # Moderation controls on the user-detail page (row-scoped by data-admin-action value)
+    USER_DETAIL_MOD_LOCK_BTN = '[data-admin-action="utub-lock"]'
+    USER_DETAIL_MOD_UNLOCK_BTN = '[data-admin-action="utub-unlock"]'
+    USER_DETAIL_MOD_DELETE_UTUB_BTN = '[data-admin-action="utub-delete"]'
+    USER_DETAIL_MOD_REMOVE_MEMBER_BTN = '[data-admin-action="member-remove"]'
+
+    # Admin-action modal alert banner (reason-required / server-error messages)
+    ACTION_MODAL_ALERT_BANNER = "#HomeModalAlertBanner"
+
+    # DB row detail moderation section
+    DB_ROW_MOD_SECTION = "#AdminDbRowModSection"
+    DB_ROW_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
+    DB_ROW_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
 
     # Audit log page
     AUDIT_LOG_TITLE = "#AdminAuditLogTitle"

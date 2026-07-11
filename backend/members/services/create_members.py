@@ -7,6 +7,7 @@ from backend.app_logger import (
     warning_log,
 )
 from backend.extensions.metrics.writer import record_event
+from backend.members.constants import UTubMembersErrorCodes
 from backend.members.data_models import ValidatedMember
 from backend.metrics.events import EventName
 from backend.schemas.errors import (
@@ -18,6 +19,7 @@ from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS, USER_FAILURE
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 
 
 def create_utub_member(username: str, current_utub: Utubs) -> FlaskResponse:
@@ -33,6 +35,12 @@ def create_utub_member(username: str, current_utub: Utubs) -> FlaskResponse:
         - Response: JSON response on create
         - int: HTTP status code 200 (Success), 400 (User not found or already a member)
     """
+    if current_utub.is_locked:
+        return build_message_error_response(
+            message=UTUB_FAILURE.UTUB_IS_LOCKED,
+            error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED,
+            status_code=403,
+        )
     new_user: Users | None = Users.query.filter(Users.username == username).first()
     if new_user is None:
         warning_log(f"User={current_user.id} tried adding nonexistent username")
