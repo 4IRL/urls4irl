@@ -105,6 +105,38 @@
     color: var(--cardURLTextColor);
 }
 
+/* ---- Breadcrumb -------------------------------------------------------- */
+
+.admin-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-breadcrumb-root {
+    color: var(--deckSelectionGreen);
+    text-decoration: none;
+}
+
+.admin-breadcrumb-root:hover,
+.admin-breadcrumb-root:focus-visible {
+    text-decoration: underline;
+}
+
+.admin-breadcrumb-sep {
+    color: var(--cardURLTextColor);
+}
+
+.admin-breadcrumb-current {
+    color: var(--UTubDescriptionColor);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ---- Quick-link cards -------------------------------------------------- */
 
 .admin-quick-links {
@@ -224,8 +256,20 @@
 
 .admin-health-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* Two wide columns on desktop: fuller, taller cards laid out vertically
+       instead of a thin single row of many narrow cards. */
+    grid-template-columns: repeat(2, 1fr);
     gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .admin-health-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-health-card {
+    min-height: 84px;
 }
 
 .admin-health-card h2 {
@@ -310,6 +354,14 @@
 .admin-user-link:hover,
 .admin-db-row-link:hover {
     text-decoration: underline;
+}
+
+.admin-clickable-row {
+    cursor: pointer;
+}
+
+.admin-clickable-row:hover {
+    background-color: var(--cardBackgroundColor);
 }
 
 .admin-search-pagination {
@@ -436,6 +488,153 @@ details.admin-db-json > pre {
     border-radius: 6px;
     padding: 8px;
     white-space: pre-wrap;
+}
+
+/* ---- Shared admin action buttons --------------------------------------- */
+/* Token-themed replacement for Bootstrap's btn-primary/warning/secondary/danger
+   across the whole admin action surface (ops, moderation, account lifecycle).
+   Base is a green-accented outline button on the card background, mirroring
+   .admin-db-search-btn; the --danger modifier switches the accent to the same
+   red the health status badges use for destructive/irreversible actions. */
+
+.admin-action-btn {
+    display: inline-block;
+    background-color: var(--cardBackgroundColor);
+    color: var(--deckHeaderGreen);
+    border: 1px solid var(--borderColor);
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: border-color 0.15s, color 0.15s;
+}
+
+.admin-action-btn:hover {
+    border-color: var(--deckHeaderGreen);
+    text-decoration: none;
+}
+
+.admin-action-btn:focus-visible {
+    outline: 2px solid var(--deckSelectionGreen);
+    outline-offset: 2px;
+}
+
+.admin-action-btn--danger {
+    color: #e05260;
+}
+
+.admin-action-btn--danger:hover {
+    border-color: #e05260;
+}
+
+/* ---- Operations cards --------------------------------------------------- */
+/* The health-page Operations panel renders one titled card per operation, each
+   with a one-line description and its action button. Reuses the quick-link card
+   look; margin-top:auto bottom-aligns buttons across uneven description heights. */
+
+.admin-ops-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 14px;
+    margin-top: 12px;
+}
+
+.admin-ops-card {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--panelBackgroundColor);
+    border: 1px solid var(--borderColor);
+    border-radius: 10px;
+    padding: 16px;
+}
+
+.admin-ops-card h3 {
+    margin: 0 0 6px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--deckHeaderGreen);
+}
+
+.admin-ops-card-desc {
+    margin: 0 0 14px;
+    font-size: 0.9rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-ops-card .admin-action-btn {
+    align-self: flex-start;
+    margin-top: auto;
+}
+
+/* ---- Inline action result ---------------------------------------------- */
+/* Injected by admin-actions.ts immediately after the button that triggered a
+   non-reloading action, so the success (or error) message renders right where
+   the admin acted instead of in one region at the top of the page. */
+
+.admin-action-inline-result {
+    display: block;
+    margin-top: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    border: 1px solid var(--deckHeaderGreen);
+    color: var(--deckHeaderGreen);
+    background-color: var(--cardBackgroundColor);
+}
+
+.admin-action-inline-result.is-error {
+    border-color: #e05260;
+    color: #e05260;
+}
+
+/* ---- Content-moderation controls --------------------------------------- */
+
+.admin-locked-badge {
+    display: inline-block;
+    background-color: var(--bs-warning-bg-subtle, #fff3cd);
+    color: var(--bs-warning-text-emphasis, #664d03);
+    border: 1px solid var(--bs-warning-border-subtle, #ffecb5);
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 6px;
+    margin-left: 6px;
+    text-transform: uppercase;
+    vertical-align: middle;
+}
+
+.admin-mod-cell {
+    white-space: nowrap;
+}
+
+.admin-mod-cell + .admin-mod-cell {
+    margin-top: 8px;
+}
+
+.admin-mod-btn + .admin-mod-btn {
+    margin-left: 4px;
+}
+
+/* The Account Actions panel reuses .admin-mod-cell outside a (scrollable) table,
+   so its buttons and notes must wrap within the card instead of forcing the
+   whole page to scroll horizontally on narrow/mobile widths. */
+#AdminUserAccountActions .admin-mod-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    white-space: normal;
+}
+
+#AdminUserAccountActions .admin-mod-btn + .admin-mod-btn {
+    margin-left: 0;
+}
+
+.admin-muted {
+    color: var(--cardURLTextColor);
+    font-size: 0.9rem;
 }
 
 @media (max-width: 575.98px) {

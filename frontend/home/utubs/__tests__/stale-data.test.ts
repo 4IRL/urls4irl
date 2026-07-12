@@ -68,6 +68,7 @@ describe("updateUTubOnFindingStaleData", () => {
       urls: mockUrls,
       tags: mockTags,
       isCreator: true,
+      isLocked: false,
       currentUser: 1000,
     };
 

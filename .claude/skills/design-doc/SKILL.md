@@ -69,6 +69,12 @@ not ask a question the research already answered.
   `.claude/skills/plan-creator/SKILL.md` § UI Mockup Protocol machinery (styling pulled from
   real CSS/theme values, rendered to PNG via Playwright MCP, shown with `SendUserFile`) so the
   user reacts to something concrete, not a text description.
+- **New UI must fit the app's existing UI, not stand apart from it.** Every visual/UX decision
+  defaults to the app's existing color palette, component patterns, and interaction conventions
+  (Step 4's `ui_conventions` findings are the grounding — never invent a color, spacing value, or
+  interaction pattern with no precedent in the codebase). A genuine visual departure (a new
+  color, a new interaction pattern) is itself a Design Decision requiring explicit user
+  confirmation — never something a mockup introduces silently on the assumption it looks nicer.
 - An answer can reveal a new open question or require a follow-up research check (e.g. "does
   the metrics system already support that dimension?") — loop back to Step 4 for a targeted
   single-subagent check if needed, then continue asking.

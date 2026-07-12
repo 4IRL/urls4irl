@@ -21,6 +21,18 @@ _ADMIN_PORTAL_URL = "/admin"
 _PORTAL_TITLE_BYTES = ADMIN_PORTAL_STRINGS.PORTAL_TITLE.encode()
 _NAV_ID_BYTES = b'id="AdminNav"'
 
+# The dashboard quick-link cards, in the same order they appear in the nav bar
+# (nav order minus the Dashboard link itself, which does not self-link).
+_QUICK_LINK_ENDPOINTS_IN_NAV_ORDER = (
+    "admin.admin_health",
+    "admin.admin_system_operations",
+    "admin.admin_users",
+    "admin.admin_utubs",
+    "admin.admin_db",
+    "admin.admin_audit_log",
+    "admin.admin_metrics",
+)
+
 
 def test_admin_portal_page_renders_for_admin(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -42,6 +54,36 @@ def test_admin_portal_page_renders_for_admin(
     assert response.mimetype == "text/html"
     assert _PORTAL_TITLE_BYTES in response.data
     assert _NAV_ID_BYTES in response.data
+
+
+def test_admin_portal_dashboard_quick_links_present_in_nav_order(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in admin user
+    WHEN the admin sends GET /admin
+    THEN the dashboard renders one quick-link card per top-level section —
+         including UTub Actions — in the same order as the nav bar.
+    """
+    client, _, _, app = login_admin_user_with_register
+
+    with app.test_request_context():
+        quick_link_markers = [
+            f'admin-quick-link-card" href="{url_for(endpoint)}"'.encode()
+            for endpoint in _QUICK_LINK_ENDPOINTS_IN_NAV_ORDER
+        ]
+
+    response = client.get(_ADMIN_PORTAL_URL)
+
+    assert response.status_code == 200
+    card_indices = [response.data.find(marker) for marker in quick_link_markers]
+    # Every section has a quick-link card — in particular the UTub Actions card,
+    # which was previously missing from the dashboard.
+    assert all(index != -1 for index in card_indices)
+    # The cards appear in the same order as the nav bar.
+    assert card_indices == sorted(card_indices)
+    # The UTub Actions card renders its label.
+    assert ADMIN_PORTAL_STRINGS.NAV_UTUB_ACTIONS.encode() in response.data
 
 
 def test_admin_portal_page_creates_audit_log_row(

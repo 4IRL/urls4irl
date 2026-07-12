@@ -113,13 +113,17 @@ def test_add_oauth_identities_migration_upgrade_and_downgrade(runner):
     cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
 
     with app.app_context():
-        command.upgrade(_build_alembic_config(), _PRE_OAUTH_REVISION)
+        # Seed at head (the ORM models match the head schema — seeding at a
+        # historical revision would fail on columns added by later
+        # migrations), then downgrade to the pre-OAuth revision so the
+        # migration under test is exercised against a populated dataset.
+        command.upgrade(_build_alembic_config(), "head")
+        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+        command.downgrade(_build_alembic_config(), _PRE_OAUTH_REVISION)
 
         inspector = inspect(db.engine)
         assert not inspector.has_table(_OAUTH_TABLE)
         assert not _password_column_is_nullable()
-
-        cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
 
         with db.engine.connect() as connection:
             row_counts_before_roundtrip = _capture_row_counts(connection)
@@ -198,9 +202,11 @@ def test_add_oauth_identities_migration_downgrade_blocked_by_null_password(runne
     cli_runner.invoke(args=_MANAGEDB_DROP_ARGS)
 
     with app.app_context():
-        command.upgrade(_build_alembic_config(), _PRE_OAUTH_REVISION)
-
+        # Seed at head (ORM models match head), then downgrade so the
+        # row-count snapshot is taken at the pre-OAuth revision.
+        command.upgrade(_build_alembic_config(), "head")
         cli_runner.invoke(args=_ADDMOCK_ALL_ARGS)
+        command.downgrade(_build_alembic_config(), _PRE_OAUTH_REVISION)
 
         with db.engine.connect() as connection:
             row_counts_before_roundtrip = _capture_row_counts(connection)

@@ -10,13 +10,21 @@
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_HEALTH }}</h2>
         <p>Database, Redis, connections, disk, and sidecar cron status.</p>
     </a>
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_system_operations') }}">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_SYSTEM_OPS }}</h2>
+        <p>Global maintenance triggers: metrics flush, backup, table verification, and more.</p>
+    </a>
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_users') }}">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_USER_ACTIONS }}</h2>
+        <p>Search users and inspect account details and memberships.</p>
+    </a>
+    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_utubs') }}">
+        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_UTUB_ACTIONS }}</h2>
+        <p>Search UTubs to lock, delete, remove members, or manage their URLs and tags.</p>
+    </a>
     <a class="admin-quick-link-card" href="{{ url_for('admin.admin_db') }}">
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_DB_BROWSER }}</h2>
         <p>Read-only browser over every database table.</p>
-    </a>
-    <a class="admin-quick-link-card" href="{{ url_for('admin.admin_users') }}">
-        <h2>{{ ADMIN_PORTAL_STRINGS.NAV_USERS }}</h2>
-        <p>Search users and inspect account details and memberships.</p>
     </a>
     <a class="admin-quick-link-card" href="{{ url_for('admin.admin_audit_log') }}">
         <h2>{{ ADMIN_PORTAL_STRINGS.NAV_AUDIT_LOG }}</h2>

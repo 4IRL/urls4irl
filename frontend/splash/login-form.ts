@@ -105,6 +105,15 @@ function handleLoginFailure(
     return;
   }
 
+  if (xhr.status === 403 && "errorCode" in xhr.responseJSON) {
+    // Account suspended: surface the server's message directly — the user
+    // supplied correct credentials but the account is administratively blocked.
+    const errorJson = xhr.responseJSON as LoginError;
+    showSplashModalAlertBanner($modal, errorJson.message, "danger");
+    $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
+    return;
+  }
+
   if (
     (xhr.status === 400 || xhr.status === 401) &&
     "errorCode" in xhr.responseJSON

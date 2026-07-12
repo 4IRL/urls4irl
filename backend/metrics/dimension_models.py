@@ -367,6 +367,7 @@ class _DimLoginFailure(BaseModel):
         "oauth_consent_declined",
         "oauth_generic_failure",
         "oauth_unverified_email",
+        "suspended",
     ]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 

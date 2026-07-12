@@ -4,6 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $, bootstrap, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { isUtubLockedHandled } from "../../utub-locked.js";
 import {
   enableTabbableChildElements,
   disableTabbableChildElements,
@@ -324,6 +325,7 @@ function updateURLFail(
   utubID: number,
 ): void {
   if (is429Handled(xhr)) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (!("responseJSON" in xhr)) {
     if (

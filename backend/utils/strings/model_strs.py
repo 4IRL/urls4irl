@@ -8,6 +8,7 @@ EMAIL = "email"
 EMAIL_VALIDATED = "emailValidated"
 ID = "id"
 IS_CREATOR = "isCreator"
+IS_LOCKED = "isLocked"
 MEMBERS = "members"
 MEMBER_ROLE = "memberRole"
 NAME = "name"
@@ -63,6 +64,7 @@ class MODELS:
     TAG_STRING = TAG_STRING
     UTUB_DESCRIPTION = UTUB_DESCRIPTION
     IS_CREATOR = IS_CREATOR
+    IS_LOCKED = IS_LOCKED
     CAN_DELETE = CAN_DELETE
     UTUB_URL_ID = UTUB_URL_ID
     CURRENT_USER = CURRENT_USER

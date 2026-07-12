@@ -130,6 +130,17 @@ place, as you reach it.>
 - Stay inside the initiative's scope: <domain-specific list, pulled from the master plan's
   Research Findings — directories, shared helpers/config, what's explicitly out of scope>.
   Don't touch unrelated application code.
+- **Any UI-visible change must fit the app's existing UI — never stand apart from it.** Reuse
+  the app's actual color palette (CSS custom properties/theme variables), existing component/
+  modal/panel markup and class names, and established interaction patterns; never invent a new
+  color, spacing value, or interaction pattern with no precedent in the codebase. Apply
+  `.claude/skills/plan-creator/SKILL.md` § UI Mockup Protocol fidelity rules even though phases
+  are elaborated inline rather than via `/plan-creator` — for a phase whose UI shape isn't
+  already pinned down by a design doc or a master-plan mockup, produce and screenshot a
+  lightweight HTML mock (real values, no invented styling) before implementing it. This is a hard
+  constraint, not a judgment fork — resolve it yourself by grepping the actual theme/component
+  conventions rather than pausing to ask; the answer is always "match what already exists," never
+  a new look.
 - <Any hard ordering constraint from research, e.g. "Phase <N> (removing the legacy system)
   only happens after every other phase's tests are verified green on the replacement — never
   take that shortcut early.">
@@ -183,4 +194,5 @@ commits, and flags in plain sentences.
 - [ ] `<owner/repo>` — this repo's GitHub slug.
 - [ ] Domain-specific delegation buckets (what's mechanical/subagent-able vs what the orchestrator keeps for itself) — pull from the master plan's Research Findings, not assumed.
 - [ ] Scope boundaries and any hard ordering constraint — pull verbatim from Research Findings; don't paraphrase away a real constraint (e.g. "don't remove the legacy system until everything else is green" is load-bearing, not decoration).
+- [ ] If any phase touches user-visible UI, keep the Boundaries section's UI-fit rule intact (existing colors/components/interaction patterns, mock before implementing) — do not drop it as boilerplate for initiatives with no UI phase, but do not pad it with detail for initiatives that are purely backend either.
 - [ ] `Closes #<issue-number>` — filled in only after Step 8 creates the issue; if Step 8 ran before Step 7, this is already known.

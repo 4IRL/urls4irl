@@ -498,7 +498,7 @@ def test_collect_health_snapshot_flush_lag_fresh(
         with patch.object(
             health_service,
             "_probe_metrics_redis",
-            return_value=(STATUS_UP, fresh_flush_at, None),
+            return_value=(STATUS_UP, fresh_flush_at, None, None),
         ):
             snapshot = collect_health_snapshot()
 
@@ -524,7 +524,7 @@ def test_collect_health_snapshot_flush_lag_stale(
         with patch.object(
             health_service,
             "_probe_metrics_redis",
-            return_value=(STATUS_UP, stale_flush_at, None),
+            return_value=(STATUS_UP, stale_flush_at, None, None),
         ):
             snapshot = collect_health_snapshot()
 
@@ -547,12 +547,86 @@ def test_collect_health_snapshot_flush_lag_none_when_no_sentinel(
         with patch.object(
             health_service,
             "_probe_metrics_redis",
-            return_value=(STATUS_DOWN, None, None),
+            return_value=(STATUS_DOWN, None, None, None),
         ):
             snapshot = collect_health_snapshot()
 
     assert snapshot.flush_lag_seconds is None
     assert not snapshot.flush_is_stale
+
+
+def test_collect_health_snapshot_backup_lag_fresh(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a backup sentinel timestamp inside the 26-hour stale threshold
+    WHEN collect_health_snapshot() is called
+    THEN backup_lag_seconds reflects the recent age and backup_is_stale is False.
+    """
+    _, _, _, app = login_admin_user_with_register
+    fresh_backup_at = datetime.now(timezone.utc) - timedelta(hours=3)
+
+    with app.app_context():
+        with patch.object(
+            health_service,
+            "_probe_metrics_redis",
+            return_value=(STATUS_UP, None, None, fresh_backup_at),
+        ):
+            snapshot = collect_health_snapshot()
+
+    assert snapshot.backup_last_success_at == fresh_backup_at
+    assert snapshot.backup_lag_seconds is not None
+    assert snapshot.backup_lag_seconds < health_service._BACKUP_STALE_THRESHOLD_SECONDS
+    assert not snapshot.backup_is_stale
+
+
+def test_collect_health_snapshot_backup_lag_stale(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a backup sentinel timestamp older than the 26-hour stale threshold
+    WHEN collect_health_snapshot() is called
+    THEN backup_lag_seconds exceeds the threshold and backup_is_stale is True.
+    """
+    _, _, _, app = login_admin_user_with_register
+    stale_backup_at = datetime.now(timezone.utc) - timedelta(
+        seconds=health_service._BACKUP_STALE_THRESHOLD_SECONDS + 3600
+    )
+
+    with app.app_context():
+        with patch.object(
+            health_service,
+            "_probe_metrics_redis",
+            return_value=(STATUS_UP, None, None, stale_backup_at),
+        ):
+            snapshot = collect_health_snapshot()
+
+    assert snapshot.backup_lag_seconds is not None
+    assert snapshot.backup_lag_seconds > health_service._BACKUP_STALE_THRESHOLD_SECONDS
+    assert snapshot.backup_is_stale
+
+
+def test_collect_health_snapshot_backup_none_when_no_sentinel(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN no backup sentinel timestamp (never stamped)
+    WHEN collect_health_snapshot() is called
+    THEN backup fields are None/False so the dashboard renders "never".
+    """
+    _, _, _, app = login_admin_user_with_register
+
+    with app.app_context():
+        with patch.object(
+            health_service,
+            "_probe_metrics_redis",
+            return_value=(STATUS_UP, None, None, None),
+        ):
+            snapshot = collect_health_snapshot()
+
+    assert snapshot.backup_last_success_at is None
+    assert snapshot.backup_lag_seconds is None
+    assert not snapshot.backup_is_stale
 
 
 def test_probe_system_resources_returns_values_or_none(

@@ -10,6 +10,7 @@ from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.schemas.urls import UtubUrlSchema
+from backend.tags.constants import URLTagErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -20,6 +21,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
@@ -150,6 +152,81 @@ def test_delete_tag_from_url_as_utub_creator(
             delete_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
             == num_urls_with_tag_in_utub
         )
+
+
+def test_remove_tag_from_url_in_locked_utub_is_rejected(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN 3 users and 3 UTubs, all members in each UTub, 3 URLs in each UTub with tags
+        applied, where the target UTub is LOCKED
+    WHEN the logged-in creator tries to remove a tag from a URL in the locked UTub
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id>"
+    THEN the delete-guard rejects the removal: the server responds 403 with the locked-UTub
+        JSON error (error code URLTagErrorCodes.UTUB_IS_LOCKED, message
+        UTUB_FAILURE.UTUB_IS_LOCKED) and the URL-tag association still exists.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get a UTub this user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Get a URL and tag association within this UTub
+        tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of
+        ).first()
+        tag_id_to_delete = tag_url_utub_association.utub_tag_id
+        url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
+
+        # Lock the UTub
+        utub_user_is_creator_of.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the URL-tag association exists prior to the blocked action
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
+            ).count()
+            == 1
+        )
+        initial_url_tag_count = Utub_Url_Tags.query.count()
+
+    delete_tag_response = client.delete(
+        url_for(
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_delete_tag_from,
+            utub_tag_id=tag_id_to_delete,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_tag_response.status_code == 403
+    delete_tag_response_json = delete_tag_response.json
+    assert delete_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert delete_tag_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(delete_tag_response_json[STD_JSON.ERROR_CODE])
+        == URLTagErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # URL-tag association still exists in the locked UTub
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
+            ).count()
+            == 1
+        )
+        assert Utub_Url_Tags.query.count() == initial_url_tag_count
 
 
 def test_remove_tag_from_url_records_metric(

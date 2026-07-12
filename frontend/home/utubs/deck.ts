@@ -64,12 +64,13 @@ export function buildUTubDeck(
     // Instantiate deck with list of UTubs accessible to current user
     for (let index = 0; index < numOfUTubs; index++) {
       parent.append(
-        createUTubSelector(
-          utubs[index].name,
-          utubs[index].id,
-          utubs[index].memberRole,
+        createUTubSelector({
+          utubName: utubs[index].name,
+          utubID: utubs[index].id,
+          memberRole: utubs[index].memberRole,
+          isLocked: utubs[index].isLocked,
           index,
-        ),
+        }),
       );
     }
 

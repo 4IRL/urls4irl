@@ -30,3 +30,17 @@ class METRICS_REDIS:
     # `metrics:latency:*` drain glob — a collision would make the flush worker
     # parse this sentinel as a sample key and silently discard it.
     LATENCY_LAST_ROLLUP_KEY: str = "metrics:rollup:latency_last_epoch"
+    # Backup last-success sentinel: daily-docker.sh stamps this (via
+    # backup_sentinel.py) with the current Unix epoch after a successful
+    # database backup. Read by the admin health dashboard. Deliberately under
+    # the `metrics:backup:` prefix so it can never match the counter/latency
+    # drain globs.
+    BACKUP_LAST_SUCCESS_KEY: str = "metrics:backup:last_success_epoch"
+    # On-demand backup trigger flag: the admin portal sets this (with a TTL so
+    # stale requests age out); the workflow container's per-minute cron poller
+    # (run_backup_if_requested.py) consumes it with GETDEL and starts the
+    # backup pipeline.
+    BACKUP_TRIGGER_KEY: str = "metrics:backup:trigger_requested"
+    # Poller-side lock so an in-flight triggered backup cannot overlap another
+    # trigger consumption (SET NX EX, TTL below in the poller script).
+    BACKUP_TRIGGER_LOCK_KEY: str = "metrics:backup:trigger_lock"

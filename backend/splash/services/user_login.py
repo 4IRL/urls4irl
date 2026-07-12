@@ -17,6 +17,7 @@ from backend.splash.constants import (
     LOGIN_FAILURE_REASON_BAD_PASSWORD,
     LOGIN_FAILURE_REASON_EMAIL_UNVERIFIED,
     LOGIN_FAILURE_REASON_OAUTH_ONLY,
+    LOGIN_FAILURE_REASON_SUSPENDED,
     LOGIN_FAILURE_REASON_UNKNOWN_USER,
     LoginErrorCodes,
 )
@@ -72,6 +73,21 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
             error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+        )
+
+    if user.is_suspended:
+        # Blocked BEFORE login_user(): a suspended user never reaches an
+        # authenticated session. Only a correct password reaches this branch,
+        # so suspension status is never leaked to a guessing attacker.
+        warning_log(f"Suspended User={user.id} attempted login")
+        record_event(
+            EventName.LOGIN_FAILURE,
+            dimensions={"reason": LOGIN_FAILURE_REASON_SUSPENDED},
+        )
+        return build_message_error_response(
+            message=USER_FAILURE.ACCOUNT_SUSPENDED,
+            error_code=LoginErrorCodes.ACCOUNT_SUSPENDED,
+            status_code=403,
         )
 
     # Log in before email_validated check so unvalidated users can request a resend

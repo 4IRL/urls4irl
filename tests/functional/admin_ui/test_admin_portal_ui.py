@@ -56,13 +56,23 @@ def test_admin_portal_renders_title_and_nav_for_admin(
     expect(nav_health).to_be_visible()
     expect(nav_health).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_HEALTH)
 
+    nav_system_ops = wait_then_get_element(page=page, css_selector=APL.NAV_SYSTEM_OPS)
+    expect(nav_system_ops).to_be_visible()
+    expect(nav_system_ops).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_SYSTEM_OPS)
+
     nav_db_browser = wait_then_get_element(page=page, css_selector=APL.NAV_DB_BROWSER)
     expect(nav_db_browser).to_be_visible()
     expect(nav_db_browser).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_DB_BROWSER)
 
-    nav_users = wait_then_get_element(page=page, css_selector=APL.NAV_USERS)
+    nav_users = wait_then_get_element(page=page, css_selector=APL.NAV_USER_ACTIONS)
     expect(nav_users).to_be_visible()
-    expect(nav_users).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_USERS)
+    expect(nav_users).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_USER_ACTIONS)
+
+    nav_utub_actions = wait_then_get_element(
+        page=page, css_selector=APL.NAV_UTUB_ACTIONS
+    )
+    expect(nav_utub_actions).to_be_visible()
+    expect(nav_utub_actions).to_have_text(UI_TEST_STRINGS.ADMIN_PORTAL_NAV_UTUB_ACTIONS)
 
     nav_audit_log = wait_then_get_element(page=page, css_selector=APL.NAV_AUDIT_LOG)
     expect(nav_audit_log).to_be_visible()

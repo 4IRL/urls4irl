@@ -93,13 +93,14 @@ def _sole_association_id_for_url(connection, url_id: int) -> int:
 
 def test_strip_tracking_params_upgrade_downgrade_idempotent(runner):
     """
-    GIVEN a database at revision 1253bb6a734e (pre-strip) seeded with the full
-        mock dataset — including the tracking-laden Urls rows inserted raw by
-        `flask addmock all` (bypassing the create/update validator), two of
-        which collapse onto the same stripped URL within UTub 1
-    WHEN the 681906a2f237 strip-tracking-params migration is applied
-        (`upgrade head`), the no-op `downgrade` is run, and the upgrade is
-        re-applied (`upgrade head`)
+    GIVEN a database upgraded to head and seeded with the full mock dataset —
+        including the tracking-laden Urls rows inserted raw by ``flask addmock
+        all`` (bypassing the create/update validator), two of which collapse
+        onto the same stripped URL within UTub 1
+    WHEN the database is downgraded to 1253bb6a734e (the strip migration's
+        no-op downgrade leaves tracking URLs intact), then upgraded to head
+        (681906a2f237 strips them), then the no-op downgrade is run again,
+        and the upgrade is re-applied
     THEN every tracking-laden urlString is stripped to its canonical form, the
         within-UTub colliding rows are merged onto a single survivor Urls row
         with their associations repointed/deduped and tags merged, no orphaned
@@ -115,17 +116,25 @@ def test_strip_tracking_params_upgrade_downgrade_idempotent(runner):
     migrate.init_app(app)
 
     # build_app provisions the schema via db.create_all() (no alembic_version row),
-    # so drop the schema and rebuild it via migrations up to the pre-strip
-    # revision — this gives alembic a real version context to upgrade/downgrade
-    # against, mirroring test_rename_navbar_dropdown_events.
+    # so drop the schema and rebuild it via migrations — this gives alembic a real
+    # version context to upgrade/downgrade against.
     cli_runner.invoke(args=["managedb", "drop", "test"])
 
     with app.app_context():
-        command.upgrade(_build_alembic_config(), _PRE_STRIP_REVISION)
+        # Seed at head so addmock all runs against a complete schema (isLocked
+        # column exists). The strip migration runs on an empty DB here (no-op).
+        # The raw tracking-laden Urls inserted by addmock bypass the validator and
+        # are not stripped by the already-applied migration, so they survive at head.
+        command.upgrade(_build_alembic_config(), "head")
 
         # Seed the full mock dataset (users, UTubs, members, urls, tags, metrics)
         # including the raw tracking-laden Urls rows that bypass the validator.
         cli_runner.invoke(args=["addmock", "all"])
+
+        # Downgrade to the pre-strip revision. The strip migration's downgrade is
+        # a no-op, so the raw tracking URLs are still present. The isLocked
+        # downgrade is reversible (column dropped, data preserved).
+        command.downgrade(_build_alembic_config(), _PRE_STRIP_REVISION)
 
         with db.engine.connect() as connection:
             url_strings_before = _all_url_strings(connection)

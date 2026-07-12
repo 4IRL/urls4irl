@@ -11,6 +11,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
+from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import (
@@ -18,6 +19,7 @@ from backend.utils.strings.json_strs import (
     STD_JSON_RESPONSE as STD_JSON,
 )
 from backend.utils.strings.url_strs import URL_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
@@ -108,6 +110,60 @@ def test_delete_url_as_utub_creator_no_tags(
         assert len(current_user_utub.utub_urls) == 0
 
         assert Utub_Urls.query.count() == initial_utub_urls - 1
+
+
+def test_remove_url_from_locked_utub_is_rejected(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub who has a valid URL in their UTub, where the UTub is LOCKED
+    WHEN the creator tries to remove the URL from the locked UTub by making a DELETE to
+        "/utubs/<int:utub_id>/urls/<int:utub_url_id>"
+    THEN the write-guard rejects the delete: the server responds 403 with the locked-UTub
+        JSON error (error code URLErrorCodes.UTUB_IS_LOCKED, message UTUB_FAILURE.UTUB_IS_LOCKED)
+        and the Utub_Urls association is left intact in the database.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        current_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_utub_user_association: Utub_Urls = current_user_utub.utub_urls[0]
+        url_id_to_remove = url_utub_user_association.id
+        utub_id_to_remove_from = current_user_utub.id
+
+        # Lock the UTub
+        current_user_utub.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the URL association exists prior to the blocked action
+        assert Utub_Urls.query.get(url_id_to_remove) is not None
+        initial_utub_urls = Utub_Urls.query.count()
+
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=utub_id_to_remove_from,
+            utub_url_id=url_id_to_remove,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert delete_url_response.status_code == 403
+    delete_url_response_json = delete_url_response.json
+    assert delete_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert delete_url_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(delete_url_response_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # The URL association still exists in the locked UTub
+        assert Utub_Urls.query.get(url_id_to_remove) is not None
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_delete_url_records_url_removed_from_utub_metric(

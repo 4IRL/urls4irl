@@ -284,6 +284,7 @@ def test_user_utub_data_serialized_on_initial_load():
         new_utub.set_last_updated()
         new_utub.id = empty_utub[MODEL_STRS.ID]
         new_utub.utub_creator = valid_user[MODEL_STRS.ID]
+        new_utub.is_locked = False
 
         # Add the valid user to the utub
         new_utub_user = Utub_Members()
@@ -296,6 +297,7 @@ def test_user_utub_data_serialized_on_initial_load():
                 MODEL_STRS.ID: new_utub.id,
                 MODEL_STRS.NAME: new_utub.name,
                 MODEL_STRS.MEMBER_ROLE: Member_Role.CREATOR.value,
+                MODEL_STRS.IS_LOCKED: new_utub.is_locked,
             }
         )
 
@@ -366,6 +368,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             )
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
+            ]
+            test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
+                MODEL_STRS.IS_LOCKED
             ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
@@ -438,6 +443,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
+            ]
+            test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
+                MODEL_STRS.IS_LOCKED
             ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
@@ -524,6 +532,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
+            ]
+            test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
+                MODEL_STRS.IS_LOCKED
             ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
@@ -641,6 +652,9 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 utub_in_data_serialized[MODEL_STRS.CREATED_BY]
                 == test_utub[MODEL_STRS.CREATED_BY]
             )
+            test_utub[MODEL_STRS.IS_LOCKED] = utub_in_data_serialized[
+                MODEL_STRS.IS_LOCKED
+            ]
             test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
             ]

@@ -42,6 +42,7 @@ from backend.tags.services.create_url_tag import (
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def create_url_in_utub(
@@ -66,6 +67,11 @@ def create_url_in_utub(
     """
     if tag_strings is None:
         tag_strings = []
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
     had_tracking: bool = safe_get_url_validator(current_app).contains_tracking_params(
         url_string
     )

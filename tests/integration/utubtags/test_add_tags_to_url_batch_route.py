@@ -17,6 +17,7 @@ from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -103,6 +104,70 @@ def test_batch_add_two_fresh_tags_succeeds(
     assert is_string_in_logs(f"UTub.id={utub_id}", caplog.records)
     assert is_string_in_logs(f"UTubURL.id={utub_url_id}", caplog.records)
     assert is_string_in_logs("AppliedCount=2", caplog.records)
+
+
+def test_create_and_add_tag_to_url_in_locked_utub_is_rejected(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a creator of a UTub with a URL that has no tags, where the UTub is LOCKED
+    WHEN they POST a fresh (not-yet-existing) tag string to the batch endpoint, which would
+        otherwise create the vocabulary row and apply it to the URL
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/batch"
+    THEN the write-guard (add_batch_tags_to_existing_url) rejects the add: the server responds
+        403 with the locked-UTub JSON error (error code URLTagErrorCodes.UTUB_IS_LOCKED, message
+        UTUB_FAILURE.UTUB_IS_LOCKED), and neither a new Utub_Tags vocabulary row nor a new
+        Utub_Url_Tags association is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_id, utub_url_id = _get_creator_utub_and_url()
+
+        # Lock the UTub
+        utub_to_lock: Utubs = Utubs.query.get(utub_id)
+        utub_to_lock.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: no vocabulary rows and no associations exist yet
+        initial_vocab_count = Utub_Tags.query.count()
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.tag_string == FRESH_TAG_ALPHA).count() == 0
+        )
+        initial_assoc_count = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
+        ).count()
+        assert initial_assoc_count == 0
+        initial_total_assoc_count = Utub_Url_Tags.query.count()
+
+    response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.BATCH_ADD_URL_TAGS, utub_id=utub_id, utub_url_id=utub_url_id
+        ),
+        json={TAG_STRINGS_FIELD: [FRESH_TAG_ALPHA]},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert response.status_code == 403
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert int(response_json[STD_JSON.ERROR_CODE]) == URLTagErrorCodes.UTUB_IS_LOCKED
+
+    with app.app_context():
+        # No new vocabulary row created, and no new association created
+        assert Utub_Tags.query.count() == initial_vocab_count
+        assert (
+            Utub_Tags.query.filter(Utub_Tags.tag_string == FRESH_TAG_ALPHA).count() == 0
+        )
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id,
+                Utub_Url_Tags.utub_url_id == utub_url_id,
+            ).count()
+            == initial_assoc_count
+        )
+        assert Utub_Url_Tags.query.count() == initial_total_assoc_count
 
 
 def test_batch_add_mix_new_and_existing_vocab_only_creates_new(

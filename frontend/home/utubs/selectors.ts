@@ -75,6 +75,7 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     activeUTubName: selectedUTub.name,
     activeUTubDescription: selectedUTub.description,
     isCurrentUserOwner: selectedUTub.isCreator,
+    isCurrentUTubLocked: selectedUTub.isLocked,
     currentUserID: selectedUTub.currentUser,
     utubOwnerID: selectedUTub.createdByUserID,
     urls: selectedUTub.urls,
@@ -83,6 +84,14 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
     selectedTagIDs: [],
     selectedURLCardID: null,
   });
+
+  // A locked UTub is frozen to every user mutation. Reflect that in the UI:
+  // the `utub-locked` body class drives the CSS that disables every mutation
+  // control (including per-URL/per-tag buttons rendered after this point), and
+  // the title padlock mirrors the deck padlock. The server still enforces the
+  // lock — this is affordance, not the security boundary.
+  $("body").toggleClass("utub-locked", selectedUTub.isLocked);
+  $("#URLDeckLockIcon").toggleClass("hidden", !selectedUTub.isLocked);
 
   const isUTubHistoryNull = window.history.state === null;
 
@@ -171,12 +180,19 @@ export function getSelectedUTubInfo(selectedUTubID: number): void {
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
-export function createUTubSelector(
-  utubName: string,
-  utubID: number,
-  memberRole: string,
-  index: number,
-): JQuery<HTMLElement> {
+export function createUTubSelector({
+  utubName,
+  utubID,
+  memberRole,
+  isLocked,
+  index,
+}: {
+  utubName: string;
+  utubID: number;
+  memberRole: string;
+  isLocked: boolean;
+  index: number;
+}): JQuery<HTMLElement> {
   const utubSelector = $(document.createElement("span"));
   const utubSelectorText = $(document.createElement("b"));
 
@@ -205,7 +221,7 @@ export function createUTubSelector(
       utubSelector.off("keyup.selectUTub");
     })
     .append(utubSelectorText)
-    .append(makeUTubRoleIcon(memberRole));
+    .append(makeUTubRoleIcon({ memberRole, isLocked }));
 
   return utubSelector;
 }
@@ -231,7 +247,24 @@ export function setUTubSelectorEventListeners(utub: HTMLElement): void {
     });
 }
 
-function makeUTubRoleIcon(memberRole: string): string {
+function makeUTubRoleIcon({
+  memberRole,
+  isLocked,
+}: {
+  memberRole: string;
+  isLocked: boolean;
+}): string {
+  // A locked UTub shows a padlock in place of the member-role symbol: the lock
+  // state is the more important thing to communicate, and the role icon returns
+  // once an admin unlocks it.
+  if (isLocked) {
+    return (
+      `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lock-fill memberRole utubLockedIcon" viewBox="0 0 16 16" aria-label="Locked">` +
+      `<path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2"/>` +
+      `</svg>`
+    );
+  }
+
   let icon = "";
 
   switch (memberRole) {

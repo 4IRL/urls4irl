@@ -36,6 +36,10 @@ _CHECK_LIVENESS_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "check_flush_liveness
 _PURGE_AUDIT_LOG_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "purge_audit_log.py"
 _SAMPLE_GAUGES_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "sample_gauges.py"
 _NOTIFY_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "notify.py"
+_BACKUP_SENTINEL_SCRIPT: Path = _PROJECT_ROOT / "scripts" / "backup_sentinel.py"
+_RUN_BACKUP_IF_REQUESTED_SCRIPT: Path = (
+    _PROJECT_ROOT / "scripts" / "run_backup_if_requested.py"
+)
 _BASH_CRON_SCRIPTS: tuple[Path, ...] = (
     _PROJECT_ROOT / "scripts" / "daily-docker.sh",
     _PROJECT_ROOT / "scripts" / "backup-database.sh",
@@ -219,6 +223,31 @@ def test_allow_list_covers_notify_env_reads():
     assert (
         reads <= _ALLOWED
     ), f"notify.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+
+
+def test_allow_list_covers_backup_sentinel_env_reads():
+    """
+    GIVEN the env-var keys read by scripts/backup_sentinel.py
+    WHEN they are compared against ALLOW_VARS
+    THEN every read key is present in ALLOW_VARS.
+    """
+    reads = _walk_env_reads(_BACKUP_SENTINEL_SCRIPT.read_text())
+    assert (
+        reads <= _ALLOWED
+    ), f"backup_sentinel.py reads {sorted(reads - _ALLOWED)} not in ALLOW_VARS"
+
+
+def test_allow_list_covers_run_backup_if_requested_env_reads():
+    """
+    GIVEN the env-var keys read by scripts/run_backup_if_requested.py
+    WHEN they are compared against ALLOW_VARS
+    THEN every read key is present in ALLOW_VARS.
+    """
+    reads = _walk_env_reads(_RUN_BACKUP_IF_REQUESTED_SCRIPT.read_text())
+    assert reads <= _ALLOWED, (
+        f"run_backup_if_requested.py reads {sorted(reads - _ALLOWED)} "
+        "not in ALLOW_VARS"
+    )
 
 
 def test_allow_list_covers_check_flush_liveness_env_reads():

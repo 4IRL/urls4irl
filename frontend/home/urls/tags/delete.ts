@@ -4,6 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { isUtubLockedHandled } from "../../utub-locked.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isTagInURL } from "./tags.js";
@@ -131,6 +132,7 @@ function deleteURLTagSuccess(
  */
 function deleteURLTagFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (
     xhr.status === 403 &&

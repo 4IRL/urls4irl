@@ -30,9 +30,16 @@ def test_user_schema_missing_required_fields():
 
 
 def test_utub_summary_item_schema_dump():
-    schema = UtubSummaryItemSchema(id=2, name="My UTub", member_role="creator")
+    schema = UtubSummaryItemSchema(
+        id=2, name="My UTub", member_role="creator", is_locked=False
+    )
     dumped = schema.model_dump(by_alias=True)
-    assert dumped == {M.ID: 2, M.NAME: "My UTub", M.MEMBER_ROLE: "creator"}
+    assert dumped == {
+        M.ID: 2,
+        M.NAME: "My UTub",
+        M.MEMBER_ROLE: "creator",
+        M.IS_LOCKED: False,
+    }
 
 
 def test_utub_summary_item_schema_missing_required_fields():
@@ -43,15 +50,19 @@ def test_utub_summary_item_schema_missing_required_fields():
 def test_utub_summary_list_schema_dump():
     schema = UtubSummaryListSchema(
         utubs=[
-            UtubSummaryItemSchema(id=1, name="UTub A", member_role="creator"),
-            UtubSummaryItemSchema(id=2, name="UTub B", member_role="editor"),
+            UtubSummaryItemSchema(
+                id=1, name="UTub A", member_role="creator", is_locked=False
+            ),
+            UtubSummaryItemSchema(
+                id=2, name="UTub B", member_role="editor", is_locked=False
+            ),
         ]
     )
     dumped = schema.model_dump(by_alias=True)
     assert dumped == {
         M.UTUBS: [
-            {M.ID: 1, M.NAME: "UTub A", M.MEMBER_ROLE: "creator"},
-            {M.ID: 2, M.NAME: "UTub B", M.MEMBER_ROLE: "editor"},
+            {M.ID: 1, M.NAME: "UTub A", M.MEMBER_ROLE: "creator", M.IS_LOCKED: False},
+            {M.ID: 2, M.NAME: "UTub B", M.MEMBER_ROLE: "editor", M.IS_LOCKED: False},
         ]
     }
 
@@ -59,7 +70,7 @@ def test_utub_summary_list_schema_dump():
 def test_utub_summary_list_schema_validate_from_dict():
     data = {
         M.UTUBS: [
-            {M.ID: 1, M.NAME: "UTub A", M.MEMBER_ROLE: "creator"},
+            {M.ID: 1, M.NAME: "UTub A", M.MEMBER_ROLE: "creator", M.IS_LOCKED: False},
         ]
     }
     schema = UtubSummaryListSchema.model_validate(data)

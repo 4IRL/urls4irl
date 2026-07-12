@@ -5,6 +5,7 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.urls import Urls
@@ -349,6 +350,65 @@ def test_get_valid_utub_with_members_urls_tags(
         assert (
             utub_user_is_creator_of.last_updated - initial_last_updated
         ).total_seconds() > 0
+
+
+def test_get_utub_detail_reflects_locked_state(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a member of a UTub that has been locked
+    WHEN the user requests the details of that UTub
+    THEN verify the response body reports isLocked as True
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        utub_to_lock: Utubs = Utubs.query.get(utub_id)
+
+        # Assert-before-state: the UTub is not locked yet
+        assert not utub_to_lock.is_locked
+
+        utub_to_lock.is_locked = True
+        db.session.commit()
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    assert response_json is not None
+    assert response_json[MODELS.IS_LOCKED]
+
+
+def test_get_utub_detail_reflects_unlocked_state(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+):
+    """
+    GIVEN a member of a UTub that has not been locked
+    WHEN the user requests the details of that UTub
+    THEN verify the response body reports isLocked as False by default
+    """
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        utub_detail: Utubs = Utubs.query.get(utub_id)
+
+        # Assert-before-state: the UTub is not locked
+        assert not utub_detail.is_locked
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    response_json = response.json
+
+    assert response_json is not None
+    assert not response_json[MODELS.IS_LOCKED]
 
 
 def test_get_valid_utub_success_logs(

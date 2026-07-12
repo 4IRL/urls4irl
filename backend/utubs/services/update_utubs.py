@@ -8,6 +8,8 @@ from backend.schemas.utubs import (
     UtubDescUpdatedResponseSchema,
     UtubNameUpdatedResponseSchema,
 )
+from backend.utubs.constants import UTubErrorCodes
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def update_utub_name_if_new(current_utub: Utubs, utub_name: str) -> FlaskResponse:
@@ -21,6 +23,12 @@ def update_utub_name_if_new(current_utub: Utubs, utub_name: str) -> FlaskRespons
     Returns:
         FlaskResponse: JSON response on update with 200 status code
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=UTubErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     old_utub_name = current_utub.name
 
     if utub_name != old_utub_name:
@@ -60,6 +68,12 @@ def update_utub_desc_if_new(
     Returns:
         FlaskResponse: JSON response on update with 200 status code
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=UTubErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     old_utub_description = current_utub.utub_description
     if (utub_description or "") != (old_utub_description or ""):
         current_utub.utub_description = utub_description

@@ -99,6 +99,7 @@ def test_admin_health_renders_operational_stat_cards(
         APL.HEALTH_SLOWEST_ENDPOINT,
         APL.HEALTH_ERROR_RATE,
         APL.HEALTH_BUSIEST_ENDPOINT,
+        APL.HEALTH_BACKUP_CARD,
     ):
         expect(
             wait_then_get_element(page=page, css_selector=always_present_selector)

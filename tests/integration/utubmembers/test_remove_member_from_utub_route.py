@@ -3,6 +3,7 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
@@ -18,6 +19,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.schemas.users import UserSchema
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
@@ -105,6 +107,82 @@ def test_remove_valid_user_from_utub_as_creator(
 
         # Ensure counts of Utubs-User associations is correct
         assert Utub_Members.query.count() == initial_num_user_utubs - 1
+
+
+def test_remove_member_from_locked_utub_is_rejected(
+    add_single_user_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub that has another member in it, where the UTub is LOCKED
+    WHEN the creator tries to remove the other member from the locked UTub
+        - By DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with a valid CSRF token
+    THEN the lock-guard rejects the removal FIRST (before any permission check): the server
+        responds 403 with the locked-UTub JSON error (error code
+        UTubMembersErrorCodes.UTUB_IS_LOCKED, message UTUB_FAILURE.UTUB_IS_LOCKED) and the
+        member remains in the UTub (association count unchanged).
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get the only UTub, which contains two members
+        current_utub: Utubs = Utubs.query.first()
+
+        # Grab the second user from the members
+        second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub.id,
+            Utub_Members.user_id != current_user.id,
+        ).first()
+        second_user_in_utub: Users = second_user_in_utub_association.to_user
+        utub_id_to_remove_from = current_utub.id
+        second_user_id_to_remove = second_user_in_utub.id
+
+        # Lock the UTub
+        current_utub.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the target member IS in the UTub prior to the blocked action
+        assert (
+            Utub_Members.query.get((utub_id_to_remove_from, second_user_id_to_remove))
+            is not None
+        )
+        initial_num_users_in_utub = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id_to_remove_from
+        ).count()
+        initial_num_user_utubs = Utub_Members.query.count()
+
+    # Attempt to remove the second user from the locked UTub as the creator
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub_id_to_remove_from,
+            user_id=second_user_id_to_remove,
+        ),
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    # Ensure the lock-guard rejection (not a permission error) is returned
+    assert remove_user_response.status_code == 403
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert remove_user_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(remove_user_response_json[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # Ensure the member is still in the locked UTub (count unchanged)
+        assert (
+            Utub_Members.query.get((utub_id_to_remove_from, second_user_id_to_remove))
+            is not None
+        )
+        assert (
+            Utub_Members.query.filter(
+                Utub_Members.utub_id == utub_id_to_remove_from
+            ).count()
+            == initial_num_users_in_utub
+        )
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_self_from_utub_as_member(

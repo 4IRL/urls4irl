@@ -841,6 +841,405 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ---
 
+### GET /admin/system-operations
+
+| Layer           | Location                                                                                                                                                                                                          |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_system_operations`                                                                                                                                                                 |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                            |
+| **Service**     | `render_template()` direct; audits `admin.system_ops.view` (`ADMIN_AUDIT_ACTIONS.SYSTEM_OPS_VIEW`, no target)                                                                                                     |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                                                                                                     |
+| **Template**    | `admin_portal/system_operations/index.html` (extends `admin_portal/base.html`; the six `.admin-ops-card` blocks moved verbatim off `health.html`; buttons `#AdminOpsMetricsFlushBtn`…`#AdminOpsShortUrlsSyncBtn`) |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` ops buttons; shared confirm-modal + AJAX controller)                                                                                     |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_system_operations_page.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_ops_actions_ui.py` (marker: `admin_ui`)                                                   |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.SYSTEM_OPERATIONS_PAGE`                                                                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `SYSTEM_OPS_VIEW` audit is the domain signal)                                                                              |
+
+---
+
+### GET /admin/utubs
+
+| Layer           | Location                                                                                                                                                                                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_utubs` (query params: `q`, `sort`, `dir`, `offset`)                                                                                                                                                                                                             |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                                                         |
+| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (reused DB-browser table service over the `Utubs` table: offset/limit pagination, column sort + substring search, safe cell formatting); audits `admin.utub.list` (`ADMIN_AUDIT_ACTIONS.UTUB_LIST`) with `{query, result_count}` metadata |
+| **Schema**      | None (request — `q`/`sort`/`dir`/`offset` optional query args) / None (response — server-rendered HTML grid; read-only list)                                                                                                                                                                   |
+| **Template**    | `admin_portal/utubs/index.html` (mirrors `admin_portal/db/table.html`: `#AdminUtubTableSearch` search form + sort links + `#AdminUtubTableGrid` grid or empty-state; each row's first cell links to `url_for('admin.admin_utub_detail', utub_id=…)`)                                           |
+| **JS Module**   | None (plain server-rendered form-submit page)                                                                                                                                                                                                                                                  |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                                                             |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.UTUBS_PAGE`                                                                                                                                                                                                                                          |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `UTUB_LIST` audit is the domain signal)                                                                                                                                                                 |
+
+---
+
+### GET /admin/utubs/\<int:utub_id>
+
+| Layer           | Location                                                                                                                                                                                                                                               |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_utub_detail` (404 on unknown utub id; query params: `members_q`/`urls_q`/`tags_q` server-side in-table filters + `members_offset`/`urls_offset` pagination — filters apply to the UTub's full set before Members/URLs paginate; info-panel counts stay unfiltered totals) |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                 |
+| **Service**     | `render_template()` direct (aggregates the UTub's own `members` + `utub_urls` relationships; creator username resolved via `Users.query.get`); audits `admin.utub.view` (`ADMIN_AUDIT_ACTIONS.UTUB_VIEW`, `target_type="Utub"`, `target_id=<utub_id>`) |
+| **Schema**      | None (request) / None (response — HTML page)                                                                                                                                                                                                           |
+| **Template**    | `admin_portal/utubs/detail.html` (info panel + per-table `.admin-db-search-form` GET filters [`#AdminUtubDetailMembersSearch`/`UrlsSearch`/`TagsSearch`] mirroring the DB browser + paginated Members table with `member-remove` + paginated URLs table with `url-delete`/`url-purge` + UTub Tags panel with `utub-tag-delete`; lock/unlock + delete-utub action bar) |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` moderation buttons)                                                                                                                                                           |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                     |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.UTUB_DETAIL`                                                                                                                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `UTUB_VIEW` audit is the domain signal)                                                                                                                         |
+
+---
+
+### POST /admin/ops/metrics-flush
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_metrics_flush`                                                                                        |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_metrics_flush` — acquires flush lock, calls `run_flush`, audits result                                    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="metrics-flush"`)                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons; shared confirm-modal + AJAX controller)                       |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_METRICS_FLUSH`                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/gauge-sample
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_gauge_sample`                                                                                         |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_gauge_sample` — calls `run_sample`, stamps GAUGE_LAST_SUCCESS_KEY sentinel, audits result                 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="gauge-sample"`)                              |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_GAUGE_SAMPLE`                                                                                    |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/audit-purge
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_audit_purge`                                                                                          |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_audit_purge` — self-audits + commits BEFORE calling `run_purge` (window-only; never purge-all)            |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="audit-purge"`)                               |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_AUDIT_PURGE`                                                                                     |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/verify-tables
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_verify_tables`                                                                                        |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_verify_tables` — read-only `get_missing_tables()` check; never touches auto-repair or DROP SCHEMA path    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="verify-tables"`)                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_VERIFY_TABLES`                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/short-urls-sync
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_short_urls_sync`                                                                                      |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_short_urls_sync` — calls `sync_short_url_domains_to_redis` via main Redis; 503 when REDIS_URI is absent   |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="short-urls-sync"`)                           |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_SHORT_URLS_SYNC`                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/ops/backup-trigger
+
+| Layer           | Location                                                                                                                                        |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_backup_trigger`                                                                                       |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| **Service**     | `backend/admin/ops_service.py:trigger_backup` — sets the short-TTL `metrics:backup:trigger_requested` flag consumed by the workflow container's per-minute poller (`scripts/run_backup_if_requested.py`); idempotent while pending; 503 when metrics Redis is absent |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="backup-trigger"`; last-success card in `admin_portal/_health_snapshot.html`) |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py`, `tests/integration/admin/test_backup_trigger_scripts.py` (marker: `admin`)                 |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_BACKUP_TRIGGER`                                                                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/lock
+
+| Layer           | Location                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_utub_lock`                                                                                                            |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
+| **Service**     | `backend/admin/moderation_service.py:lock_utub` — sets `isLocked=True`; idempotent (200 no-op if already locked); audits on real state change               |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Template**    | `admin_portal/utubs/detail.html` (Lock button in the UTub-detail action bar)                                                                                |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_LOCK`                                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/unlock
+
+| Layer           | Location                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_utub_unlock`                                                                                                          |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
+| **Service**     | `backend/admin/moderation_service.py:unlock_utub` — sets `isLocked=False`; idempotent (200 no-op if already unlocked); audits on real state change          |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Template**    | `admin_portal/utubs/detail.html` (Unlock button in the UTub-detail action bar when the UTub is locked)                                                      |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_UNLOCK`                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/delete
+
+| Layer           | Location                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_utub_delete`                                                                                                          |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
+| **Service**     | `backend/admin/moderation_service.py:delete_utub_admin` — deletes UTub (cascade removes members/URLs/tags); audits with utub name; 404 if not found         |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Template**    | `admin_portal/utubs/detail.html` (Delete UTub button in the UTub-detail action bar)                                                                         |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_DELETE`                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/members/\<int:target_user_id>/remove
+
+| Layer           | Location                                                                                                                                                                            |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_member_remove`                                                                                                                                |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                              |
+| **Service**     | `backend/admin/moderation_service.py:remove_member_admin` — removes member; if creator is removed, promotes CO_CREATOR or MEMBER; if sole member, deletes UTub; 404 if not found   |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                             |
+| **Template**    | `admin_portal/utubs/detail.html` (Remove Member button per non-creator row in the UTub-detail Members table)                                                                        |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                   |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                         |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_MEMBER_REMOVE`                                                                                                                       |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                        |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/urls/\<int:utub_url_id>/delete
+
+| Layer           | Location                                                                                                                                                    |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_url_delete`                                                                                                           |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
+| **Service**     | `backend/admin/moderation_service.py:delete_url_in_utub_admin` — removes Utub_Url_Tags then Utub_Urls row; leaves Urls canonical row intact; 404 if absent  |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Template**    | `admin_portal/utubs/detail.html` (Remove from UTub button per row in the UTub-detail URLs table)                                                            |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`)                                                                               |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_DELETE`                                                                                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
+
+---
+
+### POST /admin/urls/\<int:url_id>/purge
+
+| Layer           | Location                                                                                                                                                                    |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_url_purge`                                                                                                                            |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                      |
+| **Service**     | `backend/admin/moderation_service.py:purge_url_globally` — removes all Utub_Url_Tags + Utub_Urls associations across every UTub; leaves the canonical Urls row; 404 if absent |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                     |
+| **Template**    | `admin_portal/utubs/detail.html` (Purge from all UTubs button per row in the UTub-detail URLs table)                                                                        |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                 |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_PURGE`                                                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/tags/\<int:utub_tag_id>/delete
+
+| Layer           | Location                                                                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_utub_tag_delete`                                                                                                                                      |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON); `@api_route`                                                                                                                        |
+| **Service**     | `backend/admin/moderation_service.py:delete_utub_tag_admin` — deletes one Utub_Tags vocabulary row, cascading to remove all its Utub_Url_Tags applications; returns count removed; 404 if absent |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                     |
+| **Template**    | `admin_portal/utubs/detail.html` (Delete Tag button per row in the UTub-detail UTub Tags panel)                                                                                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/suspend
+
+| Layer           | Location                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_suspend`                                                                                                                                              |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                           |
+| **Service**     | `backend/admin/account_service.py:suspend_user` — sets `isSuspended=True`, stamps `sessionsInvalidatedAt`, revokes API tokens; idempotent (200 no-op if already suspended); guards: self-action 403, last-admin 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                          |
+| **Template**    | `admin_portal/users/detail.html` (Suspend button in Account Actions panel)                                                                                                                       |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                        |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                     |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/unsuspend
+
+| Layer           | Location                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_unsuspend`                                                                                                                          |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                         |
+| **Service**     | `backend/admin/account_service.py:unsuspend_user` — sets `isSuspended=False`; idempotent (200 no-op if not suspended); guard: self-action 403                                  |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                        |
+| **Template**    | `admin_portal/users/detail.html` (Unsuspend button in Account Actions panel)                                                                                                   |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                              |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                           |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                      |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                   |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/force-reset
+
+| Layer           | Location                                                                                                                                                                                                                           |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_force_reset`                                                                                                                                                                            |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                             |
+| **Service**     | `backend/admin/account_service.py:force_password_reset` — creates/resets `Forgot_Passwords` (bypasses rate limits), sends reset email, kills sessions + revokes tokens; 400 for OAuth-only; 502 on email failure (rollback); guard: self-action 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                             |
+| **Template**    | `admin_portal/users/detail.html` (Force Password Reset button in Account Actions panel)                                                                                                                                            |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                  |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                               |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                                                          |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                       |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/kill-sessions
+
+| Layer           | Location                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_kill_sessions`                                                                                                             |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                |
+| **Service**     | `backend/admin/account_service.py:kill_user_sessions` — stamps `sessionsInvalidatedAt`, revokes API tokens; NOT idempotent (always acts, always audits); guard: self-action 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`               |
+| **Template**    | `admin_portal/users/detail.html` (Kill Sessions button in Account Actions panel)                                                                                      |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                     |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                          |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/erase
+
+| Layer           | Location                                                                                                                                                                                                                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_erase`                                                                                                                                                                                                                                                                                    |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                                                               |
+| **Service**     | `backend/admin/account_data_service.py:erase_user` — anonymizes username/email/password to tombstone identity, deletes OAuth/email-validation/forgot-password/contact-form child rows, kills sessions, resolves UTub memberships (solo deleted, created transferred, member-only removed); idempotent; guards: self-action 403, last-admin 403 |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                                                              |
+| **Template**    | `admin_portal/users/detail.html` (Erase button in Account Actions panel)                                                                                                                                                                                                                                                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                                                    |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                                                                 |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                                                                                       |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                                                                                         |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/oauth/\<int:identity_id>/unlink
+
+| Layer           | Location                                                                                                                                                                                                                                                                   |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_oauth_unlink`                                                                                                                                                                                                                   |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                     |
+| **Service**     | `backend/admin/account_data_service.py:unlink_oauth_identity` — deletes the identity row; 403 when it is the last credential (no password + last OAuth identity); 404 when identity does not belong to the target user; guard: self-action 403                              |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                    |
+| **Template**    | `admin_portal/users/detail.html` (Unlink button per OAuth identity in Account Actions panel)                                                                                                                                                                               |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                          |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                       |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                               |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/email/verify
+
+| Layer           | Location                                                                                                                                                                                                                         |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_email_verify`                                                                                                                                                                         |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                           |
+| **Service**     | `backend/admin/account_data_service.py:mark_email_verified` — sets `emailValidated=True`, deletes `Email_Validations` row if present; idempotent (200 no-op if already verified); guard: self-action 403                         |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                          |
+| **Template**    | `admin_portal/users/detail.html` (Mark Verified button in Account Actions panel)                                                                                                                                                 |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                     |
+
+---
+
+### POST /admin/users/\<int:target_user_id>/email/resend
+
+| Layer           | Location                                                                                                                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_email_resend`                                                                                                                                                                                                                                         |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                           |
+| **Service**     | `backend/admin/account_data_service.py:resend_verification_email` — creates/refreshes `Email_Validations` row (bypasses rate limits), sends confirmation email via `send_account_email_confirmation`; 200 no-op if already verified; 502 on email failure (rollback); guard: self-action 403     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                          |
+| **Template**    | `admin_portal/users/detail.html` (Resend Verification button in Account Actions panel)                                                                                                                                                                                                           |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                                                   |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                                                     |
+
+---
+
 ## Contact Blueprint
 
 ### GET /contact

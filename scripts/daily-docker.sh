@@ -57,8 +57,13 @@ LOGFILE="$WORKFLOW_LOG_DIR/$(date +%Y_%m_%d)-daily-workflow-logs.txt"
 exec 1>>"$LOGFILE"
 exec 2>&1
 
+# Source of this run: "scheduled" (the 1 AM cron) or "manual" (an admin's
+# Trigger Backup action, exported by run_backup_if_requested.py). Surfaced in
+# every Discord message so a manual run is distinguishable from the nightly one.
+BACKUP_TRIGGER_SOURCE="${BACKUP_TRIGGER_SOURCE:-scheduled}"
+
 notify_step() {
-  /opt/metrics-venv/bin/python /app/scripts/notify.py --job "$1" --status "$2" --detail "${3:-}" || true
+  /opt/metrics-venv/bin/python /app/scripts/notify.py --job "$1" --status "$2" --detail "${3:-}" --trigger "$BACKUP_TRIGGER_SOURCE" || true
 }
 
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
@@ -123,6 +128,17 @@ fi
   --logs "$([ "$logs_backed_up" = "true" ] && echo ok || echo fail)" \
   --remote-db "${REMOTE_DB_STATUS:-skip}" \
   --remote-monthly "${REMOTE_DB_MONTHLY_STATUS:-skip}" \
-  --remote-logs "${REMOTE_LOGS_STATUS:-skip}" || true
+  --remote-logs "${REMOTE_LOGS_STATUS:-skip}" \
+  --trigger "$BACKUP_TRIGGER_SOURCE" || true
+
+# Stamp the backup last-success sentinel in the metrics Redis (read by the
+# admin health dashboard). Best-effort: a Redis hiccup never fails the
+# pipeline. METRICS_REDIS_URI is passed explicitly because the environment
+# file above is sourced without allexport.
+if [[ "$database_backed_up" == "true" ]]; then
+  if ! METRICS_REDIS_URI="${METRICS_REDIS_URI:-}" /opt/metrics-venv/bin/python "$SCRIPT_DIR/backup_sentinel.py"; then
+    echo "Warning: backup last-success sentinel stamp failed"
+  fi
+fi
 
 exit $remote_exit

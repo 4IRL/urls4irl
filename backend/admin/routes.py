@@ -1,30 +1,66 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from flask import Blueprint, abort, render_template, request
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
+from sqlalchemy import or_
 
+from backend import db
 from backend.admin import db_browser_service
+from backend.admin.db_browser_service import _PaginationBase
 from backend.admin.audit_service import (
     AuditLogFilters,
     DEFAULT_AUDIT_PAGE_LIMIT,
     query_audit_log,
 )
 from backend.admin.health_service import collect_health_snapshot
+from backend.admin.account_data_service import is_tombstoned
 from backend.admin.user_service import (
     DEFAULT_SEARCH_LIMIT,
+    LIKE_ESCAPE_CHAR,
+    escape_like_wildcards,
     get_user_detail,
     search_users,
 )
 from backend.api_common.auth_decorators import admin_login_required
 from backend.extensions import audit
+from backend.models.urls import Urls
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.utils.constants import provide_config_for_constants
 from backend.utils.strings.admin_portal_strs import (
     ADMIN_AUDIT_ACTIONS,
     ADMIN_PORTAL_STRINGS,
 )
 
+_DETAIL_TABLE_PAGE_SIZE: int = 50
+
 admin = Blueprint("admin", __name__)
+
+
+@dataclass(frozen=True)
+class _DetailTablePage(_PaginationBase):
+    """One page of a UTub-detail relationship table (members or URLs).
+
+    Holds the sliced page rows plus the offset/limit/total needed to render
+    the "showing X-Y of N" span and Previous/Next links, mirroring the
+    ``TablePage`` pagination math used by the UTub list page.
+    """
+
+    rows: list[Utub_Members] | list[Utub_Urls]
+
+    @property
+    def showing_start(self) -> int:
+        return min(self.offset + 1, self.total_count) if self.total_count else 0
+
+    @property
+    def showing_end(self) -> int:
+        return min(self.offset + self.limit, self.total_count)
 
 
 @admin.context_processor
@@ -48,6 +84,7 @@ def admin_portal() -> FlaskResponse:
     matching the established `/admin/metrics` gating semantics.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.PORTAL_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/index.html",
         is_admin_portal=True,
@@ -64,6 +101,7 @@ def admin_health() -> FlaskResponse:
     this route only renders the shell and audits the page view.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.HEALTH_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/health.html",
         is_admin_portal=True,
@@ -125,6 +163,7 @@ def admin_users_search() -> FlaskResponse:
             "result_count": search_page.total_count,
         },
     )
+    db.session.commit()
     return render_template(
         "admin_portal/users/_results.html",
         search_page=search_page,
@@ -134,8 +173,10 @@ def admin_users_search() -> FlaskResponse:
 @admin.route("/admin/users/<int:user_id>", methods=["GET"])
 @admin_login_required
 def admin_user_detail(user_id: int) -> FlaskResponse:
-    """Read-only detail page for one user: metadata, role, email-validated
-    status, and UTub memberships. No mutating actions exist on this page."""
+    """Detail page for one user: metadata, role, email-validated status,
+    OAuth identities, and UTub memberships, plus the account-action and
+    moderation controls (each mutation POSTs to its own audited endpoint —
+    rendering this page itself mutates nothing)."""
     detail_user = get_user_detail(user_id=user_id)
     if detail_user is None:
         abort(404)
@@ -145,10 +186,183 @@ def admin_user_detail(user_id: int) -> FlaskResponse:
         target_type="User",
         target_id=str(user_id),
     )
+    db.session.commit()
     return render_template(
         "admin_portal/users/detail.html",
         is_admin_portal=True,
         detail_user=detail_user,
+        is_erased=is_tombstoned(user=detail_user),
+    )
+
+
+@admin.route("/admin/system-operations", methods=["GET"])
+@admin_login_required
+def admin_system_operations() -> FlaskResponse:
+    """Server-rendered page hosting the six global operations cards.
+
+    Each card POSTs to its own audited ops endpoint (metrics flush, gauge
+    sample, audit purge, verify tables, backup trigger, short-urls sync);
+    rendering this page mutates nothing and only records the page view.
+    """
+    audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.SYSTEM_OPS_VIEW)
+    db.session.commit()
+    return render_template(
+        "admin_portal/system_operations/index.html",
+        is_admin_portal=True,
+    )
+
+
+@admin.route("/admin/utubs", methods=["GET"])
+@admin_login_required
+def admin_utubs() -> FlaskResponse:
+    """Searchable, sortable, paginated list of UTubs for the UTub Actions tab.
+
+    Reuses the DB browser's generic table service (``get_table_page`` over the
+    ``Utubs`` table) rather than a bespoke search endpoint, so the grid mirrors
+    the DB browser's raw-column rendering. Query params ``q``/``sort``/``dir``/
+    ``offset`` shape the search, ordering, and pagination exactly as
+    ``admin_db_table``. Each row links to the per-UTub detail page. The page
+    view is audited with the query and result count.
+    """
+    search_query: str = request.args.get("q", "")
+    table_page = db_browser_service.get_table_page(
+        table_name="Utubs",
+        offset=_parse_offset_arg(),
+        sort_key=request.args.get("sort"),
+        direction=request.args.get("dir", "asc"),
+        query=search_query,
+    )
+    audit.record(
+        actor_id=current_user.id,
+        action=ADMIN_AUDIT_ACTIONS.UTUB_LIST,
+        metadata={
+            "query": table_page.query,
+            "result_count": table_page.total_count,
+        },
+    )
+    db.session.commit()
+    return render_template(
+        "admin_portal/utubs/index.html",
+        is_admin_portal=True,
+        table_page=table_page,
+    )
+
+
+@admin.route("/admin/utubs/<int:utub_id>", methods=["GET"])
+@admin_login_required
+def admin_utub_detail(utub_id: int) -> FlaskResponse:
+    """Aggregated detail page for one UTub: info panel, members, URLs, and tags.
+
+    Renders the UTub's own relationships (``members``, ``utub_urls``, and
+    ``utub_tags``) so the lock/unlock, delete, remove-member, remove-URL,
+    purge-URL, and remove-tag moderation controls source their ids directly from
+    the loaded UTub. The creator's username is resolved from ``utub_creator``.
+
+    Each table supports a server-side in-table filter via ``members_q`` (member
+    username), ``urls_q`` (URL string or title), and ``tags_q`` (tag text). The
+    filter is applied to that UTub's FULL set before the Members/URLs tables are
+    paginated (``members_offset``/``urls_offset``); the small tag vocabulary is
+    rendered un-paginated. The info-panel counts stay the UNFILTERED totals so
+    the admin always sees the UTub's true size, while each table's "showing X-Y
+    of N" reflects the FILTERED total. Missing UTubs 404. The page view is
+    audited; each mutation POSTs to its own audited endpoint — rendering this
+    page mutates nothing.
+    """
+    detail_utub = Utubs.query.get(utub_id)
+    if detail_utub is None:
+        abort(404)
+    creator_username: str | None = None
+    creator = Users.query.get(detail_utub.utub_creator)
+    if creator is not None:
+        creator_username = creator.username
+
+    members_q = request.args.get("members_q", "")
+    urls_q = request.args.get("urls_q", "")
+    tags_q = request.args.get("tags_q", "")
+
+    members_offset = _parse_offset_arg("members_offset")
+    urls_offset = _parse_offset_arg("urls_offset")
+
+    # Info-panel counts are the UNFILTERED totals — the admin sees the UTub's
+    # true size regardless of any active in-table filter.
+    members_total_unfiltered = Utub_Members.query.filter_by(
+        utub_id=detail_utub.id
+    ).count()
+    urls_total_unfiltered = Utub_Urls.query.filter_by(utub_id=detail_utub.id).count()
+
+    members_query = Utub_Members.query.filter_by(utub_id=detail_utub.id)
+    if members_q.strip():
+        members_pattern = f"%{escape_like_wildcards(members_q)}%"
+        members_query = members_query.join(
+            Users, Utub_Members.user_id == Users.id
+        ).filter(Users.username.ilike(members_pattern, escape=LIKE_ESCAPE_CHAR))
+    members_total = members_query.count()
+    members_rows = (
+        members_query.order_by(Utub_Members.user_id)
+        .limit(_DETAIL_TABLE_PAGE_SIZE)
+        .offset(members_offset)
+        .all()
+    )
+
+    urls_query = Utub_Urls.query.filter_by(utub_id=detail_utub.id)
+    if urls_q.strip():
+        urls_pattern = f"%{escape_like_wildcards(urls_q)}%"
+        urls_query = urls_query.join(Urls, Utub_Urls.url_id == Urls.id).filter(
+            or_(
+                Urls.url_string.ilike(urls_pattern, escape=LIKE_ESCAPE_CHAR),
+                Utub_Urls.url_title.ilike(urls_pattern, escape=LIKE_ESCAPE_CHAR),
+            )
+        )
+    urls_total = urls_query.count()
+    urls_rows = (
+        urls_query.order_by(Utub_Urls.id)
+        .limit(_DETAIL_TABLE_PAGE_SIZE)
+        .offset(urls_offset)
+        .all()
+    )
+
+    # Tags are a small per-UTub vocabulary — filter but render un-paginated.
+    tags_query = Utub_Tags.query.filter_by(utub_id=detail_utub.id)
+    if tags_q.strip():
+        tags_pattern = f"%{escape_like_wildcards(tags_q)}%"
+        tags_query = tags_query.filter(
+            Utub_Tags.tag_string.ilike(tags_pattern, escape=LIKE_ESCAPE_CHAR)
+        )
+    tags_rows = tags_query.order_by(Utub_Tags.id).all()
+
+    members_page = _DetailTablePage(
+        rows=members_rows,
+        total_count=members_total,
+        offset=members_offset,
+        limit=_DETAIL_TABLE_PAGE_SIZE,
+    )
+    urls_page = _DetailTablePage(
+        rows=urls_rows,
+        total_count=urls_total,
+        offset=urls_offset,
+        limit=_DETAIL_TABLE_PAGE_SIZE,
+    )
+
+    audit.record(
+        actor_id=current_user.id,
+        action=ADMIN_AUDIT_ACTIONS.UTUB_VIEW,
+        target_type="Utub",
+        target_id=str(utub_id),
+    )
+    db.session.commit()
+    return render_template(
+        "admin_portal/utubs/detail.html",
+        is_admin_portal=True,
+        detail_utub=detail_utub,
+        creator_username=creator_username,
+        members_page=members_page,
+        urls_page=urls_page,
+        tags_rows=tags_rows,
+        members_total=members_total_unfiltered,
+        urls_total=urls_total_unfiltered,
+        members_q=members_q,
+        urls_q=urls_q,
+        tags_q=tags_q,
     )
 
 
@@ -161,6 +375,7 @@ def admin_db() -> FlaskResponse:
     links to its paginated grid. The page view is audited.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/db/index.html",
         is_admin_portal=True,
@@ -192,6 +407,7 @@ def admin_db_table(table_name: str) -> FlaskResponse:
         action=ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW,
         target_type=table_name,
     )
+    db.session.commit()
     return render_template(
         "admin_portal/db/table.html",
         is_admin_portal=True,
@@ -216,6 +432,7 @@ def admin_db_row(table_name: str, row_pk: str) -> FlaskResponse:
         target_type=table_name,
         target_id=row_pk,
     )
+    db.session.commit()
     return render_template(
         "admin_portal/db/row.html",
         is_admin_portal=True,
@@ -223,9 +440,9 @@ def admin_db_row(table_name: str, row_pk: str) -> FlaskResponse:
     )
 
 
-def _parse_offset_arg() -> int:
+def _parse_offset_arg(arg_name: str = "offset") -> int:
     try:
-        return max(int(request.args.get("offset", "0")), 0)
+        return max(int(request.args.get(arg_name, "0")), 0)
     except ValueError:
         return 0
 
@@ -251,6 +468,7 @@ def admin_audit_log() -> FlaskResponse:
     an audited action.
     """
     audit.record(actor_id=current_user.id, action=ADMIN_AUDIT_ACTIONS.AUDIT_LOG_VIEW)
+    db.session.commit()
     return render_template(
         "admin_portal/audit_log/index.html",
         is_admin_portal=True,

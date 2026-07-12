@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.schemas.urls import UtubUrlDetailSchema
 from backend.models.urls import Urls
@@ -19,6 +20,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
@@ -120,6 +122,67 @@ def test_update_url_title_utub_creator(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).count() == len(associated_tags)
+
+
+def test_update_url_title_in_locked_utub_is_rejected(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has a single URL, where the UTub is LOCKED
+    WHEN the creator attempts to modify the URL title via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:utub_url_id>/title" with a new title
+    THEN the write-guard rejects the update: the server responds 403 with the locked-UTub
+        JSON error (error code URLErrorCodes.UTUB_IS_LOCKED, message UTUB_FAILURE.UTUB_IS_LOCKED)
+        and the URL title is left unchanged in the database.
+    """
+    NEW_TITLE = "This is my newest facebook.com!"
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_id_to_update = utub_creator_of.id
+        current_url_id = url_in_this_utub.id
+        original_url_title = url_in_this_utub.url_title
+
+        # Lock the UTub
+        utub_creator_of.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the title differs from the attempted new value
+        assert original_url_title != NEW_TITLE
+
+    update_url_title_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_id_to_update,
+            utub_url_id=current_url_id,
+        ),
+        json={URL_FORM.URL_TITLE: NEW_TITLE},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_title_response.status_code == 403
+    update_url_title_response_json = update_url_title_response.json
+    assert update_url_title_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        update_url_title_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    )
+    assert (
+        int(update_url_title_response_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # The URL title is unchanged in the locked UTub
+        unchanged_url_in_utub: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert unchanged_url_in_utub.url_title == original_url_title
 
 
 def test_update_url_title_records_metric_when_changed(

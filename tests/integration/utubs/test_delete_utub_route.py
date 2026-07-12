@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
@@ -17,6 +18,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from backend.utubs.constants import UTubErrorCodes
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import valid_empty_utub_1
 from tests.utils_for_test import is_string_in_logs
@@ -76,6 +78,48 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
         # Assert no UTubs and no UTub-User associations exist in the database after deletion
         assert Utubs.query.count() == initial_num_utubs - 1
         assert Utub_Members.query.count() == 0
+
+
+def test_delete_locked_utub_is_rejected(
+    add_single_utub_as_user_after_logging_in,
+):
+    """
+    GIVEN a valid logged-in user and a UTub they created that is LOCKED
+    WHEN the creator requests to delete the locked UTub via a DELETE to "/utubs/<int:utub_id>"
+    THEN the lock guard rejects the delete: the server responds 403 with the locked-UTub
+        JSON error (status FAILURE, message UTUB_FAILURE.UTUB_IS_LOCKED, error code
+        UTubErrorCodes.UTUB_IS_LOCKED) and the UTub still exists afterward.
+    """
+    client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        # Lock the UTub the creator is attempting to delete
+        utub_to_delete: Utubs = Utubs.query.get(utub_id)
+        utub_to_delete.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the UTub exists prior to the blocked action
+        initial_num_utubs = Utubs.query.count()
+        assert Utubs.query.get(utub_id) is not None
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 403
+    delete_utub_json_response = delete_utub_response.json
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(delete_utub_json_response[STD_JSON.ERROR_CODE])
+        == UTubErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # The locked UTub still exists — the delete did not happen
+        assert Utubs.query.count() == initial_num_utubs
+        assert Utubs.query.get(utub_id) is not None
 
 
 def test_delete_utub_records_metric(

@@ -65,6 +65,7 @@ def test_get_utubs_if_has_one_utub(
                     MODELS.ID: member.to_utub.id,
                     MODELS.NAME: member.to_utub.name,
                     MODELS.MEMBER_ROLE: member.member_role.value,
+                    MODELS.IS_LOCKED: member.to_utub.is_locked,
                 }
                 for member in all_utubs_in
             ],
@@ -102,6 +103,7 @@ def test_get_utubs_if_has_multiple_utubs(
                     MODELS.ID: member.to_utub.id,
                     MODELS.NAME: member.to_utub.name,
                     MODELS.MEMBER_ROLE: member.member_role.value,
+                    MODELS.IS_LOCKED: member.to_utub.is_locked,
                 }
                 for member in all_utubs_in
             ]
@@ -118,6 +120,54 @@ def test_get_utubs_if_has_multiple_utubs(
     assert sorted(utub_summary[MODELS.UTUBS], key=lambda x: x[MODELS.ID]) == sorted(
         response.json[MODELS.UTUBS], key=lambda x: x[MODELS.ID]
     )
+
+
+def test_get_utubs_summary_reflects_locked_state(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user who is a member of multiple UTubs, one of which
+        is locked
+    WHEN the user requests a summary of all their UTubs
+    THEN verify the locked UTub's entry reports isLocked as True while an
+        unlocked sibling UTub reports isLocked as False
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        members_utubs: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id
+        ).all()
+        locked_utub: Utubs = members_utubs[0].to_utub
+        unlocked_utub: Utubs = members_utubs[1].to_utub
+        locked_utub_id = locked_utub.id
+        unlocked_utub_id = unlocked_utub.id
+
+        # Assert-before-state: neither UTub is locked yet
+        assert not locked_utub.is_locked
+        assert not unlocked_utub.is_locked
+
+        locked_utub.is_locked = True
+        db.session.commit()
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    assert response.json is not None
+    utubs_in_response = response.json[MODELS.UTUBS]
+
+    locked_entry = next(
+        entry for entry in utubs_in_response if entry[MODELS.ID] == locked_utub_id
+    )
+    unlocked_entry = next(
+        entry for entry in utubs_in_response if entry[MODELS.ID] == unlocked_utub_id
+    )
+    assert locked_entry[MODELS.IS_LOCKED]
+    assert not unlocked_entry[MODELS.IS_LOCKED]
 
 
 def test_get_utubs_sorted_based_on_last_updated(
@@ -204,6 +254,7 @@ def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:
                 MODELS.ID: utub.id,
                 MODELS.NAME: utub.name,
                 MODELS.MEMBER_ROLE: member.value,
+                MODELS.IS_LOCKED: utub.is_locked,
             }
             for utub, member in all_utubs
         ],

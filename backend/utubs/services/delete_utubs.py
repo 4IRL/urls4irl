@@ -6,6 +6,8 @@ from backend.metrics.events import EventName
 from backend.models.utubs import Utubs
 from backend.schemas.utubs import UtubDeletedResponseSchema
 from backend.utils.strings.utub_strs import UTUB_SUCCESS
+from backend.utubs.constants import UTubErrorCodes
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
@@ -20,6 +22,12 @@ def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
         - Response: JSON response on delete
         - int: HTTP status code 200 (Success)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=UTubErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     utub_id = current_utub.id
     utub_name = current_utub.name
     utub_description = current_utub.utub_description

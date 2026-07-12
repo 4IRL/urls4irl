@@ -42,6 +42,10 @@ MAILTO=""
 # Daily backup workflow at 1 AM (daily-docker.sh handles its own env-loading)
 0 1 * * * /app/daily-docker.sh >> /app/workflow_logs/cron.log 2>&1
 
+# On-demand backup trigger poller — every minute, consumes the admin portal's
+# metrics:backup:trigger_requested flag and starts daily-docker.sh when set
+* * * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/run_backup_if_requested.py >> /app/workflow_logs/backup-trigger.log 2>&1
+
 # Anonymous metrics flush — every minute (uses the set -a env pattern above)
 * * * * * set -a && . /app/container_environment && set +a && /opt/metrics-venv/bin/python /app/flush_metrics.py >> /app/workflow_logs/metrics-flush.log 2>&1
 

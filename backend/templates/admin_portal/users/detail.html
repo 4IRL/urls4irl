@@ -1,6 +1,11 @@
 {% extends "admin_portal/base.html" %}
 {% set active_nav = 'users' %}
 {% block admin_content %}
+<nav id="AdminUserDetailBreadcrumb" class="admin-breadcrumb" aria-label="Breadcrumb">
+    <a class="admin-breadcrumb-root" href="{{ url_for('admin.admin_users') }}">Users</a>
+    <span class="admin-breadcrumb-sep" aria-hidden="true">/</span>
+    <span class="admin-breadcrumb-current" aria-current="page">{{ detail_user.username }}</span>
+</nav>
 <header id="AdminUserDetailHeader" class="admin-page-header">
     <h1 id="AdminUserDetailTitle">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_TITLE }}: {{ detail_user.username }}</h1>
 </header>
@@ -12,11 +17,158 @@
             <tr><th>Email</th><td id="AdminUserDetailEmail">{{ detail_user.email }}</td></tr>
             <tr><th>Role</th><td id="AdminUserDetailRole">{{ detail_user.role.value }}</td></tr>
             <tr><th>Email Validated</th><td id="AdminUserDetailEmailValidated">{{ 'yes' if detail_user.email_validated else 'no' }}</td></tr>
+            <tr><th>Suspended</th><td id="AdminUserDetailSuspended">{{ 'yes' if detail_user.is_suspended else 'no' }}</td></tr>
             <tr><th>Created</th><td id="AdminUserDetailCreated">{{ detail_user.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td></tr>
             <tr><th>OAuth Identities</th><td id="AdminUserDetailOauth">{{ detail_user.oauth_identities | length }}</td></tr>
             <tr><th>Local Password Set</th><td id="AdminUserDetailHasPassword">{{ 'yes' if detail_user.password is not none else 'no' }}</td></tr>
+            <tr><th>Erased</th><td id="AdminUserDetailErased">{{ 'yes' if is_erased else 'no' }}</td></tr>
         </tbody>
     </table>
+</div>
+<div id="AdminUserAccountActions" class="admin-panel">
+    <h2 id="AdminUserAccountActionsHeading">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_SECTION_TITLE }}</h2>
+    {% if detail_user.id == current_user.id %}
+    <p id="AdminUserSelfActionsNote">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_SELF_ACTIONS_NA }}</p>
+    {% else %}
+    <div class="admin-mod-cell">
+        {% if detail_user.is_suspended %}
+        <button type="button"
+                class="admin-action-btn admin-mod-btn"
+                data-admin-action="user-unsuspend"
+                data-action-url="{{ url_for('admin.admin_user_unsuspend', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNSUSPEND_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNSUSPEND_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNSUSPEND_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNSUSPEND_LABEL }}
+        </button>
+        {% else %}
+        <button type="button"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                data-admin-action="user-suspend"
+                data-action-url="{{ url_for('admin.admin_user_suspend', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_SUSPEND_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_SUSPEND_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_SUSPEND_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_SUSPEND_LABEL }}
+        </button>
+        {% endif %}
+        <button type="button"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                data-admin-action="user-kill-sessions"
+                data-action-url="{{ url_for('admin.admin_user_kill_sessions', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_KILL_SESSIONS_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_KILL_SESSIONS_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_KILL_SESSIONS_SUBMIT }}"
+                data-reason-required="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_KILL_SESSIONS_LABEL }}
+        </button>
+        {% if detail_user.password is none %}
+        <span id="AdminUserForceResetNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_NA }}</span>
+        {% else %}
+        <button type="button"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                data-admin-action="user-force-reset"
+                data-action-url="{{ url_for('admin.admin_user_force_reset', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_SUBMIT }}"
+                data-reason-required="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_FORCE_RESET_LABEL }}
+        </button>
+        {% endif %}
+    </div>
+    <div class="admin-mod-cell">
+        {% if is_erased %}
+        <span id="AdminUserErasedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASED_NA }}</span>
+        {% else %}
+        <button type="button"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                data-admin-action="user-erase"
+                data-action-url="{{ url_for('admin.admin_user_erase', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_ERASE_LABEL }}
+        </button>
+        {% endif %}
+        {% if not is_erased %}
+        {% if detail_user.email_validated %}
+        <span id="AdminUserEmailVerifiedNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFIED_NA }}</span>
+        {% else %}
+        <button type="button"
+                class="admin-action-btn admin-mod-btn"
+                data-admin-action="user-email-verify"
+                data-action-url="{{ url_for('admin.admin_user_email_verify', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_VERIFY_LABEL }}
+        </button>
+        <button type="button"
+                class="admin-action-btn admin-mod-btn"
+                data-admin-action="user-email-resend"
+                data-action-url="{{ url_for('admin.admin_user_email_resend', target_user_id=detail_user.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_SUBMIT }}"
+                data-reason-required="true">
+            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_EMAIL_RESEND_LABEL }}
+        </button>
+        {% endif %}
+        {% endif %}
+    </div>
+    {% endif %}
+</div>
+<div id="AdminUserOauthIdentities" class="admin-panel">
+    <h2 id="AdminUserOauthIdentitiesHeading">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_OAUTH_SECTION_TITLE }}</h2>
+    {% if detail_user.oauth_identities %}
+    <table id="AdminUserOauthTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>Provider</th>
+                <th>Linked</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for identity in detail_user.oauth_identities %}
+            <tr>
+                <td>{{ identity.provider }}</td>
+                <td>{{ identity.linked_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td>
+                <td class="admin-mod-cell">
+                    {% if detail_user.id != current_user.id %}
+                        {% if detail_user.password is none and detail_user.oauth_identities | length == 1 %}
+                        <span id="AdminUserUnlinkNA" class="admin-muted">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_NA }}</span>
+                        {% else %}
+                        <button type="button"
+                                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                                data-admin-action="oauth-unlink"
+                                data-action-url="{{ url_for('admin.admin_user_oauth_unlink', target_user_id=detail_user.id, identity_id=identity.id) }}"
+                                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_CONFIRM_TITLE }}"
+                                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_CONFIRM_BODY }}"
+                                data-submit-text="{{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_SUBMIT }}"
+                                data-reason-required="true"
+                                data-reload-on-success="true">
+                            {{ ADMIN_PORTAL_STRINGS.ACCOUNT_UNLINK_LABEL }}
+                        </button>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p id="AdminUserNoOauthIdentities">{{ ADMIN_PORTAL_STRINGS.ACCOUNT_OAUTH_NONE }}</p>
+    {% endif %}
 </div>
 <div id="AdminUserMemberships" class="admin-panel">
     <h2 id="AdminUserMembershipsHeading">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_MEMBERSHIPS_HEADING }}</h2>
@@ -33,7 +185,12 @@
             {% for membership in detail_user.utubs_is_member_of %}
             <tr>
                 <td>{{ membership.to_utub.id }}</td>
-                <td>{{ membership.to_utub.name }}</td>
+                <td>
+                    {{ membership.to_utub.name }}
+                    {% if membership.to_utub.is_locked %}
+                    <span class="admin-locked-badge">{{ ADMIN_PORTAL_STRINGS.MOD_LOCKED_BADGE }}</span>
+                    {% endif %}
+                </td>
                 <td>{{ membership.member_role.value }}</td>
             </tr>
             {% endfor %}

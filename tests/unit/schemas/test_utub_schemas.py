@@ -27,6 +27,7 @@ _UTUB_DICT = {
     M.URLS: [_URL],
     M.TAGS: [_TAG],
     M.IS_CREATOR: True,
+    M.IS_LOCKED: False,
     M.CURRENT_USER: 1,
 }
 

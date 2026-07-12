@@ -7,6 +7,11 @@ REDIRECT_URL = "redirectUrl"
 COOKIE_BANNER_SEEN = "cookie_banner_seen=true"  # Both the name and value of the cookie
 COOKIE_BANNER_KEY = COOKIE_BANNER_SEEN.split("=")[0]
 
+# Flask session key stamped (as a UTC epoch float) by the user_logged_in
+# signal handler on every login; compared against Users.sessionsInvalidatedAt
+# by the user_loader to reject sessions issued before an invalidation.
+SESSION_ISSUED_AT_KEY = "session_issued_at"
+
 # Strings for users/members success
 MEMBER_REMOVED = "Member removed."
 MEMBER_ADDED = "Member added."
@@ -47,6 +52,7 @@ USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
 INVALID_PASSWORD = "Invalid password. If you signed up using a third-party provider, this account may not have a password — use one of the sign-in options below."
 ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
 INVALID_EMAIL = "Email is not valid."
+ACCOUNT_SUSPENDED = "This account has been suspended."
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -58,6 +64,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     INVALID_PASSWORD = INVALID_PASSWORD
     INVALID_EMAIL = INVALID_EMAIL
+    ACCOUNT_SUSPENDED = ACCOUNT_SUSPENDED
 
 
 class MEMBER_FAILURE(FAILURE_GENERAL):

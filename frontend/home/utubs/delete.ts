@@ -4,6 +4,7 @@ import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import type { RateLimitedXHR } from "../../lib/ajax.js";
+import { isUtubLockedHandled } from "../utub-locked.js";
 import { hideInputs } from "../btns-forms.js";
 import {
   isMobile,
@@ -166,6 +167,7 @@ function deleteUTubSuccess(utubID: number): void {
 function deleteUTubFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
   if ((xhr as RateLimitedXHR)._429Handled) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (
     xhr.status === 403 &&

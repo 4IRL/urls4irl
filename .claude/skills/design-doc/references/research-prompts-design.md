@@ -33,17 +33,22 @@ of inventing a fresh pattern.
 
 **What to read:** similar features in the same domain (e.g. an existing panel/modal/filter if
 this feature is one), `CLAUDE.md` established patterns, naming/file-layout conventions in the
-affected area.
+affected area. **If the feature is UI-facing**, also read the app's actual visual conventions —
+CSS custom properties/theme variables, the color palette in use, existing component/modal/panel
+markup and class names, spacing/typography patterns — so the design doc's Codebase Context can
+ground any visual decision in real values instead of the design doc inventing new ones.
 
 **Checklist:** what's the closest existing analog? What pattern/convention does it follow
 (component structure, event bus usage, string-bridge usage, etc.)? Would deviating from it need
-explicit justification?
+explicit justification? For UI-facing features: what colors/spacing/component patterns does the
+closest analog already use, and are there any existing "off-brand" exceptions worth flagging?
 
 **Findings shape:**
 ```json
 {
   "closest_analog": {"feature": "Tag panel name filter", "files": ["frontend/tags/filter.ts"], "pattern": "togglable filter box, event-bus driven"},
   "conventions_to_follow": ["destructured object params", "APP_CONFIG.strings bridge for user-facing text"],
+  "ui_conventions": {"colors": ["--primary-blue: #...", "..."], "components_to_reuse": ["modal shell in frontend/modals/base.ts"], "notes": "omit this field entirely for non-UI features"},
   "deviation_flags": []
 }
 ```

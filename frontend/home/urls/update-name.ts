@@ -5,6 +5,7 @@ import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { isUtubLockedHandled } from "../utub-locked.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
@@ -63,7 +64,10 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   const namePencilIcon = $("#UTubNameUpdateWrap .edit-pencil-icon");
   namePencilIcon.addClass("hidden").off("keydown.updateUTubname");
 
-  if (!getState().isCurrentUserOwner) return;
+  // A locked UTub is frozen to all mutations. Bail like a non-owner so the
+  // title never becomes editable — no editable class, no pencil, and no
+  // click/keydown handler to open the inline edit form.
+  if (!getState().isCurrentUserOwner || getState().isCurrentUTubLocked) return;
 
   $("#URLDeckHeader").addClass("editable");
   $("#UTubNameUpdateWrap").addClass("editable-wrap");
@@ -374,6 +378,7 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
 // Handle error response display to user
 function updateUTubNameFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (!("responseJSON" in xhr)) {
     if (

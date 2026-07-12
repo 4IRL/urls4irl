@@ -13,6 +13,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
+from backend import db
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_url_tags import Utub_Url_Tags
@@ -197,6 +198,13 @@ def test_ajax_required_routes_reject_non_ajax(
 
     with app.app_context():
         utub: Utubs = Utubs.query.first()
+        # AJAX enforcement is the outermost gate and must be exercised on an
+        # unlocked UTub: a locked UTub's write guard returns 403 before the
+        # non-AJAX 302 would fire, which is a valid response but not what this
+        # test asserts. Pin the precondition so the assertion is deterministic.
+        if utub.is_locked:
+            utub.is_locked = False
+            db.session.commit()
         utub_url: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub.id).first()
         utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter_by(
             utub_id=utub.id

@@ -56,19 +56,19 @@ class TableRow:
 
 
 @dataclass(frozen=True)
-class TablePage:
-    """One page of a table grid, mirroring the offset/limit pagination of
-    ``UserSearchPage`` / ``AuditLogPage``."""
+class _PaginationBase:
+    """Shared offset/limit pagination state and derived Previous/Next math.
 
-    table_name: str
-    column_keys: list[str]
-    rows: list[TableRow]
+    Base for every admin paginated page (``TablePage`` here and
+    ``_DetailTablePage`` in ``backend.admin.routes``) so the four navigation
+    properties are defined once. Subclasses add their own row/column fields;
+    since all call sites construct these dataclasses with keyword arguments,
+    the extra base fields do not affect construction order.
+    """
+
     total_count: int
-    limit: int
     offset: int
-    sort_key: str
-    direction: str
-    query: str
+    limit: int
 
     @property
     def has_previous(self) -> bool:
@@ -85,6 +85,19 @@ class TablePage:
     @property
     def next_offset(self) -> int:
         return self.offset + self.limit
+
+
+@dataclass(frozen=True)
+class TablePage(_PaginationBase):
+    """One page of a table grid, mirroring the offset/limit pagination of
+    ``UserSearchPage`` / ``AuditLogPage``."""
+
+    table_name: str
+    column_keys: list[str]
+    rows: list[TableRow]
+    sort_key: str
+    direction: str
+    query: str
 
 
 @dataclass(frozen=True)

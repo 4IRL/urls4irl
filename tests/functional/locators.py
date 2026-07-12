@@ -79,6 +79,10 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ICON = ".bi-people-fill"
     CO_CREATOR_ICON = ".bi-diamond-half"
     CREATOR_ICON = ".bi-diamond-fill"
+    # Padlock shown in a UTub deck selector in place of the member-role icon
+    # when the UTub is locked (server-rendered via UTubCard.html, client-rendered
+    # via createUTubSelector).
+    UTUB_LOCKED_ICON = "svg.utubLockedIcon"
 
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
     UTUB_SEARCH_WRAP = "#SearchUTubWrap"
@@ -163,6 +167,11 @@ class HomePageLocators(GenericPageLocator):
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"
+    # Padlock beside the UTub title in the URL deck header; the `hidden` class is
+    # removed when a locked UTub is selected. `body.utub-locked` drives the CSS
+    # that disables every mutation control while a locked UTub is selected.
+    URL_DECK_LOCK_ICON = "#URLDeckLockIcon"
+    BODY_LOCKED_CLASS = "utub-locked"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     WRAP_URL_CREATE = "#createURLWrap"
@@ -585,8 +594,10 @@ class AdminPortalLocators(GenericPageLocator):
     NAV = "#AdminNav"
     NAV_DASHBOARD = "#AdminNavDashboard"
     NAV_HEALTH = "#AdminNavHealth"
+    NAV_SYSTEM_OPS = "#AdminNavSystemOps"
     NAV_DB_BROWSER = "#AdminNavDbBrowser"
-    NAV_USERS = "#AdminNavUsers"
+    NAV_USER_ACTIONS = "#AdminNavUsers"
+    NAV_UTUB_ACTIONS = "#AdminNavUtubActions"
     NAV_AUDIT_LOG = "#AdminNavAuditLog"
     NAV_METRICS = "#AdminNavMetrics"
 
@@ -605,6 +616,22 @@ class AdminPortalLocators(GenericPageLocator):
     HEALTH_MEMORY = "#AdminHealthMemory"
     HEALTH_CAPTURED_AT = "#AdminHealthCapturedAt"
 
+    # Ops actions (health page) + shared admin-action modal elements
+    OPS_SECTION = "#AdminOpsSection"
+    OPS_VERIFY_TABLES_BTN = "#AdminOpsVerifyTablesBtn"
+    OPS_METRICS_FLUSH_BTN = "#AdminOpsMetricsFlushBtn"
+    OPS_BACKUP_TRIGGER_BTN = "#AdminOpsBackupTriggerBtn"
+    OPS_CARD_DESC = ".admin-ops-card-desc"
+    HEALTH_BACKUP_CARD = "#AdminHealthBackup"
+    # Non-reloading actions render their result inline, immediately after the
+    # triggering button (button-scoped via the adjacent-sibling combinator).
+    ACTION_INLINE_RESULT = ".admin-action-inline-result"
+    OPS_VERIFY_TABLES_RESULT = "#AdminOpsVerifyTablesBtn + .admin-action-inline-result"
+    ACTION_CONFIRM_MODAL = "#confirmModal"
+    ACTION_MODAL_TITLE = "#confirmModalTitle"
+    ACTION_MODAL_SUBMIT = "#modalSubmit"
+    ACTION_REASON_INPUT = "#AdminActionReasonInput"
+
     # Users search page
     USERS_TITLE = "#AdminUsersTitle"
     USER_SEARCH_INPUT = "#AdminUserSearchInput"
@@ -613,9 +640,81 @@ class AdminPortalLocators(GenericPageLocator):
     USER_SEARCH_ROW = "tr.admin-user-row"
     USER_SEARCH_EMPTY = "#AdminUserSearchEmpty"
 
+    # UTub Actions list page (reuses the DB browser's table service)
+    UTUB_TABLE_GRID = "#AdminUtubTableGrid"
+    UTUB_TABLE_SEARCH = "#AdminUtubTableSearch"
+    UTUB_ROW_LINK = "#AdminUtubTableGrid .admin-db-row-link"
+    UTUB_CLICKABLE_ROW = "#AdminUtubTableGrid tbody tr.admin-clickable-row"
+    UTUB_TABLE_EMPTY = "#AdminUtubTableEmpty"
+
+    # UTub detail page (aggregated moderation surface)
+    UTUB_DETAIL_TITLE = "#AdminUtubDetailTitle"
+    UTUB_DETAIL_BREADCRUMB_ROOT = "#AdminUtubDetailBreadcrumb .admin-breadcrumb-root"
+    UTUB_DETAIL_MEMBERS_HEADING = "#AdminUtubDetailMembersHeading"
+    UTUB_DETAIL_URLS_HEADING = "#AdminUtubDetailUrlsHeading"
+    UTUB_DETAIL_MEMBERS_TABLE = "#AdminUtubDetailMembersTable"
+    UTUB_DETAIL_URLS_TABLE = "#AdminUtubDetailUrlsTable"
+    UTUB_DETAIL_TAGS_PANEL = "#AdminUtubDetailTagsPanel"
+    UTUB_DETAIL_TAGS_TABLE = "#AdminUtubDetailTagsTable"
+    UTUB_DETAIL_NO_TAGS = "#AdminUtubDetailNoTags"
+    UTUB_DETAIL_MEMBERS_SEARCH = "#AdminUtubDetailMembersSearch"
+    UTUB_DETAIL_URLS_SEARCH = "#AdminUtubDetailUrlsSearch"
+    UTUB_DETAIL_TAGS_SEARCH = "#AdminUtubDetailTagsSearch"
+    UTUB_DETAIL_MEMBERS_PAGINATION = "#AdminUtubDetailMembersPagination"
+    UTUB_DETAIL_URLS_PAGINATION = "#AdminUtubDetailUrlsPagination"
+    UTUB_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
+    # Moderation controls on the UTub-detail page (page-agnostic, scoped by
+    # data-admin-action value shared across the admin-actions controller).
+    UTUB_DETAIL_MOD_LOCK_BTN = '[data-admin-action="utub-lock"]'
+    UTUB_DETAIL_MOD_UNLOCK_BTN = '[data-admin-action="utub-unlock"]'
+    UTUB_DETAIL_MOD_DELETE_BTN = '[data-admin-action="utub-delete"]'
+    UTUB_DETAIL_MOD_MEMBER_REMOVE_BTN = '[data-admin-action="member-remove"]'
+    UTUB_DETAIL_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
+    UTUB_DETAIL_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
+    UTUB_DETAIL_MOD_UTUB_TAG_DELETE_BTN = '[data-admin-action="utub-tag-delete"]'
+
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
+    USER_DETAIL_BREADCRUMB_ROOT = "#AdminUserDetailBreadcrumb .admin-breadcrumb-root"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
+    # Read-only UTub memberships list (moderation buttons relocated to UTub-detail)
+    USER_DETAIL_MEMBERSHIPS_TABLE = "#AdminUserMembershipsTable"
+    USER_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
+
+    # User-detail info rows
+    USER_DETAIL_EMAIL_VALIDATED = "#AdminUserDetailEmailValidated"
+    # User-detail Suspended row and account-lifecycle action panel
+    USER_DETAIL_SUSPENDED = "#AdminUserDetailSuspended"
+    USER_DETAIL_ACCOUNT_ACTIONS = "#AdminUserAccountActions"
+    USER_DETAIL_ACCOUNT_ACTIONS_HEADING = "#AdminUserAccountActionsHeading"
+    USER_DETAIL_SELF_ACTIONS_NOTE = "#AdminUserSelfActionsNote"
+    USER_DETAIL_ACCOUNT_SUSPEND_BTN = '[data-admin-action="user-suspend"]'
+    USER_DETAIL_ACCOUNT_UNSUSPEND_BTN = '[data-admin-action="user-unsuspend"]'
+    USER_DETAIL_ACCOUNT_KILL_SESSIONS_BTN = '[data-admin-action="user-kill-sessions"]'
+    USER_DETAIL_ACCOUNT_FORCE_RESET_BTN = '[data-admin-action="user-force-reset"]'
+    USER_DETAIL_ACCOUNT_FORCE_RESET_NA = "#AdminUserForceResetNA"
+    USER_DETAIL_ACCOUNT_KILL_SESSIONS_RESULT = (
+        '[data-admin-action="user-kill-sessions"] + .admin-action-inline-result'
+    )
+    USER_DETAIL_ACCOUNT_FORCE_RESET_RESULT = (
+        '[data-admin-action="user-force-reset"] + .admin-action-inline-result'
+    )
+    # Account data actions (erase / OAuth unlink / email verification)
+    USER_DETAIL_ERASED = "#AdminUserDetailErased"
+    USER_DETAIL_ACCOUNT_ERASE_BTN = '[data-admin-action="user-erase"]'
+    USER_DETAIL_ACCOUNT_ERASED_NA = "#AdminUserErasedNA"
+    USER_DETAIL_ACCOUNT_EMAIL_VERIFY_BTN = '[data-admin-action="user-email-verify"]'
+    USER_DETAIL_ACCOUNT_EMAIL_VERIFIED_NA = "#AdminUserEmailVerifiedNA"
+    USER_DETAIL_ACCOUNT_EMAIL_RESEND_BTN = '[data-admin-action="user-email-resend"]'
+    # OAuth identities panel
+    USER_DETAIL_OAUTH_PANEL = "#AdminUserOauthIdentities"
+    USER_DETAIL_OAUTH_TABLE = "#AdminUserOauthTable"
+    USER_DETAIL_OAUTH_UNLINK_BTN = '[data-admin-action="oauth-unlink"]'
+    USER_DETAIL_OAUTH_UNLINK_NA = "#AdminUserUnlinkNA"
+    USER_DETAIL_NO_OAUTH = "#AdminUserNoOauthIdentities"
+
+    # Admin-action modal alert banner (reason-required / server-error messages)
+    ACTION_MODAL_ALERT_BANNER = "#HomeModalAlertBanner"
 
     # Audit log page
     AUDIT_LOG_TITLE = "#AdminAuditLogTitle"

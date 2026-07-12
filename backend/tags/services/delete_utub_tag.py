@@ -10,7 +10,9 @@ from backend.schemas.tags import (
     UtubTagDeletedFromUtubResponseSchema,
     UtubTagOnAddDeleteSchema,
 )
+from backend.tags.constants import UTubTagErrorCodes
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def delete_utub_tag_from_utub_and_utub_urls(
@@ -28,6 +30,12 @@ def delete_utub_tag_from_utub_and_utub_urls(
         - Response: JSON response on success
         - int: HTTP status code 200
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        utub, error_code=UTubTagErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     utub_url_ids_with_utub_tag = _get_utub_url_ids_for_utub_tag(utub, utub_tag)
 
     tag_schema = UtubTagOnAddDeleteSchema.from_orm_tag(utub_tag)

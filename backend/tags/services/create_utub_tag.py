@@ -15,7 +15,9 @@ from backend.schemas.tags import (
     UtubTagAddedToUtubResponseSchema,
     UtubTagOnAddDeleteSchema,
 )
+from backend.tags.constants import UTubTagErrorCodes
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def create_tag_in_utub(tag_string: str, current_utub: Utubs) -> FlaskResponse:
@@ -32,6 +34,11 @@ def create_tag_in_utub(tag_string: str, current_utub: Utubs) -> FlaskResponse:
         - Response: JSON response on success or duplicate UTub tag.
         - int: HTTP status code 200 (Success) / 400 (Duplicate UTub tag)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=UTubTagErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
     tag_to_add = tag_string.strip()
 
     is_duplicate_utub_tag = _check_if_duplicate_utub_tag(tag_to_add, current_utub)

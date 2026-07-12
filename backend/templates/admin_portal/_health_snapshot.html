@@ -33,6 +33,11 @@
         <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_GAUGE_LAST_SAMPLE }}</h2>
         <span class="admin-health-value">{{ timestamp_cell(snapshot.gauge_last_sample_at) }}</span>
     </div>
+    <div id="AdminHealthBackup" class="admin-panel admin-health-card">
+        <h2>{{ ADMIN_PORTAL_STRINGS.HEALTH_LABEL_BACKUP_LAST_SUCCESS }}</h2>
+        <span class="admin-health-value">{{ timestamp_cell(snapshot.backup_last_success_at) }}</span>
+        <span id="AdminHealthBackupLag" class="admin-health-lag{% if snapshot.backup_is_stale %} admin-health-stale{% endif %}">{% if snapshot.backup_lag_seconds is not none %}{{ snapshot.backup_lag_seconds // 3600 }}h ago{% if snapshot.backup_is_stale %} · STALE{% endif %}{% else %}{{ ADMIN_PORTAL_STRINGS.HEALTH_NEVER_RAN }}{% endif %}</span>
+    </div>
     <div id="AdminHealthSlowestEndpoint" class="admin-panel admin-health-card">
         <h2>Slowest Endpoint (p95, 7d)</h2>
         <span class="admin-health-value">{% if snapshot.slowest_endpoint is not none %}{% if snapshot.slowest_endpoint.approximate %}~{% endif %}{{ snapshot.slowest_endpoint.endpoint }} {{ snapshot.slowest_endpoint.method }} — {{ snapshot.slowest_endpoint.p95_ms | round(0) }} ms{% else %}No latency data yet{% endif %}</span>

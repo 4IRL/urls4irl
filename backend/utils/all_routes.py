@@ -73,11 +73,28 @@ class ADMIN_ROUTES:
     PORTAL = _ADMIN + "admin_portal"
     HEALTH_PAGE = _ADMIN + "admin_health"
     HEALTH_SNAPSHOT = _ADMIN + "admin_health_snapshot"
+    SYSTEM_OPERATIONS_PAGE = _ADMIN + "admin_system_operations"
     USERS_PAGE = _ADMIN + "admin_users"
     USERS_SEARCH = _ADMIN + "admin_users_search"
     USER_DETAIL = _ADMIN + "admin_user_detail"
+    UTUBS_PAGE = _ADMIN + "admin_utubs"
+    UTUB_DETAIL = _ADMIN + "admin_utub_detail"
     AUDIT_LOG_PAGE = _ADMIN + "admin_audit_log"
     AUDIT_LOG_ROWS = _ADMIN + "admin_audit_log_rows"
+    # Ops action endpoints
+    OPS_METRICS_FLUSH = _ADMIN + "admin_ops_metrics_flush"
+    OPS_GAUGE_SAMPLE = _ADMIN + "admin_ops_gauge_sample"
+    OPS_AUDIT_PURGE = _ADMIN + "admin_ops_audit_purge"
+    OPS_VERIFY_TABLES = _ADMIN + "admin_ops_verify_tables"
+    OPS_SHORT_URLS_SYNC = _ADMIN + "admin_ops_short_urls_sync"
+    OPS_BACKUP_TRIGGER = _ADMIN + "admin_ops_backup_trigger"
+    # Content moderation endpoints
+    MOD_UTUB_LOCK = _ADMIN + "admin_utub_lock"
+    MOD_UTUB_UNLOCK = _ADMIN + "admin_utub_unlock"
+    MOD_UTUB_DELETE = _ADMIN + "admin_utub_delete"
+    MOD_MEMBER_REMOVE = _ADMIN + "admin_member_remove"
+    MOD_URL_DELETE = _ADMIN + "admin_url_delete"
+    MOD_URL_PURGE = _ADMIN + "admin_url_purge"
 
 
 class SEARCH_ROUTES:

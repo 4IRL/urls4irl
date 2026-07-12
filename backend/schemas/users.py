@@ -28,6 +28,10 @@ class UtubSummaryItemSchema(BaseSchema):
         alias=M.MEMBER_ROLE,
         description="Role of the current user in the UTub",
     )
+    is_locked: bool = Field(
+        alias=M.IS_LOCKED,
+        description="Whether the UTub is locked (frozen to all user mutations)",
+    )
 
 
 class UtubSummaryListSchema(BaseSchema):
@@ -51,6 +55,7 @@ class UtubSummaryListSchema(BaseSchema):
                     id=m.to_utub.id,
                     name=m.to_utub.name,
                     member_role=m.member_role.value,
+                    is_locked=m.to_utub.is_locked,
                 )
                 for m in sorted_utubs
             ]

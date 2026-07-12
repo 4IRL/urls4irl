@@ -1,0 +1,246 @@
+{% extends "admin_portal/base.html" %}
+{% set active_nav = 'utub-actions' %}
+{% block admin_content %}
+<nav id="AdminUtubDetailBreadcrumb" class="admin-breadcrumb" aria-label="Breadcrumb">
+    <a class="admin-breadcrumb-root" href="{{ url_for('admin.admin_utubs') }}">UTubs</a>
+    <span class="admin-breadcrumb-sep" aria-hidden="true">/</span>
+    <span class="admin-breadcrumb-current" aria-current="page">{{ detail_utub.name }}</span>
+</nav>
+<header id="AdminUtubDetailHeader" class="admin-page-header">
+    <h1 id="AdminUtubDetailTitle">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_TITLE }}: {{ detail_utub.name }}
+        {% if detail_utub.is_locked %}
+        <span class="admin-locked-badge">{{ ADMIN_PORTAL_STRINGS.MOD_LOCKED_BADGE }}</span>
+        {% endif %}
+    </h1>
+</header>
+<div id="AdminUtubDetailPanel" class="admin-panel">
+    <table id="AdminUtubDetailTable" class="admin-table">
+        <tbody>
+            <tr><th>ID</th><td id="AdminUtubDetailId">{{ detail_utub.id }}</td></tr>
+            <tr><th>Name</th><td id="AdminUtubDetailName">{{ detail_utub.name }}</td></tr>
+            <tr><th>Creator</th><td id="AdminUtubDetailCreator">{{ creator_username }}</td></tr>
+            <tr><th>Locked</th><td id="AdminUtubDetailLocked">{{ 'yes' if detail_utub.is_locked else 'no' }}</td></tr>
+            <tr><th>Members</th><td id="AdminUtubDetailMemberCount">{{ members_total }}</td></tr>
+            <tr><th>URLs</th><td id="AdminUtubDetailUrlCount">{{ urls_total }}</td></tr>
+            <tr><th>Created</th><td id="AdminUtubDetailCreated">{{ detail_utub.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td></tr>
+        </tbody>
+    </table>
+    <div class="admin-mod-cell mt-3">
+        {% if detail_utub.is_locked %}
+        <button type="button"
+                class="admin-action-btn admin-mod-btn"
+                data-admin-action="utub-unlock"
+                data-action-url="{{ url_for('admin.admin_utub_unlock', utub_id=detail_utub.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_UNLOCK_LABEL }}
+        </button>
+        {% else %}
+        <button type="button"
+                class="admin-action-btn admin-mod-btn"
+                data-admin-action="utub-lock"
+                data-action-url="{{ url_for('admin.admin_utub_lock', utub_id=detail_utub.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_SUBMIT }}"
+                data-reason-required="true"
+                data-reload-on-success="true">
+            {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_LOCK_LABEL }}
+        </button>
+        {% endif %}
+        <button type="button"
+                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                data-admin-action="utub-delete"
+                data-action-url="{{ url_for('admin.admin_utub_delete', utub_id=detail_utub.id) }}"
+                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_CONFIRM_TITLE }}"
+                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_CONFIRM_BODY }}"
+                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_SUBMIT }}"
+                data-reason-required="true"
+                data-success-redirect-url="{{ url_for('admin.admin_utubs') }}">
+            {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_LABEL }}
+        </button>
+    </div>
+</div>
+<div id="AdminUtubDetailMembersPanel" class="admin-panel">
+    <h2 id="AdminUtubDetailMembersHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_MEMBERS_HEADING }}</h2>
+    <form class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id) }}" role="search">
+        <input type="search" id="AdminUtubDetailMembersSearch" name="members_q" value="{{ members_q }}" class="admin-search-input" aria-label="Search members by username" placeholder="Search members by username…">
+        <input type="hidden" name="urls_q" value="{{ urls_q }}">
+        <input type="hidden" name="tags_q" value="{{ tags_q }}">
+        <input type="hidden" name="urls_offset" value="{{ urls_page.offset }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
+    {% if members_page.total_count %}
+    <div class="admin-table-scroll">
+    <table id="AdminUtubDetailMembersTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>User</th>
+                <th>Role</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for member in members_page.rows %}
+            <tr>
+                <td>{{ member.to_user.username }}</td>
+                <td>{{ member.member_role.value }}</td>
+                <td class="admin-mod-cell">
+                    {% if member.user_id == detail_utub.utub_creator %}
+                    <span class="admin-muted">{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_CREATOR_NA }}</span>
+                    {% else %}
+                    <button type="button"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                            data-admin-action="member-remove"
+                            data-action-url="{{ url_for('admin.admin_member_remove', utub_id=detail_utub.id, target_user_id=member.user_id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_MEMBER_REMOVE_LABEL }}
+                    </button>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div id="AdminUtubDetailMembersPagination" class="admin-search-pagination">
+        <span>Showing {{ members_page.showing_start }}&ndash;{{ members_page.showing_end }} of {{ members_page.total_count }}</span>
+        {% if members_page.has_previous %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.previous_offset, urls_offset=urls_page.offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Previous</a>
+        {% endif %}
+        {% if members_page.has_next %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.next_offset, urls_offset=urls_page.offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Next</a>
+        {% endif %}
+    </div>
+    {% elif members_q %}
+    <p id="AdminUtubDetailMembersNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
+    {% else %}
+    <p id="AdminUtubDetailNoMembers">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_MEMBERS }}</p>
+    {% endif %}
+</div>
+<div id="AdminUtubDetailUrlsPanel" class="admin-panel">
+    <h2 id="AdminUtubDetailUrlsHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_URLS_HEADING }}</h2>
+    <form class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id) }}" role="search">
+        <input type="search" id="AdminUtubDetailUrlsSearch" name="urls_q" value="{{ urls_q }}" class="admin-search-input" aria-label="Search URLs by address or title" placeholder="Search URLs by address or title…">
+        <input type="hidden" name="members_q" value="{{ members_q }}">
+        <input type="hidden" name="tags_q" value="{{ tags_q }}">
+        <input type="hidden" name="members_offset" value="{{ members_page.offset }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
+    {% if urls_page.total_count %}
+    <div class="admin-table-scroll">
+    <table id="AdminUtubDetailUrlsTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>URL</th>
+                <th>Title</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for utub_url in urls_page.rows %}
+            <tr>
+                <td>{{ utub_url.id }}</td>
+                <td>{{ utub_url.standalone_url.url_string }}</td>
+                <td>{{ utub_url.url_title }}</td>
+                <td class="admin-mod-cell">
+                    <button type="button"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                            data-admin-action="url-delete"
+                            data-action-url="{{ url_for('admin.admin_url_delete', utub_id=detail_utub.id, utub_url_id=utub_url.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_URL_DELETE_LABEL }}
+                    </button>
+                    <button type="button"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                            data-admin-action="url-purge"
+                            data-action-url="{{ url_for('admin.admin_url_purge', url_id=utub_url.url_id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_SUBMIT }}"
+                            data-reason-required="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_URL_PURGE_LABEL }}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    <div id="AdminUtubDetailUrlsPagination" class="admin-search-pagination">
+        <span>Showing {{ urls_page.showing_start }}&ndash;{{ urls_page.showing_end }} of {{ urls_page.total_count }}</span>
+        {% if urls_page.has_previous %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.previous_offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Previous</a>
+        {% endif %}
+        {% if urls_page.has_next %}
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.next_offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Next</a>
+        {% endif %}
+    </div>
+    {% elif urls_q %}
+    <p id="AdminUtubDetailUrlsNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
+    {% else %}
+    <p id="AdminUtubDetailNoUrls">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_URLS }}</p>
+    {% endif %}
+</div>
+<div id="AdminUtubDetailTagsPanel" class="admin-panel">
+    <h2 id="AdminUtubDetailTagsHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_TAGS_HEADING }}</h2>
+    <form class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id) }}" role="search">
+        <input type="search" id="AdminUtubDetailTagsSearch" name="tags_q" value="{{ tags_q }}" class="admin-search-input" aria-label="Search tags by text" placeholder="Search tags by text…">
+        <input type="hidden" name="members_q" value="{{ members_q }}">
+        <input type="hidden" name="urls_q" value="{{ urls_q }}">
+        <input type="hidden" name="members_offset" value="{{ members_page.offset }}">
+        <input type="hidden" name="urls_offset" value="{{ urls_page.offset }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
+    {% if tags_rows %}
+    <div class="admin-table-scroll">
+    <table id="AdminUtubDetailTagsTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tag</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for utub_tag in tags_rows %}
+            <tr>
+                <td>{{ utub_tag.id }}</td>
+                <td>{{ utub_tag.tag_string }}</td>
+                <td class="admin-mod-cell">
+                    <button type="button"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                            data-admin-action="utub-tag-delete"
+                            data-action-url="{{ url_for('admin.admin_utub_tag_delete', utub_id=detail_utub.id, utub_tag_id=utub_tag.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_LABEL }}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% elif tags_q %}
+    <p id="AdminUtubDetailTagsNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
+    {% else %}
+    <p id="AdminUtubDetailNoTags">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_TAGS }}</p>
+    {% endif %}
+</div>
+{% endblock %}

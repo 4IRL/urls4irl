@@ -6,7 +6,15 @@ from enum import Enum
 import jwt
 from flask_login import UserMixin
 from flask import current_app
-from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, Integer, String
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum as SQLEnum,
+    Integer,
+    String,
+    text,
+)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from backend import db
@@ -49,6 +57,21 @@ class Users(db.Model, UserMixin):
     role: str = Column(SQLEnum(User_Role), nullable=False, default=User_Role.USER)
     email_validated: bool = Column(
         Boolean, default=False, name="emailValidated", nullable=False
+    )
+    is_suspended: bool = Column(
+        Boolean,
+        default=False,
+        server_default=text("false"),
+        name="isSuspended",
+        nullable=False,
+    )
+    # Sessions issued (web) before this timestamp are rejected by the
+    # user_loader; None means no invalidation has ever been requested.
+    sessions_invalidated_at: datetime | None = Column(
+        DateTime(timezone=True),
+        nullable=True,
+        default=None,
+        name="sessionsInvalidatedAt",
     )
     utubs_is_member_of: list[Utub_Members] = db.relationship(
         "Utub_Members", back_populates="to_user"
