@@ -635,6 +635,7 @@ class AdminPortalLocators(GenericPageLocator):
     UTUB_TABLE_GRID = "#AdminUtubTableGrid"
     UTUB_TABLE_SEARCH = "#AdminUtubTableSearch"
     UTUB_ROW_LINK = "#AdminUtubTableGrid .admin-db-row-link"
+    UTUB_CLICKABLE_ROW = "#AdminUtubTableGrid tbody tr.admin-clickable-row"
     UTUB_TABLE_EMPTY = "#AdminUtubTableEmpty"
 
     # UTub detail page (aggregated moderation surface)

@@ -312,6 +312,14 @@
     text-decoration: underline;
 }
 
+.admin-clickable-row {
+    cursor: pointer;
+}
+
+.admin-clickable-row:hover {
+    background-color: var(--cardBackgroundColor);
+}
+
 .admin-search-pagination {
     display: flex;
     gap: 14px;

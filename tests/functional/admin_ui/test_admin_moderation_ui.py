@@ -430,3 +430,42 @@ def test_admin_utub_list_and_open_detail(
     detail_title = wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TITLE)
     expect(detail_title).to_be_visible()
     expect(detail_title).to_contain_text(UI_TEST_STRINGS.ADMIN_UTUB_DETAIL_TITLE)
+
+
+def test_admin_utub_list_clicking_non_id_cell_opens_detail(
+    page: Page,
+    create_test_utubs,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin viewing the UTub Actions list with seeded UTubs
+    WHEN the admin clicks a NON-ID cell (e.g. the Name/Created cell) of a row
+    THEN the whole-row enhancement navigates to /admin/utubs/<id> and the
+         UTub-detail title renders.
+    """
+    login_admin_and_open_utub_actions(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_TABLE_GRID)
+    first_row = page.locator(APL.UTUB_CLICKABLE_ROW).first
+    expect(first_row).to_be_visible()
+
+    # Click a cell that is NOT the first (ID) cell — the ID link lives in
+    # td:nth-child(1), so td:nth-child(2) is a plain, non-interactive cell.
+    non_id_cell = first_row.locator("td:nth-child(2)")
+    expect(non_id_cell).to_be_visible()
+    non_id_cell.click()
+
+    expect(page).to_have_url(re.compile(r"/admin/utubs/\d+$"))
+
+    detail_title = wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TITLE)
+    expect(detail_title).to_be_visible()
+    expect(detail_title).to_contain_text(UI_TEST_STRINGS.ADMIN_UTUB_DETAIL_TITLE)
