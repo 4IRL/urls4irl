@@ -224,8 +224,20 @@
 
 .admin-health-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    /* Two wide columns on desktop: fuller, taller cards laid out vertically
+       instead of a thin single row of many narrow cards. */
+    grid-template-columns: repeat(2, 1fr);
     gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .admin-health-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.admin-health-card {
+    min-height: 84px;
 }
 
 .admin-health-card h2 {
