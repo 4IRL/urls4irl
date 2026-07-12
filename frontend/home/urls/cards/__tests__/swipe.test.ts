@@ -6,6 +6,7 @@ import {
 } from "../swipe.js";
 import { deleteURLShowModal } from "../delete.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
+import { setState, resetStore } from "../../../../store/app-store.js";
 
 vi.mock("../delete.js", () => ({ deleteURLShowModal: vi.fn() }));
 vi.mock("../../../mobile.js", () => ({
@@ -152,9 +153,34 @@ describe("swipe gesture", () => {
     document.body.innerHTML = "";
     vi.clearAllMocks();
     _resetURLSwipeGestureForTests();
+    resetStore();
     sessionStorage.removeItem(NUDGE_SESSION_STORAGE_KEY);
     vi.mocked(isMobile).mockReturnValue(true);
     vi.mocked(isCoarsePointer).mockReturnValue(true);
+  });
+
+  it("does not begin a swipe on a locked UTub: a past-threshold drag never opens the delete modal and adds no drag classes", () => {
+    setState({ isCurrentUTubLocked: true });
+    const row = mountURLRow();
+    const rowElement = row[0];
+
+    dispatchPointer({ target: rowElement, type: "pointerdown", clientX: 100 });
+    dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+    dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+
+    expect(deleteURLShowModal).not.toHaveBeenCalled();
+    expect(row.hasClass("swipe-dragging")).toBe(false);
+    expect(row.hasClass("swipe-committed")).toBe(false);
+  });
+
+  it("does not run the swipe onboarding nudge on a locked UTub", () => {
+    setState({ isCurrentUTubLocked: true });
+    const row = mountURLRow();
+
+    triggerURLSwipeNudgeIfEligible({ urlRow: row });
+
+    expect(row.find(".urlRowContent").css("transform")).toBeFalsy();
+    expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
   });
 
   it("a tap (pointerdown + pointerup with no move) does not call deleteURLShowModal or add drag classes", () => {

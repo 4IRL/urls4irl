@@ -18,6 +18,7 @@ import {
   clamp,
   shouldCommitSwipeGesture,
 } from "../../../logic/url-swipe-snap.js";
+import { getState } from "../../../store/app-store.js";
 import { isCoarsePointer, isMobile } from "../../mobile.js";
 import { deleteURLShowModal } from "./delete.js";
 
@@ -120,6 +121,9 @@ function _beginDrag({
   // would orphan the first pointer's listeners by overwriting _dragState).
   if (_dragState !== null) return;
   if (event.button !== 0) return;
+  // A locked UTub is frozen to every mutation; swipe-to-delete is one, so the
+  // gesture never begins (the visible delete controls are disabled too).
+  if (getState().isCurrentUTubLocked) return;
   // Mouse users keep tap-to-select/click-delete; touch/pen primary drags proceed.
   if (!isMobile() || event.pointerType === "mouse") return;
 
@@ -382,6 +386,8 @@ export function triggerURLSwipeNudgeIfEligible({
   urlRow: JQuery;
 }): void {
   if (!isMobile() || !isCoarsePointer()) return;
+  // No swipe-to-delete on a locked UTub, so don't advertise the affordance.
+  if (getState().isCurrentUTubLocked) return;
 
   let alreadyShown = false;
   try {
