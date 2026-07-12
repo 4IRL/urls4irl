@@ -25,6 +25,47 @@ TARGET_USER_ID: int = 2
 
 TEST_REASON_TEXT: str = "automated account actions test"
 
+# A representative narrow phone width — enough to force the Account Actions
+# buttons + notes to need wrapping.
+_MOBILE_VIEWPORT_WIDTH: int = 390
+_MOBILE_VIEWPORT_HEIGHT: int = 844
+
+
+def test_admin_account_actions_no_horizontal_overflow_on_mobile(
+    page: Page,
+    create_test_utubs,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing a non-admin user's detail page at a mobile width
+    WHEN the Account Actions panel renders its buttons and notes
+    THEN the panel content wraps within the card rather than overflowing
+         horizontally — its scrollWidth does not exceed its clientWidth, so the
+         page cannot scroll sideways.
+    """
+    page.set_viewport_size(
+        {"width": _MOBILE_VIEWPORT_WIDTH, "height": _MOBILE_VIEWPORT_HEIGHT}
+    )
+    login_admin_and_open_user_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        target_user_id=TARGET_USER_ID,
+        port=provide_port,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.USER_DETAIL_ACCOUNT_ACTIONS)
+
+    panel_overflows_horizontally = page.evaluate(
+        "() => { const p = document.querySelector('#AdminUserAccountActions');"
+        " return p.scrollWidth > p.clientWidth; }"
+    )
+    assert not panel_overflows_horizontally
+
 
 def test_admin_account_suspend_happy_path(
     page: Page,

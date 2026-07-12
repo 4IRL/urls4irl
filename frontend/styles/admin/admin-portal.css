@@ -617,6 +617,21 @@ details.admin-db-json > pre {
     margin-left: 4px;
 }
 
+/* The Account Actions panel reuses .admin-mod-cell outside a (scrollable) table,
+   so its buttons and notes must wrap within the card instead of forcing the
+   whole page to scroll horizontally on narrow/mobile widths. */
+#AdminUserAccountActions .admin-mod-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    white-space: normal;
+}
+
+#AdminUserAccountActions .admin-mod-btn + .admin-mod-btn {
+    margin-left: 0;
+}
+
 .admin-muted {
     color: var(--cardURLTextColor);
     font-size: 0.9rem;
