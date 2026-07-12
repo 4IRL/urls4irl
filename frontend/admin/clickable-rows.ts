@@ -19,12 +19,13 @@ const INTERACTIVE_SELECTOR = "a, button, input, select, textarea, label";
 
 /**
  * Wire up whole-row navigation via a delegated document listener so rows in
- * server-swapped fragments are covered without rebinding. Returns immediately
- * when no clickable rows are present on the page.
+ * server-swapped fragments are covered without rebinding — including rows that
+ * do not exist at init and only appear later (e.g. the User Actions search
+ * results, which are empty on first load and swapped in after a search). The
+ * listener is bound unconditionally; it is a no-op until a `.admin-clickable-row`
+ * is clicked, so binding it on a page that never has clickable rows is harmless.
  */
 export function initClickableRows(): void {
-  if (document.querySelector(ROW_SELECTOR) === null) return;
-
   $(document)
     .off(CLICK_NAMESPACE, ROW_SELECTOR)
     .on(CLICK_NAMESPACE, ROW_SELECTOR, function (event: JQuery.ClickEvent) {

@@ -105,6 +105,38 @@
     color: var(--cardURLTextColor);
 }
 
+/* ---- Breadcrumb -------------------------------------------------------- */
+
+.admin-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+    color: var(--cardURLTextColor);
+}
+
+.admin-breadcrumb-root {
+    color: var(--deckSelectionGreen);
+    text-decoration: none;
+}
+
+.admin-breadcrumb-root:hover,
+.admin-breadcrumb-root:focus-visible {
+    text-decoration: underline;
+}
+
+.admin-breadcrumb-sep {
+    color: var(--cardURLTextColor);
+}
+
+.admin-breadcrumb-current {
+    color: var(--UTubDescriptionColor);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* ---- Quick-link cards -------------------------------------------------- */
 
 .admin-quick-links {

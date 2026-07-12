@@ -1,6 +1,11 @@
 {% extends "admin_portal/base.html" %}
 {% set active_nav = 'users' %}
 {% block admin_content %}
+<nav id="AdminUserDetailBreadcrumb" class="admin-breadcrumb" aria-label="Breadcrumb">
+    <a class="admin-breadcrumb-root" href="{{ url_for('admin.admin_users') }}">Users</a>
+    <span class="admin-breadcrumb-sep" aria-hidden="true">/</span>
+    <span class="admin-breadcrumb-current" aria-current="page">{{ detail_user.username }}</span>
+</nav>
 <header id="AdminUserDetailHeader" class="admin-page-header">
     <h1 id="AdminUserDetailTitle">{{ ADMIN_PORTAL_STRINGS.USER_DETAIL_TITLE }}: {{ detail_user.username }}</h1>
 </header>

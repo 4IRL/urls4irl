@@ -59,4 +59,30 @@ describe("clickable-rows whole-row navigation controller", () => {
 
     expect(assignMock).not.toHaveBeenCalled();
   });
+
+  it("navigates for a clickable row swapped in AFTER init (search-driven page)", () => {
+    // No active text selection (a prior test may have stubbed getSelection).
+    vi.spyOn(window, "getSelection").mockReturnValue({
+      toString: () => "",
+    } as unknown as Selection);
+
+    // The User Actions page loads with no results, so initClickableRows runs
+    // before any clickable row exists. Delegation must still cover rows that a
+    // later search swaps in.
+    document.body.innerHTML = "";
+    initClickableRows();
+
+    const swappedHref = "/admin/users/7";
+    document.body.innerHTML = `
+      <table><tbody>
+        <tr class="admin-clickable-row" data-row-href="${swappedHref}">
+          <td id="SwappedCell">u4i_test7</td>
+        </tr>
+      </tbody></table>`;
+
+    $("#SwappedCell").trigger("click");
+
+    expect(assignMock).toHaveBeenCalledTimes(1);
+    expect(assignMock).toHaveBeenCalledWith(swappedHref);
+  });
 });

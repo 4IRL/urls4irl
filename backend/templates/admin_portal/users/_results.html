@@ -15,7 +15,7 @@
     </thead>
     <tbody id="AdminUserSearchRows">
         {% for result_user in search_page.users %}
-        <tr class="admin-user-row">
+        <tr class="admin-user-row admin-clickable-row" data-row-href="{{ url_for('admin.admin_user_detail', user_id=result_user.id) }}">
             <td>{{ result_user.id }}</td>
             <td><a class="admin-user-link" href="{{ url_for('admin.admin_user_detail', user_id=result_user.id) }}">{{ result_user.username }}</a></td>
             <td>{{ result_user.email }}</td>

@@ -102,6 +102,47 @@ def test_admin_mod_utub_lock_happy_path(
     assert page.locator(APL.UTUB_DETAIL_MOD_LOCK_BTN).count() == 0
 
 
+def test_admin_utub_detail_breadcrumb_returns_to_list(
+    page: Page,
+    create_test_utubs,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing a UTub's detail page
+    WHEN the admin clicks the "UTubs" breadcrumb root
+    THEN the browser returns to the UTub Actions list at /admin/utubs with its
+         table grid present.
+    """
+    with provide_app.app_context():
+        first_utub = Utubs.query.order_by(Utubs.id.asc()).first()
+        assert first_utub is not None, "No UTubs seeded — fixture may have failed"
+        utub_id = first_utub.id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TITLE)
+
+    breadcrumb_root = wait_then_get_element(
+        page=page, css_selector=APL.UTUB_DETAIL_BREADCRUMB_ROOT
+    )
+    breadcrumb_root.click()
+
+    expect(page).to_have_url(re.compile(r"/admin/utubs$"))
+    expect(
+        wait_then_get_element(page=page, css_selector=APL.UTUB_TABLE_GRID)
+    ).to_be_visible()
+
+
 def test_admin_mod_utub_lock_reason_required(
     page: Page,
     create_test_utubs,

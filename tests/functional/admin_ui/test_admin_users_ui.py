@@ -83,6 +83,84 @@ def test_admin_users_search_and_click_detail(
     expect(detail_username_locator).to_have_text(_SEARCH_TARGET_USERNAME)
 
 
+def test_admin_users_whole_row_click_opens_detail(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin on /admin/users with seeded test users
+    WHEN the admin searches for a user and clicks a plain (non-link) cell of the
+         result row rather than the username link
+    THEN the whole-row click still navigates to that user's detail page —
+         /admin/users/2 renders the username — matching the UTub Actions rows.
+    """
+    login_admin_and_open_admin_users(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.USER_SEARCH_TABLE)
+    page.fill(APL.USER_SEARCH_INPUT, _SEARCH_TARGET_USERNAME)
+
+    search_row_locator = page.locator(APL.USER_SEARCH_ROW)
+    expect(search_row_locator).to_have_count(1)
+
+    # Click the Email cell (index 2) — a plain, non-interactive cell — to prove
+    # whole-row navigation works, not just the username anchor.
+    search_row_locator.locator("td").nth(2).click()
+
+    expect(page).to_have_url(re.compile(rf"/admin/users/{_SEARCH_TARGET_USER_ID}$"))
+    detail_username_locator = wait_then_get_element(
+        page=page, css_selector=APL.USER_DETAIL_USERNAME
+    )
+    expect(detail_username_locator).to_have_text(_SEARCH_TARGET_USERNAME)
+
+
+def test_admin_user_detail_breadcrumb_returns_to_list(
+    page: Page,
+    create_test_users,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN a logged-in admin viewing a user's detail page
+    WHEN the admin clicks the "Users" breadcrumb root
+    THEN the browser returns to the User Actions list at /admin/users with its
+         search input present.
+    """
+    login_admin_and_open_admin_users(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.USER_SEARCH_TABLE)
+    page.fill(APL.USER_SEARCH_INPUT, _SEARCH_TARGET_USERNAME)
+    expect(page.locator(APL.USER_SEARCH_ROW)).to_have_count(1)
+    page.locator(_USER_LINK_SELECTOR).first.click()
+
+    breadcrumb_root = wait_then_get_element(
+        page=page, css_selector=APL.USER_DETAIL_BREADCRUMB_ROOT
+    )
+    breadcrumb_root.click()
+
+    expect(page).to_have_url(re.compile(r"/admin/users$"))
+    expect(
+        wait_then_get_element(page=page, css_selector=APL.USER_SEARCH_INPUT)
+    ).to_be_visible()
+
+
 def test_admin_users_search_no_results_shows_empty_state(
     page: Page,
     create_test_users,

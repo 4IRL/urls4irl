@@ -1,6 +1,11 @@
 {% extends "admin_portal/base.html" %}
 {% set active_nav = 'utub-actions' %}
 {% block admin_content %}
+<nav id="AdminUtubDetailBreadcrumb" class="admin-breadcrumb" aria-label="Breadcrumb">
+    <a class="admin-breadcrumb-root" href="{{ url_for('admin.admin_utubs') }}">UTubs</a>
+    <span class="admin-breadcrumb-sep" aria-hidden="true">/</span>
+    <span class="admin-breadcrumb-current" aria-current="page">{{ detail_utub.name }}</span>
+</nav>
 <header id="AdminUtubDetailHeader" class="admin-page-header">
     <h1 id="AdminUtubDetailTitle">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_TITLE }}: {{ detail_utub.name }}
         {% if detail_utub.is_locked %}

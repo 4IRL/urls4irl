@@ -649,6 +649,7 @@ class AdminPortalLocators(GenericPageLocator):
 
     # UTub detail page (aggregated moderation surface)
     UTUB_DETAIL_TITLE = "#AdminUtubDetailTitle"
+    UTUB_DETAIL_BREADCRUMB_ROOT = "#AdminUtubDetailBreadcrumb .admin-breadcrumb-root"
     UTUB_DETAIL_MEMBERS_HEADING = "#AdminUtubDetailMembersHeading"
     UTUB_DETAIL_URLS_HEADING = "#AdminUtubDetailUrlsHeading"
     UTUB_DETAIL_MEMBERS_TABLE = "#AdminUtubDetailMembersTable"
@@ -674,6 +675,7 @@ class AdminPortalLocators(GenericPageLocator):
 
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"
+    USER_DETAIL_BREADCRUMB_ROOT = "#AdminUserDetailBreadcrumb .admin-breadcrumb-root"
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
     # Read-only UTub memberships list (moderation buttons relocated to UTub-detail)
     USER_DETAIL_MEMBERSHIPS_TABLE = "#AdminUserMembershipsTable"
