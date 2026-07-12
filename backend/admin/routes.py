@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from flask import Blueprint, abort, render_template, request
 from flask.wrappers import Response as FlaskResponse
 from flask_login import current_user
+from sqlalchemy import or_
 
 from backend import db
 from backend.admin import db_browser_service
@@ -17,13 +18,17 @@ from backend.admin.health_service import collect_health_snapshot
 from backend.admin.account_data_service import is_tombstoned
 from backend.admin.user_service import (
     DEFAULT_SEARCH_LIMIT,
+    LIKE_ESCAPE_CHAR,
+    escape_like_wildcards,
     get_user_detail,
     search_users,
 )
 from backend.api_common.auth_decorators import admin_login_required
 from backend.extensions import audit
+from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
+from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.constants import provide_config_for_constants
@@ -264,13 +269,21 @@ def admin_utubs() -> FlaskResponse:
 @admin.route("/admin/utubs/<int:utub_id>", methods=["GET"])
 @admin_login_required
 def admin_utub_detail(utub_id: int) -> FlaskResponse:
-    """Aggregated detail page for one UTub: info panel, members, and URLs.
+    """Aggregated detail page for one UTub: info panel, members, URLs, and tags.
 
-    Renders the UTub's own relationships (``members`` and ``utub_urls``) so the
-    lock/unlock, delete, remove-member, remove-URL, and purge-URL moderation
-    controls source their ids directly from the loaded UTub. The creator's
-    username is resolved from ``utub_creator``. Missing UTubs 404. The page view
-    is audited; each mutation POSTs to its own audited endpoint — rendering this
+    Renders the UTub's own relationships (``members``, ``utub_urls``, and
+    ``utub_tags``) so the lock/unlock, delete, remove-member, remove-URL,
+    purge-URL, and remove-tag moderation controls source their ids directly from
+    the loaded UTub. The creator's username is resolved from ``utub_creator``.
+
+    Each table supports a server-side in-table filter via ``members_q`` (member
+    username), ``urls_q`` (URL string or title), and ``tags_q`` (tag text). The
+    filter is applied to that UTub's FULL set before the Members/URLs tables are
+    paginated (``members_offset``/``urls_offset``); the small tag vocabulary is
+    rendered un-paginated. The info-panel counts stay the UNFILTERED totals so
+    the admin always sees the UTub's true size, while each table's "showing X-Y
+    of N" reflects the FILTERED total. Missing UTubs 404. The page view is
+    audited; each mutation POSTs to its own audited endpoint — rendering this
     page mutates nothing.
     """
     detail_utub = Utubs.query.get(utub_id)
@@ -281,24 +294,60 @@ def admin_utub_detail(utub_id: int) -> FlaskResponse:
     if creator is not None:
         creator_username = creator.username
 
+    members_q = request.args.get("members_q", "")
+    urls_q = request.args.get("urls_q", "")
+    tags_q = request.args.get("tags_q", "")
+
     members_offset = _parse_offset_arg("members_offset")
     urls_offset = _parse_offset_arg("urls_offset")
-    members_total = Utub_Members.query.filter_by(utub_id=detail_utub.id).count()
+
+    # Info-panel counts are the UNFILTERED totals — the admin sees the UTub's
+    # true size regardless of any active in-table filter.
+    members_total_unfiltered = Utub_Members.query.filter_by(
+        utub_id=detail_utub.id
+    ).count()
+    urls_total_unfiltered = Utub_Urls.query.filter_by(utub_id=detail_utub.id).count()
+
+    members_query = Utub_Members.query.filter_by(utub_id=detail_utub.id)
+    if members_q.strip():
+        members_pattern = f"%{escape_like_wildcards(members_q)}%"
+        members_query = members_query.join(
+            Users, Utub_Members.user_id == Users.id
+        ).filter(Users.username.ilike(members_pattern, escape=LIKE_ESCAPE_CHAR))
+    members_total = members_query.count()
     members_rows = (
-        Utub_Members.query.filter_by(utub_id=detail_utub.id)
-        .order_by(Utub_Members.user_id)
+        members_query.order_by(Utub_Members.user_id)
         .limit(_DETAIL_TABLE_PAGE_SIZE)
         .offset(members_offset)
         .all()
     )
-    urls_total = Utub_Urls.query.filter_by(utub_id=detail_utub.id).count()
+
+    urls_query = Utub_Urls.query.filter_by(utub_id=detail_utub.id)
+    if urls_q.strip():
+        urls_pattern = f"%{escape_like_wildcards(urls_q)}%"
+        urls_query = urls_query.join(Urls, Utub_Urls.url_id == Urls.id).filter(
+            or_(
+                Urls.url_string.ilike(urls_pattern, escape=LIKE_ESCAPE_CHAR),
+                Utub_Urls.url_title.ilike(urls_pattern, escape=LIKE_ESCAPE_CHAR),
+            )
+        )
+    urls_total = urls_query.count()
     urls_rows = (
-        Utub_Urls.query.filter_by(utub_id=detail_utub.id)
-        .order_by(Utub_Urls.id)
+        urls_query.order_by(Utub_Urls.id)
         .limit(_DETAIL_TABLE_PAGE_SIZE)
         .offset(urls_offset)
         .all()
     )
+
+    # Tags are a small per-UTub vocabulary — filter but render un-paginated.
+    tags_query = Utub_Tags.query.filter_by(utub_id=detail_utub.id)
+    if tags_q.strip():
+        tags_pattern = f"%{escape_like_wildcards(tags_q)}%"
+        tags_query = tags_query.filter(
+            Utub_Tags.tag_string.ilike(tags_pattern, escape=LIKE_ESCAPE_CHAR)
+        )
+    tags_rows = tags_query.order_by(Utub_Tags.id).all()
+
     members_page = _DetailTablePage(
         rows=members_rows,
         total_count=members_total,
@@ -326,6 +375,12 @@ def admin_utub_detail(utub_id: int) -> FlaskResponse:
         creator_username=creator_username,
         members_page=members_page,
         urls_page=urls_page,
+        tags_rows=tags_rows,
+        members_total=members_total_unfiltered,
+        urls_total=urls_total_unfiltered,
+        members_q=members_q,
+        urls_q=urls_q,
+        tags_q=tags_q,
     )
 
 

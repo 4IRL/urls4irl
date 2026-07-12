@@ -15,8 +15,8 @@
             <tr><th>Name</th><td id="AdminUtubDetailName">{{ detail_utub.name }}</td></tr>
             <tr><th>Creator</th><td id="AdminUtubDetailCreator">{{ creator_username }}</td></tr>
             <tr><th>Locked</th><td id="AdminUtubDetailLocked">{{ 'yes' if detail_utub.is_locked else 'no' }}</td></tr>
-            <tr><th>Members</th><td id="AdminUtubDetailMemberCount">{{ members_page.total_count }}</td></tr>
-            <tr><th>URLs</th><td id="AdminUtubDetailUrlCount">{{ urls_page.total_count }}</td></tr>
+            <tr><th>Members</th><td id="AdminUtubDetailMemberCount">{{ members_total }}</td></tr>
+            <tr><th>URLs</th><td id="AdminUtubDetailUrlCount">{{ urls_total }}</td></tr>
             <tr><th>Created</th><td id="AdminUtubDetailCreated">{{ detail_utub.created_at.strftime('%Y-%m-%d %H:%M:%S UTC') }}</td></tr>
         </tbody>
     </table>
@@ -61,6 +61,13 @@
 </div>
 <div id="AdminUtubDetailMembersPanel" class="admin-panel">
     <h2 id="AdminUtubDetailMembersHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_MEMBERS_HEADING }}</h2>
+    <form class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id) }}" role="search">
+        <input type="search" id="AdminUtubDetailMembersSearch" name="members_q" value="{{ members_q }}" class="admin-search-input" aria-label="Search members by username" placeholder="Search members by username…">
+        <input type="hidden" name="urls_q" value="{{ urls_q }}">
+        <input type="hidden" name="tags_q" value="{{ tags_q }}">
+        <input type="hidden" name="urls_offset" value="{{ urls_page.offset }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
     {% if members_page.total_count %}
     <table id="AdminUtubDetailMembersTable" class="admin-table">
         <thead>
@@ -99,18 +106,27 @@
     <div id="AdminUtubDetailMembersPagination" class="admin-search-pagination">
         <span>Showing {{ members_page.showing_start }}&ndash;{{ members_page.showing_end }} of {{ members_page.total_count }}</span>
         {% if members_page.has_previous %}
-        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.previous_offset, urls_offset=urls_page.offset) }}">Previous</a>
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.previous_offset, urls_offset=urls_page.offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Previous</a>
         {% endif %}
         {% if members_page.has_next %}
-        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.next_offset, urls_offset=urls_page.offset) }}">Next</a>
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.next_offset, urls_offset=urls_page.offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Next</a>
         {% endif %}
     </div>
+    {% elif members_q %}
+    <p id="AdminUtubDetailMembersNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
     {% else %}
     <p id="AdminUtubDetailNoMembers">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_MEMBERS }}</p>
     {% endif %}
 </div>
 <div id="AdminUtubDetailUrlsPanel" class="admin-panel">
     <h2 id="AdminUtubDetailUrlsHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_URLS_HEADING }}</h2>
+    <form class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id) }}" role="search">
+        <input type="search" id="AdminUtubDetailUrlsSearch" name="urls_q" value="{{ urls_q }}" class="admin-search-input" aria-label="Search URLs by address or title" placeholder="Search URLs by address or title…">
+        <input type="hidden" name="members_q" value="{{ members_q }}">
+        <input type="hidden" name="tags_q" value="{{ tags_q }}">
+        <input type="hidden" name="members_offset" value="{{ members_page.offset }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
     {% if urls_page.total_count %}
     <table id="AdminUtubDetailUrlsTable" class="admin-table">
         <thead>
@@ -157,19 +173,29 @@
     <div id="AdminUtubDetailUrlsPagination" class="admin-search-pagination">
         <span>Showing {{ urls_page.showing_start }}&ndash;{{ urls_page.showing_end }} of {{ urls_page.total_count }}</span>
         {% if urls_page.has_previous %}
-        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.previous_offset) }}">Previous</a>
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.previous_offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Previous</a>
         {% endif %}
         {% if urls_page.has_next %}
-        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.next_offset) }}">Next</a>
+        <a href="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id, members_offset=members_page.offset, urls_offset=urls_page.next_offset, members_q=members_q, urls_q=urls_q, tags_q=tags_q) }}">Next</a>
         {% endif %}
     </div>
+    {% elif urls_q %}
+    <p id="AdminUtubDetailUrlsNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
     {% else %}
     <p id="AdminUtubDetailNoUrls">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_URLS }}</p>
     {% endif %}
 </div>
 <div id="AdminUtubDetailTagsPanel" class="admin-panel">
     <h2 id="AdminUtubDetailTagsHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_TAGS_HEADING }}</h2>
-    {% if detail_utub.utub_tags %}
+    <form class="admin-db-search-form" method="get" action="{{ url_for('admin.admin_utub_detail', utub_id=detail_utub.id) }}" role="search">
+        <input type="search" id="AdminUtubDetailTagsSearch" name="tags_q" value="{{ tags_q }}" class="admin-search-input" aria-label="Search tags by text" placeholder="Search tags by text…">
+        <input type="hidden" name="members_q" value="{{ members_q }}">
+        <input type="hidden" name="urls_q" value="{{ urls_q }}">
+        <input type="hidden" name="members_offset" value="{{ members_page.offset }}">
+        <input type="hidden" name="urls_offset" value="{{ urls_page.offset }}">
+        <button type="submit" class="admin-db-search-btn">Search</button>
+    </form>
+    {% if tags_rows %}
     <table id="AdminUtubDetailTagsTable" class="admin-table">
         <thead>
             <tr>
@@ -179,7 +205,7 @@
             </tr>
         </thead>
         <tbody>
-            {% for utub_tag in detail_utub.utub_tags %}
+            {% for utub_tag in tags_rows %}
             <tr>
                 <td>{{ utub_tag.id }}</td>
                 <td>{{ utub_tag.tag_string }}</td>
@@ -200,6 +226,8 @@
             {% endfor %}
         </tbody>
     </table>
+    {% elif tags_q %}
+    <p id="AdminUtubDetailTagsNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
     {% else %}
     <p id="AdminUtubDetailNoTags">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_TAGS }}</p>
     {% endif %}

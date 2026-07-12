@@ -345,6 +345,57 @@ def test_admin_mod_utub_tag_delete_reason_required(
         assert Utub_Tags.query.get(utub_tag_id) is not None
 
 
+def test_admin_utub_detail_urls_search_filters_rows(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing the detail page of a UTub containing a seeded URL
+    WHEN the admin types that URL's (globally unique) string into the URLs search
+         box and submits with Enter
+    THEN the page reloads filtered by ``urls_q``, the search box retains the term,
+         and exactly one URL row (the match) renders.
+    """
+    with provide_app.app_context():
+        association = (
+            Utub_Urls.query.join(Urls, Utub_Urls.url_id == Urls.id)
+            .order_by(Utub_Urls.id.asc())
+            .first()
+        )
+        assert association is not None, "No UtubUrls seeded — fixture may have failed"
+        utub_id = association.utub_id
+        target_url_string = association.standalone_url.url_string
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    search_input = wait_then_get_element(
+        page=page, css_selector=APL.UTUB_DETAIL_URLS_SEARCH
+    )
+    search_input.fill(target_url_string)
+    search_input.press("Enter")
+
+    # The GET reload lands on the filtered URL with the term echoed back.
+    expect(page).to_have_url(re.compile(r"urls_q="))
+    expect(
+        wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_URLS_SEARCH)
+    ).to_have_value(target_url_string)
+
+    # Exactly the matching URL row renders (its string is globally unique).
+    expect(page.locator(APL.UTUB_DETAIL_MOD_URL_DELETE_BTN)).to_have_count(1)
+    expect(page.locator(APL.UTUB_DETAIL_URLS_TABLE)).to_contain_text(target_url_string)
+
+
 def test_admin_utub_list_and_open_detail(
     page: Page,
     create_test_utubs,
