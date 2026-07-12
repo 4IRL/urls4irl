@@ -30,7 +30,6 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.errors import (
     build_detail_error_response,
-    build_message_error_response,
     build_url_conflict_error_response,
 )
 from backend.schemas.tags import UtubTagSchema
@@ -43,7 +42,7 @@ from backend.tags.services.create_url_tag import (
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
-from backend.utils.strings.utub_strs import UTUB_FAILURE
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def create_url_in_utub(
@@ -68,12 +67,11 @@ def create_url_in_utub(
     """
     if tag_strings is None:
         tag_strings = []
-    if current_utub.is_locked:
-        return build_message_error_response(
-            message=UTUB_FAILURE.UTUB_IS_LOCKED,
-            error_code=URLErrorCodes.UTUB_IS_LOCKED,
-            status_code=403,
-        )
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
     had_tracking: bool = safe_get_url_validator(current_app).contains_tracking_params(
         url_string
     )
