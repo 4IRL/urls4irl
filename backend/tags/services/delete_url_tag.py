@@ -8,7 +8,9 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.tags import UrlTagModifiedResponseSchema, UtubTagOnAddDeleteSchema
+from backend.tags.constants import URLTagErrorCodes
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def delete_url_tag(
@@ -28,6 +30,12 @@ def delete_url_tag(
         - Response: JSON response on success
         - int: HTTP status code 200 (Success)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        utub, error_code=URLTagErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     db.session.delete(utub_url_tag)
 
     utub.set_last_updated()

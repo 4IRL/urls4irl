@@ -32,7 +32,7 @@ class UTUB_SUCCESS(UTUB_GENERAL):
 
 
 # Strings for utub failure
-UTUB_IS_LOCKED = "This UTub is locked. New content cannot be added."
+UTUB_IS_LOCKED = "This UTub is locked and cannot be modified."
 UNABLE_TO_MAKE_UTUB = "Unable to make a UTub with that information."
 UNABLE_TO_MODIFY_UTUB_NAME = "Unable to modify UTub name."
 UNABLE_TO_MODIFY_UTUB_DESC = "Unable to modify UTub description."

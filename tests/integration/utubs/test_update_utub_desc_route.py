@@ -18,6 +18,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from backend.utubs.constants import UTubErrorCodes
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
@@ -110,6 +111,60 @@ def test_update_valid_utub_description_as_creator(
                     final_utub_names_and_descriptions[utub_name]
                     == all_utub_names_and_descriptions[utub_name]
                 )
+
+
+def test_update_locked_utub_desc_is_rejected(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub with members, URLs, and tags, where the UTub is LOCKED
+    WHEN the creator attempts to change the locked UTub's description via a PATCH to
+        "/utubs/<utub_id>/description"
+    THEN the lock guard rejects the change: the server responds 403 with the locked-UTub
+        JSON error (status FAILURE, message UTUB_FAILURE.UTUB_IS_LOCKED, error code
+        UTubErrorCodes.UTUB_IS_LOCKED) and the UTub description is unchanged afterward.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    UPDATE_TEXT = "This is my new UTub description. 123456"
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+        original_utub_description = utub_of_user.utub_description
+
+        # Lock the UTub whose description the creator is attempting to change
+        utub_of_user.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the stored description differs from the attempted new value
+        assert original_utub_description != UPDATE_TEXT
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_utub_desc_response.status_code == 403
+    update_utub_desc_json_response = update_utub_desc_response.json
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        update_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    )
+    assert (
+        int(update_utub_desc_json_response[STD_JSON.ERROR_CODE])
+        == UTubErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # The description is unchanged — the update did not happen
+        final_check_utub: Utubs = Utubs.query.get(current_utub_id)
+        assert final_check_utub.utub_description == original_utub_description
+        assert final_check_utub.utub_description != UPDATE_TEXT
 
 
 def test_update_utub_desc_records_metric_when_changed(

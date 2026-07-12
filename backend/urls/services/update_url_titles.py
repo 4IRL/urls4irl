@@ -11,8 +11,10 @@ from backend.metrics.events import EventName
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UrlTitleUpdatedResponseSchema, UtubUrlDetailSchema
+from backend.urls.constants import URLErrorCodes
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_strs import URL_NO_CHANGE, URL_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def update_url_title_if_new(
@@ -35,6 +37,12 @@ def update_url_title_if_new(
         - Response: JSON response on update
         - int: HTTP status code 200 (Success)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     is_different_title = new_url_title != current_utub_url.url_title
 
     if is_different_title:

@@ -10,7 +10,9 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.schemas.urls import UrlDeletedResponseSchema, UtubUrlDeleteSchema
+from backend.urls.constants import URLErrorCodes
 from backend.utils.strings.url_strs import URL_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def delete_url_in_utub(
@@ -29,6 +31,12 @@ def delete_url_in_utub(
         - Response: JSON response on delete
         - int: HTTP status code 200 (Success)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     # Store serialized data from URL association with UTub and associated tags
     url_id_to_remove = current_utub_url.standalone_url.id
     utub_url_id = current_utub_url.id

@@ -2,11 +2,13 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.schemas.tags import UtubTagOnAddDeleteSchema
+from backend.tags.constants import UTubTagErrorCodes
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
@@ -16,6 +18,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
@@ -95,6 +98,64 @@ def test_delete_tag_from_utub_with_no_url_associations(
         assert Utub_Tags.query.count() == num_of_utub_tags - 1
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == num_of_utub_url_tags
+
+
+def test_delete_utub_tag_from_locked_utub_is_rejected(
+    every_user_in_every_utub,
+    add_one_tag_to_each_utub_after_one_url_added,
+    login_first_user_without_register,
+):
+    """
+    GIVEN UTubs with members and one UTub tag per UTub, where the target UTub is LOCKED
+    WHEN the logged-in member tries to delete a UTub tag from the locked UTub
+        - By DELETE to "/utubs/<int:utub_id>/tags/<int:utub_tag_id>"
+    THEN the delete-guard rejects the deletion: the server responds 403 with the locked-UTub
+        JSON error (error code UTubTagErrorCodes.UTUB_IS_LOCKED, message
+        UTUB_FAILURE.UTUB_IS_LOCKED) and the UTub tag still exists.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find UTub this user is member of
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        utub_id = utub.id
+
+        # Find tag in this UTub
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id
+        ).first()
+        utub_tag_id = utub_tag.id
+
+        # Lock the UTub
+        utub.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the UTub tag exists prior to the blocked action
+        assert Utub_Tags.query.get(utub_tag_id) is not None
+        num_of_utub_tags = Utub_Tags.query.count()
+
+    delete_tag_response = client.delete(
+        url_for(
+            ROUTES.UTUB_TAGS.DELETE_UTUB_TAG,
+            utub_id=utub_id,
+            utub_tag_id=utub_tag_id,
+        ),
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert delete_tag_response.status_code == 403
+    delete_tag_response_json = delete_tag_response.json
+    assert delete_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert delete_tag_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(delete_tag_response_json[STD_JSON.ERROR_CODE])
+        == UTubTagErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # UTub tag still exists in the locked UTub
+        assert Utub_Tags.query.get(utub_tag_id) is not None
+        assert Utub_Tags.query.count() == num_of_utub_tags
 
 
 def test_delete_utub_tag_records_metric(

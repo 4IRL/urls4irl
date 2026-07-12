@@ -5,12 +5,14 @@ from backend.api_common.request_utils import is_current_utub_creator
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, safe_add_many_logs, warning_log
 from backend.extensions.metrics.writer import record_event
+from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
 from backend.schemas.errors import build_message_error_response
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def remove_member_or_self_from_utub(
@@ -35,6 +37,12 @@ def remove_member_or_self_from_utub(
             - 403 (on member trying to remove someone else)
             - 404 (on member being removed not existing in UTub)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=UTubMembersErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     is_utub_creator = is_current_utub_creator()
 
     creator_removing_themself = _creator_removing_themself(

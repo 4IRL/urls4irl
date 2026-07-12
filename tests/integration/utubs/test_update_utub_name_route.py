@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
@@ -18,6 +19,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from backend.utubs.constants import UTubErrorCodes
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
 
@@ -110,6 +112,59 @@ def test_update_valid_utub_name_as_creator(
                     final_utub_names_and_descriptions[utub_desc]
                     == all_utub_names_and_descriptions[utub_desc]
                 )
+
+
+def test_update_locked_utub_name_is_rejected(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub with members, URLs, and tags, where the UTub is LOCKED
+    WHEN the creator attempts to rename the locked UTub via a PATCH to "/utubs/<utub_id>/name"
+    THEN the lock guard rejects the rename: the server responds 403 with the locked-UTub
+        JSON error (status FAILURE, message UTUB_FAILURE.UTUB_IS_LOCKED, error code
+        UTubErrorCodes.UTUB_IS_LOCKED) and the UTub name is unchanged afterward.
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_NAME = "This is my new UTub name"
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+        original_utub_name = utub_of_user.name
+
+        # Lock the UTub the creator is attempting to rename
+        utub_of_user.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the stored name differs from the attempted new name
+        assert original_utub_name != NEW_NAME
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        json={UTUB_FORM.UTUB_NAME: NEW_NAME},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_utub_name_response.status_code == 403
+    update_utub_name_json_response = update_utub_name_response.json
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        update_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    )
+    assert (
+        int(update_utub_name_json_response[STD_JSON.ERROR_CODE])
+        == UTubErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # The name is unchanged — the rename did not happen
+        final_check_utub: Utubs = Utubs.query.get(current_utub_id)
+        assert final_check_utub.name == original_utub_name
+        assert final_check_utub.name != NEW_NAME
 
 
 def test_update_utub_name_records_metric_when_changed(

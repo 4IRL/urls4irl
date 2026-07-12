@@ -7,6 +7,7 @@ from backend.schemas.urls import UtubUrlDetailSchema
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.extensions.url_validation.url_validator import (
     InvalidURLError,
 )
@@ -27,6 +28,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -174,6 +176,65 @@ def test_update_valid_url_with_fresh_valid_url(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == new_url_id,
         ).count() == len(associated_tags)
+
+
+def test_update_url_in_locked_utub_is_rejected(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has a single URL, where the UTub is LOCKED
+    WHEN the creator attempts to modify the URL string via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:utub_url_id>" with a fresh valid URL
+    THEN the write-guard rejects the update: the server responds 403 with the locked-UTub
+        JSON error (error code URLErrorCodes.UTUB_IS_LOCKED, message UTUB_FAILURE.UTUB_IS_LOCKED)
+        and the URL string is left unchanged in the database.
+    """
+    NEW_URL_STRING = "https://www.example-locked-update.com"
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        utub_id_to_update = utub_creator_of.id
+        utub_url_id_to_update = url_in_this_utub.id
+        original_url_string = url_in_this_utub.standalone_url.url_string
+
+        # Lock the UTub
+        utub_creator_of.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the URL string differs from the attempted new value
+        assert original_url_string != NEW_URL_STRING
+
+    update_url_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id_to_update,
+            utub_url_id=utub_url_id_to_update,
+        ),
+        json={URL_FORM.URL_STRING: NEW_URL_STRING},
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert update_url_response.status_code == 403
+    update_url_response_json = update_url_response.json
+    assert update_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert update_url_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(update_url_response_json[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # The URL string is unchanged in the locked UTub
+        unchanged_url_in_utub: Utub_Urls = Utub_Urls.query.get(utub_url_id_to_update)
+        assert unchanged_url_in_utub.standalone_url.url_string == original_url_string
 
 
 def test_update_url_string_records_metric(

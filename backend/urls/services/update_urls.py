@@ -25,6 +25,7 @@ from backend.urls.services.create_urls import (
 )
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from backend.utubs.guards import reject_if_utub_locked
 
 
 def update_url_in_utub(
@@ -43,6 +44,12 @@ def update_url_in_utub(
         - Response: JSON response on update
         - int: HTTP status code 200 (Success)
     """
+    utub_locked_error: FlaskResponse | None = reject_if_utub_locked(
+        current_utub, error_code=URLErrorCodes.UTUB_IS_LOCKED
+    )
+    if utub_locked_error is not None:
+        return utub_locked_error
+
     url_to_change_to: str = url_string.strip()
 
     had_tracking: bool = safe_get_url_validator(current_app).contains_tracking_params(

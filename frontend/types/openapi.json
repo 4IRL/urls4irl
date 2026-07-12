@@ -8022,8 +8022,12 @@
       },
       "UTubErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": ["UNKNOWN_ERROR", "INVALID_FORM_INPUT"],
+        "enum": [1, 2, 3],
+        "x-enum-varnames": [
+          "UNKNOWN_ERROR",
+          "INVALID_FORM_INPUT",
+          "UTUB_IS_LOCKED"
+        ],
         "description": "Error codes for UTubErrorCodes"
       },
       "UtubSummaryItemSchema": {

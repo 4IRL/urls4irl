@@ -1700,7 +1700,7 @@ export interface components {
      * @description Error codes for UTubErrorCodes
      * @enum {integer}
      */
-    UTubErrorCodes: 1 | 2;
+    UTubErrorCodes: 1 | 2 | 3;
     UtubSummaryItemSchema: {
       /** @description Unique UTub ID */
       id: number;
