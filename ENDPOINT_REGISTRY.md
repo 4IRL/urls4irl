@@ -883,7 +883,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                 |
 | **Service**     | `render_template()` direct (aggregates the UTub's own `members` + `utub_urls` relationships; creator username resolved via `Users.query.get`); audits `admin.utub.view` (`ADMIN_AUDIT_ACTIONS.UTUB_VIEW`, `target_type="Utub"`, `target_id=<utub_id>`) |
 | **Schema**      | None (request) / None (response — HTML page)                                                                                                                                                                                                           |
-| **Template**    | `admin_portal/utubs/detail.html` (info panel + Members table with `member-remove` + URLs table with `url-delete`/`url-purge`; lock/unlock + delete-utub action bar)                                                                                    |
+| **Template**    | `admin_portal/utubs/detail.html` (info panel + paginated Members table with `member-remove` + paginated URLs table with `url-delete`/`url-purge` and a Tags column of `url-tag-remove` chips + UTub Tags panel with `utub-tag-delete`; lock/unlock + delete-utub action bar) |
 | **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` moderation buttons)                                                                                                                                                           |
 | **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                  |
 | **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                     |
@@ -1093,6 +1093,38 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                 |
 | **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_PURGE`                                                                                                                   |
 | **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/urls/\<int:utub_url_id>/tags/\<int:utub_tag_id>/remove
+
+| Layer           | Location                                                                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_url_tag_remove`                                                                                                                                       |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON); `@api_route`                                                                                                                        |
+| **Service**     | `backend/admin/moderation_service.py:remove_tag_from_url_admin` — deletes one Utub_Url_Tags association; leaves the Utub_Tags vocabulary row and other applications intact; 404 if absent    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                     |
+| **Template**    | `admin_portal/utubs/detail.html` (Remove Tag button per applied tag chip in the UTub-detail URLs table's Tags column)                                                                       |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                |
+
+---
+
+### POST /admin/utubs/\<int:utub_id>/tags/\<int:utub_tag_id>/delete
+
+| Layer           | Location                                                                                                                                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_utub_tag_delete`                                                                                                                                      |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON); `@api_route`                                                                                                                        |
+| **Service**     | `backend/admin/moderation_service.py:delete_utub_tag_admin` — deletes one Utub_Tags vocabulary row, cascading to remove all its Utub_Url_Tags applications; returns count removed; 404 if absent |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                     |
+| **Template**    | `admin_portal/utubs/detail.html` (Delete Tag button per row in the UTub-detail UTub Tags panel)                                                                                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                           |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                        |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                  |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                |
 
 ---
 

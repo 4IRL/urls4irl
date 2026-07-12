@@ -12,6 +12,8 @@ from backend.models.audit_log import AuditLog
 from backend.models.urls import Urls
 from backend.models.users import Users
 from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.strings.admin_portal_strs import (
@@ -34,7 +36,15 @@ _BETA_UTUB_NAME: str = "BetaSeededUtub"
 _DETAIL_UTUB_NAME: str = "DetailSeededUtub"
 _DETAIL_URL_STRING: str = "https://detail-seeded-example.test/page"
 _DETAIL_URL_TITLE: str = "Detail Seeded URL Title"
+_DETAIL_TAG_STRING: str = "detail-seeded-tag"
+_TAGLESS_UTUB_NAME: str = "TaglessSeededUtub"
 _MISSING_UTUB_ID: int = 999999
+
+_DETAIL_TAGS_PANEL_ID_BYTES: bytes = b'id="AdminUtubDetailTagsPanel"'
+_DETAIL_TAGS_TABLE_ID_BYTES: bytes = b'id="AdminUtubDetailTagsTable"'
+_DETAIL_NO_TAGS_ID_BYTES: bytes = b'id="AdminUtubDetailNoTags"'
+_URL_TAG_REMOVE_ACTION_BYTES: bytes = b'data-admin-action="url-tag-remove"'
+_UTUB_TAG_DELETE_ACTION_BYTES: bytes = b'data-admin-action="utub-tag-delete"'
 
 # Must match ``_DETAIL_TABLE_PAGE_SIZE`` in ``backend/admin/routes.py``.
 _DETAIL_TABLE_PAGE_SIZE: int = 50
@@ -124,8 +134,10 @@ def _seed_utub_with_content(*, name: str, creator_id: int) -> int:
     """Insert one UTub owned by ``creator_id`` with the creator as a member and
     a single URL association, returning the UTub id.
 
-    Provides the aggregated detail page with at least one member row and one
-    URL row so the members/URLs tables render (rather than empty states).
+    Provides the aggregated detail page with at least one member row, one URL
+    row, one UTub tag (vocabulary), and one applied URL-tag so the members,
+    URLs (incl. the Tags column), and UTub Tags tables all render (rather than
+    empty states).
     """
     new_utub = Utubs(name=name, utub_creator=creator_id, utub_description="")
     db.session.add(new_utub)
@@ -140,12 +152,26 @@ def _seed_utub_with_content(*, name: str, creator_id: int) -> int:
     new_url = Urls(normalized_url=_DETAIL_URL_STRING, current_user_id=creator_id)
     db.session.add(new_url)
     db.session.flush()
+    new_url_association = Utub_Urls(
+        utub_id=new_utub.id,
+        url_id=new_url.id,
+        user_id=creator_id,
+        url_title=_DETAIL_URL_TITLE,
+    )
+    db.session.add(new_url_association)
+    db.session.flush()
+    new_tag = Utub_Tags(
+        utub_id=new_utub.id,
+        tag_string=_DETAIL_TAG_STRING,
+        created_by=creator_id,
+    )
+    db.session.add(new_tag)
+    db.session.flush()
     db.session.add(
-        Utub_Urls(
+        Utub_Url_Tags(
             utub_id=new_utub.id,
-            url_id=new_url.id,
-            user_id=creator_id,
-            url_title=_DETAIL_URL_TITLE,
+            utub_url_id=new_url_association.id,
+            utub_tag_id=new_tag.id,
         )
     )
     db.session.commit()
@@ -303,10 +329,12 @@ def test_admin_utub_detail_renders_for_admin(
     GIVEN a logged-in admin user and a seeded UTub with one member and one URL
     WHEN the admin sends GET /admin/utubs/<id>
     THEN the response is 200 HTML containing the UTub name, the detail title id,
-         the members-table id with the member's username, and the URLs-table id
-         with the seeded URL string; and exactly one AuditLog row is created with
-         action UTUB_VIEW, target_type "Utub", target_id str(<id>), and
-         actor_id == the admin's user id.
+         the members-table id with the member's username, the URLs-table id
+         with the seeded URL string, the seeded tag string with its url-tag-remove
+         control, and the UTub Tags panel/table with its utub-tag-delete control;
+         and exactly one AuditLog row is created with action UTUB_VIEW,
+         target_type "Utub", target_id str(<id>), and actor_id == the admin's
+         user id.
     """
     client, _, admin_user, app = login_admin_user_with_register
 
@@ -328,6 +356,13 @@ def test_admin_utub_detail_renders_for_admin(
     assert admin_username.encode() in response.data
     assert _DETAIL_URLS_TABLE_ID_BYTES in response.data
     assert _DETAIL_URL_STRING.encode() in response.data
+    # Tags column on the URLs table + the applied tag's remove control.
+    assert _DETAIL_TAG_STRING.encode() in response.data
+    assert _URL_TAG_REMOVE_ACTION_BYTES in response.data
+    # UTub Tags panel/table + the vocabulary tag's delete control.
+    assert _DETAIL_TAGS_PANEL_ID_BYTES in response.data
+    assert _DETAIL_TAGS_TABLE_ID_BYTES in response.data
+    assert _UTUB_TAG_DELETE_ACTION_BYTES in response.data
 
     with app.app_context():
         rows_after: int = AuditLog.query.count()
@@ -338,6 +373,29 @@ def test_admin_utub_detail_renders_for_admin(
         assert audit_row.actor_id == admin_user.id
         assert audit_row.target_type == "Utub"
         assert audit_row.target_id == str(utub_id)
+
+
+def test_admin_utub_detail_renders_empty_tags_state(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """
+    GIVEN a logged-in admin user and a seeded UTub with no tags
+    WHEN the admin sends GET /admin/utubs/<id>
+    THEN the response is 200 HTML that still renders the UTub Tags panel but shows
+         the no-tags empty state (and no utub-tag-delete control).
+    """
+    client, _, admin_user, app = login_admin_user_with_register
+
+    with app.app_context():
+        utub_id: int = _seed_utub(name=_TAGLESS_UTUB_NAME, creator_id=admin_user.id)
+
+    response = client.get(f"{_ADMIN_UTUBS_URL}/{utub_id}")
+
+    assert response.status_code == 200
+    assert _DETAIL_TAGS_PANEL_ID_BYTES in response.data
+    assert _DETAIL_NO_TAGS_ID_BYTES in response.data
+    assert _DETAIL_TAGS_TABLE_ID_BYTES not in response.data
+    assert _UTUB_TAG_DELETE_ACTION_BYTES not in response.data
 
 
 def test_admin_utub_detail_returns_404_for_missing_id(

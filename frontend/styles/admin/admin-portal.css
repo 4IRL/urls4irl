@@ -565,6 +565,24 @@ details.admin-db-json > pre {
     margin-left: 4px;
 }
 
+.admin-tags-cell {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.admin-tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.admin-tag-chip-text {
+    font-size: 0.9rem;
+}
+
 .admin-muted {
     color: var(--cardURLTextColor);
     font-size: 0.9rem;

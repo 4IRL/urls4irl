@@ -641,6 +641,9 @@ class AdminPortalLocators(GenericPageLocator):
     UTUB_DETAIL_TITLE = "#AdminUtubDetailTitle"
     UTUB_DETAIL_MEMBERS_TABLE = "#AdminUtubDetailMembersTable"
     UTUB_DETAIL_URLS_TABLE = "#AdminUtubDetailUrlsTable"
+    UTUB_DETAIL_TAGS_PANEL = "#AdminUtubDetailTagsPanel"
+    UTUB_DETAIL_TAGS_TABLE = "#AdminUtubDetailTagsTable"
+    UTUB_DETAIL_NO_TAGS = "#AdminUtubDetailNoTags"
     UTUB_DETAIL_MEMBERS_PAGINATION = "#AdminUtubDetailMembersPagination"
     UTUB_DETAIL_URLS_PAGINATION = "#AdminUtubDetailUrlsPagination"
     UTUB_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
@@ -652,6 +655,8 @@ class AdminPortalLocators(GenericPageLocator):
     UTUB_DETAIL_MOD_MEMBER_REMOVE_BTN = '[data-admin-action="member-remove"]'
     UTUB_DETAIL_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
     UTUB_DETAIL_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
+    UTUB_DETAIL_MOD_URL_TAG_REMOVE_BTN = '[data-admin-action="url-tag-remove"]'
+    UTUB_DETAIL_MOD_UTUB_TAG_DELETE_BTN = '[data-admin-action="utub-tag-delete"]'
 
     # User detail page
     USER_DETAIL_TITLE = "#AdminUserDetailTitle"

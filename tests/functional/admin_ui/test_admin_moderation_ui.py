@@ -1,6 +1,7 @@
-"""Playwright UI tests for Phase 4 content-moderation admin actions.
+"""Playwright UI tests for content-moderation admin actions.
 
-Covers the Lock/Unlock UTub controls and the URL-purge control, all now
+Covers the Lock/Unlock UTub controls, the URL-purge control, and the
+tag-moderation controls (remove a tag from a URL, delete a UTub tag), all
 hosted on the aggregated UTub-detail page (``/admin/utubs/<id>``), plus the
 UTub Actions list → detail navigation.
 """
@@ -15,6 +16,8 @@ from playwright.sync_api import Page, expect
 
 from backend.config import ConfigTestUI
 from backend.models.urls import Urls
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -224,6 +227,188 @@ def test_admin_mod_url_purge_control_and_happy_path(
         f"Expected 0 UtubUrls rows for url_id={url_id} after purge, "
         f"found {remaining_associations}"
     )
+
+
+def test_admin_mod_url_tag_remove_happy_path(
+    page: Page,
+    create_test_tags,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing the detail page of a UTub whose URLs table shows a
+         tagged URL
+    WHEN the admin clicks that tag's Remove button, enters a reason, and confirms
+    THEN the page reloads, the tag's remove control for that URL is gone, the
+         Utub_Url_Tags association is deleted, and the UTub's tag vocabulary row
+         is preserved.
+    """
+    with provide_app.app_context():
+        url_tag = Utub_Url_Tags.query.order_by(Utub_Url_Tags.id.asc()).first()
+        assert url_tag is not None, "No URL tags seeded — fixture may have failed"
+        utub_id = url_tag.utub_id
+        utub_url_id = url_tag.utub_url_id
+        utub_tag_id = url_tag.utub_tag_id
+        url_tag_id = url_tag.id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_URLS_TABLE)
+
+    remove_selector = (
+        f"{APL.UTUB_DETAIL_MOD_URL_TAG_REMOVE_BTN}"
+        f'[data-action-url$="/urls/{utub_url_id}/tags/{utub_tag_id}/remove"]'
+    )
+    remove_btn = wait_then_get_element(page=page, css_selector=remove_selector)
+    expect(remove_btn).to_be_visible()
+
+    remove_btn.click()
+
+    modal_title = wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+    expect(modal_title).to_have_text(
+        UI_TEST_STRINGS.ADMIN_MOD_URL_TAG_REMOVE_CONFIRM_TITLE
+    )
+
+    reason_input = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_REASON_INPUT
+    )
+    reason_input.fill(TEST_REASON_TEXT)
+
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    # data-reload-on-success calls window.location.reload() inside the AJAX done
+    # handler; poll the reloaded DOM (auto-retry) rather than racing a bare
+    # networkidle wait against the navigation start.
+    expect(page.locator(remove_selector)).to_have_count(0)
+
+    with provide_app.app_context():
+        assert Utub_Url_Tags.query.get(url_tag_id) is None
+        assert Utub_Tags.query.get(utub_tag_id) is not None
+
+
+def test_admin_mod_utub_tag_delete_happy_path(
+    page: Page,
+    create_test_tags,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing the detail page of a UTub whose UTub Tags panel lists
+         a vocabulary tag
+    WHEN the admin clicks that tag's Delete button, enters a reason, and confirms
+    THEN the page reloads, the tag's delete control is gone, and the Utub_Tags
+         vocabulary row (with its URL applications) is deleted.
+    """
+    with provide_app.app_context():
+        utub_tag = Utub_Tags.query.order_by(Utub_Tags.id.asc()).first()
+        assert utub_tag is not None, "No UTub tags seeded — fixture may have failed"
+        utub_id = utub_tag.utub_id
+        utub_tag_id = utub_tag.id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TAGS_TABLE)
+
+    delete_selector = (
+        f"{APL.UTUB_DETAIL_MOD_UTUB_TAG_DELETE_BTN}"
+        f'[data-action-url$="/tags/{utub_tag_id}/delete"]'
+    )
+    delete_btn = wait_then_get_element(page=page, css_selector=delete_selector)
+    expect(delete_btn).to_be_visible()
+
+    delete_btn.click()
+
+    modal_title = wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+    expect(modal_title).to_have_text(
+        UI_TEST_STRINGS.ADMIN_MOD_UTUB_TAG_DELETE_CONFIRM_TITLE
+    )
+
+    reason_input = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_REASON_INPUT
+    )
+    reason_input.fill(TEST_REASON_TEXT)
+
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    # data-reload-on-success calls window.location.reload() inside the AJAX done
+    # handler; poll the reloaded DOM (auto-retry) rather than racing a bare
+    # networkidle wait against the navigation start.
+    expect(page.locator(delete_selector)).to_have_count(0)
+
+    with provide_app.app_context():
+        assert Utub_Tags.query.get(utub_tag_id) is None
+        assert Utub_Url_Tags.query.filter_by(utub_tag_id=utub_tag_id).count() == 0
+
+
+def test_admin_mod_utub_tag_delete_reason_required(
+    page: Page,
+    create_test_tags,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing a UTub-detail page with a vocabulary tag
+    WHEN the admin opens the tag's Delete modal and submits without a reason
+    THEN the modal alert banner shows the reason-required message and the
+         Utub_Tags row remains in the database.
+    """
+    with provide_app.app_context():
+        utub_tag = Utub_Tags.query.order_by(Utub_Tags.id.asc()).first()
+        assert utub_tag is not None, "No UTub tags seeded — fixture may have failed"
+        utub_id = utub_tag.utub_id
+        utub_tag_id = utub_tag.id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TAGS_TABLE)
+
+    delete_selector = (
+        f"{APL.UTUB_DETAIL_MOD_UTUB_TAG_DELETE_BTN}"
+        f'[data-action-url$="/tags/{utub_tag_id}/delete"]'
+    )
+    delete_btn = wait_then_get_element(page=page, css_selector=delete_selector)
+    delete_btn.click()
+
+    wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+
+    # Submit without providing a reason.
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    alert_banner = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_MODAL_ALERT_BANNER
+    )
+    expect(alert_banner).to_be_visible()
+    expect(alert_banner).to_have_text(UI_TEST_STRINGS.ADMIN_ACTION_REASON_REQUIRED)
+
+    with provide_app.app_context():
+        assert Utub_Tags.query.get(utub_tag_id) is not None
 
 
 def test_admin_utub_list_and_open_detail(

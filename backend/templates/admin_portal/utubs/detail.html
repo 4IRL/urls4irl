@@ -118,6 +118,7 @@
                 <th>ID</th>
                 <th>URL</th>
                 <th>Title</th>
+                <th>Tags</th>
                 <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
             </tr>
         </thead>
@@ -127,6 +128,24 @@
                 <td>{{ utub_url.id }}</td>
                 <td>{{ utub_url.standalone_url.url_string }}</td>
                 <td>{{ utub_url.url_title }}</td>
+                <td class="admin-tags-cell">
+                    {% for tag in utub_url.associated_tags %}
+                    <span class="admin-tag-chip">
+                        <span class="admin-tag-chip-text">{{ tag['tagString'] }}</span>
+                        <button type="button"
+                                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                                data-admin-action="url-tag-remove"
+                                data-action-url="{{ url_for('admin.admin_url_tag_remove', utub_id=detail_utub.id, utub_url_id=utub_url.id, utub_tag_id=tag['utubTagID']) }}"
+                                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_CONFIRM_TITLE }}"
+                                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_CONFIRM_BODY }}"
+                                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_SUBMIT }}"
+                                data-reason-required="true"
+                                data-reload-on-success="true">
+                            {{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_LABEL }}
+                        </button>
+                    </span>
+                    {% endfor %}
+                </td>
                 <td class="admin-mod-cell">
                     <button type="button"
                             class="admin-action-btn admin-action-btn--danger admin-mod-btn"
@@ -165,6 +184,43 @@
     </div>
     {% else %}
     <p id="AdminUtubDetailNoUrls">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_URLS }}</p>
+    {% endif %}
+</div>
+<div id="AdminUtubDetailTagsPanel" class="admin-panel">
+    <h2 id="AdminUtubDetailTagsHeading">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_TAGS_HEADING }}</h2>
+    {% if detail_utub.utub_tags %}
+    <table id="AdminUtubDetailTagsTable" class="admin-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tag</th>
+                <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for utub_tag in detail_utub.utub_tags %}
+            <tr>
+                <td>{{ utub_tag.id }}</td>
+                <td>{{ utub_tag.tag_string }}</td>
+                <td class="admin-mod-cell">
+                    <button type="button"
+                            class="admin-action-btn admin-action-btn--danger admin-mod-btn"
+                            data-admin-action="utub-tag-delete"
+                            data-action-url="{{ url_for('admin.admin_utub_tag_delete', utub_id=detail_utub.id, utub_tag_id=utub_tag.id) }}"
+                            data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_CONFIRM_TITLE }}"
+                            data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_CONFIRM_BODY }}"
+                            data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_SUBMIT }}"
+                            data-reason-required="true"
+                            data-reload-on-success="true">
+                        {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_TAG_DELETE_LABEL }}
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p id="AdminUtubDetailNoTags">{{ ADMIN_PORTAL_STRINGS.UTUB_DETAIL_NO_TAGS }}</p>
     {% endif %}
 </div>
 {% endblock %}
