@@ -13,15 +13,18 @@ Covers the two Phase 5 gates:
 from __future__ import annotations
 
 from typing import Tuple
+from unittest import mock
 
 from flask import Flask, g, url_for
 from flask.testing import FlaskClient
+from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
 from backend.splash.constants import LoginErrorCodes
-from backend.utils.all_routes import ROUTES
+from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
@@ -30,6 +33,17 @@ from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.splash
+
+# Patch target for Authlib's token exchange inside the Google callback service,
+# mirroring tests/integration/splash/test_oauth_google.py.
+_AUTHORIZE_ACCESS_TOKEN_TARGET = (
+    "backend.splash.services.oauth.google_service.oauth.google.authorize_access_token"
+)
+_OAUTH_SUBJECT = "sub_suspended_oauth_user"
+_OAUTH_EMAIL = "suspendedoauthuser@example.com"
+_OAUTH_USERNAME = "suspendedoauthuser"
+_FAKE_CODE = "fake-authorization-code"
+_FAKE_STATE = "fake-state-value"
 
 
 def _login_payload() -> dict[str, str]:
@@ -58,6 +72,34 @@ def _clear_flask_login_request_cache() -> None:
     """
     if hasattr(g, "_login_user"):
         delattr(g, "_login_user")
+
+
+def _build_mocked_google_token(*, subject: str, email: str) -> dict:
+    """Build the dict shape ``authorize_access_token()`` returns, with a parsed
+    ``userinfo`` OIDC claim set carrying a verified email — matching
+    ``test_oauth_google.py``'s ``_build_mocked_token`` for the happy path."""
+    return {"userinfo": {"sub": subject, "email": email, "email_verified": True}}
+
+
+def _callback_url(**query_args: str) -> str:
+    return url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, **query_args)
+
+
+def _seed_linked_google_user(
+    app: Flask, *, subject: str, email: str, username: str
+) -> int:
+    """Create a password-less, email-validated user with one linked google
+    ``UserOAuthIdentity`` (mirrors ``test_oauth_google.py``'s
+    ``_seed_existing_oauth_user``) and return the new user's id."""
+    with app.app_context():
+        user = Users(username=username, email=email, plaintext_password=None)
+        user.oauth_identities.append(
+            UserOAuthIdentity(provider="google", provider_subject=subject)
+        )
+        user.email_validated = True
+        db.session.add(user)
+        db.session.commit()
+        return user.id
 
 
 def test_suspended_user_blocked_at_login(app: Flask, register_first_user):
@@ -187,3 +229,37 @@ def test_session_without_issued_stamp_rejected_once_invalidation_set(
     _clear_flask_login_request_cache()
 
     assert client.get(home_url).status_code == 302
+
+
+@mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
+def test_suspended_oauth_user_blocked_at_google_callback(
+    mock_authorize_access_token: mock.MagicMock, app: Flask, load_login_page
+):
+    """
+    GIVEN a SUSPENDED user with a linked google UserOAuthIdentity
+    WHEN the Google callback's mocked token exchange resolves that identity
+    THEN the OAuth suspension reject banner renders (200 template response),
+         no authenticated session is created, and login_user is never reached —
+         mirroring the local-login suspension gate for the OAuth path.
+    """
+    mock_authorize_access_token.return_value = _build_mocked_google_token(
+        subject=_OAUTH_SUBJECT, email=_OAUTH_EMAIL
+    )
+    suspended_user_id = _seed_linked_google_user(
+        app, subject=_OAUTH_SUBJECT, email=_OAUTH_EMAIL, username=_OAUTH_USERNAME
+    )
+    _suspend_user(app, suspended_user_id)
+    client, _ = load_login_page
+
+    with app.app_context():
+        assert Users.query.get(suspended_user_id).is_suspended
+    assert not current_user.is_authenticated
+
+    response = client.get(
+        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
+    )
+
+    assert response.status_code == 200
+    assert USER_FAILURE.ACCOUNT_SUSPENDED.encode() in response.data
+    assert not current_user.is_authenticated
+    mock_authorize_access_token.assert_called_once()
