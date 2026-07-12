@@ -69,6 +69,7 @@
         <button type="submit" class="admin-db-search-btn">Search</button>
     </form>
     {% if members_page.total_count %}
+    <div class="admin-table-scroll">
     <table id="AdminUtubDetailMembersTable" class="admin-table">
         <thead>
             <tr>
@@ -103,6 +104,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
     <div id="AdminUtubDetailMembersPagination" class="admin-search-pagination">
         <span>Showing {{ members_page.showing_start }}&ndash;{{ members_page.showing_end }} of {{ members_page.total_count }}</span>
         {% if members_page.has_previous %}
@@ -128,6 +130,7 @@
         <button type="submit" class="admin-db-search-btn">Search</button>
     </form>
     {% if urls_page.total_count %}
+    <div class="admin-table-scroll">
     <table id="AdminUtubDetailUrlsTable" class="admin-table">
         <thead>
             <tr>
@@ -170,6 +173,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
     <div id="AdminUtubDetailUrlsPagination" class="admin-search-pagination">
         <span>Showing {{ urls_page.showing_start }}&ndash;{{ urls_page.showing_end }} of {{ urls_page.total_count }}</span>
         {% if urls_page.has_previous %}
@@ -196,6 +200,7 @@
         <button type="submit" class="admin-db-search-btn">Search</button>
     </form>
     {% if tags_rows %}
+    <div class="admin-table-scroll">
     <table id="AdminUtubDetailTagsTable" class="admin-table">
         <thead>
             <tr>
@@ -226,6 +231,7 @@
             {% endfor %}
         </tbody>
     </table>
+    </div>
     {% elif tags_q %}
     <p id="AdminUtubDetailTagsNoResults" class="admin-search-empty">{{ ADMIN_PORTAL_STRINGS.DB_NO_SEARCH_RESULTS }}</p>
     {% else %}
