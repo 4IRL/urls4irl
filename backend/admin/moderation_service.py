@@ -381,64 +381,6 @@ def purge_url_globally(*, actor_id: int, url_id: int, reason: str) -> FlaskRespo
     ).to_response()
 
 
-def remove_tag_from_url_admin(
-    *,
-    actor_id: int,
-    utub_id: int,
-    utub_url_id: int,
-    utub_tag_id: int,
-    reason: str,
-) -> FlaskResponse:
-    """Remove a single tag application from a specific URL in a UTub.
-
-    Deletes exactly one Utub_Url_Tags association row, identified by the
-    (utub_id, utub_url_id, utub_tag_id) tuple. The Utub_Tags vocabulary row is
-    left intact, and the tag remains applied to any other URLs that use it.
-
-    Args:
-        actor_id: ID of the admin user performing the action.
-        utub_id: Primary key of the UTub containing the URL.
-        utub_url_id: Primary key of the Utub_Urls row the tag is applied to.
-        utub_tag_id: Primary key of the Utub_Tags vocabulary row to unapply.
-        reason: Required human-readable reason recorded in the audit log.
-
-    Returns:
-        200 JSON envelope on success.
-        404 when no Utub_Url_Tags row matches all three ids.
-    """
-    url_tag: Utub_Url_Tags | None = Utub_Url_Tags.query.filter_by(
-        utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=utub_tag_id
-    ).first()
-    if url_tag is None:
-        return build_message_error_response(
-            message=ADMIN_ACTION_STRINGS.MOD_TARGET_NOT_FOUND,
-            error_code=AdminActionErrorCodes.TARGET_NOT_FOUND,
-            status_code=404,
-        )
-
-    url_tag_id: int = url_tag.id
-    containing_utub: Utubs = url_tag.utub_containing_this_url_tag
-    db.session.delete(url_tag)
-    containing_utub.set_last_updated()
-    audit.record(
-        actor_id=actor_id,
-        action=ADMIN_AUDIT_ACTIONS.URL_TAG_REMOVE,
-        target_type="UtubUrlTag",
-        target_id=str(url_tag_id),
-        metadata={
-            "reason": reason,
-            "utub_id": utub_id,
-            "utub_url_id": utub_url_id,
-            "utub_tag_id": utub_tag_id,
-        },
-    )
-    db.session.commit()
-    return AdminActionResponseSchema(
-        status=STD_JSON.SUCCESS,
-        message=ADMIN_ACTION_STRINGS.MOD_URL_TAG_REMOVE_SUCCESS,
-    ).to_response()
-
-
 def delete_utub_tag_admin(
     *, actor_id: int, utub_id: int, utub_tag_id: int, reason: str
 ) -> FlaskResponse:

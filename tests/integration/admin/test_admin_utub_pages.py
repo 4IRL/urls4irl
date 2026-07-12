@@ -43,7 +43,6 @@ _MISSING_UTUB_ID: int = 999999
 _DETAIL_TAGS_PANEL_ID_BYTES: bytes = b'id="AdminUtubDetailTagsPanel"'
 _DETAIL_TAGS_TABLE_ID_BYTES: bytes = b'id="AdminUtubDetailTagsTable"'
 _DETAIL_NO_TAGS_ID_BYTES: bytes = b'id="AdminUtubDetailNoTags"'
-_URL_TAG_REMOVE_ACTION_BYTES: bytes = b'data-admin-action="url-tag-remove"'
 _UTUB_TAG_DELETE_ACTION_BYTES: bytes = b'data-admin-action="utub-tag-delete"'
 
 # Must match ``_DETAIL_TABLE_PAGE_SIZE`` in ``backend/admin/routes.py``.
@@ -135,9 +134,8 @@ def _seed_utub_with_content(*, name: str, creator_id: int) -> int:
     a single URL association, returning the UTub id.
 
     Provides the aggregated detail page with at least one member row, one URL
-    row, one UTub tag (vocabulary), and one applied URL-tag so the members,
-    URLs (incl. the Tags column), and UTub Tags tables all render (rather than
-    empty states).
+    row, and one UTub tag (vocabulary) so the members, URLs, and UTub Tags
+    tables all render (rather than empty states).
     """
     new_utub = Utubs(name=name, utub_creator=creator_id, utub_description="")
     db.session.add(new_utub)
@@ -330,8 +328,8 @@ def test_admin_utub_detail_renders_for_admin(
     WHEN the admin sends GET /admin/utubs/<id>
     THEN the response is 200 HTML containing the UTub name, the detail title id,
          the members-table id with the member's username, the URLs-table id
-         with the seeded URL string, the seeded tag string with its url-tag-remove
-         control, and the UTub Tags panel/table with its utub-tag-delete control;
+         with the seeded URL string, and the UTub Tags panel/table with the
+         seeded tag string and its utub-tag-delete control;
          and exactly one AuditLog row is created with action UTUB_VIEW,
          target_type "Utub", target_id str(<id>), and actor_id == the admin's
          user id.
@@ -356,12 +354,10 @@ def test_admin_utub_detail_renders_for_admin(
     assert admin_username.encode() in response.data
     assert _DETAIL_URLS_TABLE_ID_BYTES in response.data
     assert _DETAIL_URL_STRING.encode() in response.data
-    # Tags column on the URLs table + the applied tag's remove control.
-    assert _DETAIL_TAG_STRING.encode() in response.data
-    assert _URL_TAG_REMOVE_ACTION_BYTES in response.data
-    # UTub Tags panel/table + the vocabulary tag's delete control.
+    # UTub Tags panel/table + the vocabulary tag string and its delete control.
     assert _DETAIL_TAGS_PANEL_ID_BYTES in response.data
     assert _DETAIL_TAGS_TABLE_ID_BYTES in response.data
+    assert _DETAIL_TAG_STRING.encode() in response.data
     assert _UTUB_TAG_DELETE_ACTION_BYTES in response.data
 
     with app.app_context():

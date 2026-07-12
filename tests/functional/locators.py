@@ -655,7 +655,6 @@ class AdminPortalLocators(GenericPageLocator):
     UTUB_DETAIL_MOD_MEMBER_REMOVE_BTN = '[data-admin-action="member-remove"]'
     UTUB_DETAIL_MOD_URL_DELETE_BTN = '[data-admin-action="url-delete"]'
     UTUB_DETAIL_MOD_URL_PURGE_BTN = '[data-admin-action="url-purge"]'
-    UTUB_DETAIL_MOD_URL_TAG_REMOVE_BTN = '[data-admin-action="url-tag-remove"]'
     UTUB_DETAIL_MOD_UTUB_TAG_DELETE_BTN = '[data-admin-action="utub-tag-delete"]'
 
     # User detail page

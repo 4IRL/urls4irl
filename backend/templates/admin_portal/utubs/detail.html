@@ -118,7 +118,6 @@
                 <th>ID</th>
                 <th>URL</th>
                 <th>Title</th>
-                <th>Tags</th>
                 <th>{{ ADMIN_PORTAL_STRINGS.MOD_SECTION_TITLE }}</th>
             </tr>
         </thead>
@@ -128,24 +127,6 @@
                 <td>{{ utub_url.id }}</td>
                 <td>{{ utub_url.standalone_url.url_string }}</td>
                 <td>{{ utub_url.url_title }}</td>
-                <td class="admin-tags-cell">
-                    {% for tag in utub_url.associated_tags %}
-                    <span class="admin-tag-chip">
-                        <span class="admin-tag-chip-text">{{ tag['tagString'] }}</span>
-                        <button type="button"
-                                class="admin-action-btn admin-action-btn--danger admin-mod-btn"
-                                data-admin-action="url-tag-remove"
-                                data-action-url="{{ url_for('admin.admin_url_tag_remove', utub_id=detail_utub.id, utub_url_id=utub_url.id, utub_tag_id=tag['utubTagID']) }}"
-                                data-confirm-title="{{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_CONFIRM_TITLE }}"
-                                data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_CONFIRM_BODY }}"
-                                data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_SUBMIT }}"
-                                data-reason-required="true"
-                                data-reload-on-success="true">
-                            {{ ADMIN_PORTAL_STRINGS.MOD_URL_TAG_REMOVE_LABEL }}
-                        </button>
-                    </span>
-                    {% endfor %}
-                </td>
                 <td class="admin-mod-cell">
                     <button type="button"
                             class="admin-action-btn admin-action-btn--danger admin-mod-btn"

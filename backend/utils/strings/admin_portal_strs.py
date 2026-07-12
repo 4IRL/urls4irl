@@ -179,13 +179,6 @@ class ADMIN_PORTAL_STRINGS:
         "This action cannot be undone."
     )
     MOD_URL_PURGE_SUBMIT: str = "Purge"
-    MOD_URL_TAG_REMOVE_LABEL: str = "Remove Tag"
-    MOD_URL_TAG_REMOVE_CONFIRM_TITLE: str = "Remove Tag from URL?"
-    MOD_URL_TAG_REMOVE_CONFIRM_BODY: str = (
-        "Remove this tag from this URL only. "
-        "The tag remains in the UTub's tag vocabulary and on any other URLs it is applied to."
-    )
-    MOD_URL_TAG_REMOVE_SUBMIT: str = "Remove"
     MOD_UTUB_TAG_DELETE_LABEL: str = "Delete Tag"
     MOD_UTUB_TAG_DELETE_CONFIRM_TITLE: str = "Delete UTub Tag?"
     MOD_UTUB_TAG_DELETE_CONFIRM_BODY: str = (
@@ -332,7 +325,6 @@ class ADMIN_ACTION_STRINGS:
     )
     MOD_URL_DELETE_SUCCESS: str = "URL removed from UTub successfully."
     MOD_URL_PURGE_SUCCESS: str = "URL purged from {count} UTub(s)."
-    MOD_URL_TAG_REMOVE_SUCCESS: str = "Tag removed from URL successfully."
     MOD_UTUB_TAG_DELETE_SUCCESS: str = "UTub tag deleted. Removed from {count} URL(s)."
     # Account lifecycle action backend response messages (not bridged to JS)
     LAST_ADMIN_FORBIDDEN: str = (
@@ -401,7 +393,6 @@ class ADMIN_AUDIT_ACTIONS:
     MEMBER_REMOVE: str = "admin.member.remove"
     URL_DELETE: str = "admin.url.delete"
     URL_PURGE: str = "admin.url.purge"
-    URL_TAG_REMOVE: str = "admin.url_tag.remove"
     UTUB_TAG_DELETE: str = "admin.utub_tag.delete"
     # Account lifecycle actions
     USER_SUSPEND: str = "admin.user.suspend"
