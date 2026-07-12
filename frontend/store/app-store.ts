@@ -8,6 +8,7 @@ export interface AppState {
   activeUTubName: string | null;
   activeUTubDescription: string | null;
   isCurrentUserOwner: boolean;
+  isCurrentUTubLocked: boolean;
   currentUserID: number | null;
   utubOwnerID: number | null;
   selectedURLCardID: number | null;
@@ -24,6 +25,7 @@ function createInitialState(): AppState {
     activeUTubName: null,
     activeUTubDescription: null,
     isCurrentUserOwner: false,
+    isCurrentUTubLocked: false,
     currentUserID: null,
     utubOwnerID: null,
     selectedURLCardID: null,

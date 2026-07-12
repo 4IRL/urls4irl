@@ -23,6 +23,15 @@ def get_utub_this_user_did_not_create(app: Flask, user_id: int) -> Utubs:
         return Utubs.query.filter(Utubs.utub_creator != user_id).first()
 
 
+def set_utub_locked_state(app: Flask, utub_id: int, is_locked: bool) -> None:
+    """Set a UTub's ``is_locked`` flag and commit so the running Flask server
+    renders and enforces the locked state on the next request."""
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.is_locked = is_locked
+        db.session.commit()
+
+
 def get_url_in_utub(app: Flask, utub_id: int) -> Utub_Urls:
     with app.app_context():
         return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first()

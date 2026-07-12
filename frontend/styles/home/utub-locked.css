@@ -1,0 +1,54 @@
+/**
+ * Locked-UTub affordances.
+ *
+ * A locked UTub is frozen to every end-user mutation (the server enforces this;
+ * see backend/utubs/guards.py). These rules communicate that state and disable
+ * the mutation controls. `buildSelectedUTub()` toggles `body.utub-locked` when a
+ * locked UTub is selected, which lets a single stylesheet disable controls that
+ * are rendered dynamically after selection (per-URL and per-tag buttons) without
+ * hooking every render path.
+ */
+
+/* Padlock beside the UTub title in the URL deck header. */
+.utub-locked-title-icon {
+    display: inline-flex;
+    align-items: center;
+    margin-left: 8px;
+    color: var(--utubLockedIconColor);
+    flex-shrink: 0;
+}
+
+/* Inline edit hints — hidden entirely while locked. The padlock already
+   communicates the locked state, so greying these small pencil affordances
+   (UTub name / description / per-URL title) and the "Add a description?" prompt
+   just leaves confusing ghosts. `!important` because the shown state can be set
+   by ID-scoped rules that out-specify a class selector. */
+body.utub-locked .edit-pencil-icon,
+body.utub-locked #URLDeckSubheaderCreateDescription {
+    display: none !important;
+}
+
+/* Primary action buttons — greyed and disabled while locked. Read-only
+   affordances (select UTub, filter/search, expand card, access URL, collapse
+   panels, create a NEW UTub) are intentionally left interactive. */
+body.utub-locked #urlBtnCreate,
+body.utub-locked #urlBtnDeckCreate,
+body.utub-locked #utubBtnDelete,
+body.utub-locked .urlStringBtnUpdate,
+body.utub-locked .urlBtnDelete,
+body.utub-locked .urlTagBtnCreate,
+body.utub-locked .urlTagBtnDelete,
+body.utub-locked #memberBtnCreate,
+body.utub-locked .memberOtherBtnDelete,
+body.utub-locked #memberSelfBtnDelete,
+body.utub-locked #utubTagBtnCreate,
+body.utub-locked #utubTagBtnUpdateAllOpen {
+    /* `!important` is deliberate: the locked state must win over the normal
+       per-URL button rules, which are attribute-scoped
+       (`.urlRow[urlSelected="true"] .urlOptions>button`, specificity 0-4-1) and
+       otherwise out-specify these class selectors and re-enable the buttons on
+       the selected card. */
+    pointer-events: none !important;
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+}

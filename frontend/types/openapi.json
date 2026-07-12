@@ -8043,9 +8043,13 @@
           "memberRole": {
             "description": "Role of the current user in the UTub",
             "type": "string"
+          },
+          "isLocked": {
+            "description": "Whether the UTub is locked (frozen to all user mutations)",
+            "type": "boolean"
           }
         },
-        "required": ["id", "name", "memberRole"],
+        "required": ["id", "name", "memberRole", "isLocked"],
         "type": "object"
       },
       "UtubSummaryListSchema": {
@@ -8146,6 +8150,10 @@
             "description": "Whether the current user is the creator of the UTub",
             "type": "boolean"
           },
+          "isLocked": {
+            "description": "Whether the UTub is locked (frozen to all user mutations)",
+            "type": "boolean"
+          },
           "currentUser": {
             "description": "ID of the currently authenticated user",
             "type": "integer"
@@ -8161,6 +8169,7 @@
           "urls",
           "tags",
           "isCreator",
+          "isLocked",
           "currentUser"
         ],
         "type": "object"

@@ -79,6 +79,10 @@ class HomePageLocators(GenericPageLocator):
     MEMBER_ICON = ".bi-people-fill"
     CO_CREATOR_ICON = ".bi-diamond-half"
     CREATOR_ICON = ".bi-diamond-fill"
+    # Padlock shown in a UTub deck selector in place of the member-role icon
+    # when the UTub is locked (server-rendered via UTubCard.html, client-rendered
+    # via createUTubSelector).
+    UTUB_LOCKED_ICON = "svg.utubLockedIcon"
 
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
     UTUB_SEARCH_WRAP = "#SearchUTubWrap"
@@ -163,6 +167,11 @@ class HomePageLocators(GenericPageLocator):
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"
+    # Padlock beside the UTub title in the URL deck header; the `hidden` class is
+    # removed when a locked UTub is selected. `body.utub-locked` drives the CSS
+    # that disables every mutation control while a locked UTub is selected.
+    URL_DECK_LOCK_ICON = "#URLDeckLockIcon"
+    BODY_LOCKED_CLASS = "utub-locked"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     WRAP_URL_CREATE = "#createURLWrap"

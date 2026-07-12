@@ -1708,6 +1708,8 @@ export interface components {
       name: string;
       /** @description Role of the current user in the UTub */
       memberRole: string;
+      /** @description Whether the UTub is locked (frozen to all user mutations) */
+      isLocked: boolean;
     };
     /** @description List of UTub summaries */
     UtubSummaryListSchema: {
@@ -1749,6 +1751,8 @@ export interface components {
       tags: components["schemas"]["UtubTagSchema"][];
       /** @description Whether the current user is the creator of the UTub */
       isCreator: boolean;
+      /** @description Whether the UTub is locked (frozen to all user mutations) */
+      isLocked: boolean;
       /** @description ID of the currently authenticated user */
       currentUser: number;
     };

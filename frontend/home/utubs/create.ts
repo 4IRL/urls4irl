@@ -261,6 +261,8 @@ function createUTubSuccess(response: CreateUtubResponse): void {
         id: response.utubID,
         name: response.utubName,
         memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
+        // A newly created UTub is never locked.
+        isLocked: false,
       },
     ],
   });
@@ -272,12 +274,14 @@ function createUTubSuccess(response: CreateUtubResponse): void {
 
   // Create and append newly created UTub selector
   const index = parseInt($(".UTubSelector").first().attr("position") as string);
-  const newUTubSelector = createUTubSelector(
-    response.utubName,
+  const newUTubSelector = createUTubSelector({
+    utubName: response.utubName,
     utubID,
-    APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
-    index - 1,
-  );
+    memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
+    // A newly created UTub is never locked.
+    isLocked: false,
+    index: index - 1,
+  });
   $("#listUTubs").prepend(newUTubSelector);
   updateUTubDeckCount();
   applyAlternatingUTubSelectorBackground();

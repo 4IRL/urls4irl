@@ -55,6 +55,10 @@ class UtubDetailSchema(BaseSchema):
         alias=M.IS_CREATOR,
         description="Whether the current user is the creator of the UTub",
     )
+    is_locked: bool = Field(
+        alias=M.IS_LOCKED,
+        description="Whether the UTub is locked (frozen to all user mutations)",
+    )
     current_user: int = Field(
         alias=M.CURRENT_USER,
         description="ID of the currently authenticated user",
@@ -92,6 +96,7 @@ class UtubDetailSchema(BaseSchema):
             urls=urls,
             tags=tags,
             is_creator=utub.utub_creator == current_user_id,
+            is_locked=utub.is_locked,
             current_user=current_user_id,
         )
 

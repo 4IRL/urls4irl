@@ -57,6 +57,10 @@
     color: var(--memberRoleIconColor);
 }
 
+.UTubSelector .memberRole.utubLockedIcon {
+    color: var(--utubLockedIconColor);
+}
+
 #UTubDeckSubheaderWrap {
     width: 100%;
 }
