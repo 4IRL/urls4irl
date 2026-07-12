@@ -51,7 +51,10 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
   const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
 
-  if (getState().isCurrentUserOwner) {
+  // A locked UTub is frozen to all mutations, so the description never becomes
+  // editable — skip the editable class, pencil, and click/keydown handlers,
+  // exactly as for a non-owner.
+  if (getState().isCurrentUserOwner && !getState().isCurrentUTubLocked) {
     $("#URLDeckSubheader").addClass("editable");
     $("#UTubDescriptionSubheaderWrap").addClass("editable-wrap");
     descPencilIcon.removeClass("hidden");

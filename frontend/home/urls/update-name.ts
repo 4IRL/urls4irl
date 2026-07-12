@@ -64,7 +64,10 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   const namePencilIcon = $("#UTubNameUpdateWrap .edit-pencil-icon");
   namePencilIcon.addClass("hidden").off("keydown.updateUTubname");
 
-  if (!getState().isCurrentUserOwner) return;
+  // A locked UTub is frozen to all mutations. Bail like a non-owner so the
+  // title never becomes editable — no editable class, no pencil, and no
+  // click/keydown handler to open the inline edit form.
+  if (!getState().isCurrentUserOwner || getState().isCurrentUTubLocked) return;
 
   $("#URLDeckHeader").addClass("editable");
   $("#UTubNameUpdateWrap").addClass("editable-wrap");

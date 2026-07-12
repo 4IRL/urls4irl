@@ -171,6 +171,13 @@ function setupAsNonOwner(): void {
   } as ReturnType<typeof getState>);
 }
 
+function setupAsLockedOwner(): void {
+  vi.mocked(getState).mockReturnValue({
+    isCurrentUserOwner: true,
+    isCurrentUTubLocked: true,
+  } as ReturnType<typeof getState>);
+}
+
 function namePencilIcon(): JQuery<HTMLElement> {
   return $("#UTubNameUpdateWrap .edit-pencil-icon");
 }
@@ -352,6 +359,27 @@ describe("Edit pencil icon", () => {
       it("Enter key on pencil icon does not open edit", () => {
         const enterEvent = $.Event("keydown", { key: "Enter" });
         namePencilIcon().trigger(enterEvent);
+
+        expect(deselectAllURLs).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("locked UTub (owner)", () => {
+      beforeEach(() => {
+        setupAsLockedOwner();
+        setupUpdateUTubNameEventListeners(UTUB_ID);
+      });
+
+      it("keeps pencil icon hidden", () => {
+        expect(namePencilIcon().hasClass("hidden")).toBe(true);
+      });
+
+      it("header does not have editable class", () => {
+        expect($("#URLDeckHeader").hasClass("editable")).toBe(false);
+      });
+
+      it("clicking the title does not open the edit form", () => {
+        $("#URLDeckHeader").trigger("click");
 
         expect(deselectAllURLs).not.toHaveBeenCalled();
       });
@@ -546,6 +574,27 @@ describe("Edit pencil icon", () => {
       it("Enter key on pencil icon does not open edit", () => {
         const enterEvent = $.Event("keydown", { key: "Enter" });
         descriptionPencilIcon().trigger(enterEvent);
+
+        expect(deselectAllURLs).not.toHaveBeenCalled();
+      });
+    });
+
+    describe("locked UTub (owner)", () => {
+      beforeEach(() => {
+        setupAsLockedOwner();
+        setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      });
+
+      it("keeps pencil icon hidden", () => {
+        expect(descriptionPencilIcon().hasClass("hidden")).toBe(true);
+      });
+
+      it("subheader does not have editable class", () => {
+        expect($("#URLDeckSubheader").hasClass("editable")).toBe(false);
+      });
+
+      it("clicking the description does not open the edit form", () => {
+        $("#UTubDescriptionSubheaderWrap").trigger("click");
 
         expect(deselectAllURLs).not.toHaveBeenCalled();
       });
