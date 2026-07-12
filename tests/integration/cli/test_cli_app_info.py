@@ -104,3 +104,28 @@ def test_app_info_reports_local_environment(runner):
             app.config[CONFIG_ENVS.PRODUCTION] = False
             app.config[CONFIG_ENVS.DEV_SERVER] = False
             app.config["TESTING"] = True
+
+
+def test_app_info_production_takes_precedence_over_dev_server(runner):
+    """
+    GIVEN a running Flask app with both PRODUCTION and DEV_SERVER flags set
+    WHEN the developer runs `flask utils app-info`
+    THEN verify the environment line reports "production", proving the
+        precedence order encoded in `_derive_environment()` (PRODUCTION is
+        checked before DEV_SERVER)
+    """
+    app, cli_runner = runner
+
+    with app.app_context():
+        app.config[CONFIG_ENVS.PRODUCTION] = True
+        app.config[CONFIG_ENVS.DEV_SERVER] = True
+
+    try:
+        result = cli_runner.invoke(args=["utils", "app-info"])
+
+        assert result.exit_code == 0
+        assert "production" in result.output
+    finally:
+        with app.app_context():
+            app.config[CONFIG_ENVS.PRODUCTION] = False
+            app.config[CONFIG_ENVS.DEV_SERVER] = False
