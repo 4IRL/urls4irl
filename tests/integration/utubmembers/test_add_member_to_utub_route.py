@@ -3,6 +3,7 @@ from flask_login import current_user
 import pytest
 
 from backend import db
+from backend.members.constants import UTubMembersErrorCodes
 from backend.metrics.events import EventName
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
@@ -20,6 +21,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from backend.schemas.users import UserSchema
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import is_string_in_logs
@@ -130,6 +132,69 @@ def test_add_valid_users_to_utub_as_creator(
 
             # Ensure correct count of Utub-User associations
             assert Utub_Members.query.count() == initial_num_user_utubs
+
+
+def test_add_member_to_locked_utub_is_rejected(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub containing only themselves, where the UTub is LOCKED
+    WHEN the creator tries to add another valid user to their locked UTub
+        - By POST to "/utubs/<int:utub_id>/members" with a valid username
+    THEN the write-guard rejects the add: the server responds 403 with the locked-UTub
+        JSON error (error code UTubMembersErrorCodes.UTUB_IS_LOCKED, message
+        UTUB_FAILURE.UTUB_IS_LOCKED) and no new Utub_Members association is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        other_user: Users = Users.query.filter(
+            Users.username != current_user.username
+        ).first()
+        username_to_add = other_user.username
+
+        utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role == Member_Role.CREATOR,
+        ).first()
+        utub_of_current_user: Utubs = utub_member.to_utub
+        utub_id_of_current_user = utub_of_current_user.id
+
+        # Lock the UTub
+        utub_of_current_user.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: only the creator is in the UTub prior to the blocked action
+        initial_users_in_utub = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id_of_current_user
+        ).count()
+        assert initial_users_in_utub == 1
+        initial_num_user_utubs = Utub_Members.query.count()
+
+    added_user_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
+        json={ADD_USER_FORM.USERNAME: username_to_add},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert added_user_response.status_code == 403
+    added_user_response_json = added_user_response.json
+    assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert added_user_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(added_user_response_json[STD_JSON.ERROR_CODE])
+        == UTubMembersErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # No new member association created in the locked UTub
+        assert (
+            Utub_Members.query.filter(
+                Utub_Members.utub_id == utub_id_of_current_user
+            ).count()
+            == initial_users_in_utub
+        )
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_add_member_to_utub_records_metric(

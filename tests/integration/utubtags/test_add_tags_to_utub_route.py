@@ -2,6 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend import db
 from backend.metrics.events import EventName
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
@@ -18,6 +19,7 @@ from backend.utils.strings.json_strs import (
 )
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
@@ -104,6 +106,64 @@ def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_regi
             add_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
             == num_of_urls_tag_applied_to_in_utub
         )
+
+
+def test_create_utub_tag_on_locked_utub_is_rejected(
+    every_user_in_every_utub, login_first_user_without_register
+):
+    """
+    GIVEN UTubs with members in every UTub but no tags, where the target UTub is LOCKED
+    WHEN the logged-in creator tries to create a new UTub tag on the locked UTub
+        - By POST to "/utubs/<int:utub_id>/tags" with a valid tag string
+    THEN the write-guard rejects the add: the server responds 403 with the locked-UTub
+        JSON error (error code UTubTagErrorCodes.UTUB_IS_LOCKED, message
+        UTUB_FAILURE.UTUB_IS_LOCKED) and no new Utub_Tags row is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    NEW_TAG = "Funny!"
+
+    with app.app_context():
+        utub_to_add_tag_to: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_to_add_tag_to = utub_to_add_tag_to.id
+
+        # Lock the UTub
+        utub_to_add_tag_to.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: no tags in this UTub prior to the blocked action
+        num_of_tag_in_utub = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id_to_add_tag_to, Utub_Tags.tag_string == NEW_TAG
+        ).count()
+        assert num_of_tag_in_utub == 0
+        num_of_utub_tags = Utub_Tags.query.count()
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_id_to_add_tag_to),
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 403
+    add_tag_response_json = add_tag_response.json
+    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_tag_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(add_tag_response_json[STD_JSON.ERROR_CODE])
+        == UTubTagErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # No new UTub tag created in the locked UTub
+        assert (
+            Utub_Tags.query.filter(
+                Utub_Tags.utub_id == utub_id_to_add_tag_to,
+                Utub_Tags.tag_string == NEW_TAG,
+            ).count()
+            == num_of_tag_in_utub
+        )
+        assert Utub_Tags.query.count() == num_of_utub_tags
 
 
 def test_add_tag_to_utub_records_metric(

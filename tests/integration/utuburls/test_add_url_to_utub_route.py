@@ -31,6 +31,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.models_for_test import valid_url_strings
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
@@ -145,6 +146,71 @@ def test_add_valid_url_as_utub_member(
         assert url_in_utub[0].url_title == url_title_to_add
 
         assert Utub_Urls.query.count() == initial_utub_urls + 1
+
+
+def test_add_url_to_locked_utub_is_rejected(
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN 3 users and 3 UTubs, all users in each UTub, a valid user logged in, and 3 URLs
+        in the database but not associated with any UTub, where the target UTub is LOCKED
+    WHEN the user tries to add a valid URL to the locked UTub they are a member of
+        - By POST to "/utubs/<int:utub_id>/urls"
+    THEN the write-guard rejects the add: the server responds 403 with the locked-UTub
+        JSON error (error code URLErrorCodes.UTUB_IS_LOCKED, message UTUB_FAILURE.UTUB_IS_LOCKED)
+        and no new Utub_Urls association is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a valid URL to attempt to add
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        url_title_to_add = f"This is {url_string_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+        # Lock the UTub
+        current_utub_member_of.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: no URLs in this UTub prior to the blocked action
+        initial_num_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_to_add_to
+        ).count()
+        assert initial_num_of_urls_in_utub == 0
+        initial_utub_urls = Utub_Urls.query.count()
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+        json={
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title_to_add,
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_url_response.status_code == 403
+    add_url_json_response = add_url_response.json
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # No new URL association created in the locked UTub
+        assert (
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).count()
+            == initial_num_of_urls_in_utub
+        )
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_url_to_utub_records_metric(

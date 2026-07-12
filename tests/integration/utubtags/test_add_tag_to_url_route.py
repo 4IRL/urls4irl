@@ -24,6 +24,7 @@ from backend.utils.strings.json_strs import (
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 from backend.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.models_for_test import all_tag_strings
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
@@ -144,6 +145,84 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         assert add_tag_response_json[
             TAGS_SUCCESS.TAG_COUNTS_MODIFIED
         ] == count_tag_instances_in_utub(utub_id_user_is_creator_of, new_tag_id)
+
+
+def test_add_existing_tag_to_url_in_locked_utub_is_rejected(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub with one URL and an existing UTub tag (vocabulary)
+        row, but no Tag-URL associations, where the UTub is LOCKED
+    WHEN the creator tries to apply the existing tag to the URL in the locked UTub
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags" with the existing tag string
+    THEN the write-guard (add_tag_to_url_if_valid) rejects the add: the server responds 403
+        with the locked-UTub JSON error (error code URLTagErrorCodes.UTUB_IS_LOCKED, message
+        UTUB_FAILURE.UTUB_IS_LOCKED) and no new Utub_Url_Tags association is created.
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+
+        # Seed an existing UTub tag (vocabulary) row for this UTub
+        existing_utub_tag = Utub_Tags(
+            utub_id=utub_id_user_is_creator_of,
+            tag_string=tag_to_add,
+            created_by=current_user.id,
+        )
+        db.session.add(existing_utub_tag)
+
+        # Lock the UTub
+        utub_user_is_creator_of.is_locked = True
+        db.session.commit()
+
+        # Assert-before-state: the tag is not yet applied to the URL
+        init_num_of_tags_on_url = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+        ).count()
+        assert init_num_of_tags_on_url == 0
+        initial_num_url_tag_associations = Utub_Url_Tags.query.count()
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
+    )
+
+    assert add_tag_response.status_code == 403
+    add_tag_response_json = add_tag_response.json
+    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_tag_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
+    assert (
+        int(add_tag_response_json[STD_JSON.ERROR_CODE])
+        == URLTagErrorCodes.UTUB_IS_LOCKED
+    )
+
+    with app.app_context():
+        # No new Tag-URL association created in the locked UTub
+        assert (
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            ).count()
+            == init_num_of_tags_on_url
+        )
+        assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
 
 
 def test_add_tag_to_url_records_metric(
