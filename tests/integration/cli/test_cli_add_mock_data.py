@@ -1,5 +1,12 @@
 import pytest
 
+from backend.cli.mock_constants import (
+    MOCK_ADMIN_USERNAME,
+    MOCK_ADMIN_UTUB_NAME,
+    MOCK_TAGS,
+    MOCK_URL_STRINGS,
+    TEST_USER_COUNT,
+)
 from backend.cli.mock_options import (
     SEED_LATENCY_DEVICE_TYPES,
     SEED_LATENCY_DURATIONS_MS,
@@ -10,6 +17,11 @@ from backend.cli.mock_options import (
 from backend.models.anonymous_latency_rollups import Anonymous_Latency_Daily_Rollups
 from backend.models.anonymous_latency_samples import Anonymous_Latency_Samples
 from backend.models.anonymous_metrics import Anonymous_Metrics
+from backend.models.users import User_Role, Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from tests.integration.cli.utils import (
     verify_custom_url_added_to_all_utubs,
     verify_custom_url_in_database,
@@ -148,6 +160,67 @@ def test_add_mock_utub_members_no_utub_duplicates(runner):
             verify_users_added()
             verify_utubs_added_no_duplicates()
             verify_utubmembers_added()
+
+
+def test_add_mock_admin_full_participant(runner):
+    """
+    GIVEN a fully seeded dev database (`flask addmock all`)
+    WHEN the developer runs the opt-in `flask addmock admin`
+    THEN a dedicated admin user u4i_admin1 is created with the ADMIN role, joins
+        every existing UTub, owns exactly one new UTub that every other mock user
+        is a member of, and that UTub is populated with the standard mock URLs
+        and tags — while the default seed's user count is untouched until the
+        opt-in command runs, and re-running it adds nothing new (idempotent).
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+
+    cli_runner.invoke(args=["addmock", "all"])
+    with app.app_context():
+        # Assert-before-state: the default seed is unchanged — exactly
+        # TEST_USER_COUNT users and no u4i_admin1 until the opt-in command runs.
+        assert Users.query.count() == TEST_USER_COUNT
+        assert Users.query.filter(Users.username == MOCK_ADMIN_USERNAME).count() == 0
+        utub_count_before = Utubs.query.count()
+
+    cli_runner.invoke(args=["addmock", "admin"])
+    with app.app_context():
+        admin: Users = Users.query.filter(Users.username == MOCK_ADMIN_USERNAME).first()
+        assert admin is not None
+        assert admin.role == User_Role.ADMIN
+        assert admin.email_validated
+        assert Users.query.count() == TEST_USER_COUNT + 1
+
+        admin_utubs = Utubs.query.filter(Utubs.name == MOCK_ADMIN_UTUB_NAME).all()
+        assert len(admin_utubs) == 1
+        admin_utub = admin_utubs[0]
+        assert admin_utub.utub_creator == admin.id
+        assert Utubs.query.count() == utub_count_before + 1
+
+        # The admin is a member of every UTub in the database.
+        for utub in Utubs.query.all():
+            assert Utub_Members.query.get((utub.id, admin.id)) is not None
+
+        # Every mock user is a member of the admin's UTub.
+        member_ids = {member.user_id for member in admin_utub.members}
+        assert member_ids == {user.id for user in Users.query.all()}
+
+        # The admin's UTub is populated like the others: URLs, fully tagged.
+        assert Utub_Urls.query.filter(
+            Utub_Urls.utub_id == admin_utub.id
+        ).count() == len(MOCK_URL_STRINGS)
+        assert Utub_Tags.query.filter(
+            Utub_Tags.utub_id == admin_utub.id
+        ).count() == len(MOCK_TAGS)
+
+    # Idempotent: a second run creates no duplicate admin user or UTub.
+    cli_runner.invoke(args=["addmock", "admin"])
+    with app.app_context():
+        assert Users.query.filter(Users.username == MOCK_ADMIN_USERNAME).count() == 1
+        assert Utubs.query.filter(Utubs.name == MOCK_ADMIN_UTUB_NAME).count() == 1
+        assert Users.query.count() == TEST_USER_COUNT + 1
 
 
 def test_add_custom_mock_urls_with_utub_duplicates_one_by_one(runner):

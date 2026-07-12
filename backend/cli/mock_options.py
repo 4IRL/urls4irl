@@ -11,6 +11,7 @@ from sqlalchemy.exc import ProgrammingError
 from backend.utils.db_table_names import TABLE_NAMES
 from backend.db import db
 from backend.cli.mock_constants import MOCK_TRACKING_SEED_URL_PAIRS, TEST_USER_COUNT
+from backend.cli.mock_data.admin import generate_mock_admin
 from backend.cli.mock_data.tags import generate_mock_tags
 from backend.cli.mock_data.urls import generate_mock_urls, generate_custom_mock_url
 from backend.cli.mock_data.users import generate_mock_users
@@ -189,6 +190,20 @@ def mock_tags(no_dupes: bool):
 )
 def mock_all(no_dupes: bool):
     _add_all(db, no_dupes)
+
+
+@mocks_cli.command(
+    "admin",
+    help=(
+        "Add a dedicated full-participant admin user (u4i_admin1): its own UTub, "
+        "member of every existing UTub, with URLs/tags. Opt-in only — NOT part of "
+        "'addmock all'. Run after 'addmock all' on a local dev database."
+    ),
+)
+def mock_admin():
+    print("\n\n--- Adding dedicated admin mock user (u4i_admin1) ---\n")
+    generate_mock_admin(db)
+    print("\n--- Finished adding dedicated admin mock user ---\n\n")
 
 
 def _add_all(db: SQLAlchemy, no_dupes: bool):

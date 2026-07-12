@@ -3,6 +3,12 @@ USERNAME_BASE = "u4i_test"
 EMAIL_SUFFIX = "@urls4irl.app"
 
 MOCK_UTUB_NAME_BASE = "MockUTub_"
+
+# Dedicated full-participant admin mock user, seeded ONLY by the opt-in
+# `flask addmock admin` command — never by the default `addmock`/`addmock all`
+# seed, so the shared test seed (which the UI suite relies on) is unchanged.
+MOCK_ADMIN_USERNAME = "u4i_admin1"
+MOCK_ADMIN_UTUB_NAME = f"{MOCK_UTUB_NAME_BASE}admin1"
 MOCK_UTUB_DESCRIPTION = "This is a description"
 
 MOCK_URL_TITLES = (
