@@ -155,6 +155,7 @@ const appConfig = {
     CROSS_SEARCH_SUBMIT_LABEL: "Search across your UTubs",
     CROSS_SEARCH_REFRESH_LABEL: "Refresh these search results",
     VALIDATE_MY_EMAIL: "Validate My Email",
+    UTUB_IS_LOCKED: "This UTub is locked and cannot be modified.",
     UTUB_SEARCH_NO_RESULTS: "No UTubs found",
     UTUB_SEARCH_PLACEHOLDER: "Filter UTubs",
     UTUB_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} UTubs shown",

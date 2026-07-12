@@ -139,7 +139,10 @@ describe("deleteURLSuccess — empty-state branches", () => {
 
 describe("deleteURLFail — locked UTub 403", () => {
   const LOCKED_MESSAGE = "This UTub is locked and cannot be modified.";
-  const UTUB_IS_LOCKED = 3;
+  // URL operations return URLErrorCodes.UTUB_IS_LOCKED (8), NOT the 3 the
+  // UTub/tag/member enums use — the guard must key on the message, not the
+  // code, or URL deletes on a locked UTub redirect to the error page.
+  const URL_UTUB_IS_LOCKED = 8;
 
   beforeEach(() => {
     document.body.innerHTML = DELETE_URL_HTML;
@@ -181,7 +184,7 @@ describe("deleteURLFail — locked UTub 403", () => {
     ) => void;
     failCallback({
       status: 403,
-      responseJSON: { errorCode: UTUB_IS_LOCKED, message: LOCKED_MESSAGE },
+      responseJSON: { errorCode: URL_UTUB_IS_LOCKED, message: LOCKED_MESSAGE },
     } as unknown as JQuery.jqXHR);
 
     expect(showURLDeckBannerError).toHaveBeenCalledWith(LOCKED_MESSAGE);
