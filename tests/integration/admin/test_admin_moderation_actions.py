@@ -1131,15 +1131,16 @@ def test_lock_gate_blocks_add_member_to_locked_utub(
     assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
 
 
-def test_lock_gate_allows_member_to_leave_locked_utub(
+def test_lock_gate_rejects_member_leaving_locked_utub(
     add_multiple_users_to_utub_without_logging_in: None,
     login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
     GIVEN a locked UTub the logged-in user is a non-creator member of
     WHEN the user removes themselves (leaves the UTub)
-    THEN the leave succeeds (200) — lock freezes new content only, never
-         a member's ability to leave.
+    THEN the leave is rejected (403 + UTUB_IS_LOCKED) — a locked UTub is fully
+         frozen to every user mutation, including a member leaving. Only admin
+         actions bypass the lock.
     """
     client, csrf, member_user, app = login_second_user_without_register
 
@@ -1160,23 +1161,26 @@ def test_lock_gate_allows_member_to_leave_locked_utub(
 
     response = client.delete(leave_path, headers={"X-CSRFToken": csrf})
 
-    assert response.status_code == 200
+    assert response.status_code == 403
+    body = response.get_json()
+    assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
     with app.app_context():
         membership_after: Utub_Members | None = Utub_Members.query.get(
             (utub_id, member_user.id)
         )
-    assert membership_after is None
+    assert membership_after is not None
 
 
-def test_lock_gate_allows_creator_to_delete_locked_utub(
+def test_lock_gate_rejects_creator_deleting_locked_utub(
     add_multiple_users_to_utub_without_logging_in: None,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
     """
     GIVEN a locked UTub the logged-in user created
     WHEN the creator deletes the UTub
-    THEN the delete succeeds (200) — lock freezes new content only, never
-         the creator's ability to delete their UTub.
+    THEN the delete is rejected (403 + UTUB_IS_LOCKED) and the UTub survives —
+         a locked UTub is fully frozen; only an admin may delete it (via the
+         admin dashboard's separate action route, which bypasses the lock).
     """
     client, csrf, creator_user, app = login_first_user_without_register
 
@@ -1191,9 +1195,11 @@ def test_lock_gate_allows_creator_to_delete_locked_utub(
 
     response = client.delete(delete_path, headers={"X-CSRFToken": csrf})
 
-    assert response.status_code == 200
+    assert response.status_code == 403
+    body = response.get_json()
+    assert body[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_IS_LOCKED
     with app.app_context():
-        assert Utubs.query.get(utub_id) is None
+        assert Utubs.query.get(utub_id) is not None
 
 
 def test_admin_mod_url_delete_mismatched_utub_returns_404(

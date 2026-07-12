@@ -9,6 +9,7 @@ from sqlalchemy import or_
 
 from backend import db
 from backend.admin import db_browser_service
+from backend.admin.db_browser_service import _PaginationBase
 from backend.admin.audit_service import (
     AuditLogFilters,
     DEFAULT_AUDIT_PAGE_LIMIT,
@@ -43,7 +44,7 @@ admin = Blueprint("admin", __name__)
 
 
 @dataclass(frozen=True)
-class _DetailTablePage:
+class _DetailTablePage(_PaginationBase):
     """One page of a UTub-detail relationship table (members or URLs).
 
     Holds the sliced page rows plus the offset/limit/total needed to render
@@ -52,29 +53,10 @@ class _DetailTablePage:
     """
 
     rows: list[Utub_Members] | list[Utub_Urls]
-    total_count: int
-    offset: int
-    limit: int
-
-    @property
-    def has_previous(self) -> bool:
-        return self.offset > 0
-
-    @property
-    def has_next(self) -> bool:
-        return self.offset + self.limit < self.total_count
-
-    @property
-    def previous_offset(self) -> int:
-        return max(self.offset - self.limit, 0)
-
-    @property
-    def next_offset(self) -> int:
-        return self.offset + self.limit
 
     @property
     def showing_start(self) -> int:
-        return self.offset + 1 if self.total_count else 0
+        return min(self.offset + 1, self.total_count) if self.total_count else 0
 
     @property
     def showing_end(self) -> int:

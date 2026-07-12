@@ -24,6 +24,36 @@ ADMIN_DB_ROW_PATH_PREFIX: str = "/admin/db/"
 ADMIN_AUDIT_LOG_PATH: str = "/admin/audit-log"
 
 
+def _login_admin_and_navigate(
+    *,
+    app: Flask,
+    context: BrowserContext,
+    page: Page,
+    port: int,
+    user_id: int,
+    config: ConfigTestUI,
+    path: str,
+) -> None:
+    """Promote `user_id` to ADMIN, log them in via session cookie, then
+    navigate the page directly to `path` on the app under test.
+
+    Holds the shared promote → session → base-url → cookie → goto sequence so
+    each ``login_admin_and_open_*`` helper reduces to selecting its
+    destination path. The host portion is chosen from the test config so the
+    helper works both inside Docker (`http://web:<port>`) and on the host
+    (`http://127.0.0.1:<port>`).
+    """
+    promote_user_to_admin(app=app, user_id=user_id)
+    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
+    base_url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    )
+    login_user_with_cookie_from_session(
+        context=context, session_id=session_id, base_url=f"{base_url}{port}"
+    )
+    page.goto(f"{base_url}{port}{path}")
+
+
 def login_admin_and_open_admin_portal(
     *,
     app: Flask,
@@ -175,15 +205,15 @@ def login_admin_and_open_admin_health(
     Mirrors ``login_admin_and_open_admin_portal`` exactly but targets
     ``ADMIN_HEALTH_PATH`` so callers do not need to construct the URL.
     """
-    promote_user_to_admin(app=app, user_id=user_id)
-    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
-    base_url = (
-        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    _login_admin_and_navigate(
+        app=app,
+        context=context,
+        page=page,
+        port=port,
+        user_id=user_id,
+        config=config,
+        path=ADMIN_HEALTH_PATH,
     )
-    login_user_with_cookie_from_session(
-        context=context, session_id=session_id, base_url=f"{base_url}{port}"
-    )
-    page.goto(f"{base_url}{port}{ADMIN_HEALTH_PATH}")
 
 
 def login_admin_and_open_system_operations(
@@ -201,15 +231,15 @@ def login_admin_and_open_system_operations(
     Mirrors ``login_admin_and_open_admin_health`` exactly but targets
     ``ADMIN_SYSTEM_OPS_PATH`` so callers do not need to construct the URL.
     """
-    promote_user_to_admin(app=app, user_id=user_id)
-    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
-    base_url = (
-        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    _login_admin_and_navigate(
+        app=app,
+        context=context,
+        page=page,
+        port=port,
+        user_id=user_id,
+        config=config,
+        path=ADMIN_SYSTEM_OPS_PATH,
     )
-    login_user_with_cookie_from_session(
-        context=context, session_id=session_id, base_url=f"{base_url}{port}"
-    )
-    page.goto(f"{base_url}{port}{ADMIN_SYSTEM_OPS_PATH}")
 
 
 def login_admin_and_open_utub_actions(
@@ -227,15 +257,15 @@ def login_admin_and_open_utub_actions(
     Mirrors ``login_admin_and_open_admin_health`` exactly but targets
     ``ADMIN_UTUB_ACTIONS_PATH`` so callers do not need to construct the URL.
     """
-    promote_user_to_admin(app=app, user_id=user_id)
-    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
-    base_url = (
-        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    _login_admin_and_navigate(
+        app=app,
+        context=context,
+        page=page,
+        port=port,
+        user_id=user_id,
+        config=config,
+        path=ADMIN_UTUB_ACTIONS_PATH,
     )
-    login_user_with_cookie_from_session(
-        context=context, session_id=session_id, base_url=f"{base_url}{port}"
-    )
-    page.goto(f"{base_url}{port}{ADMIN_UTUB_ACTIONS_PATH}")
 
 
 def login_admin_and_open_utub_detail(
@@ -255,15 +285,15 @@ def login_admin_and_open_utub_detail(
     ``ADMIN_UTUB_DETAIL_PATH_PREFIX/<utub_id>`` so callers can open any
     seeded UTub's aggregated moderation page without constructing the URL.
     """
-    promote_user_to_admin(app=app, user_id=user_id)
-    session_id = create_user_session_and_provide_session_id(app=app, user_id=user_id)
-    base_url = (
-        UI_TEST_STRINGS.DOCKER_BASE_URL if config.DOCKER else UI_TEST_STRINGS.BASE_URL
+    _login_admin_and_navigate(
+        app=app,
+        context=context,
+        page=page,
+        port=port,
+        user_id=user_id,
+        config=config,
+        path=f"{ADMIN_UTUB_DETAIL_PATH_PREFIX}{utub_id}",
     )
-    login_user_with_cookie_from_session(
-        context=context, session_id=session_id, base_url=f"{base_url}{port}"
-    )
-    page.goto(f"{base_url}{port}{ADMIN_UTUB_DETAIL_PATH_PREFIX}{utub_id}")
 
 
 def login_admin_and_open_user_detail(

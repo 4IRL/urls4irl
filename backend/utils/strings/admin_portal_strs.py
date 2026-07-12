@@ -31,11 +31,6 @@ class ADMIN_PORTAL_STRINGS:
     SYSTEM_OPS_SUBTITLE: str = (
         "Global maintenance triggers. Each records an audit entry with your reason."
     )
-    # User Actions page header copy (Jinja-only; not bridged to JS)
-    USER_ACTIONS_TITLE: str = "User Actions"
-    USER_ACTIONS_SUBTITLE: str = (
-        "Search a user to manage their account, sessions, and OAuth identities."
-    )
     # UTub Actions list + UTub-detail pages (Jinja-only; not bridged to JS)
     UTUB_ACTIONS_TITLE: str = "UTub Actions"
     UTUB_ACTIONS_SUBTITLE: str = (

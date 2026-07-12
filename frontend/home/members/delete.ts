@@ -3,6 +3,7 @@ import type { MemberModifiedResponse } from "../../types/member.js";
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
+import { isUtubLockedHandled } from "../utub-locked.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { setMemberDeckForUTub } from "./deck.js";
@@ -219,6 +220,7 @@ function leaveUTubSuccess(utubID: number): void {
 function removeMemberFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
   if (is429Handled(xhr)) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (
     xhr.status === 403 &&

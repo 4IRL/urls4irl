@@ -640,6 +640,8 @@ class AdminPortalLocators(GenericPageLocator):
 
     # UTub detail page (aggregated moderation surface)
     UTUB_DETAIL_TITLE = "#AdminUtubDetailTitle"
+    UTUB_DETAIL_MEMBERS_HEADING = "#AdminUtubDetailMembersHeading"
+    UTUB_DETAIL_URLS_HEADING = "#AdminUtubDetailUrlsHeading"
     UTUB_DETAIL_MEMBERS_TABLE = "#AdminUtubDetailMembersTable"
     UTUB_DETAIL_URLS_TABLE = "#AdminUtubDetailUrlsTable"
     UTUB_DETAIL_TAGS_PANEL = "#AdminUtubDetailTagsPanel"
@@ -666,7 +668,6 @@ class AdminPortalLocators(GenericPageLocator):
     USER_DETAIL_USERNAME = "#AdminUserDetailUsername"
     # Read-only UTub memberships list (moderation buttons relocated to UTub-detail)
     USER_DETAIL_MEMBERSHIPS_TABLE = "#AdminUserMembershipsTable"
-    USER_DETAIL_NO_MEMBERSHIPS = "#AdminUserNoMemberships"
     USER_DETAIL_LOCKED_BADGE = ".admin-locked-badge"
 
     # User-detail info rows

@@ -414,7 +414,12 @@ def delete_utub_tag_admin(
     associations_removed: int = Utub_Url_Tags.query.filter_by(
         utub_tag_id=utub_tag_id, utub_id=utub_id
     ).count()
-    containing_utub: Utubs = Utubs.query.get(utub_id)
+    containing_utub: Utubs | None = Utubs.query.get(utub_id)
+    if containing_utub is None:
+        raise RuntimeError(
+            f"Utub_Tags {utub_tag_id} references non-existent Utub {utub_id}; "
+            "FK integrity invariant violated."
+        )
     db.session.delete(utub_tag)
     containing_utub.set_last_updated()
     audit.record(

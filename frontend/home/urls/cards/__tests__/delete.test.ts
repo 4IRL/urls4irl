@@ -2,11 +2,18 @@ import { ajaxCall } from "../../../../lib/ajax.js";
 import { getUpdatedURL } from "../get.js";
 import { hideURLSearchIcon } from "../../search.js";
 import { showURLsEmptyState } from "../../empty-state.js";
+import { showURLDeckBannerError } from "../../deck.js";
 import { deleteURLShowModal } from "../delete.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
+}));
+
+// deck.js is pulled in via the shared lock guard (../../utub-locked.js);
+// mock it so we can assert the inline banner without loading the real deck.
+vi.mock("../../deck.js", () => ({
+  showURLDeckBannerError: vi.fn(),
 }));
 
 vi.mock("../get.js", () => ({
@@ -127,5 +134,57 @@ describe("deleteURLSuccess — empty-state branches", () => {
 
     expect(showURLsEmptyState).not.toHaveBeenCalled();
     expect(hideURLSearchIcon).not.toHaveBeenCalled();
+  });
+});
+
+describe("deleteURLFail — locked UTub 403", () => {
+  const LOCKED_MESSAGE = "This UTub is locked and cannot be modified.";
+  const UTUB_IS_LOCKED = 3;
+
+  beforeEach(() => {
+    document.body.innerHTML = DELETE_URL_HTML;
+    $.fn.modal = vi.fn().mockReturnThis();
+    $.fx.off = true;
+    vi.clearAllMocks();
+    vi.mocked(getUpdatedURL).mockResolvedValue(undefined);
+  });
+
+  afterEach(() => {
+    $.fx.off = false;
+    document.body.innerHTML = "";
+  });
+
+  it("shows the inline banner and does not redirect to the error page", async () => {
+    const locationAssignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+
+    const urlCard = buildUrlCard(42);
+    $("#listURLs").append(urlCard);
+
+    const mockXHR = {
+      done: vi.fn().mockReturnThis(),
+      fail: vi.fn().mockReturnThis(),
+      always: vi.fn().mockReturnThis(),
+    };
+    vi.mocked(ajaxCall).mockReturnValue(mockXHR as unknown as JQuery.jqXHR);
+
+    deleteURLShowModal(42, urlCard, 1);
+    $("#modalSubmit").trigger("click");
+
+    await vi.waitFor(() => {
+      expect(mockXHR.fail).toHaveBeenCalled();
+    });
+
+    const failCallback = mockXHR.fail.mock.calls[0][0] as (
+      xhr: JQuery.jqXHR,
+    ) => void;
+    failCallback({
+      status: 403,
+      responseJSON: { errorCode: UTUB_IS_LOCKED, message: LOCKED_MESSAGE },
+    } as unknown as JQuery.jqXHR);
+
+    expect(showURLDeckBannerError).toHaveBeenCalledWith(LOCKED_MESSAGE);
+    expect(locationAssignSpy).not.toHaveBeenCalled();
   });
 });

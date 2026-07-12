@@ -4,6 +4,7 @@ import type { UtubUrlItem } from "../../../types/url.js";
 import { $, getInputValue } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { isUtubLockedHandled } from "../../utub-locked.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
@@ -181,6 +182,7 @@ function updateURLTitleSuccess(
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLTitleFail(xhr: JQuery.jqXHR, urlCard: JQuery): void {
   if (is429Handled(xhr)) return;
+  if (isUtubLockedHandled(xhr)) return;
 
   if (!("responseJSON" in xhr)) {
     if (

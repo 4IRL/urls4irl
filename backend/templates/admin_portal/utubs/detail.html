@@ -54,7 +54,7 @@
                 data-confirm-body="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_CONFIRM_BODY }}"
                 data-submit-text="{{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_SUBMIT }}"
                 data-reason-required="true"
-                data-reload-on-success="true">
+                data-success-redirect-url="{{ url_for('admin.admin_utubs') }}">
             {{ ADMIN_PORTAL_STRINGS.MOD_UTUB_DELETE_LABEL }}
         </button>
     </div>

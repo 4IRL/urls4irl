@@ -1,9 +1,10 @@
 """Playwright UI tests for content-moderation admin actions.
 
-Covers the Lock/Unlock UTub controls, the URL-purge control, and the
-tag-moderation controls (remove a tag from a URL, delete a UTub tag), all
-hosted on the aggregated UTub-detail page (``/admin/utubs/<id>``), plus the
-UTub Actions list → detail navigation.
+Covers the Lock/Unlock UTub controls, the destructive UTub-delete /
+member-remove / URL-delete controls, the URL-purge control, and the
+tag-moderation controls (delete a UTub tag), all hosted on the aggregated
+UTub-detail page (``/admin/utubs/<id>``), plus the UTub Actions list → detail
+navigation.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from playwright.sync_api import Page, expect
 
 from backend.config import ConfigTestUI
 from backend.models.urls import Urls
+from backend.models.utub_members import Utub_Members
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
@@ -343,6 +345,332 @@ def test_admin_mod_utub_tag_delete_reason_required(
 
     with provide_app.app_context():
         assert Utub_Tags.query.get(utub_tag_id) is not None
+
+
+def test_admin_mod_utub_delete_happy_path(
+    page: Page,
+    create_test_utubs,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing a UTub's detail page
+    WHEN the admin clicks Delete UTub, enters a reason, and confirms
+    THEN the browser redirects to the UTub Actions list (not a reload) and the
+         UTub row is deleted from the database.
+    """
+    with provide_app.app_context():
+        first_utub = Utubs.query.order_by(Utubs.id.asc()).first()
+        assert first_utub is not None, "No UTubs seeded — fixture may have failed"
+        utub_id = first_utub.id
+        # Assert the target UTub exists before the delete under test.
+        assert Utubs.query.get(utub_id) is not None
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    detail_title = wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TITLE)
+    expect(detail_title).to_be_visible()
+
+    delete_btn = wait_then_get_element(
+        page=page, css_selector=APL.UTUB_DETAIL_MOD_DELETE_BTN
+    )
+    delete_btn.click()
+
+    modal_title = wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+    expect(modal_title).to_have_text(
+        UI_TEST_STRINGS.ADMIN_MOD_UTUB_DELETE_CONFIRM_TITLE
+    )
+
+    reason_input = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_REASON_INPUT
+    )
+    reason_input.fill(TEST_REASON_TEXT)
+
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    # data-success-redirect-url navigates to the UTub Actions list on success
+    # instead of reloading the (now-deleted) detail page.
+    expect(page).to_have_url(re.compile(r"/admin/utubs$"))
+    utub_grid = wait_then_get_element(page=page, css_selector=APL.UTUB_TABLE_GRID)
+    expect(utub_grid).to_be_visible()
+
+    with provide_app.app_context():
+        assert Utubs.query.get(utub_id) is None
+
+
+def test_admin_mod_utub_delete_reason_required(
+    page: Page,
+    create_test_utubs,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing a UTub's detail page
+    WHEN the admin opens the Delete UTub modal and submits without a reason
+    THEN the modal alert banner shows the reason-required message and the UTub
+         row remains in the database.
+    """
+    with provide_app.app_context():
+        first_utub = Utubs.query.order_by(Utubs.id.asc()).first()
+        assert first_utub is not None, "No UTubs seeded — fixture may have failed"
+        utub_id = first_utub.id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_TITLE)
+
+    delete_btn = wait_then_get_element(
+        page=page, css_selector=APL.UTUB_DETAIL_MOD_DELETE_BTN
+    )
+    delete_btn.click()
+
+    wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+
+    # Submit without providing a reason.
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    alert_banner = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_MODAL_ALERT_BANNER
+    )
+    expect(alert_banner).to_be_visible()
+    expect(alert_banner).to_have_text(UI_TEST_STRINGS.ADMIN_ACTION_REASON_REQUIRED)
+
+    with provide_app.app_context():
+        assert Utubs.query.get(utub_id) is not None
+
+
+def test_admin_mod_member_remove_happy_path(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing the detail page of a UTub with a non-creator member
+    WHEN the admin clicks that member's Remove, enters a reason, and confirms
+    THEN the page reloads without that member's row and the Utub_Members row is
+         deleted from the database.
+    """
+    with provide_app.app_context():
+        non_creator_member = (
+            Utub_Members.query.join(Utubs, Utub_Members.utub_id == Utubs.id)
+            .filter(Utub_Members.user_id != Utubs.utub_creator)
+            .order_by(Utub_Members.utub_id.asc(), Utub_Members.user_id.asc())
+            .first()
+        )
+        assert (
+            non_creator_member is not None
+        ), "No non-creator members seeded — fixture may have failed"
+        utub_id = non_creator_member.utub_id
+        target_user_id = non_creator_member.user_id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_MEMBERS_TABLE)
+
+    remove_selector = (
+        f"{APL.UTUB_DETAIL_MOD_MEMBER_REMOVE_BTN}"
+        f'[data-action-url$="/members/{target_user_id}/remove"]'
+    )
+    remove_btn = wait_then_get_element(page=page, css_selector=remove_selector)
+    expect(remove_btn).to_be_visible()
+
+    remove_btn.click()
+
+    modal_title = wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+    expect(modal_title).to_have_text(
+        UI_TEST_STRINGS.ADMIN_MOD_MEMBER_REMOVE_CONFIRM_TITLE
+    )
+
+    reason_input = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_REASON_INPUT
+    )
+    reason_input.fill(TEST_REASON_TEXT)
+
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    # data-reload-on-success reloads the detail page in place; poll the reloaded
+    # DOM until the removed member's Remove control is gone.
+    expect(page.locator(remove_selector)).to_have_count(0)
+
+    # The reload lands back on the UTub-detail members panel (not a redirect).
+    members_heading = wait_then_get_element(
+        page=page, css_selector=APL.UTUB_DETAIL_MEMBERS_HEADING
+    )
+    expect(members_heading).to_have_text(
+        UI_TEST_STRINGS.ADMIN_UTUB_DETAIL_MEMBERS_HEADING
+    )
+
+    with provide_app.app_context():
+        assert (
+            Utub_Members.query.filter_by(
+                utub_id=utub_id, user_id=target_user_id
+            ).first()
+            is None
+        )
+
+
+def test_admin_mod_member_remove_reason_required(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing the detail page of a UTub with a non-creator member
+    WHEN the admin opens that member's Remove modal and submits without a reason
+    THEN the modal alert banner shows the reason-required message and the
+         Utub_Members row remains in the database.
+    """
+    with provide_app.app_context():
+        non_creator_member = (
+            Utub_Members.query.join(Utubs, Utub_Members.utub_id == Utubs.id)
+            .filter(Utub_Members.user_id != Utubs.utub_creator)
+            .order_by(Utub_Members.utub_id.asc(), Utub_Members.user_id.asc())
+            .first()
+        )
+        assert (
+            non_creator_member is not None
+        ), "No non-creator members seeded — fixture may have failed"
+        utub_id = non_creator_member.utub_id
+        target_user_id = non_creator_member.user_id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_MEMBERS_TABLE)
+
+    remove_selector = (
+        f"{APL.UTUB_DETAIL_MOD_MEMBER_REMOVE_BTN}"
+        f'[data-action-url$="/members/{target_user_id}/remove"]'
+    )
+    remove_btn = wait_then_get_element(page=page, css_selector=remove_selector)
+    remove_btn.click()
+
+    wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+
+    # Submit without providing a reason.
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    alert_banner = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_MODAL_ALERT_BANNER
+    )
+    expect(alert_banner).to_be_visible()
+    expect(alert_banner).to_have_text(UI_TEST_STRINGS.ADMIN_ACTION_REASON_REQUIRED)
+
+    with provide_app.app_context():
+        assert (
+            Utub_Members.query.filter_by(
+                utub_id=utub_id, user_id=target_user_id
+            ).first()
+            is not None
+        )
+
+
+def test_admin_mod_url_delete_happy_path(
+    page: Page,
+    create_test_urls,
+    provide_app: Flask,
+    provide_port: int,
+    provide_config: ConfigTestUI,
+) -> None:
+    """
+    GIVEN an admin viewing the detail page of a UTub containing a seeded URL
+    WHEN the admin clicks that URL's Remove-from-UTub, enters a reason, confirms
+    THEN the page reloads without that URL's row, the Utub_Urls association is
+         deleted, and the canonical Urls record is preserved.
+    """
+    with provide_app.app_context():
+        association = (
+            Utub_Urls.query.join(Urls, Utub_Urls.url_id == Urls.id)
+            .order_by(Utub_Urls.id.asc())
+            .first()
+        )
+        assert association is not None, "No UtubUrls seeded — fixture may have failed"
+        utub_id = association.utub_id
+        utub_url_id = association.id
+        url_id = association.url_id
+
+    login_admin_and_open_utub_detail(
+        app=provide_app,
+        context=page.context,
+        page=page,
+        port=provide_port,
+        user_id=DEFAULT_ADMIN_USER_ID,
+        config=provide_config,
+        utub_id=utub_id,
+    )
+
+    wait_then_get_element(page=page, css_selector=APL.UTUB_DETAIL_URLS_TABLE)
+
+    delete_selector = (
+        f"{APL.UTUB_DETAIL_MOD_URL_DELETE_BTN}"
+        f'[data-action-url$="/urls/{utub_url_id}/delete"]'
+    )
+    delete_btn = wait_then_get_element(page=page, css_selector=delete_selector)
+    expect(delete_btn).to_be_visible()
+
+    delete_btn.click()
+
+    modal_title = wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
+    expect(modal_title).to_have_text(UI_TEST_STRINGS.ADMIN_MOD_URL_DELETE_CONFIRM_TITLE)
+
+    reason_input = wait_then_get_element(
+        page=page, css_selector=APL.ACTION_REASON_INPUT
+    )
+    reason_input.fill(TEST_REASON_TEXT)
+
+    page.click(APL.ACTION_MODAL_SUBMIT)
+
+    # data-reload-on-success reloads the detail page in place; poll the reloaded
+    # DOM until the removed URL's Remove control is gone.
+    expect(page.locator(delete_selector)).to_have_count(0)
+
+    # The reload lands back on the UTub-detail URLs panel (not a redirect).
+    urls_heading = wait_then_get_element(
+        page=page, css_selector=APL.UTUB_DETAIL_URLS_HEADING
+    )
+    expect(urls_heading).to_have_text(UI_TEST_STRINGS.ADMIN_UTUB_DETAIL_URLS_HEADING)
+
+    with provide_app.app_context():
+        # The UTub association is gone but the canonical URL record remains.
+        assert Utub_Urls.query.get(utub_url_id) is None
+        assert Urls.query.get(url_id) is not None
 
 
 def test_admin_utub_detail_urls_search_filters_rows(

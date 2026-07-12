@@ -19,6 +19,9 @@
  *   data-reason-required     "true" to require a non-empty reason
  *                            (reason is always POSTed; empty string when blank)
  *   data-reload-on-success   "true" to reload the page after a 200
+ *   data-success-redirect-url  navigate here after a 200 instead of reloading
+ *                            (use when the current page no longer exists post-action,
+ *                            e.g. deleting the very resource this page renders)
  *   data-timeout-ms          AJAX timeout override (default 30000)
  */
 
@@ -41,6 +44,7 @@ interface AdminActionConfig {
   submitText: string;
   reasonRequired: boolean;
   reloadOnSuccess: boolean;
+  successRedirectUrl: string;
   timeoutMs: number;
 }
 
@@ -82,6 +86,7 @@ function readActionConfig(buttonEl: HTMLElement): AdminActionConfig | null {
       APP_CONFIG.strings.ADMIN_ACTION_SUBMIT_DEFAULT,
     reasonRequired: buttonEl.dataset.reasonRequired === "true",
     reloadOnSuccess: buttonEl.dataset.reloadOnSuccess === "true",
+    successRedirectUrl: buttonEl.dataset.successRedirectUrl ?? "",
     timeoutMs: Number.isNaN(parsedTimeout) ? DEFAULT_TIMEOUT_MS : parsedTimeout,
   };
 }
@@ -194,6 +199,10 @@ function submitAdminAction({
   ) {
     if (xhr.status !== 200) return;
     $("#confirmModal").modal("hide");
+    if (actionConfig.successRedirectUrl !== "") {
+      window.location.assign(actionConfig.successRedirectUrl);
+      return;
+    }
     if (actionConfig.reloadOnSuccess) {
       window.location.reload();
       return;

@@ -19,6 +19,8 @@ const SUBMIT_TEXT = "Run it";
 const SUCCESS_MESSAGE = "Test action completed.";
 const FAILURE_MESSAGE = "Test action failed on the server.";
 const REASON_TEXT = "routine maintenance";
+const REDIRECT_ACTION_URL = "/admin/actions/delete-action";
+const REDIRECT_URL = "/admin/utubs";
 
 const ADMIN_ACTION_HTML = `
   <div id="confirmModal">
@@ -36,6 +38,15 @@ const ADMIN_ACTION_HTML = `
     data-confirm-title="${CONFIRM_TITLE}"
     data-confirm-body="${CONFIRM_BODY}"
     data-submit-text="${SUBMIT_TEXT}"
+  ></button>
+  <button
+    id="RedirectActionButton"
+    data-admin-action="redirect-action"
+    data-action-url="${REDIRECT_ACTION_URL}"
+    data-confirm-title="${CONFIRM_TITLE}"
+    data-confirm-body="${CONFIRM_BODY}"
+    data-submit-text="${SUBMIT_TEXT}"
+    data-success-redirect-url="${REDIRECT_URL}"
   ></button>
 `;
 
@@ -184,6 +195,48 @@ describe("admin-actions confirm-modal controller", () => {
     $("#modalSubmit").trigger("click");
 
     expect($("#HomeModalAlertBanner").hasClass("hidden")).toBe(true);
+  });
+
+  it("navigates to the success-redirect URL instead of reloading when the button carries data-success-redirect-url", () => {
+    const assignSpy = vi
+      .spyOn(window.location, "assign")
+      .mockImplementation(() => {});
+    const reloadSpy = vi
+      .spyOn(window.location, "reload")
+      .mockImplementation(() => {});
+    const successXhr = createMockXhr({ status: 200 });
+    const chainable = createMockJqXHRChainable({
+      done: (callback: unknown) => {
+        (
+          callback as (
+            response: unknown,
+            _textStatus: unknown,
+            xhr: JQuery.jqXHR,
+          ) => void
+        )(
+          { status: "Success", message: SUCCESS_MESSAGE },
+          "success",
+          successXhr,
+        );
+      },
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable as unknown as JQuery.jqXHR);
+
+    $("#RedirectActionButton").trigger("click");
+    $("#modalSubmit").trigger("click");
+
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledWith(
+      "post",
+      REDIRECT_ACTION_URL,
+      { reason: "" },
+      30000,
+    );
+    expect(modalCalls).toContain("hide");
+    expect(assignSpy).toHaveBeenCalledWith(REDIRECT_URL);
+    expect(reloadSpy).not.toHaveBeenCalled();
+
+    assignSpy.mockRestore();
+    reloadSpy.mockRestore();
   });
 
   it("clears the reason field and banner when the modal closes", () => {
