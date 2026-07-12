@@ -7,6 +7,37 @@ Keep your replies extremely concise and focus on conveying the key information. 
 Reference plan may have files in the @plans directory - please reference these if there's a relevant plan file in this directory.
 
 
+## Claude Config
+
+<!-- Consumed by the stronghold's central generic skills (see /Users/ggpropersi/code/CLAUDE.md).
+     Stable keys — do not rename. Account-specific GraphQL IDs are intentionally NOT inlined here
+     (secrets policy); the genericized workflow resolves them at runtime by name — see the
+     GitHub project board key below. -->
+
+- **Repo slug:** `4IRL/urls4irl`  (always pass `--repo 4IRL/urls4irl` to `gh`; `GPropersi/urls4irl` redirects but is not canonical)
+- **Default branch:** `main`
+- **Stack:** `flask-jinja-vanillajs-vite` (drives which opt-in plan-creator/plan-reviewer protocol reference files load — Python/Flask backend, SQLAlchemy, Jinja templates, vanilla-JS→Vite/ES6 frontend, Vitest + Selenium tests, pip/`requirements-*.txt` pinning)
+- **Plans/reviews layout:** plans at `plans/<topic>/`; reviews at `plans/<topic>/reviews/` (co-located with each plan — this matches the 30+ existing review folders; an earlier note claiming a repo-root `reviews/` was inaccurate)
+- **Bot identity:** `u4i-claude-code[bot]` `141576524+u4i-claude-code[bot]@users.noreply.github.com`
+- **Bot push script:** `.claude/scripts/gh-app-push.sh` (or the central `/Users/ggpropersi/code/.claude/scripts/gh-app-push.sh`, which derives the repo from `origin`)
+- **Token generator:** `~/.claude/generate-gh-token.sh`
+- **Container runtime:** `docker compose --project-directory . -f docker/compose.local.yaml`
+- **App URL (Playwright MCP):** `http://127.0.0.1:8659/`
+- **Test login:** username `u4i_test1` (default) / password `<username>@urls4irl.app` (seeded local test creds; see `login-with-playright` skill)
+- **Commands:**
+  | Purpose | Command |
+  |---|---|
+  | Integration tests | `make test-integration-parallel` (single marker: `make test-marker-parallel m=<marker>`) |
+  | UI tests | `make test-ui-parallel-built` (max `n=8`) |
+  | JS/unit tests | `make test-js` |
+  | Build | `make vite-build` |
+  | Lint / format | `pre-commit run --all-files` (runs automatically on commit — do not run manually unless asked) |
+  | Regenerate types | `make generate-types` |
+- **GitHub project board:** `URLS4IRL -> Real Life` (org project). Its project / status-field / option / bot-node GraphQL IDs are **resolved at runtime by name** via `gh api graphql` (from this board name + the `Bot identity` login) — never inlined here, per the secrets policy. The genericized `/git-push` performs the lookup; `.claude/skills/git-push/SKILL.md` documents the mutations.
+- **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
+- **PR reviewer:** `GPropersi`
+
+
 ## Workflow Rules
 
 Always delegate work to subagents when a skill/workflow specifies subagent delegation. Never perform the work directly in the parent context.
@@ -35,7 +66,7 @@ This project's naming differs from most companies. Do not assume the conventiona
 
 ## Project Structure
 
-Review files are stored at the project root level (`reviews/`), NOT under the `plans/` directory. Always look for `reviews/` at the repository root.
+Review files are stored **co-located with each plan** at `plans/<topic>/reviews/<plan-name>-review.md` — this matches the 30+ existing review folders in the repo. (An earlier version of this note claimed a repo-root `reviews/`; that was inaccurate and there is no repo-root `reviews/` directory.)
 
 ### `plans/tmp/` Is Transient Only
 
