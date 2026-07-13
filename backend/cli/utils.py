@@ -154,5 +154,29 @@ def verify_tables():
     current_app.cli_logger.info(VERIFY_TABLES_REPAIRED)  # type: ignore
 
 
+APP_INFO_NAME_LABEL = "App name:"
+APP_INFO_ENV_LABEL = "Environment:"
+
+
+def _derive_environment() -> str:
+    if current_app.config.get(CONFIG_ENVS.PRODUCTION, False):
+        return "production"
+    if current_app.config.get(CONFIG_ENVS.DEV_SERVER, False):
+        return "dev_server"
+    if current_app.config.get("TESTING", False):
+        return "testing"
+    return "local"
+
+
+@utils_cli.command(
+    "app-info", help="Print the Flask app name and configured environment"
+)
+@with_appcontext
+def app_info():
+    environment = _derive_environment()
+    click.echo(f"{APP_INFO_NAME_LABEL} {current_app.name}")
+    click.echo(f"{APP_INFO_ENV_LABEL} {environment}")
+
+
 def register_utils_cli(app: Flask):
     app.cli.add_command(utils_cli)
