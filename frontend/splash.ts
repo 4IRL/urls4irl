@@ -11,6 +11,7 @@ import { initMetricsClient } from "./lib/metrics-client.js";
 import { initNavbar } from "./splash/navbar.js";
 import { initSplash, createLogoutOnExit } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
+import { initConfirmLinkForm } from "./splash/confirm-link-form.js";
 import {
   initEmailValidationForm,
   SKIP_INITIAL_EMAIL,
@@ -51,6 +52,14 @@ export function initOAuthRejectIfPresent(): void {
   }
 }
 
+function initConfirmLinkIfPresent(): void {
+  const modalForm = $("#ModalForm[data-modal-type='confirm-link']");
+  if (modalForm.length) {
+    bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
+    initConfirmLinkForm($("#SplashModal"));
+  }
+}
+
 // Initialize on document ready
 $(document).ready(function () {
   initMetricsClient();
@@ -65,4 +74,7 @@ $(document).ready(function () {
 
   // Check if OAuth reject modal is present and initialize it
   initOAuthRejectIfPresent();
+
+  // Check if confirm-link modal is present and initialize it
+  initConfirmLinkIfPresent();
 });

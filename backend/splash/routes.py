@@ -40,7 +40,6 @@ from backend.schemas.users import (
     RegisterResponseSchema,
     ResetPasswordResponseSchema,
 )
-from backend.utils.strings.oauth_strs import CONFIRM_LINK_INVALID_MESSAGE
 from backend.splash.constants import (
     ForgotPasswordErrorCodes,
     LoginErrorCodes,
@@ -77,6 +76,7 @@ from backend.splash.services.validate_email import (
     validate_email_for_user,
 )
 from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.oauth_strs import CONFIRM_LINK_INVALID_MESSAGE
 from backend.utils.strings.openapi_strs import OPEN_API
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from backend.utils.strings.user_strs import USER_FAILURE

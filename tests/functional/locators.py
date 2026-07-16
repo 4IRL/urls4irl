@@ -405,6 +405,10 @@ class SplashPageLocators(GenericPageLocator):
     CONFIRM_LINK_PROMPT = "#SplashModal #ConfirmLinkPrompt"
     CONFIRM_LINK_INPUT_PASSWORD = "#SplashModal #password"
     CONFIRM_LINK_BUTTON_SUBMIT = "#SplashModal #submit"
+    # Password-less (OAuth-only) branch: "Continue with <provider>" anchors,
+    # one per provider already linked to the colliding local account.
+    CONFIRM_LINK_CONTINUE_WITH_GOOGLE = "#SplashModal #ConfirmLinkContinueWithGoogle"
+    CONFIRM_LINK_CONTINUE_WITH_GITHUB = "#SplashModal #ConfirmLinkContinueWithGitHub"
 
     BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
     BUTTON_FORGOT_PASSWORD_MODAL = ".to-forgot-password"
@@ -770,3 +774,23 @@ class SettingsPageLocators(GenericPageLocator):
     # /home (hidden on /settings). Placed here because
     # test_settings_nav_link_present_on_home lives in the settings_ui suite.
     SETTINGS_NAV_LINK = "#userSettingsLink"
+
+    # Connected Accounts section (Account tab). Mirrors
+    # backend/templates/pages/settings.html:18-59 and the data-* contract
+    # documented in frontend/settings/connected-accounts.ts.
+    CONNECTED_ACCOUNTS_ROOT = "#SettingsConnectedAccounts"
+    CONNECTED_ACCOUNTS_TITLE = f"{CONNECTED_ACCOUNTS_ROOT} .ConnectedAccountsTitle"
+    LINK_STATUS_BANNER = "#SettingsLinkStatusBanner"
+    ROW_GOOGLE = "#ConnectedAccountRowGoogle"
+    ROW_GITHUB = "#ConnectedAccountRowGitHub"
+    ROW_NAME = ".ConnectedAccountName"
+    ROW_STATUS = ".ConnectedAccountStatus"
+    ROW_LAST_METHOD_NOTE = ".ConnectedAccountLastMethodNote"
+    ROW_LINK_BTN = ".ConnectedAccountLinkBtn"
+    ROW_UNLINK_BTN = ".ConnectedAccountUnlinkBtn"
+    ROW_PASSWORD_CONFIRM = ".ConnectedAccountPasswordConfirm"
+    ROW_PASSWORD_INPUT = ".ConnectedAccountPasswordInput"
+    ROW_PASSWORD_INPUT_GOOGLE = "#ConnectedAccountPasswordGoogle"
+    ROW_PASSWORD_INPUT_GITHUB = "#ConnectedAccountPasswordGitHub"
+    ROW_PASSWORD_CONTINUE_BTN = ".ConnectedAccountPasswordContinueBtn"
+    ROW_PASSWORD_CANCEL_BTN = ".ConnectedAccountPasswordCancelBtn"

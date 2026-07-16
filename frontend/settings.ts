@@ -8,6 +8,7 @@ import { setupCSRF } from "./lib/csrf.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initNavbarBackdrop, initNavbarRouting } from "./lib/navbar-shared.js";
 import { initSettingsPage } from "./settings/settings-page.js";
+import { initConnectedAccounts } from "./settings/connected-accounts.js";
 
 registerJQueryPlugins();
 setupCSRF();
@@ -17,4 +18,5 @@ $(document).ready(() => {
   initNavbarRouting();
   initNavbarBackdrop();
   initSettingsPage();
+  initConnectedAccounts();
 });

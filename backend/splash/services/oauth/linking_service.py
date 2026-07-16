@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from flask import redirect, render_template, session, url_for
+from flask import redirect, render_template, request, session, url_for
 from flask_login import current_user, login_user
 from sqlalchemy.exc import IntegrityError
 from werkzeug import Response as WerkzeugResponse
@@ -47,9 +47,13 @@ from backend.utils.strings.oauth_strs import (
     CONFIRM_LINK_TITLE,
     LINK_ALREADY_LINKED_MESSAGE,
     LINK_FORBIDDEN_MESSAGE,
+    LINK_INTENT_INVALID_MESSAGE,
     LINK_INVALID_PASSWORD_MESSAGE,
     LINK_PASSWORD_REQUIRED_MESSAGE,
+    LINK_PROOF_MISMATCH_MESSAGE,
     LINK_PROVIDER_NOT_CONFIGURED_MESSAGE,
+    LINK_SUBJECT_OWNED_BY_OTHER_ACCOUNT_MESSAGE,
+    LINK_SUCCESS_MESSAGE,
     UNLINK_LAST_METHOD_MESSAGE,
     UNLINK_NOT_LINKED_MESSAGE,
     UNLINK_SUCCESS_MESSAGE,
@@ -66,6 +70,104 @@ LINK_ERROR_ALREADY_LINKED = "already_linked"
 LINK_ERROR_SUBJECT_TAKEN = "subject_taken"
 LINK_ERROR_PROOF_MISMATCH = "proof_mismatch"
 LINK_ERROR_INVALID = "invalid"
+
+
+def build_connected_accounts_context() -> dict[str, Any]:
+    """Builds the settings page's Connected Accounts template context for the
+    authenticated user.
+
+    Returns a dict with:
+    - ``connected_account_rows``: one row per *configured* provider —
+      ``{key, display_name, linked_email (str | None), is_last_method,
+      proof_provider_display (str | None), link_url, unlink_url}``
+    - ``connected_accounts_has_password``: whether the account can password
+      re-auth (drives which link path the UI takes)
+    - ``connected_accounts_banner``: ``{"kind": "success"|"error",
+      "message": str} | None`` from the ``linked``/``link_error`` redirect
+      query params.
+    """
+    identity_email_by_provider = {
+        identity.provider: identity.email for identity in current_user.oauth_identities
+    }
+    has_password = current_user.password is not None
+    linked_count = len(current_user.oauth_identities)
+
+    proof_provider_display: str | None = None
+    if not has_password:
+        proof_provider = next(
+            (
+                parsed_provider
+                for identity in current_user.oauth_identities
+                if (parsed_provider := provider_from_key(identity.provider)) is not None
+                and _provider_client_registered(parsed_provider)
+            ),
+            None,
+        )
+        if proof_provider is not None:
+            proof_provider_display = provider_display_name(proof_provider.value)
+
+    connected_account_rows: list[dict[str, Any]] = []
+    for provider in Provider:
+        if not _provider_client_registered(provider):
+            continue
+        linked_email = identity_email_by_provider.get(provider.value)
+        is_linked = provider.value in identity_email_by_provider
+        connected_account_rows.append(
+            {
+                "key": provider.value,
+                "display_name": provider_display_name(provider.value),
+                "is_linked": is_linked,
+                "linked_email": linked_email,
+                "is_last_method": is_linked and not has_password and linked_count == 1,
+                "proof_provider_display": (
+                    proof_provider_display if not is_linked else None
+                ),
+                "link_url": url_for(
+                    ROUTES.USERS.OAUTH_LINK,
+                    user_id=current_user.id,
+                    provider=provider.value,
+                ),
+                "unlink_url": url_for(
+                    ROUTES.USERS.OAUTH_UNLINK,
+                    user_id=current_user.id,
+                    provider=provider.value,
+                ),
+            }
+        )
+
+    return {
+        "connected_account_rows": connected_account_rows,
+        "connected_accounts_has_password": has_password,
+        "connected_accounts_banner": _build_settings_link_banner(),
+    }
+
+
+def _build_settings_link_banner() -> dict[str, str] | None:
+    """Maps the ``linked``/``link_error`` redirect query params (set by the
+    link callbacks) onto the settings-page banner content."""
+    linked_provider = provider_from_key(
+        request.args.get(SETTINGS_LINKED_QUERY_PARAM, "")
+    )
+    if linked_provider is not None:
+        return {
+            "kind": "success",
+            "message": LINK_SUCCESS_MESSAGE.format(
+                provider=provider_display_name(linked_provider.value)
+            ),
+        }
+
+    link_error_messages = {
+        LINK_ERROR_ALREADY_LINKED: LINK_INTENT_INVALID_MESSAGE,
+        LINK_ERROR_SUBJECT_TAKEN: LINK_SUBJECT_OWNED_BY_OTHER_ACCOUNT_MESSAGE,
+        LINK_ERROR_PROOF_MISMATCH: LINK_PROOF_MISMATCH_MESSAGE,
+        LINK_ERROR_INVALID: LINK_INTENT_INVALID_MESSAGE,
+    }
+    link_error_message = link_error_messages.get(
+        request.args.get(SETTINGS_LINK_ERROR_QUERY_PARAM, "")
+    )
+    if link_error_message is not None:
+        return {"kind": "error", "message": link_error_message}
+    return None
 
 
 def provider_from_key(provider_key: str) -> Provider | None:

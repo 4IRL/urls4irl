@@ -23,6 +23,7 @@ from backend.schemas.requests.users import ProviderLinkRequest
 from backend.schemas.users import LoginRedirectResponseSchema
 from backend.splash.constants import OAuthLinkErrorCodes
 from backend.splash.services.oauth.linking_service import (
+    build_connected_accounts_context,
     initiate_settings_link,
     unlink_provider,
 )
@@ -143,7 +144,11 @@ def terms_and_conditions():
 @users.route("/settings", methods=["GET"])
 @email_validation_required
 def settings() -> str:
-    return render_template("pages/settings.html", is_settings=True)
+    return render_template(
+        "pages/settings.html",
+        is_settings=True,
+        **build_connected_accounts_context(),
+    )
 
 
 @users.route("/users/<int:user_id>/oauth/link/<string:provider>", methods=["POST"])

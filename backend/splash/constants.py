@@ -42,7 +42,8 @@ class OAuthLinkErrorCodes(IntEnum):
     INVALID_PASSWORD = 4
     NOT_LINKED = 5
     LAST_METHOD = 6
-    SUBJECT_OWNED_BY_OTHER_ACCOUNT = 7
+    # Value 7 intentionally skipped: subject-owned-by-another-account surfaces
+    # as a settings-page redirect (link_error=subject_taken), never a JSON error.
     INTENT_INVALID = 8
 
 

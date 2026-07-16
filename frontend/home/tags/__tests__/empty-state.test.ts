@@ -99,7 +99,7 @@ describe("Tag deck empty state", () => {
   });
 
   describe("setTagDeckOnUTubSelected with tags", () => {
-    const mockTags = [{ id: 1, tagString: "tag-one", tagApplied: true }];
+    const mockTags = [{ id: 1, tagString: "tag-one", tagApplied: 1 }];
 
     it("hides empty state wrapper and clears text", () => {
       setTagDeckOnUTubSelected(mockTags, 1);

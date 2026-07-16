@@ -9836,7 +9836,7 @@
       },
       "OAuthLinkErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 7, 8],
+        "enum": [1, 2, 3, 4, 5, 6, 8],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "PROVIDER_NOT_CONFIGURED",
@@ -9844,7 +9844,6 @@
           "INVALID_PASSWORD",
           "NOT_LINKED",
           "LAST_METHOD",
-          "SUBJECT_OWNED_BY_OTHER_ACCOUNT",
           "INTENT_INVALID"
         ],
         "description": "Error codes for OAuthLinkErrorCodes"

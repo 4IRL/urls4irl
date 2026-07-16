@@ -35,7 +35,7 @@ GITHUB_INVALID_CALLBACK_QUERY_MESSAGE = "Invalid GitHub OAuth callback request."
 LINK_SUCCESS_MESSAGE = "{provider} connected to your account."
 LINK_ALREADY_LINKED_MESSAGE = "{provider} is already connected to your account."
 LINK_SUBJECT_OWNED_BY_OTHER_ACCOUNT_MESSAGE = (
-    "That {provider} account is already connected to a different account."
+    "That sign-in account is already connected to a different account."
 )
 LINK_FORBIDDEN_MESSAGE = "You can only manage sign-in methods for your own account."
 LINK_PASSWORD_REQUIRED_MESSAGE = "Enter your password to connect a new sign-in method."
