@@ -9,7 +9,7 @@ Reference plan may have files in the @plans directory - please reference these i
 
 ## Claude Config
 
-<!-- Consumed by the stronghold's central generic skills (see /Users/ggpropersi/code/CLAUDE.md).
+<!-- Consumed by the stronghold's central generic skills (see ~/code/CLAUDE.md).
      Stable keys — do not rename. Account-specific GraphQL IDs are intentionally NOT inlined here
      (secrets policy); the genericized workflow resolves them at runtime by name — see the
      GitHub project board key below. -->
@@ -17,9 +17,9 @@ Reference plan may have files in the @plans directory - please reference these i
 - **Repo slug:** `4IRL/urls4irl`  (always pass `--repo 4IRL/urls4irl` to `gh`; `GPropersi/urls4irl` redirects but is not canonical)
 - **Default branch:** `main`
 - **Stack:** `flask-jinja-vanillajs-vite` (drives which opt-in plan-creator/plan-reviewer protocol reference files load — Python/Flask backend, SQLAlchemy, Jinja templates, vanilla-JS→Vite/ES6 frontend, Vitest + Selenium tests, pip/`requirements-*.txt` pinning)
-- **Plans/reviews layout:** plans at `plans/<topic>/`; reviews at `plans/<topic>/reviews/` (co-located with each plan — this matches the 30+ existing review folders; an earlier note claiming a repo-root `reviews/` was inaccurate)
+- **Plans store (central):** `~/code/plans/urls4irl/{open,completed,research}/<topic>/` — plans now live in the central stronghold store, not this repo (bucket = this repo's slug basename `urls4irl`). Reviews/research/mocks are co-located per plan under its `<topic>/`; finished topics move `open/`→`completed/` as a unit. See `~/code/CLAUDE.md` "Central Plans Store". (Legacy in-repo `plans/` migrated 07-2026; the leftover `plans/tmp/` is gitignored scratch.)
 - **Bot identity:** `u4i-claude-code[bot]` `141576524+u4i-claude-code[bot]@users.noreply.github.com`
-- **Bot push script:** `.claude/scripts/gh-app-push.sh` (or the central `/Users/ggpropersi/code/.claude/scripts/gh-app-push.sh`, which derives the repo from `origin`)
+- **Bot push script:** `.claude/scripts/gh-app-push.sh` (or the central `~/code/.claude/scripts/gh-app-push.sh`, which derives the repo from `origin`)
 - **Token generator:** `~/.claude/generate-gh-token.sh`
 - **Container runtime:** `docker compose --project-directory . -f docker/compose.local.yaml`
 - **App URL (Playwright MCP):** `http://127.0.0.1:8659/`
@@ -37,14 +37,6 @@ Reference plan may have files in the @plans directory - please reference these i
 - **Issue labels:** the repo's existing set — resolve at runtime via `gh label list --repo 4IRL/urls4irl` (do not invent labels)
 - **PR reviewer:** `GPropersi`
 
-
-## Workflow Rules
-
-Always delegate work to subagents when a skill/workflow specifies subagent delegation. Never perform the work directly in the parent context.
-
-### Asking the User Questions
-
-Whenever you present the user with 2+ discrete options — approval, strategy choice, file selection, branching decisions, etc. — always use the `AskUserQuestion` tool. Never use a plain-text numbered list or `[y/n]` prompt for enumerable choices. If the tool schema is not loaded, load it via `ToolSearch query: "select:AskUserQuestion"` first. Open-ended questions without enumerable options (e.g. "What should I name this branch?") are the only exception.
 
 ## Project Overview
 
@@ -68,10 +60,6 @@ This project's naming differs from most companies. Do not assume the conventiona
 
 Review files are stored **co-located with each plan** at `plans/<topic>/reviews/<plan-name>-review.md` — this matches the 30+ existing review folders in the repo. (An earlier version of this note claimed a repo-root `reviews/`; that was inaccurate and there is no repo-root `reviews/` directory.)
 
-### `plans/tmp/` Is Transient Only
-
-`plans/tmp/` (and `$TMPDIR`) are for **transient intermediate files only** — e.g., subagent output that gets read and deleted in the same workflow. **Never store final documents** (plans, reviews, push reviews) in `plans/tmp/`. Final documents always go under `plans/<topic>/`. If no topic can be inferred, ask the user which topic to use.
-
 ### Endpoint Registry
 
 `ENDPOINT_REGISTRY.md` at the project root maps every route through all implementation layers (handler → service → schema → template → JS module → tests). **When any code change adds, modifies, or removes an endpoint, its entry in the registry must be updated in the same commit.** This includes changes to:
@@ -92,23 +80,6 @@ Review files are stored **co-located with each plan** at `plans/<topic>/reviews/
 4. **Watch for resource-set fallout.** Introducing a `Resource` into a new category (e.g. adding `Resource.SEARCH` to DOMAIN) can flip previously-invalid `(category, resource)` query pairs to valid — update any negative dashboard/query tests that asserted the old invalid pair. Run the metrics query/service/CLI integration suites, not just unit, after such a change.
 
 Performance/latency **is** measured. `backend/extensions/request_timing.py` records per-request durations into `Anonymous_Latency_Samples` (raw, ~35-day retention via `LATENCY_RAW_RETENTION_DAYS`), which the Flask-less flush worker rolls up nightly into `Anonymous_Latency_Daily_Rollups` (stored p50/p95/p99 per endpoint×method). Query it via `backend/metrics/query_service.py` `latency_percentiles(...)` (rows ordered by p95 desc; `.approximate=True` when served from rollups) / `latency_timeseries(...)`. It surfaces in the metrics dashboard's "Backend Performance" tab and, as a "slowest endpoint (p95)" headline stat, on the admin system-health dashboard (`backend/admin/health_service.py`). The single latency metric today is `LatencyMetricName.API_REQUEST_DURATION` (`"api_request_duration"`).
-
-### `.claude/`, `CLAUDE.md`, and `.gitignore`
-
-Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore` may be committed and pushed on **any branch**, regardless of the branch topic. Always include these changes alongside other work — never exclude them for being "unrelated."
-
-
-### Squash-Merge Branch Hygiene (CRITICAL)
-
-**After a PR is squash-merged into main, NEVER continue working on the same branch.** Squash merges create a new commit hash on main — the old branch commits become stale duplicates. Pushing the old branch creates a PR with a bloated diff that re-introduces already-merged code.
-
-**Required workflow after a squash-merge:**
-1. `git checkout main && git pull`
-2. Create a new branch: `git checkout -b feature/<next-topic>`
-3. Continue work on the new branch
-
-**Before any push (`/git-push`):** Run `git cherry origin/main HEAD`. If ANY commit shows `-` (already in main), **STOP** and rebase before pushing. This check is mandatory and enforced in the `/git-push` skill as Step 0.
-
 
 ### GitHub Issue Linking
 
@@ -192,20 +163,13 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
 4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "Selenium session exhaustion" as a dismissible category — if sessions are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
 5. **Check Selenium container health when sessions repeatedly fail** - If `SessionNotCreatedException` or `InvalidSessionIdException` persist across multiple test runs, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`), but still record and investigate the root cause.
-6. **`TimeoutException` in Selenium tests always requires investigation** - A `TimeoutException` is never pre-existing or dismissible as "flaky". It indicates either a UI logic bug introduced by recent changes, or a genuine timing/stability issue that must be diagnosed and fixed. Never dismiss a `TimeoutException` without identifying its root cause.
-6a. **Flaky tests must be hardened, never dismissed** - Any time a UI or integration test is determined to be flaky — whether through the 7-step investigation, repeated isolation runs, observed mixed results in CI, intermittent local failures, or any other diagnostic path — the test is fragile and the response is to **harden it so it runs reliably at the documented parallelism cap** (`n=8` for UI, `n=8+` for integration). The cap is the parallelism the suite already uses on every CI run and every developer's machine; a test that flakes at that level will keep flaking, and "leave as-is" pushes the cost onto every future contributor. This rule fires regardless of the exact phrasing of the diagnosis ("confirmed flake," "looks flaky under load," "passes most of the time," "intermittent timeout," etc.) — if the conclusion is that the test is not deterministic at the parallelism cap, hardening is the correct next action. **Always fix the root cause, not the symptom.** Prefer adding explicit readiness waits before the fragile action (e.g., `wait_until_in_focus(...)` before `send_keys(Keys.ESCAPE)` — ESC must be delivered to a focused element, otherwise the keydown lands nowhere) or replacing raw interactions with deterministic equivalents (`wait_then_click_element` on a clickability-gated element vs raw `send_keys`). **Do not pad timeouts as a primary fix** — bumping `wait_until_*(..., timeout=N)` past the default just makes failures slower while leaving the underlying race intact. Only raise a timeout when profiling shows the test's worst-case call time legitimately exceeds the default under load, and even then state that justification in the commit body. A small hardening fix may be bundled into the current PR; larger sweeps may be filed as a follow-up PR — but never push with a known-flaky test marked "leave as-is."
+6. **`TimeoutException` in Selenium tests always requires investigation** - never pre-existing or dismissible as "flaky" (see central Test Failures policy). Indicates either a UI logic bug or a genuine timing/stability issue.
 7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration) or `make test-ui-parallel` (UI, default n=8) by default. Sequential targets are fallbacks only. Never run two separate make test commands simultaneously — "parallel" means `-n` workers within a single invocation, not two concurrent terminal commands.
    - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
    - **UI parallelism cap: n=8 max** — Each UI worker needs a dedicated Flask server, Chrome session, and Postgres DB. Running n=12 saturates host CPU/RAM during concurrent startup, causing 120+ second fixture setup times that exceed Selenium wait timeouts and produce spurious login assertion failures. Individual markers pass at n=4; the full suite is stable at n=8.
 8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
-9. **Never dismiss test failures without investigation** - "File not modified on this branch" does not prove the failure is unrelated. Follow this structure for every failure:
-   1. **Read the failing test** — understand what it asserts and how it sets up state
-   2. **Check branch changes for indirect effects** — shared test utilities/fixtures, templates/CSS/JS the test's page depends on, schema/model changes affecting the endpoint, additive changes with potential side effects
-   3. **Trace the full code path** — read the JS, template, route handler, and schema involved in the failing assertion end-to-end
-   4. **Compare with passing sibling tests** — if a similar test passes (e.g., `_btn` vs `_key` variant), identify what differs (timing, interaction method, element targeting)
-   5. **Check timeout/wait values** — compare with similar waits elsewhere in the codebase; tight timeouts under parallel load are a common flake source
-   6. **Rerun in isolation** — run the test alone 2-3 times to determine if it's a parallelism/timing flake vs a deterministic failure
-   7. **Identify specific root cause** — conclude with a concrete diagnosis (e.g., "3-second timeout too tight under 8-worker parallel load"), not a vague "flaky" or "pre-existing"
+
+Flaky-test hardening and the never-dismiss-without-investigation protocol are covered centrally (see `~/code/CLAUDE.md` → Test Failures: Investigate, Don't Dismiss); the parallelism cap (`n=8`) above is this repo's specific instantiation of "harden to the suite's normal parallelism."
 
 ### Code Style
 
@@ -213,7 +177,7 @@ This project is primarily Python with some JavaScript/HTML/CSS. When editing Pyt
 
 ### Dependency Pinning
 
-**All versions in any language must be pinned to exact versions — no ranges, no carets, no tildes, no `>=`.**
+(see central Dependency Pinning rule for the general policy — this repo's manifests/forms:)
 
 | Manifest                                       | Required form                                                                          | Forbidden forms                           |
 |------------------------------------------------|----------------------------------------------------------------------------------------|-------------------------------------------|
@@ -227,9 +191,7 @@ When adding or bumping a dependency, never introduce a range — if you only nee
 
 ### Import Style
 
-Always use top-level (global) imports. Never use local imports (inside functions, methods, or conditional blocks) unless the user explicitly requests it as a design decision — no exceptions.
-
-**Standing exemption — `vi.importActual()` inside vitest `it(...)` blocks**: vitest's `vi.mock()` hoisting runs before module-level code, so `vi.importActual()` calls used for partial mocking cannot be moved to module scope. Local usage inside `it(...)` closures is permitted for this specific pattern only.
+**Exception to the central top-level-imports-only rule — `vi.importActual()` inside vitest `it(...)` blocks**: vitest's `vi.mock()` hoisting runs before module-level code, so `vi.importActual()` calls used for partial mocking cannot be moved to module scope. Local usage inside `it(...)` closures is permitted for this specific pattern only.
 
 ### Import Ordering
 
@@ -241,16 +203,10 @@ Imports are sorted into three groups, each alphabetized internally, separated by
 
 ### General
 
-1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
-2. **Never use Bash to write files** — use the `Write` tool instead of `cat >`, `cat <<`, `echo >`, `tee`, or `printf >`. Heredocs and redirects with JSON/code content trigger security prompts due to brace+quote detection. The `Write` tool bypasses this entirely.
-3. **Never use inline `python3 -c` with braces** — write the script to a temp file and execute it. Inline Python with `{}` (dicts, f-strings, sets) triggers the same brace+quote security check.
-4. **Never use Bash brace expansion** — `{a,b,c}` in shell commands triggers the same brace+quote security check. Use Glob tool, wildcards (`*.md`), or list files individually instead.
-5. **Never set `dangerouslyDisableSandbox: true` on `grep`** — `grep` is read-only and runs fine inside the sandbox; disabling the sandbox forces an un-suppressible permission prompt (the same class as `gh`). The bare `grep ...` form (grep as the **first token**, no compounding, no `awk`/`sed` wrapper) is allowlisted via `Bash(grep:*)` and runs prompt-free in-sandbox — keep it bare so the allowlist matches. This is a sandbox/allowlist rule only; it does **not** change the standing "prefer the dedicated Grep/Read/Glob tools over Bash" preference (when the Grep tool exists in the session, use it).
-6. **Never join commands with `&&`, `||`, or `;`** — the `block-compound-commands.sh` PreToolUse hook **denies** any Bash call that chains commands with a sequence operator. Run independent commands as **separate Bash tool calls in the same message** (they execute in parallel). This keeps each command individually permission-checked and stops a destructive op (e.g. `rm -rf`) from hiding mid-chain. **Pipes (`|`) and command-substitution `$(...)` are NOT compounds** and remain fine (`ls | head`, `grep x | wc -l`). Two patterns are exempted in the hook's `EXEMPT_PATTERNS`: the Docker pytest invocation (`... bash -c "source /code/venv/bin/activate && ... pytest ..."`) and the `GH_TOKEN=$(...)` / `BRANCH=$(...)` push prefixes — extend that list (not the rule) if a new legitimate chained pattern recurs.
-
-### Test Output Location
-
-Always write test output to `/tmp/claude/` (e.g., `/tmp/claude/test-foo-results.txt`). Never use `$TMPDIR` — it resolves to different directories depending on sandbox mode, causing files written in one tool call to be invisible in the next. Never use project-level directories for test output.
+1. **Never use Bash to write files** — use the `Write` tool instead of `cat >`, `cat <<`, `echo >`, `tee`, or `printf >`. Heredocs and redirects with JSON/code content trigger security prompts due to brace+quote detection. The `Write` tool bypasses this entirely.
+2. **Never use inline `python3 -c` with braces** — write the script to a temp file and execute it. Inline Python with `{}` (dicts, f-strings, sets) triggers the same brace+quote security check.
+3. **Never use Bash brace expansion** — `{a,b,c}` in shell commands triggers the same brace+quote security check. Use Glob tool, wildcards (`*.md`), or list files individually instead.
+4. **Never join commands with `&&`, `||`, or `;`** — the `block-compound-commands.sh` PreToolUse hook **denies** any Bash call that chains commands with a sequence operator. Run independent commands as **separate Bash tool calls in the same message** (they execute in parallel). This keeps each command individually permission-checked and stops a destructive op (e.g. `rm -rf`) from hiding mid-chain. **Pipes (`|`) and command-substitution `$(...)` are NOT compounds** and remain fine (`ls | head`, `grep x | wc -l`). Two patterns are exempted in the hook's `EXEMPT_PATTERNS`: the Docker pytest invocation (`... bash -c "source /code/venv/bin/activate && ... pytest ..."`) and the `GH_TOKEN=$(...)` / `BRANCH=$(...)` push prefixes — extend that list (not the rule) if a new legitimate chained pattern recurs.
 
 ## Testing & Verification
 
@@ -290,7 +246,7 @@ Before committing a backend change in any of those categories, run `make generat
 
 ### Makefile Shortcuts
 
-A `Makefile` is provided for common tasks. **Always prefer Makefile commands** over typing full Docker commands directly. Claude Code should use these for all standard operations:
+Common tasks (see central Makefile-First Command Policy for the general rule):
 
 | Command | Description |
 |---|---|
@@ -327,21 +283,9 @@ Bring the stack up with `make up d=1` to exercise the anonymous-metrics pipeline
 
 ### Docker Execution Note
 
-**CRITICAL:** All `docker`, `docker compose`, and `make` commands must be run outside sandbox mode due to Docker socket access requirements. Always set `dangerouslyDisableSandbox: true` on every Bash call that runs these commands. Example: `Bash(command: "make test-marker-parallel m=urls > \"/tmp/claude/test-results.txt\" 2>&1", dangerouslyDisableSandbox: true)`
-
-**CRITICAL — never compound `make`/`docker` with another command.** `sandbox.excludedCommands` (in `.claude/settings.local.json`) auto-runs `make ...` and `docker ...` unsandboxed silently — but it matches on the **first token of the command only**. Compounding with anything else (`rm /tmp/foo && make test`, `mkdir x && docker compose up`, `cd dir && make build`) shifts the first token away from the excluded prefix, so the match fails and the harness shows an unsandbox approval prompt. Always split into two separate Bash calls: cleanup/setup first, then the `make`/`docker` call alone.
+All `make`/`docker`/`docker compose` targets used by this repo are already listed in `sandbox.excludedCommands` (`.claude/settings.local.json`) and run unsandboxed automatically — no `dangerouslyDisableSandbox` flag needed. Never compound them with another command (see central "Working inside a sub-repo" note on first-token-only matching) — run cleanup/setup as its own Bash call, then the `make`/`docker` call alone.
 
 **CRITICAL:** Never run `make up` or `make up-built` without `d=1`. Without the detached flag, these commands stream Docker logs to stdout indefinitely and never exit. Always use `make up d=1` (or `make up-built d=1`), then poll `docker compose ps` until services are healthy. Before starting containers, check if they're already running with `docker compose --project-directory . -f docker/compose.local.yaml ps`.
-
-### Git Config Write Note
-
-The sandbox blocks writes to `.git/config`. This means `git push -u` silently fails to save upstream tracking refs. After pushing a branch, always set tracking separately with `dangerouslyDisableSandbox: true`:
-
-```bash
-git branch --set-upstream-to=origin/$BRANCH $BRANCH
-```
-
-Without this, `git fetch -p` cannot detect merged/deleted remote branches as "gone", breaking branch cleanup workflows like `gmas`.
 
 ### Running the App (Docker - recommended)
 
@@ -457,9 +401,10 @@ This rule applies even when the migration is purely additive, purely data, or "o
 
 ## Review Workflow
 
-1. When reading review files, always scroll to the END of the file first to find the latest revision/pass. Never assume the highest line number found in an initial read is the last revision — the file may be longer than what was initially loaded.
-2. Be conservative with file reads during plan reviews. Read only the files directly referenced in the plan steps, not every potentially related file. Token limits are a real constraint.
-3. Do not append 'Verification' reminders or checklists after applying review items to plans. Just apply the edit and provide the staff-engineer critique.
+(scroll-to-end-first convention is centralized — see central CLAUDE.md)
+
+1. Be conservative with file reads during plan reviews. Read only the files directly referenced in the plan steps, not every potentially related file. Token limits are a real constraint.
+2. Do not append 'Verification' reminders or checklists after applying review items to plans. Just apply the edit and provide the staff-engineer critique.
 
 
 ## Architecture

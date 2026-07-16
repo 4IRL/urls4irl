@@ -127,11 +127,11 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 
 ## OAuth Blueprint
 
-Base path: `/oauth`. Google sign-in is implemented (below); GitHub remains a stub for a later phase of the OAuth initiative (see `plans/oauth/oauth-integration-master.md`). The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) are shared across providers. Google client registration itself (`oauth.google` Authlib registration, gated on configured credentials) is covered by `tests/integration/splash/test_oauth_client_init.py` (marker: `splash`), independent of the per-route tests listed below.
+Base path: `/oauth`. Both Google and GitHub sign-in are implemented. The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) are shared across providers. Client registration itself (`oauth.google`/`oauth.github` Authlib registration, each gated on its own configured credentials) is covered by `tests/integration/splash/test_oauth_client_init.py` (marker: `splash`), independent of the per-route tests listed below.
 
-Both Google routes are non-AJAX, browser-navigation routes (like `/confirm-email` and `/validate/expired` above) rather than AJAX JSON-envelope routes — there is no dedicated JS module or CSRF-meta-tag row for either.
+Both Google routes and both GitHub routes are non-AJAX, browser-navigation routes (like `/confirm-email` and `/validate/expired` above) rather than AJAX JSON-envelope routes — there is no dedicated JS module or CSRF-meta-tag row for any of the four.
 
-**CSRF pattern:** `GET /oauth/google/callback` stacks the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route`, above `@no_authenticated_users_allowed`/`@api_route`, as at `backend/metrics/routes.py:ingest`). The exemption is defensive/self-documenting rather than load-bearing: Flask-WTF's `CSRFProtect` only checks unsafe methods (POST/PUT/PATCH/DELETE) and this route is GET-only. OAuth state/CSRF is instead handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
+**CSRF pattern:** `GET /oauth/google/callback` and `GET /oauth/github/callback` both stack the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route`, above `@no_authenticated_users_allowed`/`@api_route`, as at `backend/metrics/routes.py:ingest`). The exemption is defensive/self-documenting rather than load-bearing: Flask-WTF's `CSRFProtect` only checks unsafe methods (POST/PUT/PATCH/DELETE) and both routes are GET-only. OAuth state/CSRF is instead handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
 
 ### GET /oauth/google/login
 
@@ -155,25 +155,23 @@ Both Google routes are non-AJAX, browser-navigation routes (like `/confirm-email
 
 ### GET /oauth/github/login
 
-| Layer          | Location                          |
-| -------------- | --------------------------------- |
-| **Handler**    | Phase 3 — not yet implemented.    |
-| **Decorators** | Phase 3 — not yet implemented.    |
-| **Service**    | Phase 3 — not yet implemented.    |
-| **Template**   | Phase 3 — not yet implemented.    |
-| **JS Module**  | Phase 3 — not yet implemented.    |
-| **Tests**      | Phase 3 — not yet implemented.    |
+| Layer          | Location                                                                                                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:github_login`                                                                                                                                                                                                                                                           |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(ajax_required=False, tags=[OPEN_API.AUTH], description="Redirect to GitHub's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback.", status_codes={302: EmptyRedirectSchema})` |
+| **Service**    | `backend/splash/services/oauth/github_service.py:initiate_github_login`                                                                                                                                                                                                                           |
+| **Template**   | None (redirect only)                                                                                                                                                                                                                                                                              |
+| **Tests**      | `tests/integration/splash/test_oauth_github.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_github_ui.py` (marker: `splash_ui`)                                                                                                                                                    |
 
 ### GET /oauth/github/callback
 
-| Layer          | Location                          |
-| -------------- | --------------------------------- |
-| **Handler**    | Phase 3 — not yet implemented.    |
-| **Decorators** | Phase 3 — not yet implemented.    |
-| **Service**    | Phase 3 — not yet implemented.    |
-| **Template**   | Phase 3 — not yet implemented.    |
-| **JS Module**  | Phase 3 — not yet implemented.    |
-| **Tests**      | Phase 3 — not yet implemented.    |
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/splash/routes.py:github_callback`                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Decorators** | `@csrf.exempt`, `@no_authenticated_users_allowed`, `@api_route(query_schema=GitHubOAuthCallbackQuerySchema, ajax_required=False, tags=[OPEN_API.AUTH], description="GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.", status_codes={200: HtmlErrorPageSchema, 302: EmptyRedirectSchema, 400: ErrorResponse})` |
+| **Service**    | `backend/splash/services/oauth/github_service.py:handle_github_callback` (validates `code`/`state`/`error` via `GitHubOAuthCallbackQuerySchema`/`parse_query_args`; GitHub has no OIDC layer, so unlike Google's single userinfo call this makes two resource calls after the token exchange — `GET user` for the account payload/subject/login, then `GET user/emails` for the address list — and selects the entry marked both `primary` and `verified` via `select_primary_verified_email`)                           |
+| **Template**   | `pages/splash.html` (via the shared `components/splash/oauth_reject.html` partial on any reject branch — email collision, unverified email, consent decline, or generic failure)                                                                                                                                                                                                                                                                                                                                         |
+| **Tests**      | `tests/integration/splash/test_oauth_github.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_github_ui.py` (marker: `splash_ui`)                                                                                                                                                                                                                                                                                                                                                                           |
 
 ---
 

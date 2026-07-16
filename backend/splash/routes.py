@@ -25,6 +25,7 @@ from backend.schemas.base import EmptyRedirectSchema, HtmlErrorPageSchema
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.splash import (
     ForgotPasswordRequest,
+    GitHubOAuthCallbackQuerySchema,
     GoogleOAuthCallbackQuerySchema,
     LoginRequest,
     RegisterRequest,
@@ -45,6 +46,10 @@ from backend.splash.constants import (
 )
 from backend.splash.services.forgot_password import (
     send_forgot_password_email_to_user,
+)
+from backend.splash.services.oauth.github_service import (
+    handle_github_callback,
+    initiate_github_login,
 )
 from backend.splash.services.oauth.google_service import (
     handle_google_callback,
@@ -246,6 +251,37 @@ def google_login() -> WerkzeugResponse:
 )
 def google_callback() -> WerkzeugResponse | str | FlaskResponse:
     return handle_google_callback()
+
+
+@splash.route("/oauth/github/login", methods=["GET"])
+@no_authenticated_users_allowed
+@api_route(
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="Redirect to GitHub's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback.",
+    status_codes={302: EmptyRedirectSchema},
+)
+def github_login() -> WerkzeugResponse:
+    """Kicks off GitHub OAuth. Dual-purpose: sign-in for returning users, auto-registration for first-time users (see docstring on the callback)."""
+    return initiate_github_login()
+
+
+@splash.route("/oauth/github/callback", methods=["GET"])
+@csrf.exempt
+@no_authenticated_users_allowed
+@api_route(
+    query_schema=GitHubOAuthCallbackQuerySchema,
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
+    status_codes={
+        200: HtmlErrorPageSchema,
+        302: EmptyRedirectSchema,
+        400: ErrorResponse,
+    },
+)
+def github_callback() -> WerkzeugResponse | str | FlaskResponse:
+    return handle_github_callback()
 
 
 @splash.route("/reset-password/<string:token>", methods=["GET"])

@@ -29,6 +29,8 @@ class OAUTH_ROUTES:
     _SPLASH = "splash."
     GOOGLE_LOGIN = _SPLASH + "google_login"
     GOOGLE_CALLBACK = _SPLASH + "google_callback"
+    GITHUB_LOGIN = _SPLASH + "github_login"
+    GITHUB_CALLBACK = _SPLASH + "github_callback"
 
 
 class URL_TAG_ROUTES:
@@ -222,6 +224,7 @@ def generate_routes_js() -> dict[str, str]:
         "sendValidationEmail": url_for(SPLASH_ROUTES.SEND_VALIDATION_EMAIL),
         "forgotPassword": url_for(SPLASH_ROUTES.FORGOT_PASSWORD_PAGE),
         "oauthGoogleLogin": url_for(OAUTH_ROUTES.GOOGLE_LOGIN),
+        "oauthGithubLogin": url_for(OAUTH_ROUTES.GITHUB_LOGIN),
         # Util routes
         "errorPage": url_for(SPLASH_ROUTES.ERROR_PAGE),
         # Logout

@@ -101,12 +101,15 @@ TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_METRICS_REDIS_URI = environ.get(ENV.TEST_METRICS_REDIS_URI, default="memory://")
 TEST_PLAYWRIGHT_URI = environ.get(ENV.PLAYWRIGHT_WS_URL, default=None)
 
-# Dummy Google OAuth credentials shared by ConfigTestUI (below) and
-# tests/conftest.py, so `should_register_google_oauth` registers the fake
-# in-process provider (backend/testing/fake_oauth_provider.py) for tests.
-# Never valid against the real Google endpoints.
+# Dummy OAuth credentials shared by ConfigTestUI (below) and
+# tests/conftest.py, so `should_register_google_oauth` /
+# `should_register_github_oauth` register the fake in-process provider
+# (backend/testing/fake_oauth_provider.py) for tests.
+# Never valid against the real Google/GitHub endpoints.
 TEST_GOOGLE_OAUTH_CLIENT_ID = "test-google-client-id"
 TEST_GOOGLE_OAUTH_CLIENT_SECRET = "test-google-client-secret"
+TEST_GITHUB_OAUTH_CLIENT_ID = "test-github-client-id"
+TEST_GITHUB_OAUTH_CLIENT_SECRET = "test-github-client-secret"
 
 LOG_DIR = environ.get(ENV.LOG_DIR, default="logs")
 
@@ -270,9 +273,11 @@ class ConfigTest(Config):
 class ConfigTestUI(ConfigTest):
     UI_TESTING = True
     SESSION_COOKIE_SECURE = False
-    # See TEST_GOOGLE_OAUTH_CLIENT_ID/TEST_GOOGLE_OAUTH_CLIENT_SECRET above.
+    # See TEST_*_OAUTH_CLIENT_ID/TEST_*_OAUTH_CLIENT_SECRET above.
     GOOGLE_OAUTH_CLIENT_ID = TEST_GOOGLE_OAUTH_CLIENT_ID
     GOOGLE_OAUTH_CLIENT_SECRET = TEST_GOOGLE_OAUTH_CLIENT_SECRET
+    GITHUB_OAUTH_CLIENT_ID = TEST_GITHUB_OAUTH_CLIENT_ID
+    GITHUB_OAUTH_CLIENT_SECRET = TEST_GITHUB_OAUTH_CLIENT_SECRET
 
     def __init__(self) -> None:
         super().__init__()

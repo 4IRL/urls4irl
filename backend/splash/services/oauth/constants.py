@@ -2,6 +2,13 @@ from __future__ import annotations
 
 from enum import StrEnum
 
+# Session key both provider services use to round-trip the `next` query param
+# from the login-initiation request to the provider's callback redirect. Only
+# one OAuth flow can be in flight per session, so a single shared key is
+# correct (and means a user switching providers mid-flow can't leak a stale
+# target).
+OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
+
 
 class Provider(StrEnum):
     """The set of supported OAuth providers.

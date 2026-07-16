@@ -27,7 +27,10 @@ from backend.splash.services.oauth.account_service import (
     EmailAlreadyRegisteredError,
     find_or_create_oauth_user,
 )
-from backend.splash.services.oauth.constants import Provider
+from backend.splash.services.oauth.constants import (
+    OAUTH_NEXT_SESSION_KEY,
+    Provider,
+)
 from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
@@ -38,8 +41,6 @@ from backend.utils.strings.oauth_strs import (
     INVALID_CALLBACK_QUERY_MESSAGE,
     UNVERIFIED_EMAIL_MESSAGE,
 )
-
-_OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
 
 
 def initiate_google_login() -> WerkzeugResponse:
@@ -62,7 +63,7 @@ def initiate_google_login() -> WerkzeugResponse:
     if not hasattr(oauth, "google"):
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
-    session[_OAUTH_NEXT_SESSION_KEY] = request.args.get("next")
+    session[OAUTH_NEXT_SESSION_KEY] = request.args.get("next")
     redirect_uri = url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -87,7 +88,7 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
 
-    stashed_next = session.pop(_OAUTH_NEXT_SESSION_KEY, None)
+    stashed_next = session.pop(OAUTH_NEXT_SESSION_KEY, None)
 
     parsed = parse_query_args(
         GoogleOAuthCallbackQuerySchema,

@@ -7,7 +7,10 @@ from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
 from backend.utils.datetime_utils import utc_now
-from backend.utils.oauth_config import should_register_google_oauth
+from backend.utils.oauth_config import (
+    should_register_github_oauth,
+    should_register_google_oauth,
+)
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.admin_portal_strs import ADMIN_ACTION_STRINGS
 from backend.utils.strings.email_validation_strs import (
@@ -719,8 +722,9 @@ def provide_config_for_constants() -> dict:
     Provides configuration to templates:
     - CONSTANTS: Python objects for Jinja template rendering
     - CONFIG: JSON-serializable dict for JavaScript
-    - google_oauth_enabled: whether the Google OAuth button/routes should be
-      exposed to the user, per whether credentials are configured
+    - google_oauth_enabled / github_oauth_enabled: whether each provider's
+      OAuth button/routes should be exposed to the user, per whether that
+      provider's credentials are configured
     """
     routes = generate_routes_js()
     if current_user.is_authenticated and current_user.is_admin():
@@ -736,5 +740,9 @@ def provide_config_for_constants() -> dict:
         google_oauth_enabled=should_register_google_oauth(
             current_app.config.get("GOOGLE_OAUTH_CLIENT_ID"),
             current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+        ),
+        github_oauth_enabled=should_register_github_oauth(
+            current_app.config.get("GITHUB_OAUTH_CLIENT_ID"),
+            current_app.config.get("GITHUB_OAUTH_CLIENT_SECRET"),
         ),
     )

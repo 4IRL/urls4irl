@@ -22,6 +22,8 @@ from backend.config import (
     POSTGRES_USER,
     POSTGRES_PASSWORD,
     TEST_DB_URI,
+    TEST_GITHUB_OAUTH_CLIENT_ID,
+    TEST_GITHUB_OAUTH_CLIENT_SECRET,
     TEST_GOOGLE_OAUTH_CLIENT_ID,
     TEST_GOOGLE_OAUTH_CLIENT_SECRET,
     TEST_METRICS_REDIS_URI,
@@ -309,6 +311,8 @@ def build_app(
     config = ConfigTest()
     config.GOOGLE_OAUTH_CLIENT_ID = TEST_GOOGLE_OAUTH_CLIENT_ID
     config.GOOGLE_OAUTH_CLIENT_SECRET = TEST_GOOGLE_OAUTH_CLIENT_SECRET
+    config.GITHUB_OAUTH_CLIENT_ID = TEST_GITHUB_OAUTH_CLIENT_ID
+    config.GITHUB_OAUTH_CLIENT_SECRET = TEST_GITHUB_OAUTH_CLIENT_SECRET
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     if worker_metrics_redis_uri and worker_metrics_redis_uri != "memory://":

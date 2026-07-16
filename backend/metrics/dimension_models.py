@@ -374,7 +374,7 @@ class _DimLoginFailure(BaseModel):
 
 class _DimLoginSuccess(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    method: Literal["password", "google"]
+    method: Literal["password", "google", "github"]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 

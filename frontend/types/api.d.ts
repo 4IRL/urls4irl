@@ -1062,6 +1062,40 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/oauth/github/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Redirect to GitHub's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback. */
+    get: operations["githubLogin"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/oauth/github/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET. */
+    get: operations["githubCallback"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/reset-password/{token}": {
     parameters: {
       query?: never;
@@ -6353,6 +6387,71 @@ export interface operations {
     };
   };
   googleCallback: {
+    parameters: {
+      query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  githubLogin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+    };
+  };
+  githubCallback: {
     parameters: {
       query?: {
         code?: string;
