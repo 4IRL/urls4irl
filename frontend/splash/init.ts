@@ -208,6 +208,7 @@ export function handleUserHasAccountNotEmailValidated(
   $sourceModal.find(".modal-footer").remove();
   $sourceModal.find(".oauth-divider").remove();
   $sourceModal.find(".oauth-google-button").remove();
+  $sourceModal.find(".oauth-github-button").remove();
   $sourceModal.one("hide.bs.modal", logoutOnExit);
 }
 

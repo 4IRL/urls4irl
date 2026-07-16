@@ -355,6 +355,7 @@ class SplashPageLocators(GenericPageLocator):
     LOGIN_BUTTON_SUBMIT = f"{LOGIN_MODAL} #submit"
     LOGIN_INVALID_FEEDBACK = f"{LOGIN_MODAL} .invalid-feedback"
     LOGIN_BUTTON_GOOGLE_OAUTH = f"{LOGIN_MODAL} #GoogleOAuthLogin"
+    LOGIN_BUTTON_GITHUB_OAUTH = f"{LOGIN_MODAL} #GitHubOAuthLogin"
 
     # Register modal scoped selectors
     REGISTER_INPUT_USERNAME = f"{REGISTER_MODAL} #username"
@@ -366,6 +367,7 @@ class SplashPageLocators(GenericPageLocator):
     REGISTER_INVALID_FEEDBACK = f"{REGISTER_MODAL} .invalid-feedback"
     REGISTER_BTN_CLOSE = f"{REGISTER_MODAL} .btn-close"
     REGISTER_BUTTON_GOOGLE_OAUTH = f"{REGISTER_MODAL} #GoogleOAuthRegister"
+    REGISTER_BUTTON_GITHUB_OAUTH = f"{REGISTER_MODAL} #GitHubOAuthRegister"
 
     # Forgot password modal scoped selectors
     FORGOT_PASSWORD_INPUT_EMAIL = f"{FORGOT_PASSWORD_MODAL} #email"

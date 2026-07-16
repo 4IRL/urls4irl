@@ -11,6 +11,7 @@ export type RouteId =
   | "sendValidationEmail"
   | "forgotPassword"
   | "oauthGoogleLogin"
+  | "oauthGithubLogin"
   | "errorPage"
   | "logout"
   | "createUTub"
@@ -29,6 +30,7 @@ export interface AppRoutes {
   sendValidationEmail: string;
   forgotPassword: string;
   oauthGoogleLogin: string;
+  oauthGithubLogin: string;
   errorPage: string;
   logout: string;
   contactUs: string;
@@ -115,6 +117,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     sendValidationEmail: rawConfig.routes.sendValidationEmail,
     forgotPassword: rawConfig.routes.forgotPassword,
     oauthGoogleLogin: rawConfig.routes.oauthGoogleLogin,
+    oauthGithubLogin: rawConfig.routes.oauthGithubLogin,
     errorPage: rawConfig.routes.errorPage,
     logout: rawConfig.routes.logout,
 

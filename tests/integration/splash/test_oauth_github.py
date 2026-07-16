@@ -42,6 +42,7 @@ from backend.splash.constants import (
     LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
     OAuthErrorCodes,
 )
+from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -53,6 +54,7 @@ from backend.utils.strings.oauth_strs import (
     GITHUB_UNVERIFIED_EMAIL_MESSAGE as _GITHUB_UNVERIFIED_EMAIL_MESSAGE,
 )
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+from tests.conftest import TEST_GITHUB_OAUTH_CLIENT_ID, TEST_GITHUB_OAUTH_CLIENT_SECRET
 from tests.integration.system.metrics_helpers import (
     count_counter_keys,
     find_counter_keys,
@@ -82,6 +84,8 @@ _GITHUB_USER_EMAILS_RESOURCE = "user/emails"
 _FAKE_CODE = "fake-authorization-code"
 _FAKE_STATE = "fake-state-value"
 _FAKE_TOKEN = {"access_token": "fake-github-access-token"}
+_FAKE_OAUTH_PROVIDER_SECRET_KEY = "fake-oauth-provider-test-secret-key"
+_WRONG_CLIENT_SECRET = "wrong-client-secret"
 _MOCK_CONSENT_REDIRECT_URL = "https://github.com/login/oauth/mock-consent"
 
 _EXISTING_GITHUB_ID = 10_001
@@ -268,6 +272,50 @@ def _seed_utub_membership(app: Flask, *, user_email: str, utub_name: str) -> int
         db.session.add(new_utub)
         db.session.commit()
         return new_utub.id
+
+
+def _build_fake_oauth_provider_app() -> Flask:
+    """Mounts only the fake OAuth provider blueprint on a throwaway Flask app.
+
+    `github_token()` reads just `SECRET_KEY`, `GITHUB_OAUTH_CLIENT_ID`, and
+    `GITHUB_OAUTH_CLIENT_SECRET` off `current_app.config`, so a full
+    `create_app()` boot is unnecessary. The shared `app` fixture from
+    `tests/conftest.py` never registers this blueprint since it is built with
+    `UI_TESTING=False` — `backend/testing/fake_oauth_provider.py` is only
+    wired in for Selenium's `ConfigTestUI` (see `backend/__init__.py`).
+    Mirrors `test_oauth_google.py`'s `_build_fake_oauth_provider_app`.
+    """
+    fake_oauth_app = Flask(__name__)
+    fake_oauth_app.config["SECRET_KEY"] = _FAKE_OAUTH_PROVIDER_SECRET_KEY
+    fake_oauth_app.config["GITHUB_OAUTH_CLIENT_ID"] = TEST_GITHUB_OAUTH_CLIENT_ID
+    fake_oauth_app.config["GITHUB_OAUTH_CLIENT_SECRET"] = (
+        TEST_GITHUB_OAUTH_CLIENT_SECRET
+    )
+    fake_oauth_app.register_blueprint(fake_oauth)
+    return fake_oauth_app
+
+
+def test_fake_github_oauth_token_rejects_wrong_client_secret():
+    """
+    GIVEN the fake OAuth provider's `/fake-oauth/github/token` endpoint
+        configured with the real test client_id/client_secret pair
+    WHEN a POST supplies the correct client_id but a wrong client_secret via
+        HTTP Basic auth
+    THEN the endpoint rejects with 401 and {"error": "invalid_client"} — the
+        `hmac.compare_digest` mismatch path this hardening protects, not just
+        a missing-credentials shortcut. Mirrors
+        `test_oauth_google.py::test_fake_oauth_token_rejects_wrong_client_secret`.
+    """
+    fake_oauth_client = _build_fake_oauth_provider_app().test_client()
+
+    response = fake_oauth_client.post(
+        "/fake-oauth/github/token",
+        data={"code": "irrelevant-code"},
+        auth=(TEST_GITHUB_OAUTH_CLIENT_ID, _WRONG_CLIENT_SECRET),
+    )
+
+    assert response.status_code == 401
+    assert response.get_json() == {"error": "invalid_client"}
 
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
