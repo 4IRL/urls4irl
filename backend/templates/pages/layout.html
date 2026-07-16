@@ -28,6 +28,10 @@
 
     {% include 'components/splash/reset_password.html' %}
 
+    {% elif is_confirming_oauth_link %}
+
+    {% include 'components/splash/oauth_confirm_link.html' %}
+
     {% elif current_user.is_authenticated and current_user.email_validated %}
 
     {% include 'modals/homeModalBase.html' %}

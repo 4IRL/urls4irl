@@ -182,6 +182,22 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
         category=EventCategory.DOMAIN,
         dimensions={"method": ("password", "google", "github")},
     ),
+    EventName.OAUTH_IDENTITY_LINKED: EventRegistryEntry(
+        description=(
+            "OAuth provider identity linked to an existing account "
+            "(settings link flow or collision confirm-link flow)"
+        ),
+        category=EventCategory.DOMAIN,
+        dimensions={"provider": ("google", "github")},
+    ),
+    EventName.OAUTH_IDENTITY_UNLINKED: EventRegistryEntry(
+        description=(
+            "OAuth provider identity disconnected from an account via the "
+            "settings page"
+        ),
+        category=EventCategory.DOMAIN,
+        dimensions={"provider": ("google", "github")},
+    ),
     EventName.LOGIN_FAILURE: EventRegistryEntry(
         description=("Login attempt rejected, tagged with closed-set failure reason"),
         category=EventCategory.DOMAIN,

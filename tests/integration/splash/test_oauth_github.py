@@ -42,13 +42,13 @@ from backend.splash.constants import (
     LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL,
     OAuthErrorCodes,
 )
+from backend.splash.services.oauth.constants import OAUTH_PENDING_LINK_SESSION_KEY
 from backend.testing.fake_oauth_provider import fake_oauth
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings import model_strs
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE as _CONSENT_DECLINED_MESSAGE,
-    EMAIL_COLLISION_MESSAGE as _EMAIL_COLLISION_MESSAGE,
     GENERIC_FAILURE_MESSAGE as _GENERIC_FAILURE_MESSAGE,
     GITHUB_INVALID_CALLBACK_QUERY_MESSAGE as _GITHUB_INVALID_CALLBACK_QUERY_MESSAGE,
     GITHUB_UNVERIFIED_EMAIL_MESSAGE as _GITHUB_UNVERIFIED_EMAIL_MESSAGE,
@@ -554,7 +554,7 @@ def test_github_login_invalid_next_query_param_falls_back_to_home(
 
 @mock.patch(_AUTHORIZE_ACCESS_TOKEN_TARGET)
 @mock.patch(_GITHUB_GET_TARGET)
-def test_github_callback_email_collision_renders_reject_page(
+def test_github_callback_email_collision_redirects_to_confirm_link_page(
     mock_github_get: mock.MagicMock,
     mock_authorize_access_token: mock.MagicMock,
     app: Flask,
@@ -565,8 +565,11 @@ def test_github_callback_email_collision_renders_reject_page(
     GIVEN a password-based Users row with no matching UserOAuthIdentity
     WHEN the callback's mocked userinfo returns that same email under a new
         github id
-    THEN EmailAlreadyRegisteredError surfaces as the reject-page render (not a
-        500) and no new Users/UserOAuthIdentity rows are created
+    THEN the callback redirects (302) to the confirm-link page instead of
+        rendering a reject page, records LOGIN_FAILURE with
+        reason="oauth_email_collision", stashes the pending identity in the
+        session, does not log the user in, and creates no new
+        Users/UserOAuthIdentity rows
     """
     collision_email = valid_user_1[model_strs.EMAIL].lower()
     mock_authorize_access_token.return_value = _FAKE_TOKEN
@@ -579,14 +582,21 @@ def test_github_callback_email_collision_renders_reject_page(
         assert Users.query.count() == 1
         assert UserOAuthIdentity.query.count() == 0
 
-    response = client.get(
-        _callback_url(code=_FAKE_CODE, state=_FAKE_STATE), follow_redirects=True
-    )
+    response = client.get(_callback_url(code=_FAKE_CODE, state=_FAKE_STATE))
 
-    assert response.status_code == 200
-    assert _EMAIL_COLLISION_MESSAGE.encode() in response.data
+    assert response.status_code == 302
+    assert response.location == url_for(OAUTH_ROUTES.CONFIRM_LINK_PAGE)
     assert not current_user.is_authenticated
     mock_authorize_access_token.assert_called_once()
+
+    with client.session_transaction() as flask_session:
+        pending_link = flask_session[OAUTH_PENDING_LINK_SESSION_KEY]
+        assert pending_link["provider"] == "github"
+        assert pending_link["subject"] == _NEW_USER_SUBJECT
+        assert pending_link["email"] == collision_email
+
+    confirm_page_response = client.get(url_for(OAUTH_ROUTES.CONFIRM_LINK_PAGE))
+    assert confirm_page_response.status_code == 200
 
     with app.app_context():
         assert Users.query.count() == 1

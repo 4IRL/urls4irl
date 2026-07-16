@@ -1,0 +1,43 @@
+<div class="modal fade show" id="SplashModal" tabindex="-1" aria-labelledby="FormModal" style="display: block;"
+    aria-modal="true" role="dialog">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            <form id="ModalForm" method="POST" class="login-register-form" data-modal-type="confirm-link" action="{{ url_for('splash.oauth_confirm_link') }}" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="modal-header">
+                    <h4 class="modal-title" id="ConfirmLinkModalLabel">{{ confirm_link_title }}</h4>
+                    <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="close">
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <p id="ConfirmLinkPrompt" class="confirm-link-prompt">{{ confirm_link_prompt }}</p>
+                    {% if confirm_link_has_password %}
+                    <fieldset class="form-group">
+                        <div class="form-group first-in-register-login-form">
+                            <label class="form-control-label login-register-label" for="password">Password</label>
+                            <input autocomplete="current-password" class="form-control login-register-form-group" id="password"
+                                name="password" required type="password" value="">
+                        </div>
+                    </fieldset>
+                    {% else %}
+                    <div class="confirm-link-provider-buttons">
+                        {% for existing_provider in confirm_link_existing_providers %}
+                        <a id="ConfirmLinkContinueWith{{ existing_provider.display_name }}" class="oauth-{{ existing_provider.key }}-button confirm-link-provider-button"
+                            href="{{ existing_provider.login_url }}">
+                            {{ existing_provider.button_text }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
+                </div>
+                {% if confirm_link_has_password %}
+                <div class="modal-footer">
+                    <input class="btn btn-success login-register-buttons login-register-form-group col-12" id="submit"
+                        type="submit" value="{{ confirm_link_submit_text }}">
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>

@@ -9,6 +9,28 @@ from enum import StrEnum
 # target).
 OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
 
+# Settings-initiated account linking: an authenticated user's pending link
+# intent, stashed by `POST /users/<id>/oauth/link/<provider>` after
+# proof-of-ownership (password re-auth for password accounts; an OAuth
+# round-trip to an already-linked provider for password-less accounts) and
+# consumed by the shared `/oauth/<provider>/callback`. Shape:
+# {"action": "link"|"proof", "target_provider": str, "proof_provider": str?,
+#  "user_id": int, "issued_at": float}
+OAUTH_LINK_INTENT_SESSION_KEY = "oauth_link_intent"
+LINK_INTENT_ACTION_LINK = "link"
+LINK_INTENT_ACTION_PROOF = "proof"
+
+# Collision confirm-link: the pending provider identity stashed when an OAuth
+# sign-in resolves to an email already owned by an unlinked local account.
+# Consumed by the `/oauth/link/confirm` page/submit (password accounts) or
+# completed automatically after a successful OAuth sign-in with an
+# already-linked provider (password-less accounts). Shape:
+# {"provider": str, "subject": str, "email": str, "issued_at": float}
+OAUTH_PENDING_LINK_SESSION_KEY = "oauth_pending_link"
+
+# Both stashes above are proof-of-ownership tokens — keep them short-lived.
+OAUTH_LINK_MAX_AGE_SECONDS = 600
+
 
 class Provider(StrEnum):
     """The set of supported OAuth providers.

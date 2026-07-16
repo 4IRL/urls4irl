@@ -378,6 +378,15 @@ class _DimLoginSuccess(BaseModel):
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
+class _DimOAuthIdentityLinkChange(BaseModel):
+    """Shared by OAUTH_IDENTITY_LINKED and OAUTH_IDENTITY_UNLINKED — both
+    carry only the provider whose identity row changed."""
+
+    model_config = ConfigDict(extra="forbid")
+    provider: Literal["google", "github"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
 class _DimUrlCreateRejected(BaseModel):
     model_config = ConfigDict(extra="forbid")
     reason: Literal[
@@ -420,6 +429,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.LOGIN_SUCCESS: _DimLoginSuccess,
     EventName.MEMBER_ADDED: _DimDeviceOnly,
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
+    EventName.OAUTH_IDENTITY_LINKED: _DimOAuthIdentityLinkChange,
+    EventName.OAUTH_IDENTITY_UNLINKED: _DimOAuthIdentityLinkChange,
     EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_REQUESTED: _DimDeviceOnly,
     EventName.REGISTER_REJECTED: _DimRegisterRejected,

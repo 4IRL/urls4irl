@@ -94,6 +94,16 @@ class GitHubOAuthCallbackQuerySchema(BaseModel):
     error: str | None = None
 
 
+class ConfirmLinkRequest(BaseModel):
+    password: str = Field(
+        min_length=USER_CONSTANTS.MIN_REQUIRED_FIELD_LENGTH,
+        description=(
+            "Password of the existing account that owns the colliding email, "
+            "re-authenticated before the pending OAuth identity is linked"
+        ),
+    )
+
+
 class ResetPasswordRequest(BaseModel):
     new_password: str = Field(
         min_length=USER_CONSTANTS.MIN_PASSWORD_LENGTH,

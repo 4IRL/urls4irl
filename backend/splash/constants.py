@@ -35,6 +35,17 @@ class OAuthErrorCodes(IntEnum):
     INVALID_FORM_INPUT = 1
 
 
+class OAuthLinkErrorCodes(IntEnum):
+    INVALID_FORM_INPUT = 1
+    PROVIDER_NOT_CONFIGURED = 2
+    ALREADY_LINKED = 3
+    INVALID_PASSWORD = 4
+    NOT_LINKED = 5
+    LAST_METHOD = 6
+    SUBJECT_OWNED_BY_OTHER_ACCOUNT = 7
+    INTENT_INVALID = 8
+
+
 class RegisterErrorCodes(IntEnum):
     ACCOUNT_NOT_EMAIL_VALIDATED = 1
     INVALID_FORM_INPUT = 2

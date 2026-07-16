@@ -4,7 +4,7 @@ from typing import Any
 
 from authlib.integrations.base_client.errors import OAuthError
 from flask import redirect, render_template, request, session, url_for
-from flask_login import login_user
+from flask_login import current_user, login_user
 from pydantic import BaseModel
 from werkzeug import Response as WerkzeugResponse
 
@@ -31,12 +31,18 @@ from backend.splash.services.oauth.constants import (
     Provider,
 )
 from backend.splash.services.oauth.google_service import resolve_preferred_username
+from backend.splash.services.oauth.linking_service import (
+    complete_pending_collision_link,
+    handle_authenticated_oauth_callback,
+    peek_valid_link_intent_for_current_user,
+    settings_link_failure_redirect,
+    stash_pending_collision_link,
+)
 from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
-    EMAIL_COLLISION_MESSAGE,
     GENERIC_FAILURE_MESSAGE,
     GITHUB_INVALID_CALLBACK_QUERY_MESSAGE,
     GITHUB_UNVERIFIED_EMAIL_MESSAGE,
@@ -96,6 +102,16 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
 
+    # Authenticated sessions are only served here for the settings-link flow
+    # (GitHub OAuth apps allow exactly one callback URL, shared between
+    # sign-in and linking); without a valid intent, bounce home — preserving
+    # the old `@no_authenticated_users_allowed` behavior.
+    if (
+        current_user.is_authenticated
+        and peek_valid_link_intent_for_current_user() is None
+    ):
+        return redirect(url_for(ROUTES.UTUBS.HOME))
+
     stashed_next = session.pop(OAUTH_NEXT_SESSION_KEY, None)
 
     parsed = parse_query_args(
@@ -111,6 +127,8 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_consent_declined=True,
@@ -124,6 +142,8 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
@@ -136,6 +156,8 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
@@ -148,6 +170,8 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
@@ -160,6 +184,8 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_unverified_email=True,
@@ -172,12 +198,19 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
             oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
     subject = str(github_account_id)
+
+    if current_user.is_authenticated:
+        return handle_authenticated_oauth_callback(
+            provider=Provider.GITHUB, subject=subject, email=email
+        )
 
     preferred_username = resolve_preferred_username(
         user_payload.get("login") or user_payload.get("name"), email
@@ -191,15 +224,19 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
             preferred_username=preferred_username,
         )
     except EmailAlreadyRegisteredError:
+        # DECIDED policy: never auto-link on the provider's email claim, and
+        # never just reject — stash the pending identity and route to the
+        # confirm-link page, where a second proof of local-account ownership
+        # (password re-auth, or a sign-in with an already-linked provider)
+        # completes the link.
         record_event(
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION},
         )
-        return render_template(
-            "pages/splash.html",
-            oauth_email_collision=True,
-            oauth_reject_message=EMAIL_COLLISION_MESSAGE,
+        stash_pending_collision_link(
+            provider=Provider.GITHUB, subject=subject, email=email
         )
+        return redirect(url_for(OAUTH_ROUTES.CONFIRM_LINK_PAGE))
 
     if resolved_user.is_suspended:
         record_event(
@@ -214,6 +251,10 @@ def handle_github_callback() -> WerkzeugResponse | str | FlaskResponse:
 
     login_user(resolved_user)
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "github"})
+    # Completes a collision confirm-link for a password-less account: this
+    # sign-in with an already-linked provider is the required second proof of
+    # account ownership (no-op when no unexpired pending link matches).
+    complete_pending_collision_link(resolved_user)
 
     next_page = (
         verify_and_provide_next_page({"next": stashed_next})

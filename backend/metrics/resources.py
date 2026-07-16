@@ -78,6 +78,8 @@ EVENT_NAME_TO_RESOURCE: dict[EventName, Resource] = {
     EventName.EMAIL_VERIFIED: Resource.AUTH,
     EventName.LOGIN_FAILURE: Resource.AUTH,
     EventName.LOGIN_SUCCESS: Resource.AUTH,
+    EventName.OAUTH_IDENTITY_LINKED: Resource.AUTH,
+    EventName.OAUTH_IDENTITY_UNLINKED: Resource.AUTH,
     EventName.PASSWORD_RESET_COMPLETED: Resource.AUTH,
     EventName.PASSWORD_RESET_REQUESTED: Resource.AUTH,
     EventName.REGISTER_REJECTED: Resource.AUTH,

@@ -401,6 +401,11 @@ class SplashPageLocators(GenericPageLocator):
     EMAIL_VALIDATION_MODAL_ALERT = f"{EMAIL_VALIDATION_MODAL} #SplashModalAlertBanner"
     SPLASH_MODAL_ALERT = "#SplashModal #SplashModalAlertBanner"
 
+    # Collision confirm-link page (components/splash/oauth_confirm_link.html)
+    CONFIRM_LINK_PROMPT = "#SplashModal #ConfirmLinkPrompt"
+    CONFIRM_LINK_INPUT_PASSWORD = "#SplashModal #password"
+    CONFIRM_LINK_BUTTON_SUBMIT = "#SplashModal #submit"
+
     BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
     BUTTON_FORGOT_PASSWORD_MODAL = ".to-forgot-password"
 

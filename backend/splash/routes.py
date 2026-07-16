@@ -11,6 +11,7 @@ from werkzeug import Response as WerkzeugResponse
 
 from backend import csrf, db
 from backend.api_common.auth_decorators import (
+    email_validation_required,
     no_authenticated_users_allowed,
 )
 from backend.api_common.parse_request import api_route
@@ -24,6 +25,7 @@ from backend.models.users import Users
 from backend.schemas.base import EmptyRedirectSchema, HtmlErrorPageSchema
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.splash import (
+    ConfirmLinkRequest,
     ForgotPasswordRequest,
     GitHubOAuthCallbackQuerySchema,
     GoogleOAuthCallbackQuerySchema,
@@ -38,9 +40,11 @@ from backend.schemas.users import (
     RegisterResponseSchema,
     ResetPasswordResponseSchema,
 )
+from backend.utils.strings.oauth_strs import CONFIRM_LINK_INVALID_MESSAGE
 from backend.splash.constants import (
     ForgotPasswordErrorCodes,
     LoginErrorCodes,
+    OAuthLinkErrorCodes,
     RegisterErrorCodes,
     ResetPasswordErrorCodes,
 )
@@ -54,6 +58,11 @@ from backend.splash.services.oauth.github_service import (
 from backend.splash.services.oauth.google_service import (
     handle_google_callback,
     initiate_google_login,
+)
+from backend.splash.services.oauth.linking_service import (
+    confirm_link_with_password,
+    initiate_link_oauth_redirect,
+    render_confirm_link_page,
 )
 from backend.splash.services.reset_password import (
     get_reset_password_page,
@@ -237,12 +246,11 @@ def google_login() -> WerkzeugResponse:
 
 @splash.route("/oauth/google/callback", methods=["GET"])
 @csrf.exempt
-@no_authenticated_users_allowed
 @api_route(
     query_schema=GoogleOAuthCallbackQuerySchema,
     ajax_required=False,
     tags=[OPEN_API.AUTH],
-    description="Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
+    description="Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user; for an authenticated session with a pending settings-link intent it completes account linking instead (providers share one callback URL between sign-in and linking). CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
     status_codes={
         200: HtmlErrorPageSchema,
         302: EmptyRedirectSchema,
@@ -250,6 +258,10 @@ def google_login() -> WerkzeugResponse:
     },
 )
 def google_callback() -> WerkzeugResponse | str | FlaskResponse:
+    """Dual-context callback: anonymous sessions sign in (or auto-register);
+    authenticated sessions with a valid link intent link the provider (the
+    service bounces authenticated sessions without one home, mirroring the
+    removed `@no_authenticated_users_allowed` gate)."""
     return handle_google_callback()
 
 
@@ -268,12 +280,11 @@ def github_login() -> WerkzeugResponse:
 
 @splash.route("/oauth/github/callback", methods=["GET"])
 @csrf.exempt
-@no_authenticated_users_allowed
 @api_route(
     query_schema=GitHubOAuthCallbackQuerySchema,
     ajax_required=False,
     tags=[OPEN_API.AUTH],
-    description="GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
+    description="GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user; for an authenticated session with a pending settings-link intent it completes account linking instead (GitHub OAuth apps allow exactly one callback URL, shared between sign-in and linking). CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.",
     status_codes={
         200: HtmlErrorPageSchema,
         302: EmptyRedirectSchema,
@@ -281,7 +292,58 @@ def github_login() -> WerkzeugResponse:
     },
 )
 def github_callback() -> WerkzeugResponse | str | FlaskResponse:
+    """Dual-context callback: anonymous sessions sign in (or auto-register);
+    authenticated sessions with a valid link intent link the provider (the
+    service bounces authenticated sessions without one home, mirroring the
+    removed `@no_authenticated_users_allowed` gate)."""
     return handle_github_callback()
+
+
+@splash.route("/oauth/<string:provider>/link", methods=["GET"])
+@email_validation_required
+@api_route(
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="Redirect an authenticated user to a provider's OAuth consent screen to link (or prove ownership for linking) that provider to their account. Requires a pending link intent stashed by POST /users/<id>/oauth/link/<provider>; without one, bounces back to Settings.",
+    status_codes={302: EmptyRedirectSchema},
+)
+def oauth_link(provider: str) -> WerkzeugResponse:
+    """Settings-link OAuth dance entry point (link target or proof provider,
+    per the stashed intent)."""
+    return initiate_link_oauth_redirect(provider)
+
+
+@splash.route("/oauth/link/confirm", methods=["GET"])
+@no_authenticated_users_allowed
+def oauth_confirm_link_page() -> WerkzeugResponse | str:
+    """Collision confirm-link page: an OAuth sign-in matched an existing
+    account's email, so ask for a second proof of account ownership —
+    password re-auth for password accounts, or a sign-in with an
+    already-linked provider for password-less accounts — before linking."""
+    return render_confirm_link_page()
+
+
+@splash.route("/oauth/link/confirm", methods=["POST"])
+@no_authenticated_users_allowed
+@api_route(
+    request_schema=ConfirmLinkRequest,
+    response_schema=LoginRedirectResponseSchema,
+    error_message=CONFIRM_LINK_INVALID_MESSAGE,
+    error_code=OAuthLinkErrorCodes.INVALID_FORM_INPUT,
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="Complete the collision confirm-link flow for a password account: verify the existing account's password, link the pending OAuth identity, and sign the user in.",
+    status_codes={
+        200: LoginRedirectResponseSchema,
+        400: ErrorResponse,
+        401: ErrorResponse,
+        403: ErrorResponse,
+    },
+)
+def oauth_confirm_link(confirm_link_request: ConfirmLinkRequest) -> FlaskResponse:
+    """Password-account branch of the confirm-link flow (the password-less
+    branch completes via a normal sign-in with an already-linked provider)."""
+    return confirm_link_with_password(confirm_link_request.password)
 
 
 @splash.route("/reset-password/<string:token>", methods=["GET"])
