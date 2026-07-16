@@ -276,6 +276,12 @@ form {
     transform: translateY(-1px);
 }
 
+.oauth-google-button:active,
+.oauth-github-button:active {
+    background-color: #eceef0;      /* pressed feedback on click/tap */
+    transform: translateY(0);
+}
+
 .oauth-google-button:focus-visible,
 .oauth-github-button:focus-visible {
     outline: 3px solid var(--deckSelectionGreen);
@@ -294,6 +300,15 @@ form {
     .oauth-github-button { transition: none; }
     .oauth-google-button:hover,
     .oauth-github-button:hover { transform: none; }
+}
+
+/* OAuth account-link confirmation modal prompt */
+
+.confirm-link-prompt {
+    color: #3c4043;                 /* dark-on-white, matches the OAuth button text above */
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: var(--space-3);
 }
 
 /* Validate Email */
