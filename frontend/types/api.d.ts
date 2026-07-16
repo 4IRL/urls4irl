@@ -2562,7 +2562,7 @@ export interface components {
      * @description Error codes for OAuthLinkErrorCodes
      * @enum {integer}
      */
-    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 8;
+    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
     ResetPasswordRequest: {
       /** @description New password for the account */
       newPassword: string;

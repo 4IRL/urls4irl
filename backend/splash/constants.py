@@ -42,9 +42,11 @@ class OAuthLinkErrorCodes(IntEnum):
     INVALID_PASSWORD = 4
     NOT_LINKED = 5
     LAST_METHOD = 6
-    # Value 7 intentionally skipped: subject-owned-by-another-account surfaces
-    # as a settings-page redirect (link_error=subject_taken), never a JSON error.
-    INTENT_INVALID = 8
+    # The subject-owned-by-another-account failure has no JSON error code: it can
+    # only occur inside the OAuth callback (a browser redirect, which cannot
+    # return JSON), so it surfaces as a settings-page redirect
+    # (link_error=subject_taken) rather than through this enum.
+    INTENT_INVALID = 7
 
 
 class RegisterErrorCodes(IntEnum):

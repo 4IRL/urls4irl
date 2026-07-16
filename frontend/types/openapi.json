@@ -9836,7 +9836,7 @@
       },
       "OAuthLinkErrorCodes": {
         "type": "integer",
-        "enum": [1, 2, 3, 4, 5, 6, 8],
+        "enum": [1, 2, 3, 4, 5, 6, 7],
         "x-enum-varnames": [
           "INVALID_FORM_INPUT",
           "PROVIDER_NOT_CONFIGURED",
