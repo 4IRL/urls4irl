@@ -20,6 +20,7 @@ vi.mock("../../urls/cards/filtering.js", () => ({
 
 vi.mock("../../../store/app-store.js", () => ({
   setState: vi.fn(),
+  getState: vi.fn(() => ({ selectedTagIDs: [] })),
 }));
 
 const $ = window.jQuery;

@@ -1,5 +1,6 @@
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { debug } from "../../lib/debug.js";
 import { $ } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
@@ -10,6 +11,8 @@ import {
   disableUnselectAllButtonAfterTagFilterRemoved,
   enableUnselectAllButtonAfterTagFilterApplied,
 } from "./unselect-all.js";
+
+const log = debug("tags");
 
 // Dynamically generates the delete URL-Tag icon when needed
 function createTagDeleteIcon(pixelSize: number = 15): JQuery<SVGElement> {
@@ -115,12 +118,22 @@ export function toggleTagFilterSelected(activeTagFilter: JQuery): void {
       parseInt($(tagFilter).attr("data-utub-tag-id") as string),
   );
 
+  log("toggleTagFilterSelected", {
+    tagID: activeTagFilter.attr("data-utub-tag-id"),
+    action: activeTagFilter.hasClass("selected") ? "unselect" : "select",
+    selectedCountBefore: currentSelectedTagIDs.length,
+  });
+
   // Prevent selecting more than tag limit
   if (
     currentSelectedTagIDs.length >= APP_CONFIG.constants.TAGS_MAX_ON_URLS &&
     activeTagFilter.hasClass("unselected")
-  )
+  ) {
+    log("toggleTagFilterSelected ignored — TAGS_MAX_ON_URLS reached", {
+      currentlySelected: currentSelectedTagIDs.length,
+    });
     return;
+  }
 
   if (activeTagFilter.hasClass("selected")) {
     // Unselect the tag

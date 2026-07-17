@@ -1,6 +1,7 @@
 import type { MemberItem } from "../../types/member.js";
 
 import { $ } from "../../lib/globals.js";
+import { debug } from "../../lib/debug.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
 import { getState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
@@ -16,6 +17,8 @@ import {
   reapplyMemberFilter,
   applyAlternatingMemberBackground,
 } from "./search.js";
+
+const log = debug("members");
 
 // Clear the Member Deck
 export function resetMemberDeck(): void {
@@ -33,6 +36,12 @@ export function updateMemberDeck(
   isCurrentUserOwner: boolean,
   utubID: number,
 ): void {
+  log("updateMemberDeck — applying member deck diff", {
+    utubID,
+    oldCount: getState().members.length,
+    newCount: newMembers.length,
+    isCurrentUserOwner,
+  });
   applyDeckDiff<MemberItem>({
     oldItems: getState().members,
     newItems: newMembers,
@@ -122,6 +131,13 @@ export function setMemberDeckWhenNoUTubSelected(): void {
 
 export function setMemberDeckForUTub(isCurrentUserOwner: boolean = true): void {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
+
+  log("setMemberDeckForUTub — permission-gated UI", {
+    isCurrentUserOwner,
+    numOfMembers,
+    showingAddButton: isCurrentUserOwner,
+    showingLeaveButton: !isCurrentUserOwner,
+  });
 
   // Ability to add members is restricted to UTub owner. The leave/delete actions
   // live in the UTub deck (setUTubDeckOnUTubSelected) and are not managed here.

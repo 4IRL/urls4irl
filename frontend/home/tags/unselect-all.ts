@@ -1,11 +1,14 @@
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { debug } from "../../lib/debug.js";
 import { $ } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
-import { setState } from "../../store/app-store.js";
+import { getState, setState } from "../../store/app-store.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 import { toggleTagFilterSelected } from "./tags.js";
+
+const log = debug("tags");
 
 export function initUnselectAllTags(): void {
   /* Bind click functions */
@@ -36,6 +39,9 @@ export function resetCountOfTagFiltersApplied(): void {
 }
 
 function unselectAllTags(): void {
+  log("unselectAllTags fired — clearing all selectedTagIDs", {
+    previouslySelected: getState().selectedTagIDs.length,
+  });
   emit({ event: UI_EVENTS.UI_TAG_FILTER_TOGGLE });
   $(".tagFilter")
     .removeClass("selected unselected disabled")
