@@ -12,7 +12,7 @@ function isHTMLElement(target: EventTarget | null): target is HTMLElement {
 export function initCookieBanner(): void {
   const $banner = $("#CookieBanner");
   if (!$banner.length) {
-    log("banner element missing — initCookieBanner exiting", {});
+    log("banner element missing — initCookieBanner exiting");
     return;
   }
 

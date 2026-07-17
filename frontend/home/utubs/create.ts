@@ -312,7 +312,6 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
       // Handle invalid CSRF token error response
       log(
         "createUTub failed: CSRF token invalid, replacing body with error page",
-        {},
       );
       $("body").html(xhr.responseText);
       return;

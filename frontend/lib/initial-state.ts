@@ -11,6 +11,6 @@ export function loadInitialUtubState(): void {
       utubs: JSON.parse(utubsScript.textContent ?? "[]") as UtubSummaryItem[],
     });
   } else {
-    log("utubs-data element missing — store starts empty", {});
+    log("utubs-data element missing — store starts empty");
   }
 }

@@ -198,7 +198,6 @@ export function handleRejectFromGetURL(
 function deleteURLOnStale(urlCard: JQuery): void {
   log(
     "deleteURLOnStale — URL was deleted by another user, removing card locally",
-    {},
   );
   // Close modal in case URL was found stale while it's shown
   $("#confirmModal").modal("hide");
