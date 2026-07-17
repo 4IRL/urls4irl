@@ -23,7 +23,7 @@ export function setupCSRF(): void {
   );
 
   if (csrftoken === undefined) {
-    csrfLog("CSRF meta tag missing — non-GET requests will go unsigned", {});
+    csrfLog("CSRF meta tag missing — non-GET requests will go unsigned");
   }
 
   // Global ajaxSetup for non-modal requests

@@ -288,7 +288,7 @@ function flushBeacon(): void {
 
 export function initMetricsClient(): void {
   if (_intervalId !== null) {
-    log("initMetricsClient skipped — already initialized", {});
+    log("initMetricsClient skipped — already initialized");
     return;
   }
   initDeviceTypeListener();
