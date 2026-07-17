@@ -1,3 +1,5 @@
+import type { MockInstance } from "vitest";
+
 import { APP_CONFIG } from "../config.js";
 import { debug, PUBLIC_NAMESPACES } from "../debug.js";
 
@@ -14,8 +16,15 @@ function setDebugEnabled(value: boolean): void {
 }
 
 describe("debug", () => {
+  // Capture the console.log spy in a handle and assert against it, rather than
+  // referencing the global `console.log` in each assertion. This keeps the
+  // ESLint `no-console` rule strict for this file (debug.ts is the only file
+  // whitelisted to touch console) — the helper's output sink is console.log by
+  // design, and the spy handle is the idiomatic way to observe it.
+  let logSpy: MockInstance;
+
   beforeEach(() => {
-    vi.spyOn(console, "log").mockImplementation(() => {});
+    logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -27,22 +36,22 @@ describe("debug", () => {
   it("returns a no-op when localStorage.debug is unset", () => {
     setDebugEnabled(true);
     debug("metrics")("foo");
-    expect(console.log).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("returns a no-op when localStorage.debug is empty string", () => {
     setDebugEnabled(true);
     localStorage.setItem("debug", "");
     debug("metrics")("foo");
-    expect(console.log).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("logs with [namespace] prefix when namespace exactly matches the allow-list", () => {
     setDebugEnabled(true);
     localStorage.setItem("debug", "metrics");
     debug("metrics")("foo", { count: 3 });
-    expect(console.log).toHaveBeenCalledTimes(1);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "foo", { count: 3 });
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "foo", { count: 3 });
   });
 
   it("logs only namespaces present in a comma-separated allow-list", () => {
@@ -51,9 +60,9 @@ describe("debug", () => {
     debug("metrics")("a");
     debug("store")("b");
     debug("ajax")("c");
-    expect(console.log).toHaveBeenCalledTimes(2);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "a");
-    expect(console.log).toHaveBeenCalledWith("[store]", "b");
+    expect(logSpy).toHaveBeenCalledTimes(2);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "a");
+    expect(logSpy).toHaveBeenCalledWith("[store]", "b");
   });
 
   it("tolerates whitespace around commas", () => {
@@ -61,9 +70,9 @@ describe("debug", () => {
     localStorage.setItem("debug", "metrics, ajax");
     debug("metrics")("a");
     debug("ajax")("b");
-    expect(console.log).toHaveBeenCalledTimes(2);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "a");
-    expect(console.log).toHaveBeenCalledWith("[ajax]", "b");
+    expect(logSpy).toHaveBeenCalledTimes(2);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "a");
+    expect(logSpy).toHaveBeenCalledWith("[ajax]", "b");
   });
 
   it("logs every namespace when allow-list is *", () => {
@@ -71,9 +80,9 @@ describe("debug", () => {
     localStorage.setItem("debug", "*");
     debug("metrics")("a");
     debug("anything")("b");
-    expect(console.log).toHaveBeenCalledTimes(2);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "a");
-    expect(console.log).toHaveBeenCalledWith("[anything]", "b");
+    expect(logSpy).toHaveBeenCalledTimes(2);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "a");
+    expect(logSpy).toHaveBeenCalledWith("[anything]", "b");
   });
 
   it("supports colon-hierarchical wildcards", () => {
@@ -82,9 +91,9 @@ describe("debug", () => {
     debug("metrics:flush")("a");
     debug("metrics:retry")("b");
     debug("ajax")("c");
-    expect(console.log).toHaveBeenCalledTimes(2);
-    expect(console.log).toHaveBeenCalledWith("[metrics:flush]", "a");
-    expect(console.log).toHaveBeenCalledWith("[metrics:retry]", "b");
+    expect(logSpy).toHaveBeenCalledTimes(2);
+    expect(logSpy).toHaveBeenCalledWith("[metrics:flush]", "a");
+    expect(logSpy).toHaveBeenCalledWith("[metrics:retry]", "b");
   });
 
   it("supports negation with leading -", () => {
@@ -92,8 +101,8 @@ describe("debug", () => {
     localStorage.setItem("debug", "*,-noise");
     debug("metrics")("a");
     debug("noise")("b");
-    expect(console.log).toHaveBeenCalledTimes(1);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "a");
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "a");
   });
 
   it("supports multiple negations", () => {
@@ -102,15 +111,15 @@ describe("debug", () => {
     debug("metrics")("a");
     debug("noise")("b");
     debug("verbose")("c");
-    expect(console.log).toHaveBeenCalledTimes(1);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "a");
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "a");
   });
 
   it("exclude wins over a specific (non-wildcard) include", () => {
     setDebugEnabled(true);
     localStorage.setItem("debug", "metrics,-metrics");
     debug("metrics")("foo");
-    expect(console.log).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("returns a no-op when localStorage.getItem throws", () => {
@@ -119,37 +128,37 @@ describe("debug", () => {
       throw new Error("storage disabled");
     });
     expect(() => debug("splash:login")("foo")).not.toThrow();
-    expect(console.log).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("public namespace emits for anonymous user when namespace is enabled", () => {
     setDebugEnabled(false);
     localStorage.setItem("debug", "splash:login");
     debug("splash:login")("foo");
-    expect(console.log).toHaveBeenCalledTimes(1);
-    expect(console.log).toHaveBeenCalledWith("[splash:login]", "foo");
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy).toHaveBeenCalledWith("[splash:login]", "foo");
   });
 
   it("public namespace returns no-op when namespace is NOT in allow-list", () => {
     setDebugEnabled(false);
     localStorage.setItem("debug", "");
     debug("splash")("foo");
-    expect(console.log).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("admin-only namespace returns no-op for anonymous user even when in allow-list", () => {
     setDebugEnabled(false);
     localStorage.setItem("debug", "metrics");
     debug("metrics")("foo");
-    expect(console.log).not.toHaveBeenCalled();
+    expect(logSpy).not.toHaveBeenCalled();
   });
 
   it("admin-only namespace emits when admin user enables it", () => {
     setDebugEnabled(true);
     localStorage.setItem("debug", "metrics");
     debug("metrics")("foo");
-    expect(console.log).toHaveBeenCalledTimes(1);
-    expect(console.log).toHaveBeenCalledWith("[metrics]", "foo");
+    expect(logSpy).toHaveBeenCalledTimes(1);
+    expect(logSpy).toHaveBeenCalledWith("[metrics]", "foo");
   });
 
   it("PUBLIC_NAMESPACES contains exactly the 5 splash namespaces", () => {
