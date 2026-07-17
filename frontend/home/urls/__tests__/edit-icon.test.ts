@@ -24,6 +24,7 @@ vi.mock("../../../lib/globals.js", async () => {
 
 vi.mock("../../../lib/config.js", () => ({
   APP_CONFIG: {
+    debugEnabled: true,
     routes: {},
     constants: {},
     strings: {},
