@@ -5,6 +5,9 @@ import { emit } from "../lib/metrics-client.js";
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { showSplashModalAlertBanner, resetModalFormState } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("splash:email");
 
 type EmailValidationSuccess = Schema<"EmailValidationResponseSchema">;
 type EmailValidationError = Schema<"ErrorResponse">;
@@ -28,11 +31,16 @@ export function initEmailValidationForm(
 
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
 
+  log("initEmailValidationForm bound", { sendInitialEmail });
+
   // Send validation email after register, but not if token for validation is expired.
   // Defer until shown.bs.modal so the AJAX response doesn't race the modal fade-in
   // (resetModalFormState fires on show.bs.modal, which precedes shown.bs.modal)
   if (sendInitialEmail) {
-    $modal.one("shown.bs.modal", () => handleValidateEmail($modal));
+    $modal.one("shown.bs.modal", () => {
+      log("auto-sending initial validation email on shown.bs.modal");
+      handleValidateEmail($modal);
+    });
   }
 }
 
@@ -40,6 +48,9 @@ function handleValidateEmail(
   $modal: JQuery,
   event: JQuery.TriggeredEvent | null = null,
 ): void {
+  log("handleValidateEmail invoked", {
+    source: event === null ? "auto" : "click",
+  });
   emit({
     event: UI_EVENTS.UI_EMAIL_VALIDATION_SUBMIT,
     trigger: event !== null ? "manual_click" : "auto_after_register",
@@ -71,6 +82,7 @@ function handleValidateEmailSuccess(
 ): void {
   if (xhr.status === 200) {
     // Email sent!
+    log("validation email sent successfully");
     showSplashModalAlertBanner($modal, response.message, "success");
   }
 }
@@ -82,6 +94,12 @@ function handleValidateEmailFailure(
   $modal: JQuery,
 ): void {
   if (xhr.status !== 400 && xhr.status !== 429) {
+    log(
+      "validate-email failure: unexpected status, redirecting to error page",
+      {
+        status: xhr.status,
+      },
+    );
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
@@ -110,6 +128,10 @@ function handleValidateEmailFailure(
     string,
     number
   >;
+  log("validate-email failure: dispatch by errorCode", {
+    status: xhr.status,
+    errorCode: errorJson.errorCode,
+  });
   emit({
     event: UI_EVENTS.UI_VALIDATION_ERROR,
     form: VALIDATION_FORM.EMAIL_VALIDATION,

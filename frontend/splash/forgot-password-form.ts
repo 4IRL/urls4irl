@@ -11,6 +11,9 @@ import {
   switchModal,
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("splash:password");
 
 type ForgotPasswordRequest = Schema<"ForgotPasswordRequest">;
 type ForgotPasswordSuccess = SuccessResponse<"forgotPassword">;
@@ -30,6 +33,8 @@ export function initForgotPasswordForm($modal: JQuery): void {
     .offAndOn("click", (event) => handleForgotPassword(event, $modal));
 
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
+
+  log("initForgotPasswordForm bound");
 }
 
 function handleForgotPassword(
@@ -43,6 +48,8 @@ function handleForgotPassword(
   const payload: ForgotPasswordRequest = {
     email: String($modal.find("#email").val() ?? ""),
   };
+
+  log("handleForgotPassword submit", { emailLength: payload.email.length });
 
   const forgotPasswordRequest: JQuery.jqXHR = $.ajax({
     url: APP_CONFIG.routes.forgotPassword,
@@ -66,6 +73,7 @@ function handleForgotPasswordSuccess(
   $modal: JQuery,
 ): void {
   if (xhr.status === 200) {
+    log("forgot-password request acknowledged by server");
     $modal.find(".form-control").removeClass("is-invalid");
     $modal.find(".invalid-feedback").remove();
     showSplashModalAlertBanner($modal, response.message, "success");
@@ -90,6 +98,10 @@ function handleForgotPasswordFailure(
   $modal: JQuery,
 ): void {
   if (!("responseJSON" in xhr)) {
+    log("forgot-password failure: non-JSON response", {
+      status: xhr.status,
+      contentType: xhr.getResponseHeader("Content-Type"),
+    });
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -105,6 +117,10 @@ function handleForgotPasswordFailure(
 
   if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ForgotPasswordError;
+    log("forgot-password failure: JSON error", {
+      status: xhr.status,
+      errorCode: errorJson.errorCode,
+    });
     emit({
       event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: VALIDATION_FORM.FORGOT_PASSWORD,

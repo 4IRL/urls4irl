@@ -14,6 +14,9 @@ import {
   emailValidationModalOpener,
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("splash:register");
 
 type RegisterRequest = Schema<"RegisterRequest">;
 type RegisterSuccess = SuccessResponse<"registerUser", 201>;
@@ -33,6 +36,8 @@ export function initRegisterForm($modal: JQuery): void {
     .offAndOn("click", (event) => handleRegister(event, $modal));
 
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
+
+  log("initRegisterForm bound");
 }
 
 function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
@@ -48,6 +53,16 @@ function handleRegister(event: JQuery.TriggeredEvent, $modal: JQuery): void {
   const confirmPassword: string = String(
     $modal.find("#confirmPassword").val() ?? "",
   );
+
+  log("handleRegister submit", {
+    usernameLength: username.length,
+    emailLength: email.length,
+    confirmEmailLength: confirmEmail.length,
+    passwordLength: password.length,
+    confirmPasswordLength: confirmPassword.length,
+    emailsMatch: email === confirmEmail,
+    passwordsMatch: password === confirmPassword,
+  });
 
   const payload: RegisterRequest = {
     username,
@@ -78,6 +93,7 @@ function handleRegisterSuccess(
   $modal: JQuery,
 ): void {
   if (xhr.status === 201) {
+    log("register success, opening EmailValidationModal");
     emailValidationModalOpener($modal);
   }
 }
@@ -89,6 +105,10 @@ function handleRegisterFailure(
   $modal: JQuery,
 ): void {
   if (!("responseJSON" in xhr)) {
+    log("register failure: non-JSON response", {
+      status: xhr.status,
+      contentType: xhr.getResponseHeader("Content-Type"),
+    });
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -104,6 +124,10 @@ function handleRegisterFailure(
 
   if ("errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as RegisterError;
+    log("register failure: JSON error", {
+      status: xhr.status,
+      errorCode: errorJson.errorCode,
+    });
     emit({
       event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: VALIDATION_FORM.REGISTER,
@@ -122,6 +146,7 @@ function handleRegisterFailure(
       }
     }
   } else {
+    log("register failure: unhandled JSON shape", { status: xhr.status });
     showSplashModalAlertBanner(
       $modal,
       "Unable to process request...",

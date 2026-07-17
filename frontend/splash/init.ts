@@ -14,6 +14,10 @@ import {
 } from "./email-validation-form.js";
 import { AUTH_MODAL_OPEN_FORM } from "../types/metrics-dim-values.js";
 import { initScrollReveal } from "./scroll-reveal.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("splash");
+const logEmail = debug("splash:email");
 
 type ErrorResponse = Schema<"ErrorResponse">;
 
@@ -50,7 +54,11 @@ export function initSplash(): void {
   // Auto-show email validation modal for authenticated-but-not-validated users
   const splashConfig: HTMLElement | null =
     document.getElementById("splashConfig");
+  log("initSplash invoked", {
+    showEmailValidation: splashConfig?.dataset.showEmailValidation === "true",
+  });
   if (splashConfig && splashConfig.dataset.showEmailValidation === "true") {
+    logEmail("auto-opening EmailValidationModal for unvalidated user");
     bootstrap.Modal.getOrCreateInstance("#EmailValidationModal").show();
     initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
     const logoutOnExit = createLogoutOnExit();
@@ -102,6 +110,11 @@ function targetFromSelector(
 }
 
 export function switchModal($fromModal: JQuery, toSelector: string): void {
+  log("switchModal", {
+    from: $fromModal.attr("id"),
+    to: toSelector,
+    fromInstanceExists: Boolean(bootstrap.Modal.getInstance($fromModal[0])),
+  });
   const target = targetFromSelector(toSelector);
   if (target !== null) emit({ event: UI_EVENTS.UI_AUTH_FORM_SWITCH, target });
   if (target === "login" || target === "register") {
@@ -184,6 +197,9 @@ export function handleUserHasAccountNotEmailValidated(
   $sourceModal: JQuery,
   message: string,
 ): void {
+  log("user-has-account-not-email-validated banner shown", {
+    sourceModal: $sourceModal.attr("id"),
+  });
   const logoutOnExit = createLogoutOnExit();
 
   $sourceModal.find(".form-control").removeClass("is-invalid");
@@ -216,6 +232,13 @@ export function handleImproperFormErrors(
   $modal: JQuery,
   errorResponse: ErrorResponse,
 ): void {
+  log("handleImproperFormErrors", {
+    modal: $modal.attr("id"),
+    fieldsWithErrors: errorResponse.errors
+      ? Object.keys(errorResponse.errors)
+      : [],
+    errorsNull: errorResponse.errors === null,
+  });
   $modal.find(".invalid-feedback").remove();
   $modal.find(".alert").each(function () {
     if ($(this).attr("id") !== "SplashModalAlertBanner") {
@@ -227,7 +250,13 @@ export function handleImproperFormErrors(
     return;
   }
   for (const key in errorResponse.errors) {
-    if (!isFormFieldName(key)) continue;
+    if (!isFormFieldName(key)) {
+      log("server returned unknown form-field key", {
+        modal: $modal.attr("id"),
+        unknownKey: key,
+      });
+      continue;
+    }
     const errorMessage: string = errorResponse.errors[key][0];
     if (!errorMessage) continue;
     displayFormErrors($modal, key, errorMessage);

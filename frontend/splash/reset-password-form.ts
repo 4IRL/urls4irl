@@ -10,6 +10,9 @@ import {
   handleImproperFormErrors,
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("splash:password");
 
 type ResetPasswordRequest = Schema<"ResetPasswordRequest">;
 type ResetPasswordSuccess = SuccessResponse<"resetPassword">;
@@ -42,6 +45,8 @@ export function initResetPasswordForm($modal: JQuery): void {
   $modal.one("shown.bs.modal", () => {
     $modal.find("form").attr("data-form-ready", "true");
   });
+
+  log("initResetPasswordForm bound");
 }
 
 function handleResetPassword(
@@ -55,6 +60,12 @@ function handleResetPassword(
     newPassword: String($modal.find("#newPassword").val() ?? ""),
     confirmNewPassword: String($modal.find("#confirmNewPassword").val() ?? ""),
   };
+
+  log("handleResetPassword submit", {
+    newPasswordLength: payload.newPassword.length,
+    confirmNewPasswordLength: payload.confirmNewPassword.length,
+    passwordsMatch: payload.newPassword === payload.confirmNewPassword,
+  });
 
   const resetPasswordRequest: JQuery.jqXHR = $.ajax({
     url: window.location.pathname,
@@ -80,6 +91,7 @@ function handleResetPasswordSuccess(
 ): void {
   if (xhr.status === 200) {
     // Password changed!
+    log("reset-password success");
     $modal.find(".form-control").removeClass("is-invalid");
     $modal.find(".invalid-feedback").remove();
     hideSplashModalAlertBanner($modal);
@@ -108,6 +120,10 @@ function handleResetPasswordFailure(
   $modal: JQuery,
 ): void {
   if (!("responseJSON" in xhr)) {
+    log("reset-password failure: non-JSON response", {
+      status: xhr.status,
+      contentType: xhr.getResponseHeader("Content-Type"),
+    });
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -123,6 +139,10 @@ function handleResetPasswordFailure(
 
   if (xhr.status === 400 && "errorCode" in xhr.responseJSON) {
     const errorJson = xhr.responseJSON as ResetPasswordError;
+    log("reset-password failure: JSON error", {
+      status: xhr.status,
+      errorCode: errorJson.errorCode,
+    });
     switch (errorJson.errorCode) {
       case 1:
         emit({
@@ -135,6 +155,12 @@ function handleResetPasswordFailure(
         break;
     }
   } else {
+    log(
+      "reset-password failure: unhandled JSON shape, showing generic banner",
+      {
+        status: xhr.status,
+      },
+    );
     showSplashModalAlertBanner(
       $modal,
       "Unable to process request...",
