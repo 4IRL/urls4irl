@@ -24,7 +24,7 @@ export default [
     },
   },
   {
-    files: ["lib/debug.ts"],
+    files: ["**/lib/debug.ts"],
     rules: { "no-console": "off" },
   },
 ];

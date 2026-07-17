@@ -6,6 +6,9 @@
  * Allow-list syntax mirrors the `debug` npm module: `*` (all), `metrics:*`
  * (colon hierarchy), `-noise` (negation). The five splash namespaces are public
  * (any user); every other namespace additionally requires APP_CONFIG.debugEnabled.
+ * The 19 active namespaces: ajax, csrf, metrics, config, init, cookie-banner,
+ * security, home-shell, utubs, urls, urls:cards, urls:tags, tags, members,
+ * splash, splash:login, splash:register, splash:password, splash:email.
  */
 import { APP_CONFIG } from "./config.js";
 
