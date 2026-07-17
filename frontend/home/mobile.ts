@@ -10,6 +10,9 @@ import {
 import { getState } from "../store/app-store.js";
 import { reapplyLeftPanelVisibilityForViewport } from "./left-panel-toggle.js";
 import { makeUTubSelectableAgainIfMobile } from "./utubs/selectors.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("home-shell");
 
 /**
  * Check if current viewport is mobile/tablet size
@@ -41,6 +44,11 @@ export function initMobileLayout(): void {
   const query = matchMedia("(max-width: " + TABLET_WIDTH + "px)");
   query.addEventListener("change", function () {
     const width = $(window).width() ?? 0;
+    log("viewport crossed TABLET_WIDTH threshold", {
+      width,
+      isMobileNow: width < TABLET_WIDTH,
+      activeUTubID: getState().activeUTubID,
+    });
 
     // Handle size changes when tablet or smaller
     if (width < TABLET_WIDTH) {

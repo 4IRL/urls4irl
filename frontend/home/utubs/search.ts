@@ -8,6 +8,9 @@ import {
   UTUB_SEARCH_CLOSE_TARGET,
   UTUB_SEARCH_OPEN_TARGET,
 } from "../../types/metrics-dim-values.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("utubs");
 
 type UTubSelectorEntry = { id: number; name: string };
 
@@ -123,6 +126,12 @@ export function setUTubSelectorSearchEventListener(): void {
       );
       updatedUTubSelectorDisplay(filteredUTubIDsToHide);
       const visibleCount = $(".UTubSelector").not(".hidden").length;
+      log("UTub search applied", {
+        searchTerm,
+        hidCount: filteredUTubIDsToHide.length,
+        visibleCount,
+        totalCount: $(".UTubSelector").length,
+      });
       if (visibleCount === 0) {
         showUTubSearchNoResults();
       } else {

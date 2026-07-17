@@ -28,6 +28,9 @@ import {
   FORM_SUBMIT_TRIGGER,
   HOME_FORM,
 } from "../../types/metrics-dim-values.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("utubs");
 
 type CreateUtubRequest = Schema<"CreateUTubRequest">;
 type CreateUtubResponse = SuccessResponse<"createUtub">;
@@ -36,6 +39,12 @@ type CreateUtubError = Schema<"ErrorResponse_UTubErrorCodes">;
 function checkSameNameUTubOnCreate(name: string): void {
   if (getAllAccessibleUTubNames().includes(name)) {
     // UTub with same name exists. Confirm action with user
+    log(
+      "checkSameNameUTubOnCreate: duplicate name detected, showing confirmation modal",
+      {
+        name,
+      },
+    );
     sameUTubNameOnNewUTubWarningShowModal();
   } else {
     // UTub name is unique. Proceed with requested action
@@ -301,6 +310,10 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
       xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
     ) {
       // Handle invalid CSRF token error response
+      log(
+        "createUTub failed: CSRF token invalid, replacing body with error page",
+        {},
+      );
       $("body").html(xhr.responseText);
       return;
     }
@@ -313,6 +326,9 @@ function createUTubFail(xhr: JQuery.jqXHR): void {
       const responseJSON = xhr.responseJSON as CreateUtubError;
       if (responseJSON.message) {
         if (responseJSON.errors) {
+          log("createUTub validation error", {
+            fieldErrors: Object.keys(responseJSON.errors),
+          });
           createUTubFailErrors(
             responseJSON.errors as Partial<
               Record<"utubName" | "utubDescription", string[]>

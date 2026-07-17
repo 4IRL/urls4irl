@@ -14,6 +14,9 @@ import {
   DECK_COLLAPSE_DECK,
   DECK_EXPAND_DECK,
 } from "../types/metrics-dim-values.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("home-shell");
 
 const UTUB_DECK_CSS_SELECTOR = ".deck#UTubDeck";
 const MEMBER_DECK_CSS_SELECTOR = ".deck#MemberDeck";
@@ -108,6 +111,13 @@ function setupUTubHeaderForMaximizeMinimize() {
     if (isUTubSelected()) createUTubHideInput();
 
     if (numDecksAlreadyCollapsed >= 2) {
+      log(
+        "collapsible decks: forcing prior deck open due to 2-collapsed limit",
+        {
+          collapsing: "UTubs",
+          numAlreadyCollapsed: numDecksAlreadyCollapsed,
+        },
+      );
       ensureOnlyTwoDecksCollapsedAtOnce();
     }
     setLastCollapsed(UTUB_DECK_CSS_SELECTOR);
@@ -148,6 +158,13 @@ function setupMemberHeaderForMaximizeMinimize() {
     $("#MemberDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 
     if (numDecksAlreadyCollapsed >= 2) {
+      log(
+        "collapsible decks: forcing prior deck open due to 2-collapsed limit",
+        {
+          collapsing: "Members",
+          numAlreadyCollapsed: numDecksAlreadyCollapsed,
+        },
+      );
       ensureOnlyTwoDecksCollapsedAtOnce();
     }
     setLastCollapsed(MEMBER_DECK_CSS_SELECTOR);
@@ -188,6 +205,13 @@ function setupTagHeaderForMaximizeMinimize() {
     $("#TagDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 
     if (numDecksAlreadyCollapsed >= 2) {
+      log(
+        "collapsible decks: forcing prior deck open due to 2-collapsed limit",
+        {
+          collapsing: "Tags",
+          numAlreadyCollapsed: numDecksAlreadyCollapsed,
+        },
+      );
       ensureOnlyTwoDecksCollapsedAtOnce();
     }
     setLastCollapsed(UTUB_TAG_DECK_CSS_SELECTOR);

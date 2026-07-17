@@ -5,6 +5,9 @@ import type { UtubDetail } from "../../types/utub.js";
 import { setState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import { getUTubInfo } from "./selectors.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("utubs");
 
 // Handles updating a UTub if found to include stale data
 // For example, a user decides to update a URL string to a new URL, but it returns
@@ -14,6 +17,10 @@ import { getUTubInfo } from "./selectors.js";
 export async function updateUTubOnFindingStaleData(
   selectedUTubID: number,
 ): Promise<void> {
+  log(
+    "updateUTubOnFindingStaleData — refetching UTub due to detected stale data",
+    { selectedUTubID },
+  );
   const utub: UtubDetail | null = await getUTubInfo(selectedUTubID);
   if (!utub) return;
   const utubName = utub.name;
@@ -25,6 +32,15 @@ export async function updateUTubOnFindingStaleData(
   const utubMembers = utub.members;
 
   // Emit before setState so deck-update functions can diff against the current (pre-update) store
+  log(
+    "STALE_DATA_DETECTED — emitting before setState so deck-diff sees old store",
+    {
+      utubID: utub.id,
+      newUrlCount: utubURLs.length,
+      newTagCount: utubTags.length,
+      newMemberCount: utubMembers.length,
+    },
+  );
   emit(AppEvents.STALE_DATA_DETECTED, {
     utubID: utub.id,
     urls: utubURLs,
