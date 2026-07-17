@@ -757,12 +757,16 @@ def provide_config_for_constants() -> dict:
     routes = generate_routes_js()
     if current_user.is_authenticated and current_user.is_admin():
         routes.update(generate_admin_routes_js())
+    debug_enabled = current_app.config["DEBUG"] or (
+        current_user.is_authenticated and current_user.is_admin()
+    )
     return dict(
         CONSTANTS=CONSTANTS(),
         CONFIG=dict(
             routes=routes,
             constants=generate_constants_js(),
             strings=generate_strings_js(),
+            debugEnabled=debug_enabled,
         ),
         current_year=utc_now().year,
         google_oauth_enabled=should_register_google_oauth(
