@@ -4,8 +4,11 @@ import type { UIEventName } from "../types/metrics-events.js";
 
 import { UI_EVENTS } from "../types/metrics-events.js";
 import { APP_CONFIG } from "./config.js";
+import { debug } from "./debug.js";
 import { getDeviceType, initDeviceTypeListener } from "./device-type.js";
 import { clearOpenForm, getOpenForm } from "./modal-tracking.js";
+
+const log = debug("metrics");
 
 type MetricsIngestEvent = Schema<"MetricsIngestEvent">;
 type MetricsIngestRequest = Schema<"MetricsIngestRequest">;
@@ -69,10 +72,20 @@ function _clearInFlight(): void {
 function _scheduleRetry(): void {
   _retryAttempts += 1;
   if (_retryAttempts >= RETRY_MAX_ATTEMPTS) {
+    log("retry cap exhausted — dropping batch permanently", {
+      batchId: _inFlightBatchId,
+      eventsLost: _inFlightEvents?.length,
+      attempts: _retryAttempts,
+    });
     _clearInFlight();
     return;
   }
   const backoffMs = RETRY_BASE_BACKOFF_MS * 2 ** (_retryAttempts - 1);
+  log("retry scheduled", {
+    attempt: _retryAttempts,
+    backoffMs,
+    batchId: _inFlightBatchId,
+  });
   _retryTimerId = setTimeout(() => {
     _retryTimerId = null;
     void flush();
@@ -151,6 +164,7 @@ export function emit<EventT extends UIEventName>(args: EmitArgs<EventT>): void {
   const dedupeKey = `${event}|${JSON.stringify(dimensionsWithDevice)}`;
   const lastEmittedAt = _dedupe.get(dedupeKey);
   if (lastEmittedAt !== undefined && now - lastEmittedAt < DEDUPE_COOLDOWN_MS) {
+    log("dedupe drop", { event, msSinceLastEmit: now - lastEmittedAt });
     return;
   }
   _dedupe.set(dedupeKey, now);
@@ -159,13 +173,22 @@ export function emit<EventT extends UIEventName>(args: EmitArgs<EventT>): void {
     dimensions: filterDimensions(dimensionsWithDevice),
   });
   if (_buffer.length >= BATCH_THRESHOLD) {
+    log("batch threshold crossed — flushing", { bufferSize: _buffer.length });
     void flush();
   }
 }
 
 export async function flush(): Promise<void> {
-  if (_postInFlight) return;
-  if (_retryTimerId !== null) return;
+  if (_postInFlight) {
+    log("flush skipped — POST already in flight", {
+      batchId: _inFlightBatchId,
+    });
+    return;
+  }
+  if (_retryTimerId !== null) {
+    log("flush skipped — retry pending", { attempts: _retryAttempts });
+    return;
+  }
   if (_inFlightBatchId === null || _inFlightEvents === null) {
     if (_buffer.length === 0) return;
     _inFlightEvents = _buffer.splice(0, MAX_BATCH_SIZE);
@@ -193,23 +216,44 @@ export async function flush(): Promise<void> {
       return;
     }
     if (response.status === 400) {
+      log("400 from /api/metrics — dropping malformed batch", {
+        batchId: _inFlightBatchId,
+        events: _inFlightEvents?.length,
+      });
       _clearInFlight();
       return;
     }
     if (response.status === 429 || response.status >= 500) {
+      log("retryable error from /api/metrics", {
+        status: response.status,
+        batchId: _inFlightBatchId,
+      });
       _scheduleRetry();
       return;
     }
+    log("unexpected status from /api/metrics — dropping batch", {
+      status: response.status,
+      batchId: _inFlightBatchId,
+    });
     _clearInFlight();
-  } catch {
+  } catch (err) {
     _postInFlight = false;
+    log("fetch threw — scheduling retry", {
+      batchId: _inFlightBatchId,
+      error: String(err),
+    });
     _scheduleRetry();
   }
 }
 
 function flushBeacon(): void {
   if (_buffer.length === 0) return;
-  if (_inFlightBatchId !== null) return;
+  if (_inFlightBatchId !== null) {
+    log("beacon skipped — flush already in flight", {
+      batchId: _inFlightBatchId,
+    });
+    return;
+  }
   const beaconEvents = _buffer.splice(0, MAX_BATCH_SIZE);
   const beaconBatchId = generateBatchId();
   const payload: MetricsIngestRequest = {
@@ -224,6 +268,10 @@ function flushBeacon(): void {
         ? navigator.sendBeacon(METRICS_INGEST_BEACON_URL, blob)
         : false;
     if (!beaconEnqueued) {
+      log("sendBeacon rejected — falling back to keepalive fetch", {
+        batchId: beaconBatchId,
+        events: beaconEvents.length,
+      });
       void fetch(METRICS_INGEST_BEACON_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -232,19 +280,29 @@ function flushBeacon(): void {
         keepalive: true,
       });
     }
-  } catch {
+  } catch (err) {
+    log("beacon path threw on unload", { error: String(err) });
     /* telemetry must never break page unload */
   }
 }
 
 export function initMetricsClient(): void {
-  if (_intervalId !== null) return;
+  if (_intervalId !== null) {
+    log("initMetricsClient skipped — already initialized", {});
+    return;
+  }
   initDeviceTypeListener();
   _intervalId = setInterval(() => {
     void flush();
   }, FLUSH_INTERVAL_MS);
+  log("metrics client initialized — flush interval started", {
+    intervalMs: FLUSH_INTERVAL_MS,
+  });
   _onVisibilityChange = () => {
     if (document.visibilityState === "hidden") {
+      log("visibility hidden — triggering beacon flush", {
+        bufferedEvents: _buffer.length,
+      });
       flushBeacon();
     }
   };
@@ -275,6 +333,10 @@ export function initMetricsClient(): void {
 }
 
 export function resetMetricsClient(): void {
+  log("resetMetricsClient called", {
+    bufferedEvents: _buffer.length,
+    intervalActive: _intervalId !== null,
+  });
   clearOpenForm();
   _buffer.length = 0;
   _dedupe.clear();

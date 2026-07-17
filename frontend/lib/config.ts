@@ -2,6 +2,7 @@
  * Application configuration
  * Reads config from JSON script element injected by Flask templates
  */
+import { debug } from "./debug.js";
 
 export type RouteId =
   | "home"
@@ -94,6 +95,12 @@ export interface AppConfig {
 
 const configScript: HTMLElement | null = document.getElementById("app-config");
 if (!configScript) {
+  // Called inline (not via a module-level `const log`): the `config` namespace
+  // is admin-gated on APP_CONFIG.debugEnabled, but APP_CONFIG is defined at the
+  // bottom of this very module — a top-level debug("config") call would touch it
+  // in its temporal dead zone and crash every import. This branch only runs on a
+  // fatal template regression, where the module throws anyway.
+  debug("config")("app-config element missing from DOM", {});
   throw new Error("App configuration not found in DOM");
 }
 const rawConfig: {
@@ -103,6 +110,7 @@ const rawConfig: {
   debugEnabled: boolean;
 } = (() => {
   if (!configScript.textContent) {
+    debug("config")("app-config element is empty", {});
     throw new Error("App configuration script element is empty");
   }
   return JSON.parse(configScript.textContent);

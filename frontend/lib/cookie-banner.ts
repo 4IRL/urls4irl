@@ -1,6 +1,9 @@
 import { $ } from "./globals.js";
 import { APP_CONFIG } from "./config.js";
 import { KEYS } from "./constants.js";
+import { debug } from "./debug.js";
+
+const log = debug("cookie-banner");
 
 function isHTMLElement(target: EventTarget | null): target is HTMLElement {
   return target instanceof HTMLElement;
@@ -8,7 +11,10 @@ function isHTMLElement(target: EventTarget | null): target is HTMLElement {
 
 export function initCookieBanner(): void {
   const $banner = $("#CookieBanner");
-  if (!$banner.length) return;
+  if (!$banner.length) {
+    log("banner element missing — initCookieBanner exiting", {});
+    return;
+  }
 
   // Show after render if not seen
   setTimeout(() => {
