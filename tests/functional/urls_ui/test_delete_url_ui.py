@@ -40,6 +40,7 @@ from tests.functional.playwright_utils import (
     wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -117,6 +118,17 @@ def test_delete_url_submit(page: Page, create_test_urls, provide_app: Flask):
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
+    # The confirmation modal fades in via a Bootstrap transition. Clicking
+    # submit while that fade-in is still running causes Bootstrap to drop the
+    # subsequent modal("hide") call (it ignores hide requests mid-transition),
+    # so the modal never becomes hidden. Gate the click on the fade-in being
+    # fully settled (opacity == 1) so the later hide is honored deterministically.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Assert submit button is disabled immediately after click to prevent double-submit
@@ -193,6 +205,15 @@ def test_delete_url_cancel_click_cancel_btn(
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
+    # See test_delete_url_submit: gate the click on the fade-in being fully
+    # settled (opacity == 1), otherwise Bootstrap drops the subsequent
+    # modal("hide") call and the modal never becomes hidden.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
     wait_until_hidden(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
 
@@ -355,6 +376,15 @@ def test_delete_last_url(
     css_selector = f'{HPL.URL_STRING_READ}[href="{random_url_to_add_as_last}"]'
     expect(page.locator(css_selector).first).to_be_attached()
 
+    # See test_delete_url_submit: gate the click on the fade-in being fully
+    # settled (opacity == 1), otherwise Bootstrap drops the subsequent
+    # modal("hide") call and the modal never becomes hidden.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=url_elem_to_delete)
@@ -470,6 +500,15 @@ def test_delete_url_submit_button_enabled_on_second_modal_open(
         url_string=first_utub_url_string,
     )
 
+    # See test_delete_url_submit: gate the click on the fade-in being fully
+    # settled (opacity == 1), otherwise Bootstrap drops the subsequent
+    # modal("hide") call and the modal never becomes hidden.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for the first URL row to be removed from the DOM

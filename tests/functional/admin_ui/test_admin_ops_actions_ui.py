@@ -10,7 +10,10 @@ from tests.functional.admin_ui.playwright_utils import (
     login_admin_and_open_system_operations,
 )
 from tests.functional.locators import AdminPortalLocators as APL
-from tests.functional.playwright_utils import wait_then_get_element
+from tests.functional.playwright_utils import (
+    wait_then_get_element,
+    wait_until_css_property,
+)
 
 pytestmark = pytest.mark.admin_ui
 
@@ -200,6 +203,15 @@ def test_admin_ops_modal_dismiss_makes_no_request(
         wait_then_get_element(page=page, css_selector=APL.ACTION_MODAL_TITLE)
     ).to_have_text(UI_TEST_STRINGS.ADMIN_OPS_VERIFY_TABLES_CONFIRM_TITLE)
 
+    # Gate on the fade-in being fully settled (opacity 1) before dismissing:
+    # clicking mid-transition makes Bootstrap drop the subsequent modal("hide"),
+    # leaving the modal visible and racing the to_be_hidden check under load.
+    wait_until_css_property(
+        page=page,
+        css_selector=APL.ACTION_CONFIRM_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     page.click("#modalDismiss")
 
     expect(page.locator(APL.ACTION_CONFIRM_MODAL)).to_be_hidden()

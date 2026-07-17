@@ -31,6 +31,7 @@ from tests.functional.playwright_utils import (
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -722,6 +723,17 @@ def test_search_icon_hidden_after_last_url_deleted(
         page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
     )
     wait_until_visible_css_selector(page=page, css_selector=HPL.BODY_MODAL)
+    # wait_until_visible_css_selector only confirms the modal is attached and
+    # visible, not that its Bootstrap fade-in transition has finished.
+    # Clicking submit mid-transition causes Bootstrap to drop the subsequent
+    # modal("hide") call, so the modal never becomes hidden. Gate on the
+    # fade-in being fully settled (opacity == 1) before clicking.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=url_row)
@@ -764,6 +776,17 @@ def test_active_search_preserved_on_url_deletion(
         page=page, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}"
     )
     wait_until_visible_css_selector(page=page, css_selector=HPL.BODY_MODAL)
+    # wait_until_visible_css_selector only confirms the modal is attached and
+    # visible, not that its Bootstrap fade-in transition has finished.
+    # Clicking submit mid-transition causes Bootstrap to drop the subsequent
+    # modal("hide") call, so the modal never becomes hidden. Gate on the
+    # fade-in being fully settled (opacity == 1) before clicking.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
     wait_for_element_to_be_removed(page=page, locator=url_row)

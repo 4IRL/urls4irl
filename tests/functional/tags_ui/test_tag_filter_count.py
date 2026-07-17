@@ -36,6 +36,7 @@ from tests.functional.playwright_utils import (
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
 )
 from tests.functional.tags_ui.playwright_utils import (
@@ -419,6 +420,15 @@ def test_delete_url_decrements_all_tag_counters(
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == DELETE_URL_WARNING
 
+    # Wait for Bootstrap's show transition to complete before clicking submit.
+    # Clicking mid-fade-in drops the click handler's modal.hide() call
+    # (BS5 _isTransitioning guard), so the modal never becomes hidden.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 

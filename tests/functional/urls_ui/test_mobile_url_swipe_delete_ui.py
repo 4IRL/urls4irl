@@ -101,6 +101,17 @@ def test_url_swipe_commit_confirm_deletes_and_removes_row(
     wait_until_url_card_swipe_committed(page=page)
     assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
 
+    # assert_visible_css_selector only confirms the modal is attached and
+    # visible, not that its Bootstrap fade-in transition has finished.
+    # Clicking submit mid-transition causes Bootstrap to drop the subsequent
+    # modal("hide") call, so the modal never becomes hidden. Gate on the
+    # fade-in being fully settled (opacity == 1) before clicking.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
@@ -139,6 +150,17 @@ def test_url_swipe_commit_dismiss_snaps_back_without_deleting(
     wait_until_url_card_swipe_committed(page=page)
     assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
 
+    # assert_visible_css_selector only confirms the modal is attached and
+    # visible, not that its Bootstrap fade-in transition has finished.
+    # Clicking dismiss mid-transition causes Bootstrap to drop the subsequent
+    # modal("hide") call, so the modal never becomes hidden. Gate on the
+    # fade-in being fully settled (opacity == 1) before clicking.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 
@@ -191,6 +213,18 @@ def test_url_swipe_dismiss_twice_then_blur_leaves_no_stuck_goto_icon(
         swipe_url_card_delete(page=page, url_row_selector=row_selector)
         wait_until_url_card_swipe_committed(page=page)
         assert_visible_css_selector(page=page, css_selector=ML.ELEMENT_MODAL)
+        # assert_visible_css_selector only confirms the modal is attached and
+        # visible, not that its Bootstrap fade-in transition has finished.
+        # Clicking dismiss mid-transition causes Bootstrap to drop the
+        # subsequent modal("hide") call, so the modal never becomes hidden.
+        # Gate on the fade-in being fully settled (opacity == 1) before
+        # clicking.
+        wait_until_css_property(
+            page=page,
+            css_selector=HPL.HOME_MODAL,
+            css_property="opacity",
+            expected_value="1",
+        )
         wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_DISMISS)
         wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
         wait_until_url_card_swipe_reset(page=page)

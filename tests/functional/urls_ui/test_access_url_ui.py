@@ -32,6 +32,7 @@ from tests.functional.playwright_utils import (
     get_url_row_by_id,
     wait_for_web_element_and_click,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -333,6 +334,18 @@ def test_access_non_http_url_by_clicking_url_string_cancel(
 
     access_modal = wait_then_get_element(
         page=page, css_selector=HPL.ACCESS_EXTERNAL_URL_MODAL
+    )
+    # The Bootstrap modal fades in, and `wait_then_get_element` returns as soon
+    # as the element has a bounding box — i.e. mid-transition. Clicking
+    # "Nevermind" before the show transition completes makes Bootstrap drop the
+    # subsequent `.modal("hide")` (it ignores hide while still transitioning),
+    # leaving the modal visible and flaking `wait_until_hidden` under load. Gate
+    # on the fade-in being fully settled (opacity 1) before dismissing.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.ACCESS_EXTERNAL_URL_MODAL,
+        css_property="opacity",
+        expected_value="1",
     )
     access_modal.locator(HPL.BUTTON_MODAL_DISMISS).click()
 

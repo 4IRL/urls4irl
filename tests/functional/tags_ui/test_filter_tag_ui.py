@@ -27,6 +27,7 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -518,6 +519,15 @@ def test_filtered_url_count_decrements_when_url_deleted(
 
     url_elem_locator = page.locator(selected_url_selector)
 
+    # Wait for Bootstrap's show transition to complete before clicking submit.
+    # Clicking mid-fade-in drops the click handler's modal.hide() call
+    # (BS5 _isTransitioning guard), so the modal never becomes hidden.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(page=page, css_selector=HPL.HOME_MODAL)
 

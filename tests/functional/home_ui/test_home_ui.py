@@ -29,6 +29,7 @@ from tests.functional.playwright_utils import (
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_utub_name_appears,
 )
@@ -272,6 +273,18 @@ def test_back_and_forward_history_with_one_utub_deleted(
     select_utub_by_id(page=page, utub_id=utub_id_to_delete)
 
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_DELETE)
+
+    # The confirmation modal fades in via a Bootstrap transition. Submitting while
+    # that fade-in is still running causes Bootstrap to drop the subsequent
+    # modal("hide") call, so the modal never becomes invisible. Gate the submit
+    # click on the modal being fully settled (opacity == 1) so the later hide is
+    # honored deterministically.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
@@ -349,6 +362,18 @@ def test_back_and_forward_history_with_leaving_one_utub(
     expect(page.locator(HPL.BODY_MODAL)).to_be_visible()
 
     utub_css_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id_to_delete}']"
+
+    # The confirmation modal fades in via a Bootstrap transition. Submitting while
+    # that fade-in is still running causes Bootstrap to drop the subsequent
+    # modal("hide") call, so the modal never becomes invisible. Gate the submit
+    # click on the modal being fully settled (opacity == 1) so the later hide is
+    # honored deterministically.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
 
     # Wait for DELETE request
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
