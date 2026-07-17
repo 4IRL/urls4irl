@@ -374,7 +374,16 @@ class _DimLoginFailure(BaseModel):
 
 class _DimLoginSuccess(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    method: Literal["password", "google"]
+    method: Literal["password", "google", "github"]
+    device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
+
+
+class _DimOAuthIdentityLinkChange(BaseModel):
+    """Shared by OAUTH_IDENTITY_LINKED and OAUTH_IDENTITY_UNLINKED — both
+    carry only the provider whose identity row changed."""
+
+    model_config = ConfigDict(extra="forbid")
+    provider: Literal["google", "github"]
     device_type: _StrictDeviceType = Field(default=DeviceType.DESKTOP)
 
 
@@ -420,6 +429,8 @@ DIMENSION_MODELS: dict[EventName, type[BaseModel] | None] = {
     EventName.LOGIN_SUCCESS: _DimLoginSuccess,
     EventName.MEMBER_ADDED: _DimDeviceOnly,
     EventName.MEMBER_REMOVED: _DimDeviceOnly,
+    EventName.OAUTH_IDENTITY_LINKED: _DimOAuthIdentityLinkChange,
+    EventName.OAUTH_IDENTITY_UNLINKED: _DimOAuthIdentityLinkChange,
     EventName.PASSWORD_RESET_COMPLETED: _DimDeviceOnly,
     EventName.PASSWORD_RESET_REQUESTED: _DimDeviceOnly,
     EventName.REGISTER_REJECTED: _DimRegisterRejected,

@@ -3,7 +3,7 @@
 Cross-layer navigation map for every route in the application. Each entry traces:
 **Route → Handler → Service → Template → JS Module → Tests**
 
-Last updated: 2026-07-03
+Last updated: 2026-07-16
 
 ---
 
@@ -127,11 +127,11 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 
 ## OAuth Blueprint
 
-Base path: `/oauth`. Google sign-in is implemented (below); GitHub remains a stub for a later phase of the OAuth initiative (see `plans/oauth/oauth-integration-master.md`). The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) are shared across providers. Google client registration itself (`oauth.google` Authlib registration, gated on configured credentials) is covered by `tests/integration/splash/test_oauth_client_init.py` (marker: `splash`), independent of the per-route tests listed below.
+Base path: `/oauth`. Both Google and GitHub sign-in are implemented. The provider-agnostic service (`backend/splash/services/oauth/account_service.py:find_or_create_oauth_user`) and the `UserOAuthIdentity` model (`backend/models/user_oauth_identities.py`) are shared across providers. Client registration itself (`oauth.google`/`oauth.github` Authlib registration, each gated on its own configured credentials) is covered by `tests/integration/splash/test_oauth_client_init.py` (marker: `splash`), independent of the per-route tests listed below.
 
-Both Google routes are non-AJAX, browser-navigation routes (like `/confirm-email` and `/validate/expired` above) rather than AJAX JSON-envelope routes — there is no dedicated JS module or CSRF-meta-tag row for either.
+Both Google routes and both GitHub routes are non-AJAX, browser-navigation routes (like `/confirm-email` and `/validate/expired` above) rather than AJAX JSON-envelope routes — there is no dedicated JS module or CSRF-meta-tag row for any of the four.
 
-**CSRF pattern:** `GET /oauth/google/callback` stacks the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route`, above `@no_authenticated_users_allowed`/`@api_route`, as at `backend/metrics/routes.py:ingest`). The exemption is defensive/self-documenting rather than load-bearing: Flask-WTF's `CSRFProtect` only checks unsafe methods (POST/PUT/PATCH/DELETE) and this route is GET-only. OAuth state/CSRF is instead handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
+**CSRF pattern:** `GET /oauth/google/callback` and `GET /oauth/github/callback` both stack the existing `@csrf.exempt` decorator (imported `from backend import csrf`, applied directly under `@route`, above `@no_authenticated_users_allowed`/`@api_route`, as at `backend/metrics/routes.py:ingest`). The exemption is defensive/self-documenting rather than load-bearing: Flask-WTF's `CSRFProtect` only checks unsafe methods (POST/PUT/PATCH/DELETE) and both routes are GET-only. OAuth state/CSRF is instead handled by Authlib's own `state` parameter round-trip on the callback, not Flask-WTF.
 
 ### GET /oauth/google/login
 
@@ -145,35 +145,70 @@ Both Google routes are non-AJAX, browser-navigation routes (like `/confirm-email
 
 ### GET /oauth/google/callback
 
-| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**    | `backend/splash/routes.py:google_callback`                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| **Decorators** | `@csrf.exempt`, `@no_authenticated_users_allowed`, `@api_route(query_schema=GoogleOAuthCallbackQuerySchema, ajax_required=False, tags=[OPEN_API.AUTH], description="Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.", status_codes={200: HtmlErrorPageSchema, 302: EmptyRedirectSchema, 400: ErrorResponse})` |
-| **Service**    | `backend/splash/services/oauth/google_service.py:handle_google_callback` (validates `code`/`state`/`error` via `GoogleOAuthCallbackQuerySchema`/`parse_query_args`)                                                                                                                                                                                                                                                                                                                                                      |
-| **Template**   | `pages/splash.html` (via the shared `components/splash/oauth_reject.html` partial on any reject branch — email collision, unverified email, consent decline, or generic token-exchange failure)                                                                                                                                                                                                                                                                                                                          |
-| **Tests**      | `tests/integration/splash/test_oauth_google.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_google_ui.py` (marker: `splash_ui`)                                                                                                                                                                                                                                                                                                                                                                           |
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:google_callback`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **Decorators** | `@csrf.exempt`, `@api_route(query_schema=GoogleOAuthCallbackQuerySchema, ajax_required=False, tags=[OPEN_API.AUTH], description="Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user; for an authenticated session with a pending settings-link intent it completes account linking instead (providers share one callback URL between sign-in and linking); CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.", status_codes={200: HtmlErrorPageSchema, 302: EmptyRedirectSchema, 400: ErrorResponse})` — no longer carries `@no_authenticated_users_allowed`; an authenticated request with a valid settings-link intent is now served (see Service) |
+| **Service**    | `backend/splash/services/oauth/google_service.py:handle_google_callback` (validates `code`/`state`/`error` via `GoogleOAuthCallbackQuerySchema`/`parse_query_args`); authenticated requests delegate to `backend/splash/services/oauth/linking_service.py:handle_authenticated_oauth_callback` (link/proof completion) and `complete_pending_collision_link` (password-less collision completion after sign-in); an anonymous email collision now calls `linking_service.py:stash_pending_collision_link` and redirects to `GET /oauth/link/confirm` instead of rendering a reject page                                                                                                                                                                                                                  |
+| **Template**   | `pages/splash.html` (via the shared `components/splash/oauth_reject.html` partial on the unverified-email/consent-decline/generic-failure reject branches; the email-collision branch no longer renders here — see `GET /oauth/link/confirm`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Tests**      | `tests/integration/splash/test_oauth_google.py` (marker: `splash`), `tests/integration/splash/test_oauth_confirm_link.py` (marker: `splash`), `tests/integration/account_and_settings/test_oauth_linking.py` (marker: `account_and_support`), `tests/functional/splash_ui/test_oauth_google_ui.py` (marker: `splash_ui`), `tests/functional/settings_ui/test_oauth_linking_ui.py` (marker: `settings_ui`), `tests/functional/splash_ui/test_oauth_confirm_link_ui.py` (marker: `splash_ui`)                                                                                                                                                                                                                                                                                                              |
 
 ### GET /oauth/github/login
 
-| Layer          | Location                          |
-| -------------- | --------------------------------- |
-| **Handler**    | Phase 3 — not yet implemented.    |
-| **Decorators** | Phase 3 — not yet implemented.    |
-| **Service**    | Phase 3 — not yet implemented.    |
-| **Template**   | Phase 3 — not yet implemented.    |
-| **JS Module**  | Phase 3 — not yet implemented.    |
-| **Tests**      | Phase 3 — not yet implemented.    |
+| Layer          | Location                                                                                                                                                                                                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:github_login`                                                                                                                                                                                                                                                           |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(ajax_required=False, tags=[OPEN_API.AUTH], description="Redirect to GitHub's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback.", status_codes={302: EmptyRedirectSchema})` |
+| **Service**    | `backend/splash/services/oauth/github_service.py:initiate_github_login`                                                                                                                                                                                                                           |
+| **Template**   | None (redirect only)                                                                                                                                                                                                                                                                              |
+| **Tests**      | `tests/integration/splash/test_oauth_github.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_github_ui.py` (marker: `splash_ui`)                                                                                                                                                    |
 
 ### GET /oauth/github/callback
 
-| Layer          | Location                          |
-| -------------- | --------------------------------- |
-| **Handler**    | Phase 3 — not yet implemented.    |
-| **Decorators** | Phase 3 — not yet implemented.    |
-| **Service**    | Phase 3 — not yet implemented.    |
-| **Template**   | Phase 3 — not yet implemented.    |
-| **JS Module**  | Phase 3 — not yet implemented.    |
-| **Tests**      | Phase 3 — not yet implemented.    |
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/splash/routes.py:github_callback`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Decorators** | `@csrf.exempt`, `@api_route(query_schema=GitHubOAuthCallbackQuerySchema, ajax_required=False, tags=[OPEN_API.AUTH], description="GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user; for an authenticated session with a pending settings-link intent it completes account linking instead (GitHub OAuth apps allow exactly one callback URL, shared between sign-in and linking); CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET.", status_codes={200: HtmlErrorPageSchema, 302: EmptyRedirectSchema, 400: ErrorResponse})` — no longer carries `@no_authenticated_users_allowed`; an authenticated request with a valid settings-link intent is now served (see Service)                                                                                   |
+| **Service**    | `backend/splash/services/oauth/github_service.py:handle_github_callback` (validates `code`/`state`/`error` via `GitHubOAuthCallbackQuerySchema`/`parse_query_args`; GitHub has no OIDC layer, so unlike Google's single userinfo call this makes two resource calls after the token exchange — `GET user` for the account payload/subject/login, then `GET user/emails` for the address list — and selects the entry marked both `primary` and `verified` via `select_primary_verified_email`); authenticated requests delegate to `backend/splash/services/oauth/linking_service.py:handle_authenticated_oauth_callback` (link/proof completion) and `complete_pending_collision_link` (password-less collision completion after sign-in); an anonymous email collision now calls `linking_service.py:stash_pending_collision_link` and redirects to `GET /oauth/link/confirm` instead of rendering a reject page |
+| **Template**   | `pages/splash.html` (via the shared `components/splash/oauth_reject.html` partial on the unverified-email/consent-decline/generic-failure reject branches; the email-collision branch no longer renders here — see `GET /oauth/link/confirm`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Tests**      | `tests/integration/splash/test_oauth_github.py` (marker: `splash`), `tests/integration/splash/test_oauth_confirm_link.py` (marker: `splash`), `tests/integration/account_and_settings/test_oauth_linking.py` (marker: `account_and_support`), `tests/functional/splash_ui/test_oauth_github_ui.py` (marker: `splash_ui`), `tests/functional/settings_ui/test_oauth_linking_ui.py` (marker: `settings_ui`), `tests/functional/splash_ui/test_oauth_confirm_link_ui.py` (marker: `splash_ui`)                                                                                                                                                                                                                                                                                                                                                                                                                        |
+
+### GET /oauth/\<string:provider\>/link
+
+Settings-page account-linking dance entry point. Shares the same `/oauth/<provider>/callback` routes above between sign-in and linking; requires a pending intent stashed by `POST /users/<int:user_id>/oauth/link/<string:provider>` (see Users Blueprint below). No `api_route` — a plain HTML-navigation GET like `GET /oauth/google/login` above.
+
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:oauth_link`                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Decorators** | `@email_validation_required`, `@api_route(ajax_required=False, tags=[OPEN_API.AUTH], description="Redirect an authenticated user to a provider's OAuth consent screen to link (or prove ownership for linking) that provider to their account. Requires a pending link intent stashed by POST /users/<id>/oauth/link/<provider>; without one, bounces back to Settings.", status_codes={302: EmptyRedirectSchema})`                                             |
+| **Service**    | `backend/splash/services/oauth/linking_service.py:initiate_link_oauth_redirect` — validates the stashed intent names this provider as either the link target or the proof provider (`pop_valid_link_intent_for_current_user`'s peek counterpart); mismatched/expired/missing intent bounces to `/settings`                                                                                                                                                      |
+| **Template**   | None (redirect only)                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Tests**      | `tests/integration/account_and_settings/test_oauth_linking.py` (marker: `account_and_support`), `tests/functional/settings_ui/test_oauth_linking_ui.py` (marker: `settings_ui`)                                                                                                                                                                                                                                                                                 |
+
+### GET /oauth/link/confirm
+
+Collision confirm-link page: renders when an anonymous OAuth sign-in resolves to an email already owned by an unlinked local account (`stash_pending_collision_link` redirects here instead of rendering the old reject page). No `api_route` — a plain HTML-navigation GET, mirroring how `GET /settings` and `GET /validate/<token>` are documented above.
+
+| Layer          | Location                                                                                                                                                                                                                                                                                                           |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/splash/routes.py:oauth_confirm_link_page`                                                                                                                                                                                                                                                                 |
+| **Decorators** | `@no_authenticated_users_allowed`                                                                                                                                                                                                                                                                                  |
+| **Service**    | `backend/splash/services/oauth/linking_service.py:render_confirm_link_page` — password-account owners get a password re-auth prompt; password-less owners get "continue with `<already-linked provider>`" sign-in buttons; no/expired stash renders the generic-failure banner with `CONFIRM_LINK_EXPIRED_MESSAGE` |
+| **Template**   | `pages/splash.html` via `components/splash/oauth_confirm_link.html`                                                                                                                                                                                                                                                |
+| **Tests**      | `tests/integration/splash/test_oauth_confirm_link.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_confirm_link_ui.py` (marker: `splash_ui`)                                                                                                                                                         |
+
+### POST /oauth/link/confirm
+
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/splash/routes.py:oauth_confirm_link`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **Decorators** | `@no_authenticated_users_allowed`, `@api_route(request_schema=ConfirmLinkRequest, response_schema=LoginRedirectResponseSchema, error_message=CONFIRM_LINK_INVALID_MESSAGE, error_code=OAuthLinkErrorCodes.INVALID_FORM_INPUT, ajax_required=False, tags=[OPEN_API.AUTH], description="Complete the collision confirm-link flow for a password account: verify the existing account's password, link the pending OAuth identity, and sign the user in.", status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse, 401: ErrorResponse, 403: ErrorResponse})` |
+| **Service**    | `backend/splash/services/oauth/linking_service.py:confirm_link_with_password` — verifies password, gates on suspension/email-validation, inserts the `UserOAuthIdentity` row, and logs the user in; the password-less branch instead completes via a normal sign-in with an already-linked provider (`complete_pending_collision_link`, see the two callback rows above)                                                                                                                                                                                              |
+| **Schema**     | `backend/schemas/requests/splash.py:ConfirmLinkRequest`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **JS Module**  | `frontend/splash/confirm-link-form.ts` (wired via `frontend/splash.ts`'s `initConfirmLinkIfPresent()`; no-ops for the password-less variant, which renders no `#password` input)                                                                                                                                                                                                                                                                                                                                                                                      |
+| **Template**   | `pages/splash.html` via `components/splash/oauth_confirm_link.html` (the GET above renders the form this POST submits)                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **CSRF**       | Meta tag                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **Tests**      | `tests/integration/splash/test_oauth_confirm_link.py` (marker: `splash`), `tests/functional/splash_ui/test_oauth_confirm_link_ui.py` (marker: `splash_ui`)                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ---
 
@@ -625,14 +660,37 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ### GET /settings
 
-| Layer          | Location                                                                                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/users/routes.py:settings`                                                                                                                                              |
-| **Decorators** | `@email_validation_required`                                                                                                                                                    |
-| **Service**    | `render_template()` direct                                                                                                                                                      |
-| **Template**   | `pages/settings.html` (vars: `is_settings=True`)                                                                                                                                |
-| **JS Module**  | `frontend/settings.ts` (via `initSettingsPage()`)                                                                                                                               |
-| **Tests**      | `tests/integration/account_and_settings/test_settings_page.py` (marker: `account_and_support`), `tests/functional/settings_ui/test_settings_page_ui.py` (marker: `settings_ui`) |
+| Layer          | Location                                                                                                                                                                                                                                                         |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/users/routes.py:settings`                                                                                                                                                                                                                               |
+| **Decorators** | `@email_validation_required`                                                                                                                                                                                                                                     |
+| **Service**    | `render_template()` direct, with the Connected Accounts section context built by `backend/splash/services/oauth/linking_service.py:build_connected_accounts_context`                                                                                             |
+| **Template**   | `pages/settings.html` (vars: `is_settings=True`; Connected Accounts context — `connected_account_rows`, `connected_accounts_has_password`, `connected_accounts_banner` — via `linking_service.py:build_connected_accounts_context`)                              |
+| **JS Module**  | `frontend/settings.ts` (via `initSettingsPage()`), `frontend/settings/connected-accounts.ts` (via `initConnectedAccounts()`)                                                                                                                                     |
+| **Tests**      | `tests/integration/account_and_settings/test_settings_page.py` (marker: `account_and_support`), `tests/functional/settings_ui/test_settings_page_ui.py` (marker: `settings_ui`), `tests/functional/settings_ui/test_oauth_linking_ui.py` (marker: `settings_ui`) |
+
+### POST /users/\<int:user_id\>/oauth/link/\<string:provider\>
+
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/users/routes.py:link_oauth_provider`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| **Decorators** | `@email_validation_required`, `@api_route(request_schema=ProviderLinkRequest, response_schema=LoginRedirectResponseSchema, error_message=LINK_INVALID_PASSWORD_MESSAGE, error_code=OAuthLinkErrorCodes.INVALID_FORM_INPUT, tags=[OPEN_API.AUTH], description="Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance.", status_codes={200: LoginRedirectResponseSchema, 400: ErrorResponse, 403: ErrorResponse, 404: ErrorResponse})` |
+| **Service**    | `backend/splash/services/oauth/linking_service.py:initiate_settings_link` — password accounts re-auth locally then stash a `link` intent; password-less accounts stash a `proof` intent targeting an already-linked provider; guards: user_id mismatch (403), unsupported/unconfigured provider (404), already-linked provider (400), missing/incorrect password (400)                                                                                                                                                                                                                                                                                                       |
+| **Schema**     | `backend/schemas/requests/users.py:ProviderLinkRequest`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **JS Module**  | `frontend/settings/connected-accounts.ts` (wired via `frontend/settings.ts`'s `initConnectedAccounts()`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **CSRF**       | Meta tag                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Tests**      | `tests/integration/account_and_settings/test_oauth_linking.py` (marker: `account_and_support`), `tests/functional/settings_ui/test_oauth_linking_ui.py` (marker: `settings_ui`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+### DELETE /users/\<int:user_id\>/oauth/link/\<string:provider\>
+
+| Layer          | Location                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/users/routes.py:unlink_oauth_provider`                                                                                                                                                                                                                                                                                                                                                      |
+| **Decorators** | `@email_validation_required`, `@api_route(response_schema=StatusMessageResponseSchema, tags=[OPEN_API.AUTH], description="Disconnect an OAuth provider from the authenticated user's account. Blocked when it is the account's last remaining sign-in method (no password and a single linked identity).", status_codes={200: StatusMessageResponseSchema, 403: ErrorResponse, 404: ErrorResponse})` |
+| **Service**    | `backend/splash/services/oauth/linking_service.py:unlink_provider` — mirrors the admin portal's `unlink_oauth_identity` last-credential guard; guards: user_id mismatch (403), unsupported provider or not-linked (404), last sign-in method (403)                                                                                                                                                   |
+| **JS Module**  | `frontend/settings/connected-accounts.ts` (wired via `frontend/settings.ts`'s `initConnectedAccounts()`)                                                                                                                                                                                                                                                                                             |
+| **CSRF**       | Meta tag                                                                                                                                                                                                                                                                                                                                                                                             |
+| **Tests**      | `tests/integration/account_and_settings/test_oauth_linking.py` (marker: `account_and_support`), `tests/functional/settings_ui/test_oauth_linking_ui.py` (marker: `settings_ui`)                                                                                                                                                                                                                      |
 
 ---
 
@@ -640,18 +698,18 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ### GET /admin
 
-| Layer           | Location                                                                                                                      |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/routes.py:admin_portal`                                                                                        |
-| **Decorators**  | `@admin_login_required`                                                                                                        |
-| **Service**     | `render_template()` direct; emits `audit.record(action="admin.portal.view")` (`backend/extensions/audit/record.py`)           |
-| **Schema**      | None (request) / None (response — page is HTML, not JSON)                                                                      |
-| **Template**    | `admin_portal/index.html` (extends `admin_portal/base.html`, includes `admin_portal/_nav.html`; vars: `is_admin_portal=True`)                       |
+| Layer           | Location                                                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_portal`                                                                                                                    |
+| **Decorators**  | `@admin_login_required`                                                                                                                                   |
+| **Service**     | `render_template()` direct; emits `audit.record(action="admin.portal.view")` (`backend/extensions/audit/record.py`)                                       |
+| **Schema**      | None (request) / None (response — page is HTML, not JSON)                                                                                                 |
+| **Template**    | `admin_portal/index.html` (extends `admin_portal/base.html`, includes `admin_portal/_nav.html`; vars: `is_admin_portal=True`)                             |
 | **JS Module**   | `frontend/admin.ts` (entry point: registers plugins, sets up CSRF, navbar + cookie banner init; wires health-monitor, user-search, audit-log controllers) |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                          |
-| **Tests**       | `tests/integration/admin/test_admin_portal_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.PORTAL`                                                                              |
-| **Metrics**     | `API_HIT` middleware auto-coverage (`admin.admin_portal` × method × status × device); no DOMAIN event — internal admin surface |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_portal_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                  |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.PORTAL`                                                                                                         |
+| **Metrics**     | `API_HIT` middleware auto-coverage (`admin.admin_portal` × method × status × device); no DOMAIN event — internal admin surface                            |
 
 ---
 
@@ -660,168 +718,168 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | Layer           | Location                                                                                                                                   |
 | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Handler**     | `backend/admin/routes.py:admin_health`                                                                                                     |
-| **Decorators**  | `@admin_login_required`                                                                                                                     |
+| **Decorators**  | `@admin_login_required`                                                                                                                    |
 | **Service**     | `render_template()` direct; emits `audit.record(action="admin.health.view")`                                                               |
 | **Schema**      | None (request) / None (response — HTML shell)                                                                                              |
-| **Template**    | `admin_portal/health.html` (extends `admin_portal/base.html`; snapshot region `#AdminHealthSnapshot` with `data-snapshot-url`)                            |
-| **JS Module**   | `frontend/admin/health-monitor.ts` (immediate init fetch + 30s poll clock + visibilitychange pause/resume via `fragment-swap.ts`)                         |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                       |
-| **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                    |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_PAGE`                                                                                      |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                |
+| **Template**    | `admin_portal/health.html` (extends `admin_portal/base.html`; snapshot region `#AdminHealthSnapshot` with `data-snapshot-url`)             |
+| **JS Module**   | `frontend/admin/health-monitor.ts` (immediate init fetch + 30s poll clock + visibilitychange pause/resume via `fragment-swap.ts`)          |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                      |
+| **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                   |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_PAGE`                                                                                     |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                               |
 
 ---
 
 ### GET /admin/health/snapshot
 
-| Layer           | Location                                                                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**     | `backend/admin/routes.py:admin_health_snapshot`                                                                                                |
-| **Decorators**  | `@admin_login_required`                                                                                                                         |
+| Layer           | Location                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_health_snapshot`                                                                                                          |
+| **Decorators**  | `@admin_login_required`                                                                                                                                  |
 | **Service**     | `backend/admin/health_service.py:collect_health_snapshot` (DB SELECT 1 + pg_stat_activity, session/metrics Redis pings, sidecar sentinel epochs, disk %) |
-| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminHealthSnapshot)                                                              |
-| **Template**    | `admin_portal/_health_snapshot.html` (standalone fragment, no base template)                                                                           |
-| **JS Module**   | `frontend/admin/health-monitor.ts` (calls `fetchAndSwap` on each poll tick)                                                                     |
-| **CSRF**        | Not required (GET)                                                                                                                              |
-| **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                        |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_SNAPSHOT`                                                                                      |
-| **Metrics**     | `API_HIT` middleware auto-coverage; deliberately NOT audited per-poll (page view is audited instead)                                            |
+| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminHealthSnapshot)                                                                       |
+| **Template**    | `admin_portal/_health_snapshot.html` (standalone fragment, no base template)                                                                             |
+| **JS Module**   | `frontend/admin/health-monitor.ts` (calls `fetchAndSwap` on each poll tick)                                                                              |
+| **CSRF**        | Not required (GET)                                                                                                                                       |
+| **Tests**       | `tests/integration/admin/test_admin_health_page.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                 |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.HEALTH_SNAPSHOT`                                                                                               |
+| **Metrics**     | `API_HIT` middleware auto-coverage; deliberately NOT audited per-poll (page view is audited instead)                                                     |
 
 ---
 
 ### GET /admin/users
 
-| Layer           | Location                                                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**     | `backend/admin/routes.py:admin_users`                                                                                        |
-| **Decorators**  | `@admin_login_required`                                                                                                       |
+| Layer           | Location                                                                                                                                             |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_users`                                                                                                                |
+| **Decorators**  | `@admin_login_required`                                                                                                                              |
 | **Service**     | `render_template()` direct (results load via the search fragment); not audited itself — the load-triggered fragment records the initial blank search |
-| **Schema**      | None (request) / None (response — HTML shell)                                                                                 |
-| **Template**    | `admin_portal/users/index.html` (search input with `data-search-url`; results region `#AdminUserSearchResults`)                  |
-| **JS Module**   | `frontend/admin/user-search.ts` (500ms-debounced input + immediate search event + pagination delegation via `fragment-swap.ts`)  |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                         |
-| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)      |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_PAGE`                                                                         |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                  |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                                        |
+| **Template**    | `admin_portal/users/index.html` (search input with `data-search-url`; results region `#AdminUserSearchResults`)                                      |
+| **JS Module**   | `frontend/admin/user-search.ts` (500ms-debounced input + immediate search event + pagination delegation via `fragment-swap.ts`)                      |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                |
+| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                             |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_PAGE`                                                                                                |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                         |
 
 ---
 
 ### GET /admin/users/search
 
-| Layer           | Location                                                                                                                                  |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**     | `backend/admin/routes.py:admin_users_search` (query params: `q`, `offset`)                                                                |
-| **Decorators**  | `@admin_login_required`                                                                                                                    |
+| Layer           | Location                                                                                                                                                                            |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_users_search` (query params: `q`, `offset`)                                                                                                          |
+| **Decorators**  | `@admin_login_required`                                                                                                                                                             |
 | **Service**     | `backend/admin/user_service.py:search_users` (username/email ILIKE with wildcard escaping, id-ordered pagination); audits `admin.user.search` with `{query, result_count}` metadata |
-| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminUserSearchResults)                                                       |
-| **Template**    | `admin_portal/users/_results.html` (standalone fragment: table + Previous/Next links with `data-fragment-href`)                            |
-| **JS Module**   | `frontend/admin/user-search.ts` + `frontend/admin/fragment-swap.ts` (pagination click delegation)                                          |
-| **CSRF**        | Not required (GET)                                                                                                                         |
-| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                   |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_SEARCH`                                                                                    |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                               |
+| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminUserSearchResults)                                                                                               |
+| **Template**    | `admin_portal/users/_results.html` (standalone fragment: table + Previous/Next links with `data-fragment-href`)                                                                     |
+| **JS Module**   | `frontend/admin/user-search.ts` + `frontend/admin/fragment-swap.ts` (pagination click delegation)                                                                                   |
+| **CSRF**        | Not required (GET)                                                                                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                                            |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USERS_SEARCH`                                                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                        |
 
 ---
 
 ### GET /admin/users/&lt;user_id&gt;
 
-| Layer           | Location                                                                                                                      |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**     | `backend/admin/routes.py:admin_user_detail`                                                                                   |
-| **Decorators**  | `@admin_login_required` (404 for unknown user id)                                                                              |
-| **Service**     | `backend/admin/user_service.py:get_user_detail`; audits `admin.user.view` with `target_type="User"`, `target_id=<id>`         |
-| **Schema**      | None (request) / None (response — HTML page)                                                                                   |
+| Layer           | Location                                                                                                                                                  |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_user_detail`                                                                                                               |
+| **Decorators**  | `@admin_login_required` (404 for unknown user id)                                                                                                         |
+| **Service**     | `backend/admin/user_service.py:get_user_detail`; audits `admin.user.view` with `target_type="User"`, `target_id=<id>`                                     |
+| **Schema**      | None (request) / None (response — HTML page)                                                                                                              |
 | **Template**    | `admin_portal/users/detail.html` (metadata table + UTub memberships table; READ-ONLY — no action buttons, mutations are a later, separately-gated effort) |
-| **JS Module**   | None                                                                                                                           |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                          |
-| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USER_DETAIL`                                                                         |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                   |
+| **JS Module**   | None                                                                                                                                                      |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_users_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                  |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.USER_DETAIL`                                                                                                    |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                              |
 
 ---
 
 ### GET /admin/audit-log
 
-| Layer           | Location                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**     | `backend/admin/routes.py:admin_audit_log`                                                                                        |
-| **Decorators**  | `@admin_login_required`                                                                                                            |
-| **Service**     | `render_template()` direct; audits `admin.audit_log.view` (yes — viewing the audit log is itself audited)                          |
-| **Schema**      | None (request) / None (response — HTML shell)                                                                                      |
+| Layer           | Location                                                                                                                             |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_audit_log`                                                                                            |
+| **Decorators**  | `@admin_login_required`                                                                                                              |
+| **Service**     | `render_template()` direct; audits `admin.audit_log.view` (yes — viewing the audit log is itself audited)                            |
+| **Schema**      | None (request) / None (response — HTML shell)                                                                                        |
 | **Template**    | `admin_portal/audit_log/index.html` (filter form with `data-filter-url`: actor/action/target_type/since/until inputs)                |
-| **JS Module**   | `frontend/admin/audit-log.ts` (500ms input debounce, 100ms change debounce, pagination delegation; native `<details>` metadata)       |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                              |
-| **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)       |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_PAGE`                                                                          |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                       |
+| **JS Module**   | `frontend/admin/audit-log.ts` (500ms input debounce, 100ms change debounce, pagination delegation; native `<details>` metadata)      |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                |
+| **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)         |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_PAGE`                                                                            |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                         |
 
 ---
 
 ### GET /admin/audit-log/rows
 
-| Layer           | Location                                                                                                                                            |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**     | `backend/admin/routes.py:admin_audit_log_rows` (query params: `actor`, `action`, `target_type`, `since`, `until`, `offset`)                         |
-| **Decorators**  | `@admin_login_required`                                                                                                                              |
+| Layer           | Location                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_audit_log_rows` (query params: `actor`, `action`, `target_type`, `since`, `until`, `offset`)                                         |
+| **Decorators**  | `@admin_login_required`                                                                                                                                             |
 | **Service**     | `backend/admin/audit_service.py:query_audit_log` (actor username/email ILIKE join, action ILIKE, target_type exact, inclusive date bounds, newest-first pagination) |
-| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminAuditLogResults)                                                                   |
-| **Template**    | `admin_portal/audit_log/_rows.html` (standalone fragment: table w/ actor username join + expandable metadata `<details>`; Previous/Next `data-fragment-href`) |
-| **JS Module**   | `frontend/admin/audit-log.ts` + `frontend/admin/fragment-swap.ts` (pagination click delegation)                                                       |
-| **CSRF**        | Not required (GET)                                                                                                                                   |
-| **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                         |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_ROWS`                                                                                            |
-| **Metrics**     | `API_HIT` middleware auto-coverage; NOT audited per-reload (page view records `admin.audit_log.view`; per-filter rows would be self-referential noise) |
+| **Schema**      | None (request) / None (response — HTML fragment swapped into #AdminAuditLogResults)                                                                                 |
+| **Template**    | `admin_portal/audit_log/_rows.html` (standalone fragment: table w/ actor username join + expandable metadata `<details>`; Previous/Next `data-fragment-href`)       |
+| **JS Module**   | `frontend/admin/audit-log.ts` + `frontend/admin/fragment-swap.ts` (pagination click delegation)                                                                     |
+| **CSRF**        | Not required (GET)                                                                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_audit_log_pages.py` (marker: `admin`), `tests/functional/admin_ui/` (marker: `admin_ui`)                                        |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.AUDIT_LOG_ROWS`                                                                                                           |
+| **Metrics**     | `API_HIT` middleware auto-coverage; NOT audited per-reload (page view records `admin.audit_log.view`; per-filter rows would be self-referential noise)              |
 
 ---
 
 ### GET /admin/db (native read-only DB browser — overview)
 
-| Layer           | Location                                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/routes.py:admin_db`                                                                                               |
-| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
-| **Service**     | `backend/admin/db_browser_service.py:list_tables` (introspects `db.Model.registry.mappers`; per-table `row_count`); audits `admin.db_browser.view` (`ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW`, no target) |
-| **Schema**      | None (request) / None (response — server-rendered HTML; read-only, no create/edit/delete/export surface)                          |
-| **Template**    | `admin_portal/db/index.html` (`.admin-quick-links` table-picker cards; `#AdminDbTables`, `#AdminDbBrowserTitle`)                  |
-| **JS Module**   | None (plain server-rendered page)                                                                                                 |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
+| Layer           | Location                                                                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_db`                                                                                                                                                                       |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                   |
+| **Service**     | `backend/admin/db_browser_service.py:list_tables` (introspects `db.Model.registry.mappers`; per-table `row_count`); audits `admin.db_browser.view` (`ADMIN_AUDIT_ACTIONS.DB_BROWSER_VIEW`, no target)    |
+| **Schema**      | None (request) / None (response — server-rendered HTML; read-only, no create/edit/delete/export surface)                                                                                                 |
+| **Template**    | `admin_portal/db/index.html` (`.admin-quick-links` table-picker cards; `#AdminDbTables`, `#AdminDbBrowserTitle`)                                                                                         |
+| **JS Module**   | None (plain server-rendered page)                                                                                                                                                                        |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                    |
 | **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |
-| **Route Const** | None — handler hardcodes `/admin/db`; templates link via `url_for('admin.admin_db')`                                             |
-| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal) |
+| **Route Const** | None — handler hardcodes `/admin/db`; templates link via `url_for('admin.admin_db')`                                                                                                                     |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal)                               |
 
 ---
 
 ### GET /admin/db/<table_name> (native read-only DB browser — per-table grid)
 
-| Layer           | Location                                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/routes.py:admin_db_table` (query params: `offset`, `sort`, `dir`, `q`; 404 on unknown table)                      |
-| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
-| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (offset/limit=50 pagination, column sort + substring search, sensitive-column masking, safe cell formatting); audits `admin.db_browser.view` (`target_type=table_name`) |
-| **Schema**      | None (request — `sort`/`dir`/`q` are optional query args, no schema change) / None (response — server-rendered HTML; read-only)   |
+| Layer           | Location                                                                                                                                                                                                                                                                       |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/routes.py:admin_db_table` (query params: `offset`, `sort`, `dir`, `q`; 404 on unknown table)                                                                                                                                                                    |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                                         |
+| **Service**     | `backend/admin/db_browser_service.py:get_table_page` (offset/limit=50 pagination, column sort + substring search, sensitive-column masking, safe cell formatting); audits `admin.db_browser.view` (`target_type=table_name`)                                                   |
+| **Schema**      | None (request — `sort`/`dir`/`q` are optional query args, no schema change) / None (response — server-rendered HTML; read-only)                                                                                                                                                |
 | **Template**    | `admin_portal/db/table.html` (breadcrumb + `#AdminDbTableSearchForm`/`#AdminDbTableSearch` search + `.admin-db-sort-link` sortable headers + `#AdminDbTableGrid` scrollable grid or `#AdminDbTableEmpty` empty-state; Previous/Next `<a href>` pagination carrying sort/dir/q) |
-| **JS Module**   | None (plain server-rendered page)                                                                                                 |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
-| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |
-| **Route Const** | None — handler hardcodes `/admin/db/<table_name>`; templates link via `url_for('admin.admin_db_table', table_name=...)`          |
-| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal) |
+| **JS Module**   | None (plain server-rendered page)                                                                                                                                                                                                                                              |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`)                                                                       |
+| **Route Const** | None — handler hardcodes `/admin/db/<table_name>`; templates link via `url_for('admin.admin_db_table', table_name=...)`                                                                                                                                                        |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal)                                                                                                     |
 
 ---
 
 ### GET /admin/db/<table_name>/<path:row_pk> (native read-only DB browser — row detail)
 
-| Layer           | Location                                                                                                                          |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/routes.py:admin_db_row` (`<path:row_pk>` supports composite/string PKs; 404 on unknown table or row)             |
-| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                           |
+| Layer           | Location                                                                                                                                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_db_row` (`<path:row_pk>` supports composite/string PKs; 404 on unknown table or row)                                                                                                                            |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                         |
 | **Service**     | `backend/admin/db_browser_service.py:get_row_detail` (parses/coerces PK segment, `db.session.get`, full untruncated formatted fields, sensitive-column masking); audits `admin.db_browser.view` (`target_type=table_name`, `target_id=row_pk`) |
-| **Schema**      | None (request) / None (response — server-rendered HTML; read-only)                                                                |
-| **Template**    | `admin_portal/db/row.html` (breadcrumb + `#AdminDbRowDetail` key/value table; long/JSON values in `<details class="admin-db-json">`) |
-| **JS Module**   | None (plain server-rendered page)                                                                                                 |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                             |
-| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`) |
-| **Route Const** | None — handler hardcodes `/admin/db/<table_name>/<path:row_pk>`; templates link via `url_for('admin.admin_db_row', ...)`         |
-| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal) |
+| **Schema**      | None (request) / None (response — server-rendered HTML; read-only)                                                                                                                                                                             |
+| **Template**    | `admin_portal/db/row.html` (breadcrumb + `#AdminDbRowDetail` key/value table; long/JSON values in `<details class="admin-db-json">`)                                                                                                           |
+| **JS Module**   | None (plain server-rendered page)                                                                                                                                                                                                              |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_db_browser.py`, `tests/integration/admin/test_db_browser_service.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_db_browser_ui.py` (marker: `admin_ui`)                                       |
+| **Route Const** | None — handler hardcodes `/admin/db/<table_name>/<path:row_pk>`; templates link via `url_for('admin.admin_db_row', ...)`                                                                                                                       |
+| **Metrics**     | `API_HIT` middleware auto-coverage (endpoint × method × status × device); no DOMAIN event — internal admin surface (per-view `DB_BROWSER_VIEW` audit is the domain signal)                                                                     |
 
 ---
 
@@ -877,120 +935,120 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ### GET /admin/utubs/\<int:utub_id>
 
-| Layer           | Location                                                                                                                                                                                                                                               |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**     | `backend/admin/routes.py:admin_utub_detail` (404 on unknown utub id; query params: `members_q`/`urls_q`/`tags_q` server-side in-table filters + `members_offset`/`urls_offset` pagination — filters apply to the UTub's full set before Members/URLs paginate; info-panel counts stay unfiltered totals) |
-| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                 |
-| **Service**     | `render_template()` direct (aggregates the UTub's own `members` + `utub_urls` relationships; creator username resolved via `Users.query.get`); audits `admin.utub.view` (`ADMIN_AUDIT_ACTIONS.UTUB_VIEW`, `target_type="Utub"`, `target_id=<utub_id>`) |
-| **Schema**      | None (request) / None (response — HTML page)                                                                                                                                                                                                           |
+| Layer           | Location                                                                                                                                                                                                                                                                                                                                                              |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/routes.py:admin_utub_detail` (404 on unknown utub id; query params: `members_q`/`urls_q`/`tags_q` server-side in-table filters + `members_offset`/`urls_offset` pagination — filters apply to the UTub's full set before Members/URLs paginate; info-panel counts stay unfiltered totals)                                                              |
+| **Decorators**  | `@admin_login_required` (302 → login for anonymous, 403 for non-admin)                                                                                                                                                                                                                                                                                                |
+| **Service**     | `render_template()` direct (aggregates the UTub's own `members` + `utub_urls` relationships; creator username resolved via `Users.query.get`); audits `admin.utub.view` (`ADMIN_AUDIT_ACTIONS.UTUB_VIEW`, `target_type="Utub"`, `target_id=<utub_id>`)                                                                                                                |
+| **Schema**      | None (request) / None (response — HTML page)                                                                                                                                                                                                                                                                                                                          |
 | **Template**    | `admin_portal/utubs/detail.html` (info panel + per-table `.admin-db-search-form` GET filters [`#AdminUtubDetailMembersSearch`/`UrlsSearch`/`TagsSearch`] mirroring the DB browser + paginated Members table with `member-remove` + paginated URLs table with `url-delete`/`url-purge` + UTub Tags panel with `utub-tag-delete`; lock/unlock + delete-utub action bar) |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` moderation buttons)                                                                                                                                                           |
-| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                  |
-| **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                     |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.UTUB_DETAIL`                                                                                                                                                                                                 |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `UTUB_VIEW` audit is the domain signal)                                                                                                                         |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` moderation buttons)                                                                                                                                                                                                                                                                          |
+| **CSRF**        | Meta tag (`<meta name="csrf-token">`)                                                                                                                                                                                                                                                                                                                                 |
+| **Tests**       | `tests/integration/admin/test_admin_utub_pages.py` (marker: `admin`), `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                                                                                                                                                                                                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.UTUB_DETAIL`                                                                                                                                                                                                                                                                                                                |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface (per-view `UTUB_VIEW` audit is the domain signal)                                                                                                                                                                                                                                        |
 
 ---
 
 ### POST /admin/ops/metrics-flush
 
-| Layer           | Location                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_ops_metrics_flush`                                                                                        |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
-| **Service**     | `backend/admin/ops_service.py:trigger_metrics_flush` — acquires flush lock, calls `run_flush`, audits result                                    |
+| Layer           | Location                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_metrics_flush`                                                                                                 |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                   |
+| **Service**     | `backend/admin/ops_service.py:trigger_metrics_flush` — acquires flush lock, calls `run_flush`, audits result                                             |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="metrics-flush"`)                             |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons; shared confirm-modal + AJAX controller)                       |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
-| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_METRICS_FLUSH`                                                                                   |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="metrics-flush"`)                                      |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons; shared confirm-modal + AJAX controller)                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_METRICS_FLUSH`                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                             |
 
 ---
 
 ### POST /admin/ops/gauge-sample
 
-| Layer           | Location                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_ops_gauge_sample`                                                                                         |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
-| **Service**     | `backend/admin/ops_service.py:trigger_gauge_sample` — calls `run_sample`, stamps GAUGE_LAST_SUCCESS_KEY sentinel, audits result                 |
+| Layer           | Location                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_gauge_sample`                                                                                                  |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                   |
+| **Service**     | `backend/admin/ops_service.py:trigger_gauge_sample` — calls `run_sample`, stamps GAUGE_LAST_SUCCESS_KEY sentinel, audits result                          |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="gauge-sample"`)                              |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
-| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_GAUGE_SAMPLE`                                                                                    |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="gauge-sample"`)                                       |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                                        |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_GAUGE_SAMPLE`                                                                                              |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                             |
 
 ---
 
 ### POST /admin/ops/audit-purge
 
-| Layer           | Location                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_ops_audit_purge`                                                                                          |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
-| **Service**     | `backend/admin/ops_service.py:trigger_audit_purge` — self-audits + commits BEFORE calling `run_purge` (window-only; never purge-all)            |
+| Layer           | Location                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_audit_purge`                                                                                                   |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                   |
+| **Service**     | `backend/admin/ops_service.py:trigger_audit_purge` — self-audits + commits BEFORE calling `run_purge` (window-only; never purge-all)                     |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="audit-purge"`)                               |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
-| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_AUDIT_PURGE`                                                                                     |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="audit-purge"`)                                        |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                                        |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_AUDIT_PURGE`                                                                                               |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                             |
 
 ---
 
 ### POST /admin/ops/verify-tables
 
-| Layer           | Location                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_ops_verify_tables`                                                                                        |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
-| **Service**     | `backend/admin/ops_service.py:trigger_verify_tables` — read-only `get_missing_tables()` check; never touches auto-repair or DROP SCHEMA path    |
+| Layer           | Location                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_verify_tables`                                                                                                 |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                   |
+| **Service**     | `backend/admin/ops_service.py:trigger_verify_tables` — read-only `get_missing_tables()` check; never touches auto-repair or DROP SCHEMA path             |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="verify-tables"`)                             |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
-| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_VERIFY_TABLES`                                                                                   |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="verify-tables"`)                                      |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                                        |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_VERIFY_TABLES`                                                                                             |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                             |
 
 ---
 
 ### POST /admin/ops/short-urls-sync
 
-| Layer           | Location                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_ops_short_urls_sync`                                                                                      |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
-| **Service**     | `backend/admin/ops_service.py:trigger_short_urls_sync` — calls `sync_short_url_domains_to_redis` via main Redis; 503 when REDIS_URI is absent   |
+| Layer           | Location                                                                                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_short_urls_sync`                                                                                               |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                   |
+| **Service**     | `backend/admin/ops_service.py:trigger_short_urls_sync` — calls `sync_short_url_domains_to_redis` via main Redis; 503 when REDIS_URI is absent            |
 | **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="short-urls-sync"`)                           |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
-| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                          |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_SHORT_URLS_SYNC`                                                                                 |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="short-urls-sync"`)                                    |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                                        |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                     |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py` (marker: `admin`)                                                                                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_SHORT_URLS_SYNC`                                                                                           |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                             |
 
 ---
 
 ### POST /admin/ops/backup-trigger
 
-| Layer           | Location                                                                                                                                        |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_ops_backup_trigger`                                                                                       |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                          |
+| Layer           | Location                                                                                                                                                                                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_ops_backup_trigger`                                                                                                                                                                                                            |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                               |
 | **Service**     | `backend/admin/ops_service.py:trigger_backup` — sets the short-TTL `metrics:backup:trigger_requested` flag consumed by the workflow container's per-minute poller (`scripts/run_backup_if_requested.py`); idempotent while pending; 503 when metrics Redis is absent |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema` |
-| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="backup-trigger"`; last-success card in `admin_portal/_health_snapshot.html`) |
-| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                               |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                            |
-| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py`, `tests/integration/admin/test_backup_trigger_scripts.py` (marker: `admin`)                 |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_BACKUP_TRIGGER`                                                                                  |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                             |
+| **Template**    | None (JSON endpoint; button in `admin_portal/system_operations/index.html` via `data-admin-action="backup-trigger"`; last-success card in `admin_portal/_health_snapshot.html`)                                                                                      |
+| **JS Module**   | `frontend/admin/admin-actions.ts` (auto-wired from `[data-admin-action]` buttons)                                                                                                                                                                                    |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                 |
+| **Tests**       | `tests/integration/admin/test_admin_ops_actions.py`, `tests/integration/admin/test_backup_trigger_scripts.py` (marker: `admin`)                                                                                                                                      |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.OPS_BACKUP_TRIGGER`                                                                                                                                                                                                        |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                         |
 
 ---
 
@@ -1001,12 +1059,12 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_utub_lock`                                                                                                            |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:lock_utub` — sets `isLocked=True`; idempotent (200 no-op if already locked); audits on real state change               |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`    |
 | **Template**    | `admin_portal/utubs/detail.html` (Lock button in the UTub-detail action bar)                                                                                |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_LOCK`                                                                                                   |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)  |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_LOCK`                                                                                                    |
 | **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
 
 ---
@@ -1018,12 +1076,12 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_utub_unlock`                                                                                                          |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:unlock_utub` — sets `isLocked=False`; idempotent (200 no-op if already unlocked); audits on real state change          |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`    |
 | **Template**    | `admin_portal/utubs/detail.html` (Unlock button in the UTub-detail action bar when the UTub is locked)                                                      |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_UNLOCK`                                                                                                 |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)  |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_UNLOCK`                                                                                                  |
 | **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
 
 ---
@@ -1035,12 +1093,12 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_utub_delete`                                                                                                          |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:delete_utub_admin` — deletes UTub (cascade removes members/URLs/tags); audits with utub name; 404 if not found         |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`    |
 | **Template**    | `admin_portal/utubs/detail.html` (Delete UTub button in the UTub-detail action bar)                                                                         |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`) |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_DELETE`                                                                                                 |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)  |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_UTUB_DELETE`                                                                                                  |
 | **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
 
 ---
@@ -1051,13 +1109,13 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Handler**     | `backend/admin/action_routes.py:admin_member_remove`                                                                                                                                |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                              |
-| **Service**     | `backend/admin/moderation_service.py:remove_member_admin` — removes member; if creator is removed, promotes CO_CREATOR or MEMBER; if sole member, deletes UTub; 404 if not found   |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                             |
+| **Service**     | `backend/admin/moderation_service.py:remove_member_admin` — removes member; if creator is removed, promotes CO_CREATOR or MEMBER; if sole member, deletes UTub; 404 if not found    |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                            |
 | **Template**    | `admin_portal/utubs/detail.html` (Remove Member button per non-creator row in the UTub-detail Members table)                                                                        |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                   |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                                |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                         |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_MEMBER_REMOVE`                                                                                                                       |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                          |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_MEMBER_REMOVE`                                                                                                                        |
 | **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                        |
 
 ---
@@ -1069,62 +1127,62 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_url_delete`                                                                                                           |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                      |
 | **Service**     | `backend/admin/moderation_service.py:delete_url_in_utub_admin` — removes Utub_Url_Tags then Utub_Urls row; leaves Urls canonical row intact; 404 if absent  |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`    |
 | **Template**    | `admin_portal/utubs/detail.html` (Remove from UTub button per row in the UTub-detail URLs table)                                                            |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                           |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                        |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`)                                                                               |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_DELETE`                                                                                                  |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`)                                                                                |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_DELETE`                                                                                                   |
 | **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                |
 
 ---
 
 ### POST /admin/urls/\<int:url_id>/purge
 
-| Layer           | Location                                                                                                                                                                    |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_url_purge`                                                                                                                            |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                      |
+| Layer           | Location                                                                                                                                                                      |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_url_purge`                                                                                                                              |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                        |
 | **Service**     | `backend/admin/moderation_service.py:purge_url_globally` — removes all Utub_Url_Tags + Utub_Urls associations across every UTub; leaves the canonical Urls row; 404 if absent |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                     |
-| **Template**    | `admin_portal/utubs/detail.html` (Purge from all UTubs button per row in the UTub-detail URLs table)                                                                        |
-| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                           |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                                                        |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                 |
-| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_PURGE`                                                                                                                   |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                      |
+| **Template**    | `admin_portal/utubs/detail.html` (Purge from all UTubs button per row in the UTub-detail URLs table)                                                                          |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                             |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                          |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                    |
+| **Route Const** | `backend/utils/all_routes.py:ADMIN_ROUTES.MOD_URL_PURGE`                                                                                                                      |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                  |
 
 ---
 
 ### POST /admin/utubs/\<int:utub_id>/tags/\<int:utub_tag_id>/delete
 
-| Layer           | Location                                                                                                                                                                                     |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_utub_tag_delete`                                                                                                                                      |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON); `@api_route`                                                                                                                        |
+| Layer           | Location                                                                                                                                                                                         |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**     | `backend/admin/action_routes.py:admin_utub_tag_delete`                                                                                                                                           |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON); `@api_route`                                                                                                                             |
 | **Service**     | `backend/admin/moderation_service.py:delete_utub_tag_admin` — deletes one Utub_Tags vocabulary row, cascading to remove all its Utub_Url_Tags applications; returns count removed; 404 if absent |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                     |
-| **Template**    | `admin_portal/utubs/detail.html` (Delete Tag button per row in the UTub-detail UTub Tags panel)                                                                                             |
-| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                           |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                        |
-| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                  |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                         |
+| **Template**    | `admin_portal/utubs/detail.html` (Delete Tag button per row in the UTub-detail UTub Tags panel)                                                                                                  |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                             |
+| **Tests**       | `tests/integration/admin/test_admin_moderation_actions.py` (marker: `admin`); `tests/functional/admin_ui/test_admin_moderation_ui.py` (marker: `admin_ui`)                                       |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                     |
 
 ---
 
 ### POST /admin/users/\<int:target_user_id>/suspend
 
-| Layer           | Location                                                                                                                                                                                         |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**     | `backend/admin/action_routes.py:admin_user_suspend`                                                                                                                                              |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                           |
+| Layer           | Location                                                                                                                                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_suspend`                                                                                                                                                                 |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                              |
 | **Service**     | `backend/admin/account_service.py:suspend_user` — sets `isSuspended=True`, stamps `sessionsInvalidatedAt`, revokes API tokens; idempotent (200 no-op if already suspended); guards: self-action 403, last-admin 403 |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                          |
-| **Template**    | `admin_portal/users/detail.html` (Suspend button in Account Actions panel)                                                                                                                       |
-| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                             |
-| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                        |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                     |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                            |
+| **Template**    | `admin_portal/users/detail.html` (Suspend button in Account Actions panel)                                                                                                                                          |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                   |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                                           |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                        |
 
 ---
 
@@ -1135,7 +1193,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_user_unsuspend`                                                                                                                          |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                         |
 | **Service**     | `backend/admin/account_service.py:unsuspend_user` — sets `isSuspended=False`; idempotent (200 no-op if not suspended); guard: self-action 403                                  |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                        |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                       |
 | **Template**    | `admin_portal/users/detail.html` (Unsuspend button in Account Actions panel)                                                                                                   |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                              |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                           |
@@ -1146,49 +1204,49 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ### POST /admin/users/\<int:target_user_id>/force-reset
 
-| Layer           | Location                                                                                                                                                                                                                           |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_user_force_reset`                                                                                                                                                                            |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                             |
+| Layer           | Location                                                                                                                                                                                                                                            |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_force_reset`                                                                                                                                                                                             |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                              |
 | **Service**     | `backend/admin/account_service.py:force_password_reset` — creates/resets `Forgot_Passwords` (bypasses rate limits), sends reset email, kills sessions + revokes tokens; 400 for OAuth-only; 502 on email failure (rollback); guard: self-action 403 |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                             |
-| **Template**    | `admin_portal/users/detail.html` (Force Password Reset button in Account Actions panel)                                                                                                                                            |
-| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                  |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                               |
-| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                                                          |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                       |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                            |
+| **Template**    | `admin_portal/users/detail.html` (Force Password Reset button in Account Actions panel)                                                                                                                                                             |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                   |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                                                                                           |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                        |
 
 ---
 
 ### POST /admin/users/\<int:target_user_id>/kill-sessions
 
-| Layer           | Location                                                                                                                                                              |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**     | `backend/admin/action_routes.py:admin_user_kill_sessions`                                                                                                             |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                |
+| Layer           | Location                                                                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_kill_sessions`                                                                                                                       |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                          |
 | **Service**     | `backend/admin/account_service.py:kill_user_sessions` — stamps `sessionsInvalidatedAt`, revokes API tokens; NOT idempotent (always acts, always audits); guard: self-action 403 |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`               |
-| **Template**    | `admin_portal/users/detail.html` (Kill Sessions button in Account Actions panel)                                                                                      |
-| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                     |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                                                  |
-| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                             |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                          |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                        |
+| **Template**    | `admin_portal/users/detail.html` (Kill Sessions button in Account Actions panel)                                                                                                |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                               |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                            |
+| **Tests**       | `tests/integration/admin/test_admin_account_actions.py` (marker: `admin`)                                                                                                       |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                    |
 
 ---
 
 ### POST /admin/users/\<int:target_user_id>/erase
 
-| Layer           | Location                                                                                                                                                                                                                                                                                                                             |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**     | `backend/admin/action_routes.py:admin_user_erase`                                                                                                                                                                                                                                                                                    |
-| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                                                               |
+| Layer           | Location                                                                                                                                                                                                                                                                                                                                       |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**     | `backend/admin/action_routes.py:admin_user_erase`                                                                                                                                                                                                                                                                                              |
+| **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                                                                         |
 | **Service**     | `backend/admin/account_data_service.py:erase_user` — anonymizes username/email/password to tombstone identity, deletes OAuth/email-validation/forgot-password/contact-form child rows, kills sessions, resolves UTub memberships (solo deleted, created transferred, member-only removed); idempotent; guards: self-action 403, last-admin 403 |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                                                              |
-| **Template**    | `admin_portal/users/detail.html` (Erase button in Account Actions panel)                                                                                                                                                                                                                                                             |
-| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                                                    |
-| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                                                                 |
-| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                                                                                       |
-| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                                                                                         |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                                                                       |
+| **Template**    | `admin_portal/users/detail.html` (Erase button in Account Actions panel)                                                                                                                                                                                                                                                                       |
+| **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                                                              |
+| **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                                                                           |
+| **Tests**       | `tests/integration/admin/test_admin_account_data_actions.py` (marker: `admin`)                                                                                                                                                                                                                                                                 |
+| **Metrics**     | `API_HIT` middleware auto-coverage; no DOMAIN event — internal admin surface                                                                                                                                                                                                                                                                   |
 
 ---
 
@@ -1198,8 +1256,8 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Handler**     | `backend/admin/action_routes.py:admin_user_oauth_unlink`                                                                                                                                                                                                                   |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                     |
-| **Service**     | `backend/admin/account_data_service.py:unlink_oauth_identity` — deletes the identity row; 403 when it is the last credential (no password + last OAuth identity); 404 when identity does not belong to the target user; guard: self-action 403                              |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                    |
+| **Service**     | `backend/admin/account_data_service.py:unlink_oauth_identity` — deletes the identity row; 403 when it is the last credential (no password + last OAuth identity); 404 when identity does not belong to the target user; guard: self-action 403                             |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                   |
 | **Template**    | `admin_portal/users/detail.html` (Unlink button per OAuth identity in Account Actions panel)                                                                                                                                                                               |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                          |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                       |
@@ -1215,7 +1273,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_user_email_verify`                                                                                                                                                                         |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                           |
 | **Service**     | `backend/admin/account_data_service.py:mark_email_verified` — sets `emailValidated=True`, deletes `Email_Validations` row if present; idempotent (200 no-op if already verified); guard: self-action 403                         |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                          |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                         |
 | **Template**    | `admin_portal/users/detail.html` (Mark Verified button in Account Actions panel)                                                                                                                                                 |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                             |
@@ -1231,7 +1289,7 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 | **Handler**     | `backend/admin/action_routes.py:admin_user_email_resend`                                                                                                                                                                                                                                         |
 | **Decorators**  | `@admin_required` (401 anonymous / 404 non-admin JSON)                                                                                                                                                                                                                                           |
 | **Service**     | `backend/admin/account_data_service.py:resend_verification_email` — creates/refreshes `Email_Validations` row (bypasses rate limits), sends confirmation email via `send_account_email_confirmation`; 200 no-op if already verified; 502 on email failure (rollback); guard: self-action 403     |
-| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                          |
+| **Schema**      | Request: `backend/schemas/requests/admin_actions.py:AdminReasonRequiredRequest` / Response: `backend/schemas/admin_actions.py:AdminActionResponseSchema`                                                                                                                                         |
 | **Template**    | `admin_portal/users/detail.html` (Resend Verification button in Account Actions panel)                                                                                                                                                                                                           |
 | **JS Module**   | `frontend/admin/admin-actions.ts`                                                                                                                                                                                                                                                                |
 | **CSRF**        | `X-CSRFToken` header                                                                                                                                                                                                                                                                             |
@@ -1304,128 +1362,128 @@ auto-coverage only (no DOMAIN events).
 
 ### GET /api/v1/me
 
-| Layer          | Location                                                                                                                                                                                                          |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**    | `backend/api_v1/routes.py:api_v1_get_me`                                                                                                                                                                          |
+| Layer          | Location                                                                                                                                                                                                                                            |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_get_me`                                                                                                                                                                                                            |
 | **Decorators** | `@api_authentication_required`, `@api_route(response_schema=ApiUserProfileSchema, ajax_required=False, tags=["mobile-api"], description="Retrieve the authenticated user's profile", status_codes={200: ApiUserProfileSchema, 401: ErrorResponse})` |
-| **Service**    | `APIResponse()` direct (serializes `current_user` via `ApiUserProfileSchema`)                                                                                                                                     |
-| **Schema**     | `backend/schemas/api_v1.py:ApiUserProfileSchema` (response)                                                                                                                                                       |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                           |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                     |
-| **Tests**      | `tests/integration/mobile_api/test_me_endpoint.py` (marker: `mobile_api`)                                                                                                                                         |
+| **Service**    | `APIResponse()` direct (serializes `current_user` via `ApiUserProfileSchema`)                                                                                                                                                                       |
+| **Schema**     | `backend/schemas/api_v1.py:ApiUserProfileSchema` (response)                                                                                                                                                                                         |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                             |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                       |
+| **Tests**      | `tests/integration/mobile_api/test_me_endpoint.py` (marker: `mobile_api`)                                                                                                                                                                           |
 
 ### POST /api/v1/auth/login
 
-| Layer          | Location                                                                                                                                                                                                                                                                              |
+| Layer          | Location                                                                                                                                                                                                                                                                                |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_login`                                                                                                                                                                                                                                          |
-| **Decorators** | `@api_route(request_schema=ApiLoginRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 429})`, `@limiter.limit("10/minute")`                                                                                       |
-| **Service**    | `backend/api_v1/services/auth.py:login_user_for_api` (mirrors `login_user_to_u4i` validation; issues token pair even for unvalidated-email accounts per design doc)                                                                                                                   |
-| **Schema**     | `backend/schemas/requests/api_auth.py:ApiLoginRequest`                                                                                                                                                                                                                                |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                               |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                                         |
-| **Tests**      | `tests/integration/mobile_api/test_auth_login.py`, `tests/integration/mobile_api/test_auth_rate_limit.py` (marker: `mobile_api`)                                                                                                                                                      |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_login`                                                                                                                                                                                                                                            |
+| **Decorators** | `@api_route(request_schema=ApiLoginRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 429})`, `@limiter.limit("10/minute")`                                                                                         |
+| **Service**    | `backend/api_v1/services/auth.py:login_user_for_api` (mirrors `login_user_to_u4i` validation; issues token pair even for unvalidated-email accounts per design doc)                                                                                                                     |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiLoginRequest`                                                                                                                                                                                                                                  |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                                 |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                                           |
+| **Tests**      | `tests/integration/mobile_api/test_auth_login.py`, `tests/integration/mobile_api/test_auth_rate_limit.py` (marker: `mobile_api`)                                                                                                                                                        |
 
 ### POST /api/v1/auth/refresh
 
-| Layer          | Location                                                                                                                                                                                              |
+| Layer          | Location                                                                                                                                                                                                 |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_refresh`                                                                                                                                                        |
-| **Decorators** | `@api_route(request_schema=ApiRefreshRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 429})`, `@limiter.limit("10/minute")` |
-| **Service**    | `backend/api_v1/services/auth.py:refresh_api_tokens` (rotation + reuse-detection chain revocation via `rotate_refresh_token`)                                                                         |
-| **Schema**     | `backend/schemas/requests/api_auth.py:ApiRefreshRequest`                                                                                                                                              |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                               |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                         |
-| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                                 |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_refresh`                                                                                                                                                           |
+| **Decorators** | `@api_route(request_schema=ApiRefreshRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 429})`, `@limiter.limit("10/minute")`   |
+| **Service**    | `backend/api_v1/services/auth.py:refresh_api_tokens` (rotation + reuse-detection chain revocation via `rotate_refresh_token`)                                                                            |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiRefreshRequest`                                                                                                                                                 |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                  |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                            |
+| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                                    |
 
 ### POST /api/v1/auth/logout
 
-| Layer          | Location                                                                                                                                                                                                  |
+| Layer          | Location                                                                                                                                                                                                     |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_logout`                                                                                                                                                             |
-| **Decorators** | `@api_route(request_schema=ApiLogoutRequest, response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 429})`, `@limiter.limit("10/minute")`     |
-| **Service**    | `backend/api_v1/services/auth.py:logout_api_device` (revokes the presented refresh token's rotation family)                                                                                               |
-| **Schema**     | `backend/schemas/requests/api_auth.py:ApiLogoutRequest`                                                                                                                                                   |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                   |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                             |
-| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                                     |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_logout`                                                                                                                                                                |
+| **Decorators** | `@api_route(request_schema=ApiLogoutRequest, response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 429})`, `@limiter.limit("10/minute")`       |
+| **Service**    | `backend/api_v1/services/auth.py:logout_api_device` (revokes the presented refresh token's rotation family)                                                                                                  |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiLogoutRequest`                                                                                                                                                      |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                      |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                |
+| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                                        |
 
 ### POST /api/v1/auth/logout-all
 
-| Layer          | Location                                                                                                                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_logout_all`                                                                                                                                     |
+| Layer          | Location                                                                                                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_logout_all`                                                                                                                                                |
 | **Decorators** | `@api_authentication_required`, `@api_route(response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 429})`, `@limiter.limit("10/minute")` |
-| **Service**    | `backend/api_v1/services/auth.py:logout_api_everywhere` (revokes every refresh token row for the bearer user)                                                                         |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                               |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                         |
-| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                 |
+| **Service**    | `backend/api_v1/services/auth.py:logout_api_everywhere` (revokes every refresh token row for the bearer user)                                                                                    |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                          |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                    |
+| **Tests**      | `tests/integration/mobile_api/test_auth_refresh_and_logout.py` (marker: `mobile_api`)                                                                                                            |
 
 ### POST /api/v1/auth/resend-validation
 
-| Layer          | Location                                                                                                                                                                                              |
-| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_resend_validation`                                                                                                                                              |
+| Layer          | Location                                                                                                                                                                                                   |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_resend_validation`                                                                                                                                                   |
 | **Decorators** | `@api_authentication_required`, `@api_route(response_schema=StatusMessageResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 404, 429})`, `@limiter.limit("10/minute")` |
-| **Service**    | `backend/api_v1/services/auth.py:resend_validation_email_for_api` (reuses `Email_Validations` attempt limits + shared Mailjet result handling; JSON instead of the web redirect)                      |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                               |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                         |
-| **Tests**      | `tests/integration/mobile_api/test_auth_resend_validation.py` (marker: `mobile_api`)                                                                                                                  |
+| **Service**    | `backend/api_v1/services/auth.py:resend_validation_email_for_api` (reuses `Email_Validations` attempt limits + shared Mailjet result handling; JSON instead of the web redirect)                           |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                    |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                              |
+| **Tests**      | `tests/integration/mobile_api/test_auth_resend_validation.py` (marker: `mobile_api`)                                                                                                                       |
 
 ### POST /api/v1/auth/google
 
-| Layer          | Location                                                                                                                                                                                                      |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_google`                                                                                                                                                                 |
+| Layer          | Location                                                                                                                                                                                                            |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Handler**    | `backend/api_v1/routes.py:api_v1_auth_google`                                                                                                                                                                       |
 | **Decorators** | `@api_route(request_schema=ApiGoogleAuthRequest, response_schema=ApiTokenPairResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 409, 429})`, `@limiter.limit("10/minute")` |
-| **Service**    | `backend/api_v1/services/auth.py:google_auth_for_api` → `google_tokens.py:verify_google_id_token` (RS256 signature + audience + issuer via Google JWKS) → `find_or_create_oauth_user`                         |
-| **Schema**     | `backend/schemas/requests/api_auth.py:ApiGoogleAuthRequest`                                                                                                                                                   |
-| **JS Module**  | N/A — consumed by native mobile clients (native Google Sign-In SDK supplies the id_token)                                                                                                                     |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                 |
-| **Tests**      | `tests/integration/mobile_api/test_auth_google.py` (marker: `mobile_api`)                                                                                                                                     |
+| **Service**    | `backend/api_v1/services/auth.py:google_auth_for_api` → `google_tokens.py:verify_google_id_token` (RS256 signature + audience + issuer via Google JWKS) → `find_or_create_oauth_user`                               |
+| **Schema**     | `backend/schemas/requests/api_auth.py:ApiGoogleAuthRequest`                                                                                                                                                         |
+| **JS Module**  | N/A — consumed by native mobile clients (native Google Sign-In SDK supplies the id_token)                                                                                                                           |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                       |
+| **Tests**      | `tests/integration/mobile_api/test_auth_google.py` (marker: `mobile_api`)                                                                                                                                           |
 
 ### POST /api/v1/utubs
 
 | Layer          | Location                                                                                                                                                                                                                                                          |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_create_utub`                                                                                                                                                                                                               |
+| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_create_utub`                                                                                                                                                                                                                |
 | **Decorators** | `@api_email_validation_required`, `@api_route(request_schema=CreateUTubRequest, response_schema=UtubCreatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403})`                                                          |
-| **Service**    | `backend/utubs/services/create_utubs.py:create_new_utub`                                                                                                                                                                                                         |
+| **Service**    | `backend/utubs/services/create_utubs.py:create_new_utub`                                                                                                                                                                                                          |
 | **Schema**     | `backend/schemas/requests/utubs.py:CreateUTubRequest` (request); `backend/schemas/utubs.py:UtubCreatedResponseSchema` (response)                                                                                                                                  |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                           |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                     |
-| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                    |
+| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                     |
 
 ### GET /api/v1/utubs
 
 | Layer          | Location                                                                                                                                                                                       |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_get_utubs`                                                                                                                                              |
+| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_get_utubs`                                                                                                                                               |
 | **Decorators** | `@api_email_validation_required`, `@api_route(response_schema=UtubSummaryListSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403})`                                  |
 | **Service**    | `backend/utubs/services/read_utubs.py:get_all_utubs_of_user`                                                                                                                                   |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                        |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                  |
-| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                 |
+| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                  |
 
 ### GET /api/v1/utubs/\<utub_id\>
 
 | Layer          | Location                                                                                                                                                                              |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_get_single_utub`                                                                                                                               |
+| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_get_single_utub`                                                                                                                                |
 | **Decorators** | `@api_utub_membership_required`, `@api_route(response_schema=UtubDetailSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                          |
 | **Service**    | `backend/utubs/services/read_utubs.py:get_single_utub_for_user`                                                                                                                       |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                               |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                         |
-| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                        |
+| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                         |
 
 ### PATCH /api/v1/utubs/\<utub_id\>/name
 
 | Layer          | Location                                                                                                                                                                                                                                                       |
 | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Handler**    | `backend/api_v1/utub_routes.py:api_v1_update_utub_name`                                                                                                                                                                                                        |
-| **Decorators** | `@api_utub_creator_required`, `@api_route(request_schema=UpdateUTubNameRequest, response_schema=UtubNameUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                               |
+| **Decorators** | `@api_utub_creator_required`, `@api_route(request_schema=UpdateUTubNameRequest, response_schema=UtubNameUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                              |
 | **Service**    | `backend/utubs/services/update_utubs.py:update_utub_name_if_new`                                                                                                                                                                                               |
-| **Schema**     | `backend/schemas/requests/utubs.py:UpdateUTubNameRequest` (request); `backend/schemas/utubs.py:UtubNameUpdatedResponseSchema` (response)                                                                                                                        |
+| **Schema**     | `backend/schemas/requests/utubs.py:UpdateUTubNameRequest` (request); `backend/schemas/utubs.py:UtubNameUpdatedResponseSchema` (response)                                                                                                                       |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                        |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                  |
 | **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                  |
@@ -1435,30 +1493,30 @@ auto-coverage only (no DOMAIN events).
 | Layer          | Location                                                                                                                                                                                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Handler**    | `backend/api_v1/utub_routes.py:api_v1_update_utub_desc`                                                                                                                                                                                                                   |
-| **Decorators** | `@api_utub_creator_required`, `@api_route(request_schema=UpdateUTubDescriptionRequest, response_schema=UtubDescUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                   |
+| **Decorators** | `@api_utub_creator_required`, `@api_route(request_schema=UpdateUTubDescriptionRequest, response_schema=UtubDescUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                  |
 | **Service**    | `backend/utubs/services/update_utubs.py:update_utub_desc_if_new`                                                                                                                                                                                                          |
-| **Schema**     | `backend/schemas/requests/utubs.py:UpdateUTubDescriptionRequest` (request); `backend/schemas/utubs.py:UtubDescUpdatedResponseSchema` (response)                                                                                                                            |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                    |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                              |
-| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                              |
+| **Schema**     | `backend/schemas/requests/utubs.py:UpdateUTubDescriptionRequest` (request); `backend/schemas/utubs.py:UtubDescUpdatedResponseSchema` (response)                                                                                                                           |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                   |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                             |
+| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                             |
 
 ### DELETE /api/v1/utubs/\<utub_id\>
 
 | Layer          | Location                                                                                                                                                                    |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_delete_utub`                                                                                                                         |
+| **Handler**    | `backend/api_v1/utub_routes.py:api_v1_delete_utub`                                                                                                                          |
 | **Decorators** | `@api_utub_creator_required`, `@api_route(response_schema=UtubDeletedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`          |
 | **Service**    | `backend/utubs/services/delete_utubs.py:delete_utub_for_user`                                                                                                               |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                     |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                               |
-| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                              |
+| **Tests**      | `tests/integration/mobile_api/test_utubs_endpoints.py` (marker: `mobile_api`)                                                                                               |
 
 ### POST /api/v1/utubs/\<utub_id\>/members
 
 | Layer          | Location                                                                                                                                                                                                                                                |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Handler**    | `backend/api_v1/utub_member_routes.py:api_v1_create_member`                                                                                                                                                                                             |
-| **Decorators** | `@api_utub_creator_required`, `@api_route(request_schema=AddMemberRequest, response_schema=MemberModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                              |
+| **Decorators** | `@api_utub_creator_required`, `@api_route(request_schema=AddMemberRequest, response_schema=MemberModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                             |
 | **Service**    | `backend/members/services/create_members.py:create_utub_member`                                                                                                                                                                                         |
 | **Schema**     | `backend/schemas/requests/members.py:AddMemberRequest` (request); `backend/schemas/users.py:MemberModifiedResponseSchema` (response)                                                                                                                    |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                 |
@@ -1470,139 +1528,139 @@ auto-coverage only (no DOMAIN events).
 | Layer          | Location                                                                                                                                                                                                                             |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | **Handler**    | `backend/api_v1/utub_member_routes.py:api_v1_remove_member`                                                                                                                                                                          |
-| **Decorators** | `@api_utub_membership_required`, `@api_route(response_schema=MemberModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                         |
+| **Decorators** | `@api_utub_membership_required`, `@api_route(response_schema=MemberModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                        |
 | **Service**    | `backend/members/services/delete_members.py:remove_member_or_self_from_utub`                                                                                                                                                         |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                               |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                         |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                              |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                        |
 | **Tests**      | `tests/integration/mobile_api/test_members_endpoints.py` (marker: `mobile_api`)                                                                                                                                                      |
 
 ### POST /api/v1/utubs/\<utub_id\>/urls
 
 | Layer          | Location                                                                                                                                                                                                                                                               |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/url_routes.py:api_v1_create_url`                                                                                                                                                                                                                      |
-| **Decorators** | `@api_utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404, 409})`                                                         |
-| **Service**    | `backend/urls/services/create_urls.py:create_url_in_utub`                                                                                                                                                                                                             |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_create_url`                                                                                                                                                                                                                       |
+| **Decorators** | `@api_utub_membership_required`, `@api_route(request_schema=CreateURLRequest, response_schema=UrlCreatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404, 409})`                                                        |
+| **Service**    | `backend/urls/services/create_urls.py:create_url_in_utub`                                                                                                                                                                                                              |
 | **Schema**     | `backend/schemas/requests/urls.py:CreateURLRequest` (request); `backend/schemas/urls.py:UrlCreatedResponseSchema` (response)                                                                                                                                           |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                          |
-| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                          |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                           |
 
 ### GET /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>
 
 | Layer          | Location                                                                                                                                                                                                                           |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/url_routes.py:api_v1_get_url`                                                                                                                                                                                     |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_get_url`                                                                                                                                                                                      |
 | **Decorators** | `@api_utub_membership_with_valid_url_in_utub_required`, `@api_route(response_schema=UrlReadResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                                           |
-| **Service**    | `backend/urls/services/read_urls.py:get_url_in_utub`                                                                                                                                                                              |
+| **Service**    | `backend/urls/services/read_urls.py:get_url_in_utub`                                                                                                                                                                               |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                            |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                      |
-| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                      |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                       |
 
 ### PATCH /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>
 
 | Layer          | Location                                                                                                                                                                                                                                                                    |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/url_routes.py:api_v1_update_url`                                                                                                                                                                                                                           |
-| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404, 409})`         |
-| **Service**    | `backend/urls/services/update_urls.py:update_url_in_utub`                                                                                                                                                                                                                  |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_update_url`                                                                                                                                                                                                                            |
+| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)`, `@api_route(request_schema=UpdateURLStringRequest, response_schema=UrlUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404, 409})`        |
+| **Service**    | `backend/urls/services/update_urls.py:update_url_in_utub`                                                                                                                                                                                                                   |
 | **Schema**     | `backend/schemas/requests/urls.py:UpdateURLStringRequest` (request); `backend/schemas/urls.py:UrlUpdatedResponseSchema` (response)                                                                                                                                          |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                     |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                               |
-| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                               |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                                |
 
 ### PATCH /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/title
 
 | Layer          | Location                                                                                                                                                                                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Handler**    | `backend/api_v1/url_routes.py:api_v1_update_url_title`                                                                                                                                                                                                                    |
-| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`         |
+| **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_MODIFY_URL)`, `@api_route(request_schema=UpdateURLTitleRequest, response_schema=UrlTitleUpdatedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`       |
 | **Service**    | `backend/urls/services/update_url_titles.py:update_url_title_if_new`                                                                                                                                                                                                      |
-| **Schema**     | `backend/schemas/requests/urls.py:UpdateURLTitleRequest` (request); `backend/schemas/urls.py:UrlTitleUpdatedResponseSchema` (response)                                                                                                                                     |
-| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                    |
-| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                              |
+| **Schema**     | `backend/schemas/requests/urls.py:UpdateURLTitleRequest` (request); `backend/schemas/urls.py:UrlTitleUpdatedResponseSchema` (response)                                                                                                                                    |
+| **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                   |
+| **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                             |
 | **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                              |
 
 ### DELETE /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>
 
 | Layer          | Location                                                                                                                                                                                                                |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/url_routes.py:api_v1_delete_url`                                                                                                                                                                       |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_delete_url`                                                                                                                                                                        |
 | **Decorators** | `@api_url_adder_or_creator_required(message=URL_FAILURE.UNABLE_TO_DELETE_URL)`, `@api_route(response_schema=UrlDeletedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`     |
-| **Service**    | `backend/urls/services/delete_urls.py:delete_url_in_utub`                                                                                                                                                              |
+| **Service**    | `backend/urls/services/delete_urls.py:delete_url_in_utub`                                                                                                                                                               |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                 |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                           |
-| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                           |
+| **Tests**      | `tests/integration/mobile_api/test_urls_endpoints.py` (marker: `mobile_api`)                                                                                                                                            |
 
 ### POST /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/tags
 
 | Layer          | Location                                                                                                                                                                                                                                                              |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_create_utub_url_tag`                                                                                                                                                                                                            |
+| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_create_utub_url_tag`                                                                                                                                                                                                             |
 | **Decorators** | `@api_utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagRequest, response_schema=UrlTagModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                    |
-| **Service**    | `backend/tags/services/create_url_tag.py:add_tag_to_url_if_valid`                                                                                                                                                                                                    |
+| **Service**    | `backend/tags/services/create_url_tag.py:add_tag_to_url_if_valid`                                                                                                                                                                                                     |
 | **Schema**     | `backend/schemas/requests/tags.py:AddTagRequest` (request); `backend/schemas/tags.py:UrlTagModifiedResponseSchema` (response)                                                                                                                                         |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                               |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                         |
-| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                     |
+| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                      |
 
 ### POST /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/tags/batch
 
 | Layer          | Location                                                                                                                                                                                                                                                                |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_create_utub_url_tags`                                                                                                                                                                                                             |
+| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_create_utub_url_tags`                                                                                                                                                                                                              |
 | **Decorators** | `@api_utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=AddTagsRequest, response_schema=UrlTagsModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                    |
-| **Service**    | `backend/tags/services/create_url_tag.py:add_batch_tags_to_existing_url`                                                                                                                                                                                               |
+| **Service**    | `backend/tags/services/create_url_tag.py:add_batch_tags_to_existing_url`                                                                                                                                                                                                |
 | **Schema**     | `backend/schemas/requests/tags.py:AddTagsRequest` (request); `backend/schemas/tags.py:UrlTagsModifiedResponseSchema` (response)                                                                                                                                         |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                                 |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                           |
-| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                       |
+| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                        |
 
 ### DELETE /api/v1/utubs/\<utub_id\>/urls/\<utub_url_id\>/tags/\<utub_tag_id\>
 
 | Layer          | Location                                                                                                                                                                                                                    |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_delete_utub_url_tag`                                                                                                                                                                  |
+| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_delete_utub_url_tag`                                                                                                                                                                   |
 | **Decorators** | `@api_utub_membership_with_valid_url_tag`, `@api_route(response_schema=UrlTagModifiedResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                                          |
-| **Service**    | `backend/tags/services/delete_url_tag.py:delete_url_tag`                                                                                                                                                                   |
+| **Service**    | `backend/tags/services/delete_url_tag.py:delete_url_tag`                                                                                                                                                                    |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                     |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                               |
-| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                           |
+| **Tests**      | `tests/integration/mobile_api/test_url_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                            |
 
 ### POST /api/v1/utubs/\<utub_id\>/tags
 
 | Layer          | Location                                                                                                                                                                                                                                                         |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_create_utub_tag`                                                                                                                                                                                                           |
-| **Decorators** | `@api_utub_membership_required`, `@api_route(request_schema=AddTagRequest, response_schema=UtubTagAddedToUtubResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                   |
-| **Service**    | `backend/tags/services/create_utub_tag.py:create_tag_in_utub`                                                                                                                                                                                                   |
+| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_create_utub_tag`                                                                                                                                                                                                            |
+| **Decorators** | `@api_utub_membership_required`, `@api_route(request_schema=AddTagRequest, response_schema=UtubTagAddedToUtubResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403, 404})`                                                  |
+| **Service**    | `backend/tags/services/create_utub_tag.py:create_tag_in_utub`                                                                                                                                                                                                    |
 | **Schema**     | `backend/schemas/requests/tags.py:AddTagRequest` (request); `backend/schemas/tags.py:UtubTagAddedToUtubResponseSchema` (response)                                                                                                                                |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                                                          |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                                                    |
-| **Tests**      | `tests/integration/mobile_api/test_utub_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                               |
+| **Tests**      | `tests/integration/mobile_api/test_utub_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                                                                |
 
 ### DELETE /api/v1/utubs/\<utub_id\>/tags/\<utub_tag_id\>
 
 | Layer          | Location                                                                                                                                                                                                                  |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_delete_utub_tag`                                                                                                                                                                    |
+| **Handler**    | `backend/api_v1/tag_routes.py:api_v1_delete_utub_tag`                                                                                                                                                                     |
 | **Decorators** | `@api_utub_membership_with_valid_utub_tag`, `@api_route(response_schema=UtubTagDeletedFromUtubResponseSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 401, 403, 404})`                               |
-| **Service**    | `backend/tags/services/delete_utub_tag.py:delete_utub_tag_from_utub_and_utub_urls`                                                                                                                                       |
+| **Service**    | `backend/tags/services/delete_utub_tag.py:delete_utub_tag_from_utub_and_utub_urls`                                                                                                                                        |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                   |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                             |
-| **Tests**      | `tests/integration/mobile_api/test_utub_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                        |
+| **Tests**      | `tests/integration/mobile_api/test_utub_tags_endpoints.py` (marker: `mobile_api`)                                                                                                                                         |
 
 ### GET /api/v1/search
 
 | Layer          | Location                                                                                                                                                                                                                      |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Handler**    | `backend/api_v1/url_routes.py:api_v1_search_across_utubs`                                                                                                                                                                    |
+| **Handler**    | `backend/api_v1/url_routes.py:api_v1_search_across_utubs`                                                                                                                                                                     |
 | **Decorators** | `@api_email_validation_required`, `@api_route(query_schema=SearchQuerySchema, response_schema=SearchResultsSchema, ajax_required=False, tags=["mobile-api"], status_codes={200, 400, 401, 403})`                              |
-| **Service**    | `backend/search/services/cross_utub_search.py:search_across_user_utubs`                                                                                                                                                      |
-| **Schema**     | `backend/schemas/requests/search.py:SearchQuerySchema` (query params); `backend/schemas/search.py:SearchResultsSchema` (response)                                                                                            |
+| **Service**    | `backend/search/services/cross_utub_search.py:search_across_user_utubs`                                                                                                                                                       |
+| **Schema**     | `backend/schemas/requests/search.py:SearchQuerySchema` (query params); `backend/schemas/search.py:SearchResultsSchema` (response)                                                                                             |
 | **JS Module**  | N/A — consumed by native mobile clients                                                                                                                                                                                       |
 | **CSRF**       | Exempt (blueprint-wide `csrf.exempt(api_v1)`)                                                                                                                                                                                 |
-| **Tests**      | `tests/integration/mobile_api/test_search_endpoint.py` (marker: `mobile_api`)                                                                                                                                                |
+| **Tests**      | `tests/integration/mobile_api/test_search_endpoint.py` (marker: `mobile_api`)                                                                                                                                                 |
 
 ---
 
@@ -1629,12 +1687,12 @@ auto-coverage only (no DOMAIN events).
 ### Test Markers
 | Marker                                                   | Integration tests | UI tests |
 | -------------------------------------------------------- | ----------------- | -------- |
-| `splash` / `splash_ui`                                   | 7 files           | 7 files  |
+| `splash` / `splash_ui`                                   | 8 files           | 7 files  |
 | `utubs` / `utubs_ui`                                     | 7 files           | 6 files  |
 | `urls` / `create_urls_ui` / `update_urls_ui` / `urls_ui` | 6 files           | 6 files  |
 | `members` / `members_ui`                                 | 2 files           | 3 files  |
 | `tags` / `tags_ui`                                       | 4 files           | 7 files  |
-| `account_and_support`                                    | 1 file            | —        |
+| `account_and_support`                                    | 2 files           | —        |
 | `home_ui`                                                | —                 | 4 files  |
 | `mobile_ui`                                              | —                 | 4+ files |
 | `unit`                                                   | 18 files          | —        |

@@ -4,7 +4,7 @@ from typing import Any
 
 from authlib.integrations.base_client.errors import OAuthError
 from flask import redirect, render_template, request, session, url_for
-from flask_login import login_user
+from flask_login import current_user, login_user
 from pydantic import BaseModel
 from werkzeug import Response as WerkzeugResponse
 
@@ -27,19 +27,26 @@ from backend.splash.services.oauth.account_service import (
     EmailAlreadyRegisteredError,
     find_or_create_oauth_user,
 )
-from backend.splash.services.oauth.constants import Provider
+from backend.splash.services.oauth.constants import (
+    OAUTH_NEXT_SESSION_KEY,
+    Provider,
+)
+from backend.splash.services.oauth.linking_service import (
+    complete_pending_collision_link,
+    handle_authenticated_oauth_callback,
+    peek_valid_link_intent_for_current_user,
+    settings_link_failure_redirect,
+    stash_pending_collision_link,
+)
 from backend.splash.services.user_login import verify_and_provide_next_page
 from backend.utils.all_routes import OAUTH_ROUTES, ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.oauth_strs import (
     CONSENT_DECLINED_MESSAGE,
-    EMAIL_COLLISION_MESSAGE,
     GENERIC_FAILURE_MESSAGE,
     INVALID_CALLBACK_QUERY_MESSAGE,
     UNVERIFIED_EMAIL_MESSAGE,
 )
-
-_OAUTH_NEXT_SESSION_KEY = "oauth_next_target"
 
 
 def initiate_google_login() -> WerkzeugResponse:
@@ -62,7 +69,7 @@ def initiate_google_login() -> WerkzeugResponse:
     if not hasattr(oauth, "google"):
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
-    session[_OAUTH_NEXT_SESSION_KEY] = request.args.get("next")
+    session[OAUTH_NEXT_SESSION_KEY] = request.args.get("next")
     redirect_uri = url_for(OAUTH_ROUTES.GOOGLE_CALLBACK, _external=True)
     return oauth.google.authorize_redirect(redirect_uri)
 
@@ -79,6 +86,12 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
     `initiate_google_login` does; see the note there. Reachable here if a
     request arrives with a stale/bookmarked callback URL after credentials
     were removed mid-session.
+
+    Authenticated sessions are only served here for the settings-link flow
+    (Google OAuth apps share one callback URL between sign-in and linking):
+    with a valid link intent the resolved subject/email feed
+    `handle_authenticated_oauth_callback`; without one the request bounces
+    home, preserving the old `@no_authenticated_users_allowed` behavior.
     """
     if not hasattr(oauth, "google"):
         return render_template(
@@ -87,7 +100,13 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             oauth_reject_message=GENERIC_FAILURE_MESSAGE,
         )
 
-    stashed_next = session.pop(_OAUTH_NEXT_SESSION_KEY, None)
+    if (
+        current_user.is_authenticated
+        and peek_valid_link_intent_for_current_user() is None
+    ):
+        return redirect(url_for(ROUTES.UTUBS.HOME))
+
+    stashed_next = session.pop(OAUTH_NEXT_SESSION_KEY, None)
 
     parsed = parse_query_args(
         GoogleOAuthCallbackQuerySchema,
@@ -102,6 +121,8 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_CONSENT_DECLINED},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_consent_declined=True,
@@ -115,6 +136,8 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
@@ -133,6 +156,8 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_UNVERIFIED_EMAIL},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_unverified_email=True,
@@ -146,10 +171,17 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_GENERIC_FAILURE},
         )
+        if current_user.is_authenticated:
+            return settings_link_failure_redirect()
         return render_template(
             "pages/splash.html",
             oauth_generic_failure=True,
             oauth_reject_message=GENERIC_FAILURE_MESSAGE,
+        )
+
+    if current_user.is_authenticated:
+        return handle_authenticated_oauth_callback(
+            provider=Provider.GOOGLE, subject=subject, email=email
         )
 
     preferred_username = resolve_preferred_username(
@@ -164,15 +196,19 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
             preferred_username=preferred_username,
         )
     except EmailAlreadyRegisteredError:
+        # DECIDED policy: never auto-link on the provider's email claim, and
+        # never just reject — stash the pending identity and route to the
+        # confirm-link page, where a second proof of local-account ownership
+        # (password re-auth, or a sign-in with an already-linked provider)
+        # completes the link.
         record_event(
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_EMAIL_COLLISION},
         )
-        return render_template(
-            "pages/splash.html",
-            oauth_email_collision=True,
-            oauth_reject_message=EMAIL_COLLISION_MESSAGE,
+        stash_pending_collision_link(
+            provider=Provider.GOOGLE, subject=subject, email=email
         )
+        return redirect(url_for(OAUTH_ROUTES.CONFIRM_LINK_PAGE))
 
     if resolved_user.is_suspended:
         # Suspended accounts never reach an authenticated session; mirrors
@@ -190,6 +226,10 @@ def handle_google_callback() -> WerkzeugResponse | str | FlaskResponse:
 
     login_user(resolved_user)
     record_event(EventName.LOGIN_SUCCESS, dimensions={"method": "google"})
+    # Completes a collision confirm-link for a password-less account: this
+    # sign-in with an already-linked provider is the required second proof of
+    # account ownership (no-op when no unexpired pending link matches).
+    complete_pending_collision_link(resolved_user)
 
     next_page = (
         # Synthetic single-key dict reusing verify_and_provide_next_page's

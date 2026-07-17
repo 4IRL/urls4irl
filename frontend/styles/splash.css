@@ -244,7 +244,8 @@ form {
     padding: 0 12px;
 }
 
-.oauth-google-button {
+.oauth-google-button,
+.oauth-github-button {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -264,25 +265,50 @@ form {
     transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
-.oauth-google-button:hover {
+/* Stacked gap when both provider buttons render */
+.oauth-google-button + .oauth-github-button {
+    margin-top: var(--space-3);
+}
+
+.oauth-google-button:hover,
+.oauth-github-button:hover {
     background-color: #f7f8f8;
     transform: translateY(-1px);
 }
 
-.oauth-google-button:focus-visible {
+.oauth-google-button:active,
+.oauth-github-button:active {
+    background-color: #eceef0;      /* pressed feedback on click/tap */
+    transform: translateY(0);
+}
+
+.oauth-google-button:focus-visible,
+.oauth-github-button:focus-visible {
     outline: 3px solid var(--deckSelectionGreen);
     outline-offset: 2px;
 }
 
-.oauth-google-button svg {
+.oauth-google-button svg,
+.oauth-github-button svg {
     width: 18px;
     height: 18px;
     flex-shrink: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .oauth-google-button { transition: none; }
-    .oauth-google-button:hover { transform: none; }
+    .oauth-google-button,
+    .oauth-github-button { transition: none; }
+    .oauth-google-button:hover,
+    .oauth-github-button:hover { transform: none; }
+}
+
+/* OAuth account-link confirmation modal prompt */
+
+.confirm-link-prompt {
+    color: #3c4043;                 /* dark-on-white, matches the OAuth button text above */
+    font-size: 15px;
+    line-height: 1.5;
+    margin-bottom: var(--space-3);
 }
 
 /* Validate Email */

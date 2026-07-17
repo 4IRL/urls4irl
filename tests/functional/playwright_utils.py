@@ -397,6 +397,48 @@ def login_with_google_ui(
         wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_GOOGLE_OAUTH)
 
 
+def login_with_github_ui(
+    *,
+    page: Page,
+    subject: str = UTS.OAUTH_GITHUB_RETURNING_USER_SUBJECT,
+    email: str = UTS.OAUTH_GITHUB_RETURNING_USER_EMAIL,
+    login: str = UTS.OAUTH_GITHUB_RETURNING_USER_LOGIN,
+    from_register: bool = False,
+) -> None:
+    """Sign in (or register) via the fake GitHub OAuth provider
+    (backend/testing/fake_oauth_provider.py).
+
+    Mirrors `login_with_google_ui` exactly, with GitHub's `login` query param
+    (its `GET user` resource's preferred-username seed) added in place of
+    Google's `name`.
+    """
+    splash_url = page.url
+    split_splash_url = urlsplit(splash_url)
+    set_identity_url = urlunsplit(
+        (
+            split_splash_url.scheme,
+            split_splash_url.netloc,
+            "/fake-oauth/set-identity",
+            urlencode({"subject": subject, "email": email, "login": login}),
+            "",
+        )
+    )
+
+    page.goto(set_identity_url)
+    page.goto(splash_url)
+
+    if from_register:
+        wait_then_click_element(page=page, css_selector=SPL.BUTTON_REGISTER)
+        wait_for_modal_ready(page=page, modal_selector=SPL.REGISTER_MODAL)
+        wait_then_click_element(
+            page=page, css_selector=SPL.REGISTER_BUTTON_GITHUB_OAUTH
+        )
+    else:
+        wait_then_click_element(page=page, css_selector=SPL.BUTTON_LOGIN)
+        wait_for_modal_ready(page=page, modal_selector=SPL.LOGIN_MODAL)
+        wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_GITHUB_OAUTH)
+
+
 def invalidate_csrf_token_in_form(*, page: Page) -> None:
     invalidate_csrf_token_on_page(page=page)
 

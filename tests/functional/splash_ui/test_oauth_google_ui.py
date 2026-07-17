@@ -17,6 +17,7 @@ from playwright.sync_api import Page, expect
 from backend import db
 from backend.models.user_oauth_identities import UserOAuthIdentity
 from backend.models.users import Users
+from backend.splash.services.forgot_password import provider_display_name
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.playwright_assert_utils import assert_login_with_username
@@ -137,14 +138,14 @@ def test_google_register_new_user_from_register_modal(page: Page, provide_app: F
         assert created_identity.user.email == UTS.OAUTH_NEW_USER_EMAIL
 
 
-def test_google_login_email_collision_shows_reject_message(
+def test_google_login_email_collision_shows_confirm_link_page(
     page: Page, provide_app: Flask
 ):
     """
     GIVEN a password-based Users row with no linked UserOAuthIdentity
     WHEN the fake provider returns that same email under a brand-new subject
-    THEN the reject-page banner shows the email-collision message and the
-        user is NOT logged in, with no new rows created
+    THEN the browser lands on the confirm-link page showing the password
+        re-auth prompt, the user is NOT logged in, and no rows were created
     """
     _seed_password_user(
         provide_app,
@@ -160,9 +161,16 @@ def test_google_login_email_collision_shows_reject_message(
         name=UTS.OAUTH_COLLISION_NAME,
     )
 
-    modal_alert = wait_then_get_element(page=page, css_selector=SPL.SPLASH_MODAL_ALERT)
-    assert modal_alert is not None
-    expect(modal_alert).to_have_text(UTS.OAUTH_EMAIL_COLLISION_MESSAGE)
+    confirm_prompt = wait_then_get_element(
+        page=page, css_selector=SPL.CONFIRM_LINK_PROMPT
+    )
+    assert confirm_prompt is not None
+    expect(confirm_prompt).to_have_text(
+        UTS.OAUTH_CONFIRM_LINK_PASSWORD_PROMPT.format(
+            email=UTS.OAUTH_COLLISION_EMAIL,
+            provider=provider_display_name("google"),
+        )
+    )
 
     with provide_app.app_context():
         assert Users.query.count() == 1

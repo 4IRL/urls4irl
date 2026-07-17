@@ -1052,10 +1052,78 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    /** @description Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user — CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET. */
+    /** @description Google's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user; for an authenticated session with a pending settings-link intent it completes account linking instead (providers share one callback URL between sign-in and linking). CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET. */
     get: operations["googleCallback"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/oauth/github/login": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Redirect to GitHub's OAuth consent screen. Dual-purpose: signs in a returning user or auto-registers a first-time user on successful callback. */
+    get: operations["githubLogin"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/oauth/github/callback": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description GitHub's OAuth redirect target. Establishes a session for a returning user or creates a new account for a first-time user; for an authenticated session with a pending settings-link intent it completes account linking instead (GitHub OAuth apps allow exactly one callback URL, shared between sign-in and linking). CSRF is not applicable here; Authlib's own state-parameter round-trip provides equivalent protection on this cross-origin GET. */
+    get: operations["githubCallback"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/oauth/{provider}/link": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** @description Redirect an authenticated user to a provider's OAuth consent screen to link (or prove ownership for linking) that provider to their account. Requires a pending link intent stashed by POST /users/<id>/oauth/link/<provider>; without one, bounces back to Settings. */
+    get: operations["oauthLink"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/oauth/link/confirm": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Complete the collision confirm-link flow for a password account: verify the existing account's password, link the pending OAuth identity, and sign the user in. */
+    post: operations["oauthConfirmLink"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1147,6 +1215,24 @@ export interface paths {
     head?: never;
     /** @description Update a URL title in a UTub */
     patch: operations["updateUrlTitle"];
+    trace?: never;
+  };
+  "/users/{user_id}/oauth/link/{provider}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Start linking an OAuth provider to the authenticated user's account. Password accounts must re-authenticate with their password; password-less accounts are routed through an OAuth proof round-trip with an already-linked provider. Returns the redirect URL for the provider consent dance. */
+    post: operations["linkOauthProvider"];
+    /** @description Disconnect an OAuth provider from the authenticated user's account. Blocked when it is the account's last remaining sign-in method (no password and a single linked identity). */
+    delete: operations["unlinkOauthProvider"];
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/utubs": {
@@ -2465,6 +2551,18 @@ export interface components {
      *     error/reject state.
      */
     HtmlErrorPageSchema: Record<string, never>;
+    ConfirmLinkRequest: {
+      /** @description Password of the existing account that owns the colliding email, re-authenticated before the pending OAuth identity is linked */
+      password: string;
+    };
+    ErrorResponse_OAuthLinkErrorCodes: components["schemas"]["ErrorResponse"] & {
+      errorCode?: components["schemas"]["OAuthLinkErrorCodes"];
+    };
+    /**
+     * @description Error codes for OAuthLinkErrorCodes
+     * @enum {integer}
+     */
+    OAuthLinkErrorCodes: 1 | 2 | 3 | 4 | 5 | 6 | 7;
     ResetPasswordRequest: {
       /** @description New password for the account */
       newPassword: string;
@@ -2491,6 +2589,13 @@ export interface components {
     HealthResponseSchema: {
       /** @description Service health status */
       status: string;
+    };
+    ProviderLinkRequest: {
+      /**
+       * @description Current account password, re-authenticated before linking a new OAuth provider. Required for accounts that have a password; password-less (OAuth-only) accounts omit it and prove ownership via an OAuth round-trip to an already-linked provider instead
+       * @default null
+       */
+      password: string | null;
     };
   };
   responses: never;
@@ -5513,6 +5618,8 @@ export interface operations {
           | "login_success"
           | "member_added"
           | "member_removed"
+          | "oauth_identity_linked"
+          | "oauth_identity_unlinked"
           | "password_reset_completed"
           | "password_reset_requested"
           | "register_rejected"
@@ -5728,6 +5835,8 @@ export interface operations {
           | "login_success"
           | "member_added"
           | "member_removed"
+          | "oauth_identity_linked"
+          | "oauth_identity_unlinked"
           | "password_reset_completed"
           | "password_reset_requested"
           | "register_rejected"
@@ -6397,6 +6506,145 @@ export interface operations {
       };
     };
   };
+  githubLogin: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+    };
+  };
+  githubCallback: {
+    parameters: {
+      query?: {
+        code?: string;
+        state?: string;
+        error?: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /**
+       * @description Documents an HTML page render (not a JSON body) returned for an
+       *         error/reject state.
+       */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  oauthLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        provider: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Documents a bare 302 redirect with no JSON body. */
+      302: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"];
+        };
+      };
+    };
+  };
+  oauthConfirmLink: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ConfirmLinkRequest"];
+      };
+    };
+    responses: {
+      /** @description Login successful with redirect URL */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["LoginRedirectResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_OAuthLinkErrorCodes"];
+        };
+      };
+      /** @description Unauthorized */
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
   resetPassword: {
     parameters: {
       query?: never;
@@ -6696,6 +6944,102 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_URLErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  linkOauthProvider: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+        provider: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ProviderLinkRequest"];
+      };
+    };
+    responses: {
+      /** @description Login successful with redirect URL */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SuccessEnvelope"] &
+            components["schemas"]["LoginRedirectResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_OAuthLinkErrorCodes"];
+        };
+      };
+      /** @description Forbidden */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+      /** @description Not found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  unlinkOauthProvider: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        user_id: number;
+        provider: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
         };
       };
       /** @description Forbidden */

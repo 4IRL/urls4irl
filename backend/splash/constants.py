@@ -35,6 +35,20 @@ class OAuthErrorCodes(IntEnum):
     INVALID_FORM_INPUT = 1
 
 
+class OAuthLinkErrorCodes(IntEnum):
+    INVALID_FORM_INPUT = 1
+    PROVIDER_NOT_CONFIGURED = 2
+    ALREADY_LINKED = 3
+    INVALID_PASSWORD = 4
+    NOT_LINKED = 5
+    LAST_METHOD = 6
+    # The subject-owned-by-another-account failure has no JSON error code: it can
+    # only occur inside the OAuth callback (a browser redirect, which cannot
+    # return JSON), so it surfaces as a settings-page redirect
+    # (link_error=subject_taken) rather than through this enum.
+    INTENT_INVALID = 7
+
+
 class RegisterErrorCodes(IntEnum):
     ACCOUNT_NOT_EMAIL_VALIDATED = 1
     INVALID_FORM_INPUT = 2

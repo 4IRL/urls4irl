@@ -12,9 +12,20 @@ from backend.utils.strings.admin_portal_strs import (
     ADMIN_ACTION_STRINGS,
     ADMIN_PORTAL_STRINGS,
 )
-from backend.utils.strings.oauth_strs import EMAIL_COLLISION_MESSAGE
+from backend.utils.strings.oauth_strs import (
+    CONFIRM_LINK_OAUTH_ONLY_PROMPT,
+    CONFIRM_LINK_PASSWORD_PROMPT,
+    CONFIRM_LINK_TITLE,
+    EMAIL_COLLISION_MESSAGE,
+    LINK_INVALID_PASSWORD_MESSAGE,
+    LINK_PROOF_MISMATCH_MESSAGE,
+    LINK_SUCCESS_MESSAGE,
+    UNLINK_LAST_METHOD_MESSAGE,
+)
 from backend.utils.strings.search_strs import CROSS_SEARCH_NO_RESULTS
 from backend.utils.strings.splash_form_strs import (
+    GITHUB_OAUTH_LOGIN_BUTTON_TEXT,
+    GITHUB_OAUTH_REGISTER_BUTTON_TEXT,
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT,
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT,
 )
@@ -48,15 +59,25 @@ class UI_TEST_STRINGS:
     TEST_USERNAME_UNLISTED = USERNAME_BASE + "_UNLISTED"
     TEST_PASSWORD_UNLISTED = TEST_USERNAME_UNLISTED + EMAIL_SUFFIX
 
-    # Google OAuth — button labels re-exported so UI tests assert the rendered
+    # OAuth — button labels re-exported so UI tests assert the rendered
     # DOM text against the same backend source the templates render.
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT = GOOGLE_OAUTH_LOGIN_BUTTON_TEXT
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = GOOGLE_OAUTH_REGISTER_BUTTON_TEXT
+    GITHUB_OAUTH_LOGIN_BUTTON_TEXT = GITHUB_OAUTH_LOGIN_BUTTON_TEXT
+    GITHUB_OAUTH_REGISTER_BUTTON_TEXT = GITHUB_OAUTH_REGISTER_BUTTON_TEXT
 
     # Google OAuth — reject-page copy re-exported so UI tests assert the
     # rendered banner text against the same backend source
     # (backend/splash/services/oauth/google_service.py) that renders it.
     OAUTH_EMAIL_COLLISION_MESSAGE = EMAIL_COLLISION_MESSAGE
+
+    # Collision confirm-link page copy re-exported for the same reason
+    # (rendered by backend/splash/services/oauth/linking_service.py:
+    # render_confirm_link_page; prompts are .format()-ed with email/provider
+    # display name at assert time).
+    OAUTH_CONFIRM_LINK_TITLE = CONFIRM_LINK_TITLE
+    OAUTH_CONFIRM_LINK_PASSWORD_PROMPT = CONFIRM_LINK_PASSWORD_PROMPT
+    OAUTH_CONFIRM_LINK_OAUTH_ONLY_PROMPT = CONFIRM_LINK_OAUTH_ONLY_PROMPT
 
     # Google OAuth — deterministic per-scenario identities fed to the fake
     # provider (backend/testing/fake_oauth_provider.py) via `set-identity`,
@@ -83,6 +104,29 @@ class UI_TEST_STRINGS:
     OAUTH_FORGOT_PASSWORD_EMAIL = "oauth.forgotpassword@example.com"
     OAUTH_FORGOT_PASSWORD_NAME = "Forgot Password OAuth User"
     OAUTH_FORGOT_PASSWORD_USERNAME = "oauthforgotpassworduser"
+
+    # GitHub OAuth — deterministic per-scenario identities fed to the fake
+    # provider (backend/testing/fake_oauth_provider.py) via `set-identity`,
+    # kept DISTINCT from the Google constants above so github UI scenarios
+    # never collide with google ones (both providers share one Selenium DB).
+    OAUTH_GITHUB_RETURNING_USER_SUBJECT = "fake-github-subject-returning"
+    OAUTH_GITHUB_RETURNING_USER_EMAIL = "github.returning@example.com"
+    OAUTH_GITHUB_RETURNING_USER_LOGIN = "githubreturninglogin"
+    OAUTH_GITHUB_RETURNING_USER_USERNAME = "githubreturninguser"
+
+    OAUTH_GITHUB_NEW_USER_SUBJECT = "fake-github-subject-new"
+    OAUTH_GITHUB_NEW_USER_EMAIL = "github.newuser@example.com"
+    # No spaces/special chars, <=25 chars: this login becomes the derived
+    # username on account creation (see `resolve_preferred_username`/
+    # `generate_unique_username_from_email`), asserted verbatim via
+    # `assert_login_with_username`.
+    OAUTH_GITHUB_NEW_USER_LOGIN = "NewGitHubUser"
+
+    OAUTH_GITHUB_COLLISION_SUBJECT = "fake-github-subject-collision"
+    OAUTH_GITHUB_COLLISION_EMAIL = "github.collision@example.com"
+    OAUTH_GITHUB_COLLISION_LOGIN = "githubcollisionlogin"
+    OAUTH_GITHUB_COLLISION_PASSWORD = "P@ssword123!"
+    OAUTH_GITHUB_COLLISION_USERNAME = "githubcollisionpwuser"
 
     # Register
     PASSWORD_EQUALITY_FAILED = "Passwords are not identical."
@@ -344,3 +388,28 @@ class UI_TEST_STRINGS:
     SETTINGS_TAB_PRIVACY_DATA = USER_SETTINGS_STRINGS.TAB_PRIVACY_DATA
     SETTINGS_TAB_UI_SETTINGS = USER_SETTINGS_STRINGS.TAB_UI_SETTINGS
     SETTINGS_PLACEHOLDER = USER_SETTINGS_STRINGS.PLACEHOLDER
+
+    # Connected Accounts section (settings Account tab) — re-exported for UI
+    # assertions against the same backend source the template renders.
+    SETTINGS_CONNECTED_ACCOUNTS_TITLE = USER_SETTINGS_STRINGS.CONNECTED_ACCOUNTS_TITLE
+    SETTINGS_CONNECTED_STATUS_CONNECTED = (
+        USER_SETTINGS_STRINGS.CONNECTED_STATUS_CONNECTED
+    )
+    SETTINGS_CONNECTED_STATUS_NOT_CONNECTED = (
+        USER_SETTINGS_STRINGS.CONNECTED_STATUS_NOT_CONNECTED
+    )
+    SETTINGS_CONNECTED_STATUS_NOT_CONNECTED_PROOF = (
+        USER_SETTINGS_STRINGS.CONNECTED_STATUS_NOT_CONNECTED_PROOF
+    )
+    SETTINGS_CONNECTED_LAST_METHOD_NOTE = (
+        USER_SETTINGS_STRINGS.CONNECTED_LAST_METHOD_NOTE
+    )
+    SETTINGS_CONNECT_BUTTON_TEXT = USER_SETTINGS_STRINGS.CONNECT_BUTTON_TEXT
+    SETTINGS_DISCONNECT_BUTTON_TEXT = USER_SETTINGS_STRINGS.DISCONNECT_BUTTON_TEXT
+
+    # Link/unlink flow copy (backend/utils/strings/oauth_strs.py) asserted in
+    # the settings UI tests (banner + inline password errors).
+    OAUTH_LINK_SUCCESS_MESSAGE = LINK_SUCCESS_MESSAGE
+    OAUTH_LINK_INVALID_PASSWORD_MESSAGE = LINK_INVALID_PASSWORD_MESSAGE
+    OAUTH_UNLINK_LAST_METHOD_MESSAGE = UNLINK_LAST_METHOD_MESSAGE
+    OAUTH_LINK_PROOF_MISMATCH_MESSAGE = LINK_PROOF_MISMATCH_MESSAGE

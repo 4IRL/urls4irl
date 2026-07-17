@@ -17,6 +17,8 @@ FORGOT_YOUR_PASSWORD = "Forgot your password?"
 EMAILS_NOT_IDENTICAL = "Emails do not match."
 GOOGLE_OAUTH_LOGIN_BUTTON_TEXT = "Sign in with Google"
 GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = "Sign up with Google"
+GITHUB_OAUTH_LOGIN_BUTTON_TEXT = "Sign in with GitHub"
+GITHUB_OAUTH_REGISTER_BUTTON_TEXT = "Sign up with GitHub"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):

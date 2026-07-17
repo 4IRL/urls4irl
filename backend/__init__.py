@@ -38,7 +38,10 @@ from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
 from backend.models.users import User_Role, Users
 from backend.utils.datetime_utils import utc_now
-from backend.utils.oauth_config import should_register_google_oauth
+from backend.utils.oauth_config import (
+    should_register_github_oauth,
+    should_register_google_oauth,
+)
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.user_strs import SESSION_ISSUED_AT_KEY
 
@@ -109,6 +112,24 @@ limiter = Limiter(
 FAKE_GOOGLE_OAUTH_AUTHORIZE_URL = "/fake-oauth/authorize"
 FAKE_GOOGLE_OAUTH_ACCESS_TOKEN_URL = "/fake-oauth/token"
 FAKE_GOOGLE_OAUTH_USERINFO_URL = "/fake-oauth/userinfo"
+
+# GitHub equivalents of the fake-provider contract above. The GitHub client is
+# registered with `api_base_url` pointing at the *prefix* below so the
+# service's relative `get("user")` / `get("user/emails")` calls resolve to the
+# fake `/fake-oauth/github/user[...]` endpoints in UI testing, exactly as they
+# resolve against `https://api.github.com/` in production.
+FAKE_GITHUB_OAUTH_AUTHORIZE_URL = "/fake-oauth/github/authorize"
+FAKE_GITHUB_OAUTH_ACCESS_TOKEN_URL = "/fake-oauth/github/token"
+FAKE_GITHUB_OAUTH_API_BASE_PATH = "/fake-oauth/github/"
+FAKE_GITHUB_OAUTH_USER_URL = "/fake-oauth/github/user"
+FAKE_GITHUB_OAUTH_USER_EMAILS_URL = "/fake-oauth/github/user/emails"
+
+GITHUB_OAUTH_AUTHORIZE_URL = "https://github.com/login/oauth/authorize"
+GITHUB_OAUTH_ACCESS_TOKEN_URL = "https://github.com/login/oauth/access_token"
+# Trailing slash is load-bearing: Authlib resolves the service's relative
+# resource paths ("user", "user/emails") against this via urljoin.
+GITHUB_OAUTH_API_BASE_URL = "https://api.github.com/"
+GITHUB_OAUTH_SCOPE = "read:user user:email"
 
 
 def create_app(
@@ -184,6 +205,53 @@ def create_app(
                 client_id=app.config["GOOGLE_OAUTH_CLIENT_ID"],
                 client_secret=app.config["GOOGLE_OAUTH_CLIENT_SECRET"],
                 client_kwargs={"scope": "openid email profile"},
+            )
+
+    if should_register_github_oauth(
+        app.config.get("GITHUB_OAUTH_CLIENT_ID"),
+        app.config.get("GITHUB_OAUTH_CLIENT_SECRET"),
+    ):
+        if app.config.get("UI_TESTING", False):
+            # Selenium test server only, mirroring the fake-Google branch above:
+            # explicit endpoints against the in-process fake provider, with the
+            # token URL absolutized (Authlib's token exchange hands the URL raw
+            # to `requests`) and `api_base_url` pointed at the fake GitHub
+            # prefix so the service's relative `get("user")`/`get("user/emails")`
+            # calls resolve to the fake endpoints. GitHub has no OIDC layer, so
+            # unlike Google there is no scope-reduction trick needed — the
+            # plain-OAuth2 path is the production path too.
+            self_base_url = app.config.get("OAUTH_SELF_BASE_URL")
+            github_access_token_url = (
+                urljoin(self_base_url, FAKE_GITHUB_OAUTH_ACCESS_TOKEN_URL)
+                if self_base_url
+                else FAKE_GITHUB_OAUTH_ACCESS_TOKEN_URL
+            )
+            github_api_base_url = (
+                urljoin(self_base_url, FAKE_GITHUB_OAUTH_API_BASE_PATH)
+                if self_base_url
+                else FAKE_GITHUB_OAUTH_API_BASE_PATH
+            )
+            oauth.register(
+                name="github",
+                authorize_url=FAKE_GITHUB_OAUTH_AUTHORIZE_URL,
+                access_token_url=github_access_token_url,
+                api_base_url=github_api_base_url,
+                client_id=app.config["GITHUB_OAUTH_CLIENT_ID"],
+                client_secret=app.config["GITHUB_OAUTH_CLIENT_SECRET"],
+                client_kwargs={"scope": GITHUB_OAUTH_SCOPE},
+            )
+        else:
+            # GitHub is plain OAuth2 (no OIDC discovery document, no id_token):
+            # explicit authorize/token URLs, resources fetched relative to
+            # `api_base_url` (`GET user`, `GET user/emails`) by the service.
+            oauth.register(
+                name="github",
+                authorize_url=GITHUB_OAUTH_AUTHORIZE_URL,
+                access_token_url=GITHUB_OAUTH_ACCESS_TOKEN_URL,
+                api_base_url=GITHUB_OAUTH_API_BASE_URL,
+                client_id=app.config["GITHUB_OAUTH_CLIENT_ID"],
+                client_secret=app.config["GITHUB_OAUTH_CLIENT_SECRET"],
+                client_kwargs={"scope": GITHUB_OAUTH_SCOPE},
             )
 
     # Configure limiter with app-specific settings

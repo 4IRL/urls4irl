@@ -44,6 +44,8 @@ DOMAIN_EVENTS_TESTED_ELSEWHERE: frozenset[EventName] = frozenset(
         EventName.PASSWORD_RESET_REQUESTED,
         EventName.PASSWORD_RESET_COMPLETED,
         EventName.URL_CREATE_REJECTED,
+        EventName.OAUTH_IDENTITY_LINKED,
+        EventName.OAUTH_IDENTITY_UNLINKED,
     }
 )
 """DOMAIN events whose pipeline coverage lives in dedicated per-route emit tests.
@@ -63,7 +65,13 @@ tests/integration/search/. URL_TRACKING_PARAMS_STRIPPED fires only from the URL
 create/update service flows, not the shared seed; its per-dimension emit tests
 live under tests/integration/utuburls/. TAGS_APPLIED_BATCH fires only from the batch
 tag-apply service flow, which the shared seed does not exercise; its per-batch
-emit test lives under tests/integration/utubtags/. Each excluded event
+emit test lives under tests/integration/utubtags/. OAUTH_IDENTITY_LINKED and
+OAUTH_IDENTITY_UNLINKED fire only from the authenticated OAuth link/unlink
+service flows (settings-initiated link requiring a password re-auth or an OAuth
+provider round-trip, and the collision confirm-link path), which the shared
+success-path seed cannot drive; their per-flow emit tests live under
+tests/integration/account_and_settings/test_oauth_linking.py and
+tests/integration/splash/test_oauth_confirm_link.py. Each excluded event
 has its own per-route emit test under tests/integration/<feature>/ and flushes
 through the same pipeline, so the end-to-end invariant is still covered.
 """

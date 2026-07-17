@@ -7,7 +7,10 @@ from backend.models.utub_members import Member_Role
 from backend.splash.constants import EmailValidationErrorCodes
 from backend.utils.all_routes import generate_admin_routes_js, generate_routes_js
 from backend.utils.datetime_utils import utc_now
-from backend.utils.oauth_config import should_register_google_oauth
+from backend.utils.oauth_config import (
+    should_register_github_oauth,
+    should_register_google_oauth,
+)
 from backend.utils.strings.admin_metrics_strs import ADMIN_METRICS_STRINGS
 from backend.utils.strings.admin_portal_strs import ADMIN_ACTION_STRINGS
 from backend.utils.strings.email_validation_strs import (
@@ -15,8 +18,11 @@ from backend.utils.strings.email_validation_strs import (
     VALIDATE_YOUR_EMAIL,
 )
 from backend.utils.strings.form_strs import MAY_HAVE_ALREADY_BEEN_DELETED
+from backend.utils.strings.oauth_strs import LINK_PASSWORD_REQUIRED_MESSAGE
 from backend.utils.strings.splash_form_strs import (
     FORGOT_YOUR_PASSWORD,
+    GITHUB_OAUTH_LOGIN_BUTTON_TEXT,
+    GITHUB_OAUTH_REGISTER_BUTTON_TEXT,
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT,
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT,
     LOGIN,
@@ -193,6 +199,8 @@ class STRINGS:
     LOGIN = LOGIN
     GOOGLE_OAUTH_LOGIN_BUTTON_TEXT = GOOGLE_OAUTH_LOGIN_BUTTON_TEXT
     GOOGLE_OAUTH_REGISTER_BUTTON_TEXT = GOOGLE_OAUTH_REGISTER_BUTTON_TEXT
+    GITHUB_OAUTH_LOGIN_BUTTON_TEXT = GITHUB_OAUTH_LOGIN_BUTTON_TEXT
+    GITHUB_OAUTH_REGISTER_BUTTON_TEXT = GITHUB_OAUTH_REGISTER_BUTTON_TEXT
 
     SPLASH_TAGLINE = SPLASH_TAGLINE
     SPLASH_FEATURES_HEADING = SPLASH_FEATURES_HEADING
@@ -437,6 +445,29 @@ class STRINGS:
     SETTINGS_TAB_PRIVACY_DATA = USER_SETTINGS_STRINGS.TAB_PRIVACY_DATA
     SETTINGS_TAB_UI_SETTINGS = USER_SETTINGS_STRINGS.TAB_UI_SETTINGS
     SETTINGS_PLACEHOLDER = USER_SETTINGS_STRINGS.PLACEHOLDER
+    SETTINGS_CONNECTED_ACCOUNTS_TITLE = USER_SETTINGS_STRINGS.CONNECTED_ACCOUNTS_TITLE
+    SETTINGS_CONNECTED_ACCOUNTS_HINT = USER_SETTINGS_STRINGS.CONNECTED_ACCOUNTS_HINT
+    SETTINGS_CONNECTED_LAST_METHOD_NOTE = (
+        USER_SETTINGS_STRINGS.CONNECTED_LAST_METHOD_NOTE
+    )
+    SETTINGS_CONNECTED_STATUS_CONNECTED = (
+        USER_SETTINGS_STRINGS.CONNECTED_STATUS_CONNECTED
+    )
+    SETTINGS_CONNECTED_STATUS_NOT_CONNECTED = (
+        USER_SETTINGS_STRINGS.CONNECTED_STATUS_NOT_CONNECTED
+    )
+    SETTINGS_CONNECTED_STATUS_NOT_CONNECTED_PROOF = (
+        USER_SETTINGS_STRINGS.CONNECTED_STATUS_NOT_CONNECTED_PROOF
+    )
+    SETTINGS_CONNECT_BUTTON_TEXT = USER_SETTINGS_STRINGS.CONNECT_BUTTON_TEXT
+    SETTINGS_DISCONNECT_BUTTON_TEXT = USER_SETTINGS_STRINGS.DISCONNECT_BUTTON_TEXT
+    SETTINGS_CONNECT_CONTINUE_BUTTON_TEXT = (
+        USER_SETTINGS_STRINGS.CONNECT_CONTINUE_BUTTON_TEXT
+    )
+    SETTINGS_CONNECT_CANCEL_BUTTON_TEXT = (
+        USER_SETTINGS_STRINGS.CONNECT_CANCEL_BUTTON_TEXT
+    )
+    SETTINGS_CONNECT_PASSWORD_PROMPT = LINK_PASSWORD_REQUIRED_MESSAGE
 
 
 class CONSTANTS:
@@ -719,8 +750,9 @@ def provide_config_for_constants() -> dict:
     Provides configuration to templates:
     - CONSTANTS: Python objects for Jinja template rendering
     - CONFIG: JSON-serializable dict for JavaScript
-    - google_oauth_enabled: whether the Google OAuth button/routes should be
-      exposed to the user, per whether credentials are configured
+    - google_oauth_enabled / github_oauth_enabled: whether each provider's
+      OAuth button/routes should be exposed to the user, per whether that
+      provider's credentials are configured
     """
     routes = generate_routes_js()
     if current_user.is_authenticated and current_user.is_admin():
@@ -736,5 +768,9 @@ def provide_config_for_constants() -> dict:
         google_oauth_enabled=should_register_google_oauth(
             current_app.config.get("GOOGLE_OAUTH_CLIENT_ID"),
             current_app.config.get("GOOGLE_OAUTH_CLIENT_SECRET"),
+        ),
+        github_oauth_enabled=should_register_github_oauth(
+            current_app.config.get("GITHUB_OAUTH_CLIENT_ID"),
+            current_app.config.get("GITHUB_OAUTH_CLIENT_SECRET"),
         ),
     )

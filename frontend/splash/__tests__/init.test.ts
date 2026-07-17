@@ -714,7 +714,8 @@ describe("handleUserHasAccountNotEmailValidated", () => {
           `<div class="register-to-login-footer"></div>` +
           `<div class="modal-footer"></div>` +
           `<div class="oauth-divider"></div>` +
-          `<div class="oauth-google-button"></div>`,
+          `<div class="oauth-google-button"></div>` +
+          `<div class="oauth-github-button"></div>`,
       ) + modalShell("EmailValidationModal");
     ajaxGetSpy = vi
       .spyOn($, "get")
@@ -766,6 +767,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     expect($modal.find(".modal-footer").length).toBe(0);
     expect($modal.find(".oauth-divider").length).toBe(0);
     expect($modal.find(".oauth-google-button").length).toBe(0);
+    expect($modal.find(".oauth-github-button").length).toBe(0);
   });
 
   it("shows validate-my-email button in alert banner", () => {
