@@ -12,12 +12,13 @@ let _wasSubmitted: boolean = false;
 
 // Opens new tab
 export function accessLink(urlString: string): void {
+  const isHttp = urlString.startsWith("http");
   log("accessLink: protocol-based dispatch", {
-    isHttp: urlString.startsWith("http"),
-    showingWarningModal: !urlString.startsWith("http"),
+    isHttp,
+    showingWarningModal: !isHttp,
   });
   // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
-  if (urlString.startsWith("http")) {
+  if (isHttp) {
     window.open(urlString, "_blank")?.focus();
     return;
   }
