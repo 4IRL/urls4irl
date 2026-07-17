@@ -48,6 +48,7 @@ window.bootstrap = {
 
 // Inject app-config script element for lib/config.js
 const appConfig = {
+  debugEnabled: true,
   routes: {
     home: "/",
     createUTub: "/utubs",
