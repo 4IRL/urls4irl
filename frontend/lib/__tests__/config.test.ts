@@ -94,6 +94,10 @@ describe("APP_CONFIG shape", () => {
       expect(typeof APP_CONFIG.strings).toBe("object");
       expect(APP_CONFIG.strings).not.toBeNull();
     });
+
+    it("debugEnabled is a boolean", () => {
+      expect(typeof APP_CONFIG.debugEnabled).toBe("boolean");
+    });
   });
 
   describe("immutability", () => {
