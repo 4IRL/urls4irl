@@ -42,6 +42,9 @@ import {
   HOME_FORM,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 type CreateUrlRequest = Schema<"CreateURLRequest">;
 type CreateUrlResponse = SuccessResponse<"createUrl">;
@@ -200,6 +203,9 @@ export function createURL(
   );
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+    log("createURL rejected by client-side validation", {
+      urlStringLength: data.urlString.length,
+    });
     emit({
       event: UI_EVENTS.UI_VALIDATION_ERROR,
       form: VALIDATION_FORM.URL_CREATE,
@@ -243,6 +249,10 @@ function createURLSuccess(response: CreateUrlResponse, utubID: number): void {
   // Resets and hides the form and combobox (clears staged tags via STAGED_RESET_KEY)
   resetNewURLForm();
   const url = response.URL;
+  log("createURL success — appending new card", {
+    utubUrlID: url.utubUrlID,
+    hiddenByTagFilter: isATagSelected(),
+  });
   const utubUrlTagIDs = url.utubUrlTagIDs ?? [];
 
   const newUrl: UtubUrlItem = {
@@ -309,6 +319,9 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
       $("body").html(xhr.responseText);
       return;
     }
+    log("createURL failed with non-JSON response (likely timeout)", {
+      status: xhr.status,
+    });
     displayCreateUrlFailErrors({
       key: "urlString",
       errorMessage: "Server timed out while validating URL. Try again later.",
@@ -349,6 +362,10 @@ function createURLFail(xhr: JQuery.jqXHR, utubID: number): void {
       }
       break;
     case 409:
+      log("createURL conflict (409) — checking for stale local data", {
+        utubID,
+        conflictMessage: responseJSON.message,
+      });
       checkForStaleDataOn409(responseJSON, utubID);
       displayCreateUrlFailErrors({
         key: "urlString",

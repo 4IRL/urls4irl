@@ -45,6 +45,9 @@ import {
   URL_ACCESS_TRIGGER,
   VALIDATION_FORM,
 } from "../../../types/metrics-dim-values.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
@@ -205,12 +208,14 @@ export async function updateURL(
     );
 
     if (data.urlString === urlCard.find(".urlString").attr("href")) {
+      log("updateURL skipped — value unchanged", { utubUrlID });
       hideAndResetUpdateURLStringForm(urlCard);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
 
     if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+      log("updateURL rejected by client-side URL validation", { utubUrlID });
       emit({
         event: UI_EVENTS.UI_VALIDATION_ERROR,
         form: VALIDATION_FORM.URL_STRING_EDIT,
@@ -245,6 +250,7 @@ export async function updateURL(
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
+    log("updateURL aborted — pre-flight URL fetch rejected", { utubUrlID });
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
@@ -326,6 +332,11 @@ function updateURLFail(
 ): void {
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
+
+  log("updateURL failed", {
+    status: xhr.status,
+    utubUrlID: urlCard.attr("utuburlid"),
+  });
 
   if (!("responseJSON" in xhr)) {
     if (

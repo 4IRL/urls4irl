@@ -2,6 +2,9 @@ import { $ } from "../../../lib/globals.js";
 import { APP_CONFIG } from "../../../lib/config.js";
 import { emit } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 const ACCESS_URL_MODAL_STRING_ID = "AccessURLModalURLString";
 
@@ -9,6 +12,10 @@ let _wasSubmitted: boolean = false;
 
 // Opens new tab
 export function accessLink(urlString: string): void {
+  log("accessLink: protocol-based dispatch", {
+    isHttp: urlString.startsWith("http"),
+    showingWarningModal: !urlString.startsWith("http"),
+  });
   // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
   if (urlString.startsWith("http")) {
     window.open(urlString, "_blank")?.focus();

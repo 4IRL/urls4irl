@@ -21,6 +21,9 @@ import {
 import { disableEditingURLString, enableEditingURLString } from "./utils.js";
 import { isMobile } from "../../mobile.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 type UpdateUrlTitleRequest = Schema<"UpdateURLTitleRequest">;
 type UpdateUrlTitleResponse = SuccessResponse<"updateUrlTitle">;
@@ -109,6 +112,7 @@ export async function updateURLTitle(
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
+      log("updateURLTitle skipped — value unchanged", { utubUrlID });
       hideAndResetUpdateURLTitleForm(urlCard);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
@@ -143,6 +147,9 @@ export async function updateURLTitle(
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
+    log("updateURLTitle aborted — pre-flight URL fetch rejected", {
+      utubUrlID,
+    });
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,

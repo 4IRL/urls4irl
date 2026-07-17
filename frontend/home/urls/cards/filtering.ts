@@ -9,6 +9,9 @@ import {
   sortTagsByCount,
 } from "../../../logic/tag-filtering.js";
 import { getNumOfVisibleURLs } from "../utils.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 function showTagFilterNoResultsMessage(): void {
   $("#URLTagFilterNoResults")
@@ -51,6 +54,12 @@ export function updateURLsAndTagSubheaderWhenTagSelected(): void {
   applyURLVisibilityToDOM(visibility);
   const totalURLs = getState().urls.length;
   const visibleURLs = getNumOfVisibleURLs();
+  log("tag filter applied to URL visibility", {
+    selectedTagIDs,
+    totalURLs,
+    visibleURLs,
+    showingNoResults: totalURLs > 0 && visibleURLs === 0,
+  });
   if (totalURLs > 0 && visibleURLs === 0) {
     showTagFilterNoResultsMessage();
   } else {
@@ -98,6 +107,15 @@ export function updateTagFilterCount(
   tagCount: number,
   tagCountOperation: TagCountOperationValue,
 ): void {
+  log("tag filter count updated", {
+    utubTagID,
+    operation:
+      tagCountOperation === TagCountOperation.INCREMENT
+        ? "increment"
+        : "decrement",
+    tagCount,
+  });
+
   const tagCountElem = $(
     `.tagFilter[data-utub-tag-id="${utubTagID}"]` + " .tagAppliedToUrlsCount",
   );
@@ -180,6 +198,12 @@ on(AppEvents.URL_SEARCH_VISIBILITY_CHANGED, () =>
 );
 
 on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
+  log("stale-data: pruning selectedTagIDs of tags no longer in UTub", {
+    previousSelected: getState().selectedTagIDs,
+    retained: getState().selectedTagIDs.filter((id) =>
+      tags.some((tag) => tag.id === id),
+    ),
+  });
   setState({
     selectedTagIDs: getState().selectedTagIDs.filter((id) =>
       tags.some((tag) => tag.id === id),

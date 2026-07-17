@@ -33,6 +33,9 @@ import {
   HOME_FORM,
   SEARCH_ACTIVE,
 } from "../../../types/metrics-dim-values.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 export function updateURLAfterFindingStaleData(
   urlCard: JQuery,
@@ -55,6 +58,16 @@ export function updateURLAfterFindingStaleData(
   const currentURLTagIDs = $.map(currentURLTags.toArray(), (tag: HTMLElement) =>
     parseInt($(tag).attr("data-utub-tag-id")!),
   );
+
+  log("URL card updated after stale-data refresh", {
+    utubUrlID: urlCard.attr("utuburlid"),
+    tagsAdded: newUrl.utubUrlTagIDs.filter(
+      (id) => !currentURLTagIDs.includes(id),
+    ).length,
+    tagsRemoved: currentURLTagIDs.filter(
+      (id) => !newUrl.utubUrlTagIDs.includes(id),
+    ).length,
+  });
 
   // Find tag IDs that are in old and not in new and remove them
   for (

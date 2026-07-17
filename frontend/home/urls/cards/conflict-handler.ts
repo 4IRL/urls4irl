@@ -2,6 +2,9 @@ import type { Schema } from "../../../types/api-helpers.d.ts";
 
 import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 // Shared 409 conflict handler for URL create/update.
 // When the backend reports a duplicate URL with the offending urlString, and that URL is
@@ -14,6 +17,10 @@ export function checkForStaleDataOn409(
     responseJSON.urlString != null &&
     !isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)
   ) {
+    log(
+      "checkForStaleDataOn409 — server reports duplicate URL not visible locally, triggering stale-data refresh",
+      { utubID, conflictingUrlStringLength: responseJSON.urlString.length },
+    );
     updateUTubOnFindingStaleData(utubID);
   }
 }

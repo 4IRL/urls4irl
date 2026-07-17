@@ -20,6 +20,9 @@ import {
   HOME_FORM,
   UTUB_DESC_EDIT_OPEN_TRIGGER,
 } from "../../types/metrics-dim-values.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("urls");
 
 let descEditOpenedViaKeyboard = false;
 
@@ -264,6 +267,7 @@ export function updateUTubDescriptionHideInput(
 function updateUTubDescription(utubID: number): void {
   // Skip if identical
   if ($("#URLDeckSubheader").text() === $("#utubDescriptionUpdate").val()) {
+    log("updateUTubDescription skipped — value unchanged", { utubID });
     updateUTubDescriptionHideInput(utubID);
     return;
   }
@@ -332,6 +336,11 @@ function updateUTubDescriptionSuccess(
 function updateUTubDescriptionFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
+
+  log("updateUTubDescription failed", {
+    status: xhr.status,
+    hasResponseJSON: "responseJSON" in xhr,
+  });
 
   if (!("responseJSON" in xhr)) {
     if (

@@ -10,6 +10,9 @@ import {
   URL_SEARCH_CLOSE_TARGET,
   URL_SEARCH_OPEN_TARGET,
 } from "../../types/metrics-dim-values.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("urls");
 
 type URLDOMEntry = { id: number; title: string; urlString: string };
 
@@ -34,6 +37,12 @@ on(AppEvents.URL_TAG_FILTER_APPLIED, reapplyURLSearchFilter);
 
 function updateURLCardSearchVisibility(urlIDsToHide: number[]): void {
   const filterableRows = $(".urlRow[filterable=true]");
+
+  log("URL search visibility updated", {
+    hideCount: urlIDsToHide.length,
+    visibleCount: filterableRows.length - urlIDsToHide.length,
+    totalFilterable: filterableRows.length,
+  });
 
   if (urlIDsToHide.length === 0) {
     filterableRows.attr("searchable", "true");
@@ -152,6 +161,10 @@ export function setURLSearchEventListener(): void {
 
       searchDebounceTimer = setTimeout(() => {
         searchDebounceTimer = null;
+        log("URL search debounce fired, computing filter", {
+          searchTerm,
+          totalCandidates: readURLsFromDOM().length,
+        });
         const urlIDsToHide = filterURLsBySearchTerm(
           readURLsFromDOM(),
           searchTerm,
@@ -226,6 +239,13 @@ export function reapplyURLSearchFilter(): void {
   const isVisible =
     searchWrap.hasClass("visible-flex") || searchWrap.hasClass("search-ready");
   if (searchTerm.length < APP_CONFIG.constants.URLS_MIN_LENGTH || !isVisible) {
+    log(
+      "reapplyURLSearchFilter skipped — search not visible or term too short",
+      {
+        hasVisibleFlex: searchWrap.hasClass("visible-flex"),
+        termLen: searchTerm.length,
+      },
+    );
     return;
   }
   const urlIDsToHide = filterURLsBySearchTerm(readURLsFromDOM(), searchTerm);
