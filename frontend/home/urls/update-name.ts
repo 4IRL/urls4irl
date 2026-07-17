@@ -29,6 +29,9 @@ import {
   HOME_FORM,
   UTUB_DESC_EDIT_OPEN_TRIGGER,
 } from "../../types/metrics-dim-values.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("urls");
 
 let nameEditOpenedViaKeyboard = false;
 
@@ -49,6 +52,10 @@ function isUpdateUtubNameFieldName(
 function checkSameNameUTubOnUpdate(name: string, utubID: number): void {
   if (getAllAccessibleUTubNames().includes(name)) {
     // UTub with same name exists. Confirm action with user
+    log(
+      "checkSameNameUTubOnUpdate: duplicate name detected, showing confirmation modal",
+      { name, utubID },
+    );
     sameUTubNameOnUpdateUTubNameWarningShowModal(utubID);
   } else {
     // UTub name is unique. Proceed with requested action
@@ -322,6 +329,7 @@ export function updateUTubNameHideInput(): void {
 function updateUTubName(utubID: number): void {
   // Skip if update is identical
   if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+    log("updateUTubName skipped — value unchanged", { utubID });
     updateUTubNameHideInput();
     return;
   }
@@ -379,6 +387,8 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
 function updateUTubNameFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
   if (isUtubLockedHandled(xhr)) return;
+
+  log("updateUTubName failed", { status: xhr.status });
 
   if (!("responseJSON" in xhr)) {
     if (

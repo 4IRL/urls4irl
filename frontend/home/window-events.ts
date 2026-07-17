@@ -23,6 +23,9 @@ import {
 } from "./search/cross-utub-search.js";
 import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../types/metrics-dim-values.js";
 import type { MatchedField } from "../types/search.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("home-shell");
 
 /**
  * Initialize browser history (popstate) and page load (pageshow) event handlers
@@ -56,6 +59,9 @@ function handlePopState(event: PopStateEvent): void {
   if (state !== null && "UTubID" in state) {
     if (!isUtubIdValidFromStateAccess(state.UTubID)) {
       // Handle when a user previously went back to a now deleted UTub
+      log("popstate: target UTubID no longer accessible — resetting to /home", {
+        utubID: state.UTubID,
+      });
       window.history.replaceState(null, "", "/home");
       resetHomePageToInitialState();
       return;
@@ -118,6 +124,13 @@ function handlePageShow(): void {
 
   const utubId = searchParams.get(APP_CONFIG.strings.UTUB_QUERY_PARAM);
   if (searchParams.size > 1 || utubId === null) {
+    log(
+      "pageshow: rejecting malformed query params, redirecting to error page",
+      {
+        paramCount: searchParams.size,
+        utubId,
+      },
+    );
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
@@ -128,6 +141,9 @@ function handlePageShow(): void {
   }
 
   if (!isUtubIdValidOnPageLoad(utubId)) {
+    log("pageshow: UTubID in URL not in user's deck — redirecting to error", {
+      utubId,
+    });
     window.history.replaceState(null, "", "/home");
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;

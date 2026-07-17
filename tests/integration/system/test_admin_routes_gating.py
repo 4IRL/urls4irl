@@ -29,6 +29,18 @@ def _routes_from_response(response_data: bytes) -> dict[str, str]:
     return routes
 
 
+def _debug_enabled_from_response(response_data: bytes) -> bool:
+    """Extract APP_CONFIG.debugEnabled from the rendered `app-config` script tag."""
+    match = _APP_CONFIG_PATTERN.search(response_data)
+    assert match is not None, "Page did not render an app-config script tag"
+    payload = json.loads(match.group(1).decode("utf-8"))
+    debug_enabled = payload.get("debugEnabled")
+    assert isinstance(
+        debug_enabled, bool
+    ), "APP_CONFIG.debugEnabled missing or wrong shape"
+    return debug_enabled
+
+
 def test_admin_user_sees_admin_metrics_route_in_app_config(
     login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> None:
@@ -87,3 +99,73 @@ def test_authenticated_user_sees_cross_utub_search_route_in_app_config(
     assert response.status_code == 200
     routes = _routes_from_response(response.data)
     assert routes.get("crossUtubSearch") == expected_cross_utub_search_url
+
+
+def test_admin_user_gets_debug_enabled_in_app_config(
+    login_admin_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Authenticated admins get `debugEnabled: true` in APP_CONFIG — the
+    `DEBUG or (authenticated and admin)` gate's admin branch.
+    """
+    client, _, _, app = login_admin_user_with_register
+
+    original_debug = app.config["DEBUG"]
+    app.config["DEBUG"] = False
+    try:
+        response = client.get("/home")
+        assert response.status_code == 200
+        assert _debug_enabled_from_response(response.data) is True
+    finally:
+        app.config["DEBUG"] = original_debug
+
+
+def test_non_admin_user_does_not_get_debug_enabled_in_app_config(
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+) -> None:
+    """Authenticated non-admins get `debugEnabled: false` when DEBUG is off —
+    the gate denies debug logging to ordinary logged-in users.
+    """
+    client, _, _, app = login_first_user_with_register
+
+    original_debug = app.config["DEBUG"]
+    app.config["DEBUG"] = False
+    try:
+        response = client.get("/home")
+        assert response.status_code == 200
+        assert _debug_enabled_from_response(response.data) is False
+    finally:
+        app.config["DEBUG"] = original_debug
+
+
+def test_anonymous_user_does_not_get_debug_enabled_in_app_config(
+    client: FlaskClient,
+) -> None:
+    """Anonymous users get `debugEnabled: false` when DEBUG is off (the test
+    config's default), since they satisfy neither branch of the gate.
+    """
+    app = client.application
+    original_debug = app.config["DEBUG"]
+    app.config["DEBUG"] = False
+    try:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert _debug_enabled_from_response(response.data) is False
+    finally:
+        app.config["DEBUG"] = original_debug
+
+
+def test_debug_flag_forces_debug_enabled_regardless_of_auth(
+    client: FlaskClient,
+) -> None:
+    """`app.config["DEBUG"] = True` short-circuits the gate to `debugEnabled:
+    true` even for an anonymous, unauthenticated visitor.
+    """
+    app = client.application
+    original_debug = app.config["DEBUG"]
+    app.config["DEBUG"] = True
+    try:
+        response = client.get("/")
+        assert response.status_code == 200
+        assert _debug_enabled_from_response(response.data) is True
+    finally:
+        app.config["DEBUG"] = original_debug

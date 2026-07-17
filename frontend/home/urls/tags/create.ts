@@ -39,6 +39,9 @@ import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { HOME_FORM, TAG_SCOPE } from "../../../types/metrics-dim-values.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:tags");
 
 type AddTagRequest = Schema<"AddTagRequest">;
 type UrlTagModifiedResponse = SuccessResponse<"createUtubUrlTag">;
@@ -188,6 +191,10 @@ export async function createURLTag(
 
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
   try {
+    log("createURLTag flow start — verifying URL still exists before tagging", {
+      utubUrlID,
+      utubID,
+    });
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     const request = ajaxCall("post", postURL, data);
@@ -212,6 +219,7 @@ export async function createURLTag(
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
+    log("createURLTag aborted — pre-flight URL fetch rejected", { utubUrlID });
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
@@ -266,6 +274,11 @@ export function createURLTagSuccess(
 
   // Add SelectAll button if not yet there
   $("#unselectAllTagFilters").showClassNormal();
+
+  log("createURLTag success", {
+    utubTagID,
+    isNewTagInUTubDeck: !isTagInUTubTagDeck(utubTagID),
+  });
 
   if (!isTagInUTubTagDeck(utubTagID)) {
     const newTag = buildTagFilterInDeck(utubID, utubTagID, tagString, tagCount);

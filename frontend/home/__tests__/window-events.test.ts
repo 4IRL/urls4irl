@@ -19,6 +19,7 @@ const mockRestoreCrossUtubSearchFromHistory = vi.fn();
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
+    debugEnabled: true,
     routes: { errorPage: "/error" },
     strings: { UTUB_QUERY_PARAM: "UTubID" },
   },

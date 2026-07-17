@@ -89,6 +89,7 @@ export interface AppConfig {
   readonly routes: Readonly<AppRoutes>;
   readonly constants: Readonly<AppConstants>;
   readonly strings: Readonly<Record<string, string>>;
+  readonly debugEnabled: boolean;
 }
 
 const configScript: HTMLElement | null = document.getElementById("app-config");
@@ -99,6 +100,7 @@ const rawConfig: {
   routes: Record<string, string>;
   constants: Record<string, unknown>;
   strings: Record<string, string>;
+  debugEnabled: boolean;
 } = (() => {
   if (!configScript.textContent) {
     throw new Error("App configuration script element is empty");
@@ -181,4 +183,5 @@ export const APP_CONFIG: AppConfig = Object.freeze({
   }),
   constants: Object.freeze(rawConfig.constants),
   strings: Object.freeze(rawConfig.strings),
+  debugEnabled: rawConfig.debugEnabled,
 }) as AppConfig;

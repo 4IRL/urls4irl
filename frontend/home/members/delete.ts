@@ -2,6 +2,7 @@ import type { MemberModifiedResponse } from "../../types/member.js";
 
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { debug } from "../../lib/debug.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
 import { emit } from "../../lib/metrics-client.js";
@@ -19,6 +20,8 @@ import { setUIWhenNoUTubSelected } from "../init.js";
 
 let _memberActionConfirmed: boolean = false;
 let _removeMemberIsCreator: boolean = false;
+
+const log = debug("members");
 
 // Dynamically generates the remove member icon when needed
 export function createMemberRemoveBtn(): JQuery<HTMLButtonElement> {
@@ -145,6 +148,8 @@ function removeMember(
 ): void {
   $("#modalSubmit").prop("disabled", true);
 
+  log("removeMember submitted", { memberID, isCreator, utubID });
+
   const postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
 
   const request = ajaxCall("delete", postURL, []);
@@ -192,6 +197,11 @@ function removeMemberSuccess(memberID: number): void {
 function leaveUTubSuccess(utubID: number): void {
   // Close modal
   $("#confirmModal").modal("hide");
+
+  log("leaveUTubSuccess — purging UTub from UTub deck and resetting URL deck", {
+    utubID,
+    remainingUtubCount: getNumOfUTubs() - 1,
+  });
 
   // No UTub is selected after leaving — clear the active selection so deck
   // resets (and the member-button cleanup) treat it as the no-UTub state.

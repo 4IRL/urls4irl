@@ -19,6 +19,9 @@ import {
   updateTagFilteringOnURLOrURLTagDeletion,
 } from "../cards/filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:tags");
 
 type DeleteUrlTagResponse = SuccessResponse<"deleteUtubUrlTag">;
 
@@ -38,6 +41,10 @@ export async function deleteURLTag(
 
     // If tag was already deleted on update of URL, exit early
     if (!isTagInURL(utubTagID, urlCard)) {
+      log("deleteURLTag skipped — tag already removed by stale-data refresh", {
+        utubTagID,
+        utubUrlID,
+      });
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -70,6 +77,7 @@ export async function deleteURLTag(
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
+    log("deleteURLTag aborted — pre-flight URL fetch rejected", { utubUrlID });
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,

@@ -6,6 +6,7 @@ import type {
 import { $, getInputValue } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { debug } from "../../lib/debug.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
@@ -27,6 +28,8 @@ type MemberFieldName = (typeof MEMBER_FIELD_NAMES)[number];
 function isMemberFieldName(key: string): key is MemberFieldName {
   return (MEMBER_FIELD_NAMES as readonly string[]).includes(key);
 }
+
+const log = debug("members");
 
 export function setupShowCreateMemberFormEventListeners(utubID: number): void {
   /* Bind click functions */
@@ -207,6 +210,11 @@ function createMemberSuccess(
 ): void {
   resetNewMemberForm();
 
+  log("createMember success — appending badge", {
+    memberID: response.member.id,
+    totalMembers: getState().members.length + 1,
+  });
+
   setState({ members: [...getState().members, response.member] });
 
   // Create and append newly created Member badge - only creators can add members
@@ -226,6 +234,8 @@ function createMemberSuccess(
 
 function createMemberFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
+
+  log("createMember failed", { status: xhr.status });
 
   if (!("responseJSON" in xhr)) {
     if (

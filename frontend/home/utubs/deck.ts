@@ -17,6 +17,9 @@ import {
 } from "./search.js";
 import { setDeleteEventListeners } from "./delete.js";
 import { updateUTubDeckCount } from "./utils.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("utubs");
 
 // Utility function to show a loading icon when loading UTubs
 export function showUTubLoadingIconAndSetTimeout(): number {
@@ -55,6 +58,10 @@ export function buildUTubDeck(
   utubs: UtubSummaryItem[],
   timeoutID?: number,
 ): void {
+  log("buildUTubDeck() — replacing UTub list", {
+    numOfUTubs: utubs.length,
+    hadPriorSelectors: $(".UTubSelector").length > 0,
+  });
   setState({ utubs });
   resetUTubDeck();
   const parent = $("#listUTubs");
@@ -135,6 +142,10 @@ export function setUTubDeckOnUTubSelected(
   const utubSelector = $(`.UTubSelector[utubid="${selectedUTubID}"]`);
 
   if (!utubSelector.hasClass("active")) {
+    log("UTub selector active state changed", {
+      newActiveUTubID: selectedUTubID,
+      previouslyActive: $(".UTubSelector.active").attr("utubid") ?? null,
+    });
     // Remove all other active UTub selectors first
     $(".UTubSelector.active").removeClass("active").removeClass("focus");
 

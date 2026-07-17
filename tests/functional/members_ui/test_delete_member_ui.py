@@ -31,6 +31,7 @@ from tests.functional.playwright_utils import (
     wait_for_selector_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -210,7 +211,12 @@ def test_delete_member_btn(
     # submit. Clicking while Bootstrap's show-transition is still running causes the
     # subsequent modal("hide") issued by removeMemberSuccess to be dropped as an
     # overlapping transition, which leaves the modal visible and races wait_until_hidden.
-    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
 
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
@@ -386,7 +392,12 @@ def test_delete_member_submit_button_enabled_on_second_modal_open(
     # submit. Clicking while Bootstrap's show-transition is still running causes the
     # subsequent modal("hide") issued by removeMemberSuccess to be dropped as an
     # overlapping transition, which leaves the modal visible and races wait_until_hidden.
-    wait_until_visible_css_selector(page=page, css_selector=HPL.HOME_MODAL)
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for the first member's badge to be removed from the DOM

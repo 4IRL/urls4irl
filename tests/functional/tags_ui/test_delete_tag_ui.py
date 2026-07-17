@@ -168,11 +168,18 @@ def test_delete_tag_rate_limits(page: Page, create_test_tags, provide_app: Flask
     tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(
         url_tag_id=url_id
     )
+    # The delete button is revealed only while its tag badge is :hover-ed.
+    # Register the forced rate-limit header BEFORE revealing the button so no
+    # page work happens between the hover-reveal and the click — mirroring the
+    # reliable happy-path test_delete_tag ordering. An intervening call could
+    # drop the :hover state under CI load, hiding the button and timing the
+    # click out. Re-hover immediately before clicking as a belt-and-suspenders
+    # guard against a re-render dropping the hover between reveal and click.
+    add_forced_rate_limit_header(page=page)
     delete_tag_button = get_delete_tag_button_on_hover(
         page=page, tag_badge_selector=tag_badge_selector
     )
-
-    add_forced_rate_limit_header(page=page)
+    page.locator(tag_badge_selector).first.hover()
     delete_tag_button.click()
 
     assert_on_429_page(page=page)

@@ -12,6 +12,9 @@ import { reapplyTagFilter } from "../../tags/search.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { createTagBadgeInURL } from "../tags/tags.js";
 import { showURLDeckBannerError } from "../deck.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 type GetUrlResponse = SuccessResponse<"getUrl">;
 
@@ -156,6 +159,10 @@ export function handleRejectFromGetURL(
   urlCard: JQuery,
   errorMessage: { showError: boolean; message?: string },
 ): void {
+  log("handleRejectFromGetURL — dispatching on status", {
+    status: xhr.status,
+    willShowError: errorMessage.showError,
+  });
   switch (xhr.status) {
     case 429:
       const contentType = xhr.getResponseHeader("Content-Type");
@@ -189,6 +196,9 @@ export function handleRejectFromGetURL(
 }
 
 function deleteURLOnStale(urlCard: JQuery): void {
+  log(
+    "deleteURLOnStale — URL was deleted by another user, removing card locally",
+  );
   // Close modal in case URL was found stale while it's shown
   $("#confirmModal").modal("hide");
   urlCard.fadeOut("slow", function () {

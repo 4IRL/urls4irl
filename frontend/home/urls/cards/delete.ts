@@ -12,6 +12,9 @@ import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { hideURLSearchIcon } from "../search.js";
 import { showURLsEmptyState } from "../empty-state.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 type DeleteUrlResponse = SuccessResponse<"deleteUrl">;
 
@@ -81,6 +84,10 @@ async function deleteURL(
   $("#modalSubmit").prop("disabled", true);
 
   try {
+    log("deleteURL flow start — verifying URL still exists before delete", {
+      utubUrlID,
+      utubID,
+    });
     // Check for stale data
     await getUpdatedURL(utubID, utubUrlID, urlCard);
     // Extract data to submit in POST request
@@ -113,6 +120,12 @@ async function deleteURL(
 
 // Displays changes related to a successful removal of a URL
 function deleteURLSuccess(response: DeleteUrlResponse, urlCard: JQuery): void {
+  log("deleteURLSuccess — removing card and decrementing tag counts", {
+    utubUrlID: response.URL.utubUrlID,
+    affectedTagCount: (urlCard.attr("data-utub-url-tag-ids") ?? "")
+      .split(",")
+      .filter(Boolean).length,
+  });
   // Close modal
   $("#confirmModal").modal("hide");
   setState({

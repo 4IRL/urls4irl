@@ -20,6 +20,11 @@ export default [
           destructuredArrayIgnorePattern: "^_",
         },
       ],
+      "no-console": "error",
     },
+  },
+  {
+    files: ["**/lib/debug.ts"],
+    rules: { "no-console": "off" },
   },
 ];

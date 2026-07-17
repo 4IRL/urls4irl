@@ -13,6 +13,9 @@ import {
   switchModal,
 } from "./init.js";
 import { VALIDATION_FORM } from "../types/metrics-dim-values.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("splash:login");
 
 type LoginRequest = Schema<"LoginRequest">;
 type LoginSuccess = SuccessResponse<"login">;
@@ -36,6 +39,8 @@ export function initLoginForm($modal: JQuery): void {
     .offAndOn("click", (event) => handleLogin(event, $modal));
 
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
+
+  log("initLoginForm bound");
 }
 
 function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
@@ -55,6 +60,12 @@ function handleLogin(event: JQuery.TriggeredEvent, $modal: JQuery): void {
 
   const username: string = String($modal.find("#username").val() ?? "");
   const password: string = String($modal.find("#password").val() ?? "");
+
+  log("handleLogin submit", {
+    hasNextParam: nextQueryParam !== null,
+    usernameLength: username.length,
+    passwordLength: password.length,
+  });
 
   const payload: LoginRequest = { username, password };
   const loginRequest: JQuery.jqXHR = $.ajax({
@@ -81,6 +92,10 @@ function handleLoginSuccess(
     bootstrap.Modal.getOrCreateInstance("#LoginModal").hide();
     // Use redirectUrl from JSON response
     const redirectUrl = response.redirectUrl || APP_CONFIG.routes.home;
+    log("login success, redirecting", {
+      redirectUrl,
+      usedFallback: !response.redirectUrl,
+    });
     window.location.replace(redirectUrl);
   }
 }
@@ -92,6 +107,10 @@ function handleLoginFailure(
   $modal: JQuery,
 ): void {
   if (!("responseJSON" in xhr)) {
+    log("login failure: non-JSON response", {
+      status: xhr.status,
+      contentType: xhr.getResponseHeader("Content-Type"),
+    });
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
         case 403:
@@ -119,6 +138,10 @@ function handleLoginFailure(
     "errorCode" in xhr.responseJSON
   ) {
     const errorJson = xhr.responseJSON as LoginError;
+    log("login failure: JSON error", {
+      status: xhr.status,
+      errorCode: errorJson.errorCode,
+    });
     emit({ event: UI_EVENTS.UI_VALIDATION_ERROR, form: VALIDATION_FORM.LOGIN });
     switch (errorJson.errorCode) {
       case 1: {
@@ -134,6 +157,9 @@ function handleLoginFailure(
       }
     }
   } else {
+    log("login failure: unhandled JSON shape, showing generic banner", {
+      status: xhr.status,
+    });
     showSplashModalAlertBanner(
       $modal,
       "Unable to process request...",

@@ -21,6 +21,9 @@ import {
   applyAlternatingUTubSelectorBackground,
   resetUTubSearch,
 } from "./search.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("utubs");
 
 type DeleteUtubResponse = SuccessResponse<"deleteUtub">;
 
@@ -117,6 +120,10 @@ function deleteUTub(utubID: number): void {
 }
 
 function deleteUTubSuccess(utubID: number): void {
+  log("deleteUTubSuccess — purging UTub from store + resetting decks", {
+    utubID,
+    remainingUtubCount: getNumOfUTubs() - 1,
+  });
   hideInputs();
 
   // Close modal

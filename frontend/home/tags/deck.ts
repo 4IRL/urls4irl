@@ -1,6 +1,7 @@
 import type { UtubTag } from "../../types/url.js";
 
 import { APP_CONFIG } from "../../lib/config.js";
+import { debug } from "../../lib/debug.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 import { applyDeckDiff } from "../../logic/apply-deck-diff.js";
@@ -36,10 +37,17 @@ import {
 // Tracks the off-function for the per-UTub TAG_FILTER_CHANGED listener
 let _tagFilterChangedOff: (() => void) | null = null;
 
+const log = debug("tags");
+
 export function setTagDeckOnUTubSelected(
   dictTags: UtubTag[],
   utubID: number,
 ): void {
+  log("setTagDeckOnUTubSelected — rebuilding tag deck", {
+    utubID,
+    tagCount: dictTags.length,
+    hadPriorListener: _tagFilterChangedOff !== null,
+  });
   resetTagDeck();
   setupOpenCreateUTubTagEventListeners(utubID);
   setUnselectUpdateUTubTagEventListeners();
@@ -122,6 +130,11 @@ export function resetTagDeckIfNoUTubSelected(): void {
 
 // Update tags in LH panel based on asynchronous updates or stale data
 export function updateTagDeck(updatedTags: UtubTag[], utubID: number): void {
+  log("updateTagDeck — applying tag deck diff", {
+    utubID,
+    oldCount: getState().tags.length,
+    newCount: updatedTags.length,
+  });
   applyDeckDiff<UtubTag>({
     oldItems: getState().tags,
     newItems: updatedTags,

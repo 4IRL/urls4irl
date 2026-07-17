@@ -2,6 +2,7 @@ import type { SuccessResponse } from "../../types/api-helpers.d.ts";
 
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { debug } from "../../lib/debug.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { $ } from "../../lib/globals.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
@@ -11,6 +12,8 @@ import { applyAlternatingTagBackground } from "./search.js";
 import { TAG_SCOPE } from "../../types/metrics-dim-values.js";
 
 type DeleteUtubTagResponse = SuccessResponse<"deleteUtubTag">;
+
+const log = debug("tags");
 
 // scope: "url" is currently unused — a future per-URL tag-delete confirmation
 // modal would activate the literal in _DimTagDelete* dimension models.
@@ -105,6 +108,14 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
   // Close the modal
   $("#confirmModal").modal("hide");
 
+  log("deleteUTubTagSuccess — removed tag from UTub deck and all URLs", {
+    deletedTagID: response.utubTag.utubTagID,
+    affectedUrlCount: response.utubUrlIDs.length,
+    wasInSelectedFilters: getState().selectedTagIDs.includes(
+      response.utubTag.utubTagID,
+    ),
+  });
+
   // Remove the UTub Tag
   const deletedTagID = response.utubTag.utubTagID;
   const affectedUrlIDs = new Set(response.utubUrlIDs);
@@ -156,6 +167,11 @@ function deleteUTubTagSuccess(response: DeleteUtubTagResponse): void {
 function deleteUTubTagFail(xhr: JQuery.jqXHR): void {
   $("#modalSubmit").prop("disabled", false);
   if (is429Handled(xhr)) return;
+
+  log(
+    "deleteUTubTag failed — likely already deleted by another user, showing reload banner",
+    { status: xhr.status },
+  );
 
   if (
     xhr.status === 403 &&

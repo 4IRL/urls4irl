@@ -21,6 +21,9 @@ import {
 import { isUTubSearchActive } from "./search.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
 import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
+import { debug } from "../../lib/debug.js";
+
+const log = debug("utubs");
 
 type GetSingleUtubResponse = SuccessResponse<"getSingleUtub">;
 
@@ -43,6 +46,7 @@ export function getUTubInfo(
           return;
         }
         default: {
+          log("getUTubInfo failed", { selectedUTubID, status: xhr.status });
           window.history.replaceState(null, "", "/home");
           deferred.reject(xhr);
         }
@@ -67,6 +71,16 @@ export function pushUTubHistoryState(selectedUTubID: number): void {
 }
 
 export function buildSelectedUTub(selectedUTub: UtubDetail): void {
+  log(
+    "buildSelectedUTub — applying full UTub payload to store + emitting UTUB_SELECTED",
+    {
+      utubID: selectedUTub.id,
+      urlCount: selectedUTub.urls.length,
+      tagCount: selectedUTub.tags.length,
+      memberCount: selectedUTub.members.length,
+      isCreator: selectedUTub.isCreator,
+    },
+  );
   const utubDescription = selectedUTub.description;
   const isCurrentUserOwner = selectedUTub.isCreator;
 
@@ -152,7 +166,12 @@ export function selectUTub(selectedUTubID: number, utubSelector: JQuery): void {
   const currentlySelected = $(".UTubSelector.active");
 
   // Avoid reselecting if choosing the same UTub selector
-  if (currentlySelected.is($(utubSelector))) return;
+  if (currentlySelected.is($(utubSelector))) {
+    log("selectUTub: ignoring re-selection of already-active UTub", {
+      utubID: selectedUTubID,
+    });
+    return;
+  }
 
   recordUIEvent({
     event: UI_EVENTS.UI_UTUB_SELECT,

@@ -15,6 +15,9 @@ import { setFocusEventListenersOnURLCard } from "./cards.js";
 import { SEARCH_ACTIVE } from "../../../types/metrics-dim-values.js";
 import { isCoarsePointer } from "../../mobile.js";
 import { _consumeSwipeClickSuppression } from "./swipe.js";
+import { debug } from "../../../lib/debug.js";
+
+const log = debug("urls:cards");
 
 // Touch devices have no hover to reveal a tag's delete "×", so tapping a tag
 // toggles this class on it (one tag at a time) to slide the "×" out. The
@@ -30,6 +33,10 @@ export function getSelectedURLCard(): JQuery | null {
 
 // Perform actions on selection of a URL card
 export function selectURLCard(urlCard: JQuery): void {
+  log("URL card selected", {
+    utubUrlID: parseInt(urlCard.attr("utuburlid")!),
+    previouslySelectedID: getState().selectedURLCardID,
+  });
   deselectAllURLs();
 
   setState({ selectedURLCardID: parseInt(urlCard.attr("utuburlid")!) });
@@ -101,6 +108,7 @@ export function disableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
 
 // Clean up when deselecting a URL card
 function deselectURL(urlCard: JQuery): void {
+  log("URL card deselected", { utubUrlID: urlCard.attr("utuburlid") });
   disableClickOnSelectedURLCardToHide(urlCard);
   urlCard.find(TAG_DELETE_REVEAL_SELECTOR).removeClass(TAG_DELETE_REVEAL_CLASS);
   setState({ selectedURLCardID: null });
@@ -133,6 +141,10 @@ function isSelectedCardHidden(): boolean {
 }
 
 function deselectIfSelectedCardHidden(): void {
+  log("deselectIfSelectedCardHidden fired", {
+    selectedID: getState().selectedURLCardID,
+    wasHidden: isSelectedCardHidden(),
+  });
   if (isSelectedCardHidden()) {
     deselectAllURLs();
   }

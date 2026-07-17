@@ -4,6 +4,7 @@ import type { UtubTag } from "../../types/url.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { debug } from "../../lib/debug.js";
 import { $, getInputValue } from "../../lib/globals.js";
 import { emit } from "../../lib/metrics-client.js";
 import { clearOpenForm, setOpenForm } from "../../lib/modal-tracking.js";
@@ -21,6 +22,8 @@ import {
 
 type AddTagRequest = Schema<"AddTagRequest">;
 type CreateUtubTagResponse = SuccessResponse<"createUtubTag">;
+
+const log = debug("tags");
 
 export function setupOpenCreateUTubTagEventListeners(utubID: number): void {
   const utubTagBtnCreate = $("#utubTagBtnCreate");
@@ -178,6 +181,11 @@ function createUTubTagSuccess(
 ): void {
   resetNewUTubTagForm();
 
+  log("createUTubTag success — appending tag filter to deck", {
+    utubTagID: response.utubTag.utubTagID,
+    tagString: response.utubTag.tagString,
+  });
+
   const newTag: UtubTag = {
     id: response.utubTag.utubTagID,
     tagString: response.utubTag.tagString,
@@ -204,6 +212,8 @@ function createUTubTagSuccess(
 
 function createUTubTagFail(xhr: JQuery.jqXHR): void {
   if (is429Handled(xhr)) return;
+
+  log("createUTubTag failed", { status: xhr.status });
 
   if (!("responseJSON" in xhr)) {
     if (

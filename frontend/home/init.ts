@@ -12,11 +12,17 @@ import {
 } from "./members/deck.js";
 import { getAllUTubs } from "./utubs/utils.js";
 import { buildUTubDeck, setUTubDeckWhenNoUTubSelected } from "./utubs/deck.js";
+import { debug } from "../lib/debug.js";
+
+const log = debug("home-shell");
 
 /**
  * Sets UI state when no UTub is selected
  */
 export function setUIWhenNoUTubSelected(): void {
+  log("setUIWhenNoUTubSelected() — clearing active UTub selectors", {
+    previouslyActiveCount: $(".UTubSelector.active").length,
+  });
   hideInputs();
   setTagDeckSubheaderWhenNoUTubSelected();
   resetTagDeckIfNoUTubSelected();
@@ -38,6 +44,7 @@ export function setUIWhenNoUTubSelected(): void {
  * Resets the home page to its initial state with no UTub selected
  */
 export function resetHomePageToInitialState(): void {
+  log("resetHomePageToInitialState() — fetching all UTubs to rebuild deck");
   setUIWhenNoUTubSelected();
   getAllUTubs().then((utubData) => {
     buildUTubDeck(utubData.utubs);

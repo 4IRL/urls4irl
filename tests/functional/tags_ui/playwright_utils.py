@@ -17,6 +17,7 @@ from tests.functional.playwright_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
+    wait_until_css_property,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
@@ -310,6 +311,15 @@ def open_delete_utub_tag_confirm_modal_for_tag(
 
 def delete_utub_tag_elem(*, page: Page, tag_id: str, app: Flask) -> None:
     open_delete_utub_tag_confirm_modal_for_tag(page=page, tag_id=tag_id, app=app)
+    # Wait for Bootstrap's show transition to complete before clicking submit.
+    # Clicking mid-fade-in drops the click handler's modal.hide() call
+    # (BS5 _isTransitioning guard), so the modal never becomes hidden.
+    wait_until_css_property(
+        page=page,
+        css_selector=HPL.HOME_MODAL,
+        css_property="opacity",
+        expected_value="1",
+    )
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_MODAL_SUBMIT)
     expect(page.locator(HPL.BUTTON_MODAL_SUBMIT)).to_be_disabled()
     delete_utub_tag_css_selector = (

@@ -30,7 +30,10 @@ import {
   reapplyURLSearchFilter,
 } from "./search.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
+import { debug } from "../../lib/debug.js";
 import type { UtubUrlItem, UtubTag } from "../../types/url.js";
+
+const log = debug("urls");
 
 // Clear the URL Deck
 export function resetURLDeck(): void {
@@ -68,6 +71,11 @@ export function updateURLDeck(
   updatedUTubTags: UtubTag[],
   utubID: number,
 ): void {
+  log("updateURLDeck — applying deck diff for stale URLs", {
+    utubID,
+    oldCount: getState().urls.length,
+    newCount: updatedUTubUrls.length,
+  });
   applyDeckDiff<UtubUrlItem>({
     oldItems: getState().urls,
     newItems: updatedUTubUrls,
@@ -110,6 +118,12 @@ export function setURLDeckOnUTubSelected(
 
   const parent = $("#listURLs");
   const numOfURLs = dictURLs.length ? dictURLs.length : 0;
+
+  log("setURLDeckOnUTubSelected — rendering URL deck", {
+    utubID,
+    numOfURLs,
+    showingEmptyState: numOfURLs === 0,
+  });
 
   if (numOfURLs !== 0) {
     // Instantiate deck with list of URLs stored in current UTub
