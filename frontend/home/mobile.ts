@@ -1,4 +1,5 @@
 import { $ } from "../lib/globals.js";
+import { APP_CONFIG } from "../lib/config.js";
 import { TABLET_WIDTH } from "../lib/constants.js";
 import { emit, on, AppEvents } from "../lib/event-bus.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
@@ -13,6 +14,85 @@ import { makeUTubSelectableAgainIfMobile } from "./utubs/selectors.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("home-shell");
+
+/**
+ * The three persisted mobile panels a UTub can be viewed through. Mirrors the
+ * `MOBILE_NAV_TARGET` values, minus `tags` — the Tags bottom-sheet is not a
+ * persisted panel (its history entry is handled separately in the Tags sheet
+ * module), it is an overlay on top of whichever panel is active.
+ */
+export type MobilePanel = "utubs" | "urls" | "members";
+
+// Module-local tracking of the panel currently shown on mobile, mirroring the
+// `isTagSheetOpen()`/`isCrossUtubSearchActive()` module-local-state convention.
+// The tap/popstate call sites (steps 3–4) keep this in sync via the setter.
+let _currentMobilePanel: MobilePanel = "utubs";
+
+export function getCurrentMobilePanel(): MobilePanel {
+  return _currentMobilePanel;
+}
+
+export function setCurrentMobilePanel({
+  mobilePanel,
+}: {
+  mobilePanel: MobilePanel;
+}): void {
+  _currentMobilePanel = mobilePanel;
+}
+
+/**
+ * Push a merged `{ UTubID, mobilePanel }` browser-history entry for a mobile
+ * panel switch so Back/Forward unwind the panel navigation stack. Unconditional
+ * — call-site dedup guards (steps 3–4) decide whether a push is warranted.
+ * Deliberately does NOT set the `fullyLoaded` sessionStorage flag that
+ * `buildSelectedUTub` sets alongside `pushUTubHistoryState` — that side effect
+ * is specific to UTub selection, not panel switching.
+ */
+export function pushMobilePanelHistoryState({
+  mobilePanel,
+  UTubID,
+}: {
+  mobilePanel: MobilePanel;
+  UTubID: number;
+}): void {
+  const utubidKey = APP_CONFIG.strings.UTUB_QUERY_PARAM;
+  const panelKey = APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM;
+  log("pushMobilePanelHistoryState — pushing merged panel history entry", {
+    UTubID,
+    mobilePanel,
+  });
+  window.history.pushState(
+    { UTubID, mobilePanel },
+    "",
+    `/home?${utubidKey}=${UTubID}&${panelKey}=${mobilePanel}`,
+  );
+}
+
+/**
+ * Replace the current browser-history entry with a merged
+ * `{ UTubID, mobilePanel }` entry — same shape as `pushMobilePanelHistoryState`
+ * but without adding a stack entry. Used (steps 3–4) to overwrite a freshly
+ * pushed bare-`{ UTubID }` entry with the landing panel of a newly-selected UTub.
+ */
+export function replaceMobilePanelHistoryState({
+  mobilePanel,
+  UTubID,
+}: {
+  mobilePanel: MobilePanel;
+  UTubID: number;
+}): void {
+  const utubidKey = APP_CONFIG.strings.UTUB_QUERY_PARAM;
+  const panelKey = APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM;
+  log("replaceMobilePanelHistoryState — replacing current history entry", {
+    UTubID,
+    mobilePanel,
+  });
+  window.history.replaceState(
+    { UTubID, mobilePanel },
+    "",
+    `/home?${utubidKey}=${UTubID}&${panelKey}=${mobilePanel}`,
+  );
+}
 
 /**
  * Check if current viewport is mobile/tablet size
