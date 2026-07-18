@@ -20,6 +20,7 @@ import {
 } from "../urls/update-description.js";
 import { isUTubSearchActive } from "./search.js";
 import { fitUTubHeaderAndSubheader } from "./header-fit.js";
+import { isMobile, replaceMobilePanelHistoryState } from "../mobile.js";
 import { SEARCH_ACTIVE } from "../../types/metrics-dim-values.js";
 import { debug } from "../../lib/debug.js";
 
@@ -109,15 +110,30 @@ export function buildSelectedUTub(selectedUTub: UtubDetail): void {
 
   const isUTubHistoryNull = window.history.state === null;
 
-  // Allow user to back and forth in browser based on given UTub selection
+  // Allow user to back and forth in browser based on given UTub selection.
+  // The `"UTubID" in ...` guard keeps the narrowing correct now that
+  // `window.history.state` may be a `{ crossSearch }` / `{ mobilePanel }` /
+  // `{ tagSheetOpen }`-shaped entry with no `UTubID` key.
   if (
     isUTubHistoryNull ||
+    !("UTubID" in window.history.state) ||
     JSON.stringify(window.history.state.UTubID) !==
       JSON.stringify(selectedUTub.id)
   ) {
     // Push UTub state to browser history if no history, or if previous UTub history is different
     pushUTubHistoryState(selectedUTub.id);
     sessionStorage.setItem("fullyLoaded", "true");
+    // On mobile a freshly-selected UTub lands on the URL deck. Immediately
+    // overwrite the bare `{ UTubID }` entry just pushed with the merged
+    // `{ UTubID, mobilePanel: "urls" }` shape so Back unwinds the panel stack.
+    // Scoped inside the push-guarded block so a popstate-driven re-render of the
+    // same UTub never resets an already-restored non-"urls" panel back to "urls".
+    if (isMobile()) {
+      replaceMobilePanelHistoryState({
+        mobilePanel: "urls",
+        UTubID: selectedUTub.id,
+      });
+    }
   }
 
   // Emit UTUB_SELECTED — deck and mobile modules self-register and handle their own setup

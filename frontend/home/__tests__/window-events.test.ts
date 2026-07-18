@@ -1,9 +1,16 @@
-import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../types/metrics-dim-values.js";
+import {
+  CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
+  MOBILE_NAV_TRIGGER,
+} from "../../types/metrics-dim-values.js";
+import { UI_EVENTS } from "../../types/metrics-events.js";
 import { initWindowEvents } from "../window-events.js";
 
 const mockResetHomePageToInitialState = vi.fn();
 const mockSetUIWhenNoUTubSelected = vi.fn();
 const mockSetMobileUIWhenUTubSelectedOrURLNavSelected = vi.fn();
+const mockSetMobileUIWhenUTubDeckSelected = vi.fn();
+const mockSetMobileUIWhenMemberDeckSelected = vi.fn();
+const mockSetCurrentMobilePanel = vi.fn();
 const mockSetUTubEventListenersOnInitialPageLoad = vi.fn();
 const mockSetCreateUTubEventListeners = vi.fn();
 const mockGetUTubInfo = vi.fn();
@@ -16,20 +23,36 @@ const mockSetTagDeckSubheaderWhenNoUTubSelected = vi.fn();
 const mockExitCrossUtubSearchMode = vi.fn();
 const mockIsCrossUtubSearchActive = vi.fn(() => false);
 const mockRestoreCrossUtubSearchFromHistory = vi.fn();
+const mockEmit = vi.fn();
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
     debugEnabled: true,
     routes: { errorPage: "/error" },
-    strings: { UTUB_QUERY_PARAM: "UTubID" },
+    strings: {
+      UTUB_QUERY_PARAM: "UTubID",
+      MOBILE_PANEL_QUERY_PARAM: "panel",
+      MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
+      MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
+      MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
+    },
   },
 }));
 vi.mock("../../lib/constants.js", () => ({
   TABLET_WIDTH: 992,
 }));
+vi.mock("../../lib/metrics-client.js", () => ({
+  emit: (...args: unknown[]) => mockEmit(...args),
+}));
 vi.mock("../mobile.js", () => ({
   setMobileUIWhenUTubSelectedOrURLNavSelected: (...args: unknown[]) =>
     mockSetMobileUIWhenUTubSelectedOrURLNavSelected(...args),
+  setMobileUIWhenUTubDeckSelected: (...args: unknown[]) =>
+    mockSetMobileUIWhenUTubDeckSelected(...args),
+  setMobileUIWhenMemberDeckSelected: (...args: unknown[]) =>
+    mockSetMobileUIWhenMemberDeckSelected(...args),
+  setCurrentMobilePanel: (...args: unknown[]) =>
+    mockSetCurrentMobilePanel(...args),
 }));
 vi.mock("../init.js", () => ({
   resetHomePageToInitialState: (...args: unknown[]) =>
@@ -120,6 +143,7 @@ describe("window-events", () => {
 
   describe("handlePopState", () => {
     beforeEach(() => {
+      document.body.innerHTML = '<span id="MobilePanelAnnouncement"></span>';
       initWindowEvents();
     });
 
@@ -258,6 +282,219 @@ describe("window-events", () => {
 
       await vi.waitFor(() => {
         expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+      });
+    });
+
+    describe("{ UTubID, mobilePanel } branch", () => {
+      it("routes to the UTub deck and announces on a `utubs` panel popstate (mobile)", async () => {
+        const fakeUTub = { id: 5, name: "Panel UTub" };
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue(fakeUTub);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 5, mobilePanel: "utubs" },
+        });
+        popstateHandler!(event);
+
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        });
+        expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
+        expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
+          mobilePanel: "utubs",
+        });
+        expect($("#MobilePanelAnnouncement").text()).toBe(
+          "Now showing UTub list",
+        );
+        expect(mockEmit).toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_MOBILE_NAV,
+          target: "utubs",
+          trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
+        });
+
+        widthSpy.mockRestore();
+      });
+
+      it("routes to the URL deck and announces on a `urls` panel popstate (mobile)", async () => {
+        const fakeUTub = { id: 6, name: "Panel UTub" };
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue(fakeUTub);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 6, mobilePanel: "urls" },
+        });
+        popstateHandler!(event);
+
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        });
+        expect(
+          mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
+        ).toHaveBeenCalled();
+        expect($("#MobilePanelAnnouncement").text()).toBe("Now showing URLs");
+        expect(mockEmit).toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_MOBILE_NAV,
+          target: "urls",
+          trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
+        });
+
+        widthSpy.mockRestore();
+      });
+
+      it("routes to the Member deck and announces on a `members` panel popstate (mobile)", async () => {
+        const fakeUTub = { id: 7, name: "Panel UTub" };
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue(fakeUTub);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 7, mobilePanel: "members" },
+        });
+        popstateHandler!(event);
+
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        });
+        expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
+        expect($("#MobilePanelAnnouncement").text()).toBe(
+          "Now showing Members",
+        );
+        expect(mockEmit).toHaveBeenCalledWith({
+          event: UI_EVENTS.UI_MOBILE_NAV,
+          target: "members",
+          trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
+        });
+
+        widthSpy.mockRestore();
+      });
+
+      it("replaces state and resets when the panel entry's UTubID is invalid", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(false);
+        const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 999, mobilePanel: "urls" },
+        });
+        popstateHandler!(event);
+
+        expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/home");
+        expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+
+        replaceStateSpy.mockRestore();
+      });
+
+      it("rebuilds the UTub but does not route/announce on desktop", async () => {
+        const fakeUTub = { id: 8, name: "Panel UTub" };
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue(fakeUTub);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 8, mobilePanel: "members" },
+        });
+        popstateHandler!(event);
+
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        });
+        expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
+        expect(mockEmit).not.toHaveBeenCalled();
+        expect($("#MobilePanelAnnouncement").text()).toBe("");
+
+        widthSpy.mockRestore();
+      });
+
+      it("stale-guard: an out-of-order older popstate resolution does not apply", async () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        const olderUTub = { id: 5, name: "Older" };
+        const newerUTub = { id: 6, name: "Newer" };
+        let resolveOlder!: (value: unknown) => void;
+        let resolveNewer!: (value: unknown) => void;
+        const olderPromise = new Promise((resolve) => {
+          resolveOlder = resolve;
+        });
+        const newerPromise = new Promise((resolve) => {
+          resolveNewer = resolve;
+        });
+        mockGetUTubInfo
+          .mockReturnValueOnce(olderPromise)
+          .mockReturnValueOnce(newerPromise);
+
+        // Fire two overlapping popstates (older then newer), both still pending.
+        popstateHandler!(
+          new PopStateEvent("popstate", {
+            state: { UTubID: 5, mobilePanel: "utubs" },
+          }),
+        );
+        popstateHandler!(
+          new PopStateEvent("popstate", {
+            state: { UTubID: 6, mobilePanel: "members" },
+          }),
+        );
+
+        // Resolve the newer one first, then the (superseded) older one.
+        resolveNewer(newerUTub);
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(newerUTub);
+        });
+        resolveOlder(olderUTub);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Only the newer popstate's effects applied — the older is stale-gated.
+        expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(olderUTub);
+        expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
+        expect(mockSetMobileUIWhenUTubDeckSelected).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+    });
+
+    describe("bare { UTubID } branch stale-guard (sibling fix)", () => {
+      it("an out-of-order older bare-UTubID resolution does not apply", async () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        const olderUTub = { id: 5, name: "Older" };
+        const newerUTub = { id: 6, name: "Newer" };
+        let resolveOlder!: (value: unknown) => void;
+        let resolveNewer!: (value: unknown) => void;
+        const olderPromise = new Promise((resolve) => {
+          resolveOlder = resolve;
+        });
+        const newerPromise = new Promise((resolve) => {
+          resolveNewer = resolve;
+        });
+        mockGetUTubInfo
+          .mockReturnValueOnce(olderPromise)
+          .mockReturnValueOnce(newerPromise);
+
+        popstateHandler!(
+          new PopStateEvent("popstate", { state: { UTubID: 5 } }),
+        );
+        popstateHandler!(
+          new PopStateEvent("popstate", { state: { UTubID: 6 } }),
+        );
+
+        resolveNewer(newerUTub);
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(newerUTub);
+        });
+        resolveOlder(olderUTub);
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(olderUTub);
+        // Only one mobile-UI application (from the newer popstate).
+        expect(
+          mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
+        ).toHaveBeenCalledTimes(1);
+
+        widthSpy.mockRestore();
       });
     });
   });
@@ -420,6 +657,34 @@ describe("window-events", () => {
       });
 
       widthSpy.mockRestore();
+    });
+
+    it("no longer rejects ?UTubID=<id>&panel=<x> (both recognized params)", async () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=10&panel=urls", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(true);
+      mockIsUtubIdValidOnPageLoad.mockReturnValue(true);
+      const fakeUTub = { id: 10, name: "URL UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+
+      const event = new Event("pageshow") as PageTransitionEvent;
+      pageshowHandler!(event);
+
+      await vi.waitFor(() => {
+        expect(mockGetUTubInfo).toHaveBeenCalledWith(10);
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      // The recognized `panel` param must not trip the malformed-params redirect.
+      expect(assignMock).not.toHaveBeenCalledWith("/error");
     });
 
     it("does not build UTub when getUTubInfo resolves with null/undefined", async () => {

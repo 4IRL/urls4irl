@@ -9,7 +9,12 @@ import {
   isCrossUtubSearchActive,
 } from "../search/cross-utub-search.js";
 import { openTagSheet } from "../tags/sheet.js";
-import { setMobileUIWhenUTubSelectedOrURLNavSelected } from "../mobile.js";
+import {
+  setMobileUIWhenUTubSelectedOrURLNavSelected,
+  pushMobilePanelHistoryState,
+  setCurrentMobilePanel,
+} from "../mobile.js";
+import { getState } from "../../store/app-store.js";
 import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../../types/metrics-dim-values.js";
 
 vi.mock("../../lib/globals.js", () => ({
@@ -23,6 +28,11 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenMemberDeckSelected: vi.fn(),
   setMobileUIWhenUTubSelectedOrURLNavSelected: vi.fn(),
   setMobileUIWhenUTubDeckSelected: vi.fn(),
+  pushMobilePanelHistoryState: vi.fn(),
+  setCurrentMobilePanel: vi.fn(),
+}));
+vi.mock("../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ activeUTubID: 5 })),
 }));
 vi.mock("../tags/sheet.js", () => ({
   openTagSheet: vi.fn(),
@@ -41,6 +51,7 @@ const NAVBAR_HTML = `
     <a class="navbar-brand" href="#">Brand</a>
     <button class="navbar-toggler"></button>
     <div id="NavbarNavDropdown"></div>
+    <span id="MobilePanelAnnouncement"></span>
   </nav>
   <button id="toMembers"></button>
   <button id="toURLs"></button>
@@ -53,9 +64,13 @@ describe("navbar", () => {
   beforeEach(() => {
     document.body.innerHTML = NAVBAR_HTML;
     vi.clearAllMocks();
+    window.history.replaceState(null, "", "/");
     (
       isCrossUtubSearchActive as unknown as ReturnType<typeof vi.fn>
     ).mockReturnValue(false);
+    (getState as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+      activeUTubID: 5,
+    });
   });
 
   describe("initNavbar", () => {
@@ -112,6 +127,61 @@ describe("navbar", () => {
       const openOrder = (openTagSheet as unknown as ReturnType<typeof vi.fn>)
         .mock.invocationCallOrder[0];
       expect(switchOrder).toBeLessThan(openOrder);
+    });
+
+    it("pushes the matching { UTubID, mobilePanel } entry for each deck-switch tap", () => {
+      initNavbar();
+
+      $("button#toUTubs").trigger("click");
+      expect(pushMobilePanelHistoryState).toHaveBeenCalledWith({
+        mobilePanel: "utubs",
+        UTubID: 5,
+      });
+      expect(setCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "utubs",
+      });
+
+      $("button#toURLs").trigger("click");
+      expect(pushMobilePanelHistoryState).toHaveBeenCalledWith({
+        mobilePanel: "urls",
+        UTubID: 5,
+      });
+
+      $("button#toMembers").trigger("click");
+      expect(pushMobilePanelHistoryState).toHaveBeenCalledWith({
+        mobilePanel: "members",
+        UTubID: 5,
+      });
+
+      // Tap-driven switches are visually obvious — they never touch the
+      // screen-reader announcement region (that is history-nav only).
+      expect($("#MobilePanelAnnouncement").text()).toBe("");
+    });
+
+    it("does not push a panel entry when no UTub is active", () => {
+      (getState as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        activeUTubID: null,
+      });
+      initNavbar();
+
+      $("button#toMembers").trigger("click");
+
+      expect(pushMobilePanelHistoryState).not.toHaveBeenCalled();
+      expect(setCurrentMobilePanel).not.toHaveBeenCalled();
+    });
+
+    it("dedup guard suppresses a push when the current entry already matches", () => {
+      window.history.replaceState({ UTubID: 5, mobilePanel: "utubs" }, "", "/");
+      initNavbar();
+
+      $("button#toUTubs").trigger("click");
+
+      // Redundant re-tap of the already-current panel — no duplicate entry.
+      expect(pushMobilePanelHistoryState).not.toHaveBeenCalled();
+      // The tracked panel is still (re)set even when the push is deduped.
+      expect(setCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "utubs",
+      });
     });
 
     it("registers collapse event listeners on NavbarNavDropdown", () => {

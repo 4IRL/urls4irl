@@ -32,6 +32,15 @@ vi.mock("../../../lib/event-bus.js", async () => {
   };
 });
 
+const mockIsMobile = vi.fn(() => false);
+const mockReplaceMobilePanelHistoryState = vi.fn();
+
+vi.mock("../../mobile.js", () => ({
+  isMobile: () => mockIsMobile(),
+  replaceMobilePanelHistoryState: (...args: unknown[]) =>
+    mockReplaceMobilePanelHistoryState(...args),
+}));
+
 const $ = window.jQuery;
 
 const SELECTED_UTUB_HTML = `
@@ -65,6 +74,9 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
     document.body.innerHTML = SELECTED_UTUB_HTML;
     resetStore();
     vi.clearAllMocks();
+    // Null the history entry so the push-guard fires a fresh push each test.
+    window.history.replaceState(null, "", "/");
+    mockIsMobile.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -87,5 +99,51 @@ describe("buildSelectedUTub — locked-UTub affordances", () => {
     expect(document.body.classList.contains("utub-locked")).toBe(false);
     expect($("#URLDeckLockIcon").hasClass("hidden")).toBe(true);
     expect(getState().isCurrentUTubLocked).toBe(false);
+  });
+
+  describe("mobile landing-panel history", () => {
+    it("on mobile, pushes bare { UTubID } then replaces with { UTubID, mobilePanel: 'urls' }", () => {
+      mockIsMobile.mockReturnValue(true);
+      const pushStateSpy = vi.spyOn(window.history, "pushState");
+
+      buildSelectedUTub(makeUtubDetail({ id: 77 }));
+
+      // The bare-{UTubID} push shape is unchanged (shared with desktop).
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { UTubID: 77 },
+        "",
+        expect.any(String),
+      );
+      // Immediately overwritten with the merged mobile-panel shape.
+      expect(mockReplaceMobilePanelHistoryState).toHaveBeenCalledTimes(1);
+      expect(mockReplaceMobilePanelHistoryState).toHaveBeenCalledWith({
+        mobilePanel: "urls",
+        UTubID: 77,
+      });
+      // Push must precede the replace so the merged entry wins.
+      expect(pushStateSpy.mock.invocationCallOrder[0]).toBeLessThan(
+        mockReplaceMobilePanelHistoryState.mock.invocationCallOrder[0],
+      );
+
+      pushStateSpy.mockRestore();
+    });
+
+    it("on desktop, only pushes bare { UTubID } — no mobile replace", () => {
+      mockIsMobile.mockReturnValue(false);
+      const pushStateSpy = vi.spyOn(window.history, "pushState");
+
+      buildSelectedUTub(makeUtubDetail({ id: 88 }));
+
+      expect(pushStateSpy).toHaveBeenCalledTimes(1);
+      expect(pushStateSpy).toHaveBeenCalledWith(
+        { UTubID: 88 },
+        "",
+        expect.any(String),
+      );
+      expect(mockReplaceMobilePanelHistoryState).not.toHaveBeenCalled();
+
+      pushStateSpy.mockRestore();
+    });
   });
 });

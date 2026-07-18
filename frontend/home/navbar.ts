@@ -6,7 +6,11 @@ import {
   setMobileUIWhenMemberDeckSelected,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubDeckSelected,
+  pushMobilePanelHistoryState,
+  setCurrentMobilePanel,
+  type MobilePanel,
 } from "./mobile.js";
+import { getState } from "../store/app-store.js";
 import { openTagSheet } from "./tags/sheet.js";
 import {
   exitCrossUtubSearchMode,
@@ -35,6 +39,26 @@ function closeCrossUtubSearchIfOpen(): void {
   }
 }
 
+// Push a merged `{ UTubID, mobilePanel }` history entry when a deck-switch tap
+// changes the active mobile panel, and keep `_currentMobilePanel` in sync.
+// Call-site dedup guard: skip the push when the current history entry already
+// carries the identical `{ UTubID, mobilePanel }` (a redundant re-tap of the
+// same deck) so Back does not have to unwind duplicate consecutive entries.
+function pushMobilePanelHistoryOnTap({
+  mobilePanel,
+}: {
+  mobilePanel: MobilePanel;
+}): void {
+  const activeUTubID = getState().activeUTubID;
+  if (activeUTubID === null) return;
+  setCurrentMobilePanel({ mobilePanel });
+  const targetState = { UTubID: activeUTubID, mobilePanel };
+  if (JSON.stringify(window.history.state) === JSON.stringify(targetState)) {
+    return;
+  }
+  pushMobilePanelHistoryState({ mobilePanel, UTubID: activeUTubID });
+}
+
 /**
  * Initialize navbar and mobile navigation buttons
  */
@@ -48,6 +72,7 @@ export function initNavbar(): void {
       trigger: MOBILE_NAV_TRIGGER.TAP,
     });
     setMobileUIWhenMemberDeckSelected();
+    pushMobilePanelHistoryOnTap({ mobilePanel: "members" });
   });
   $("button#toURLs").on("click", () => {
     closeCrossUtubSearchIfOpen();
@@ -58,6 +83,7 @@ export function initNavbar(): void {
       trigger: MOBILE_NAV_TRIGGER.TAP,
     });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
+    pushMobilePanelHistoryOnTap({ mobilePanel: "urls" });
   });
   $("button#toUTubs").on("click", () => {
     closeCrossUtubSearchIfOpen();
@@ -68,6 +94,7 @@ export function initNavbar(): void {
       trigger: MOBILE_NAV_TRIGGER.TAP,
     });
     setMobileUIWhenUTubDeckSelected();
+    pushMobilePanelHistoryOnTap({ mobilePanel: "utubs" });
   });
   $("button#toTags").on("click", () => {
     closeCrossUtubSearchIfOpen();

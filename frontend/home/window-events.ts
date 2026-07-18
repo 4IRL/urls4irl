@@ -1,7 +1,15 @@
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
 import { TABLET_WIDTH } from "../lib/constants.js";
-import { setMobileUIWhenUTubSelectedOrURLNavSelected } from "./mobile.js";
+import { emit } from "../lib/metrics-client.js";
+import { UI_EVENTS } from "../types/metrics-events.js";
+import {
+  setMobileUIWhenUTubSelectedOrURLNavSelected,
+  setMobileUIWhenUTubDeckSelected,
+  setMobileUIWhenMemberDeckSelected,
+  setCurrentMobilePanel,
+  type MobilePanel,
+} from "./mobile.js";
 import {
   resetHomePageToInitialState,
   setUIWhenNoUTubSelected,
@@ -21,11 +29,41 @@ import {
   isCrossUtubSearchActive,
   restoreCrossUtubSearchFromHistory,
 } from "./search/cross-utub-search.js";
-import { CROSS_UTUB_SEARCH_CLOSE_TRIGGER } from "../types/metrics-dim-values.js";
+import {
+  CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
+  MOBILE_NAV_TRIGGER,
+} from "../types/metrics-dim-values.js";
 import type { MatchedField } from "../types/search.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("home-shell");
+
+// Monotonic generation counter for popstate handling. A rapid Back-Back-Back
+// sequence can leave an older popstate's async `getUTubInfo` in flight when a
+// newer one lands; each handler captures the generation it started at and bails
+// out of its resolved callback if a newer popstate has since superseded it, so
+// stale data never clobbers the current state (or a screen-reader announcement).
+let _popstateGeneration = 0;
+
+/**
+ * Resolve the visually-hidden screen-reader announcement copy for a restored
+ * mobile panel. Read from the string bridge (never hardcoded in TS).
+ */
+function announcementForMobilePanel({
+  mobilePanel,
+}: {
+  mobilePanel: MobilePanel;
+}): string {
+  switch (mobilePanel) {
+    case "utubs":
+      return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_UTUBS;
+    case "members":
+      return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_MEMBERS;
+    case "urls":
+    default:
+      return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_URLS;
+  }
+}
 
 /**
  * Initialize browser history (popstate) and page load (pageshow) event handlers
@@ -36,8 +74,10 @@ export function initWindowEvents(): void {
 }
 
 function handlePopState(event: PopStateEvent): void {
+  const generation = ++_popstateGeneration;
   const state = event.state as
     | { UTubID: number }
+    | { UTubID: number; mobilePanel: MobilePanel }
     | { crossSearch: { query: string; fields: MatchedField[] } }
     | null;
 
@@ -56,6 +96,64 @@ function handlePopState(event: PopStateEvent): void {
     });
   }
 
+  // Merged `{ UTubID, mobilePanel }` entry (pushed by a mobile deck-switch tap
+  // or the freshly-selected-UTub replace). Restore the UTub, then route to the
+  // recorded panel. This is a restore, not a navigation — no push here.
+  if (state !== null && "mobilePanel" in state) {
+    if (!isUtubIdValidFromStateAccess(state.UTubID)) {
+      log(
+        "popstate: mobilePanel target UTubID no longer accessible — resetting to /home",
+        { utubID: state.UTubID },
+      );
+      window.history.replaceState(null, "", "/home");
+      resetHomePageToInitialState();
+      return;
+    }
+
+    const mobilePanel = state.mobilePanel;
+    getUTubInfo(state.UTubID).then(
+      (selectedUTub) => {
+        // Gate the entire callback: a stale/superseded popstate must not apply.
+        if (generation !== _popstateGeneration) return;
+        if (!selectedUTub) return;
+        buildSelectedUTub(selectedUTub);
+        // Route to the recorded panel only on mobile — desktop shows all panels.
+        if (($(window).width() ?? 0) < TABLET_WIDTH) {
+          switch (mobilePanel) {
+            case "utubs":
+              setMobileUIWhenUTubDeckSelected();
+              break;
+            case "members":
+              setMobileUIWhenMemberDeckSelected();
+              break;
+            case "urls":
+            default:
+              setMobileUIWhenUTubSelectedOrURLNavSelected();
+              break;
+          }
+          setCurrentMobilePanel({ mobilePanel });
+          // History-nav panel switches are not visually obvious to a screen
+          // reader (no tap), so announce them. Tap-driven switches never set this.
+          $("#MobilePanelAnnouncement").text(
+            announcementForMobilePanel({ mobilePanel }),
+          );
+          emit({
+            event: UI_EVENTS.UI_MOBILE_NAV,
+            target: mobilePanel,
+            trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
+          });
+        }
+      },
+      () => {
+        // Stale-guard the reject path too: a superseded popstate whose fetch
+        // rejects after a newer one resolved must not reset and clobber it.
+        if (generation !== _popstateGeneration) return;
+        resetHomePageToInitialState();
+      },
+    );
+    return;
+  }
+
   if (state !== null && "UTubID" in state) {
     if (!isUtubIdValidFromStateAccess(state.UTubID)) {
       // Handle when a user previously went back to a now deleted UTub
@@ -70,6 +168,9 @@ function handlePopState(event: PopStateEvent): void {
     // State will contain property UTub if URL contains query parameter UTubID
     getUTubInfo(state.UTubID).then(
       (selectedUTub) => {
+        // Same stale-result guard as the mobilePanel branch above — this
+        // pre-existing branch shares the identical async race.
+        if (generation !== _popstateGeneration) return;
         if (!selectedUTub) return;
         buildSelectedUTub(selectedUTub);
         // If mobile, go straight to URL deck
@@ -78,6 +179,9 @@ function handlePopState(event: PopStateEvent): void {
         }
       },
       () => {
+        // Stale-guard the reject path too: a superseded popstate whose fetch
+        // rejects after a newer one resolved must not reset and clobber it.
+        if (generation !== _popstateGeneration) return;
         resetHomePageToInitialState();
       },
     );
@@ -123,12 +227,20 @@ function handlePageShow(): void {
   }
 
   const utubId = searchParams.get(APP_CONFIG.strings.UTUB_QUERY_PARAM);
-  if (searchParams.size > 1 || utubId === null) {
+  const panel = searchParams.get(APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM);
+  // Reject only when a genuinely-unrecognized param is present. A UTubID-absent
+  // request (only `panel` supplied) is no longer treated as malformed here — it
+  // falls through (DD-24); Step 5 owns the graceful no-UTub degradation.
+  const recognizedParamCount =
+    (utubId !== null ? 1 : 0) + (panel !== null ? 1 : 0);
+  if (searchParams.size > recognizedParamCount) {
     log(
       "pageshow: rejecting malformed query params, redirecting to error page",
       {
         paramCount: searchParams.size,
+        recognizedParamCount,
         utubId,
+        panel,
       },
     );
     window.location.assign(APP_CONFIG.routes.errorPage);
