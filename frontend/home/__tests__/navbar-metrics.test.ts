@@ -4,7 +4,10 @@ import {
   onMobileNavbarOpened,
   onMobileNavbarClosed,
 } from "../navbar.js";
-import { MOBILE_NAV_TARGET } from "../../types/metrics-dim-values.js";
+import {
+  MOBILE_NAV_TARGET,
+  MOBILE_NAV_TRIGGER,
+} from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
@@ -122,6 +125,7 @@ describe("navbar metrics emitters", () => {
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_MOBILE_NAV,
         target: MOBILE_NAV_TARGET.MEMBERS,
+        trigger: MOBILE_NAV_TRIGGER.TAP,
       });
     });
 
@@ -134,6 +138,7 @@ describe("navbar metrics emitters", () => {
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_MOBILE_NAV,
         target: MOBILE_NAV_TARGET.URLS,
+        trigger: MOBILE_NAV_TRIGGER.TAP,
       });
     });
 
@@ -146,6 +151,7 @@ describe("navbar metrics emitters", () => {
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_MOBILE_NAV,
         target: MOBILE_NAV_TARGET.UTUBS,
+        trigger: MOBILE_NAV_TRIGGER.TAP,
       });
     });
 
@@ -158,6 +164,7 @@ describe("navbar metrics emitters", () => {
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_MOBILE_NAV,
         target: MOBILE_NAV_TARGET.TAGS,
+        trigger: MOBILE_NAV_TRIGGER.TAP,
       });
     });
 
@@ -180,7 +187,11 @@ describe("navbar metrics emitters", () => {
       );
       expect(mobileNavCalls).toHaveLength(1);
       expect(mobileNavCalls[0]).toEqual([
-        { event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS },
+        {
+          event: UI_EVENTS.UI_MOBILE_NAV,
+          target: MOBILE_NAV_TARGET.TAGS,
+          trigger: MOBILE_NAV_TRIGGER.TAP,
+        },
       ]);
       expect(closeCalls).toHaveLength(0);
     });

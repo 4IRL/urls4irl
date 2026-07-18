@@ -187,6 +187,7 @@ export type DimLhsExpand = {
 export type DimMobileNav = {
   device_type: DeviceType;
   target: "utubs" | "urls" | "members" | "tags";
+  trigger: "tap" | "history_nav";
 };
 
 export type DimAuthCancel = {

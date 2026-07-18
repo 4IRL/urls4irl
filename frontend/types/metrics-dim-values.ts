@@ -153,6 +153,11 @@ export const MOBILE_NAV_TARGET = {
   TAGS: "tags",
 } as const;
 
+export const MOBILE_NAV_TRIGGER = {
+  TAP: "tap",
+  HISTORY_NAV: "history_nav",
+} as const;
+
 export const TAG_SEARCH_CLOSE_TARGET = {
   TAGS: "tags",
 } as const;

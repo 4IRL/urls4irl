@@ -302,7 +302,18 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
         {"deck": "members", "device_type": DeviceType.DESKTOP},
     ),
     (EventName.UI_DECK_EXPAND, {"deck": "utubs", "device_type": DeviceType.MOBILE}),
-    (EventName.UI_MOBILE_NAV, {"target": "tags", "device_type": DeviceType.MOBILE}),
+    (
+        EventName.UI_MOBILE_NAV,
+        {"target": "tags", "trigger": "tap", "device_type": DeviceType.MOBILE},
+    ),
+    (
+        EventName.UI_MOBILE_NAV,
+        {
+            "target": "urls",
+            "trigger": "history_nav",
+            "device_type": DeviceType.DESKTOP,
+        },
+    ),
     (
         EventName.UI_AUTH_FORM_SWITCH,
         {"target": "register", "device_type": DeviceType.DESKTOP},
@@ -421,6 +432,30 @@ def test_per_event_models_reject_missing_required_keys():
     """Omitting a required field raises ValidationError."""
     with pytest.raises(ValidationError):
         DIMENSION_MODELS[EventName.UI_UTUB_NAME_EDIT_OPEN].model_validate({})
+
+
+def test_mobile_nav_rejects_unknown_trigger():
+    """`_DimMobileNav.trigger` accepts only `tap`/`history_nav`.
+
+    Both documented trigger values validate; any out-of-set value raises so
+    the required `trigger` dimension stays a closed low-cardinality set.
+    """
+    for valid_trigger in ("tap", "history_nav"):
+        DIMENSION_MODELS[EventName.UI_MOBILE_NAV].model_validate(
+            {
+                "target": "urls",
+                "trigger": valid_trigger,
+                "device_type": DeviceType.MOBILE,
+            }
+        )
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_MOBILE_NAV].model_validate(
+            {
+                "target": "urls",
+                "trigger": "swipe",
+                "device_type": DeviceType.MOBILE,
+            }
+        )
 
 
 def test_utub_search_models_reject_url_target():

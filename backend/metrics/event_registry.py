@@ -541,7 +541,10 @@ EVENT_REGISTRY: dict[EventName, EventRegistryEntry] = {
     EventName.UI_MOBILE_NAV: EventRegistryEntry(
         description="Mobile navbar section switch",
         category=EventCategory.UI,
-        dimensions={"target": ("utubs", "urls", "members", "tags")},
+        dimensions={
+            "target": ("utubs", "urls", "members", "tags"),
+            "trigger": ("tap", "history_nav"),
+        },
     ),
     EventName.UI_LOGIN_SUBMIT: EventRegistryEntry(
         description="Login form submitted",

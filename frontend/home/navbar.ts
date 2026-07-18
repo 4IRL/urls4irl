@@ -15,6 +15,7 @@ import {
 import {
   CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
   MOBILE_NAV_TARGET,
+  MOBILE_NAV_TRIGGER,
 } from "../types/metrics-dim-values.js";
 
 export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
@@ -41,25 +42,41 @@ export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.MEMBERS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.MEMBERS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     setMobileUIWhenMemberDeckSelected();
   });
   $("button#toURLs").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.URLS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.URLS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
   $("button#toUTubs").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.UTUBS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.UTUBS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     setMobileUIWhenUTubDeckSelected();
   });
   $("button#toTags").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.TAGS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     // The tag sheet overlays the URL deck, so first switch to the URL deck —
     // otherwise tapping Tags from the Member/UTub deck opens the sheet over the
     // wrong deck. This also collapses the hamburger (it calls toggler.hide()),
