@@ -4,6 +4,7 @@ from backend.utils.strings.model_strs import UTUB_DESCRIPTION
 # Strings for utub success
 UTUB_ID = "utubID"
 UTUB_ID_QUERY_PARAM = "UTubID"
+UTUB_NO_LONGER_AVAILABLE = "The UTub you tried to open is no longer available"
 MOBILE_PANEL_QUERY_PARAM = "panel"
 MOBILE_PANEL_ANNOUNCEMENT_UTUBS = "Now showing UTub list"
 MOBILE_PANEL_ANNOUNCEMENT_URLS = "Now showing URLs"

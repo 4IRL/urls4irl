@@ -24,6 +24,7 @@ import {
 } from "./utubs/utils.js";
 import { setMemberDeckWhenNoUTubSelected } from "./members/deck.js";
 import { setTagDeckSubheaderWhenNoUTubSelected } from "./tags/deck.js";
+import { showURLDeckBannerError } from "./urls/deck.js";
 import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
@@ -73,6 +74,52 @@ function announcementForMobilePanel({
     default:
       return APP_CONFIG.strings.MOBILE_PANEL_ANNOUNCEMENT_URLS;
   }
+}
+
+// The three persisted mobile panels (the tag sheet is never a persisted panel).
+const VALID_MOBILE_PANELS: ReadonlySet<string> = new Set([
+  "utubs",
+  "urls",
+  "members",
+]);
+
+/**
+ * Normalize an untrusted panel value (from `?panel=` or `history.state`) to a
+ * known MobilePanel, or null when absent/unrecognized (caller defaults to url-deck).
+ */
+function toValidMobilePanel(
+  panel: string | null | undefined,
+): MobilePanel | null {
+  return panel != null && VALID_MOBILE_PANELS.has(panel)
+    ? (panel as MobilePanel)
+    : null;
+}
+
+/**
+ * On reload/cold-load (pageshow), route the mobile UI to the restored panel.
+ * A restore is not a navigation, so — unlike the popstate branch — this emits no
+ * metric and sets no screen-reader announcement. Desktop shows all panels, so
+ * this is a no-op there. A null/unrecognized panel lands on the url-deck.
+ */
+function routeMobilePanelOnPageShow({
+  mobilePanel,
+}: {
+  mobilePanel: MobilePanel | null;
+}): void {
+  if (($(window).width() ?? 0) >= TABLET_WIDTH) return;
+  switch (mobilePanel) {
+    case "utubs":
+      setMobileUIWhenUTubDeckSelected();
+      break;
+    case "members":
+      setMobileUIWhenMemberDeckSelected();
+      break;
+    case "urls":
+    default:
+      setMobileUIWhenUTubSelectedOrURLNavSelected();
+      break;
+  }
+  setCurrentMobilePanel({ mobilePanel: mobilePanel ?? "urls" });
 }
 
 /**
@@ -310,14 +357,15 @@ function handlePageShow(): void {
   setCreateUTubEventListeners();
 
   if (history.state && history.state.UTubID) {
+    // Restore the panel recorded on the warm history entry. A tagSheetOpen entry
+    // also carries mobilePanel:"urls", so ignoring tagSheetOpen (the sheet does
+    // not auto-reopen on reload) lands on the underlying url-deck automatically.
+    const warmPanel = toValidMobilePanel(history.state.mobilePanel);
     getUTubInfo(history.state.UTubID).then(
       (selectedUTub) => {
         if (!selectedUTub) return;
         buildSelectedUTub(selectedUTub);
-        // If mobile, go straight to URL deck
-        if (($(window).width() ?? 0) < TABLET_WIDTH) {
-          setMobileUIWhenUTubSelectedOrURLNavSelected();
-        }
+        routeMobilePanelOnPageShow({ mobilePanel: warmPanel });
         return;
       },
       () => {
@@ -361,6 +409,42 @@ function handlePageShow(): void {
     return;
   }
 
+  const validatedPanel = toValidMobilePanel(panel);
+
+  // DD-24: a UTubID-absent request (only a recognized `panel` param supplied) is
+  // functionally the "no UTub selected" state regardless of the panel value —
+  // degrade gracefully to the no-utub landing instead of erroring. No banner: an
+  // ordinary empty landing has nothing to explain.
+  if (utubId === null) {
+    log("pageshow: panel-only cold load, degrading to no-UTub state (DD-24)", {
+      panel,
+    });
+    setUIWhenNoUTubSelected();
+    setMemberDeckWhenNoUTubSelected();
+    setTagDeckSubheaderWhenNoUTubSelected();
+    return;
+  }
+
+  // DD-24 + DD-33: a syntactically-invalid or no-longer-accessible UTubID that
+  // carries a recognized `panel` param (a stale/deleted-UTub bookmark) also
+  // degrades gracefully — with an explanatory, auto-hiding banner — instead of
+  // redirecting to /error. A bare invalid UTubID with NO panel keeps its existing
+  // /error redirect below (narrower scope — unrelated to this panel feature).
+  if (
+    panel !== null &&
+    (!isValidUTubID(utubId) || !isUtubIdValidOnPageLoad(utubId))
+  ) {
+    log(
+      "pageshow: invalid/inaccessible UTubID with a panel param, degrading gracefully (DD-24/DD-33)",
+      { utubId, panel },
+    );
+    setUIWhenNoUTubSelected();
+    setMemberDeckWhenNoUTubSelected();
+    setTagDeckSubheaderWhenNoUTubSelected();
+    showURLDeckBannerError(APP_CONFIG.strings.UTUB_NO_LONGER_AVAILABLE);
+    return;
+  }
+
   if (!isValidUTubID(utubId)) {
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
@@ -379,10 +463,8 @@ function handlePageShow(): void {
     (selectedUTub) => {
       if (!selectedUTub) return;
       buildSelectedUTub(selectedUTub);
-      // If mobile, go straight to URL deck
-      if (($(window).width() ?? 0) < TABLET_WIDTH) {
-        setMobileUIWhenUTubSelectedOrURLNavSelected();
-      }
+      // Route to the recorded panel on mobile after the UTub is built.
+      routeMobilePanelOnPageShow({ mobilePanel: validatedPanel });
     },
     () => {
       window.location.assign(APP_CONFIG.routes.errorPage);

@@ -120,6 +120,8 @@ const appConfig = {
     MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
     MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
     MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
+    UTUB_NO_LONGER_AVAILABLE:
+      "The UTub you tried to open is no longer available",
     ADMIN_ACTION_REASON_LABEL: "Reason",
     ADMIN_ACTION_REASON_REQUIRED: "A reason is required for this action.",
     ADMIN_ACTION_GENERIC_ERROR: "Action failed. Check the server logs.",

@@ -32,6 +32,7 @@ const mockGetTagSheetOriginPanel = vi.fn<() => string | null>(() => null);
 const mockBeginPopstateClose = vi.fn();
 const mockEndPopstateClose = vi.fn();
 const mockConsumeTagSheetSelfBackClose = vi.fn(() => false);
+const mockShowURLDeckBannerError = vi.fn();
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
@@ -43,6 +44,8 @@ vi.mock("../../lib/config.js", () => ({
       MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
       MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
       MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
+      UTUB_NO_LONGER_AVAILABLE:
+        "The UTub you tried to open is no longer available",
     },
   },
 }));
@@ -94,6 +97,10 @@ vi.mock("../members/deck.js", () => ({
 vi.mock("../tags/deck.js", () => ({
   setTagDeckSubheaderWhenNoUTubSelected: (...args: unknown[]) =>
     mockSetTagDeckSubheaderWhenNoUTubSelected(...args),
+}));
+vi.mock("../urls/deck.js", () => ({
+  showURLDeckBannerError: (...args: unknown[]) =>
+    mockShowURLDeckBannerError(...args),
 }));
 vi.mock("../search/cross-utub-search.js", () => ({
   exitCrossUtubSearchMode: (...args: unknown[]) =>
@@ -876,6 +883,235 @@ describe("window-events", () => {
       });
       // The recognized `panel` param must not trip the malformed-params redirect.
       expect(assignMock).not.toHaveBeenCalledWith("/error");
+    });
+
+    it("routes to the member deck on mobile for ?UTubID=10&panel=members", async () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=10&panel=members", assign: vi.fn() },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(true);
+      mockIsUtubIdValidOnPageLoad.mockReturnValue(true);
+      const fakeUTub = { id: 10, name: "Member UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
+      expect(
+        mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
+      ).not.toHaveBeenCalled();
+      expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "members",
+      });
+
+      widthSpy.mockRestore();
+    });
+
+    it("does not route to a mobile panel on desktop width for ?UTubID=10&panel=members", async () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=10&panel=members", assign: vi.fn() },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(true);
+      mockIsUtubIdValidOnPageLoad.mockReturnValue(true);
+      const fakeUTub = { id: 10, name: "Member UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      // Desktop shows all panels — no panel-specific mobile routing, no tracking.
+      expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
+      expect(
+        mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
+      ).not.toHaveBeenCalled();
+      expect(mockSetCurrentMobilePanel).not.toHaveBeenCalled();
+
+      widthSpy.mockRestore();
+    });
+
+    it("routes to the recorded panel from warm history.state on mobile", async () => {
+      Object.defineProperty(history, "state", {
+        value: { UTubID: 7, mobilePanel: "members" },
+        writable: true,
+        configurable: true,
+      });
+      const fakeUTub = { id: 7, name: "Warm UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
+      expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "members",
+      });
+
+      widthSpy.mockRestore();
+    });
+
+    it("ignores tagSheetOpen on warm history.state and lands on the url-deck", async () => {
+      Object.defineProperty(history, "state", {
+        value: { UTubID: 7, mobilePanel: "urls", tagSheetOpen: true },
+        writable: true,
+        configurable: true,
+      });
+      const fakeUTub = { id: 7, name: "Warm UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      // Sheet does not auto-reopen on reload — land on the underlying url-deck.
+      expect(
+        mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
+      ).toHaveBeenCalled();
+      expect(mockOpenTagSheet).not.toHaveBeenCalled();
+
+      widthSpy.mockRestore();
+    });
+
+    it("degrades gracefully (no banner) for ?panel=urls with no UTubID (DD-24)", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?panel=urls", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
+      expect(assignMock).not.toHaveBeenCalled();
+      // The plain empty landing has nothing to explain — no banner (DD-33).
+      expect(mockShowURLDeckBannerError).not.toHaveBeenCalled();
+    });
+
+    it("degrades gracefully (no banner) for ?panel=members with no UTubID (DD-24)", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?panel=members", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
+      expect(assignMock).not.toHaveBeenCalled();
+      expect(mockShowURLDeckBannerError).not.toHaveBeenCalled();
+    });
+
+    it("degrades gracefully with a banner for an inaccessible UTubID + panel param (DD-24/DD-33)", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=99999&panel=urls", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(true);
+      mockIsUtubIdValidOnPageLoad.mockReturnValue(false);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetMemberDeckWhenNoUTubSelected).toHaveBeenCalled();
+      expect(mockSetTagDeckSubheaderWhenNoUTubSelected).toHaveBeenCalled();
+      expect(assignMock).not.toHaveBeenCalled();
+      expect(mockShowURLDeckBannerError).toHaveBeenCalledWith(
+        "The UTub you tried to open is no longer available",
+      );
+    });
+
+    it("degrades gracefully with a banner for a syntactically-invalid UTubID + panel param (DD-24/DD-33)", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=abc&panel=urls", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(false);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      expect(mockSetUIWhenNoUTubSelected).toHaveBeenCalled();
+      expect(assignMock).not.toHaveBeenCalled();
+      expect(mockShowURLDeckBannerError).toHaveBeenCalledWith(
+        "The UTub you tried to open is no longer available",
+      );
+    });
+
+    it("still redirects a bare invalid UTubID with no panel to /error (unchanged scope)", () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      const assignMock = vi.fn();
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=99999", assign: assignMock },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(true);
+      mockIsUtubIdValidOnPageLoad.mockReturnValue(false);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      // No panel param → graceful degradation does NOT apply; keep /error.
+      expect(assignMock).toHaveBeenCalledWith("/error");
+      expect(mockShowURLDeckBannerError).not.toHaveBeenCalled();
+      expect(mockSetUIWhenNoUTubSelected).not.toHaveBeenCalled();
     });
 
     it("does not build UTub when getUTubInfo resolves with null/undefined", async () => {
