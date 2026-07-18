@@ -1,14 +1,39 @@
 import {
   bindURLRowSwipeGesture,
+  initSwipe,
+  resetSwipeStateOnDeckSwitch,
   triggerURLSwipeNudgeIfEligible,
   _consumeSwipeClickSuppression,
   _resetURLSwipeGestureForTests,
 } from "../swipe.js";
 import { deleteURLShowModal } from "../delete.js";
+import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { setState, resetStore } from "../../../../store/app-store.js";
 
+// Resettable in-memory event-bus mock (mirrors tags/sheet.test.ts): `on`/`emit`
+// operate against a registry the suite clears in beforeEach, so initSwipe()
+// subscriptions never accumulate across tests and emitting drives the real logic.
+const { busHandlers, resetBus } = vi.hoisted(() => {
+  const handlers = new Map<string, Set<(payload: unknown) => void>>();
+  return {
+    busHandlers: handlers,
+    resetBus: () => handlers.clear(),
+  };
+});
+
 vi.mock("../delete.js", () => ({ deleteURLShowModal: vi.fn() }));
+vi.mock("../../../../lib/event-bus.js", () => ({
+  AppEvents: { MOBILE_DECK_SWITCHED: "mobile:deck-switched" },
+  on: vi.fn((event: string, handler: (payload: unknown) => void) => {
+    if (!busHandlers.has(event)) busHandlers.set(event, new Set());
+    busHandlers.get(event)!.add(handler);
+    return () => busHandlers.get(event)?.delete(handler);
+  }),
+  emit: vi.fn((event: string, payload: unknown) => {
+    busHandlers.get(event)?.forEach((handler) => handler(payload));
+  }),
+}));
 vi.mock("../../../mobile.js", () => ({
   isMobile: vi.fn(() => true),
   isCoarsePointer: vi.fn(() => true),
@@ -152,6 +177,7 @@ describe("swipe gesture", () => {
   beforeEach(() => {
     document.body.innerHTML = "";
     vi.clearAllMocks();
+    resetBus();
     _resetURLSwipeGestureForTests();
     resetStore();
     sessionStorage.removeItem(NUDGE_SESSION_STORAGE_KEY);
@@ -722,6 +748,124 @@ describe("swipe gesture", () => {
       ).toBe("");
       expect(row.hasClass("swipe-nudge-peeking")).toBe(false);
       expect(sessionStorage.getItem(NUDGE_SESSION_STORAGE_KEY)).toBeNull();
+    });
+  });
+
+  describe("deck-switch hardening (MOBILE_DECK_SWITCHED)", () => {
+    // A committed swipe opens #confirmModal via the real _endDrag flow; the
+    // modal-hidden namespace listener needs the element present at commit time.
+    function mountConfirmModal(): JQuery {
+      const modal = $('<div id="confirmModal"></div>');
+      $(document.body).append(modal);
+      return modal;
+    }
+
+    function trackModalHide(): ReturnType<typeof vi.fn> {
+      const modalSpy = vi.fn();
+      ($.fn as unknown as Record<string, unknown>).modal = function (
+        this: JQuery,
+        action: unknown,
+      ) {
+        if (action === "hide") modalSpy();
+        return this;
+      };
+      return modalSpy;
+    }
+
+    function commitSwipe(rowElement: HTMLElement): void {
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 60 });
+      dispatchPointer({ target: rowElement, type: "pointerup", clientX: 60 });
+    }
+
+    it("resetSwipeStateOnDeckSwitch clears an in-flight drag: transform/classes cleared and drag state nulled", () => {
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 50 });
+      expect(row.hasClass("swipe-dragging")).toBe(true);
+
+      resetSwipeStateOnDeckSwitch();
+
+      expect(row.hasClass("swipe-dragging")).toBe(false);
+      expect(row.hasClass("swipe-committed")).toBe(false);
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+      // A subsequent stray move for the (now-dead) drag does nothing.
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 20 });
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+    });
+
+    it("resetSwipeStateOnDeckSwitch is a guarded no-op when no drag is in flight", () => {
+      expect(() => resetSwipeStateOnDeckSwitch()).not.toThrow();
+    });
+
+    it("initSwipe: a MOBILE_DECK_SWITCHED emit tears down a live drag", () => {
+      initSwipe();
+      const row = mountURLRow();
+      const rowElement = row[0];
+
+      dispatchPointer({
+        target: rowElement,
+        type: "pointerdown",
+        clientX: 100,
+      });
+      dispatchPointer({ target: rowElement, type: "pointermove", clientX: 50 });
+      expect(row.hasClass("swipe-dragging")).toBe(true);
+
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+
+      expect(row.hasClass("swipe-dragging")).toBe(false);
+      expect(
+        (row.find(".urlRowContent")[0] as HTMLElement).style.transform,
+      ).toBe("");
+    });
+
+    it("initSwipe: a MOBILE_DECK_SWITCHED emit dismisses #confirmModal when this swipe opened it", () => {
+      mountConfirmModal();
+      const modalSpy = trackModalHide();
+      initSwipe();
+      const row = mountURLRow();
+
+      commitSwipe(row[0]);
+      expect(deleteURLShowModal).toHaveBeenCalledTimes(1);
+      modalSpy.mockClear();
+
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "utub-deck" });
+
+      expect(modalSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("initSwipe: a MOBILE_DECK_SWITCHED emit leaves an unrelated #confirmModal (opened by another flow) alone", () => {
+      mountConfirmModal();
+      const modalSpy = trackModalHide();
+      initSwipe();
+      // No swipe committed, so _confirmModalOpenedBySwipe stays false — the modal
+      // is treated as belonging to another flow (e.g. UTub-delete confirm).
+
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "member-deck" });
+
+      expect(modalSpy).not.toHaveBeenCalled();
+    });
+
+    it("initSwipe registers the MOBILE_DECK_SWITCHED listener exactly once (idempotent on repeated calls)", () => {
+      expect(busHandlers.get("mobile:deck-switched")).toBeUndefined();
+      initSwipe();
+      initSwipe();
+      initSwipe();
+      expect(busHandlers.get("mobile:deck-switched")?.size).toBe(1);
     });
   });
 });

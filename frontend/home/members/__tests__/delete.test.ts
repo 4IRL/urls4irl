@@ -3,60 +3,45 @@ import {
   createMockXhr,
 } from "../../../__tests__/helpers/mock-jquery.js";
 import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
+import { getNumOfUTubs } from "../../utubs/utils.js";
 import {
   hideInputsAndUpdateUTubDeck,
   resetUTubDeckIfNoUTubs,
-} from "../deck.js";
-import { getNumOfUTubs } from "../utils.js";
+} from "../../utubs/deck.js";
 import { getState, setState } from "../../../store/app-store.js";
-import { applyAlternatingUTubSelectorBackground } from "../search.js";
 import { closeTagSheet, isTagSheetOpen } from "../../tags/sheet.js";
 import { TAG_SHEET_TOGGLE_TRIGGER } from "../../../types/metrics-dim-values.js";
-import { setDeleteEventListeners } from "../delete.js";
+import { leaveUTubSuccess, removeMemberShowModal } from "../delete.js";
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
 }));
-vi.mock("../deck.js", () => ({
-  resetUTubDeckIfNoUTubs: vi.fn(),
-  hideInputsAndUpdateUTubDeck: vi.fn(),
+vi.mock("../../utub-locked.js", () => ({
+  isUtubLockedHandled: vi.fn(() => false),
 }));
-vi.mock("../utils.js", () => ({
-  getNumOfUTubs: vi.fn(() => 0),
-  updateUTubDeckCount: vi.fn(),
-}));
-vi.mock("../search.js", () => ({
-  applyAlternatingUTubSelectorBackground: vi.fn(),
-  resetUTubSearch: vi.fn(),
-}));
+vi.mock("../../../lib/metrics-client.js", () => ({ emit: vi.fn() }));
+vi.mock("../deck.js", () => ({ setMemberDeckForUTub: vi.fn() }));
 vi.mock("../../btns-forms.js", () => ({ hideInputs: vi.fn() }));
+vi.mock("../../urls/cards/selection.js", () => ({ deselectAllURLs: vi.fn() }));
+vi.mock("../../utubs/utils.js", () => ({ getNumOfUTubs: vi.fn(() => 0) }));
+vi.mock("../../utubs/deck.js", () => ({
+  hideInputsAndUpdateUTubDeck: vi.fn(),
+  resetUTubDeckIfNoUTubs: vi.fn(),
+}));
 vi.mock("../../init.js", () => ({ setUIWhenNoUTubSelected: vi.fn() }));
 vi.mock("../../tags/sheet.js", () => ({
   isTagSheetOpen: vi.fn(() => false),
   closeTagSheet: vi.fn(),
 }));
-vi.mock("../../mobile.js", () => ({
-  isMobile: vi.fn(() => false),
-  setMobileUIWhenUTubNotSelectedOrUTubDeleted: vi.fn(),
-}));
-vi.mock("../../../lib/event-bus.js", async () => {
-  const actual = await vi.importActual<
-    typeof import("../../../lib/event-bus.js")
-  >("../../../lib/event-bus.js");
-  return {
-    ...actual,
-    emit: vi.fn(),
-  };
-});
 vi.mock("../../../store/app-store.js", () => ({
-  getState: vi.fn(() => ({ utubs: [] })),
+  getState: vi.fn(() => ({ members: [] })),
   setState: vi.fn(),
 }));
 
 const $ = window.jQuery;
 
-const DELETE_UTUB_HTML = `
+const LEAVE_UTUB_HTML = `
   <div id="confirmModal">
     <div id="confirmModalTitle"></div>
     <div id="confirmModalBody"></div>
@@ -64,38 +49,41 @@ const DELETE_UTUB_HTML = `
     <button id="modalSubmit"></button>
     <div id="modalRedirect"></div>
   </div>
-  <button id="utubBtnDelete"></button>
-  <button id="utubTagBtnCreate"></button>
   <div id="listUTubs">
     <div class="UTubSelector" utubid="42"></div>
   </div>
 `;
 
-describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
+function installJqueryOverrides(): void {
+  ($.fn as unknown as Record<string, unknown>).modal = function (this: JQuery) {
+    return this;
+  };
+  // Override fadeOut so the post-fade callback fires synchronously.
+  ($.fn as unknown as Record<string, unknown>).fadeOut = function (
+    this: JQuery,
+    _duration: unknown,
+    callback?: () => void,
+  ) {
+    if (typeof callback === "function") callback();
+    return this;
+  };
+}
+
+describe("leaveUTubSuccess — indirect via removeMemberShowModal + ajax success", () => {
   beforeEach(() => {
-    document.body.innerHTML = DELETE_UTUB_HTML;
+    document.body.innerHTML = LEAVE_UTUB_HTML;
     vi.clearAllMocks();
-    ($.fn as unknown as Record<string, unknown>).modal = function (
-      this: JQuery,
-    ) {
-      return this;
-    };
-    // Override fadeOut so the post-fade callback fires synchronously
-    ($.fn as unknown as Record<string, unknown>).fadeOut = function (
-      this: JQuery,
-      _duration: unknown,
-      callback?: () => void,
-    ) {
-      if (typeof callback === "function") callback();
-      return this;
-    };
+    installJqueryOverrides();
     vi.mocked(is429Handled).mockReturnValue(false);
     vi.mocked(getState).mockReturnValue({
-      utubs: [{ id: 42 }],
+      members: [],
     } as unknown as ReturnType<typeof getState>);
   });
 
-  function triggerDeleteSubmit(utubID: number): void {
+  // Drives the full remove-member confirm flow for a non-creator (leave) with a
+  // mocked ajax success, so leaveUTubSuccess fires as a side effect — mirroring
+  // utubs/__tests__/delete.test.ts's indirect pattern.
+  function triggerLeaveSubmit(utubID: number): void {
     const successXhr = createMockXhr({ status: 200 });
     const chainable = createMockJqXHRChainable({
       done: (cb: unknown) => {
@@ -110,37 +98,34 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
     });
     vi.mocked(ajaxCall).mockReturnValue(chainable);
 
-    setDeleteEventListeners(utubID);
-    $("#utubBtnDelete").trigger("click.deleteUTub");
+    // memberID irrelevant for the leave path; isCreator=false routes to leaveUTubSuccess.
+    removeMemberShowModal(9, false, utubID);
     $("#modalSubmit").trigger("click");
   }
 
   it("calls resetUTubDeckIfNoUTubs and skips hideInputsAndUpdateUTubDeck when no UTubs remain", () => {
     vi.mocked(getNumOfUTubs).mockReturnValue(0);
 
-    triggerDeleteSubmit(42);
+    triggerLeaveSubmit(42);
 
     expect(vi.mocked(resetUTubDeckIfNoUTubs)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(hideInputsAndUpdateUTubDeck)).not.toHaveBeenCalled();
-    expect(setState).toHaveBeenCalled();
+    expect(setState).toHaveBeenCalledWith({ activeUTubID: null });
   });
 
   it("calls hideInputsAndUpdateUTubDeck and skips resetUTubDeckIfNoUTubs when UTubs remain", () => {
     vi.mocked(getNumOfUTubs).mockReturnValue(2);
 
-    triggerDeleteSubmit(42);
+    triggerLeaveSubmit(42);
 
     expect(vi.mocked(hideInputsAndUpdateUTubDeck)).toHaveBeenCalledTimes(1);
     expect(vi.mocked(resetUTubDeckIfNoUTubs)).not.toHaveBeenCalled();
-    expect(
-      vi.mocked(applyAlternatingUTubSelectorBackground),
-    ).toHaveBeenCalled();
   });
 
-  it("closes an open tag sheet (default reconciliation) before the history push (DD-11)", () => {
+  it("closes an open tag sheet before the history push (DD-11)", () => {
     vi.mocked(isTagSheetOpen).mockReturnValue(true);
 
-    triggerDeleteSubmit(42);
+    triggerLeaveSubmit(42);
 
     expect(closeTagSheet).toHaveBeenCalledTimes(1);
     expect(closeTagSheet).toHaveBeenCalledWith({
@@ -148,13 +133,35 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
       trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
     });
   });
+});
+
+describe("leaveUTubSuccess — direct call (DD-25): tag-sheet reconciliation + ordering", () => {
+  beforeEach(() => {
+    document.body.innerHTML = LEAVE_UTUB_HTML;
+    vi.clearAllMocks();
+    installJqueryOverrides();
+    vi.mocked(getState).mockReturnValue({
+      members: [],
+    } as unknown as ReturnType<typeof getState>);
+  });
 
   it("does not close the tag sheet when it is already closed (DD-11)", () => {
     vi.mocked(isTagSheetOpen).mockReturnValue(false);
 
-    triggerDeleteSubmit(42);
+    leaveUTubSuccess(42);
 
     expect(closeTagSheet).not.toHaveBeenCalled();
+  });
+
+  it("closes an open tag sheet with the default reconciliation (DD-11)", () => {
+    vi.mocked(isTagSheetOpen).mockReturnValue(true);
+
+    leaveUTubSuccess(42);
+
+    expect(closeTagSheet).toHaveBeenCalledWith({
+      returnFocus: false,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
   });
 
   it("consumes the sheet's entry via history.back() BEFORE the setTimeout push/replace pair (DD-29, real timers)", async () => {
@@ -180,7 +187,7 @@ describe("deleteUTubSuccess - last-delete UTub deck dispatch", () => {
       .mockImplementation(() => {});
 
     try {
-      triggerDeleteSubmit(42);
+      leaveUTubSuccess(42);
       // Let both macrotasks run: the history.back() traversal and the
       // pre-existing setTimeout(0) push/replace pair.
       await new Promise((resolve) => setTimeout(resolve, 0));

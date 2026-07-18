@@ -564,6 +564,30 @@ describe("window-events", () => {
 
         replaceStateSpy.mockRestore();
       });
+
+      it("self-heals a stale tag-sheet entry for a since-deleted/left UTub via the reset path, without reopening the sheet (DD-26)", () => {
+        // Simulates the narrow slow-fadeOut window where a tag-sheet history
+        // entry survives a delete/leave: the next Back to it fails the existing
+        // isUtubIdValidFromStateAccess check and self-heals via the pre-plan
+        // replaceState(null, "", "/home") + resetHomePageToInitialState path.
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(false);
+        mockOpenTagSheet.mockClear();
+        const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 314, mobilePanel: "urls", tagSheetOpen: true },
+        });
+        popstateHandler!(event);
+
+        expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/home");
+        expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+        // The stale entry self-heals rather than trying to reopen a deleted
+        // UTub's sheet.
+        expect(mockOpenTagSheet).not.toHaveBeenCalled();
+        expect(mockEndPopstateClose).toHaveBeenCalled();
+
+        replaceStateSpy.mockRestore();
+      });
     });
 
     describe("Back FROM an open sheet TO a non-sheet entry (DD-31/DD-32)", () => {

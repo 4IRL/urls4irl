@@ -11,9 +11,11 @@ import {
   setMobileUIWhenUTubNotSelectedOrUTubDeleted,
 } from "../mobile.js";
 import { setUIWhenNoUTubSelected } from "../init.js";
+import { closeTagSheet, isTagSheetOpen } from "../tags/sheet.js";
 import { hideInputsAndUpdateUTubDeck, resetUTubDeckIfNoUTubs } from "./deck.js";
 import { emit, AppEvents } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
+import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { getNumOfUTubs, updateUTubDeckCount } from "./utils.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -132,6 +134,15 @@ function deleteUTubSuccess(utubID: number): void {
 
   // Update UTub Deck
   const utubSelector = $(".UTubSelector[utubid=" + utubID + "]");
+
+  // Consume the tag sheet's own history entry (via history.back()) while it is
+  // still on top of the stack, BEFORE the pushState/replaceState pair below —
+  // otherwise the sheet's entry is orphaned under the freshly-pushed /home entry.
+  if (isTagSheetOpen())
+    closeTagSheet({
+      returnFocus: false,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
 
   setTimeout(function () {
     window.history.pushState(null, "", "/home");
