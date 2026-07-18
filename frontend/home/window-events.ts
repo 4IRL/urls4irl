@@ -32,7 +32,17 @@ import {
 import {
   CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
   MOBILE_NAV_TRIGGER,
+  TAG_SHEET_TOGGLE_TRIGGER,
 } from "../types/metrics-dim-values.js";
+import {
+  openTagSheet,
+  closeTagSheet,
+  isTagSheetOpen,
+  getTagSheetOriginPanel,
+  beginPopstateClose,
+  endPopstateClose,
+  consumeTagSheetSelfBackClose,
+} from "./tags/sheet.js";
 import type { MatchedField } from "../types/search.js";
 import { debug } from "../lib/debug.js";
 
@@ -73,11 +83,50 @@ export function initWindowEvents(): void {
   window.addEventListener("pageshow", handlePageShow);
 }
 
+/**
+ * Close an open tag sheet when Back/Forward pops FROM a sheet-open entry TO a
+ * non-sheet entry (DD-31). Runs inside the popstate-close bracket, so
+ * closeTagSheet() skips its own history traversal — this handler owns it.
+ * Focus target depends on whether the panel Back landed on matches the panel the
+ * sheet was opened over: same-panel returns focus to the opener/handle;
+ * cross-panel (neither is guaranteed visible) falls back to the navbar landmark.
+ */
+function closeTagSheetForPopstateNav({
+  poppedToPanel,
+  suppressAnnouncement,
+}: {
+  poppedToPanel: MobilePanel;
+  suppressAnnouncement: boolean;
+}): void {
+  if (!isTagSheetOpen()) return;
+  const samePanel = poppedToPanel === getTagSheetOriginPanel();
+  closeTagSheet({
+    returnFocus: samePanel,
+    focusLandmark: !samePanel,
+    suppressAnnouncement,
+    trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+  });
+}
+
 function handlePopState(event: PopStateEvent): void {
+  // A standalone tap/Escape/backdrop close of the tag sheet consumes its own
+  // pushed history entry via closeTagSheet()'s default history.back(). That
+  // traversal fires this popstate purely to unwind the stack — the underlying
+  // UTub and panel are unchanged, and their active tag filter must survive.
+  // Recognize + swallow that self-close pop here (consume-once) so it never
+  // rebuilds the UTub, which would reset selectedTagIDs and wipe the filter.
+  // Genuine Back/Forward navigations leave the flag false and fall through.
+  if (consumeTagSheetSelfBackClose()) return;
+
   const generation = ++_popstateGeneration;
+  // Bracket the FULL invocation (DD-19): any closeTagSheet() this handler
+  // triggers — directly (DD-31) or via a synchronous UTUB_SELECTED listener
+  // fired from inside buildSelectedUTub — must skip its own history.back().
+  beginPopstateClose();
   const state = event.state as
     | { UTubID: number }
     | { UTubID: number; mobilePanel: MobilePanel }
+    | { UTubID: number; mobilePanel: MobilePanel; tagSheetOpen: true }
     | { crossSearch: { query: string; fields: MatchedField[] } }
     | null;
 
@@ -85,6 +134,7 @@ function handlePopState(event: PopStateEvent): void {
   // the saved query (see pushCrossUtubSearchHistoryState in cross-utub-search).
   if (state !== null && "crossSearch" in state) {
     restoreCrossUtubSearchFromHistory(state.crossSearch);
+    endPopstateClose();
     return;
   }
 
@@ -96,10 +146,57 @@ function handlePopState(event: PopStateEvent): void {
     });
   }
 
+  // Sheet-open entry restore. Checked BEFORE the mobilePanel branch (a
+  // tagSheetOpen entry also carries mobilePanel:"urls"). Rebuild the UTub — its
+  // UTUB_SELECTED emit routes the underlying url-deck via mobile.ts's listener —
+  // then reopen the sheet directly (bare openTagSheet, no push: a restore is not
+  // a navigation, and openTagSheet's own _openedViaHistoryPush bookkeeping
+  // re-arms reconciliation for this restored entry).
+  if (state !== null && "tagSheetOpen" in state) {
+    if (!isUtubIdValidFromStateAccess(state.UTubID)) {
+      log(
+        "popstate: tagSheetOpen target UTubID no longer accessible — resetting to /home",
+        { utubID: state.UTubID },
+      );
+      window.history.replaceState(null, "", "/home");
+      resetHomePageToInitialState();
+      endPopstateClose();
+      return;
+    }
+
+    getUTubInfo(state.UTubID).then(
+      (selectedUTub) => {
+        if (generation !== _popstateGeneration) return;
+        if (selectedUTub) {
+          buildSelectedUTub(selectedUTub);
+          if (($(window).width() ?? 0) < TABLET_WIDTH) {
+            setCurrentMobilePanel({ mobilePanel: "urls" });
+            openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV });
+          }
+        }
+        endPopstateClose();
+      },
+      () => {
+        if (generation !== _popstateGeneration) return;
+        resetHomePageToInitialState();
+        endPopstateClose();
+      },
+    );
+    return;
+  }
+
   // Merged `{ UTubID, mobilePanel }` entry (pushed by a mobile deck-switch tap
   // or the freshly-selected-UTub replace). Restore the UTub, then route to the
   // recorded panel. This is a restore, not a navigation — no push here.
   if (state !== null && "mobilePanel" in state) {
+    // Popping FROM an open sheet TO this panel entry: close the sheet (DD-31).
+    // A mobilePanel destination always sets #MobilePanelAnnouncement below, so
+    // suppress the competing tag-sheet close announcement (DD-32).
+    closeTagSheetForPopstateNav({
+      poppedToPanel: state.mobilePanel,
+      suppressAnnouncement: true,
+    });
+
     if (!isUtubIdValidFromStateAccess(state.UTubID)) {
       log(
         "popstate: mobilePanel target UTubID no longer accessible — resetting to /home",
@@ -107,6 +204,7 @@ function handlePopState(event: PopStateEvent): void {
       );
       window.history.replaceState(null, "", "/home");
       resetHomePageToInitialState();
+      endPopstateClose();
       return;
     }
 
@@ -115,46 +213,57 @@ function handlePopState(event: PopStateEvent): void {
       (selectedUTub) => {
         // Gate the entire callback: a stale/superseded popstate must not apply.
         if (generation !== _popstateGeneration) return;
-        if (!selectedUTub) return;
-        buildSelectedUTub(selectedUTub);
-        // Route to the recorded panel only on mobile — desktop shows all panels.
-        if (($(window).width() ?? 0) < TABLET_WIDTH) {
-          switch (mobilePanel) {
-            case "utubs":
-              setMobileUIWhenUTubDeckSelected();
-              break;
-            case "members":
-              setMobileUIWhenMemberDeckSelected();
-              break;
-            case "urls":
-            default:
-              setMobileUIWhenUTubSelectedOrURLNavSelected();
-              break;
+        if (selectedUTub) {
+          buildSelectedUTub(selectedUTub);
+          // Route to the recorded panel only on mobile — desktop shows all panels.
+          if (($(window).width() ?? 0) < TABLET_WIDTH) {
+            switch (mobilePanel) {
+              case "utubs":
+                setMobileUIWhenUTubDeckSelected();
+                break;
+              case "members":
+                setMobileUIWhenMemberDeckSelected();
+                break;
+              case "urls":
+              default:
+                setMobileUIWhenUTubSelectedOrURLNavSelected();
+                break;
+            }
+            setCurrentMobilePanel({ mobilePanel });
+            // History-nav panel switches are not visually obvious to a screen
+            // reader (no tap), so announce them. Tap-driven switches never set this.
+            $("#MobilePanelAnnouncement").text(
+              announcementForMobilePanel({ mobilePanel }),
+            );
+            emit({
+              event: UI_EVENTS.UI_MOBILE_NAV,
+              target: mobilePanel,
+              trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
+            });
           }
-          setCurrentMobilePanel({ mobilePanel });
-          // History-nav panel switches are not visually obvious to a screen
-          // reader (no tap), so announce them. Tap-driven switches never set this.
-          $("#MobilePanelAnnouncement").text(
-            announcementForMobilePanel({ mobilePanel }),
-          );
-          emit({
-            event: UI_EVENTS.UI_MOBILE_NAV,
-            target: mobilePanel,
-            trigger: MOBILE_NAV_TRIGGER.HISTORY_NAV,
-          });
         }
+        endPopstateClose();
       },
       () => {
         // Stale-guard the reject path too: a superseded popstate whose fetch
         // rejects after a newer one resolved must not reset and clobber it.
         if (generation !== _popstateGeneration) return;
         resetHomePageToInitialState();
+        endPopstateClose();
       },
     );
     return;
   }
 
   if (state !== null && "UTubID" in state) {
+    // Popping FROM an open sheet TO a legacy bare-`UTubID` entry: close the
+    // sheet (DD-31). Bare entries default to the url-deck and carry no competing
+    // #MobilePanelAnnouncement, so the sheet's own close text still fires (DD-32).
+    closeTagSheetForPopstateNav({
+      poppedToPanel: "urls",
+      suppressAnnouncement: false,
+    });
+
     if (!isUtubIdValidFromStateAccess(state.UTubID)) {
       // Handle when a user previously went back to a now deleted UTub
       log("popstate: target UTubID no longer accessible — resetting to /home", {
@@ -162,6 +271,7 @@ function handlePopState(event: PopStateEvent): void {
       });
       window.history.replaceState(null, "", "/home");
       resetHomePageToInitialState();
+      endPopstateClose();
       return;
     }
 
@@ -171,23 +281,27 @@ function handlePopState(event: PopStateEvent): void {
         // Same stale-result guard as the mobilePanel branch above — this
         // pre-existing branch shares the identical async race.
         if (generation !== _popstateGeneration) return;
-        if (!selectedUTub) return;
-        buildSelectedUTub(selectedUTub);
-        // If mobile, go straight to URL deck
-        if (($(window).width() ?? 0) < TABLET_WIDTH) {
-          setMobileUIWhenUTubSelectedOrURLNavSelected();
+        if (selectedUTub) {
+          buildSelectedUTub(selectedUTub);
+          // If mobile, go straight to URL deck
+          if (($(window).width() ?? 0) < TABLET_WIDTH) {
+            setMobileUIWhenUTubSelectedOrURLNavSelected();
+          }
         }
+        endPopstateClose();
       },
       () => {
         // Stale-guard the reject path too: a superseded popstate whose fetch
         // rejects after a newer one resolved must not reset and clobber it.
         if (generation !== _popstateGeneration) return;
         resetHomePageToInitialState();
+        endPopstateClose();
       },
     );
   } else {
     // If does not contain query parameter, user is at /home - then update UTub titles/IDs
     resetHomePageToInitialState();
+    endPopstateClose();
   }
 }
 

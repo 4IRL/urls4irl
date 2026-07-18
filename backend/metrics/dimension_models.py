@@ -220,6 +220,7 @@ class _DimTagDeleteCancel(UIBaseDimensions):
 
 class _DimTagSheetToggle(UIBaseDimensions):
     action: Literal["open", "close"]
+    trigger: Literal["tap", "history_nav"]
 
 
 class _DimFormSubmit(UIBaseDimensions):

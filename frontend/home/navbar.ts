@@ -11,7 +11,7 @@ import {
   type MobilePanel,
 } from "./mobile.js";
 import { getState } from "../store/app-store.js";
-import { openTagSheet } from "./tags/sheet.js";
+import { openTagSheetFromUserAction } from "./tags/sheet.js";
 import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
@@ -111,7 +111,7 @@ export function initNavbar(): void {
     // marks #mainPanel siblings inert (a still-open Bootstrap collapse would
     // otherwise desync and become unreopenable). Then open the sheet over it.
     setMobileUIWhenUTubSelectedOrURLNavSelected();
-    openTagSheet();
+    openTagSheetFromUserAction();
   });
 
   // "Return Home" inside the hamburger — only visible while cross-UTub search is

@@ -145,6 +145,7 @@ export type DimTagDeleteCancel = {
 export type DimTagSheetToggle = {
   device_type: DeviceType;
   action: "open" | "close";
+  trigger: "tap" | "history_nav";
 };
 
 export type DimFormSubmit = {

@@ -169,6 +169,8 @@ export const TAG_SHEET_TOGGLE_ACTION = {
   CLOSE: "close",
 } as const;
 
+export const TAG_SHEET_TOGGLE_TRIGGER = MOBILE_NAV_TRIGGER;
+
 export const URL_ACCESS_TRIGGER = {
   CORNER_BUTTON: "corner_button",
   URL_TEXT: "url_text",

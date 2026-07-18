@@ -36,6 +36,11 @@
     </div>
     <!-- End Center Panel -->
 
+    <!-- Screen-reader announcement for history-nav (Back/Forward) tag-sheet
+         open/close. Kept OUTSIDE #tagSheetViewport/#tagDeckSheet so it is never
+         hidden by the sheet's open/close class toggles or refreshTagSheetAvailability. -->
+    <span id="TagSheetAnnouncement" class="visually-hidden" aria-live="polite"></span>
+
     <!-- Mobile Tag filter bottom sheet (mobile-only; #TagDeck relocated into the body by JS) -->
     <div id="tagSheetBackdrop" class="tag-sheet-backdrop"></div>
     <!-- Clipping viewport: spans navbar-bottom to footer-top so the sheet sliding

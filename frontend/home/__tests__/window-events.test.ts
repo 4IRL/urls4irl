@@ -1,6 +1,7 @@
 import {
   CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
   MOBILE_NAV_TRIGGER,
+  TAG_SHEET_TOGGLE_TRIGGER,
 } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { initWindowEvents } from "../window-events.js";
@@ -24,6 +25,13 @@ const mockExitCrossUtubSearchMode = vi.fn();
 const mockIsCrossUtubSearchActive = vi.fn(() => false);
 const mockRestoreCrossUtubSearchFromHistory = vi.fn();
 const mockEmit = vi.fn();
+const mockOpenTagSheet = vi.fn();
+const mockCloseTagSheet = vi.fn();
+const mockIsTagSheetOpen = vi.fn(() => false);
+const mockGetTagSheetOriginPanel = vi.fn<() => string | null>(() => null);
+const mockBeginPopstateClose = vi.fn();
+const mockEndPopstateClose = vi.fn();
+const mockConsumeTagSheetSelfBackClose = vi.fn(() => false);
 
 vi.mock("../../lib/config.js", () => ({
   APP_CONFIG: {
@@ -94,6 +102,15 @@ vi.mock("../search/cross-utub-search.js", () => ({
   restoreCrossUtubSearchFromHistory: (...args: unknown[]) =>
     mockRestoreCrossUtubSearchFromHistory(...args),
 }));
+vi.mock("../tags/sheet.js", () => ({
+  openTagSheet: (...args: unknown[]) => mockOpenTagSheet(...args),
+  closeTagSheet: (...args: unknown[]) => mockCloseTagSheet(...args),
+  isTagSheetOpen: () => mockIsTagSheetOpen(),
+  getTagSheetOriginPanel: () => mockGetTagSheetOriginPanel(),
+  beginPopstateClose: (...args: unknown[]) => mockBeginPopstateClose(...args),
+  endPopstateClose: (...args: unknown[]) => mockEndPopstateClose(...args),
+  consumeTagSheetSelfBackClose: () => mockConsumeTagSheetSelfBackClose(),
+}));
 
 const $ = window.jQuery;
 
@@ -107,6 +124,9 @@ describe("window-events", () => {
     // clearAllMocks does not reset implementations set via vi.fn(impl), but it
     // also does not reset a later .mockReturnValue — pin the default each test.
     mockIsCrossUtubSearchActive.mockReturnValue(false);
+    mockIsTagSheetOpen.mockReturnValue(false);
+    mockGetTagSheetOriginPanel.mockReturnValue(null);
+    mockConsumeTagSheetSelfBackClose.mockReturnValue(false);
     popstateHandler = undefined;
     pageshowHandler = undefined;
 
@@ -152,6 +172,25 @@ describe("window-events", () => {
       popstateHandler!(event);
 
       expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+    });
+
+    it("swallows the self-initiated tag-sheet back-close popstate without rebuilding", () => {
+      // The tap-close's own history.back() arms the self-close flag; the
+      // resulting popstate must be a no-op — no UTub rebuild (which would reset
+      // selectedTagIDs and wipe the active tag filter), no bracket, no reset.
+      mockConsumeTagSheetSelfBackClose.mockReturnValue(true);
+      mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+      mockGetUTubInfo.mockResolvedValue({ id: 5, name: "Filtered UTub" });
+
+      const event = new PopStateEvent("popstate", {
+        state: { UTubID: 5, mobilePanel: "urls" },
+      });
+      popstateHandler!(event);
+
+      expect(mockBuildSelectedUTub).not.toHaveBeenCalled();
+      expect(mockGetUTubInfo).not.toHaveBeenCalled();
+      expect(mockBeginPopstateClose).not.toHaveBeenCalled();
+      expect(mockResetHomePageToInitialState).not.toHaveBeenCalled();
     });
 
     it("fetches and builds UTub when state has a valid UTubID", async () => {
@@ -449,6 +488,158 @@ describe("window-events", () => {
         expect(mockBuildSelectedUTub).not.toHaveBeenCalledWith(olderUTub);
         expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
         expect(mockSetMobileUIWhenUTubDeckSelected).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+    });
+
+    describe("{ tagSheetOpen } restore branch", () => {
+      it("restores the sheet directly (mobile): openTagSheet with HISTORY_NAV, no deck-switch routers", async () => {
+        const fakeUTub = { id: 5, name: "Sheet UTub" };
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue(fakeUTub);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 5, mobilePanel: "urls", tagSheetOpen: true },
+        });
+        popstateHandler!(event);
+
+        expect(mockBeginPopstateClose).toHaveBeenCalledTimes(1);
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        });
+        expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
+          mobilePanel: "urls",
+        });
+        expect(mockOpenTagSheet).toHaveBeenCalledWith({
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+        });
+        // Restore bypasses the deck-switch routers (would auto-close the sheet).
+        expect(mockSetMobileUIWhenUTubDeckSelected).not.toHaveBeenCalled();
+        expect(mockSetMobileUIWhenMemberDeckSelected).not.toHaveBeenCalled();
+        expect(mockEndPopstateClose).toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("rebuilds the UTub but does not reopen the sheet on desktop", async () => {
+        const fakeUTub = { id: 5, name: "Sheet UTub" };
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue(fakeUTub);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(1200);
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 5, mobilePanel: "urls", tagSheetOpen: true },
+        });
+        popstateHandler!(event);
+
+        await vi.waitFor(() => {
+          expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+        });
+        expect(mockOpenTagSheet).not.toHaveBeenCalled();
+
+        widthSpy.mockRestore();
+      });
+
+      it("replaces state and resets when the sheet entry's UTubID is invalid", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(false);
+        const replaceStateSpy = vi.spyOn(window.history, "replaceState");
+
+        const event = new PopStateEvent("popstate", {
+          state: { UTubID: 999, mobilePanel: "urls", tagSheetOpen: true },
+        });
+        popstateHandler!(event);
+
+        expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/home");
+        expect(mockResetHomePageToInitialState).toHaveBeenCalled();
+        expect(mockEndPopstateClose).toHaveBeenCalled();
+
+        replaceStateSpy.mockRestore();
+      });
+    });
+
+    describe("Back FROM an open sheet TO a non-sheet entry (DD-31/DD-32)", () => {
+      it("same-panel close: returnFocus true, focusLandmark false, suppressAnnouncement true", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue({ id: 5, name: "UTub" });
+        mockIsTagSheetOpen.mockReturnValue(true);
+        mockGetTagSheetOriginPanel.mockReturnValue("urls");
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        popstateHandler!(
+          new PopStateEvent("popstate", {
+            state: { UTubID: 5, mobilePanel: "urls" },
+          }),
+        );
+
+        expect(mockCloseTagSheet).toHaveBeenCalledWith({
+          returnFocus: true,
+          focusLandmark: false,
+          suppressAnnouncement: true,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+        });
+
+        widthSpy.mockRestore();
+      });
+
+      it("cross-panel close: returnFocus false, focusLandmark true, suppressAnnouncement true", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue({ id: 5, name: "UTub" });
+        mockIsTagSheetOpen.mockReturnValue(true);
+        mockGetTagSheetOriginPanel.mockReturnValue("urls");
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        popstateHandler!(
+          new PopStateEvent("popstate", {
+            state: { UTubID: 5, mobilePanel: "members" },
+          }),
+        );
+
+        expect(mockCloseTagSheet).toHaveBeenCalledWith({
+          returnFocus: false,
+          focusLandmark: true,
+          suppressAnnouncement: true,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+        });
+
+        widthSpy.mockRestore();
+      });
+
+      it("legacy bare-UTubID destination close: suppressAnnouncement false (no competing panel announcement)", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue({ id: 5, name: "UTub" });
+        mockIsTagSheetOpen.mockReturnValue(true);
+        mockGetTagSheetOriginPanel.mockReturnValue("urls");
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        popstateHandler!(
+          new PopStateEvent("popstate", { state: { UTubID: 5 } }),
+        );
+
+        expect(mockCloseTagSheet).toHaveBeenCalledWith({
+          returnFocus: true,
+          focusLandmark: false,
+          suppressAnnouncement: false,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+        });
+
+        widthSpy.mockRestore();
+      });
+
+      it("does not close the sheet when it is not open", () => {
+        mockIsUtubIdValidFromStateAccess.mockReturnValue(true);
+        mockGetUTubInfo.mockResolvedValue({ id: 5, name: "UTub" });
+        mockIsTagSheetOpen.mockReturnValue(false);
+        const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+        popstateHandler!(
+          new PopStateEvent("popstate", {
+            state: { UTubID: 5, mobilePanel: "members" },
+          }),
+        );
+
+        expect(mockCloseTagSheet).not.toHaveBeenCalled();
 
         widthSpy.mockRestore();
       });

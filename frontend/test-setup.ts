@@ -95,6 +95,7 @@ const appConfig = {
     // Source of truth: backend/metrics/dimension_models.py (DIMENSION_MODELS registry).
     // — keep this array in sync when DIMENSION_MODELS changes.
     DIMENSION_KEYS: [
+      "action",
       "active_tag_count",
       "deck",
       "device_type",
@@ -133,6 +134,8 @@ const appConfig = {
     TAG_SEARCH_PLACEHOLDER: "Filter tags",
     TAG_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} tags shown",
     TAG_DECK_NO_TAGS: "This UTub has no tags yet",
+    TAG_SHEET_ANNOUNCEMENT_OPEN: "Tag filter sheet opened",
+    TAG_SHEET_ANNOUNCEMENT_CLOSE: "Tag filter sheet closed",
     ADD_TAGS_PLACEHOLDER: "Type to search or create tags…",
     ADD_TAGS_SUBMIT: "Add tags",
     ADD_TAGS_ARIA_LABEL: "Add tags",

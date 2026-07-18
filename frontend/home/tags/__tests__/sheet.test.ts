@@ -1,6 +1,12 @@
 import {
   initTagSheet,
   openTagSheet,
+  openTagSheetFromUserAction,
+  pushTagSheetHistoryState,
+  getTagSheetOriginPanel,
+  beginPopstateClose,
+  endPopstateClose,
+  consumeTagSheetSelfBackClose,
   closeTagSheet,
   toggleTagSheet,
   relocateTagDeckForViewport,
@@ -8,7 +14,10 @@ import {
   isTagSheetOpen,
   _resetTagSheetGestureForTests,
 } from "../sheet.js";
-import { TAG_SHEET_TOGGLE_ACTION } from "../../../types/metrics-dim-values.js";
+import {
+  TAG_SHEET_TOGGLE_ACTION,
+  TAG_SHEET_TOGGLE_TRIGGER,
+} from "../../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -49,6 +58,12 @@ vi.mock("../../../lib/event-bus.js", () => ({
 }));
 
 vi.mock("../../mobile.js", () => ({ isMobile: vi.fn(() => false) }));
+
+// sheet.ts reads getState().activeUTubID for its history pushes/replaces. Default
+// to a non-null id so pushTagSheetHistoryState() pushes; individual tests override.
+vi.mock("../../../store/app-store.js", () => ({
+  getState: vi.fn(() => ({ activeUTubID: 5 })),
+}));
 
 vi.mock("../../search/cross-utub-search.js", () => ({
   isCrossUtubSearchActive: vi.fn(() => false),
@@ -103,8 +118,14 @@ const SHEET_HTML = `
       </section>
     </div>
     <button id="${OPENER_ID}" type="button"></button>
+    <button class="navbar-toggler" type="button"></button>
+    <span id="TagSheetAnnouncement" class="visually-hidden" aria-live="polite"></span>
   </main>
 `;
+
+const TAG_SHEET_ANNOUNCEMENT_SELECTOR = "#TagSheetAnnouncement";
+const TAG_SHEET_ANNOUNCEMENT_OPEN = "Tag filter sheet opened";
+const TAG_SHEET_ANNOUNCEMENT_CLOSE = "Tag filter sheet closed";
 
 async function setIsMobile(value: boolean): Promise<void> {
   const { isMobile } = await import("../../mobile.js");
@@ -129,13 +150,36 @@ describe("Tag Sheet Controller", () => {
     vi.clearAllMocks();
     await setIsMobile(false);
     await setCrossSearchActive(false);
+    // Control history navigation so a reconciling close (openTagSheet now arms
+    // _openedViaHistoryPush) is a recorded no-op rather than happy-dom noise;
+    // history-assertion tests read these spies directly.
+    vi.spyOn(window.history, "back").mockImplementation(() => {});
+    vi.spyOn(window.history, "pushState").mockImplementation(() => {});
+    vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+    endPopstateClose();
     // Ensure no module-scoped open state leaks between tests; default close is
     // a no-op when already closed.
-    closeTagSheet({ returnFocus: false });
+    closeTagSheet({
+      returnFocus: false,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
+    // The leak-reset close above can arm the self-close flag (production consumes
+    // it in handlePopState, which does not run here); drain it so no stale `true`
+    // leaks into the next test's reconciliation assertions.
+    consumeTagSheetSelfBackClose();
+    // Drop any history calls the leak-reset close made so per-test assertions
+    // start from a clean call log.
+    (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+    (window.history.pushState as ReturnType<typeof vi.fn>).mockClear();
+    (window.history.replaceState as ReturnType<typeof vi.fn>).mockClear();
   });
 
   afterEach(() => {
-    closeTagSheet({ returnFocus: false });
+    endPopstateClose();
+    closeTagSheet({
+      returnFocus: false,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
     document.body.innerHTML = "";
   });
 
@@ -178,7 +222,7 @@ describe("Tag Sheet Controller", () => {
         expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
         expect(isTagSheetOpen()).toBe(false);
 
-        openTagSheet();
+        openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
 
         expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(true);
         // The section is never aria-hidden; modal semantics live on the body.
@@ -203,10 +247,10 @@ describe("Tag Sheet Controller", () => {
       await setIsMobile(true);
       const opener = document.getElementById(OPENER_ID)!;
       opener.focus();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
-      closeTagSheet();
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
 
       expect(document.activeElement).toBe(opener);
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
@@ -221,13 +265,13 @@ describe("Tag Sheet Controller", () => {
       await setIsMobile(true);
       const opener = document.getElementById(OPENER_ID)!;
       opener.focus();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       // Opener leaves the DOM before close (e.g. its deck was re-rendered), so
       // document.contains(_opener) is false → focus restore falls back to the
       // handle.
       opener.remove();
 
-      closeTagSheet();
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
 
       expect(document.activeElement).toBe(
         document.getElementById("tagSheetHandle"),
@@ -253,7 +297,7 @@ describe("Tag Sheet Controller", () => {
       await setIsMobile(false);
       expect(isTagSheetOpen()).toBe(false);
 
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
 
       expect($("#tagDeckSheet").hasClass(SHEET_OPEN_CLASS)).toBe(false);
       expect(isTagSheetOpen()).toBe(false);
@@ -264,7 +308,7 @@ describe("Tag Sheet Controller", () => {
     it("clicking the backdrop closes the sheet", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       $("#tagSheetBackdrop").trigger("click");
@@ -275,7 +319,7 @@ describe("Tag Sheet Controller", () => {
     it("clicking the handle while open closes the sheet (toggle)", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       $("#tagSheetHandle").trigger("click");
@@ -286,7 +330,7 @@ describe("Tag Sheet Controller", () => {
     it("clicking the title group (left half of the header) closes the sheet", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       $("#TagDeckTitleGroup").trigger("click");
@@ -297,7 +341,7 @@ describe("Tag Sheet Controller", () => {
     it("clicking a title-row action button does not close the sheet", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       // The buttons live in the right-half .button-container, outside the
@@ -310,7 +354,7 @@ describe("Tag Sheet Controller", () => {
     it("Escape keydown closes the sheet while open and is a no-op when closed", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const escapeDown = $.Event("keydown", { key: "Escape" });
@@ -344,16 +388,21 @@ describe("Tag Sheet Controller", () => {
       await setIsMobile(true);
       const { emit } = await import("../../../lib/metrics-client.js");
 
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
         action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
       });
 
-      closeTagSheet({ returnFocus: false });
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
         action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
       });
     });
 
@@ -362,7 +411,10 @@ describe("Tag Sheet Controller", () => {
       const { emit } = await import("../../../lib/metrics-client.js");
 
       expect(isTagSheetOpen()).toBe(false);
-      closeTagSheet({ returnFocus: false });
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
 
       expect(emit).not.toHaveBeenCalled();
     });
@@ -373,16 +425,357 @@ describe("Tag Sheet Controller", () => {
       await setIsMobile(true);
       const opener = document.getElementById(OPENER_ID)!;
       opener.focus();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
 
       const openerFocusSpy = vi.spyOn(opener, "focus");
       const handle = document.getElementById("tagSheetHandle")!;
       const handleFocusSpy = vi.spyOn(handle, "focus");
 
-      closeTagSheet({ returnFocus: false });
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
 
       expect(openerFocusSpy).not.toHaveBeenCalled();
       expect(handleFocusSpy).not.toHaveBeenCalled();
+    });
+
+    it("falls back to the handle when the opener is present but not visible (offsetParent null)", async () => {
+      await setIsMobile(true);
+      const opener = document.getElementById(OPENER_ID)!;
+      opener.focus();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      // happy-dom reports offsetParent === null for our detached-layout opener,
+      // simulating a #toTags hidden under a new panel — focus must not land on it.
+      Object.defineProperty(opener, "offsetParent", {
+        configurable: true,
+        get: () => null,
+      });
+      const openerFocusSpy = vi.spyOn(opener, "focus");
+
+      closeTagSheet({
+        returnFocus: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect(openerFocusSpy).not.toHaveBeenCalled();
+      expect(document.activeElement).toBe(
+        document.getElementById("tagSheetHandle"),
+      );
+    });
+
+    it("focuses the navbar landmark on a focusLandmark close and never the opener", async () => {
+      await setIsMobile(true);
+      const opener = document.getElementById(OPENER_ID)!;
+      opener.focus();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      const openerFocusSpy = vi.spyOn(opener, "focus");
+      const toggler = document.querySelector<HTMLElement>(".navbar-toggler")!;
+      const togglerFocusSpy = vi.spyOn(toggler, "focus");
+
+      closeTagSheet({
+        returnFocus: false,
+        focusLandmark: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+      });
+
+      expect(togglerFocusSpy).toHaveBeenCalled();
+      expect(openerFocusSpy).not.toHaveBeenCalled();
+    });
+
+    it("a normal returnFocus close never touches the navbar landmark", async () => {
+      await setIsMobile(true);
+      const opener = document.getElementById(OPENER_ID)!;
+      opener.focus();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      const toggler = document.querySelector<HTMLElement>(".navbar-toggler")!;
+      const togglerFocusSpy = vi.spyOn(toggler, "focus");
+
+      closeTagSheet({
+        returnFocus: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect(togglerFocusSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("tag-sheet history reconciliation", () => {
+    it("pushTagSheetHistoryState pushes a { tagSheetOpen: true } entry on mobile", async () => {
+      await setIsMobile(true);
+
+      pushTagSheetHistoryState();
+
+      expect(window.history.pushState).toHaveBeenCalledTimes(1);
+      expect(window.history.pushState).toHaveBeenCalledWith(
+        { UTubID: 5, mobilePanel: "urls", tagSheetOpen: true },
+        "",
+        location.href,
+      );
+      expect(getTagSheetOriginPanel()).toBe("urls");
+    });
+
+    it("pushTagSheetHistoryState is a no-op on desktop", async () => {
+      await setIsMobile(false);
+
+      pushTagSheetHistoryState();
+
+      expect(window.history.pushState).not.toHaveBeenCalled();
+    });
+
+    it("pushTagSheetHistoryState is a no-op when no UTub is active", async () => {
+      await setIsMobile(true);
+      const { getState } = await import("../../../store/app-store.js");
+      (getState as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+        activeUTubID: null,
+      });
+
+      pushTagSheetHistoryState();
+
+      expect(window.history.pushState).not.toHaveBeenCalled();
+    });
+
+    it("openTagSheetFromUserAction opens with trigger TAP and pushes exactly one entry", async () => {
+      await setIsMobile(true);
+      const { emit } = await import("../../../lib/metrics-client.js");
+
+      openTagSheetFromUserAction();
+
+      expect(isTagSheetOpen()).toBe(true);
+      expect(emit).toHaveBeenCalledWith({
+        event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
+        action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+      expect(window.history.pushState).toHaveBeenCalledTimes(1);
+    });
+
+    it("a handle tap on a closed sheet pushes a history entry (DD-27 gap)", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      expect(isTagSheetOpen()).toBe(false);
+
+      $("#tagSheetHandle").trigger("click");
+
+      expect(isTagSheetOpen()).toBe(true);
+      expect(window.history.pushState).toHaveBeenCalledTimes(1);
+    });
+
+    it("a standalone close consumes the entry via history.back() exactly once", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      expect(window.history.back).toHaveBeenCalledTimes(1);
+      expect(window.history.replaceState).not.toHaveBeenCalled();
+    });
+
+    it("a standalone close arms the self-close flag (consumed once) so its popstate is swallowed", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      // handlePopState reads this to skip the UTub rebuild that would wipe the
+      // active tag filter; it is consume-once.
+      expect(consumeTagSheetSelfBackClose()).toBe(true);
+      expect(consumeTagSheetSelfBackClose()).toBe(false);
+    });
+
+    it("a viaReplace close does NOT arm the self-close flag (no back(), nothing to swallow)", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      closeTagSheet({
+        returnFocus: false,
+        viaReplace: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect(consumeTagSheetSelfBackClose()).toBe(false);
+    });
+
+    it("a viaDeckSwitch close does NOT arm the self-close flag", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      closeTagSheet({
+        returnFocus: false,
+        viaDeckSwitch: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect(consumeTagSheetSelfBackClose()).toBe(false);
+    });
+
+    it("a popstate-bracketed close does NOT arm the self-close flag (window-events owns the traversal)", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      beginPopstateClose();
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+      });
+      endPopstateClose();
+
+      expect(consumeTagSheetSelfBackClose()).toBe(false);
+    });
+
+    it("a viaDeckSwitch close does NOT call history.back()", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+
+      closeTagSheet({
+        returnFocus: false,
+        viaDeckSwitch: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect(window.history.back).not.toHaveBeenCalled();
+      expect(window.history.replaceState).not.toHaveBeenCalled();
+    });
+
+    it("a viaReplace close consumes the entry via replaceState, not back()", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+      (window.history.replaceState as ReturnType<typeof vi.fn>).mockClear();
+
+      closeTagSheet({
+        returnFocus: false,
+        viaReplace: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect(window.history.replaceState).toHaveBeenCalledTimes(1);
+      expect(window.history.replaceState).toHaveBeenCalledWith(
+        { UTubID: 5 },
+        "",
+        location.href,
+      );
+      expect(window.history.back).not.toHaveBeenCalled();
+    });
+
+    it("a popstate-bracketed close does NOT traverse history (window-events owns it)", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+
+      beginPopstateClose();
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+      });
+      endPopstateClose();
+
+      expect(window.history.back).not.toHaveBeenCalled();
+      expect(window.history.replaceState).not.toHaveBeenCalled();
+    });
+
+    it("the desktop-relocate close uses the default reconciliation (history.back), not viaDeckSwitch", async () => {
+      await setIsMobile(true);
+      // Move #TagDeck into the sheet body first so the desktop relocate's
+      // tagDeckInSheet branch (which owns the close) actually runs.
+      relocateTagDeckForViewport();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+
+      // Crossing to desktop relocates #TagDeck and closes any open sheet via the
+      // plain default reconciliation (DD-21) — the entry must be consumed by back().
+      await setIsMobile(false);
+      relocateTagDeckForViewport();
+
+      expect(window.history.back).toHaveBeenCalledTimes(1);
+    });
+
+    it("a CROSS_UTUB_SEARCH_VISIBILITY_CHANGED active close uses viaReplace, not back()", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+      (window.history.replaceState as ReturnType<typeof vi.fn>).mockClear();
+
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      await setCrossSearchActive(true);
+      emit(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, { active: true });
+
+      expect(window.history.replaceState).toHaveBeenCalledTimes(1);
+      expect(window.history.back).not.toHaveBeenCalled();
+    });
+
+    it("a MOBILE_DECK_SWITCHED close uses viaDeckSwitch (no back())", async () => {
+      await setIsMobile(true);
+      initTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      (window.history.back as ReturnType<typeof vi.fn>).mockClear();
+
+      const { emit, AppEvents } = await import("../../../lib/event-bus.js");
+      emit(AppEvents.MOBILE_DECK_SWITCHED, { target: "member-deck" });
+
+      expect(window.history.back).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("tag-sheet announcements", () => {
+    it("announces a history-nav open and leaves the region clear on a tap open", async () => {
+      await setIsMobile(true);
+
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV });
+      expect($(TAG_SHEET_ANNOUNCEMENT_SELECTOR).text()).toBe(
+        TAG_SHEET_ANNOUNCEMENT_OPEN,
+      );
+
+      $(TAG_SHEET_ANNOUNCEMENT_SELECTOR).text("");
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      expect($(TAG_SHEET_ANNOUNCEMENT_SELECTOR).text()).toBe("");
+    });
+
+    it("announces a history-nav close only when not suppressed", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      // Suppressed (a competing #MobilePanelAnnouncement fires in the same pop).
+      beginPopstateClose();
+      closeTagSheet({
+        returnFocus: false,
+        suppressAnnouncement: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+      });
+      endPopstateClose();
+      expect($(TAG_SHEET_ANNOUNCEMENT_SELECTOR).text()).toBe("");
+
+      // Not suppressed (legacy bare-UTubID destination): the close text fires.
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+      beginPopstateClose();
+      closeTagSheet({
+        returnFocus: false,
+        suppressAnnouncement: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV,
+      });
+      endPopstateClose();
+      expect($(TAG_SHEET_ANNOUNCEMENT_SELECTOR).text()).toBe(
+        TAG_SHEET_ANNOUNCEMENT_CLOSE,
+      );
+    });
+
+    it("a tap-driven close leaves the announcement region untouched", async () => {
+      await setIsMobile(true);
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
+
+      expect($(TAG_SHEET_ANNOUNCEMENT_SELECTOR).text()).toBe("");
     });
   });
 
@@ -394,7 +787,7 @@ describe("Tag Sheet Controller", () => {
       // cross-search active" assertion below load-bearing rather than always-true.
       $("#centerPanel").append('<div class="UTubSelector active"></div>');
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -407,7 +800,7 @@ describe("Tag Sheet Controller", () => {
       // Reopen, then signal inactive: sheet stays open and re-shows
       // (active UTub + URL deck visible + cross-search inactive).
       await setCrossSearchActive(false);
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
       emit(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, { active: false });
       expect(isTagSheetOpen()).toBe(true);
@@ -419,7 +812,7 @@ describe("Tag Sheet Controller", () => {
     it("closes the sheet on UTUB_SELECTED", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -444,7 +837,7 @@ describe("Tag Sheet Controller", () => {
     it("closes the sheet on UTUB_DELETED", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -460,7 +853,7 @@ describe("Tag Sheet Controller", () => {
     it("closes the sheet for target url-deck (navbar navigation dismisses an open sheet)", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -475,7 +868,7 @@ describe("Tag Sheet Controller", () => {
     it("closes the sheet for target member-deck (representative of member/utub/no-utub)", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -487,7 +880,7 @@ describe("Tag Sheet Controller", () => {
     it("closes the sheet for target utub-deck", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -499,7 +892,7 @@ describe("Tag Sheet Controller", () => {
     it("closes the sheet for target no-utub", async () => {
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const { emit, AppEvents } = await import("../../../lib/event-bus.js");
@@ -594,7 +987,7 @@ describe("Tag Sheet Controller", () => {
       expect($("#tagSheetEmpty").hasClass(HIDDEN_CLASS)).toBe(false);
 
       seedTagFilter();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect($("#tagSheetEmpty").hasClass(HIDDEN_CLASS)).toBe(true);
     });
   });
@@ -680,6 +1073,7 @@ describe("Tag Sheet Controller", () => {
         expect(emit).toHaveBeenCalledWith({
           event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
           action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
         });
       } finally {
         vi.useRealTimers();
@@ -690,7 +1084,7 @@ describe("Tag Sheet Controller", () => {
       stubSheetRect();
       await setIsMobile(true);
       initTagSheet();
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
       const { emit } = await import("../../../lib/metrics-client.js");
       (emit as ReturnType<typeof vi.fn>).mockClear();
@@ -708,6 +1102,7 @@ describe("Tag Sheet Controller", () => {
       expect(emit).toHaveBeenCalledWith({
         event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
         action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
       });
     });
 
@@ -726,6 +1121,7 @@ describe("Tag Sheet Controller", () => {
       expect(emit).not.toHaveBeenCalledWith({
         event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
         action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
       });
     });
 
@@ -750,6 +1146,7 @@ describe("Tag Sheet Controller", () => {
         expect(emit).not.toHaveBeenCalledWith({
           event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
           action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
         });
       } finally {
         vi.useRealTimers();
@@ -767,7 +1164,7 @@ describe("Tag Sheet Controller", () => {
         await setIsMobile(true);
         initTagSheet();
         // Sheet open => the handle pointerdown derives mode "close".
-        openTagSheet();
+        openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
         vi.runAllTimers();
         expect(isTagSheetOpen()).toBe(true);
         const { emit } = await import("../../../lib/metrics-client.js");
@@ -784,6 +1181,7 @@ describe("Tag Sheet Controller", () => {
         expect(emit).not.toHaveBeenCalledWith({
           event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
           action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
         });
       } finally {
         vi.useRealTimers();
@@ -798,7 +1196,7 @@ describe("Tag Sheet Controller", () => {
       // subscribers act only when the sheet is open — so the realistic mid-drag
       // cancellation is during a CLOSE drag (sheet open). _cancelDrag at the top
       // of closeTagSheet() then tears down the live drag.
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const handle = document.getElementById("tagSheetHandle")!;
@@ -839,7 +1237,7 @@ describe("Tag Sheet Controller", () => {
       // returns early to relocate instead). closeTagSheet's leading _cancelDrag
       // then tears down a live drag. The realistic mid-drag cancellation is
       // during a CLOSE drag (sheet open).
-      openTagSheet();
+      openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
       expect(isTagSheetOpen()).toBe(true);
 
       const handle = document.getElementById("tagSheetHandle")!;
@@ -904,6 +1302,7 @@ describe("Tag Sheet Controller", () => {
         expect(emit).not.toHaveBeenCalledWith({
           event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
           action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
         });
       } finally {
         vi.useRealTimers();
@@ -962,6 +1361,7 @@ describe("Tag Sheet Controller", () => {
         expect(emit).toHaveBeenCalledWith({
           event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
           action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+          trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
         });
       } finally {
         getComputedStyleSpy.mockRestore();
@@ -999,6 +1399,7 @@ describe("Tag Sheet Controller", () => {
       expect(emit).not.toHaveBeenCalledWith({
         event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
         action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
       });
     });
   });

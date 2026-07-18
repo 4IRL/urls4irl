@@ -159,11 +159,15 @@ PER_EVENT_VALID_DIMS: tuple[tuple[EventName, dict], ...] = (
     ),
     (
         EventName.UI_TAG_SHEET_TOGGLE,
-        {"action": "open", "device_type": DeviceType.MOBILE},
+        {"action": "open", "trigger": "tap", "device_type": DeviceType.MOBILE},
     ),
     (
         EventName.UI_TAG_SHEET_TOGGLE,
-        {"action": "close", "device_type": DeviceType.DESKTOP},
+        {
+            "action": "close",
+            "trigger": "history_nav",
+            "device_type": DeviceType.DESKTOP,
+        },
     ),
     (
         EventName.UI_FORM_SUBMIT,
@@ -452,6 +456,30 @@ def test_mobile_nav_rejects_unknown_trigger():
         DIMENSION_MODELS[EventName.UI_MOBILE_NAV].model_validate(
             {
                 "target": "urls",
+                "trigger": "swipe",
+                "device_type": DeviceType.MOBILE,
+            }
+        )
+
+
+def test_tag_sheet_toggle_rejects_unknown_trigger():
+    """`_DimTagSheetToggle.trigger` accepts only `tap`/`history_nav`.
+
+    Both documented trigger values validate; any out-of-set value raises so
+    the required `trigger` dimension stays a closed low-cardinality set.
+    """
+    for valid_trigger in ("tap", "history_nav"):
+        DIMENSION_MODELS[EventName.UI_TAG_SHEET_TOGGLE].model_validate(
+            {
+                "action": "open",
+                "trigger": valid_trigger,
+                "device_type": DeviceType.MOBILE,
+            }
+        )
+    with pytest.raises(ValidationError):
+        DIMENSION_MODELS[EventName.UI_TAG_SHEET_TOGGLE].model_validate(
+            {
+                "action": "open",
                 "trigger": "swipe",
                 "device_type": DeviceType.MOBILE,
             }

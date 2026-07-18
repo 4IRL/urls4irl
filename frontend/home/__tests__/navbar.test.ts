@@ -8,7 +8,7 @@ import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
 } from "../search/cross-utub-search.js";
-import { openTagSheet } from "../tags/sheet.js";
+import { openTagSheetFromUserAction } from "../tags/sheet.js";
 import {
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   pushMobilePanelHistoryState,
@@ -35,7 +35,7 @@ vi.mock("../../store/app-store.js", () => ({
   getState: vi.fn(() => ({ activeUTubID: 5 })),
 }));
 vi.mock("../tags/sheet.js", () => ({
-  openTagSheet: vi.fn(),
+  openTagSheetFromUserAction: vi.fn(),
 }));
 // navbar.ts imports the cross-search module to close search on deck-nav and the
 // Return Home item; mock it so the real (heavy) module doesn't load here.
@@ -118,14 +118,15 @@ describe("navbar", () => {
       // The sheet overlays the URL deck, so the deck switch must run first
       // (it also collapses the hamburger), then the sheet opens.
       expect(setMobileUIWhenUTubSelectedOrURLNavSelected).toHaveBeenCalled();
-      expect(openTagSheet).toHaveBeenCalled();
+      expect(openTagSheetFromUserAction).toHaveBeenCalled();
       const switchOrder = (
         setMobileUIWhenUTubSelectedOrURLNavSelected as unknown as ReturnType<
           typeof vi.fn
         >
       ).mock.invocationCallOrder[0];
-      const openOrder = (openTagSheet as unknown as ReturnType<typeof vi.fn>)
-        .mock.invocationCallOrder[0];
+      const openOrder = (
+        openTagSheetFromUserAction as unknown as ReturnType<typeof vi.fn>
+      ).mock.invocationCallOrder[0];
       expect(switchOrder).toBeLessThan(openOrder);
     });
 

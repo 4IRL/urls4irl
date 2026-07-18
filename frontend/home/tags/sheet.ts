@@ -1,12 +1,23 @@
 import { $ } from "../../lib/globals.js";
+import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { AppEvents, on } from "../../lib/event-bus.js";
 import { emit as recordUIEvent } from "../../lib/metrics-client.js";
 import { clamp, shouldCommitSheetGesture } from "../../logic/tag-sheet-snap.js";
-import { TAG_SHEET_TOGGLE_ACTION } from "../../types/metrics-dim-values.js";
+import { getState } from "../../store/app-store.js";
+import {
+  TAG_SHEET_TOGGLE_ACTION,
+  TAG_SHEET_TOGGLE_TRIGGER,
+} from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
 import { isCrossUtubSearchActive } from "../search/cross-utub-search.js";
-import { isMobile } from "../mobile.js";
+import { isMobile, type MobilePanel } from "../mobile.js";
+
+// Locally-derived alias for the closed set of tag-sheet toggle triggers
+// (`metrics-dimensions.d.ts` only carries inline literal unions, no standalone
+// Trigger type — mirrors cross-utub-search.ts's TagSheetToggleTrigger pattern).
+type TagSheetToggleTrigger =
+  (typeof TAG_SHEET_TOGGLE_TRIGGER)[keyof typeof TAG_SHEET_TOGGLE_TRIGGER];
 
 // Module-local open flag — no cross-module reader needs it, so it lives here
 // rather than the app store (mirrors `userCollapsedLHS` in left-panel-toggle.ts).
@@ -37,6 +48,31 @@ let _dragState: {
 // Set true when a real drag commits, so the element's trailing click does not
 // also fire the tap toggle. Consumed (read-and-reset) by the click wrappers.
 let _suppressClickAfterDrag = false;
+
+// True while a live pushed/restored history entry exists for the currently-open
+// sheet that still needs reconciling on close. Set when the user-action wrapper
+// pushes a fresh entry AND when handlePopState restores the sheet onto an
+// existing entry (both paths flow through openTagSheet()).
+let _openedViaHistoryPush = false;
+// The mobile panel the sheet was opened over (always "urls" by construction —
+// the sheet only overlays the url-deck). Mirrored module-locally because the
+// previous entry's data is gone from window.history.state by the time a popstate
+// handler runs, so window-events.ts reads it via getTagSheetOriginPanel().
+let _openedOverPanel: MobilePanel | null = null;
+// Set by window-events.ts's beginPopstateClose()/endPopstateClose() bracket so a
+// close it triggers mid-popstate skips its own history traversal (the popstate
+// handler already owns the traversal).
+let _closingViaPopstate = false;
+// Armed for the single popstate that closeTagSheet()'s own default history.back()
+// is about to dispatch (a standalone tap/Escape/backdrop/title-group dismissal, or
+// the desktop-relocate close). That traversal exists only to unwind the sheet's
+// pushed entry — the underlying UTub and panel are unchanged and the active tag
+// filter must survive. window-events.ts's handlePopState consumes-and-resets this
+// (getter below) to recognize + swallow that self-close pop so it never rebuilds
+// the UTub (buildSelectedUTub resets selectedTagIDs, wiping the filter). The
+// mirror image of _closingViaPopstate: that flag flows popstate→close, this one
+// flows close→popstate.
+let _selfClosingViaBack = false;
 
 function _consumeClickSuppression(): boolean {
   const suppressed = _suppressClickAfterDrag;
@@ -122,12 +158,22 @@ export function relocateTagDeckForViewport(): void {
     $(TAG_DECK_SELECTOR).insertAfter("#leftPanel #MemberDeck");
     // Close first (the sheet's open/inert state must reset), then refresh
     // availability so a later return to mobile re-shows the peek correctly.
-    closeTagSheet({ returnFocus: false });
+    // Default (standalone) reconciliation — NOT viaDeckSwitch (DD-21): a resize
+    // into desktop has no caller-owned push burying the entry, so history.back()
+    // must consume it (openTagSheet()'s isMobile() guard no-ops the restore).
+    closeTagSheet({
+      returnFocus: false,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
     refreshTagSheetAvailability();
   }
 }
 
-export function openTagSheet(): void {
+export function openTagSheet({
+  trigger,
+}: {
+  trigger: TagSheetToggleTrigger;
+}): void {
   if (!isMobile()) return;
 
   // Capture the element that had focus at open time so focus can be returned to
@@ -161,7 +207,7 @@ export function openTagSheet(): void {
 
   $(document).on(ESCAPE_KEYDOWN_NAMESPACE, (event: JQuery.TriggeredEvent) => {
     if (event.key !== KEYS.ESCAPE) return;
-    closeTagSheet();
+    closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
   });
 
   _updateEmptyState();
@@ -169,12 +215,109 @@ export function openTagSheet(): void {
   recordUIEvent({
     event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
     action: TAG_SHEET_TOGGLE_ACTION.OPEN,
+    trigger,
   });
+
+  // A live history entry now exists for this open sheet — freshly pushed by the
+  // openTagSheetFromUserAction() wrapper, or restored onto an existing entry by
+  // handlePopState — that must be reconciled on close.
+  _openedViaHistoryPush = true;
+  // The sheet only ever overlays the url-deck by construction, so its origin
+  // panel is always "urls". Set here so the popstate-restore path (bare
+  // openTagSheet, no pushTagSheetHistoryState) also tracks the origin for the
+  // DD-31 same-panel-vs-cross-panel focus decision.
+  _openedOverPanel = "urls";
+
+  // Announce only the non-visually-obvious history-nav open (Back/Forward);
+  // tap-driven opens are already visible to a sighted user.
+  if (trigger === TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV) {
+    $("#TagSheetAnnouncement").text(
+      APP_CONFIG.strings.TAG_SHEET_ANNOUNCEMENT_OPEN,
+    );
+  }
+}
+
+/**
+ * Push the sheet's own session-only history entry so Back closes the sheet
+ * first. Call-site-owned (per DD-7) — never invoked from inside openTagSheet().
+ * Keeps the URL on the url-deck (no `?panel=tags`); the entry is reconciled by
+ * closeTagSheet()'s three-way logic. No-op on desktop or with no active UTub.
+ */
+export function pushTagSheetHistoryState(): void {
+  if (!isMobile()) return;
+  const activeUTubID = getState().activeUTubID;
+  if (activeUTubID === null) return;
+  window.history.pushState(
+    { UTubID: activeUTubID, mobilePanel: "urls", tagSheetOpen: true },
+    "",
+    location.href,
+  );
+  _openedOverPanel = "urls";
+}
+
+/**
+ * The mobile panel the sheet was opened over, or null when no sheet entry is
+ * live. window-events.ts reads this to decide the Back-driven close's focus
+ * target (the previous entry's panel is gone from history.state by then).
+ */
+export function getTagSheetOriginPanel(): MobilePanel | null {
+  return _openedOverPanel;
+}
+
+/**
+ * The single site that pairs a tap-driven open with its history push, so
+ * `_openedViaHistoryPush` and the pushed entry can never drift (DD-27). Routed
+ * through by all three user-tap open sites (navbar #toTags, drag-commit,
+ * handle-tap). Bare openTagSheet() stays reserved for handlePopState's restore.
+ */
+export function openTagSheetFromUserAction(): void {
+  openTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
+  pushTagSheetHistoryState();
+}
+
+/**
+ * Popstate-close bracket: window-events.ts wraps its whole handlePopState
+ * invocation in begin/end so any closeTagSheet() it triggers (directly or via a
+ * synchronous UTUB_SELECTED listener) skips its own history traversal — the
+ * popstate handler already owns it.
+ */
+export function beginPopstateClose(): void {
+  _closingViaPopstate = true;
+}
+
+export function endPopstateClose(): void {
+  _closingViaPopstate = false;
+}
+
+/**
+ * Consume-and-reset the self-close flag armed just before closeTagSheet()'s own
+ * default history.back(). window-events.ts's handlePopState calls this first: a
+ * true result means the incoming popstate is that self-initiated entry
+ * consumption (underlying UTub/panel unchanged, active tag filter must survive),
+ * so the handler swallows it without rebuilding the UTub. Genuine Back/Forward
+ * navigations leave it false and fall through to the normal reconciliation.
+ */
+export function consumeTagSheetSelfBackClose(): boolean {
+  const wasSelfClosing = _selfClosingViaBack;
+  _selfClosingViaBack = false;
+  return wasSelfClosing;
 }
 
 export function closeTagSheet({
   returnFocus = true,
-}: { returnFocus?: boolean } = {}): void {
+  viaDeckSwitch = false,
+  viaReplace = false,
+  focusLandmark = false,
+  suppressAnnouncement = false,
+  trigger,
+}: {
+  returnFocus?: boolean;
+  viaDeckSwitch?: boolean;
+  viaReplace?: boolean;
+  focusLandmark?: boolean;
+  suppressAnnouncement?: boolean;
+  trigger: TagSheetToggleTrigger;
+}): void {
   // Cancel any in-flight swipe so the four force-close AppEvents plus
   // Escape/backdrop/title-group all tear down a live drag. On the committed-close
   // path _endDrag has already nulled _dragState, so this is a guard-protected
@@ -203,27 +346,82 @@ export function closeTagSheet({
   sheetOpen = false;
 
   if (returnFocus) {
-    if (_opener !== null && document.contains(_opener)) {
+    // Require the opener to also be visible/focusable (offsetParent !== null):
+    // a Back that closes the sheet AND hides #toTags under a new panel would
+    // otherwise .focus() a display:none element and silently drop focus.
+    if (
+      _opener !== null &&
+      document.contains(_opener) &&
+      _opener.offsetParent !== null
+    ) {
       _opener.focus();
     } else {
       document.getElementById(HANDLE_ID)?.focus();
     }
+  } else if (focusLandmark) {
+    // Cross-panel Back close: neither the opener (#toTags, scoped to the
+    // collapsible dropdown) nor the handle (scoped to the now-hidden url-deck)
+    // is guaranteed visible. Fall back to the always-visible hamburger landmark.
+    document.querySelector<HTMLElement>(".navbar-toggler")?.focus();
   }
   _opener = null;
+
+  // Three-way reconciliation of the sheet's own history entry. Mirrors the
+  // null-first-line re-entrancy-guard style of _cancelDrag/_endDrag.
+  if (_closingViaPopstate) {
+    // window-events.ts already owns the traversal — skip all history work.
+    _openedViaHistoryPush = false;
+    _openedOverPanel = null;
+  } else if (_openedViaHistoryPush) {
+    if (viaDeckSwitch) {
+      // The caller's own same-stack push buries this entry one level deeper;
+      // traversing here would fire a stale popstate. Skip back() (DD-21 detail).
+    } else if (viaReplace) {
+      // Consume the entry via replaceState instead of back() so no popstate is
+      // dispatched (would self-cancel the cross-UTub search overlay opening now).
+      window.history.replaceState(
+        { UTubID: getState().activeUTubID },
+        "",
+        location.href,
+      );
+    } else {
+      // Default/standalone: consume the sheet's entry with a real traversal.
+      // Arm the self-close flag so the popstate this back() dispatches is
+      // swallowed by handlePopState instead of rebuilding the underlying UTub —
+      // a rebuild would reset selectedTagIDs and wipe the active tag filter that
+      // must persist behind the now-collapsed sheet.
+      _selfClosingViaBack = true;
+      window.history.back();
+    }
+    _openedViaHistoryPush = false;
+    _openedOverPanel = null;
+  }
 
   if (wasOpen) {
     recordUIEvent({
       event: UI_EVENTS.UI_TAG_SHEET_TOGGLE,
       action: TAG_SHEET_TOGGLE_ACTION.CLOSE,
+      trigger,
     });
+    // Announce only the non-visually-obvious history-nav close, and only when a
+    // competing #MobilePanelAnnouncement is not firing in the same invocation
+    // (DD-32 — the panel-change announcement is the more informative one).
+    if (
+      trigger === TAG_SHEET_TOGGLE_TRIGGER.HISTORY_NAV &&
+      !suppressAnnouncement
+    ) {
+      $("#TagSheetAnnouncement").text(
+        APP_CONFIG.strings.TAG_SHEET_ANNOUNCEMENT_CLOSE,
+      );
+    }
   }
 }
 
 export function toggleTagSheet(): void {
   if (sheetOpen) {
-    closeTagSheet();
+    closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
   } else {
-    openTagSheet();
+    openTagSheetFromUserAction();
   }
 }
 
@@ -444,7 +642,7 @@ function _endDrag(event: PointerEvent): void {
       // Focus the handle so openTagSheet() captures it as _opener (it reads
       // document.activeElement at its first line). The handle is not yet inert.
       document.getElementById(HANDLE_ID)?.focus();
-      openTagSheet();
+      openTagSheetFromUserAction();
       // openTagSheet() clears inline backdrop opacity in its timer callback.
     } else {
       const backdrop = document.querySelector(
@@ -457,7 +655,7 @@ function _endDrag(event: PointerEvent): void {
 
   // close mode: commit closes; snap-back leaves .tag-sheet-open in place. The
   // open-only backdrop interpolation means no inline opacity clear is needed.
-  if (commit) closeTagSheet();
+  if (commit) closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
 }
 
 /**
@@ -509,7 +707,9 @@ export function initTagSheet(): void {
     if (_consumeClickSuppression()) return;
     toggleTagSheet();
   });
-  $(BACKDROP_SELECTOR).on("click", () => closeTagSheet());
+  $(BACKDROP_SELECTOR).on("click", () =>
+    closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP }),
+  );
 
   // Native pointer-drag bound once on the handle; the direction is derived from
   // the current open state at press time. Guarded by GESTURE_BOUND_ATTR so
@@ -527,22 +727,38 @@ export function initTagSheet(): void {
   // same element drives the caret collapse (collapsible-decks.ts), which already
   // no-ops on mobile, so the two handlers never conflict.
   $(TITLE_GROUP_SELECTOR).on("click", () => {
-    if (isMobile() && sheetOpen) closeTagSheet();
+    if (isMobile() && sheetOpen)
+      closeTagSheet({ trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP });
   });
 
   on(AppEvents.UTUB_SELECTED, () => {
-    if (sheetOpen) closeTagSheet({ returnFocus: false });
+    if (sheetOpen)
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
     refreshTagSheetAvailability();
     _updateEmptyState();
   });
 
   on(AppEvents.UTUB_DELETED, () => {
-    if (sheetOpen) closeTagSheet({ returnFocus: false });
+    if (sheetOpen)
+      closeTagSheet({
+        returnFocus: false,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
     refreshTagSheetAvailability();
   });
 
   on(AppEvents.CROSS_UTUB_SEARCH_VISIBILITY_CHANGED, ({ active }) => {
-    if (active) closeTagSheet({ returnFocus: false });
+    // Consume the sheet's entry via replaceState (viaReplace), not back():
+    // a popstate here would self-cancel the cross-UTub search overlay opening.
+    if (active)
+      closeTagSheet({
+        returnFocus: false,
+        viaReplace: true,
+        trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+      });
     refreshTagSheetAvailability();
   });
 
@@ -556,7 +772,13 @@ export function initTagSheet(): void {
     // no-op when the sheet is already closed (the common UTub-select path), so
     // the url-deck target is no longer special-cased: leaving it open would keep
     // #mainPanel siblings inert and break navbar re-open over the URL deck.
-    closeTagSheet({ returnFocus: false });
+    // viaDeckSwitch: the tap handler's own pushMobilePanelHistoryState runs in
+    // the same call stack and buries the sheet's entry, so skip history.back().
+    closeTagSheet({
+      returnFocus: false,
+      viaDeckSwitch: true,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
     refreshTagSheetAvailability();
   });
 
