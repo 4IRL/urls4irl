@@ -118,6 +118,9 @@ describe("navbar", () => {
       // The sheet overlays the URL deck, so the deck switch must run first
       // (it also collapses the hamburger), then the sheet opens.
       expect(setMobileUIWhenUTubSelectedOrURLNavSelected).toHaveBeenCalled();
+      expect(setCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "urls",
+      });
       expect(openTagSheetFromUserAction).toHaveBeenCalled();
       const switchOrder = (
         setMobileUIWhenUTubSelectedOrURLNavSelected as unknown as ReturnType<
