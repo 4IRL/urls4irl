@@ -96,17 +96,16 @@ function toValidMobilePanel(
 }
 
 /**
- * On reload/cold-load (pageshow), route the mobile UI to the restored panel.
- * A restore is not a navigation, so — unlike the popstate branch — this emits no
- * metric and sets no screen-reader announcement. Desktop shows all panels, so
- * this is a no-op there. A null/unrecognized panel lands on the url-deck.
+ * Map a mobile panel to its deck-selecting UI setter (the single source of truth
+ * shared by the pageshow-restore and popstate-nav sites). A null/unrecognized
+ * panel lands on the url-deck. Does NOT touch `_currentMobilePanel`, the width
+ * guard, announcements, or metrics — each call site owns those around this call.
  */
-function routeMobilePanelOnPageShow({
+function applyMobilePanelUI({
   mobilePanel,
 }: {
   mobilePanel: MobilePanel | null;
 }): void {
-  if (($(window).width() ?? 0) >= TABLET_WIDTH) return;
   switch (mobilePanel) {
     case "utubs":
       setMobileUIWhenUTubDeckSelected();
@@ -119,6 +118,21 @@ function routeMobilePanelOnPageShow({
       setMobileUIWhenUTubSelectedOrURLNavSelected();
       break;
   }
+}
+
+/**
+ * On reload/cold-load (pageshow), route the mobile UI to the restored panel.
+ * A restore is not a navigation, so — unlike the popstate branch — this emits no
+ * metric and sets no screen-reader announcement. Desktop shows all panels, so
+ * this is a no-op there. A null/unrecognized panel lands on the url-deck.
+ */
+function routeMobilePanelOnPageShow({
+  mobilePanel,
+}: {
+  mobilePanel: MobilePanel | null;
+}): void {
+  if (($(window).width() ?? 0) >= TABLET_WIDTH) return;
+  applyMobilePanelUI({ mobilePanel });
   setCurrentMobilePanel({ mobilePanel: mobilePanel ?? "urls" });
 }
 
@@ -264,18 +278,7 @@ function handlePopState(event: PopStateEvent): void {
           buildSelectedUTub(selectedUTub);
           // Route to the recorded panel only on mobile — desktop shows all panels.
           if (($(window).width() ?? 0) < TABLET_WIDTH) {
-            switch (mobilePanel) {
-              case "utubs":
-                setMobileUIWhenUTubDeckSelected();
-                break;
-              case "members":
-                setMobileUIWhenMemberDeckSelected();
-                break;
-              case "urls":
-              default:
-                setMobileUIWhenUTubSelectedOrURLNavSelected();
-                break;
-            }
+            applyMobilePanelUI({ mobilePanel });
             setCurrentMobilePanel({ mobilePanel });
             // History-nav panel switches are not visually obvious to a screen
             // reader (no tap), so announce them. Tap-driven switches never set this.
