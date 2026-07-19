@@ -41,6 +41,28 @@ export function setCurrentMobilePanel({
 }
 
 /**
+ * Build the shared `{ url, state }` payload for a merged
+ * `{ UTubID, mobilePanel }` browser-history entry. Both
+ * `pushMobilePanelHistoryState` and `replaceMobilePanelHistoryState` construct
+ * an identical entry and differ only in which `history` method they invoke, so
+ * the entry construction lives here.
+ */
+function _buildMobilePanelEntry({
+  mobilePanel,
+  UTubID,
+}: {
+  mobilePanel: MobilePanel;
+  UTubID: number;
+}): { url: string; state: { UTubID: number; mobilePanel: MobilePanel } } {
+  const utubidKey = APP_CONFIG.strings.UTUB_QUERY_PARAM;
+  const panelKey = APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM;
+  return {
+    url: `/home?${utubidKey}=${UTubID}&${panelKey}=${mobilePanel}`,
+    state: { UTubID, mobilePanel },
+  };
+}
+
+/**
  * Push a merged `{ UTubID, mobilePanel }` browser-history entry for a mobile
  * panel switch so Back/Forward unwind the panel navigation stack. Unconditional
  * — call-site dedup guards (steps 3–4) decide whether a push is warranted.
@@ -55,17 +77,12 @@ export function pushMobilePanelHistoryState({
   mobilePanel: MobilePanel;
   UTubID: number;
 }): void {
-  const utubidKey = APP_CONFIG.strings.UTUB_QUERY_PARAM;
-  const panelKey = APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM;
+  const { url, state } = _buildMobilePanelEntry({ mobilePanel, UTubID });
   log("pushMobilePanelHistoryState — pushing merged panel history entry", {
     UTubID,
     mobilePanel,
   });
-  window.history.pushState(
-    { UTubID, mobilePanel },
-    "",
-    `/home?${utubidKey}=${UTubID}&${panelKey}=${mobilePanel}`,
-  );
+  window.history.pushState(state, "", url);
 }
 
 /**
@@ -81,17 +98,12 @@ export function replaceMobilePanelHistoryState({
   mobilePanel: MobilePanel;
   UTubID: number;
 }): void {
-  const utubidKey = APP_CONFIG.strings.UTUB_QUERY_PARAM;
-  const panelKey = APP_CONFIG.strings.MOBILE_PANEL_QUERY_PARAM;
+  const { url, state } = _buildMobilePanelEntry({ mobilePanel, UTubID });
   log("replaceMobilePanelHistoryState — replacing current history entry", {
     UTubID,
     mobilePanel,
   });
-  window.history.replaceState(
-    { UTubID, mobilePanel },
-    "",
-    `/home?${utubidKey}=${UTubID}&${panelKey}=${mobilePanel}`,
-  );
+  window.history.replaceState(state, "", url);
 }
 
 /**
