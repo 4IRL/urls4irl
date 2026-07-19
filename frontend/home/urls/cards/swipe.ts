@@ -13,6 +13,7 @@
  * module owns only DOM binding and reuses the existing `deleteURLShowModal`
  * confirm flow as the sole commit action — no new AJAX/CSRF logic here.
  */
+import { on, AppEvents } from "../../../lib/event-bus.js";
 import { $ } from "../../../lib/globals.js";
 import {
   clamp,
@@ -94,6 +95,15 @@ let _dragState: SwipeDragState | null = null;
 // Set true when a commit fires the confirm modal, so the trailing click does
 // not also fire card selection. Consumed (read-and-reset) by selection.ts.
 let _suppressSwipeClick = false;
+// True only while a #confirmModal opened by *this* swipe-commit flow is live.
+// #confirmModal is shared with the UTub-delete confirm flow, so a deck switch
+// must only dismiss the modal when the swipe opened it — never one another flow
+// opened. Reset in the modal-hidden callback so it never leaks past one lifecycle.
+let _confirmModalOpenedBySwipe = false;
+// Guards initSwipe against double-binding the MOBILE_DECK_SWITCHED subscription
+// on a repeated call (event-bus subscriptions accumulate otherwise), mirroring
+// sheet.ts's GESTURE_BOUND_ATTR idempotency convention for its one-time binding.
+let _swipeInitialized = false;
 
 export function _consumeSwipeClickSuppression(): boolean {
   const suppressed = _suppressSwipeClick;
@@ -240,6 +250,21 @@ function _teardownDragListeners(state: SwipeDragState): void {
 }
 
 /**
+ * Shared cleanup for a live drag: release its listeners/capture, clear the
+ * inline transform while `swipe-dragging` (transition: none) is still applied
+ * so the reset is instant rather than animated by `.urlRowContent`'s 0.3s
+ * transition, drop the state classes, and null `_dragState`. Called by both
+ * `_cancelDrag` and `resetSwipeStateOnDeckSwitch` after each has run its own
+ * guard.
+ */
+function _clearDragState(state: SwipeDragState): void {
+  _teardownDragListeners(state);
+  state.urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
+  state.urlRow.removeClass(`${SWIPE_DRAGGING_CLASS} ${SWIPE_COMMITTED_CLASS}`);
+  _dragState = null;
+}
+
+/**
  * Release handler (pointerup): a non-moved release is a tap (native click
  * drives card selection normally). A moved release decides commit-or-snap-back
  * via the pure threshold math, and on commit opens the existing confirm-delete
@@ -292,6 +317,7 @@ function _endDrag(event: PointerEvent): void {
   $(CONFIRM_MODAL_SELECTOR)
     .off(CONFIRM_MODAL_HIDDEN_NAMESPACE)
     .one(CONFIRM_MODAL_HIDDEN_NAMESPACE, () => {
+      _confirmModalOpenedBySwipe = false;
       urlRow.removeClass(`${SWIPE_COMMITTED_CLASS} ${SWIPE_DRAGGING_CLASS}`);
       urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
       _armFocusReturnSuppression(urlRow);
@@ -301,6 +327,7 @@ function _endDrag(event: PointerEvent): void {
   // Focus the row before the modal opens so it already has focus (WCAG 2.4.3).
   _armFocusReturnSuppression(urlRow);
   urlRow.trigger("focus");
+  _confirmModalOpenedBySwipe = true;
   deleteURLShowModal(utubUrlID, urlRow, utubID);
 }
 
@@ -331,17 +358,38 @@ function _armFocusReturnSuppression(urlRow: JQuery): void {
 function _cancelDrag(event: PointerEvent): void {
   if (_dragState === null) return;
   if (event.pointerId !== _dragState.pointerId) return;
-  const state = _dragState;
+  _clearDragState(_dragState);
+}
 
-  _teardownDragListeners(state);
+/**
+ * Production teardown for a live drag when the mobile deck switches out from
+ * under it (e.g. a Back-driven `MOBILE_DECK_SWITCHED`). Duplicates `_cancelDrag`'s
+ * cleanup body but without its `pointerId` equality check (a deck switch has no
+ * triggering pointer event to compare against) and without the `PointerEvent`
+ * parameter. Not reusing `_resetURLSwipeGestureForTests()` — that stays test-only
+ * and deliberately skips the DOM cleanup (transform/class removal) a live reset needs.
+ */
+export function resetSwipeStateOnDeckSwitch(): void {
+  if (_dragState === null) return;
+  _clearDragState(_dragState);
+}
 
-  // Clear the inline transform while swipe-dragging (transition: none) is
-  // still applied, so the reset is instant rather than animated by
-  // .urlRowContent's 0.3s transition — then remove the state classes.
-  state.urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
-  state.urlRow.removeClass(`${SWIPE_DRAGGING_CLASS} ${SWIPE_COMMITTED_CLASS}`);
-
-  _dragState = null;
+/**
+ * Register the single `MOBILE_DECK_SWITCHED` subscription that hardens the swipe
+ * feature against Back navigation: tear down any in-flight drag, and dismiss the
+ * shared `#confirmModal` ONLY when this swipe flow opened it (never one another
+ * flow, e.g. UTub-delete, opened). Mirrors `initTagSheet()`'s init role.
+ */
+export function initSwipe(): void {
+  if (_swipeInitialized) return;
+  _swipeInitialized = true;
+  on(AppEvents.MOBILE_DECK_SWITCHED, () => {
+    resetSwipeStateOnDeckSwitch();
+    if (_confirmModalOpenedBySwipe) {
+      $(CONFIRM_MODAL_SELECTOR).modal("hide");
+      _confirmModalOpenedBySwipe = false;
+    }
+  });
 }
 
 /**
@@ -431,4 +479,6 @@ export function triggerURLSwipeNudgeIfEligible({
 export function _resetURLSwipeGestureForTests(): void {
   _dragState = null;
   _suppressSwipeClick = false;
+  _confirmModalOpenedBySwipe = false;
+  _swipeInitialized = false;
 }

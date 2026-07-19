@@ -12,6 +12,10 @@ import {
 } from "./members/deck.js";
 import { getAllUTubs } from "./utubs/utils.js";
 import { buildUTubDeck, setUTubDeckWhenNoUTubSelected } from "./utubs/deck.js";
+import {
+  isMobile,
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted,
+} from "./mobile.js";
 import { debug } from "../lib/debug.js";
 
 const log = debug("home-shell");
@@ -46,6 +50,10 @@ export function setUIWhenNoUTubSelected(): void {
 export function resetHomePageToInitialState(): void {
   log("resetHomePageToInitialState() — fetching all UTubs to rebuild deck");
   setUIWhenNoUTubSelected();
+  // On mobile, backing out of a UTub (or landing on a stale/deleted one) must
+  // return the visible panel to the UTub list — otherwise the user is stranded
+  // on the now-empty URL/Member deck the panel-history unwind arrived from.
+  if (isMobile()) setMobileUIWhenUTubNotSelectedOrUTubDeleted();
   getAllUTubs().then((utubData) => {
     buildUTubDeck(utubData.utubs);
     setMemberDeckWhenNoUTubSelected();

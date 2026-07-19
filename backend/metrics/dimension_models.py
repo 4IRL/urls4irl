@@ -220,6 +220,7 @@ class _DimTagDeleteCancel(UIBaseDimensions):
 
 class _DimTagSheetToggle(UIBaseDimensions):
     action: Literal["open", "close"]
+    trigger: Literal["tap", "history_nav"]
 
 
 class _DimFormSubmit(UIBaseDimensions):
@@ -261,6 +262,7 @@ class _DimLhsExpand(UIBaseDimensions):
 
 class _DimMobileNav(UIBaseDimensions):
     target: Literal["utubs", "urls", "members", "tags"]
+    trigger: Literal["tap", "history_nav"]
 
 
 class _DimAuthFormSwitch(UIBaseDimensions):

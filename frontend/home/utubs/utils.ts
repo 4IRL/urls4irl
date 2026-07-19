@@ -11,7 +11,7 @@ import {
 type GetUtubsResponse = SuccessResponse<"getUtubs">;
 
 // Verify UTubID is valid
-export function isValidUTubID(utubIdStr: string | null): boolean {
+export function isValidUTubID(utubIdStr: string | null): utubIdStr is string {
   if (utubIdStr === null) return false;
   const utubId = parseInt(utubIdStr);
   const isANumber = !isNaN(utubId);

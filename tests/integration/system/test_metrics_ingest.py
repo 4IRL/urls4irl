@@ -94,6 +94,7 @@ def test_ingest_records_tag_sheet_toggle_with_action_dimension(
                     "event_name": EventName.UI_TAG_SHEET_TOGGLE.value,
                     "dimensions": {
                         "action": "open",
+                        "trigger": "tap",
                         "device_type": DeviceType.MOBILE,
                     },
                 },
@@ -101,6 +102,7 @@ def test_ingest_records_tag_sheet_toggle_with_action_dimension(
                     "event_name": EventName.UI_TAG_SHEET_TOGGLE.value,
                     "dimensions": {
                         "action": "close",
+                        "trigger": "tap",
                         "device_type": DeviceType.MOBILE,
                     },
                 },
@@ -139,6 +141,7 @@ def test_ingest_rejects_unknown_tag_sheet_toggle_action(
                     "event_name": EventName.UI_TAG_SHEET_TOGGLE.value,
                     "dimensions": {
                         "action": "peek",
+                        "trigger": "tap",
                         "device_type": DeviceType.MOBILE,
                     },
                 }

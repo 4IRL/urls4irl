@@ -6,7 +6,9 @@ import { debug } from "../../lib/debug.js";
 import { ajaxCall, is429Handled } from "../../lib/ajax.js";
 import { isUtubLockedHandled } from "../utub-locked.js";
 import { emit } from "../../lib/metrics-client.js";
+import { TAG_SHEET_TOGGLE_TRIGGER } from "../../types/metrics-dim-values.js";
 import { UI_EVENTS } from "../../types/metrics-events.js";
+import { closeTagSheet, isTagSheetOpen } from "../tags/sheet.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
@@ -194,7 +196,7 @@ function removeMemberSuccess(memberID: number): void {
   }
 }
 
-function leaveUTubSuccess(utubID: number): void {
+export function leaveUTubSuccess(utubID: number): void {
   // Close modal
   $("#confirmModal").modal("hide");
 
@@ -220,6 +222,15 @@ function leaveUTubSuccess(utubID: number): void {
       hideInputsAndUpdateUTubDeck();
     }
   });
+
+  // Consume the tag sheet's own history entry (via history.back()) while it is
+  // still on top of the stack, BEFORE the pushState/replaceState pair below —
+  // otherwise the sheet's entry is orphaned under the freshly-pushed /home entry.
+  if (isTagSheetOpen())
+    closeTagSheet({
+      returnFocus: false,
+      trigger: TAG_SHEET_TOGGLE_TRIGGER.TAP,
+    });
 
   setTimeout(function () {
     window.history.pushState(null, "", "/home");

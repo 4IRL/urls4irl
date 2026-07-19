@@ -95,6 +95,7 @@ const appConfig = {
     // Source of truth: backend/metrics/dimension_models.py (DIMENSION_MODELS registry).
     // — keep this array in sync when DIMENSION_MODELS changes.
     DIMENSION_KEYS: [
+      "action",
       "active_tag_count",
       "deck",
       "device_type",
@@ -114,6 +115,13 @@ const appConfig = {
     DEVICE_TYPE_DIM_KEY: "device_type",
   },
   strings: {
+    UTUB_QUERY_PARAM: "UTubID",
+    MOBILE_PANEL_QUERY_PARAM: "panel",
+    MOBILE_PANEL_ANNOUNCEMENT_UTUBS: "Now showing UTub list",
+    MOBILE_PANEL_ANNOUNCEMENT_URLS: "Now showing URLs",
+    MOBILE_PANEL_ANNOUNCEMENT_MEMBERS: "Now showing Members",
+    UTUB_NO_LONGER_AVAILABLE:
+      "The UTub you tried to open is no longer available",
     ADMIN_ACTION_REASON_LABEL: "Reason",
     ADMIN_ACTION_REASON_REQUIRED: "A reason is required for this action.",
     ADMIN_ACTION_GENERIC_ERROR: "Action failed. Check the server logs.",
@@ -128,6 +136,8 @@ const appConfig = {
     TAG_SEARCH_PLACEHOLDER: "Filter tags",
     TAG_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} tags shown",
     TAG_DECK_NO_TAGS: "This UTub has no tags yet",
+    TAG_SHEET_ANNOUNCEMENT_OPEN: "Tag filter sheet opened",
+    TAG_SHEET_ANNOUNCEMENT_CLOSE: "Tag filter sheet closed",
     ADD_TAGS_PLACEHOLDER: "Type to search or create tags…",
     ADD_TAGS_SUBMIT: "Add tags",
     ADD_TAGS_ARIA_LABEL: "Add tags",

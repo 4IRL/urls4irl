@@ -23,6 +23,7 @@ import { setCreateUTubEventListeners } from "./home/utubs/create.js";
 import { initUnselectAllTags } from "./home/tags/unselect-all.js";
 import { initUpdateAllTags } from "./home/tags/update-all.js";
 import { initURLDeck } from "./home/urls/deck.js";
+import { initSwipe } from "./home/urls/cards/swipe.js";
 import { initURLDeckHeaderFit } from "./home/utubs/header-fit.js";
 import { initTagSheet } from "./home/tags/sheet.js";
 import "./home/members/deck.js";
@@ -50,6 +51,7 @@ $(document).ready(() => {
   initUnselectAllTags();
   initUpdateAllTags();
   initURLDeck();
+  initSwipe();
   initURLDeckHeaderFit();
   initCookieBanner();
   initMetricsClient();

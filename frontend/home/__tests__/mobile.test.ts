@@ -9,9 +9,22 @@ import {
   setMobileUIWhenUTubDeckSelected,
   setMobileUIWhenMemberDeckSelected,
   revertMobileUIToFullScreenUI,
+  pushMobilePanelHistoryState,
+  replaceMobilePanelHistoryState,
+  getCurrentMobilePanel,
+  setCurrentMobilePanel,
 } from "../mobile.js";
 
 const mockMakeUTubSelectableAgainIfMobile = vi.fn();
+
+// `test-setup.ts`'s global APP_CONFIG.strings mock does not include the query
+// param keys these history helpers read, so hand-mock config.js locally
+// (mirroring window-events.test.ts's pattern) with both query-param strings.
+vi.mock("../../lib/config.js", () => ({
+  APP_CONFIG: {
+    strings: { UTUB_QUERY_PARAM: "UTubID", MOBILE_PANEL_QUERY_PARAM: "panel" },
+  },
+}));
 
 vi.mock("../../lib/event-bus.js", () => ({
   on: vi.fn(),
@@ -172,6 +185,17 @@ describe("setMobileUIWhenUTubNotSelectedOrUTubDeleted", () => {
     expect(emit).toHaveBeenCalledWith(AppEvents.MOBILE_DECK_SWITCHED, {
       target: "no-utub",
     });
+  });
+
+  it("re-shows the left panel so the UTub list is reachable when a prior deck switch hid it", () => {
+    // A URL/Member deck switch hides #leftPanel; unwinding to the no-UTub state
+    // (e.g. Back out of a selected UTub on mobile) must re-show it.
+    $(".panel#leftPanel").addClass("hidden");
+
+    setMobileUIWhenUTubNotSelectedOrUTubDeleted();
+
+    expect($(".panel#leftPanel").hasClass("hidden")).toBe(false);
+    expect($(".deck#UTubDeck").hasClass("hidden")).toBe(false);
   });
 });
 
@@ -334,5 +358,77 @@ describe("initMobileLayout viewport-crossing reconciliation", () => {
     breakpointChangeHandler();
 
     expect($("#mainPanel").hasClass("lhs-collapsed")).toBe(false);
+  });
+});
+
+describe("pushMobilePanelHistoryState / replaceMobilePanelHistoryState", () => {
+  let pushStateSpy: ReturnType<typeof vi.spyOn>;
+  let replaceStateSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    pushStateSpy = vi
+      .spyOn(window.history, "pushState")
+      .mockImplementation(() => {});
+    replaceStateSpy = vi
+      .spyOn(window.history, "replaceState")
+      .mockImplementation(() => {});
+    // Reset tracked panel to the default between tests.
+    setCurrentMobilePanel({ mobilePanel: "utubs" });
+  });
+
+  afterEach(() => {
+    pushStateSpy.mockRestore();
+    replaceStateSpy.mockRestore();
+  });
+
+  it("pushes the exact { UTubID, mobilePanel } state and /home URL", () => {
+    pushMobilePanelHistoryState({ mobilePanel: "members", UTubID: 42 });
+
+    expect(pushStateSpy).toHaveBeenCalledTimes(1);
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      { UTubID: 42, mobilePanel: "members" },
+      "",
+      "/home?UTubID=42&panel=members",
+    );
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+  });
+
+  it("pushes the url-deck panel entry with the right URL", () => {
+    pushMobilePanelHistoryState({ mobilePanel: "urls", UTubID: 7 });
+
+    expect(pushStateSpy).toHaveBeenCalledWith(
+      { UTubID: 7, mobilePanel: "urls" },
+      "",
+      "/home?UTubID=7&panel=urls",
+    );
+  });
+
+  it("replaces the current entry via replaceState, not pushState", () => {
+    replaceMobilePanelHistoryState({ mobilePanel: "urls", UTubID: 99 });
+
+    expect(replaceStateSpy).toHaveBeenCalledTimes(1);
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      { UTubID: 99, mobilePanel: "urls" },
+      "",
+      "/home?UTubID=99&panel=urls",
+    );
+    expect(pushStateSpy).not.toHaveBeenCalled();
+  });
+
+  it("does not set the fullyLoaded sessionStorage flag on push", () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, "setItem");
+
+    pushMobilePanelHistoryState({ mobilePanel: "utubs", UTubID: 1 });
+
+    expect(setItemSpy).not.toHaveBeenCalledWith("fullyLoaded", "true");
+    setItemSpy.mockRestore();
+  });
+
+  it("getCurrentMobilePanel reflects the setter", () => {
+    expect(getCurrentMobilePanel()).toBe("utubs");
+    setCurrentMobilePanel({ mobilePanel: "members" });
+    expect(getCurrentMobilePanel()).toBe("members");
+    setCurrentMobilePanel({ mobilePanel: "urls" });
+    expect(getCurrentMobilePanel()).toBe("urls");
   });
 });

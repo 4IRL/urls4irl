@@ -20,6 +20,11 @@ DELETE_UTUB_TAG_WARNING = (
 )
 TAG_FILTER_NO_RESULTS = "No URLs match selected tags"
 TAG_SEARCH_NO_RESULTS = "No tags found"
+# Screen-reader announcements for the mobile tag-filter bottom sheet, fired only
+# on a history-nav (Back/Forward) open/close — read dynamically by production
+# TypeScript via APP_CONFIG.strings, so they go through the full bridge.
+TAG_SHEET_ANNOUNCEMENT_OPEN = "Tag filter sheet opened"
+TAG_SHEET_ANNOUNCEMENT_CLOSE = "Tag filter sheet closed"
 TAG_SEARCH_PLACEHOLDER = "Filter tags"
 TAG_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} tags shown"
 TAG_DECK_NO_TAGS = "This UTub has no tags yet"

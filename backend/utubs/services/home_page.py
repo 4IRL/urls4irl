@@ -1,4 +1,3 @@
-from itertools import islice
 from flask import abort, current_app, render_template, request
 from flask_login import current_user
 from sqlalchemy.exc import DataError
@@ -9,7 +8,17 @@ from backend.models.utubs import Utubs
 from backend.schemas.users import UtubSummaryListSchema
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.model_strs import MODELS
-from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+from backend.utils.strings.utub_strs import (
+    MOBILE_PANEL_QUERY_PARAM,
+    UTUB_ID_QUERY_PARAM,
+)
+
+# The only query params the /home route recognizes: the UTub to preselect and
+# the mobile panel to restore (added for the mobile back/forward panel feature).
+# Any other param — or a repeated recognized one — is rejected as malformed.
+RECOGNIZED_HOME_QUERY_PARAMS = frozenset(
+    {UTUB_ID_QUERY_PARAM, MOBILE_PANEL_QUERY_PARAM}
+)
 
 
 def render_home_page() -> str:
@@ -24,24 +33,30 @@ def render_home_page() -> str:
     )
 
 
-def validate_query_param_is_utub_id() -> bool:
+def validate_home_query_params() -> bool:
     """
-    Validates if a query param for this request is UTubID.
+    Validates the /home query params. Only ``UTubID`` and the mobile panel
+    param are recognized, each allowed at most once. A repeated recognized
+    param or any unrecognized param is rejected.
 
     Returns:
-        (bool): If query param is "UTubID"
+        (bool): True if every present query param is a recognized, non-repeated
+            key; False otherwise.
     """
-    # Count total number of query param keys/values, even for repeats
-    query_param_pairs = list(islice(request.args.items(multi=True), 2))
+    query_param_keys = [key for key, _ in request.args.items(multi=True)]
 
-    if len(query_param_pairs) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
-        log_msg = (
-            "Too many query parameters"
-            if len(query_param_pairs) != 1
-            else "Does not contain 'UTubID' as a query parameter"
+    if len(query_param_keys) != len(set(query_param_keys)):
+        warning_log(f"User={current_user.id} | Too many query parameters")
+        return False
+
+    unrecognized_keys = [
+        key for key in query_param_keys if key not in RECOGNIZED_HOME_QUERY_PARAMS
+    ]
+    if unrecognized_keys:
+        warning_log(
+            f"User={current_user.id} | "
+            f"Unrecognized query parameter(s): {unrecognized_keys}"
         )
-        log_msg = f"User={current_user.id} | " + log_msg
-        warning_log(log_msg)
         return False
 
     return True

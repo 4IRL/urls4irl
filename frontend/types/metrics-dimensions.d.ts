@@ -145,6 +145,7 @@ export type DimTagDeleteCancel = {
 export type DimTagSheetToggle = {
   device_type: DeviceType;
   action: "open" | "close";
+  trigger: "tap" | "history_nav";
 };
 
 export type DimFormSubmit = {
@@ -187,6 +188,7 @@ export type DimLhsExpand = {
 export type DimMobileNav = {
   device_type: DeviceType;
   target: "utubs" | "urls" | "members" | "tags";
+  trigger: "tap" | "history_nav";
 };
 
 export type DimAuthCancel = {

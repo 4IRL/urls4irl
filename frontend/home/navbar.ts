@@ -6,8 +6,12 @@ import {
   setMobileUIWhenMemberDeckSelected,
   setMobileUIWhenUTubSelectedOrURLNavSelected,
   setMobileUIWhenUTubDeckSelected,
+  pushMobilePanelHistoryState,
+  setCurrentMobilePanel,
+  type MobilePanel,
 } from "./mobile.js";
-import { openTagSheet } from "./tags/sheet.js";
+import { getState } from "../store/app-store.js";
+import { openTagSheetFromUserAction } from "./tags/sheet.js";
 import {
   exitCrossUtubSearchMode,
   isCrossUtubSearchActive,
@@ -15,6 +19,7 @@ import {
 import {
   CROSS_UTUB_SEARCH_CLOSE_TRIGGER,
   MOBILE_NAV_TARGET,
+  MOBILE_NAV_TRIGGER,
 } from "../types/metrics-dim-values.js";
 
 export const NAVBAR_TOGGLER: { toggler: bootstrap.Collapse | null } = {
@@ -34,6 +39,26 @@ function closeCrossUtubSearchIfOpen(): void {
   }
 }
 
+// Push a merged `{ UTubID, mobilePanel }` history entry when a deck-switch tap
+// changes the active mobile panel, and keep `_currentMobilePanel` in sync.
+// Call-site dedup guard: skip the push when the current history entry already
+// carries the identical `{ UTubID, mobilePanel }` (a redundant re-tap of the
+// same deck) so Back does not have to unwind duplicate consecutive entries.
+function pushMobilePanelHistoryOnTap({
+  mobilePanel,
+}: {
+  mobilePanel: MobilePanel;
+}): void {
+  const activeUTubID = getState().activeUTubID;
+  if (activeUTubID === null) return;
+  setCurrentMobilePanel({ mobilePanel });
+  const state = window.history.state;
+  if (state?.UTubID === activeUTubID && state?.mobilePanel === mobilePanel) {
+    return;
+  }
+  pushMobilePanelHistoryState({ mobilePanel, UTubID: activeUTubID });
+}
+
 /**
  * Initialize navbar and mobile navigation buttons
  */
@@ -41,25 +66,44 @@ export function initNavbar(): void {
   $("button#toMembers").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.MEMBERS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.MEMBERS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     setMobileUIWhenMemberDeckSelected();
+    pushMobilePanelHistoryOnTap({ mobilePanel: "members" });
   });
   $("button#toURLs").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.URLS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.URLS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     setMobileUIWhenUTubSelectedOrURLNavSelected();
+    pushMobilePanelHistoryOnTap({ mobilePanel: "urls" });
   });
   $("button#toUTubs").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.UTUBS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.UTUBS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     setMobileUIWhenUTubDeckSelected();
+    pushMobilePanelHistoryOnTap({ mobilePanel: "utubs" });
   });
   $("button#toTags").on("click", () => {
     closeCrossUtubSearchIfOpen();
     _suppressNextNavbarCloseEmit = true;
-    emit({ event: UI_EVENTS.UI_MOBILE_NAV, target: MOBILE_NAV_TARGET.TAGS });
+    emit({
+      event: UI_EVENTS.UI_MOBILE_NAV,
+      target: MOBILE_NAV_TARGET.TAGS,
+      trigger: MOBILE_NAV_TRIGGER.TAP,
+    });
     // The tag sheet overlays the URL deck, so first switch to the URL deck —
     // otherwise tapping Tags from the Member/UTub deck opens the sheet over the
     // wrong deck. This also collapses the hamburger (it calls toggler.hide()),
@@ -67,7 +111,8 @@ export function initNavbar(): void {
     // marks #mainPanel siblings inert (a still-open Bootstrap collapse would
     // otherwise desync and become unreopenable). Then open the sheet over it.
     setMobileUIWhenUTubSelectedOrURLNavSelected();
-    openTagSheet();
+    setCurrentMobilePanel({ mobilePanel: "urls" });
+    openTagSheetFromUserAction();
   });
 
   // "Return Home" inside the hamburger — only visible while cross-UTub search is
