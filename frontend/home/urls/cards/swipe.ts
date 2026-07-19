@@ -250,6 +250,21 @@ function _teardownDragListeners(state: SwipeDragState): void {
 }
 
 /**
+ * Shared cleanup for a live drag: release its listeners/capture, clear the
+ * inline transform while `swipe-dragging` (transition: none) is still applied
+ * so the reset is instant rather than animated by `.urlRowContent`'s 0.3s
+ * transition, drop the state classes, and null `_dragState`. Called by both
+ * `_cancelDrag` and `resetSwipeStateOnDeckSwitch` after each has run its own
+ * guard.
+ */
+function _clearDragState(state: SwipeDragState): void {
+  _teardownDragListeners(state);
+  state.urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
+  state.urlRow.removeClass(`${SWIPE_DRAGGING_CLASS} ${SWIPE_COMMITTED_CLASS}`);
+  _dragState = null;
+}
+
+/**
  * Release handler (pointerup): a non-moved release is a tap (native click
  * drives card selection normally). A moved release decides commit-or-snap-back
  * via the pure threshold math, and on commit opens the existing confirm-delete
@@ -343,17 +358,7 @@ function _armFocusReturnSuppression(urlRow: JQuery): void {
 function _cancelDrag(event: PointerEvent): void {
   if (_dragState === null) return;
   if (event.pointerId !== _dragState.pointerId) return;
-  const state = _dragState;
-
-  _teardownDragListeners(state);
-
-  // Clear the inline transform while swipe-dragging (transition: none) is
-  // still applied, so the reset is instant rather than animated by
-  // .urlRowContent's 0.3s transition — then remove the state classes.
-  state.urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
-  state.urlRow.removeClass(`${SWIPE_DRAGGING_CLASS} ${SWIPE_COMMITTED_CLASS}`);
-
-  _dragState = null;
+  _clearDragState(_dragState);
 }
 
 /**
@@ -366,14 +371,7 @@ function _cancelDrag(event: PointerEvent): void {
  */
 export function resetSwipeStateOnDeckSwitch(): void {
   if (_dragState === null) return;
-  const state = _dragState;
-
-  _teardownDragListeners(state);
-
-  state.urlRow.find(URL_ROW_CONTENT_SELECTOR).css("transform", "");
-  state.urlRow.removeClass(`${SWIPE_DRAGGING_CLASS} ${SWIPE_COMMITTED_CLASS}`);
-
-  _dragState = null;
+  _clearDragState(_dragState);
 }
 
 /**
