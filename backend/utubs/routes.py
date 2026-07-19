@@ -36,7 +36,7 @@ from backend.utubs.services.create_utubs import create_new_utub
 from backend.utubs.services.delete_utubs import delete_utub_for_user
 from backend.utubs.services.home_page import (
     render_home_page,
-    validate_query_param_is_utub_id,
+    validate_home_query_params,
     validate_user_is_member_of_utub_on_home_page_with_query_param,
 )
 from backend.utubs.services.read_utubs import (
@@ -82,10 +82,17 @@ def home() -> str | WerkzeugResponse:
     if not request.args:
         return render_home_page()
 
-    if not validate_query_param_is_utub_id():
+    if not validate_home_query_params():
         abort(404)
 
-    utub_id = request.args.get(UTUB_ID_QUERY_PARAM, "")
+    utub_id = request.args.get(UTUB_ID_QUERY_PARAM)
+
+    if utub_id is None:
+        # Panel-only request (no UTubID) — e.g. a stale/hand-edited or
+        # graceful-degradation mobile URL such as `/home?panel=urls`. Render the
+        # home page; the client resolves the no-UTub state per the mobile
+        # panel-persistence feature rather than the server erroring.
+        return render_home_page()
 
     valid_member = validate_user_is_member_of_utub_on_home_page_with_query_param(
         utub_id

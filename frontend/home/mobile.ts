@@ -173,6 +173,10 @@ export function setMobileUIWhenUTubNotSelectedOrUTubDeleted(): void {
   $("button#toTags").addClass("hidden");
   $("button#toURLs").addClass("hidden");
 
+  // The UTub list lives inside #leftPanel, which a prior URL/Member deck switch
+  // may have hidden. Re-show it so the no-UTub state lands on the UTub list —
+  // e.g. when Back unwinds the panel stack out of a selected UTub on mobile.
+  $(".panel#leftPanel").removeClass("hidden");
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#MemberDeck").removeClass("visible-flex");
 

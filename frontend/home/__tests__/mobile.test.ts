@@ -186,6 +186,17 @@ describe("setMobileUIWhenUTubNotSelectedOrUTubDeleted", () => {
       target: "no-utub",
     });
   });
+
+  it("re-shows the left panel so the UTub list is reachable when a prior deck switch hid it", () => {
+    // A URL/Member deck switch hides #leftPanel; unwinding to the no-UTub state
+    // (e.g. Back out of a selected UTub on mobile) must re-show it.
+    $(".panel#leftPanel").addClass("hidden");
+
+    setMobileUIWhenUTubNotSelectedOrUTubDeleted();
+
+    expect($(".panel#leftPanel").hasClass("hidden")).toBe(false);
+    expect($(".deck#UTubDeck").hasClass("hidden")).toBe(false);
+  });
 });
 
 describe("setMobileUIWhenUTubDeckSelected", () => {
