@@ -52,8 +52,8 @@ function pushMobilePanelHistoryOnTap({
   const activeUTubID = getState().activeUTubID;
   if (activeUTubID === null) return;
   setCurrentMobilePanel({ mobilePanel });
-  const targetState = { UTubID: activeUTubID, mobilePanel };
-  if (JSON.stringify(window.history.state) === JSON.stringify(targetState)) {
+  const state = window.history.state;
+  if (state?.UTubID === activeUTubID && state?.mobilePanel === mobilePanel) {
     return;
   }
   pushMobilePanelHistoryState({ mobilePanel, UTubID: activeUTubID });
