@@ -111,6 +111,7 @@ export function initNavbar(): void {
     // marks #mainPanel siblings inert (a still-open Bootstrap collapse would
     // otherwise desync and become unreopenable). Then open the sheet over it.
     setMobileUIWhenUTubSelectedOrURLNavSelected();
+    setCurrentMobilePanel({ mobilePanel: "urls" });
     openTagSheetFromUserAction();
   });
 

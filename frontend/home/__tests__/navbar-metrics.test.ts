@@ -26,6 +26,7 @@ vi.mock("../mobile.js", () => ({
   setMobileUIWhenMemberDeckSelected: vi.fn(),
   setMobileUIWhenUTubSelectedOrURLNavSelected: vi.fn(),
   setMobileUIWhenUTubDeckSelected: vi.fn(),
+  setCurrentMobilePanel: vi.fn(),
 }));
 vi.mock("../tags/sheet.js", () => ({
   openTagSheetFromUserAction: vi.fn(),
