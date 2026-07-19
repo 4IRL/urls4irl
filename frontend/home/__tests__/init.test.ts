@@ -12,6 +12,8 @@ const mockResetMemberDeck = vi.fn();
 const mockGetAllUTubs = vi.fn();
 const mockBuildUTubDeck = vi.fn();
 const mockSetUTubDeckWhenNoUTubSelected = vi.fn();
+const mockIsMobile = vi.fn();
+const mockSetMobileUIWhenUTubNotSelectedOrUTubDeleted = vi.fn();
 
 vi.mock("../btns-forms.js", () => ({
   hideInputs: (...args: unknown[]) => mockHideInputs(...args),
@@ -38,6 +40,11 @@ vi.mock("../utubs/deck.js", () => ({
   buildUTubDeck: (...args: unknown[]) => mockBuildUTubDeck(...args),
   setUTubDeckWhenNoUTubSelected: (...args: unknown[]) =>
     mockSetUTubDeckWhenNoUTubSelected(...args),
+}));
+vi.mock("../mobile.js", () => ({
+  isMobile: (...args: unknown[]) => mockIsMobile(...args),
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted: (...args: unknown[]) =>
+    mockSetMobileUIWhenUTubNotSelectedOrUTubDeleted(...args),
 }));
 
 const $ = window.jQuery;
@@ -109,6 +116,36 @@ describe("init", () => {
       });
 
       expect(mockBuildUTubDeck).toHaveBeenCalledWith([]);
+    });
+
+    it("returns the panel to the UTub list on mobile", async () => {
+      mockIsMobile.mockReturnValue(true);
+      mockGetAllUTubs.mockResolvedValue({ utubs: [] });
+
+      resetHomePageToInitialState();
+
+      expect(
+        mockSetMobileUIWhenUTubNotSelectedOrUTubDeleted,
+      ).toHaveBeenCalled();
+
+      await vi.waitFor(() => {
+        expect(mockGetAllUTubs).toHaveBeenCalled();
+      });
+    });
+
+    it("does not touch the mobile panel on desktop", async () => {
+      mockIsMobile.mockReturnValue(false);
+      mockGetAllUTubs.mockResolvedValue({ utubs: [] });
+
+      resetHomePageToInitialState();
+
+      expect(
+        mockSetMobileUIWhenUTubNotSelectedOrUTubDeleted,
+      ).not.toHaveBeenCalled();
+
+      await vi.waitFor(() => {
+        expect(mockGetAllUTubs).toHaveBeenCalled();
+      });
     });
   });
 });
