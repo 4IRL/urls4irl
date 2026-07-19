@@ -974,6 +974,39 @@ describe("window-events", () => {
       widthSpy.mockRestore();
     });
 
+    it("routes to the UTub deck on mobile for ?UTubID=10&panel=utubs", async () => {
+      Object.defineProperty(history, "state", {
+        value: null,
+        writable: true,
+        configurable: true,
+      });
+      Object.defineProperty(window, "location", {
+        value: { search: "?UTubID=10&panel=utubs", assign: vi.fn() },
+        writable: true,
+        configurable: true,
+      });
+      mockIsValidUTubID.mockReturnValue(true);
+      mockIsUtubIdValidOnPageLoad.mockReturnValue(true);
+      const fakeUTub = { id: 10, name: "UTub Deck UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
+      expect(
+        mockSetMobileUIWhenUTubSelectedOrURLNavSelected,
+      ).not.toHaveBeenCalled();
+      expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "utubs",
+      });
+
+      widthSpy.mockRestore();
+    });
+
     it("routes to the recorded panel from warm history.state on mobile", async () => {
       Object.defineProperty(history, "state", {
         value: { UTubID: 7, mobilePanel: "members" },
@@ -992,6 +1025,29 @@ describe("window-events", () => {
       expect(mockSetMobileUIWhenMemberDeckSelected).toHaveBeenCalled();
       expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
         mobilePanel: "members",
+      });
+
+      widthSpy.mockRestore();
+    });
+
+    it("routes to the UTub deck from warm history.state with mobilePanel utubs on mobile", async () => {
+      Object.defineProperty(history, "state", {
+        value: { UTubID: 7, mobilePanel: "utubs" },
+        writable: true,
+        configurable: true,
+      });
+      const fakeUTub = { id: 7, name: "Warm UTub" };
+      mockGetUTubInfo.mockResolvedValue(fakeUTub);
+      const widthSpy = vi.spyOn($.fn, "width").mockReturnValue(500);
+
+      pageshowHandler!(new Event("pageshow") as PageTransitionEvent);
+
+      await vi.waitFor(() => {
+        expect(mockBuildSelectedUTub).toHaveBeenCalledWith(fakeUTub);
+      });
+      expect(mockSetMobileUIWhenUTubDeckSelected).toHaveBeenCalled();
+      expect(mockSetCurrentMobilePanel).toHaveBeenCalledWith({
+        mobilePanel: "utubs",
       });
 
       widthSpy.mockRestore();
