@@ -117,8 +117,8 @@ function deselectURL(urlCard: JQuery): void {
   urlCard
     .find(".goToUrlIcon")
     .removeClass("visible-flex hidden visible-on-focus");
-  hideAndResetUpdateURLTitleForm(urlCard);
-  hideAndResetUpdateURLStringForm(urlCard);
+  hideAndResetUpdateURLTitleForm({ urlCard });
+  hideAndResetUpdateURLStringForm({ urlCard });
   hideAndResetTagCombobox(urlCard);
   disableTabbingOnURLCardElements(urlCard);
   setURLCardSelectionEventListener(urlCard);

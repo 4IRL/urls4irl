@@ -283,11 +283,10 @@ a.urlString {
 }
 
 @media (any-pointer: coarse) {
-    .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
-        display: inline-flex;
-        align-items: center;
-    }
-
+    /* The URL title pencil is desktop-only in the consolidated-edit design — the
+       bottom-row edit button opens the panel on mobile. No mobile-reveal rule for
+       .urlTitleBtnUpdate here; the layout rules below still apply so the title row
+       fits the title + go-to-URL icon. */
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
         width: 100%;
         justify-content: flex-start;

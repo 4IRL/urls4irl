@@ -72,7 +72,7 @@ describe("update-title metrics — UI_URL_TITLE_EDIT_OPEN", () => {
     const urlTitleAndShowUpdateIconWrap = urlCard.find(
       ".urlTitleAndUpdateIconWrap",
     );
-    showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard);
+    showUpdateURLTitleForm({ urlTitleAndShowUpdateIconWrap, urlCard });
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN,
@@ -86,7 +86,7 @@ describe("update-title metrics — UI_URL_TITLE_EDIT_OPEN", () => {
     const urlTitleAndShowUpdateIconWrap = urlCard.find(
       ".urlTitleAndUpdateIconWrap",
     );
-    showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard);
+    showUpdateURLTitleForm({ urlTitleAndShowUpdateIconWrap, urlCard });
 
     expect(emit).toHaveBeenCalledTimes(1);
   });

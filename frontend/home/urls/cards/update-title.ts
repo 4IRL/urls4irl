@@ -40,10 +40,15 @@ function isUpdateUrlTitleFieldName(
 }
 
 // Shows the update URL title form
-export function showUpdateURLTitleForm(
-  urlTitleAndShowUpdateIconWrap: JQuery,
-  urlCard: JQuery,
-): void {
+export function showUpdateURLTitleForm({
+  urlTitleAndShowUpdateIconWrap,
+  urlCard,
+  suppressSiblingDisable = false,
+}: {
+  urlTitleAndShowUpdateIconWrap: JQuery;
+  urlCard: JQuery;
+  suppressSiblingDisable?: boolean;
+}): void {
   emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_TITLE_EDIT);
   urlTitleAndShowUpdateIconWrap.hideClass();
@@ -64,11 +69,17 @@ export function showUpdateURLTitleForm(
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
   disableClickOnSelectedURLCardToHide(urlCard);
-  disableEditingURLString(urlCard);
+  if (!suppressSiblingDisable) disableEditingURLString(urlCard);
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
-export function hideAndResetUpdateURLTitleForm(urlCard: JQuery): void {
+export function hideAndResetUpdateURLTitleForm({
+  urlCard,
+  suppressSiblingDisable = false,
+}: {
+  urlCard: JQuery;
+  suppressSiblingDisable?: boolean;
+}): void {
   urlCard.find(".updateUrlTitleWrap").hideClass();
   urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
@@ -77,7 +88,7 @@ export function hideAndResetUpdateURLTitleForm(urlCard: JQuery): void {
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
 
   resetUpdateURLTitleFailErrors(urlCard);
-  enableEditingURLString(urlCard);
+  if (!suppressSiblingDisable) enableEditingURLString(urlCard);
   const selected = urlCard.attr("urlSelected");
   if (typeof selected === "string" && selected.toLowerCase() === "true") {
     enableClickOnSelectedURLCardToHide(urlCard);
@@ -113,7 +124,7 @@ export async function updateURLTitle(
 
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
       log("updateURLTitle skipped — value unchanged", { utubUrlID });
-      hideAndResetUpdateURLTitleForm(urlCard);
+      hideAndResetUpdateURLTitleForm({ urlCard });
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -183,7 +194,7 @@ function updateURLTitleSuccess(
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);
-  hideAndResetUpdateURLTitleForm(urlCard);
+  hideAndResetUpdateURLTitleForm({ urlCard });
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

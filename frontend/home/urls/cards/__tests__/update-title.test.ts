@@ -67,7 +67,7 @@ describe("hideAndResetUpdateURLTitleForm - selection guard", () => {
     const urlCard = $(".urlRow");
     urlCard.attr("urlSelected", "false");
 
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
 
     expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
   });
@@ -77,7 +77,7 @@ describe("hideAndResetUpdateURLTitleForm - selection guard", () => {
     const urlCard = $(".urlRow");
     urlCard.attr("urlSelected", "true");
 
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
 
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
   });
@@ -218,14 +218,17 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
     const urlCard = $(".urlRow");
     const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
 
-    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
     expect(
       urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
     ).toBe(true);
 
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
     expect(
@@ -259,7 +262,10 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
 
     const focusSpy = vi.spyOn(HTMLInputElement.prototype, "focus");
 
-    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
 
     expect(focusSpy).toHaveBeenCalled();
 
@@ -274,7 +280,10 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
     vi.mocked(isMobile).mockReturnValueOnce(false);
     const triggerSpy = vi.spyOn($.fn, "trigger");
 
-    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
 
     const focusTriggerCall = triggerSpy.mock.calls.find(
       (callArgs) => callArgs[0] === "focus",

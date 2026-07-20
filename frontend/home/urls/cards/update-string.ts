@@ -30,13 +30,17 @@ import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
-import { isMobile } from "../../mobile.js";
+import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { highlightInput } from "../../btns-forms.js";
 import {
   disableTagRemovalInURLCard,
   enableTagRemovalInURLCard,
 } from "../tags/tags.js";
-import { createEditURLIcon } from "./options/edit-string-btn.js";
+import {
+  createEditURLIcon,
+  bindURLStringEditClickHandler,
+} from "./options/edit-string-btn.js";
+import { closeURLEditPanel } from "./update-url-panel.js";
 import { checkForStaleDataOn409 } from "./conflict-handler.js";
 import { getState, setState } from "../../../store/app-store.js";
 import {
@@ -64,10 +68,15 @@ function isUpdateUrlStringFieldName(
 }
 
 // Shows update URL inputs
-export function showUpdateURLStringForm(
-  urlCard: JQuery,
-  urlStringBtnUpdate: JQuery,
-): void {
+export function showUpdateURLStringForm({
+  urlCard,
+  urlStringBtnUpdate,
+  suppressSiblingDisable = false,
+}: {
+  urlCard: JQuery;
+  urlStringBtnUpdate: JQuery;
+  suppressSiblingDisable?: boolean;
+}): void {
   emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_STRING_EDIT);
   urlCard.find(".urlString").hideClass();
@@ -90,7 +99,7 @@ export function showUpdateURLStringForm(
   urlCard.find(".urlTagBtnCreate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
   urlCard.find(".urlBtnCopy").hideClass();
-  disableEditingURLTitle(urlCard);
+  if (!suppressSiblingDisable) disableEditingURLTitle(urlCard);
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
@@ -113,8 +122,14 @@ export function showUpdateURLStringForm(
     .addClass("urlStringCancelBigBtnUpdate")
     .text("Cancel")
     .offAndOnExact("click", function () {
-      hideAndResetUpdateURLStringForm(urlCard);
-      if (tooltip) tooltip.enable();
+      if (isCoarsePointer()) {
+        // Panel is open on mobile — closing "Cancel" closes both the title and
+        // string fields together and returns focus to the trigger button.
+        closeURLEditPanel(urlCard);
+      } else {
+        hideAndResetUpdateURLStringForm({ urlCard });
+        if (tooltip) tooltip.enable();
+      }
     });
 
   disableTagRemovalInURLCard(urlCard);
@@ -122,7 +137,13 @@ export function showUpdateURLStringForm(
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
-export function hideAndResetUpdateURLStringForm(urlCard: JQuery): void {
+export function hideAndResetUpdateURLStringForm({
+  urlCard,
+  suppressSiblingDisable = false,
+}: {
+  urlCard: JQuery;
+  suppressSiblingDisable?: boolean;
+}): void {
   // Toggle input form and display of URL
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   updateURLStringWrap.hideClass();
@@ -138,11 +159,13 @@ export function hideAndResetUpdateURLStringForm(urlCard: JQuery): void {
   urlStringBtnUpdate
     .removeClass("urlStringCancelBigBtnUpdate")
     .addClass("urlStringBtnUpdate")
-    .offAndOnExact("click", function () {
-      showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
-    })
     .text("")
     .append(createEditURLIcon());
+
+  // Rebind via the shared helper so the mobile (panel-open) branch survives an
+  // open/close cycle — a bare showUpdateURLStringForm rebind here would revert the
+  // button to the desktop-only path after the first close.
+  bindURLStringEditClickHandler({ urlCard, urlStringBtnUpdate });
 
   // For tablets or in case of resize, change some of the sizing
   urlStringBtnUpdate.addClass("fourty-p-width");
@@ -152,7 +175,7 @@ export function hideAndResetUpdateURLStringForm(urlCard: JQuery): void {
   urlCard.find(".urlTagBtnCreate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
   urlCard.find(".urlBtnCopy").showClassFlex();
-  enableEditingURLTitle(urlCard);
+  if (!suppressSiblingDisable) enableEditingURLTitle(urlCard);
 
   // Enable Go To URL Icon
   const selected = urlCard.attr("urlSelected");
@@ -209,7 +232,7 @@ export async function updateURL(
 
     if (data.urlString === urlCard.find(".urlString").attr("href")) {
       log("updateURL skipped — value unchanged", { utubUrlID });
-      hideAndResetUpdateURLStringForm(urlCard);
+      hideAndResetUpdateURLStringForm({ urlCard });
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -321,7 +344,7 @@ function updateURLSuccess(
       copyURLString(updatedURLString, this);
     });
 
-  hideAndResetUpdateURLStringForm(urlCard);
+  hideAndResetUpdateURLStringForm({ urlCard });
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

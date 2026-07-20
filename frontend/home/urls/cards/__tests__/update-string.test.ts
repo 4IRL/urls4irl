@@ -139,7 +139,7 @@ describe("hideAndResetUpdateURLStringForm - selection guard", () => {
     const urlCard = $(".urlRow");
     urlCard.attr("urlSelected", "false");
 
-    hideAndResetUpdateURLStringForm(urlCard);
+    hideAndResetUpdateURLStringForm({ urlCard });
 
     expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
   });
@@ -149,7 +149,7 @@ describe("hideAndResetUpdateURLStringForm - selection guard", () => {
     const urlCard = $(".urlRow");
     urlCard.attr("urlSelected", "true");
 
-    hideAndResetUpdateURLStringForm(urlCard);
+    hideAndResetUpdateURLStringForm({ urlCard });
 
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
   });
@@ -295,11 +295,11 @@ describe("URL string edit hides title pencil for mutual exclusivity", () => {
     const urlCard = $(".urlRow");
     const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
 
-    showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
+    showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
 
     expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(true);
 
-    hideAndResetUpdateURLStringForm(urlCard);
+    hideAndResetUpdateURLStringForm({ urlCard });
 
     expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
   });
