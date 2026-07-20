@@ -47,17 +47,22 @@ export function resetURLDeck(): void {
   resetNewURLForm();
   newURLInputRemoveEventListeners();
   $(".urlRow").remove();
-  $("#urlBtnCreate").hideClass();
   updateUTubDescriptionHideInput();
+  // resetUTubEditPanelState() closes the name form via updateUTubNameHideInput(),
+  // which re-shows #urlBtnCreate as a side effect — so hide the create button
+  // AFTER the reset (no UTub is selected here), otherwise it would surface again.
   resetUTubEditPanelState();
+  $("#urlBtnCreate").hideClass();
   disableURLSearch();
 }
 
 export function resetURLDeckOnDeleteUTub(): void {
-  $("#urlBtnCreate").hideClass();
   $("#lhsToggleHeader").hideClass();
   hideURLsEmptyState();
+  // See resetURLDeck(): resetUTubEditPanelState() re-shows #urlBtnCreate via
+  // updateUTubNameHideInput(), so hide the create button after it runs.
   resetUTubEditPanelState();
+  $("#urlBtnCreate").hideClass();
   disableURLSearch();
 }
 
