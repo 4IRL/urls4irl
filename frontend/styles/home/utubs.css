@@ -137,6 +137,34 @@
     }
 }
 
+/* Mobile-only consolidated UTub edit-panel toggle/close buttons. Hidden on
+   desktop (base rule); only revealed on coarse-pointer devices, and only the
+   one without .hidden is shown (toggle/close swap in JS). Touch-target sizing
+   mirrors the .editable-wrap 2.75rem precedent below. */
+#utubEditPanelToggle,
+#utubEditPanelClose {
+    display: none;
+}
+
+@media (any-pointer: coarse) {
+    #utubEditPanelToggle:not(.hidden),
+    #utubEditPanelClose:not(.hidden) {
+        display: inline-flex;
+        min-height: 2.75rem;
+        min-width: 2.75rem;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+#utubEditPanelToggle:focus-visible,
+#utubEditPanelClose:focus-visible {
+    opacity: 1;
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+
 #UTubDescriptionSubheaderWrap~.createDiv {
     padding-block: 1rem;
 }
