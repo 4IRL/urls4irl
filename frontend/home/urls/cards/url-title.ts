@@ -9,7 +9,6 @@ import {
   showUpdateURLTitleForm,
   hideAndResetUpdateURLTitleForm,
 } from "./update-title.js";
-import { closeURLEditPanel } from "./update-url-panel.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
   makeTextInput,
@@ -207,12 +206,7 @@ function createUpdateURLTitleInput(
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    if (isCoarsePointer()) {
-      // Close the whole panel (both fields) and return focus to the trigger.
-      closeURLEditPanel(urlCard);
-    } else {
-      hideAndResetUpdateURLTitleForm({ urlCard });
-    }
+    hideAndResetUpdateURLTitleForm({ urlCard });
   });
 
   urlTitleUpdateInputContainer

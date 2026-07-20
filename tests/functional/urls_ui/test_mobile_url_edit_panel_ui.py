@@ -168,6 +168,11 @@ def test_url_edit_button_opens_both_title_and_string_forms_mobile(
     # The morphed button replaced .urlStringBtnUpdate while the panel is open.
     expect(selected_url.locator(HPL.BUTTON_URL_STRING_UPDATE)).to_have_count(0)
 
+    # On mobile the small per-field red × on each of the title/string forms is
+    # hidden — the full-width Cancel bar is the single close control.
+    expect(selected_url.locator(HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)).to_be_hidden()
+    expect(selected_url.locator(HPL.BUTTON_URL_STRING_CANCEL_UPDATE)).to_be_hidden()
+
     # Tapping the full-width Cancel closes the whole panel (both fields).
     big_cancel.click()
 

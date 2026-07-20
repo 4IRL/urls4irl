@@ -128,6 +128,15 @@ def test_utub_edit_panel_close_closes_both_name_and_description_mobile(
         page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
     )
 
+    # On mobile the per-field red × is hidden; the header × (panel close) is the
+    # only close control for the consolidated panel.
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE
+    )
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE
+    )
+
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
 
     # Both forms close together.

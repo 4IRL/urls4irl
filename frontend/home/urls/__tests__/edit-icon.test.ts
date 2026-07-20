@@ -857,6 +857,38 @@ describe("Edit pencil icon", () => {
       });
     });
 
+    describe("per-field cancel × is single-field on mobile (never closes the whole panel)", () => {
+      // The per-field × is CSS-hidden on mobile (a single panel close is used
+      // instead), but if it is somehow activated its handler must NOT close the
+      // whole panel — it stays a single-field hide, leaving the sibling field
+      // and the panel close button untouched.
+      it("name cancel closes only the name field, leaving the description form + panel open", () => {
+        openUTubEditPanel(UTUB_ID);
+
+        $("#utubNameCancelBtnUpdate").trigger("click");
+
+        // Name field closed (header restored)…
+        expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+        // …but the description field is still open and the panel is still open.
+        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+        expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+      });
+
+      it("description cancel closes only the description field, leaving the name form + panel open", () => {
+        openUTubEditPanel(UTUB_ID);
+
+        $("#utubDescriptionCancelBtnUpdate").trigger("click");
+
+        // Description field closed (subheader restored)…
+        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+        // …but the name field is still open and the panel is still open.
+        expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+        expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+      });
+    });
+
     describe("name/description wrap-click handlers are no-ops on mobile", () => {
       it("tapping the UTub name wrap does not open the single-field edit", () => {
         $("#UTubNameUpdateWrap").trigger("click");

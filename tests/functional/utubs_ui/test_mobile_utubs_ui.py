@@ -119,11 +119,17 @@ def test_open_update_utub_description_hides_add_url_btn_and_search_mobile(
     )
     assert_not_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
 
-    # Cancelling one field on mobile closes the whole consolidated panel and
-    # restores the Add URL button and search icon.
-    wait_then_click_element(
+    # On mobile the per-field red × is hidden — the single panel close (header ×)
+    # is the only close control. Confirm both per-field cancels are not visible.
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE
+    )
+    assert_not_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE
     )
+
+    # Closing the panel via the header × restores the Add URL button and search icon.
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
 
     wait_until_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE

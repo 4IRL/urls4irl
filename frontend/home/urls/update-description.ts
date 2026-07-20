@@ -12,7 +12,6 @@ import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { updateUTubNameHideInput } from "./update-name.js";
-import { closeUTubEditPanel } from "./update-utub-panel.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
@@ -109,12 +108,6 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    // On mobile, cancelling one field closes the whole consolidated panel and
-    // returns focus to the toggle button; on desktop, close only this field.
-    if (isCoarsePointer()) {
-      closeUTubEditPanel();
-      return;
-    }
     updateUTubDescriptionHideInput(utubID);
   });
 }

@@ -301,6 +301,17 @@ a.urlString {
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    /* On coarse-pointer devices the consolidated URL edit panel has a single
+       close control (the morphed full-width "Cancel" bar,
+       .urlStringCancelBigBtnUpdate), so the small per-field red × on the title
+       and string forms is redundant and confusing — hide it. The green ✓
+       submit stays (each field submits independently). The big Cancel bar is a
+       different class token and is unaffected. */
+    .urlTitleCancelBtnUpdate,
+    .urlStringCancelBtnUpdate {
+        display: none;
+    }
 }
 
 .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {

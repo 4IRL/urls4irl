@@ -144,8 +144,11 @@
 
 /* Mobile-only consolidated UTub edit-panel toggle/close buttons. Hidden on
    desktop (base rule); only revealed on coarse-pointer devices, and only the
-   one without .hidden is shown (toggle/close swap in JS). Touch-target sizing
-   mirrors the .editable-wrap 2.75rem precedent below. */
+   one without .hidden is shown (toggle/close swap in JS). Sizing/centering and
+   the 2.75rem touch target come from `.button-container button` (buttons.css);
+   these rules only own the desktop-hide + coarse-pointer reveal. Styling to
+   match the header "+ button family" (green pencil / red ×, 24px SVG) comes
+   from the .green-clickable / .cancelButton classes on the markup. */
 #utubEditPanelToggle,
 #utubEditPanelClose {
     display: none;
@@ -155,10 +158,6 @@
     #utubEditPanelToggle:not(.hidden),
     #utubEditPanelClose:not(.hidden) {
         display: inline-flex;
-        min-height: 2.75rem;
-        min-width: 2.75rem;
-        align-items: center;
-        justify-content: center;
     }
 }
 
@@ -168,6 +167,17 @@
     outline: 2px solid rgba(255, 255, 255, 0.8);
     outline-offset: -2px;
     border-radius: 2px;
+}
+
+/* On coarse-pointer devices the consolidated panel has a single close control
+   (the header × / #utubEditPanelClose), so the per-field red × on the name and
+   description forms is redundant and confusing — hide it. The green ✓ submit
+   stays (each field submits independently). */
+@media (any-pointer: coarse) {
+    #utubNameCancelBtnUpdate,
+    #utubDescriptionCancelBtnUpdate {
+        display: none;
+    }
 }
 
 #UTubDescriptionSubheaderWrap~.createDiv {

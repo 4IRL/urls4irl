@@ -22,7 +22,6 @@ import {
   updateUTubDescriptionHideInput,
   updateUTubDescriptionShowInput,
 } from "./update-description.js";
-import { closeUTubEditPanel } from "./update-utub-panel.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import {
@@ -130,12 +129,6 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    // On mobile, cancelling one field closes the whole consolidated panel and
-    // returns focus to the toggle button; on desktop, close only this field.
-    if (isCoarsePointer()) {
-      closeUTubEditPanel();
-      return;
-    }
     updateUTubNameHideInput();
   });
 }

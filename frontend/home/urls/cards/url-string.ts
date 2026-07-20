@@ -12,7 +12,6 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
-import { closeURLEditPanel } from "./update-url-panel.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
   makeTextInput,
@@ -129,12 +128,7 @@ function createUpdateURLStringInput(
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    if (isCoarsePointer()) {
-      // Close the whole panel (both fields) and return focus to the trigger.
-      closeURLEditPanel(urlCard);
-    } else {
-      hideAndResetUpdateURLStringForm({ urlCard });
-    }
+    hideAndResetUpdateURLStringForm({ urlCard });
   });
 
   urlStringUpdateTextInputContainer
