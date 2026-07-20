@@ -22,6 +22,8 @@ import {
   updateUTubDescriptionHideInput,
   updateUTubDescriptionShowInput,
 } from "./update-description.js";
+import { closeUTubEditPanel } from "./update-utub-panel.js";
+import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import {
   FORM_CANCEL_TRIGGER,
@@ -88,9 +90,12 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
     updateUTubNameShowInput(utubID);
   }
 
-  $("#UTubNameUpdateWrap").offAndOnExact("click.updateUTubname", () =>
-    openNameEdit("pencil_icon"),
-  );
+  $("#UTubNameUpdateWrap").offAndOnExact("click.updateUTubname", () => {
+    // On mobile the consolidated panel (opened via #utubEditPanelToggle) is the
+    // only entry point — tapping the now-pencil-less name row is a no-op.
+    if (isCoarsePointer()) return;
+    openNameEdit("pencil_icon");
+  });
 
   namePencilIcon.offAndOnExact("keydown.updateUTubname", function (keyEvent) {
     if (keyEvent.key === KEYS.ENTER || keyEvent.key === KEYS.SPACE) {
@@ -125,6 +130,12 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
+    // On mobile, cancelling one field closes the whole consolidated panel and
+    // returns focus to the toggle button; on desktop, close only this field.
+    if (isCoarsePointer()) {
+      closeUTubEditPanel();
+      return;
+    }
     updateUTubNameHideInput();
   });
 }
@@ -153,6 +164,10 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
             checkSameNameUTubOnUpdate(getInputValue("#utubNameUpdate"), utubID);
             break;
           case KEYS.ESCAPE:
+            // On mobile, defer to the single document-level panel Escape handler
+            // (bound in setupUTubEditPanelToggle) so the two mechanisms don't
+            // both fire and double-close/double-focus-return on one keypress.
+            if (isCoarsePointer()) return;
             // Handle escape key pressed
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
@@ -266,7 +281,7 @@ function rebindCreateDescriptionForNameUpdate(utubID: number): void {
 }
 
 // Shows input fields for updating an exiting UTub's name
-function updateUTubNameShowInput(utubID: number): void {
+export function updateUTubNameShowInput(utubID: number): void {
   // Setup event listeners on window and escape/enter keys to escape the input box
   setEventListenersToEscapeUpdateUTubName(utubID);
 

@@ -14,6 +14,11 @@ import {
   setupUpdateUTubNameEventListeners,
   setUTubNameAndDescription,
 } from "./update-name.js";
+import {
+  setupUTubEditPanelToggle,
+  setUTubEditPanelToggleVisibility,
+  resetUTubEditPanelState,
+} from "./update-utub-panel.js";
 import { createURLShowInputEventListeners } from "./create-btns.js";
 import {
   createURLBlock,
@@ -44,6 +49,7 @@ export function resetURLDeck(): void {
   $(".urlRow").remove();
   $("#urlBtnCreate").hideClass();
   updateUTubDescriptionHideInput();
+  resetUTubEditPanelState();
   disableURLSearch();
 }
 
@@ -51,6 +57,7 @@ export function resetURLDeckOnDeleteUTub(): void {
   $("#urlBtnCreate").hideClass();
   $("#lhsToggleHeader").hideClass();
   hideURLsEmptyState();
+  resetUTubEditPanelState();
   disableURLSearch();
 }
 
@@ -115,6 +122,8 @@ export function setURLDeckOnUTubSelected(
   createURLShowInputEventListeners(utubID);
   setupUpdateUTubDescriptionEventListeners(utubID);
   setupUpdateUTubNameEventListeners(utubID);
+  setupUTubEditPanelToggle(utubID);
+  setUTubEditPanelToggleVisibility();
 
   const parent = $("#listURLs");
   const numOfURLs = dictURLs.length ? dictURLs.length : 0;

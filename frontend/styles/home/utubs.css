@@ -131,9 +131,14 @@
     border-radius: 2px;
 }
 
-@media (hover: none) {
-    .edit-pencil-icon:not(.hidden) {
-        opacity: 0.6;
+/* On coarse-pointer devices the two UTub-level pencils are replaced outright by
+   the consolidated #utubEditPanelToggle button — hide them. Scoped to the two
+   UTub wraps so the URL-title pencil (which reuses .edit-pencil-icon) is left to
+   its own visibility rules in urls.css. */
+@media (any-pointer: coarse) {
+    #UTubNameUpdateWrap .edit-pencil-icon,
+    #UTubDescriptionSubheaderWrap .edit-pencil-icon {
+        display: none;
     }
 }
 
