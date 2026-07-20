@@ -9,6 +9,12 @@ import {
 import { getState } from "../../../store/app-store.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { temporarilyHideSearchForEdit } from "../search.js";
+import { isCoarsePointer } from "../../mobile.js";
+import {
+  openUTubEditPanel,
+  closeUTubEditPanel,
+  setUTubEditPanelToggleVisibility,
+} from "../update-utub-panel.js";
 
 vi.mock("../../../lib/globals.js", async () => {
   const jquery = (await import("jquery")).default;
@@ -73,6 +79,10 @@ vi.mock("../search.js", () => ({
 
 vi.mock("../cards/selection.js", () => ({
   deselectAllURLs: vi.fn(),
+}));
+
+vi.mock("../../mobile.js", () => ({
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 vi.mock("../../visibility.js", () => ({
@@ -157,6 +167,10 @@ const EDIT_ICON_HTML = `
 
   <button id="URLSearchFilterIcon" class="hidden"></button>
   <button id="URLSearchFilterIconClose" class="hidden"></button>
+  <button id="utubEditPanelToggle" class="hidden" type="button"
+          aria-label="Edit UTub name and description"></button>
+  <button id="utubEditPanelClose" class="hidden" type="button"
+          aria-label="Close edit panel"></button>
   <button id="urlBtnCreate" class="hidden"></button>
 `;
 
@@ -192,6 +206,10 @@ describe("Edit pencil icon", () => {
     document.body.innerHTML = EDIT_ICON_HTML;
     vi.clearAllMocks();
     setupAsOwner();
+    // Default to the desktop (fine-pointer) path so the existing pencil-driven
+    // assertions are unchanged; the mobile describe blocks below flip this to
+    // true in their own beforeEach.
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -748,6 +766,111 @@ describe("Edit pencil icon", () => {
       $("#utubDescriptionCancelBtnUpdate").trigger("click");
 
       expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
+    });
+  });
+
+  describe("consolidated mobile edit panel (coarse pointer)", () => {
+    beforeEach(() => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+    });
+
+    describe("#utubEditPanelToggle visibility (owner-AND-not-locked)", () => {
+      it("reveals the toggle for an owner of an unlocked UTub", () => {
+        $("#utubEditPanelToggle").addClass("hidden");
+
+        setUTubEditPanelToggleVisibility();
+
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
+      });
+
+      it("keeps the toggle hidden for a non-owner", () => {
+        setupAsNonOwner();
+        $("#utubEditPanelToggle").removeClass("hidden");
+
+        setUTubEditPanelToggleVisibility();
+
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+      });
+
+      it("keeps the toggle hidden on a LOCKED UTub even for the owner", () => {
+        setupAsLockedOwner();
+        $("#utubEditPanelToggle").removeClass("hidden");
+
+        setUTubEditPanelToggleVisibility();
+
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+      });
+
+      it("keeps the toggle hidden on a fine pointer (desktop) even for an owner", () => {
+        vi.mocked(isCoarsePointer).mockReturnValue(false);
+        $("#utubEditPanelToggle").removeClass("hidden");
+
+        setUTubEditPanelToggleVisibility();
+
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+      });
+    });
+
+    describe("openUTubEditPanel / closeUTubEditPanel open-both / close-both", () => {
+      it("opens BOTH the name and description forms together", () => {
+        openUTubEditPanel(UTUB_ID);
+
+        expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+      });
+
+      it("swaps the toggle button for the close button on open", () => {
+        openUTubEditPanel(UTUB_ID);
+
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
+        expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+      });
+
+      it("closeUTubEditPanel closes BOTH forms and restores header/subheader", () => {
+        openUTubEditPanel(UTUB_ID);
+
+        closeUTubEditPanel();
+
+        expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      });
+
+      it("closeUTubEditPanel swaps the close button back to the toggle button", () => {
+        openUTubEditPanel(UTUB_ID);
+
+        closeUTubEditPanel();
+
+        expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
+        expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
+      });
+
+      it("closeUTubEditPanel returns focus to #utubEditPanelToggle", () => {
+        const focusSpy = vi.spyOn($("#utubEditPanelToggle")[0], "focus");
+
+        openUTubEditPanel(UTUB_ID);
+        closeUTubEditPanel();
+
+        expect(focusSpy).toHaveBeenCalled();
+        focusSpy.mockRestore();
+      });
+    });
+
+    describe("name/description wrap-click handlers are no-ops on mobile", () => {
+      it("tapping the UTub name wrap does not open the single-field edit", () => {
+        $("#UTubNameUpdateWrap").trigger("click");
+
+        expect(deselectAllURLs).not.toHaveBeenCalled();
+        expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+      });
+
+      it("tapping the UTub description wrap does not open the single-field edit", () => {
+        $("#UTubDescriptionSubheaderWrap").trigger("click");
+
+        expect(deselectAllURLs).not.toHaveBeenCalled();
+        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      });
     });
   });
 });

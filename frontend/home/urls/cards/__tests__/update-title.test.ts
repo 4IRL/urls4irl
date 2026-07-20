@@ -237,6 +237,78 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
   });
 });
 
+describe("suppressSiblingDisable parameter (consolidated panel)", () => {
+  const SUPPRESS_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <button class="urlStringBtnUpdate"></button>
+      <button class="urlStringCancelBigBtnUpdate"></button>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = SUPPRESS_CARD_HTML;
+  });
+
+  it("does NOT hide the sibling string-edit buttons when suppressSiblingDisable is true", () => {
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+      suppressSiblingDisable: true,
+    });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+    expect(
+      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
+    ).toBe(false);
+  });
+
+  it("hides the sibling string-edit button when suppressSiblingDisable is omitted (desktop mutual-exclusion preserved)", () => {
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+  });
+
+  it("does NOT re-enable the sibling string-edit buttons on close when suppressSiblingDisable is true", () => {
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlStringBtnUpdate").addClass("hidden");
+    urlCard.find(".urlStringCancelBigBtnUpdate").addClass("hidden");
+
+    hideAndResetUpdateURLTitleForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(
+      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
+    ).toBe(true);
+  });
+
+  it("re-enables the sibling string-edit button on close when suppressSiblingDisable is omitted", () => {
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlStringBtnUpdate").addClass("hidden");
+
+    hideAndResetUpdateURLTitleForm({ urlCard });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+});
+
 describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
   const MOBILE_FOCUS_CARD_HTML = `
     <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">

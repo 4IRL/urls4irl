@@ -7,6 +7,8 @@ import {
   showUpdateURLStringForm,
 } from "../update-string.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
+import { isCoarsePointer } from "../../../mobile.js";
+import { openURLEditPanel } from "../update-url-panel.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -63,6 +65,12 @@ vi.mock("../selection.js", () => ({
 
 vi.mock("../options/edit-string-btn.js", () => ({
   createEditURLIcon: vi.fn(() => window.jQuery("<i></i>")),
+  bindURLStringEditClickHandler: vi.fn(),
+}));
+
+vi.mock("../update-url-panel.js", () => ({
+  openURLEditPanel: vi.fn(),
+  closeURLEditPanel: vi.fn(),
 }));
 
 vi.mock("../../tags/tags.js", () => ({
@@ -72,6 +80,7 @@ vi.mock("../../tags/tags.js", () => ({
 
 vi.mock("../../../mobile.js", () => ({
   isMobile: vi.fn(() => false),
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 vi.mock("../../../btns-forms.js", () => ({
@@ -302,5 +311,113 @@ describe("URL string edit hides title pencil for mutual exclusivity", () => {
     hideAndResetUpdateURLStringForm({ urlCard });
 
     expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("suppressSiblingDisable parameter (consolidated panel)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
+  });
+
+  it("does NOT hide the sibling title pencil when suppressSiblingDisable is true", () => {
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate,
+      suppressSiblingDisable: true,
+    });
+
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+
+  it("hides the sibling title pencil when suppressSiblingDisable is omitted (desktop mutual-exclusion preserved)", () => {
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+
+    showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
+
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(true);
+  });
+
+  it("does NOT re-enable the sibling title pencil on close when suppressSiblingDisable is true", () => {
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlTitleBtnUpdate").addClass("hidden");
+
+    hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(true);
+  });
+
+  it("re-enables the sibling title pencil on close when suppressSiblingDisable is omitted", () => {
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlTitleBtnUpdate").addClass("hidden");
+
+    hideAndResetUpdateURLStringForm({ urlCard });
+
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("bindURLStringEditClickHandler - mobile vs desktop click target", () => {
+  // The real helper lives in edit-string-btn.js (module-mocked above for
+  // update-string.ts's own rebind call); pull the real implementation via
+  // importActual so its isCoarsePointer() branch can be exercised end-to-end.
+  const HELPER_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden"><input class="urlStringUpdate" type="text" value="https://example.com" /></div>
+      <button class="urlStringBtnUpdate"></button>
+      <button class="urlTitleBtnUpdate"></button>
+      <button class="urlBtnAccess"></button>
+      <button class="urlTagBtnCreate"></button>
+      <button class="urlBtnDelete"></button>
+      <button class="urlBtnCopy"></button>
+      <span class="goToUrlIcon"></span>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = HELPER_CARD_HTML;
+    // Restore the module default explicitly — each test sets its own pointer
+    // type, but vi.clearAllMocks does not reset a prior mockReturnValue.
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  it("opens the consolidated panel (openURLEditPanel) on a coarse pointer", async () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    const { bindURLStringEditClickHandler } = await vi.importActual<
+      typeof import("../options/edit-string-btn.js")
+    >("../options/edit-string-btn.js");
+
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+    bindURLStringEditClickHandler({ urlCard, urlStringBtnUpdate });
+
+    urlStringBtnUpdate.trigger("click");
+
+    expect(openURLEditPanel).toHaveBeenCalledWith(urlCard);
+    // Desktop single-field open must NOT have run: the button never morphs.
+    expect(urlCard.find(".urlStringCancelBigBtnUpdate").length).toBe(0);
+  });
+
+  it("opens only the string form (showUpdateURLStringForm) on a fine pointer", async () => {
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    const { bindURLStringEditClickHandler } = await vi.importActual<
+      typeof import("../options/edit-string-btn.js")
+    >("../options/edit-string-btn.js");
+
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+    bindURLStringEditClickHandler({ urlCard, urlStringBtnUpdate });
+
+    urlStringBtnUpdate.trigger("click");
+
+    expect(openURLEditPanel).not.toHaveBeenCalled();
+    // Desktop path ran showUpdateURLStringForm, morphing the button to Cancel.
+    expect(urlCard.find(".urlStringCancelBigBtnUpdate").text()).toBe("Cancel");
   });
 });
