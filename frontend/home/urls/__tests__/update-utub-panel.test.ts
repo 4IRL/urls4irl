@@ -296,4 +296,46 @@ describe("UTub edit panel orchestrator", () => {
       focusSpy.mockRestore();
     });
   });
+
+  describe("panel-level Escape coordination", () => {
+    it("closes BOTH the name and description forms on a document Escape keydown", () => {
+      setupUTubEditPanelToggle(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+
+      $(document).trigger($.Event("keydown", { key: "Escape" }));
+
+      // Both fields close together and the toggle/close visibility is restored.
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
+    });
+
+    it("closes the panel exactly once — a second Escape is a no-op (guards the hidden-close early-return)", () => {
+      setupUTubEditPanelToggle(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+      const focusSpy = vi.spyOn($("#utubEditPanelToggle")[0], "focus");
+
+      // Two Escapes in a row: the first closes the panel (hiding
+      // #utubEditPanelClose), the second must early-return on the hidden-close
+      // guard rather than double-closing — so focus is returned exactly once.
+      $(document).trigger($.Event("keydown", { key: "Escape" }));
+      $(document).trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(focusSpy).toHaveBeenCalledTimes(1);
+      focusSpy.mockRestore();
+    });
+
+    it("ignores non-Escape keydowns while the panel is open", () => {
+      setupUTubEditPanelToggle(UTUB_ID);
+      openUTubEditPanel(UTUB_ID);
+
+      $(document).trigger($.Event("keydown", { key: "a" }));
+
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+    });
+  });
 });

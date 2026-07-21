@@ -193,6 +193,62 @@ def test_url_edit_button_opens_both_title_and_string_forms_mobile(
     )
 
 
+def test_url_edit_panel_escape_closes_both_title_and_string_forms_mobile(
+    page_mobile_portrait: Page,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests the panel-level Escape coordination for the consolidated URL edit
+    panel: after opening both the title and string forms together, pressing
+    Escape closes BOTH fields and restores the sibling option buttons and the
+    go-to-URL icon — the same end state as the full-width Cancel, reached via the
+    document-level keydown handler.
+
+    GIVEN a user has opened the consolidated URL edit panel on a mobile device
+    WHEN the user presses the Escape key
+    THEN both the title and string forms close and the row is restored
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id_for_test = 1
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, [UTS.TEST_URL_STRING_CREATE])
+    utub: Utubs = get_utub_this_user_created(app, user_id=user_id_for_test)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id_for_test, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    selected_url = _select_first_url_in_utub_mobile(page=page, app=app, utub_id=utub.id)
+
+    _open_url_edit_panel_mobile(page=page)
+
+    # Both forms are open together before Escape.
+    expect(selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_be_visible()
+    expect(selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)).to_be_visible()
+
+    page.keyboard.press("Escape")
+
+    # Both fields close together on Escape.
+    wait_until_hidden(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
+    expect(selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_be_hidden()
+
+    # The row is restored: sibling option buttons and the go-to-URL icon are
+    # visible again, and the edit button reverts to its .urlStringBtnUpdate form.
+    for sibling_btn in _SIBLING_OPTION_BTNS:
+        expect(selected_url.locator(sibling_btn)).to_be_visible()
+    expect(selected_url.locator(HPL.GO_TO_URL_ICON)).to_be_visible()
+    expect(selected_url.locator(HPL.BUTTON_URL_STRING_UPDATE)).to_be_visible()
+    expect(selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)).to_have_count(
+        0
+    )
+
+
 def test_url_edit_button_absent_for_non_owner_mobile(
     page_mobile_portrait: Page,
     create_test_users,

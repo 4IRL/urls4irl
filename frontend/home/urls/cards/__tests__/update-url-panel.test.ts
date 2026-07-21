@@ -176,6 +176,57 @@ describe("URL edit panel orchestrator", () => {
     });
   });
 
+  describe("panel-level Escape coordination", () => {
+    it("closes BOTH the title and string forms on a document Escape keydown", () => {
+      const urlCard = mountCard(true);
+      openURLEditPanel(urlCard);
+      expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(
+        false,
+      );
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        false,
+      );
+
+      $(document).trigger($.Event("keydown", { key: "Escape" }));
+
+      // Both fields close together (guards the panel-level document Escape bind).
+      expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(true);
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        true,
+      );
+    });
+
+    it("closes the panel exactly once — a second Escape is a no-op (guards the handler unbind)", () => {
+      const urlCard = mountCard(true);
+      const btnEl = urlCard.find(".urlStringBtnUpdate")[0];
+      const focusSpy = vi.spyOn(btnEl, "focus");
+      openURLEditPanel(urlCard);
+
+      // The first Escape closes the panel and unbinds keydown.urlEditPanelEscape;
+      // the second must find no handler bound rather than double-closing — so
+      // focus is returned to the edit button exactly once.
+      $(document).trigger($.Event("keydown", { key: "Escape" }));
+      $(document).trigger($.Event("keydown", { key: "Escape" }));
+
+      expect(focusSpy).toHaveBeenCalledTimes(1);
+      focusSpy.mockRestore();
+    });
+
+    it("ignores non-Escape keydowns while the panel is open", () => {
+      const urlCard = mountCard(true);
+      openURLEditPanel(urlCard);
+
+      $(document).trigger($.Event("keydown", { key: "a" }));
+
+      expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(
+        false,
+      );
+      expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(
+        false,
+      );
+    });
+  });
+
   describe("inherited .goToUrlIcon behavior", () => {
     it("hides the go-to-URL icon while the panel is open", () => {
       const urlCard = mountCard(true);

@@ -154,6 +154,52 @@ def test_utub_edit_panel_close_closes_both_name_and_description_mobile(
     )
 
 
+def test_utub_edit_panel_escape_closes_both_name_and_description_mobile(
+    page_mobile_portrait: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    Tests the panel-level Escape coordination: after opening the consolidated
+    panel, pressing Escape closes BOTH the name and description forms together
+    and restores the toggle as the visible control — the same end state as the
+    close button, reached via the document-level keydown handler.
+
+    GIVEN an owner has opened the consolidated UTub edit panel on mobile
+    WHEN the user presses the Escape key
+    THEN both the name and description forms hide and the toggle is visible again
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    open_utub_edit_panel_mobile(page=page)
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
+
+    page.keyboard.press("Escape")
+
+    # Both forms close together on Escape.
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+
+    # The toggle is the visible control once more; the close button is hidden.
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE
+    )
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
+
+
 def test_utub_edit_panel_toggle_hidden_on_locked_utub_mobile(
     page_mobile_portrait: Page,
     create_test_urls,
