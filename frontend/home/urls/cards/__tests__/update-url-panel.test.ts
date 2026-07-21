@@ -3,6 +3,7 @@ import {
   resetURLEditPanelState,
   closeURLEditPanel,
 } from "../update-url-panel.js";
+import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 
 // This suite runs the real URL-panel orchestrator together with the real
 // update-title/update-string show/hide functions and the real cards/utils
@@ -295,6 +296,36 @@ describe("URL edit panel orchestrator", () => {
         expect(urlCard.find(selector).hasClass("visible-flex")).toBe(true);
       });
       expect(urlCard.find(".urlStringBtnUpdate").length).toBe(1);
+    });
+  });
+
+  describe("tap-to-deselect re-arm on user-initiated close (Cancel/Escape)", () => {
+    it("re-arms enableClickOnSelectedURLCardToHide via closeURLEditPanel when the card stays selected", () => {
+      // resetURLEditPanelState tears down both fields with
+      // suppressSiblingDisable: true, which (post round-2) skips re-arming the
+      // click.deselectURL handler. closeURLEditPanel must re-arm it explicitly
+      // since the card remains selected after a Cancel/Escape close.
+      const urlCard = mountCard(true);
+
+      openURLEditPanel(urlCard);
+      vi.mocked(enableClickOnSelectedURLCardToHide).mockClear();
+      closeURLEditPanel(urlCard);
+
+      expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledTimes(1);
+      expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+    });
+
+    it("does NOT re-arm on resetURLEditPanelState for an unselected card (deselectURL routine teardown)", () => {
+      // deselectURL() sets urlSelected="false" before calling
+      // resetURLEditPanelState; that low-level teardown must never re-arm the
+      // deselect handler on an already-deselected card.
+      const urlCard = mountCard(false);
+
+      openURLEditPanel(urlCard);
+      vi.mocked(enableClickOnSelectedURLCardToHide).mockClear();
+      resetURLEditPanelState(urlCard);
+
+      expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
     });
   });
 

@@ -9,6 +9,7 @@ import {
   showUpdateURLStringForm,
   hideAndResetUpdateURLStringForm,
 } from "./update-string.js";
+import { enableClickOnSelectedURLCardToHide } from "./selection.js";
 
 // Opens the consolidated URL edit panel on mobile: the URL title and URL string
 // forms open together. Mirrors the UTub-level orchestrator (update-utub-panel.ts)
@@ -66,6 +67,15 @@ export function resetURLEditPanelState(urlCard: JQuery): void {
 // UI_FORM_CANCEL{navigation} on the next pagehide (see metrics-client.ts pagehide).
 export function closeURLEditPanel(urlCard: JQuery): void {
   resetURLEditPanelState(urlCard);
+  // resetURLEditPanelState() tears down both fields with
+  // `suppressSiblingDisable: true`, which (post round-2 fix) skips re-arming the
+  // card's click.deselectURL handler. On a user-initiated close (Cancel/Escape)
+  // the card stays selected, so re-arm tap-to-deselect explicitly here — mirroring
+  // the pre-round-2 behavior — while leaving the routine deselectURL() teardown
+  // path (urlSelected already "false") untouched.
+  if (urlCard.attr("urlSelected")?.toLowerCase() === "true") {
+    enableClickOnSelectedURLCardToHide(urlCard);
+  }
   clearOpenForm();
   urlCard.find(".urlStringBtnUpdate").trigger("focus");
 }
