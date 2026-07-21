@@ -448,12 +448,57 @@ a.urlString {
         background-color: var(--removeIconColor);
         border-color: var(--removeIconColor);
         color: white;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Touch devices apply a sticky :hover/:focus after a tap that persists
+       until the user taps elsewhere. Without these overrides Bootstrap's
+       .btn-light:hover/:focus GRAY out-specifies our resting rule and the
+       button sticks gray. Pin all interaction states to the cancel red.
+       color/background/border only — the focus box-shadow (keyboard a11y)
+       is deliberately left untouched. */
+    .urlStringCancelBigBtnUpdate:hover,
+    .urlStringCancelBigBtnUpdate:focus,
+    .urlStringCancelBigBtnUpdate:focus-visible {
+        background-color: var(--removeIconColor) !important;
+        border-color: var(--removeIconColor) !important;
+        color: white !important;
     }
 
     .urlStringCancelBigBtnUpdate:active {
         background-color: var(--removeIconColorHover) !important;
         border-color: var(--removeIconColorHover) !important;
         color: white !important;
+    }
+}
+
+/* Mobile only: the edit pencil is a .btn btn-light whose custom yellow is set
+   only on the resting state and (desktop-only) :hover. On touch devices a tap
+   leaves a sticky :hover/:focus, and with no mobile override Bootstrap's
+   .btn-light:hover/:focus GRAY out-specifies our resting rule — so the pencil
+   goes gray and stays gray. Pin the interaction states to the edit yellow.
+   :hover/:focus/:focus-visible use SOLID --editURLColor so the sticky state
+   stays fully opaque and stable (the desktop 0.5-alpha fade would read as a
+   dim/washed swatch when it sticks); :active mirrors the desktop hover fade for
+   transient press feedback. background/border/color only — the keyboard focus
+   box-shadow is left intact for a11y. Coarse-scoped so desktop is unchanged. */
+@media (any-pointer: coarse) {
+    .urlStringBtnUpdate {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlStringBtnUpdate:hover,
+    .urlStringBtnUpdate:focus,
+    .urlStringBtnUpdate:focus-visible {
+        background-color: var(--editURLColor) !important;
+        border-width: 1px;
+        border-color: var(--editURLColor) !important;
+    }
+
+    .urlStringBtnUpdate:active {
+        background-color: var(--editURLColorHover) !important;
+        border-width: 1px;
+        border-color: var(--editURLColorBorderHover) !important;
     }
 }
 
