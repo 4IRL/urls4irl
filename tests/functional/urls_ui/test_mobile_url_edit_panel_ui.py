@@ -150,6 +150,10 @@ def test_url_edit_button_opens_both_title_and_string_forms_mobile(
 
     _open_url_edit_panel_mobile(page=page)
 
+    # Opening the consolidated panel must NOT deselect the card (guards the
+    # previously-fixed deselect-on-open bug).
+    expect(selected_url).to_have_attribute("urlselected", "true")
+
     # BOTH forms are open together.
     expect(selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_be_visible()
     expect(selected_url.locator(HPL.INPUT_URL_STRING_UPDATE)).to_be_visible()
