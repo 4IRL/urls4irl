@@ -22,12 +22,24 @@ import { deselectAllURLs } from "./cards/selection.js";
  * cycle.
  */
 
-// Binds the toggle/close/Escape/URL-selection handlers for the consolidated
-// panel. Only binds on coarse-pointer (touch) devices — the pencil-driven path
-// remains the sole desktop entry point. Called once per UTub switch, so the
-// button bindings use `offAndOnExact` and the document-level keydown uses
-// `offAndOn` (the established convention for document handlers) for idempotent
-// rebinds.
+// Selecting a URL card while the panel is open closes it. Registered exactly
+// once at module load (not per UTub switch) — the event bus keys handlers by
+// function reference with no dedupe, so re-subscribing on every switch would
+// leak listeners. The closure reads the currently-selected UTub id from app
+// state (no `utubID` is in lexical scope here), so closing threads the correct
+// id into `closeUTubEditPanel` and preserves the empty-description re-arm. The
+// open-panel guard guarantees a UTub is selected, so `activeUTubID` is non-null
+// whenever this fires.
+on(AppEvents.URL_CARD_SELECTED, () => {
+  if ($("#utubEditPanelClose").hasClass("hidden")) return;
+  closeUTubEditPanel(getState().activeUTubID);
+});
+
+// Binds the toggle/close/Escape handlers for the consolidated panel. Only binds
+// on coarse-pointer (touch) devices — the pencil-driven path remains the sole
+// desktop entry point. Called once per UTub switch, so the button bindings use
+// `offAndOnExact` and the document-level keydown uses `offAndOn` (the
+// established convention for document handlers) for idempotent rebinds.
 export function setupUTubEditPanelToggle(utubID: number): void {
   if (!isCoarsePointer()) return;
 
@@ -48,15 +60,6 @@ export function setupUTubEditPanelToggle(utubID: number): void {
     if ($("#utubEditPanelClose").hasClass("hidden")) return;
     closeUTubEditPanel(utubID);
     keyEvent.stopPropagation();
-  });
-
-  // Selecting a URL card while the panel is open closes it. NOTE: event-bus
-  // `on()` keys handlers by function reference with no rebind-idempotency, so
-  // this inline closure is a per-switch listener leak — harmless here since the
-  // guard is idempotent and `closeUTubEditPanel()` is safe to call redundantly.
-  on(AppEvents.URL_CARD_SELECTED, () => {
-    if (!$("#utubEditPanelClose").hasClass("hidden"))
-      closeUTubEditPanel(utubID);
   });
 }
 
