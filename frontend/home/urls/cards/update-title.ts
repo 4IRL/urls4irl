@@ -19,7 +19,7 @@ import {
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
 import { disableEditingURLString, enableEditingURLString } from "./utils.js";
-import { isMobile } from "../../mobile.js";
+import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { debug } from "../../../lib/debug.js";
 
@@ -124,7 +124,17 @@ export async function updateURLTitle(
 
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
       log("updateURLTitle skipped — value unchanged", { utubUrlID });
-      hideAndResetUpdateURLTitleForm({ urlCard });
+      // Panel-aware: on mobile the string form can still be open alongside this
+      // title field. Suppress the sibling restore so we don't re-arm the card
+      // deselect handler (and re-enable the string's edit affordance) while the
+      // string edit is still in progress.
+      const stringFormStillOpen = !urlCard
+        .find(".updateUrlStringWrap")
+        .hasClass("hidden");
+      hideAndResetUpdateURLTitleForm({
+        urlCard,
+        suppressSiblingDisable: isCoarsePointer() && stringFormStillOpen,
+      });
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -194,7 +204,17 @@ function updateURLTitleSuccess(
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);
-  hideAndResetUpdateURLTitleForm({ urlCard });
+  // Panel-aware: on mobile the string form can still be open alongside this
+  // title field. Suppress the sibling restore so submitting the title does not
+  // re-arm the card deselect handler (which would discard an in-progress string
+  // edit) while the string form is still open.
+  const stringFormStillOpen = !urlCard
+    .find(".updateUrlStringWrap")
+    .hasClass("hidden");
+  hideAndResetUpdateURLTitleForm({
+    urlCard,
+    suppressSiblingDisable: isCoarsePointer() && stringFormStillOpen,
+  });
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

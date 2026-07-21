@@ -232,7 +232,17 @@ export async function updateURL(
 
     if (data.urlString === urlCard.find(".urlString").attr("href")) {
       log("updateURL skipped — value unchanged", { utubUrlID });
-      hideAndResetUpdateURLStringForm({ urlCard });
+      // Panel-aware: on mobile the title form can still be open alongside this
+      // string field. Suppress the sibling restore so we don't re-arm the card
+      // deselect handler (and drop the go-to-URL icon / re-enable the title's
+      // edit affordance) while the title edit is still in progress.
+      const titleFormStillOpen = !urlCard
+        .find(".updateUrlTitleWrap")
+        .hasClass("hidden");
+      hideAndResetUpdateURLStringForm({
+        urlCard,
+        suppressSiblingDisable: isCoarsePointer() && titleFormStillOpen,
+      });
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -344,7 +354,17 @@ function updateURLSuccess(
       copyURLString(updatedURLString, this);
     });
 
-  hideAndResetUpdateURLStringForm({ urlCard });
+  // Panel-aware: on mobile the title form can still be open alongside this
+  // string field. Suppress the sibling restore so submitting the string does
+  // not re-arm the card deselect handler (which would discard an in-progress
+  // title edit) while the title form is still open.
+  const titleFormStillOpen = !urlCard
+    .find(".updateUrlTitleWrap")
+    .hasClass("hidden");
+  hideAndResetUpdateURLStringForm({
+    urlCard,
+    suppressSiblingDisable: isCoarsePointer() && titleFormStillOpen,
+  });
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
