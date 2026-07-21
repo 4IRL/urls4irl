@@ -24,8 +24,10 @@ import { deselectAllURLs } from "./cards/selection.js";
 
 // Binds the toggle/close/Escape/URL-selection handlers for the consolidated
 // panel. Only binds on coarse-pointer (touch) devices — the pencil-driven path
-// remains the sole desktop entry point. Called once per UTub switch, so every
-// DOM binding uses `offAndOnExact` for idempotent rebinds.
+// remains the sole desktop entry point. Called once per UTub switch, so the
+// button bindings use `offAndOnExact` and the document-level keydown uses
+// `offAndOn` (the established convention for document handlers) for idempotent
+// rebinds.
 export function setupUTubEditPanelToggle(utubID: number): void {
   if (!isCoarsePointer()) return;
 
@@ -34,17 +36,17 @@ export function setupUTubEditPanelToggle(utubID: number): void {
   );
 
   $("#utubEditPanelClose").offAndOnExact("click.utubEditPanel", () =>
-    closeUTubEditPanel(),
+    closeUTubEditPanel(utubID),
   );
 
   // Panel-level Escape: close the whole panel while it is open, then stop
   // propagation so the keypress does not also reach a per-field Escape case
   // still listening underneath. Bound at document level (mirroring the
   // name-field pattern) but scoped to the whole panel.
-  $(document).offAndOnExact("keydown.utubEditPanel", function (keyEvent): void {
+  $(document).offAndOn("keydown.utubEditPanel", function (keyEvent): void {
     if (keyEvent.key !== KEYS.ESCAPE) return;
     if ($("#utubEditPanelClose").hasClass("hidden")) return;
-    closeUTubEditPanel();
+    closeUTubEditPanel(utubID);
     keyEvent.stopPropagation();
   });
 
@@ -53,7 +55,8 @@ export function setupUTubEditPanelToggle(utubID: number): void {
   // this inline closure is a per-switch listener leak — harmless here since the
   // guard is idempotent and `closeUTubEditPanel()` is safe to call redundantly.
   on(AppEvents.URL_CARD_SELECTED, () => {
-    if (!$("#utubEditPanelClose").hasClass("hidden")) closeUTubEditPanel();
+    if (!$("#utubEditPanelClose").hasClass("hidden"))
+      closeUTubEditPanel(utubID);
   });
 }
 
@@ -87,16 +90,16 @@ export function openUTubEditPanel(utubID: number): void {
       target.closest("#utubEditPanelClose").length
     )
       return;
-    closeUTubEditPanel();
+    closeUTubEditPanel(utubID);
   });
 }
 
 // Low-level idempotent teardown: hides both fields and restores button
 // visibility, with NO focus-return. Called by routine, non-user-initiated
 // resets (UTub switch, UTub delete).
-export function resetUTubEditPanelState(): void {
+export function resetUTubEditPanelState(utubID: number | null = null): void {
   updateUTubNameHideInput();
-  updateUTubDescriptionHideInput();
+  updateUTubDescriptionHideInput(utubID);
 
   // Always clean up the unified click-outside listener, whether the panel
   // closed via the wrapper or via a routine UTub switch.
@@ -108,8 +111,8 @@ export function resetUTubEditPanelState(): void {
 
 // Higher-level wrapper for user-initiated closes (close button, Escape,
 // click-outside): tears down then returns focus to the toggle button.
-export function closeUTubEditPanel(): void {
-  resetUTubEditPanelState();
+export function closeUTubEditPanel(utubID: number | null = null): void {
+  resetUTubEditPanelState(utubID);
   $("#utubEditPanelToggle")[0]?.focus();
 }
 
