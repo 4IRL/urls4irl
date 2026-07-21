@@ -6,8 +6,14 @@ import {
   updateURLAfterFindingStaleData,
 } from "../cards/cards.js";
 import { triggerURLSwipeNudgeIfEligible } from "../cards/swipe.js";
-import { updateURLDeck, setURLDeckOnUTubSelected } from "../deck.js";
+import {
+  updateURLDeck,
+  setURLDeckOnUTubSelected,
+  resetURLDeck,
+  resetURLDeckOnDeleteUTub,
+} from "../deck.js";
 import { reapplyURLSearchFilter } from "../search.js";
+import { updateUTubNameHideInput } from "../update-name.js";
 
 vi.mock("../../../logic/apply-deck-diff.js", () => ({
   applyDeckDiff: vi.fn(),
@@ -260,5 +266,59 @@ describe("setURLDeckOnUTubSelected", () => {
     expect(
       vi.mocked(triggerURLSwipeNudgeIfEligible).mock.calls[1][0].urlRow,
     ).toBe(createdRows[1]);
+  });
+});
+
+describe("reset ordering: #urlBtnCreate ends hidden", () => {
+  // Guards the ordering dependency in resetURLDeck()/resetURLDeckOnDeleteUTub():
+  // resetUTubEditPanelState() re-shows #urlBtnCreate as a side effect of
+  // updateUTubNameHideInput(), so it MUST run BEFORE $("#urlBtnCreate").hideClass().
+  // An accidental swap-back would leave #urlBtnCreate visible on mobile. The
+  // suite mocks update-name.js, so we replicate the real re-show side effect
+  // here — otherwise the mocked no-op would make the ordering untestable.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = `
+      <div id="lhsToggleHeader"></div>
+      <div id="listURLs"></div>
+      <button id="urlBtnCreate" class="visible"></button>
+    `;
+    // Mirror the real updateUTubNameHideInput() side effect: it re-shows
+    // #urlBtnCreate via showClassNormal(). resetUTubEditPanelState() (real,
+    // unmocked) invokes this, which is exactly what the reset ordering must
+    // run before hiding the create button.
+    vi.mocked(updateUTubNameHideInput).mockImplementation(() => {
+      $("#urlBtnCreate").showClassNormal();
+    });
+  });
+
+  afterEach(() => {
+    // clearAllMocks() does not reset implementations — drop the re-show impl so
+    // it cannot bleed into any describe block added below this one.
+    vi.mocked(updateUTubNameHideInput).mockReset();
+  });
+
+  it("resetURLDeck leaves #urlBtnCreate hidden despite the panel-state re-show", () => {
+    // Precondition: the create button is currently shown (as when a UTub is open).
+    $("#urlBtnCreate").showClassNormal();
+    expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
+
+    resetURLDeck();
+
+    // resetUTubEditPanelState() re-showed it, then hideClass() must win.
+    expect(vi.mocked(updateUTubNameHideInput)).toHaveBeenCalled();
+    expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnCreate").hasClass("visible")).toBe(false);
+  });
+
+  it("resetURLDeckOnDeleteUTub leaves #urlBtnCreate hidden despite the panel-state re-show", () => {
+    $("#urlBtnCreate").showClassNormal();
+    expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
+
+    resetURLDeckOnDeleteUTub();
+
+    expect(vi.mocked(updateUTubNameHideInput)).toHaveBeenCalled();
+    expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+    expect($("#urlBtnCreate").hasClass("visible")).toBe(false);
   });
 });

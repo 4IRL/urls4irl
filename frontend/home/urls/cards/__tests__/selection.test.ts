@@ -3,8 +3,12 @@ import {
   selectURLCard,
   deselectAllURLs,
   disableClickOnSelectedURLCardToHide,
+  enableClickOnSelectedURLCardToHide,
 } from "../selection.js";
 import { enableTabbingOnURLCardElements } from "../utils.js";
+import { resetURLEditPanelState } from "../update-url-panel.js";
+import { hideAndResetUpdateURLTitleForm } from "../update-title.js";
+import { hideAndResetUpdateURLStringForm } from "../update-string.js";
 import { resetStore, setState } from "../../../../store/app-store.js";
 import { AppEvents, emit } from "../../../../lib/event-bus.js";
 import { isCoarsePointer } from "../../../mobile.js";
@@ -14,6 +18,9 @@ vi.mock("../update-title.js", () => ({
 }));
 vi.mock("../update-string.js", () => ({
   hideAndResetUpdateURLStringForm: vi.fn(),
+}));
+vi.mock("../update-url-panel.js", () => ({
+  resetURLEditPanelState: vi.fn(),
 }));
 vi.mock("../../tags/combobox.js", () => ({
   hideAndResetTagCombobox: vi.fn(),
@@ -112,6 +119,10 @@ describe("URL Card Selection", () => {
     document.body.innerHTML = URL_CARD_HTML;
     urlCard = $(".urlRow");
     vi.clearAllMocks();
+    // vi.clearAllMocks clears usage but not the mockReturnValue implementation,
+    // so restore the desktop default explicitly — the coarse-pointer describe
+    // below flips it to true and must not bleed into later describes.
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
   });
 
   describe("getSelectedURLCard", () => {
@@ -190,6 +201,54 @@ describe("URL Card Selection", () => {
       selectURLCard(urlCard);
       urlCard.find(".urlTitle").trigger("click");
       expect(urlCard.attr("urlSelected")).toBe("true");
+    });
+  });
+
+  describe("deselectURL panel teardown (Step 4 rewiring)", () => {
+    it("calls resetURLEditPanelState (not the legacy hide functions) on deselect", () => {
+      selectURLCard(urlCard);
+      vi.clearAllMocks();
+
+      urlCard.find(".urlString").trigger("click");
+
+      expect(resetURLEditPanelState).toHaveBeenCalledWith(urlCard);
+      expect(hideAndResetUpdateURLTitleForm).not.toHaveBeenCalled();
+      expect(hideAndResetUpdateURLStringForm).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("enableClickOnSelectedURLCardToHide idempotent re-arm", () => {
+    it("rebinds via offAndOnExact (not plain .on) so a repeat select does not double-bind", () => {
+      const offAndOnExactSpy = vi.spyOn($.fn, "offAndOnExact");
+
+      enableClickOnSelectedURLCardToHide(urlCard);
+
+      const deselectBind = offAndOnExactSpy.mock.calls.find(
+        (callArgs) => callArgs[0] === "click.deselectURL",
+      );
+      expect(deselectBind).toBeDefined();
+
+      offAndOnExactSpy.mockRestore();
+    });
+
+    it("binds only one click.deselectURL handler after two enable calls (no double-bind)", () => {
+      interface JQueryWithData {
+        _data(
+          element: Element,
+          name: string,
+        ): { click?: Array<{ namespace: string }> } | undefined;
+      }
+      const jQueryWithData = $ as unknown as JQueryWithData;
+
+      enableClickOnSelectedURLCardToHide(urlCard);
+      enableClickOnSelectedURLCardToHide(urlCard);
+
+      const boundEvents = jQueryWithData._data(urlCard[0], "events");
+      const deselectHandlers = (boundEvents?.click ?? []).filter(
+        (handler) => handler.namespace === "deselectURL",
+      );
+      // Plain `.on` would leave 2 handlers; `.offAndOnExact` dedups to 1.
+      expect(deselectHandlers.length).toBe(1);
     });
   });
 

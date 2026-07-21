@@ -1,11 +1,10 @@
 import { $ } from "../../../lib/globals.js";
 import { getState, setState } from "../../../store/app-store.js";
-import { AppEvents, on } from "../../../lib/event-bus.js";
-import { emit } from "../../../lib/metrics-client.js";
+import { emit, AppEvents, on } from "../../../lib/event-bus.js";
+import { emit as recordUIEvent } from "../../../lib/metrics-client.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
-import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
-import { hideAndResetUpdateURLStringForm } from "./update-string.js";
+import { resetURLEditPanelState } from "./update-url-panel.js";
 import {
   enableTabbingOnURLCardElements,
   disableTabbingOnURLCardElements,
@@ -45,10 +44,14 @@ export function selectURLCard(urlCard: JQuery): void {
   enableClickOnSelectedURLCardToHide(urlCard);
 
   enableTabbingOnURLCardElements(urlCard);
+
+  emit(AppEvents.URL_CARD_SELECTED, {
+    urlID: parseInt(urlCard.attr("utuburlid")!),
+  });
 }
 
 export function enableClickOnSelectedURLCardToHide(urlCard: JQuery): void {
-  urlCard.on("click.deselectURL", (event: JQuery.TriggeredEvent) => {
+  urlCard.offAndOnExact("click.deselectURL", (event: JQuery.TriggeredEvent) => {
     const elementsToIgnoreForURLDeselection = [
       ".urlTagBtnCreate",
       ".urlStringBtnUpdate",
@@ -117,8 +120,7 @@ function deselectURL(urlCard: JQuery): void {
   urlCard
     .find(".goToUrlIcon")
     .removeClass("visible-flex hidden visible-on-focus");
-  hideAndResetUpdateURLTitleForm(urlCard);
-  hideAndResetUpdateURLStringForm(urlCard);
+  resetURLEditPanelState(urlCard);
   hideAndResetTagCombobox(urlCard);
   disableTabbingOnURLCardElements(urlCard);
   setURLCardSelectionEventListener(urlCard);
@@ -171,7 +173,7 @@ export function setURLCardSelectionEventListener(urlCard: JQuery): void {
       if ($(event.target).closest(".urlRow").attr("urlSelected") === "true")
         return;
 
-      emit({
+      recordUIEvent({
         event: UI_EVENTS.UI_URL_CARD_CLICK,
         search_active: isURLSearchActive()
           ? SEARCH_ACTIVE.TRUE

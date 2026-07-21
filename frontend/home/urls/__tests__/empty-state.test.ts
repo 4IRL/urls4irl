@@ -25,6 +25,12 @@ vi.mock("../update-name.js", () => ({
   setUTubNameAndDescription: vi.fn(),
 }));
 
+vi.mock("../update-utub-panel.js", () => ({
+  setupUTubEditPanelToggle: vi.fn(),
+  setUTubEditPanelToggleVisibility: vi.fn(),
+  resetUTubEditPanelState: vi.fn(),
+}));
+
 vi.mock("../cards/cards.js", () => ({
   createURLBlock: vi.fn(() => window.jQuery("<div class='urlRow'></div>")),
   updateURLAfterFindingStaleData: vi.fn(),

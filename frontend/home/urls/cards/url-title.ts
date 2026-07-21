@@ -9,6 +9,7 @@ import {
   showUpdateURLTitleForm,
   hideAndResetUpdateURLTitleForm,
 } from "./update-title.js";
+import { isCoarsePointer } from "../../mobile.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -48,9 +49,15 @@ export function createURLTitleAndUpdateBlock(
     .onExact(
       "click.showUpdateURLTitle",
       function (event: JQuery.TriggeredEvent) {
+        // On mobile the consolidated panel (opened via .urlStringBtnUpdate) is
+        // the only entry point — tapping the title row is a no-op there.
+        if (isCoarsePointer()) return;
         if (urlCard.attr("urlSelected") !== "true") return;
         const wrapEl = $(event.currentTarget) as JQuery;
-        showUpdateURLTitleForm(wrapEl, urlCard);
+        showUpdateURLTitleForm({
+          urlTitleAndShowUpdateIconWrap: wrapEl,
+          urlCard,
+        });
       },
     );
   // Parent container with both show update icon and url title, allows hover to show the update icon
@@ -102,7 +109,10 @@ function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
           const urlTitleAndIcon = $(event.target).closest(
             ".urlTitleAndUpdateIconWrap",
           );
-          showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+          showUpdateURLTitleForm({
+            urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+            urlCard,
+          });
         }
       },
     );
@@ -146,13 +156,17 @@ function createUpdateURLTitleInput(
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
+            // On mobile, defer to the panel-level document Escape handler
+            // (bound in openURLEditPanel) so both fields close together and the
+            // two mechanisms don't double-fire.
+            if (isCoarsePointer()) break;
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
               form: HOME_FORM.URL_TITLE_EDIT,
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             clearOpenForm();
-            hideAndResetUpdateURLTitleForm(urlCard);
+            hideAndResetUpdateURLTitleForm({ urlCard });
             break;
           default:
           /* no-op */
@@ -192,7 +206,7 @@ function createUpdateURLTitleInput(
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
   });
 
   urlTitleUpdateInputContainer

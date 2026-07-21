@@ -131,9 +131,67 @@
     border-radius: 2px;
 }
 
-@media (hover: none) {
-    .edit-pencil-icon:not(.hidden) {
-        opacity: 0.6;
+/* On coarse-pointer devices the two UTub-level pencils are replaced outright by
+   the consolidated #utubEditPanelToggle button — hide them. Scoped to the two
+   UTub wraps so the URL-title pencil (which reuses .edit-pencil-icon) is left to
+   its own visibility rules in urls.css. */
+@media (any-pointer: coarse) {
+    #UTubNameUpdateWrap .edit-pencil-icon,
+    #UTubDescriptionSubheaderWrap .edit-pencil-icon {
+        display: none;
+    }
+}
+
+/* Mobile-only consolidated UTub edit-panel toggle/close buttons. Hidden on
+   desktop (base rule); only revealed on coarse-pointer devices, and only the
+   one without .hidden is shown (toggle/close swap in JS). Sizing/centering and
+   the 2.75rem touch target come from `.button-container button` (buttons.css);
+   these rules only own the desktop-hide + coarse-pointer reveal. Styling to
+   match the header "+ button family" (green pencil / red ×, 24px SVG) comes
+   from the .green-clickable / .cancelButton classes on the markup. */
+#utubEditPanelToggle,
+#utubEditPanelClose {
+    display: none;
+}
+
+@media (any-pointer: coarse) {
+    #utubEditPanelToggle:not(.hidden),
+    #utubEditPanelClose:not(.hidden) {
+        display: inline-flex;
+    }
+}
+
+#utubEditPanelToggle:focus-visible,
+#utubEditPanelClose:focus-visible {
+    opacity: 1;
+    outline: 2px solid rgba(255, 255, 255, 0.8);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+
+/* The close control is now a "Close" text label, not a 44px × icon. Keep the
+   2.75rem touch HEIGHT (from `.button-container button` coarse rule) but let the
+   width grow to fit the text — override the coarse square min-width so the label
+   isn't clipped, and give it horizontal padding. Red text comes from the
+   .cancelButton class on the markup. Coarse-scoped so desktop is untouched (it
+   stays display:none regardless). */
+@media (any-pointer: coarse) {
+    #utubEditPanelClose {
+        min-width: auto;
+        padding-inline: 0.75rem;
+        white-space: nowrap;
+        font-weight: 600;
+    }
+}
+
+/* On coarse-pointer devices the consolidated panel has a single close control
+   (the header × / #utubEditPanelClose), so the per-field red × on the name and
+   description forms is redundant and confusing — hide it. The green ✓ submit
+   stays (each field submits independently). */
+@media (any-pointer: coarse) {
+    #utubNameCancelBtnUpdate,
+    #utubDescriptionCancelBtnUpdate {
+        display: none;
     }
 }
 

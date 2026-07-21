@@ -182,6 +182,12 @@ class HomePageLocators(GenericPageLocator):
     PENCIL_ICON_NAME = "#UTubNameUpdateWrap .edit-pencil-icon"
     PENCIL_ICON_DESCRIPTION = "#UTubDescriptionSubheaderWrap .edit-pencil-icon"
 
+    # Consolidated mobile UTub edit-panel controls (coarse-pointer only). One
+    # `<button>` in the URL-deck header toolbar opens a panel showing both the
+    # UTub name and description forms; the paired close button dismisses it.
+    BUTTON_UTUB_EDIT_PANEL_TOGGLE = "#utubEditPanelToggle"
+    BUTTON_UTUB_EDIT_PANEL_CLOSE = "#utubEditPanelClose"
+
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#noURLsSubheader"

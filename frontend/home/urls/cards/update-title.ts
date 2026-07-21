@@ -19,7 +19,7 @@ import {
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
 import { disableEditingURLString, enableEditingURLString } from "./utils.js";
-import { isMobile } from "../../mobile.js";
+import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { debug } from "../../../lib/debug.js";
 
@@ -40,10 +40,15 @@ function isUpdateUrlTitleFieldName(
 }
 
 // Shows the update URL title form
-export function showUpdateURLTitleForm(
-  urlTitleAndShowUpdateIconWrap: JQuery,
-  urlCard: JQuery,
-): void {
+export function showUpdateURLTitleForm({
+  urlTitleAndShowUpdateIconWrap,
+  urlCard,
+  suppressSiblingDisable = false,
+}: {
+  urlTitleAndShowUpdateIconWrap: JQuery;
+  urlCard: JQuery;
+  suppressSiblingDisable?: boolean;
+}): void {
   emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_TITLE_EDIT);
   urlTitleAndShowUpdateIconWrap.hideClass();
@@ -64,11 +69,17 @@ export function showUpdateURLTitleForm(
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
   disableClickOnSelectedURLCardToHide(urlCard);
-  disableEditingURLString(urlCard);
+  if (!suppressSiblingDisable) disableEditingURLString(urlCard);
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
-export function hideAndResetUpdateURLTitleForm(urlCard: JQuery): void {
+export function hideAndResetUpdateURLTitleForm({
+  urlCard,
+  suppressSiblingDisable = false,
+}: {
+  urlCard: JQuery;
+  suppressSiblingDisable?: boolean;
+}): void {
   urlCard.find(".updateUrlTitleWrap").hideClass();
   urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
@@ -77,9 +88,17 @@ export function hideAndResetUpdateURLTitleForm(urlCard: JQuery): void {
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
 
   resetUpdateURLTitleFailErrors(urlCard);
-  enableEditingURLString(urlCard);
+  if (!suppressSiblingDisable) enableEditingURLString(urlCard);
+  // Panel-aware: when the sibling (string) form is still open on mobile, do NOT
+  // re-arm the card's click.deselectURL handler — a tap into the still-open
+  // sibling input would otherwise deselect the card and discard the in-progress
+  // edit. The non-suppressed path (single-field / desktop) re-arms as before.
   const selected = urlCard.attr("urlSelected");
-  if (typeof selected === "string" && selected.toLowerCase() === "true") {
+  if (
+    !suppressSiblingDisable &&
+    typeof selected === "string" &&
+    selected.toLowerCase() === "true"
+  ) {
     enableClickOnSelectedURLCardToHide(urlCard);
   }
 }
@@ -113,7 +132,17 @@ export async function updateURLTitle(
 
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
       log("updateURLTitle skipped — value unchanged", { utubUrlID });
-      hideAndResetUpdateURLTitleForm(urlCard);
+      // Panel-aware: on mobile the string form can still be open alongside this
+      // title field. Suppress the sibling restore so we don't re-arm the card
+      // deselect handler (and re-enable the string's edit affordance) while the
+      // string edit is still in progress.
+      const stringFormStillOpen = !urlCard
+        .find(".updateUrlStringWrap")
+        .hasClass("hidden");
+      hideAndResetUpdateURLTitleForm({
+        urlCard,
+        suppressSiblingDisable: isCoarsePointer() && stringFormStillOpen,
+      });
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -183,7 +212,17 @@ function updateURLTitleSuccess(
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);
-  hideAndResetUpdateURLTitleForm(urlCard);
+  // Panel-aware: on mobile the string form can still be open alongside this
+  // title field. Suppress the sibling restore so submitting the title does not
+  // re-arm the card deselect handler (which would discard an in-progress string
+  // edit) while the string form is still open.
+  const stringFormStillOpen = !urlCard
+    .find(".updateUrlStringWrap")
+    .hasClass("hidden");
+  hideAndResetUpdateURLTitleForm({
+    urlCard,
+    suppressSiblingDisable: isCoarsePointer() && stringFormStillOpen,
+  });
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

@@ -12,6 +12,7 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
 import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
+import { isCoarsePointer } from "../../mobile.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -127,7 +128,7 @@ function createUpdateURLStringInput(
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    hideAndResetUpdateURLStringForm(urlCard);
+    hideAndResetUpdateURLStringForm({ urlCard });
   });
 
   urlStringUpdateTextInputContainer
@@ -158,6 +159,10 @@ function setFocusEventListenersOnUpdateURLStringInput(
             updateURL(urlStringInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
+            // On mobile, defer to the panel-level document Escape handler
+            // (bound in openURLEditPanel) so both fields close together and the
+            // two mechanisms don't double-fire.
+            if (isCoarsePointer()) break;
             // Handle escape key pressed
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
@@ -165,7 +170,7 @@ function setFocusEventListenersOnUpdateURLStringInput(
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             clearOpenForm();
-            hideAndResetUpdateURLStringForm(urlCard);
+            hideAndResetUpdateURLStringForm({ urlCard });
             break;
           default:
           /* no-op */

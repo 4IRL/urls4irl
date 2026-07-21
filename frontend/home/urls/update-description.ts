@@ -12,6 +12,7 @@ import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { updateUTubNameHideInput } from "./update-name.js";
+import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
 import {
@@ -72,7 +73,13 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
 
     $("#UTubDescriptionSubheaderWrap").offAndOnExact(
       "click.updateUTubDesc",
-      () => openDescriptionEdit("pencil_icon"),
+      () => {
+        // On mobile the consolidated panel (opened via #utubEditPanelToggle) is
+        // the only entry point — tapping the pencil-less description row is a
+        // no-op.
+        if (isCoarsePointer()) return;
+        openDescriptionEdit("pencil_icon");
+      },
     );
 
     descPencilIcon.offAndOnExact("keydown.updateUTubDesc", function (keyEvent) {
@@ -94,7 +101,7 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
     updateUTubDescription(utubID);
   });
 
-  utubDescriptionCancelBtnUpdate.onExact("click", function () {
+  utubDescriptionCancelBtnUpdate.offAndOnExact("click", function () {
     emit({
       event: UI_EVENTS.UI_FORM_CANCEL,
       form: HOME_FORM.UTUB_DESC_EDIT,
@@ -126,6 +133,10 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
               updateUTubDescription(utubID);
               break;
             case KEYS.ESCAPE:
+              // On mobile, defer to the single document-level panel Escape
+              // handler (bound in setupUTubEditPanelToggle) so the two
+              // mechanisms don't both fire and double-close on one keypress.
+              if (isCoarsePointer()) return;
               // Handle escape key pressed
               emit({
                 event: UI_EVENTS.UI_FORM_CANCEL,
