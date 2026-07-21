@@ -6,7 +6,7 @@ import {
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { isMobile } from "../../../mobile.js";
+import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -43,6 +43,7 @@ vi.mock("../../../../store/app-store.js", () => ({
 
 vi.mock("../../../mobile.js", () => ({
   isMobile: vi.fn(() => true),
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 const $ = window.jQuery;
@@ -363,5 +364,97 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
     expect(focusTriggerCall).toBeDefined();
 
     triggerSpy.mockRestore();
+  });
+});
+
+describe("panel-aware submit gate — deselect + sibling suppression (mobile consolidated panel)", () => {
+  // Card with BOTH edit forms present. The sibling string wrap is left OPEN (no
+  // `hidden` class) so, on a coarse pointer, the panel-aware gate suppresses the
+  // sibling restore. The string-edit button starts hidden so we can assert it
+  // STAYS hidden (i.e. enableEditingURLString did not fire).
+  const PANEL_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">Old Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap"><input class="urlTitleUpdate" value="Old Title" /></div>
+      <div class="updateUrlStringWrap"><input class="urlStringUpdate" value="https://example.com" /></div>
+      <button class="urlStringBtnUpdate hidden"></button>
+      <button class="urlStringCancelBigBtnUpdate hidden"></button>
+      <div class="urlTitleUpdate-error"></div>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    document.body.innerHTML = PANEL_CARD_HTML;
+    vi.clearAllMocks();
+    // Coarse pointer = the mobile consolidated panel is in play.
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "Old Title",
+          utubUrlTagIDs: [],
+          canDelete: true,
+        },
+      ],
+    } as unknown as AppState);
+  });
+
+  it("value-unchanged skip: keeps the string-edit button hidden AND does not re-arm the card deselect handler while the sibling form is open on mobile", async () => {
+    const urlCard = $(".urlRow");
+    // Input value already equals the title text → value-unchanged skip path.
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // (a) sibling string-edit button stays hidden — enableEditingURLString suppressed.
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    // (b) card deselect handler is NOT re-armed.
+    expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
+  });
+
+  it("success path: keeps the string-edit button hidden AND does not re-arm the card deselect handler while the sibling form is open on mobile", async () => {
+    const urlCard = $(".urlRow");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    const chainable = createMockJqXHRChainable({
+      done: (cb: unknown) =>
+        (cb as (...args: unknown[]) => void)(response, "success", {
+          status: 200,
+        }),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
+  });
+
+  it("companion — sibling form closed: performs the normal restore (re-arms deselect, restores the string-edit button)", async () => {
+    const urlCard = $(".urlRow");
+    // Sibling string form is CLOSED → the gate collapses and normal restore runs
+    // even on a coarse pointer.
+    urlCard.find(".updateUrlStringWrap").addClass("hidden");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+    expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
   });
 });
