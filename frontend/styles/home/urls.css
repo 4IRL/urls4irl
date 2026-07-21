@@ -436,6 +436,27 @@ a.urlString {
     transition: background-color 0.1s ease;
 }
 
+/* Mobile only: the morphed full-width "Cancel" button doubles as the
+   consolidated URL edit-panel close control, so it must read as a cancel (red),
+   not the desktop edit-yellow. Scoped to coarse pointers so the DESKTOP
+   single-field URL-string-edit cancel keeps its yellow. Red matches the app
+   cancel token (.cancelButton-wide / .funnel-x / .trash-fill →
+   var(--removeIconColor)); the btn-light dark text is forced white to stay
+   legible on red (mirrors how .cancelButton-wide keeps its glyph on panel bg). */
+@media (any-pointer: coarse) {
+    .urlStringCancelBigBtnUpdate {
+        background-color: var(--removeIconColor);
+        border-color: var(--removeIconColor);
+        color: white;
+    }
+
+    .urlStringCancelBigBtnUpdate:active {
+        background-color: var(--removeIconColorHover) !important;
+        border-color: var(--removeIconColorHover) !important;
+        color: white !important;
+    }
+}
+
 .urlBtnDelete {
     color: black;
 }
