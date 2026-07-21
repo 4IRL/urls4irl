@@ -188,8 +188,13 @@ export function hideAndResetUpdateURLStringForm({
 
   resetUpdateURLFailErrors(urlCard);
   enableTagRemovalInURLCard(urlCard);
+  // Panel-aware: when the sibling (title) form is still open on mobile, do NOT
+  // re-arm the card's click.deselectURL handler — a tap into the still-open
+  // sibling input would otherwise deselect the card and discard the in-progress
+  // edit. The non-suppressed path (single-field / desktop) re-arms as before.
   const selectedAgain = urlCard.attr("urlSelected");
   if (
+    !suppressSiblingDisable &&
     typeof selectedAgain === "string" &&
     selectedAgain.toLowerCase() === "true"
   ) {

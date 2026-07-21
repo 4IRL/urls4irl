@@ -89,8 +89,16 @@ export function hideAndResetUpdateURLTitleForm({
 
   resetUpdateURLTitleFailErrors(urlCard);
   if (!suppressSiblingDisable) enableEditingURLString(urlCard);
+  // Panel-aware: when the sibling (string) form is still open on mobile, do NOT
+  // re-arm the card's click.deselectURL handler — a tap into the still-open
+  // sibling input would otherwise deselect the card and discard the in-progress
+  // edit. The non-suppressed path (single-field / desktop) re-arms as before.
   const selected = urlCard.attr("urlSelected");
-  if (typeof selected === "string" && selected.toLowerCase() === "true") {
+  if (
+    !suppressSiblingDisable &&
+    typeof selected === "string" &&
+    selected.toLowerCase() === "true"
+  ) {
     enableClickOnSelectedURLCardToHide(urlCard);
   }
 }
