@@ -4,6 +4,7 @@ from playwright.sync_api import Page, expect
 
 from backend.models.utubs import Utubs
 from tests.functional.db_utils import (
+    get_url_in_utub,
     get_utub_this_user_created,
     set_utub_locked_state,
 )
@@ -186,6 +187,56 @@ def test_utub_edit_panel_escape_closes_both_name_and_description_mobile(
     page.keyboard.press("Escape")
 
     # Both forms close together on Escape.
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+
+    # The toggle is the visible control once more; the close button is hidden.
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE
+    )
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
+
+
+def test_utub_edit_panel_closes_when_url_card_selected_mobile(
+    page_mobile_portrait: Page,
+    create_test_urls,
+    provide_app: Flask,
+):
+    """
+    Tests the cross-component wiring: selecting a URL card while the consolidated
+    UTub edit panel is open closes the panel end-to-end. Selecting a card emits
+    AppEvents.URL_CARD_SELECTED, whose module-scope handler closes the open UTub
+    panel — the same end state as the close button, reached via the event bus.
+
+    GIVEN an owner has opened the consolidated UTub edit panel on mobile
+    WHEN the user selects a URL card
+    THEN both the name and description forms hide and the toggle is visible again
+    """
+    page = page_mobile_portrait
+    app = provide_app
+    user_id = 1
+    utub: Utubs = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_utubid_mobile(
+        app=app, page=page, user_id=user_id, utub_id=utub.id
+    )
+    assert_panel_visibility_mobile(page=page, visible_deck=Decks.URLS)
+
+    open_utub_edit_panel_mobile(page=page)
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
+
+    # Selecting a URL card emits URL_CARD_SELECTED, which closes the open panel.
+    utub_url = get_url_in_utub(app, utub.id)
+    wait_then_click_element(
+        page=page, css_selector=f"{HPL.ROWS_URLS}[utuburlid='{utub_url.id}']"
+    )
+
+    # Both forms close together on selection.
     wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE

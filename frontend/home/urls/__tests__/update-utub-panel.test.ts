@@ -5,6 +5,7 @@ import {
   closeUTubEditPanel,
 } from "../update-utub-panel.js";
 import { getState } from "../../../store/app-store.js";
+import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { isCoarsePointer } from "../../mobile.js";
 
@@ -336,6 +337,50 @@ describe("UTub edit panel orchestrator", () => {
 
       expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
       expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+    });
+  });
+
+  describe("URL_CARD_SELECTED panel-close wiring", () => {
+    // The panel-close handler is registered exactly once at module load against
+    // the REAL event bus (not per UTub switch), so these tests emit the real
+    // AppEvents.URL_CARD_SELECTED event rather than calling a bound handler
+    // directly. The handler reads the active UTub id from app state to thread it
+    // into the close path, so each test pins `activeUTubID` first.
+    it("closes an open UTub panel when a URL card is selected", () => {
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: UTUB_ID,
+      } as ReturnType<typeof getState>);
+
+      openUTubEditPanel(UTUB_ID);
+      // Precondition: the panel is open (close button visible, forms shown).
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+
+      emit(AppEvents.URL_CARD_SELECTED, { urlID: 999 });
+
+      // Both forms are restored and the toggle is the visible control again.
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
+      expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(false);
+    });
+
+    it("is a no-op when the panel is already closed (guards the hidden-close early-return)", () => {
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: UTUB_ID,
+      } as ReturnType<typeof getState>);
+
+      // Panel never opened: #utubEditPanelClose starts hidden. Selecting a URL
+      // card must not trigger a spurious close/teardown/focus-return.
+      const focusSpy = vi.spyOn($("#utubEditPanelToggle")[0], "focus");
+
+      emit(AppEvents.URL_CARD_SELECTED, { urlID: 999 });
+
+      expect(focusSpy).not.toHaveBeenCalled();
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
+      focusSpy.mockRestore();
     });
   });
 });
