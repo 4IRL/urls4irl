@@ -35,6 +35,7 @@ vi.mock("../../../../lib/ajax.js", () => ({
 vi.mock("../update-string.js", () => ({
   updateURL: vi.fn(() => Promise.resolve()),
   hideAndResetUpdateURLStringForm: vi.fn(),
+  isURLStringSubmitInFlight: vi.fn(() => false),
 }));
 
 vi.mock("../../../../lib/config.js", () => ({

@@ -29,6 +29,8 @@ FIELD_SAVED = "Saved"
 # (e.g. "UTub name Saved") so assistive tech states which field was saved.
 FIELD_SAVED_LABEL_UTUB_NAME = "UTub name"
 FIELD_SAVED_LABEL_UTUB_DESCRIPTION = "UTub description"
+FIELD_SAVED_LABEL_URL_TITLE = "URL title"
+FIELD_SAVED_LABEL_URL = "URL"
 
 
 class UTUB_GENERAL:

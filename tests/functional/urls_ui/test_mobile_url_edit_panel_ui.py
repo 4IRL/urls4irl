@@ -1,4 +1,5 @@
 import random
+import re
 from typing import Tuple
 from urllib.parse import urlsplit
 
@@ -335,10 +336,31 @@ def test_url_string_edit_via_consolidated_panel_mobile(
         css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}",
     )
 
-    # The URL-string form closes once the PATCH lands.
-    wait_until_hidden(page=page, css_selector=HPL.UPDATE_URL_STRING_WRAP)
+    # Mobile form model: a per-field submit keeps the URL-string field OPEN (it
+    # does NOT collapse back to read-only), flashes a transient "Saved ✓", and
+    # leaves the panel chrome untouched until the whole panel closes.
+    expect(selected_url.locator(HPL.SAVED_TICK_URL_STRING)).to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    # The shared polite announcer states which field was saved.
+    expect(page.locator(HPL.FIELD_SAVED_ANNOUNCEMENT)).to_have_text("URL Saved")
 
-    # The URL string persisted.
+    # Both the string wrap and its sibling title wrap stay visible.
+    expect(selected_url.locator(HPL.UPDATE_URL_STRING_WRAP)).to_be_visible()
+    expect(selected_url.locator(HPL.UPDATE_URL_TITLE_WRAP)).to_be_visible()
+    # The four sibling option buttons and the go-to-URL icon stay hidden —
+    # chrome is only restored when the whole panel closes.
+    for sibling_btn in _SIBLING_OPTION_BTNS:
+        expect(selected_url.locator(sibling_btn)).to_be_hidden()
+    expect(selected_url.locator(HPL.GO_TO_URL_ICON)).to_be_hidden()
+    # The full-width Cancel bar stays (the panel-open signal), and the edit
+    # button is still morphed away.
+    expect(
+        selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+    ).to_be_visible()
+    expect(selected_url.locator(HPL.BUTTON_URL_STRING_UPDATE)).to_have_count(0)
+
+    # The URL string persisted (href updated even though .urlString is hidden).
     url_string_elem = selected_url.locator(HPL.URL_STRING_READ)
     updated_href = url_string_elem.get_attribute("href")
     host_changed_to = urlsplit(random_url_to_change_to).hostname
@@ -352,6 +374,18 @@ def test_url_string_edit_via_consolidated_panel_mobile(
     expect(selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_have_value(
         original_title
     )
+
+    # Closing the panel (full-width Cancel) collapses BOTH fields and restores
+    # the sibling option buttons and the go-to-URL icon.
+    selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE).click()
+    wait_until_hidden(
+        page=page,
+        css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}",
+    )
+    expect(selected_url.locator(HPL.INPUT_URL_TITLE_UPDATE)).to_be_hidden()
+    for sibling_btn in _SIBLING_OPTION_BTNS:
+        expect(selected_url.locator(sibling_btn)).to_be_visible()
+    expect(selected_url.locator(HPL.GO_TO_URL_ICON)).to_be_visible()
 
 
 def test_url_edit_button_hidden_and_unreachable_when_not_selected_mobile(

@@ -1,6 +1,7 @@
 import { $ } from "../../../lib/globals.js";
 import { KEYS } from "../../../lib/constants.js";
-import { clearOpenForm } from "../../../lib/modal-tracking.js";
+import { clearOpenForm, getOpenForm } from "../../../lib/modal-tracking.js";
+import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import {
   showUpdateURLTitleForm,
   hideAndResetUpdateURLTitleForm,
@@ -9,6 +10,7 @@ import {
   showUpdateURLStringForm,
   hideAndResetUpdateURLStringForm,
 } from "./update-string.js";
+import { clearFieldSavedTick } from "../field-saved-tick.js";
 import { enableClickOnSelectedURLCardToHide } from "./selection.js";
 
 // Opens the consolidated URL edit panel on mobile: the URL title and URL string
@@ -53,9 +55,29 @@ export function openURLEditPanel(urlCard: JQuery): void {
 // never opened, which is required because deselectURL()'s routine teardown (Step
 // 4) calls this on every deselection.
 export function resetURLEditPanelState(urlCard: JQuery): void {
+  // Clear any pending Saved✓ fade timers first, so a stale timer never toggles
+  // opacity back on a torn-down card field after this reset runs.
+  clearFieldSavedTick(urlCard.find(".updateUrlTitleWrap .field-saved-tick"));
+  clearFieldSavedTick(urlCard.find(".updateUrlStringWrap .field-saved-tick"));
+
   hideAndResetUpdateURLTitleForm({ urlCard, suppressSiblingDisable: true });
   hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });
   $(document).off("keydown.urlEditPanelEscape");
+
+  // Ownership-guarded open-form clear: resetURLEditPanelState is called directly
+  // (not via closeURLEditPanel) by the routine, non-user-initiated deselect
+  // teardown, so only clear the tracked open form when the registry currently
+  // holds THIS card's own field — an unconditional clear would wipe an unrelated
+  // open form (e.g. the UTub header panel, or a different card's field) whenever
+  // a routine deselect fires while that unrelated form is open. closeURLEditPanel
+  // keeps its own unconditional clear for the user-initiated-close case.
+  const openForm = getOpenForm();
+  if (
+    openForm === HOME_FORM.URL_TITLE_EDIT ||
+    openForm === HOME_FORM.URL_STRING_EDIT
+  ) {
+    clearOpenForm();
+  }
 }
 
 // Higher-level wrapper: routine teardown + focus return to the repurposed trigger

@@ -8,6 +8,7 @@ import {
   updateURLTitle,
   showUpdateURLTitleForm,
   hideAndResetUpdateURLTitleForm,
+  isURLTitleSubmitInFlight,
 } from "./update-title.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
@@ -147,6 +148,8 @@ function createUpdateURLTitleInput(
         if ((event.originalEvent as KeyboardEvent).repeat) return;
         switch (event.key) {
           case KEYS.ENTER:
+            // Block an overlapping submit while a kept-open submit is in flight.
+            if (isURLTitleSubmitInFlight()) return;
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,
               form: HOME_FORM.URL_TITLE_EDIT,
@@ -185,6 +188,8 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
+    // Block an overlapping submit while a kept-open submit is in flight.
+    if (isURLTitleSubmitInFlight()) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.URL_TITLE_EDIT,
@@ -209,9 +214,30 @@ function createUpdateURLTitleInput(
     hideAndResetUpdateURLTitleForm({ urlCard });
   });
 
-  urlTitleUpdateInputContainer
+  // Two-level restructure (mirrors the UTub Jinja template's shape): nest the
+  // input container + submit/cancel buttons in an inner row, then hang the
+  // "Saved ✓" tick slot below as a sibling row. On touch devices the
+  // coarse-pointer CSS override (urls.css) stacks these two children as a
+  // column so the tick lands below the input; desktop keeps the inherited
+  // side-by-side flex-row layout from makeTextInput's wrap.
+  const urlTitleInputInnerRow = $(document.createElement("div"))
+    .addClass("flex-row full-width")
+    .append(urlTitleUpdateInputContainer.find(".text-input-container"))
     .append(urlTitleSubmitBtnUpdate)
     .append(urlTitleCancelBtnUpdate);
+
+  const urlTitleSavedTickSlot = $(document.createElement("div"))
+    .addClass("field-saved-tick-slot")
+    .append(
+      $(document.createElement("span"))
+        .addClass("field-saved-tick opa-0")
+        .attr("aria-hidden", "true")
+        .html(`${APP_CONFIG.strings.FIELD_SAVED} <i class="bi bi-check"></i>`),
+    );
+
+  urlTitleUpdateInputContainer
+    .append(urlTitleInputInnerRow)
+    .append(urlTitleSavedTickSlot);
 
   return urlTitleUpdateInputContainer;
 }

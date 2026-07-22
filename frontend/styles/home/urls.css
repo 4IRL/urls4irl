@@ -324,11 +324,16 @@ a.urlString {
     }
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {
+/* Descendant (space) combinator, not direct-child (>): the Step 3 two-level
+   restructure nests .text-input-container inside an inner-row wrapper, so it is
+   now a grandchild of .updateUrlTitleWrap/.updateUrlStringWrap. A > combinator
+   would silently stop matching and collapse both inputs to content-width on all
+   viewports. */
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap .text-input-container {
     width: 65%;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap>.text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap .text-input-container {
     width: 100%;
 }
 

@@ -268,11 +268,15 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
     UPDATE_URL_STRING_WRAP = ".updateUrlStringWrap"
+    UPDATE_URL_TITLE_WRAP = ".updateUrlTitleWrap"
     BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
     INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
     BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
     BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"
+    # Mobile form-model "Saved ✓" ticks (card-scoped by wrap since cards repeat)
+    SAVED_TICK_URL_TITLE = ".updateUrlTitleWrap .field-saved-tick"
+    SAVED_TICK_URL_STRING = ".updateUrlStringWrap .field-saved-tick"
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
 

@@ -20,10 +20,43 @@ import {
 } from "./selection.js";
 import { disableEditingURLString, enableEditingURLString } from "./utils.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
+import { showFieldSavedTick } from "../field-saved-tick.js";
 import { getState, setState } from "../../../store/app-store.js";
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
+
+// Per-field in-flight guard for the mobile keep-open path. While the title
+// field stays open across a submit, a second submit (double-tap / repeated
+// Enter) must be blocked until the fire-and-forget PATCH settles. The entry
+// points (click/Enter handlers) live in url-title.ts, so the flag is exposed
+// via isURLTitleSubmitInFlight(). Desktop is unaffected (collapse-on-submit
+// removes the control), so the guard is only ever set on the panelOpen path.
+let titleSubmitInFlight = false;
+
+export function isURLTitleSubmitInFlight(): boolean {
+  return titleSubmitInFlight;
+}
+
+// Card panel-open predicate: on mobile the string field's morphed full-width
+// Cancel bar (.urlStringCancelBigBtnUpdate) is present + unhidden for the whole
+// lifetime the consolidated panel is open, so it is the reliable open signal now
+// that the just-submitted field's own wrap stays visible. An absent element
+// (panel never opened) reads as not-open rather than throwing.
+function isCardEditPanelOpen(urlCard: JQuery): boolean {
+  const cancelBar = urlCard.find(".urlStringCancelBigBtnUpdate");
+  return (
+    isCoarsePointer() && cancelBar.length > 0 && !cancelBar.hasClass("hidden")
+  );
+}
+
+// Clear the title in-flight flag and its accessible-disabled reflection at a
+// real exit of updateURLTitle (mirrors the clearTimeoutIDAndHideLoadingIcon
+// exit anchors). Harmless no-op on the desktop path where it was never set.
+function clearTitleSubmitInFlight(titleSubmitBtn: JQuery): void {
+  titleSubmitInFlight = false;
+  titleSubmitBtn.removeAttr("aria-disabled");
+}
 
 type UpdateUrlTitleRequest = Schema<"UpdateURLTitleRequest">;
 type UpdateUrlTitleResponse = SuccessResponse<"updateUrlTitle">;
@@ -76,16 +109,24 @@ export function showUpdateURLTitleForm({
 export function hideAndResetUpdateURLTitleForm({
   urlCard,
   suppressSiblingDisable = false,
+  keepOpen = false,
 }: {
   urlCard: JQuery;
   suppressSiblingDisable?: boolean;
+  keepOpen?: boolean;
 }): void {
-  urlCard.find(".updateUrlTitleWrap").hideClass();
-  urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
+  // keepOpen (mobile form-model): the title field stays visually open across a
+  // per-field submit while the panel is open, so skip the visual collapse and
+  // the tag-hover re-enable. Still run the value resync (idempotent) and,
+  // unconditionally, the error-state reset so it never lingers.
+  if (!keepOpen) {
+    urlCard.find(".updateUrlTitleWrap").hideClass();
+    urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
+  }
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
 
   // Enable hovering on tags for deletion
-  urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+  if (!keepOpen) urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
 
   resetUpdateURLTitleFailErrors(urlCard);
   if (!suppressSiblingDisable) enableEditingURLString(urlCard);
@@ -127,6 +168,15 @@ export async function updateURLTitle(
   // Extract data to submit in POST request
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  const panelOpen = isCardEditPanelOpen(urlCard);
+  const titleSubmitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+  if (panelOpen) {
+    // Accessible in-flight guard: mark the submit control aria-disabled (not
+    // native disabled, which drops focus) so a second overlapping submit is
+    // blocked by the entry-point checks in url-title.ts until this settles.
+    titleSubmitInFlight = true;
+    titleSubmitBtn.attr("aria-disabled", "true");
+  }
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
@@ -135,14 +185,19 @@ export async function updateURLTitle(
       // Panel-aware: on mobile the string form can still be open alongside this
       // title field. Suppress the sibling restore so we don't re-arm the card
       // deselect handler (and re-enable the string's edit affordance) while the
-      // string edit is still in progress.
+      // string edit is still in progress. keepOpen keeps this field visually
+      // open (no tick — value unchanged), and re-registers the open form so a
+      // later pagehide doesn't misreport UI_FORM_CANCEL.
       const stringFormStillOpen = !urlCard
         .find(".updateUrlStringWrap")
         .hasClass("hidden");
       hideAndResetUpdateURLTitleForm({
         urlCard,
         suppressSiblingDisable: isCoarsePointer() && stringFormStillOpen,
+        keepOpen: panelOpen,
       });
+      if (panelOpen) setOpenForm(HOME_FORM.URL_TITLE_EDIT);
+      clearTitleSubmitInFlight(titleSubmitBtn);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -173,12 +228,14 @@ export async function updateURLTitle(
     });
 
     request.always(function () {
+      clearTitleSubmitInFlight(titleSubmitBtn);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
     log("updateURLTitle aborted — pre-flight URL fetch rejected", {
       utubUrlID,
     });
+    clearTitleSubmitInFlight(titleSubmitBtn);
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
@@ -216,13 +273,27 @@ function updateURLTitleSuccess(
   // title field. Suppress the sibling restore so submitting the title does not
   // re-arm the card deselect handler (which would discard an in-progress string
   // edit) while the string form is still open.
+  const panelOpen = isCardEditPanelOpen(urlCard);
   const stringFormStillOpen = !urlCard
     .find(".updateUrlStringWrap")
     .hasClass("hidden");
   hideAndResetUpdateURLTitleForm({
     urlCard,
     suppressSiblingDisable: isCoarsePointer() && stringFormStillOpen,
+    keepOpen: panelOpen,
   });
+  // Mobile form model: keep the field open, re-register the tracked open form
+  // (so a later pagehide doesn't misreport UI_FORM_CANCEL), and flash a
+  // transient "Saved ✓" beside the still-open field. updateURLTitleSuccess is
+  // only reached on a genuine 200 for a changed value, so no no-op guard needed.
+  if (panelOpen) {
+    setOpenForm(HOME_FORM.URL_TITLE_EDIT);
+    showFieldSavedTick({
+      tick: urlCard.find(".updateUrlTitleWrap .field-saved-tick"),
+      announce: $("#fieldSavedAnnouncement"),
+      label: APP_CONFIG.strings.FIELD_SAVED_LABEL_URL_TITLE,
+    });
+  }
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

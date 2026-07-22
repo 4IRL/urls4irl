@@ -4,12 +4,15 @@ import { checkForStaleDataOn409 } from "../conflict-handler.js";
 import {
   updateURL,
   hideAndResetUpdateURLStringForm,
+  isURLStringSubmitInFlight,
   showUpdateURLStringForm,
 } from "../update-string.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
 import { openURLEditPanel } from "../update-url-panel.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
+import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
+import { HOME_FORM } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -428,10 +431,18 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
   // sibling restore. The title pencil starts hidden so we can assert it STAYS
   // hidden (i.e. enableEditingURLTitle did not fire).
   const PANEL_CARD_HTML = `
+    <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
     <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
       <a class="urlString" href="https://example.com">https://example.com</a>
-      <div class="updateUrlStringWrap"><input class="urlStringUpdate" type="text" value="https://example.com" /></div>
-      <div class="updateUrlTitleWrap"><input class="urlTitleUpdate" value="My Title" /></div>
+      <div class="updateUrlStringWrap">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <button class="urlStringSubmitBtnUpdate"></button>
+        <div class="field-saved-tick-slot"><span class="field-saved-tick opa-0" aria-hidden="true"></span></div>
+      </div>
+      <div class="updateUrlTitleWrap">
+        <input class="urlTitleUpdate" value="My Title" />
+        <div class="field-saved-tick-slot"><span class="field-saved-tick opa-0" aria-hidden="true"></span></div>
+      </div>
       <button class="urlStringBtnUpdate"></button>
       <button class="urlStringCancelBigBtnUpdate"></button>
       <button class="urlTitleBtnUpdate hidden"></button>
@@ -492,10 +503,13 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
     expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
   });
 
-  it("companion — sibling form closed: performs the normal restore (re-arms deselect, restores the title pencil)", async () => {
+  it("companion — panel closed: performs the normal restore (re-arms deselect, restores the title pencil)", async () => {
     const urlCard = $(".urlRow");
-    // Sibling title form is CLOSED → the gate collapses and normal restore runs
-    // even on a coarse pointer.
+    // Panel is CLOSED — the morphed Cancel bar is hidden (the authoritative
+    // panel-open signal), so keepOpen is false and the normal restore runs even
+    // on a coarse pointer. Sibling title form also closed so suppressSibling is
+    // false too.
+    urlCard.find(".urlStringCancelBigBtnUpdate").addClass("hidden");
     urlCard.find(".updateUrlTitleWrap").addClass("hidden");
     const urlStringInput = urlCard.find(".urlStringUpdate");
 
@@ -503,5 +517,83 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
 
     expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("panel open: a real string change keeps the wrap open, keeps action buttons hidden, shows the tick, announces, and re-registers the open form", async () => {
+    clearOpenForm();
+    const urlCard = $(".urlRow");
+    const urlStringInput = urlCard.find(".urlStringUpdate");
+    urlStringInput.val("https://new-example.com");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://new-example.com",
+        urlTitle: "My Title",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    // Wrap stays open (keepOpen skipped the collapse).
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(false);
+    // Cancel bar preserved (panel-open signal intact — not morphed back).
+    expect(
+      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
+    ).toBe(false);
+    // Saved✓ tick shown and shared announcer reflects the field label.
+    expect(
+      urlCard.find(".updateUrlStringWrap .field-saved-tick").hasClass("opa-1"),
+    ).toBe(true);
+    expect($("#fieldSavedAnnouncement").text()).toBe("URL Saved");
+    expect(getOpenForm()).toBe(HOME_FORM.URL_STRING_EDIT);
+  });
+
+  it("panel open: marks the submit control aria-disabled while in flight and clears it (never native disabled) once settled", async () => {
+    clearOpenForm();
+    const urlCard = $(".urlRow");
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+    const urlStringInput = urlCard.find(".urlStringUpdate");
+    urlStringInput.val("https://new-example.com");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://new-example.com",
+        urlTitle: "My Title",
+        urlTags: [],
+      },
+    };
+    let inFlightAtRequest: boolean | undefined;
+    let ariaAtRequest: string | undefined;
+    vi.mocked(ajaxCall).mockImplementation(() => {
+      inFlightAtRequest = isURLStringSubmitInFlight();
+      ariaAtRequest = submitBtn.attr("aria-disabled");
+      return createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      });
+    });
+
+    await updateURL(urlStringInput, urlCard, 1);
+
+    expect(inFlightAtRequest).toBe(true);
+    expect(ariaAtRequest).toBe("true");
+    expect(isURLStringSubmitInFlight()).toBe(false);
+    expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+    expect(submitBtn.prop("disabled")).toBe(false);
   });
 });

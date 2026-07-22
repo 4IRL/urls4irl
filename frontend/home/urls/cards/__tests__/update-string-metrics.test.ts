@@ -75,6 +75,7 @@ vi.mock("../../tags/tags.js", () => ({
 
 vi.mock("../../../mobile.js", () => ({
   isMobile: vi.fn(() => false),
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 vi.mock("../../../btns-forms.js", () => ({

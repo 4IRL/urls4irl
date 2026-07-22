@@ -1,6 +1,7 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import {
   hideAndResetUpdateURLTitleForm,
+  isURLTitleSubmitInFlight,
   showUpdateURLTitleForm,
   updateURLTitle,
 } from "../update-title.js";
@@ -8,6 +9,8 @@ import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { ajaxCall } from "../../../../lib/ajax.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
+import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
+import { HOME_FORM } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -373,13 +376,21 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
   // sibling restore. The string-edit button starts hidden so we can assert it
   // STAYS hidden (i.e. enableEditingURLString did not fire).
   const PANEL_CARD_HTML = `
+    <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
     <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
       <div class="urlTitleAndUpdateIconWrap">
         <span class="urlTitle">Old Title</span>
         <button class="urlTitleBtnUpdate"></button>
       </div>
-      <div class="updateUrlTitleWrap"><input class="urlTitleUpdate" value="Old Title" /></div>
-      <div class="updateUrlStringWrap"><input class="urlStringUpdate" value="https://example.com" /></div>
+      <div class="updateUrlTitleWrap">
+        <input class="urlTitleUpdate" value="Old Title" />
+        <button class="urlTitleSubmitBtnUpdate"></button>
+        <div class="field-saved-tick-slot"><span class="field-saved-tick opa-0" aria-hidden="true"></span></div>
+      </div>
+      <div class="updateUrlStringWrap">
+        <input class="urlStringUpdate" value="https://example.com" />
+        <div class="field-saved-tick-slot"><span class="field-saved-tick opa-0" aria-hidden="true"></span></div>
+      </div>
       <button class="urlStringBtnUpdate hidden"></button>
       <button class="urlStringCancelBigBtnUpdate hidden"></button>
       <div class="urlTitleUpdate-error"></div>
@@ -456,5 +467,85 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("panel open: a real title change keeps the wrap open, shows the tick, announces, and re-registers the open form", async () => {
+    clearOpenForm();
+    const urlCard = $(".urlRow");
+    // Panel-open signal: the morphed full-width Cancel bar is present + unhidden.
+    urlCard.find(".urlStringCancelBigBtnUpdate").removeClass("hidden");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // Wrap stays open (keepOpen skipped the collapse).
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    // Saved✓ tick is shown and the shared announcer reflects the field label.
+    expect(
+      urlCard.find(".updateUrlTitleWrap .field-saved-tick").hasClass("opa-1"),
+    ).toBe(true);
+    expect($("#fieldSavedAnnouncement").text()).toBe("URL title Saved");
+    // Open-form registry re-populated so a later pagehide doesn't misreport.
+    expect(getOpenForm()).toBe(HOME_FORM.URL_TITLE_EDIT);
+  });
+
+  it("panel open: marks the submit control aria-disabled while in flight and clears it (never native disabled) once settled", async () => {
+    clearOpenForm();
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlStringCancelBigBtnUpdate").removeClass("hidden");
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    let inFlightAtRequest: boolean | undefined;
+    let ariaAtRequest: string | undefined;
+    vi.mocked(ajaxCall).mockImplementation(() => {
+      inFlightAtRequest = isURLTitleSubmitInFlight();
+      ariaAtRequest = submitBtn.attr("aria-disabled");
+      return createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      });
+    });
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // In flight when the request was issued (what the entry-point guard reads).
+    expect(inFlightAtRequest).toBe(true);
+    expect(ariaAtRequest).toBe("true");
+    // Cleared once settled; native `disabled` never used (focus preserved).
+    expect(isURLTitleSubmitInFlight()).toBe(false);
+    expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+    expect(submitBtn.prop("disabled")).toBe(false);
   });
 });

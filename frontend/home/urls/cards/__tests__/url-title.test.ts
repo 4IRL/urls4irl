@@ -13,6 +13,7 @@ vi.mock("../update-title.js", () => ({
   showUpdateURLTitleForm: vi.fn(),
   hideAndResetUpdateURLTitleForm: vi.fn(),
   updateURLTitle: vi.fn(),
+  isURLTitleSubmitInFlight: vi.fn(() => false),
 }));
 
 const $ = window.jQuery;
@@ -112,5 +113,33 @@ describe("urlTitleAndUpdateIconWrap - row-level click (UTub edit pattern)", () =
     wrap.trigger("click");
 
     expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
+  });
+});
+
+describe("createUpdateURLTitleInput - Saved✓ tick slot structure", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hangs .field-saved-tick-slot directly off the wrap as a SIBLING of the inner input row (not nested inside it)", () => {
+    const { urlCard } = mountTitleBlock();
+    const wrap = urlCard.find(".updateUrlTitleWrap");
+    const tickSlot = wrap.find(".field-saved-tick-slot");
+
+    expect(tickSlot.length).toBe(1);
+    // Core invariant: the tick slot's parent is the wrap itself, so it renders
+    // below the input row (guards against a future edit nesting it too deep).
+    expect(tickSlot.parent().is(wrap)).toBe(true);
+
+    // The input container moved one level deeper into the new inner row, so it
+    // is no longer a direct child of the wrap (the > width selector was updated
+    // to a descendant selector to match — Step 3 CSS fix).
+    expect(wrap.children(".text-input-container").length).toBe(0);
+    expect(wrap.find(".text-input-container").length).toBe(1);
+
+    const tick = tickSlot.find(".field-saved-tick");
+    expect(tick.length).toBe(1);
+    expect(tick.hasClass("opa-0")).toBe(true);
+    expect(tick.attr("aria-hidden")).toBe("true");
   });
 });

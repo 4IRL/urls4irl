@@ -28,6 +28,17 @@ const log = debug("urls");
 
 let descEditOpenedViaKeyboard = false;
 
+// Per-field in-flight guard for the mobile keep-open path (symmetric with the
+// name field's nameSubmitInFlight). Blocks a second overlapping submit until the
+// PATCH settles; only ever set on the panelOpen path, reflected via
+// aria-disabled (never native `disabled`, which would drop focus).
+let descriptionSubmitInFlight = false;
+
+function clearDescriptionSubmitInFlight(): void {
+  descriptionSubmitInFlight = false;
+  $("#utubDescriptionSubmitBtnUpdate").removeAttr("aria-disabled");
+}
+
 type UpdateUtubDescRequest = Schema<"UpdateUTubDescriptionRequest">;
 type UpdateUtubDescResponse = SuccessResponse<"updateUtubDesc">;
 type UpdateUtubDescError = Schema<"ErrorResponse_UTubErrorCodes">;
@@ -93,6 +104,9 @@ export function setupUpdateUTubDescriptionEventListeners(utubID: number): void {
   }
 
   utubDescriptionSubmitBtnUpdate.offAndOnExact("click", function () {
+    // Block an overlapping submit while a kept-open submit is in flight
+    // (descriptionSubmitInFlight is only ever set on the mobile panelOpen path).
+    if (descriptionSubmitInFlight) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.UTUB_DESC_EDIT,
@@ -127,6 +141,8 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
           if (keyEvent.originalEvent?.repeat) return;
           switch (keyEvent.key) {
             case KEYS.ENTER:
+              // Block an overlapping submit while a kept-open submit is in flight.
+              if (descriptionSubmitInFlight) return;
               // Handle enter key pressed
               emit({
                 event: UI_EVENTS.UI_FORM_SUBMIT,
@@ -326,16 +342,26 @@ function updateUTubDescription(utubID: number): void {
   // Extract data to submit in POST request
   const [postURL, data] = updateUTubDescriptionSetup(utubID);
 
+  const panelOpen =
+    isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden");
+  if (panelOpen) {
+    descriptionSubmitInFlight = true;
+    $("#utubDescriptionSubmitBtnUpdate").attr("aria-disabled", "true");
+  }
+
   const request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response: UpdateUtubDescResponse, _textStatus, xhr) {
+    // Re-enable before the status check so a non-200 still clears the guard.
+    clearDescriptionSubmitInFlight();
     if (xhr.status === 200) {
       updateUTubDescriptionSuccess(response, utubID);
     }
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
+    clearDescriptionSubmitInFlight();
     updateUTubDescriptionFail(xhr);
   });
 }

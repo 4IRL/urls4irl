@@ -9,7 +9,10 @@ import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { isCoarsePointer } from "../../mobile.js";
-import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
+import {
+  createMockJqXHR,
+  createMockJqXHRChainable,
+} from "../../../__tests__/helpers/mock-jquery.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -342,6 +345,48 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       // Desktop path: field collapses (subheader restored) and no tick shows.
       expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
       expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(false);
+    });
+  });
+
+  describe("mobile form model — in-flight submit guard (description)", () => {
+    it("blocks a second overlapping submit, reflects state via aria-disabled (never native disabled), and re-enables on a non-200 settle", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID);
+      $("#utubDescriptionUpdate").val("New Description"); // changed → real submit
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+
+      const submitBtn = $("#utubDescriptionSubmitBtnUpdate");
+
+      // First submit → request issued, control aria-disabled, focus preserved.
+      submitBtn.trigger("click");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+      expect(submitBtn.attr("aria-disabled")).toBe("true");
+      expect(submitBtn.prop("disabled")).toBe(false);
+
+      // Second submit while in flight → blocked (no second PATCH).
+      submitBtn.trigger("click");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+
+      // Non-200 settle re-enables (clear runs before the status check).
+      deferred.resolve({ utubDescription: "New Description" }, "success", {
+        status: 500,
+      });
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+      expect(submitBtn.prop("disabled")).toBe(false);
+
+      // Exactly one UI_FORM_SUBMIT (the guard returns before the second emit).
+      expect(
+        vi.mocked(emit).mock.calls.filter((call) => {
+          const args = call[0] as { event?: string };
+          return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+        }),
+      ).toHaveLength(1);
     });
   });
 });

@@ -37,6 +37,19 @@ const log = debug("urls");
 
 let nameEditOpenedViaKeyboard = false;
 
+// Per-field in-flight guard for the mobile keep-open path. While the name field
+// stays open across a submit, a second overlapping submit (double-tap / repeated
+// Enter / sameName-modal double-tap) must be blocked until the PATCH settles.
+// Only ever set on the panelOpen path, so desktop (collapse-on-submit) is
+// unaffected. Reflected on the submit control via aria-disabled — never native
+// `disabled`, which would drop focus and pull it from the a11y tree.
+let nameSubmitInFlight = false;
+
+function clearNameSubmitInFlight(): void {
+  nameSubmitInFlight = false;
+  $("#utubNameSubmitBtnUpdate").removeAttr("aria-disabled");
+}
+
 type UpdateUtubNameRequest = Schema<"UpdateUTubNameRequest">;
 type UpdateUtubNameResponse = SuccessResponse<"updateUtubName">;
 type UpdateUtubNameError = Schema<"ErrorResponse_UTubErrorCodes">;
@@ -109,6 +122,9 @@ export function setupUpdateUTubNameEventListeners(utubID: number): void {
   const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
 
   utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function () {
+    // Block an overlapping submit while a kept-open submit is in flight
+    // (nameSubmitInFlight is only ever set on the mobile panelOpen path).
+    if (nameSubmitInFlight) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.UTUB_NAME_EDIT,
@@ -150,6 +166,8 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
           if (keyEvent.originalEvent?.repeat) return;
           switch (keyEvent.key) {
             case KEYS.ENTER:
+              // Block an overlapping submit while a kept-open submit is in flight.
+              if (nameSubmitInFlight) return;
               // Handle enter key pressed
               emit({
                 event: UI_EVENTS.UI_FORM_SUBMIT,
@@ -258,6 +276,9 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID: number): void {
     .addClass("btn btn-success")
     .text(buttonTextSubmit)
     .offAndOnExact("click", function () {
+      // Block a double-tap on the confirm-modal "Edit Name" button while the
+      // confirmed submit is already in flight (mobile keep-open path).
+      if (nameSubmitInFlight) return;
       isSubmitting = true;
       updateUTubName(utubID);
     });
@@ -380,16 +401,26 @@ function updateUTubName(utubID: number): void {
   // Extract data to submit in POST request
   const [postURL, data] = updateUTubNameSetup(utubID);
 
+  const panelOpen =
+    isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden");
+  if (panelOpen) {
+    nameSubmitInFlight = true;
+    $("#utubNameSubmitBtnUpdate").attr("aria-disabled", "true");
+  }
+
   const request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response: UpdateUtubNameResponse, _textStatus, xhr) {
+    // Re-enable before the status check so a non-200 still clears the guard.
+    clearNameSubmitInFlight();
     if (xhr.status === 200) {
       updateUTubNameSuccess(response);
     }
   });
 
   request.fail(function (xhr: JQuery.jqXHR) {
+    clearNameSubmitInFlight();
     updateUTubNameFail(xhr);
   });
 }

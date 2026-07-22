@@ -177,6 +177,8 @@ const appConfig = {
     FIELD_SAVED: "Saved",
     FIELD_SAVED_LABEL_UTUB_NAME: "UTub name",
     FIELD_SAVED_LABEL_UTUB_DESCRIPTION: "UTub description",
+    FIELD_SAVED_LABEL_URL_TITLE: "URL title",
+    FIELD_SAVED_LABEL_URL: "URL",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,

@@ -31,6 +31,7 @@ import {
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
+import { showFieldSavedTick } from "../field-saved-tick.js";
 import { highlightInput } from "../../btns-forms.js";
 import {
   disableTagRemovalInURLCard,
@@ -52,6 +53,38 @@ import {
 import { debug } from "../../../lib/debug.js";
 
 const log = debug("urls:cards");
+
+// Per-field in-flight guard for the mobile keep-open path. While the string
+// field stays open across a submit, a second submit (double-tap / repeated
+// Enter) must be blocked until the fire-and-forget PATCH settles. The entry
+// points (click/Enter handlers) live in url-string.ts, so the flag is exposed
+// via isURLStringSubmitInFlight(). Desktop is unaffected (collapse-on-submit
+// removes the control), so the guard is only ever set on the panelOpen path.
+let stringSubmitInFlight = false;
+
+export function isURLStringSubmitInFlight(): boolean {
+  return stringSubmitInFlight;
+}
+
+// Card panel-open predicate: on mobile the string field's morphed full-width
+// Cancel bar (.urlStringCancelBigBtnUpdate) is present + unhidden for the whole
+// lifetime the consolidated panel is open, so it is the reliable open signal now
+// that the just-submitted field's own wrap stays visible. An absent element
+// (panel never opened) reads as not-open rather than throwing.
+function isCardEditPanelOpen(urlCard: JQuery): boolean {
+  const cancelBar = urlCard.find(".urlStringCancelBigBtnUpdate");
+  return (
+    isCoarsePointer() && cancelBar.length > 0 && !cancelBar.hasClass("hidden")
+  );
+}
+
+// Clear the string in-flight flag and its accessible-disabled reflection at a
+// real exit of updateURL (mirrors the clearTimeoutIDAndHideLoadingIcon exit
+// anchors). Harmless no-op on the desktop path where it was never set.
+function clearStringSubmitInFlight(stringSubmitBtn: JQuery): void {
+  stringSubmitInFlight = false;
+  stringSubmitBtn.removeAttr("aria-disabled");
+}
 
 type UpdateUrlStringRequest = Schema<"UpdateURLStringRequest">;
 type UpdateUrlStringResponse = SuccessResponse<"updateUrl">;
@@ -140,54 +173,70 @@ export function showUpdateURLStringForm({
 export function hideAndResetUpdateURLStringForm({
   urlCard,
   suppressSiblingDisable = false,
+  keepOpen = false,
 }: {
   urlCard: JQuery;
   suppressSiblingDisable?: boolean;
+  keepOpen?: boolean;
 }): void {
-  // Toggle input form and display of URL
+  // keepOpen (mobile form-model): the string field stays visually open across a
+  // per-field submit while the panel is open. Skip the entire visual restore
+  // (wrap hide, URL re-show, Cancel-bar → edit-button morph, action buttons,
+  // go-to-URL icon, tag-hover/tag-removal re-enable) so the field stays in its
+  // "still editing" state; keeping .urlStringCancelBigBtnUpdate present/unhidden
+  // also preserves the card panel-open signal. Still run the input resync
+  // (idempotent) and, unconditionally, the error-state reset so it never lingers.
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
-  updateURLStringWrap.hideClass();
-  disableTabbableChildElements(updateURLStringWrap);
-  const urlStringElem = urlCard.find(".urlString");
-  urlStringElem.showClassNormal();
-
-  // Update the input with current value of url string element
-  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href") as string);
-
-  // Make the Update URL button now allow updating again
-  const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
-  urlStringBtnUpdate
-    .removeClass("urlStringCancelBigBtnUpdate")
-    .addClass("urlStringBtnUpdate")
-    .text("")
-    .append(createEditURLIcon());
-
-  // Rebind via the shared helper so the mobile (panel-open) branch survives an
-  // open/close cycle — a bare showUpdateURLStringForm rebind here would revert the
-  // button to the desktop-only path after the first close.
-  bindURLStringEditClickHandler({ urlCard, urlStringBtnUpdate });
-
-  // For tablets or in case of resize, change some of the sizing
-  urlStringBtnUpdate.addClass("fourty-p-width");
-
-  // Enable URL Buttons
-  urlCard.find(".urlBtnAccess").showClassFlex();
-  urlCard.find(".urlTagBtnCreate").showClassFlex();
-  urlCard.find(".urlBtnDelete").showClassFlex();
-  urlCard.find(".urlBtnCopy").showClassFlex();
-  if (!suppressSiblingDisable) enableEditingURLTitle(urlCard);
-
-  // Enable Go To URL Icon
-  const selected = urlCard.attr("urlSelected");
-  if (typeof selected === "string" && selected.toLowerCase() === "true") {
-    urlCard.find(".goToUrlIcon").removeClass("hidden").addClass("visible-flex");
+  if (!keepOpen) {
+    // Toggle input form and display of URL
+    updateURLStringWrap.hideClass();
+    disableTabbableChildElements(updateURLStringWrap);
+    urlCard.find(".urlString").showClassNormal();
   }
 
-  // Enable hovering on tags for deletion
-  urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+  // Update the input with current value of url string element
+  const urlStringElem = urlCard.find(".urlString");
+  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href") as string);
+
+  if (!keepOpen) {
+    // Make the Update URL button now allow updating again
+    const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
+    urlStringBtnUpdate
+      .removeClass("urlStringCancelBigBtnUpdate")
+      .addClass("urlStringBtnUpdate")
+      .text("")
+      .append(createEditURLIcon());
+
+    // Rebind via the shared helper so the mobile (panel-open) branch survives an
+    // open/close cycle — a bare showUpdateURLStringForm rebind here would revert
+    // the button to the desktop-only path after the first close.
+    bindURLStringEditClickHandler({ urlCard, urlStringBtnUpdate });
+
+    // For tablets or in case of resize, change some of the sizing
+    urlStringBtnUpdate.addClass("fourty-p-width");
+
+    // Enable URL Buttons
+    urlCard.find(".urlBtnAccess").showClassFlex();
+    urlCard.find(".urlTagBtnCreate").showClassFlex();
+    urlCard.find(".urlBtnDelete").showClassFlex();
+    urlCard.find(".urlBtnCopy").showClassFlex();
+    if (!suppressSiblingDisable) enableEditingURLTitle(urlCard);
+
+    // Enable Go To URL Icon
+    const selected = urlCard.attr("urlSelected");
+    if (typeof selected === "string" && selected.toLowerCase() === "true") {
+      urlCard
+        .find(".goToUrlIcon")
+        .removeClass("hidden")
+        .addClass("visible-flex");
+    }
+
+    // Enable hovering on tags for deletion
+    urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+  }
 
   resetUpdateURLFailErrors(urlCard);
-  enableTagRemovalInURLCard(urlCard);
+  if (!keepOpen) enableTagRemovalInURLCard(urlCard);
   // Panel-aware: when the sibling (title) form is still open on mobile, do NOT
   // re-arm the card's click.deselectURL handler — a tap into the still-open
   // sibling input would otherwise deselect the card and discard the in-progress
@@ -225,6 +274,15 @@ export async function updateURL(
 ): Promise<void> {
   const utubUrlID = parseInt(urlCard.attr("utuburlid") as string);
   const timeoutID: number = setTimeoutAndShowURLCardLoadingIcon(urlCard);
+  const panelOpen = isCardEditPanelOpen(urlCard);
+  const stringSubmitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+  if (panelOpen) {
+    // Accessible in-flight guard: mark the submit control aria-disabled (not
+    // native disabled, which drops focus) so a second overlapping submit is
+    // blocked by the entry-point checks in url-string.ts until this settles.
+    stringSubmitInFlight = true;
+    stringSubmitBtn.attr("aria-disabled", "true");
+  }
   try {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
@@ -240,14 +298,19 @@ export async function updateURL(
       // Panel-aware: on mobile the title form can still be open alongside this
       // string field. Suppress the sibling restore so we don't re-arm the card
       // deselect handler (and drop the go-to-URL icon / re-enable the title's
-      // edit affordance) while the title edit is still in progress.
+      // edit affordance) while the title edit is still in progress. keepOpen
+      // keeps this field visually open (no tick — value unchanged) and
+      // re-registers the open form so a later pagehide doesn't misreport CANCEL.
       const titleFormStillOpen = !urlCard
         .find(".updateUrlTitleWrap")
         .hasClass("hidden");
       hideAndResetUpdateURLStringForm({
         urlCard,
         suppressSiblingDisable: isCoarsePointer() && titleFormStillOpen,
+        keepOpen: panelOpen,
       });
+      if (panelOpen) setOpenForm(HOME_FORM.URL_STRING_EDIT);
+      clearStringSubmitInFlight(stringSubmitBtn);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -263,6 +326,7 @@ export async function updateURL(
         APP_CONFIG.strings.INVALID_URL,
         urlCard,
       );
+      clearStringSubmitInFlight(stringSubmitBtn);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -285,10 +349,12 @@ export async function updateURL(
     });
 
     request.always(function () {
+      clearStringSubmitInFlight(stringSubmitBtn);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     });
   } catch (error) {
     log("updateURL aborted — pre-flight URL fetch rejected", { utubUrlID });
+    clearStringSubmitInFlight(stringSubmitBtn);
     clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     handleRejectFromGetURL(error as JQuery.jqXHR, urlCard, {
       showError: true,
@@ -363,13 +429,28 @@ function updateURLSuccess(
   // string field. Suppress the sibling restore so submitting the string does
   // not re-arm the card deselect handler (which would discard an in-progress
   // title edit) while the title form is still open.
+  const panelOpen = isCardEditPanelOpen(urlCard);
   const titleFormStillOpen = !urlCard
     .find(".updateUrlTitleWrap")
     .hasClass("hidden");
   hideAndResetUpdateURLStringForm({
     urlCard,
     suppressSiblingDisable: isCoarsePointer() && titleFormStillOpen,
+    keepOpen: panelOpen,
   });
+  // Mobile form model: keep the field open (action buttons stay hidden until
+  // panel close), re-register the tracked open form (so a later pagehide doesn't
+  // misreport UI_FORM_CANCEL), and flash a transient "Saved ✓" beside the
+  // still-open field. updateURLSuccess is only reached on a genuine 200 for a
+  // changed value, so no no-op guard needed.
+  if (panelOpen) {
+    setOpenForm(HOME_FORM.URL_STRING_EDIT);
+    showFieldSavedTick({
+      tick: urlCard.find(".updateUrlStringWrap .field-saved-tick"),
+      announce: $("#fieldSavedAnnouncement"),
+      label: APP_CONFIG.strings.FIELD_SAVED_LABEL_URL,
+    });
+  }
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
