@@ -1,7 +1,13 @@
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import { setupUpdateUTubNameEventListeners } from "../update-name.js";
+import {
+  setupUpdateUTubNameEventListeners,
+  updateUTubNameShowInput,
+} from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import { getOpenForm } from "../../../lib/modal-tracking.js";
+import { isCoarsePointer } from "../../mobile.js";
+import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -35,15 +41,22 @@ vi.mock("../../../lib/globals.js", async () => {
 vi.mock("../../../lib/config.js", () => ({
   APP_CONFIG: {
     debugEnabled: true,
-    routes: {},
+    routes: { updateUTubName: vi.fn(() => "/utubs/1/name") },
     constants: {},
-    strings: {},
+    strings: {
+      FIELD_SAVED: "Saved",
+      FIELD_SAVED_LABEL_UTUB_NAME: "UTub name",
+    },
   },
 }));
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
+}));
+
+vi.mock("../../mobile.js", () => ({
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 vi.mock("../../utubs/utils.js", () => ({
@@ -89,10 +102,19 @@ const NAME_EDIT_HTML = `
     <input id="utubNameUpdate" />
     <button id="utubNameSubmitBtnUpdate"></button>
     <button id="utubNameCancelBtnUpdate"></button>
+    <div class="field-saved-tick-slot">
+      <span class="field-saved-tick opa-0" id="utubNameSavedTick" aria-hidden="true">Saved <i class="bi bi-check"></i></span>
+    </div>
   </div>
   <span id="URLDeckSubheader"></span>
+  <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
   <button id="URLDeckSubheaderCreateDescription"></button>
+  <button id="URLSearchFilterIcon"></button>
   <button id="urlBtnCreate"></button>
+  <button id="utubEditPanelToggle" class="hidden"></button>
+  <button id="utubEditPanelClose" class="hidden"></button>
+  <ul id="listUTubs"><li class="active"><span class="UTubName">Test UTub</span></li></ul>
+  <div id="confirmModal"></div>
 `;
 
 const UTUB_ID = 1;
@@ -104,6 +126,10 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
     vi.mocked(getState).mockReturnValue({
       isCurrentUserOwner: true,
     } as ReturnType<typeof getState>);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    // Bootstrap's jQuery modal plugin isn't registered in the test env; the name
+    // success path calls $("#confirmModal").modal("hide").
+    $.fn.modal = vi.fn().mockReturnThis();
   });
 
   afterEach(() => {
@@ -224,6 +250,104 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       event: UI_EVENTS.UI_FORM_CANCEL,
       form: HOME_FORM.UTUB_NAME_EDIT,
       trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
+    });
+  });
+
+  describe("mobile form model — keep name open + Saved✓ on success", () => {
+    it("keeps the field open, flashes Saved✓, announces, and re-registers the open form", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      updateUTubNameShowInput(UTUB_ID); // open the field (header hidden)
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+
+      $("#utubNameUpdate").val("New Name");
+      vi.mocked(ajaxCall).mockReturnValue(
+        createMockJqXHRChainable({
+          done: (callback) =>
+            (
+              callback as (
+                response: { utubName: string; utubID: number },
+                textStatus: string,
+                xhr: { status: number },
+              ) => void
+            )({ utubName: "New Name", utubID: UTUB_ID }, "success", {
+              status: 200,
+            }),
+        }),
+      );
+
+      $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+
+      // Field stays open (header still hidden), tick visible, announced.
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+      expect($("#utubNameSavedTick").hasClass("opa-1")).toBe(true);
+      expect($("#fieldSavedAnnouncement").text()).toBe("UTub name Saved");
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_NAME_EDIT);
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+
+      expect(
+        vi.mocked(emit).mock.calls.filter((call) => {
+          const args = call[0] as { event?: string };
+          return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+        }),
+      ).toHaveLength(1);
+    });
+
+    it("no-op (unchanged) submit keeps the field open with no tick and re-registers the open form", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      updateUTubNameShowInput(UTUB_ID); // input primed to current name "Test UTub"
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+
+      // Value unchanged: submit takes the skip path.
+      $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true); // still open
+      expect($("#utubNameSavedTick").hasClass("opa-1")).toBe(false); // no tick
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_NAME_EDIT);
+      expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    });
+
+    it("fine pointer (desktop): a changed submit collapses the field with no tick", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(false);
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      updateUTubNameShowInput(UTUB_ID);
+
+      $("#utubNameUpdate").val("New Name");
+      vi.mocked(ajaxCall).mockReturnValue(
+        createMockJqXHRChainable({
+          done: (callback) =>
+            (
+              callback as (
+                response: { utubName: string; utubID: number },
+                textStatus: string,
+                xhr: { status: number },
+              ) => void
+            )({ utubName: "New Name", utubID: UTUB_ID }, "success", {
+              status: 200,
+            }),
+        }),
+      );
+
+      $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+
+      // Desktop path: field collapses (header restored) and no tick shows.
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+      expect($("#utubNameSavedTick").hasClass("opa-1")).toBe(false);
     });
   });
 });

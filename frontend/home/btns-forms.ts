@@ -1,9 +1,12 @@
 import { $ } from "../lib/globals.js";
 import { INPUT_TYPES, type IconSize } from "../lib/constants.js";
+import { getState } from "../store/app-store.js";
 import { isHidden } from "./visibility.js";
+import { isCoarsePointer } from "./mobile.js";
 import { createUTubHideInput } from "./utubs/create.js";
 import { updateUTubNameHideInput } from "./urls/update-name.js";
 import { updateUTubDescriptionHideInput } from "./urls/update-description.js";
+import { resetUTubEditPanelState } from "./urls/update-utub-panel.js";
 import { createMemberHideInput } from "./members/create.js";
 
 // Handle focus for the text input box
@@ -65,6 +68,22 @@ export function highlightInput(inputEl: JQuery<HTMLInputElement>): void {
 
 // Hides any active input fields
 export function hideInputs(): void {
+  // On mobile, when the consolidated UTub edit panel is open, a destructive flow
+  // (Leave/Delete UTub, Delete Member) that calls hideInputs() must fully close
+  // the panel rather than leave it in the per-field keep-open state. Route
+  // through the panel's own full teardown (both fields + chrome restore +
+  // click-outside listener + toggle/close swap + tick-timer clear) once, then
+  // return. resetUTubEditPanelState (not closeUTubEditPanel) is the right call:
+  // it matches its documented routine, non-user-initiated reset contract and
+  // does no focus-return.
+  if (isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden")) {
+    // Thread the active UTub id so the panel-closed description Hide can re-arm
+    // the empty-description CTA when the UTub survives the flow (e.g. Delete
+    // Member), matching every other close path that threads the id.
+    resetUTubEditPanelState(getState().activeUTubID);
+    return;
+  }
+
   // Show UTub creation instead of UTub form
   if (!isHidden($("#createUTubWrap"))) createUTubHideInput();
   // Show UTub name instead of update UTub name form

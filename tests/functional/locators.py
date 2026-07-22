@@ -188,6 +188,13 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_UTUB_EDIT_PANEL_TOGGLE = "#utubEditPanelToggle"
     BUTTON_UTUB_EDIT_PANEL_CLOSE = "#utubEditPanelClose"
 
+    # Transient "Saved ✓" acknowledgment shown next to a kept-open field after a
+    # per-field save on the mobile consolidated panel, plus the shared polite
+    # aria-live announcer.
+    SAVED_TICK_NAME = "#utubNameSavedTick"
+    SAVED_TICK_DESCRIPTION = "#utubDescriptionSavedTick"
+    FIELD_SAVED_ANNOUNCEMENT = "#fieldSavedAnnouncement"
+
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#noURLsSubheader"

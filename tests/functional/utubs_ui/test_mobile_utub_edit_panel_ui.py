@@ -1,3 +1,5 @@
+import re
+
 from flask import Flask
 import pytest
 from playwright.sync_api import Page, expect
@@ -84,7 +86,28 @@ def test_utub_edit_panel_toggle_opens_both_name_and_description_mobile(
     wait_then_click_element(
         page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE
     )
-    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE)
+
+    # Form model: the description field stays OPEN after submit (does NOT collapse
+    # back to read-only), a transient Saved ✓ flashes, and the panel chrome is
+    # unchanged — only the panel Close control collapses everything.
+    expect(page.locator(HPL.SAVED_TICK_DESCRIPTION)).to_have_class(
+        re.compile(r"\bopa-1\b")
+    )
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE
+    )
+    assert_not_visible_css_selector(page=page, css_selector=HPL.PENCIL_ICON_NAME)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.PENCIL_ICON_DESCRIPTION)
+    assert_not_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
+    )
 
     # Description persisted; the name field was NOT submitted — its input still
     # holds the original name, proving the submits are independent.
@@ -94,11 +117,38 @@ def test_utub_edit_panel_toggle_opens_both_name_and_description_mobile(
     # Now submit ONLY the name.
     page.locator(HPL.INPUT_UTUB_NAME_UPDATE).fill(_NEW_UTUB_NAME)
     wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
-    wait_until_hidden(page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+
+    # Name field also stays open with its own Saved ✓; the submit button and input
+    # remain visible, and the chrome is still unchanged across the submit.
+    expect(page.locator(HPL.SAVED_TICK_NAME)).to_have_class(re.compile(r"\bopa-1\b"))
+    assert_visible_css_selector(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE
+    )
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
+    assert_not_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
+    )
 
     # Name persisted; the previously-submitted description is unchanged.
     expect(page.locator(HPL.HEADER_URL_DECK)).to_have_text(_NEW_UTUB_NAME)
     expect(page.locator(HPL.SUBHEADER_URL_DECK)).to_have_text(_NEW_UTUB_DESCRIPTION)
+
+    # Only the panel Close collapses everything and restores the chrome.
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
+    wait_until_hidden(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+    assert_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE
+    )
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE
+    )
 
 
 def test_utub_edit_panel_close_closes_both_name_and_description_mobile(

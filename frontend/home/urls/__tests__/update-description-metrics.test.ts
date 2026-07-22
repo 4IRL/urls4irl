@@ -2,9 +2,14 @@ import { UI_EVENTS } from "../../../types/metrics-events.js";
 import {
   setupUpdateUTubDescriptionEventListeners,
   showCreateDescriptionButtonAlways,
+  updateUTubDescriptionHideInput,
+  updateUTubDescriptionShowInput,
 } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
 import { ajaxCall } from "../../../lib/ajax.js";
+import { getOpenForm } from "../../../lib/modal-tracking.js";
+import { isCoarsePointer } from "../../mobile.js";
+import { createMockJqXHRChainable } from "../../../__tests__/helpers/mock-jquery.js";
 import {
   FORM_CANCEL_TRIGGER,
   FORM_SUBMIT_TRIGGER,
@@ -37,15 +42,22 @@ vi.mock("../../../lib/globals.js", async () => {
 vi.mock("../../../lib/config.js", () => ({
   APP_CONFIG: {
     debugEnabled: true,
-    routes: {},
+    routes: { updateUTubDescription: vi.fn(() => "/utubs/1/description") },
     constants: {},
-    strings: {},
+    strings: {
+      FIELD_SAVED: "Saved",
+      FIELD_SAVED_LABEL_UTUB_DESCRIPTION: "UTub description",
+    },
   },
 }));
 
 vi.mock("../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
   is429Handled: vi.fn(() => false),
+}));
+
+vi.mock("../../mobile.js", () => ({
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 vi.mock("../../../store/app-store.js", () => ({
@@ -83,9 +95,16 @@ const DESCRIPTION_EDIT_HTML = `
     <input id="utubDescriptionUpdate" />
     <button id="utubDescriptionSubmitBtnUpdate"></button>
     <button id="utubDescriptionCancelBtnUpdate"></button>
+    <div class="field-saved-tick-slot">
+      <span class="field-saved-tick opa-0" id="utubDescriptionSavedTick" aria-hidden="true">Saved <i class="bi bi-check"></i></span>
+    </div>
     <span id="URLDeckNoDescription" class="hidden"></span>
   </div>
+  <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
+  <button id="URLSearchFilterIcon"></button>
   <button id="urlBtnCreate"></button>
+  <button id="utubEditPanelToggle" class="hidden"></button>
+  <button id="utubEditPanelClose" class="hidden"></button>
 `;
 
 const UTUB_ID = 1;
@@ -97,6 +116,7 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
     vi.mocked(getState).mockReturnValue({
       isCurrentUserOwner: true,
     } as ReturnType<typeof getState>);
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -212,6 +232,116 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       event: UI_EVENTS.UI_FORM_CANCEL,
       form: HOME_FORM.UTUB_DESC_EDIT,
       trigger: FORM_CANCEL_TRIGGER.OUTSIDE_CLICK,
+    });
+  });
+
+  describe("mobile form model — keep description open + Saved✓ on success", () => {
+    function mockSuccessfulPatch(newDescription: string): void {
+      vi.mocked(ajaxCall).mockReturnValue(
+        createMockJqXHRChainable({
+          done: (callback) =>
+            (
+              callback as (
+                response: { utubDescription: string },
+                textStatus: string,
+                xhr: { status: number },
+              ) => void
+            )({ utubDescription: newDescription }, "success", { status: 200 }),
+        }),
+      );
+    }
+
+    it("keeps the field open, flashes Saved✓, announces, and re-registers the open form", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID); // open the field (subheader hidden)
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+
+      $("#utubDescriptionUpdate").val("New Description");
+      mockSuccessfulPatch("New Description");
+
+      $("#utubDescriptionSubmitBtnUpdate").trigger("click");
+
+      // Field stays open (subheader still hidden), tick visible, announced.
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+      expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(true);
+      expect($("#utubDescriptionSavedTick").hasClass("opa-0")).toBe(false);
+      expect($("#fieldSavedAnnouncement").text()).toBe(
+        "UTub description Saved",
+      );
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_DESC_EDIT);
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+
+      // UI_FORM_SUBMIT emitted exactly once.
+      expect(
+        vi.mocked(emit).mock.calls.filter((call) => {
+          const args = call[0] as { event?: string };
+          return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+        }),
+      ).toHaveLength(1);
+    });
+
+    it("no-op (unchanged) submit keeps the field open with no tick and re-registers the open form", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID); // input primed to current text
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+
+      // Value unchanged: submit takes the skip path (no PATCH).
+      $("#utubDescriptionSubmitBtnUpdate").trigger("click");
+
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true); // still open
+      expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(false); // no tick
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_DESC_EDIT);
+      expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+    });
+
+    it("empty→non-empty via panel: the subheader wrap is re-shown after the panel-closed Hide", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+      // Simulate an empty-description UTub: selectors.ts hides the wrap.
+      $("#URLDeckSubheader").text("");
+      $("#UTubDescriptionSubheaderWrap").addClass("hidden");
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID);
+      $("#utubDescriptionUpdate").val("A brand new description");
+      mockSuccessfulPatch("A brand new description");
+
+      $("#utubDescriptionSubmitBtnUpdate").trigger("click");
+
+      // While the panel stays open, the wrap re-show is deferred (still hidden).
+      expect($("#UTubDescriptionSubheaderWrap").hasClass("hidden")).toBe(true);
+
+      // Close the panel (flip the signal), then run the panel-closed Hide: it
+      // reconciles the wrap to the now-non-empty description so it renders.
+      $("#utubEditPanelClose").addClass("hidden");
+      updateUTubDescriptionHideInput(UTUB_ID);
+
+      expect($("#UTubDescriptionSubheaderWrap").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckSubheader").text()).toBe("A brand new description");
+    });
+
+    it("fine pointer (desktop): a changed submit collapses the field with no tick", async () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(false);
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+
+      $("#utubDescriptionUpdate").val("New Description");
+      mockSuccessfulPatch("New Description");
+
+      $("#utubDescriptionSubmitBtnUpdate").trigger("click");
+
+      // Desktop path: field collapses (subheader restored) and no tick shows.
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(false);
     });
   });
 });

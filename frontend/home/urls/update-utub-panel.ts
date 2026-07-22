@@ -2,6 +2,7 @@ import { $ } from "../../lib/globals.js";
 import { KEYS } from "../../lib/constants.js";
 import { getState } from "../../store/app-store.js";
 import { on, AppEvents } from "../../lib/event-bus.js";
+import { clearOpenForm } from "../../lib/modal-tracking.js";
 import { isCoarsePointer } from "../mobile.js";
 import {
   updateUTubNameShowInput,
@@ -11,6 +12,7 @@ import {
   updateUTubDescriptionShowInput,
   updateUTubDescriptionHideInput,
 } from "./update-description.js";
+import { clearFieldSavedTick } from "./field-saved-tick.js";
 import { deselectAllURLs } from "./cards/selection.js";
 
 /**
@@ -101,6 +103,19 @@ export function openUTubEditPanel(utubID: number): void {
 // visibility, with NO focus-return. Called by routine, non-user-initiated
 // resets (UTub switch, UTub delete).
 export function resetUTubEditPanelState(utubID: number | null = null): void {
+  // Flip the panel-open signal to "closed" FIRST — before the Hide calls — so
+  // the per-field Hide functions (guarded on `!#utubEditPanelClose.hidden`) take
+  // their normal restore-chrome + collapse path here on a true panel close,
+  // while a per-field submit (panel still open) takes the keep-open path. This
+  // is the single source of truth for open vs. closed; no separate state field.
+  $("#utubEditPanelClose").addClass("hidden");
+  $("#utubEditPanelToggle").removeClass("hidden");
+
+  // Any pending Saved✓ fade timer must be killed before the fields are torn
+  // down, so a stale timer never mutates a collapsed/hidden field.
+  clearFieldSavedTick($("#utubNameSavedTick"));
+  clearFieldSavedTick($("#utubDescriptionSavedTick"));
+
   updateUTubNameHideInput();
   updateUTubDescriptionHideInput(utubID);
 
@@ -108,8 +123,11 @@ export function resetUTubEditPanelState(utubID: number | null = null): void {
   // closed via the wrapper or via a routine UTub switch.
   $(window).off("click.utubEditPanel");
 
-  $("#utubEditPanelClose").addClass("hidden");
-  $("#utubEditPanelToggle").removeClass("hidden");
+  // The panel-open form is only ever tracked while the panel is genuinely open;
+  // clear it on every close path routed through here (Close button, Escape,
+  // click-outside, URL_CARD_SELECTED, routine UTub-switch teardown). Mirrors
+  // closeURLEditPanel's clearOpenForm() precedent on the card side.
+  clearOpenForm();
 }
 
 // Higher-level wrapper for user-initiated closes (close button, Escape,

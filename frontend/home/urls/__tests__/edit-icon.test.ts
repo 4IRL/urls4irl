@@ -857,32 +857,34 @@ describe("Edit pencil icon", () => {
       });
     });
 
-    describe("per-field cancel × is single-field on mobile (never closes the whole panel)", () => {
-      // The per-field × is CSS-hidden on mobile (a single panel close is used
-      // instead), but if it is somehow activated its handler must NOT close the
-      // whole panel — it stays a single-field hide, leaving the sibling field
-      // and the panel close button untouched.
-      it("name cancel closes only the name field, leaving the description form + panel open", () => {
+    describe("per-field cancel is a keep-open no-op on mobile (form model: only the panel Close collapses)", () => {
+      // The per-field × is CSS-hidden on mobile (a single panel Close is used
+      // instead). Under the form model, the per-field Hide is guarded on the
+      // panel-open signal, so even if the × is somehow activated its handler
+      // does NOT collapse the field — it keeps the field open (input still
+      // visible, chrome still hidden), leaving the whole panel intact. Only the
+      // panel Close control collapses everything.
+      it("name cancel keeps the name field open (does not collapse), panel intact", () => {
         openUTubEditPanel(UTUB_ID);
 
         $("#utubNameCancelBtnUpdate").trigger("click");
 
-        // Name field closed (header restored)…
-        expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
-        // …but the description field is still open and the panel is still open.
+        // Name field stays open (header still hidden) — keep-open form model…
+        expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+        // …and the sibling description field + the panel are untouched.
         expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
         expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
         expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);
       });
 
-      it("description cancel closes only the description field, leaving the name form + panel open", () => {
+      it("description cancel keeps the description field open (does not collapse), panel intact", () => {
         openUTubEditPanel(UTUB_ID);
 
         $("#utubDescriptionCancelBtnUpdate").trigger("click");
 
-        // Description field closed (subheader restored)…
-        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
-        // …but the name field is still open and the panel is still open.
+        // Description field stays open (subheader still hidden)…
+        expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+        // …and the sibling name field + the panel are untouched.
         expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
         expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
         expect($("#utubEditPanelToggle").hasClass("hidden")).toBe(true);

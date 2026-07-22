@@ -4,8 +4,12 @@ import {
   resetUTubEditPanelState,
   closeUTubEditPanel,
 } from "../update-utub-panel.js";
+import { updateUTubNameHideInput } from "../update-name.js";
+import { updateUTubDescriptionHideInput } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
+import { getOpenForm } from "../../../lib/modal-tracking.js";
+import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { isCoarsePointer } from "../../mobile.js";
 
@@ -107,6 +111,9 @@ const PANEL_HTML = `
             <button id="utubNameCancelBtnUpdate"></button>
           </div>
           <span class="text-input-error-message" id="utubNameUpdate-error"></span>
+          <div class="field-saved-tick-slot">
+            <span class="field-saved-tick opa-0" id="utubNameSavedTick" aria-hidden="true">Saved <i class="bi bi-check"></i></span>
+          </div>
         </div>
       </div>
     </div>
@@ -139,9 +146,14 @@ const PANEL_HTML = `
           <button id="utubDescriptionCancelBtnUpdate"></button>
         </div>
         <span class="text-input-error-message" id="utubDescriptionUpdate-error"></span>
+        <div class="field-saved-tick-slot">
+          <span class="field-saved-tick opa-0" id="utubDescriptionSavedTick" aria-hidden="true">Saved <i class="bi bi-check"></i></span>
+        </div>
       </div>
     </div>
   </div>
+
+  <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
 
   <button id="URLSearchFilterIcon"></button>
   <button id="URLSearchFilterIconClose" class="hidden"></button>
@@ -381,6 +393,77 @@ describe("UTub edit panel orchestrator", () => {
       expect(focusSpy).not.toHaveBeenCalled();
       expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
       focusSpy.mockRestore();
+    });
+  });
+
+  describe("mobile form model — per-field Hide is keep-open while the panel is open", () => {
+    it("name Hide keeps the field open, chrome hidden, close visible, and re-registers the open form", () => {
+      openUTubEditPanel(UTUB_ID);
+      // Precondition: panel open (close visible), name field open (header hidden).
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+
+      // Simulate the per-field submit's Hide call while the panel is open.
+      updateUTubNameHideInput();
+
+      // Field stays open (header still hidden), chrome stays hidden, close stays
+      // visible, and the open form is re-registered for pagehide bookkeeping.
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+      expect($("#URLSearchFilterIcon").hasClass("hidden")).toBe(true);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_NAME_EDIT);
+    });
+
+    it("description Hide keeps the field open, chrome hidden, and re-registers the open form", () => {
+      openUTubEditPanel(UTUB_ID);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+
+      updateUTubDescriptionHideInput(UTUB_ID);
+
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(true);
+      expect($("#URLSearchFilterIcon").hasClass("hidden")).toBe(true);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_DESC_EDIT);
+    });
+
+    it("fine pointer (desktop): name Hide collapses the field as before", () => {
+      openUTubEditPanel(UTUB_ID);
+      vi.mocked(isCoarsePointer).mockReturnValue(false);
+
+      updateUTubNameHideInput();
+
+      // Desktop path: field collapses (header restored).
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+    });
+
+    it("panel Close collapses everything and clears the tracked open form", () => {
+      openUTubEditPanel(UTUB_ID);
+      updateUTubNameHideInput(); // keep-open submit → form re-registered
+      expect(getOpenForm()).toBe(HOME_FORM.UTUB_NAME_EDIT);
+
+      closeUTubEditPanel(UTUB_ID);
+
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(false);
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(false);
+      expect($("#urlBtnCreate").hasClass("hidden")).toBe(false);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(true);
+      expect(getOpenForm()).toBe(null);
+    });
+
+    it("resetUTubEditPanelState force-clears any pending Saved✓ tick", () => {
+      openUTubEditPanel(UTUB_ID);
+      // Simulate a tick left visible by a recent save.
+      $("#utubNameSavedTick").removeClass("opa-0").addClass("opa-1");
+      $("#utubDescriptionSavedTick").removeClass("opa-0").addClass("opa-1");
+
+      resetUTubEditPanelState(UTUB_ID);
+
+      expect($("#utubNameSavedTick").hasClass("opa-1")).toBe(false);
+      expect($("#utubNameSavedTick").hasClass("opa-0")).toBe(true);
+      expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(false);
+      expect($("#utubDescriptionSavedTick").hasClass("opa-0")).toBe(true);
     });
   });
 });

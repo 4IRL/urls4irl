@@ -12,6 +12,7 @@ import { showInput, hideInput } from "../btns-forms.js";
 import { getState, setState } from "../../store/app-store.js";
 import { fitUTubHeaderAndSubheader } from "../utubs/header-fit.js";
 import { updateUTubNameHideInput } from "./update-name.js";
+import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import { temporarilyHideSearchForEdit, showURLSearchIcon } from "./search.js";
@@ -117,9 +118,12 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
   // Allow user to still click in the text box
   $("#utubDescriptionUpdate")
     .offAndOn("focus.updateUTubDescription", function () {
-      $("#utubDescriptionUpdate").on(
-        "keydown.updateUTubDescription",
-        function (keyEvent) {
+      // Idempotent rebind (symmetric with the name field): the panel keeps the
+      // description field refocusable across repeated submits while open, so a
+      // bare `.on()` would stack duplicate keydown handlers on each re-focus.
+      $("#utubDescriptionUpdate")
+        .off("keydown.updateUTubDescription")
+        .on("keydown.updateUTubDescription", function (keyEvent) {
           if (keyEvent.originalEvent?.repeat) return;
           switch (keyEvent.key) {
             case KEYS.ENTER:
@@ -149,10 +153,9 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
             default:
             /* no-op */
           }
-        },
-      );
+        });
     })
-    .on("blur.updateUTubDescription", function () {
+    .offAndOn("blur.updateUTubDescription", function () {
       $("#utubDescriptionUpdate").off("keydown.updateUTubDescription");
     });
 
@@ -189,6 +192,10 @@ function setEventListenersToEscapeUpdateUTubDescription(utubID: number): void {
 function removeEventListenersToEscapeUpdateUTubDescription(): void {
   $(window).off(".updateUTubDescription");
   $(document).off(".updateUTubDescription");
+  // Also detach the input's own focus/blur/keydown namespace, mirroring the
+  // name field's teardown — otherwise repeated panel opens stack handlers on
+  // #utubDescriptionUpdate across the keep-open lifecycle.
+  $("#utubDescriptionUpdate").off(".updateUTubDescription");
 }
 
 export function showCreateDescriptionButtonAlways(utubID: number): void {
@@ -246,6 +253,25 @@ export function updateUTubDescriptionShowInput(utubID: number): void {
 export function updateUTubDescriptionHideInput(
   utubID: number | null = null,
 ): void {
+  // Mobile form-model guard: while the consolidated panel is open, a per-field
+  // submit keeps the description input + submit button visible, the chrome
+  // hidden, and the Enter/Escape listeners live. Only the true panel-close Hide
+  // (signal already flipped to "closed" by resetUTubEditPanelState) runs the
+  // full collapse + restore + deferred empty-description CTA re-arm.
+  const panelOpen =
+    isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden");
+
+  if (panelOpen) {
+    // Keep-open path: re-register the tracked open form (so a later pagehide
+    // doesn't misreport UI_FORM_CANCEL) and clear any stale error state — the
+    // one carve-out that runs on both paths. Everything else (input/submit
+    // hide, listener teardown, chrome restore, create-description CTA re-arm)
+    // is deferred to the panel-closed Hide.
+    setOpenForm(HOME_FORM.UTUB_DESC_EDIT);
+    resetUpdateUTubDescriptionFailErrors();
+    return;
+  }
+
   const editWasOpen = $("#URLDeckSubheader").hasClass("hidden");
 
   // Hide update fields
@@ -269,8 +295,22 @@ export function updateUTubDescriptionHideInput(
   // Reset errors on hiding of inputs
   resetUpdateUTubDescriptionFailErrors();
   $("#URLDeckSubheaderCreateDescription").removeClass("width-0");
-  if (!$("#URLDeckSubheader").text().length && utubID != null) {
-    showCreateDescriptionButtonAlways(utubID);
+  // Reconcile the subheader wrap to the current description state. selectors.ts
+  // hides #UTubDescriptionSubheaderWrap for an empty-description UTub and shows
+  // it (showClassFlex) when a description exists; the success handler's
+  // empty/non-empty arms that normally manage this wrap are deferred while the
+  // mobile panel is open, so reconcile it here on the panel-closed (and desktop)
+  // Hide — otherwise a description added via the mobile panel stays invisible
+  // until a UTub reselect. Idempotent on desktop, where the success arms have
+  // already set the same state.
+  $("#UTubDescriptionSubheaderOuterWrap").removeClass("height-2rem");
+  if (!$("#URLDeckSubheader").text().length) {
+    $("#UTubDescriptionSubheaderWrap").hideClass();
+    if (utubID != null) {
+      showCreateDescriptionButtonAlways(utubID);
+    }
+  } else {
+    $("#UTubDescriptionSubheaderWrap").showClassFlex();
   }
 }
 
@@ -327,20 +367,42 @@ function updateUTubDescriptionSuccess(
   $("#URLDeckSubheader").text(utubDescription);
   $("#utubDescriptionUpdate").val(utubDescription);
 
-  if (utubDescription.length === 0) {
-    showCreateDescriptionButtonAlways(utubID);
-    $("#UTubDescriptionSubheaderOuterWrap").removeClass("height-2rem");
-    $("#UTubDescriptionSubheaderWrap").hideClass();
-  } else if (originalUTubDescriptionLength === 0) {
-    removeEventListenersForShowCreateUTubDescIfEmptyDesc();
-    $("#UTubDescriptionSubheaderOuterWrap").removeClass("height-2rem");
-    $("#UTubDescriptionSubheaderWrap").showClassFlex();
-    $("#URLDeckSubheaderCreateDescription").disableTab();
+  const panelOpen =
+    isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden");
+
+  // Both the empty-description arm and the first-non-empty-transition arm mutate
+  // the create-description CTA / subheader chrome. While the mobile panel is
+  // open neither may run — they are deferred as a single unit to the
+  // panel-closed Hide (updateUTubDescriptionHideInput's empty-desc re-arm). On
+  // desktop / panel closed, run them exactly as before.
+  if (!panelOpen) {
+    if (utubDescription.length === 0) {
+      showCreateDescriptionButtonAlways(utubID);
+      $("#UTubDescriptionSubheaderOuterWrap").removeClass("height-2rem");
+      $("#UTubDescriptionSubheaderWrap").hideClass();
+    } else if (originalUTubDescriptionLength === 0) {
+      removeEventListenersForShowCreateUTubDescIfEmptyDesc();
+      $("#UTubDescriptionSubheaderOuterWrap").removeClass("height-2rem");
+      $("#UTubDescriptionSubheaderWrap").showClassFlex();
+      $("#URLDeckSubheaderCreateDescription").disableTab();
+    }
   }
 
-  // Hide all inputs on success
+  // Hide all inputs on success (keeps the field open on the mobile panel path
+  // via the panelOpen guard inside updateUTubDescriptionHideInput).
   updateUTubDescriptionHideInput();
   fitUTubHeaderAndSubheader();
+
+  // Mobile form model: flash a transient "Saved ✓" beside the still-open field
+  // on a real change. updateUTubDescriptionSuccess is only reached on a genuine
+  // 200 for a changed value, so no unchanged/no-op guard is needed here.
+  if (panelOpen) {
+    showFieldSavedTick({
+      tick: $("#utubDescriptionSavedTick"),
+      announce: $("#fieldSavedAnnouncement"),
+      label: APP_CONFIG.strings.FIELD_SAVED_LABEL_UTUB_DESCRIPTION,
+    });
+  }
 }
 
 // Handle error response display to user

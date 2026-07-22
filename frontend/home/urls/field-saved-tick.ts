@@ -49,14 +49,23 @@ export function showFieldSavedTick({
     savedTickTimers.delete(tickElement);
   }
 
+  const announcementMessage = `${label} ${APP_CONFIG.strings.FIELD_SAVED}`;
   tick.removeClass("opa-0").addClass("opa-1");
   if (announce && announce.length > 0) {
-    announce.text(`${label} ${APP_CONFIG.strings.FIELD_SAVED}`);
+    announce.text(announcementMessage);
   }
 
   const fadeTimer = setTimeout(() => {
     tick.removeClass("opa-1").addClass("opa-0");
-    if (announce && announce.length > 0) {
+    // Only clear the shared announcer if this field is still its last writer.
+    // With both UTub header fields editable at once, a second field can announce
+    // within this field's ~1.5s dwell; leaving a newer message intact lets its
+    // own fade timer clear it rather than blanking it early.
+    if (
+      announce &&
+      announce.length > 0 &&
+      announce.text() === announcementMessage
+    ) {
       announce.text("");
     }
     savedTickTimers.delete(tickElement);

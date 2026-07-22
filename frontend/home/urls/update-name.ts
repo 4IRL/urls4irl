@@ -22,6 +22,7 @@ import {
   updateUTubDescriptionHideInput,
   updateUTubDescriptionShowInput,
 } from "./update-description.js";
+import { showFieldSavedTick } from "./field-saved-tick.js";
 import { isCoarsePointer } from "../mobile.js";
 import { deselectAllURLs } from "./cards/selection.js";
 import {
@@ -138,45 +139,57 @@ function setEventListenersToEscapeUpdateUTubName(utubID: number): void {
   // Allow user to still click in the text box
   $("#utubNameUpdate")
     .offAndOn("focus.updateUTubname", function () {
-      $("#utubNameUpdate").on("keydown.updateUTubname", function (keyEvent) {
-        if (keyEvent.originalEvent?.repeat) return;
-        switch (keyEvent.key) {
-          case KEYS.ENTER:
-            // Handle enter key pressed
-            emit({
-              event: UI_EVENTS.UI_FORM_SUBMIT,
-              form: HOME_FORM.UTUB_NAME_EDIT,
-              trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
-            });
-            clearOpenForm();
-            // Skip if update is identical
-            if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+      // Idempotent rebind: because the panel now keeps the name field open and
+      // refocusable across repeated submits while the panel stays open (the
+      // keydown teardown only runs on true panel close), a bare `.on()` here
+      // would stack duplicate handlers on each re-focus. `.off().on()` mirrors
+      // the offAndOn plugin's dedupe, applied inline inside this focus callback.
+      $("#utubNameUpdate")
+        .off("keydown.updateUTubname")
+        .on("keydown.updateUTubname", function (keyEvent) {
+          if (keyEvent.originalEvent?.repeat) return;
+          switch (keyEvent.key) {
+            case KEYS.ENTER:
+              // Handle enter key pressed
+              emit({
+                event: UI_EVENTS.UI_FORM_SUBMIT,
+                form: HOME_FORM.UTUB_NAME_EDIT,
+                trigger: FORM_SUBMIT_TRIGGER.ENTER_KEY,
+              });
+              clearOpenForm();
+              // Skip if update is identical
+              if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+                updateUTubNameHideInput();
+                return;
+              }
+              checkSameNameUTubOnUpdate(
+                getInputValue("#utubNameUpdate"),
+                utubID,
+              );
+              break;
+            case KEYS.ESCAPE:
+              // On mobile, defer to the single document-level panel Escape handler
+              // (bound in setupUTubEditPanelToggle) so the two mechanisms don't
+              // both fire and double-close/double-focus-return on one keypress.
+              if (isCoarsePointer()) return;
+              // Handle escape key pressed
+              emit({
+                event: UI_EVENTS.UI_FORM_CANCEL,
+                form: HOME_FORM.UTUB_NAME_EDIT,
+                trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
+              });
+              clearOpenForm();
               updateUTubNameHideInput();
-              return;
-            }
-            checkSameNameUTubOnUpdate(getInputValue("#utubNameUpdate"), utubID);
-            break;
-          case KEYS.ESCAPE:
-            // On mobile, defer to the single document-level panel Escape handler
-            // (bound in setupUTubEditPanelToggle) so the two mechanisms don't
-            // both fire and double-close/double-focus-return on one keypress.
-            if (isCoarsePointer()) return;
-            // Handle escape key pressed
-            emit({
-              event: UI_EVENTS.UI_FORM_CANCEL,
-              form: HOME_FORM.UTUB_NAME_EDIT,
-              trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
-            });
-            clearOpenForm();
-            updateUTubNameHideInput();
-            break;
-          default:
-          /* no-op */
-        }
-      });
+              break;
+            default:
+            /* no-op */
+          }
+        });
     })
     .offAndOn("blur.updateUTubname", function () {
-      $("#utubNameUpdate").off("keyup.updateUTubname");
+      // The key handler is bound as keydown (not keyup); detach the matching
+      // namespace so blur actually removes it across repeated keep-open submits.
+      $("#utubNameUpdate").off("keydown.updateUTubname");
     });
 
   // Bind clicking outside the window
@@ -299,6 +312,28 @@ export function updateUTubNameShowInput(utubID: number): void {
 
 // Hides input fields for updating an existing UTub's name
 export function updateUTubNameHideInput(): void {
+  // Mobile form-model guard: while the consolidated panel is open, a per-field
+  // submit keeps the name input open, the chrome hidden, and the Enter/Escape
+  // listeners live. Only the true panel-close Hide (signal already flipped to
+  // "closed" by resetUTubEditPanelState) runs the full collapse + restore.
+  const panelOpen =
+    isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden");
+
+  if (panelOpen) {
+    // Keep-open path: leave the input visible (with its Show-path margin), the
+    // pencil hidden, and the chrome (#urlBtnCreate + search funnel) hidden;
+    // leave the Enter/Escape listeners bound across repeated submits. Re-register
+    // the tracked open form so a later pagehide doesn't misreport
+    // UI_FORM_CANCEL{navigation} for a field that is still genuinely open.
+    setOpenForm(HOME_FORM.UTUB_NAME_EDIT);
+
+    // Harmless housekeeping that runs on both paths: clear any stale error state
+    // and keep the input value synced with the displayed header text.
+    resetUpdateUTubNameFailErrors();
+    $("#utubNameUpdate").val($("#URLDeckHeader").text());
+    return;
+  }
+
   const editWasOpen = $("#URLDeckHeader").hasClass("hidden");
 
   // Hide update fields
@@ -387,8 +422,23 @@ function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
   const updatedUTubSelector = $("#listUTubs").find(".active");
   updatedUTubSelector.find(".UTubName").text(utubName);
 
-  // Display updates
+  // Display updates — on mobile this keeps the field open via the panelOpen
+  // guard inside updateUTubNameHideInput.
   setUTubNameAndDescription(utubName);
+
+  // Mobile form model: on a real name change while the panel is open, flash a
+  // transient "Saved ✓" beside the (still-open) field. updateUTubNameSuccess is
+  // only reached on a genuine 200 for a changed value, so no unchanged/no-op
+  // guard is needed here.
+  const panelOpen =
+    isCoarsePointer() && !$("#utubEditPanelClose").hasClass("hidden");
+  if (panelOpen) {
+    showFieldSavedTick({
+      tick: $("#utubNameSavedTick"),
+      announce: $("#fieldSavedAnnouncement"),
+      label: APP_CONFIG.strings.FIELD_SAVED_LABEL_UTUB_NAME,
+    });
+  }
 }
 
 // Handle error response display to user

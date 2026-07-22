@@ -25,6 +25,10 @@ UTUB_SEARCH_COUNT_TEMPLATE = "{{ visible }} of {{ total }} UTubs shown"
 # per-field save on the mobile consolidated edit panels (UTub header + URL card).
 # Shared across all four fields; the "✓" glyph is decorative markup, not bridged.
 FIELD_SAVED = "Saved"
+# Per-field labels prepended to FIELD_SAVED in the polite aria-live announcer
+# (e.g. "UTub name Saved") so assistive tech states which field was saved.
+FIELD_SAVED_LABEL_UTUB_NAME = "UTub name"
+FIELD_SAVED_LABEL_UTUB_DESCRIPTION = "UTub description"
 
 
 class UTUB_GENERAL:
