@@ -174,6 +174,7 @@ const appConfig = {
     MEMBER_SEARCH_PLACEHOLDER: "Filter members",
     MEMBER_SEARCH_COUNT_TEMPLATE: "{{ visible }} of {{ total }} members shown",
     UTUB_CREATE_MSG: "Create a UTub",
+    FIELD_SAVED: "Saved",
     // Admin Metrics Dashboard strings — source of truth: backend/utils/strings/admin_metrics_strs.py.
     // Only keys read by production TS are mirrored here. Jinja-only labels are inline in templates;
     // Python-test-only keys live in ui_testing_strs.py. Vitest runs in Node with no Flask app context,

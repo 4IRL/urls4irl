@@ -312,6 +312,16 @@ a.urlString {
     .urlStringCancelBtnUpdate {
         display: none;
     }
+
+    /* The card title/string wraps carry the flex-row class from makeTextInput's
+       inputAndButtonWrap. Stack their children (the input+buttons inner row and
+       the "Saved ✓" tick slot below it) into a column on touch devices so the
+       tick lands below the input row. Desktop keeps the inherited side-by-side
+       flex-row layout untouched (Step 3 restructure relies on this). */
+    .updateUrlTitleWrap,
+    .updateUrlStringWrap {
+        flex-direction: column;
+    }
 }
 
 .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {

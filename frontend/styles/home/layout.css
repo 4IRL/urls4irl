@@ -130,6 +130,42 @@ button {
     opacity: 1;
 }
 
+/* "Saved ✓" per-field acknowledgment tick for the mobile consolidated edit
+   panels (UTub header name/description + URL card title/string). The slot sits
+   on its own reserved-height row directly below the input so the tick fading
+   in/out toggles only opacity and never grows/shrinks the field (no vertical
+   thrash). It exists only on coarse-pointer (touch) devices — desktop uses
+   per-field pencils and has no tick concept — so outside that media query the
+   slot collapses to zero and desktop's input-row layout is completely
+   unchanged. Mirrors the coarse-pointer per-field-× hide precedent in
+   utubs.css / urls.css. */
+.field-saved-tick-slot {
+    display: none;
+    height: 0;
+}
+
+@media (any-pointer: coarse) {
+    .field-saved-tick-slot {
+        display: flex;
+        justify-content: flex-start;
+        min-height: 1.25rem;
+        height: auto;
+    }
+}
+
+.field-saved-tick {
+    transition: opacity 0.3s ease;
+    color: var(--splashGreen);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .field-saved-tick {
+        transition: none;
+    }
+}
+
 .white-space-pre-line {
     white-space: pre-line;
 }
