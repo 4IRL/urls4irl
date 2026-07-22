@@ -117,7 +117,13 @@ const NAME_EDIT_HTML = `
   <button id="utubEditPanelToggle" class="hidden"></button>
   <button id="utubEditPanelClose" class="hidden"></button>
   <ul id="listUTubs"><li class="active"><span class="UTubName">Test UTub</span></li></ul>
-  <div id="confirmModal"></div>
+  <div id="confirmModal">
+    <span id="confirmModalTitle"></span>
+    <span id="confirmModalBody"></span>
+    <button id="modalDismiss"></button>
+    <button id="modalRedirect"></button>
+    <button id="modalSubmit"></button>
+  </div>
 `;
 
 const UTUB_ID = 1;
@@ -399,6 +405,113 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
           return args.event === UI_EVENTS.UI_FORM_SUBMIT;
         }),
       ).toHaveLength(1);
+    });
+  });
+
+  describe("mobile form model — sameName confirm-modal path", () => {
+    // Confirming a duplicate-name submit through the sameName modal must keep the
+    // name field open with the panel intact, rebind the Enter/Escape listeners
+    // cleanly across the modal round-trip (no stacked handlers), and emit
+    // UI_FORM_SUBMIT exactly once for the whole flow — one for the initial
+    // duplicate-name attempt, none re-emitted on the modal confirm.
+    async function setupDuplicateNameSubmit(): Promise<void> {
+      const { getAllAccessibleUTubNames } = await import(
+        "../../utubs/utils.js"
+      );
+      vi.mocked(getAllAccessibleUTubNames).mockReturnValue(["Existing UTub"]);
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      updateUTubNameShowInput(UTUB_ID); // open the field (header hidden)
+
+      // A changed value that collides with another accessible UTub name → the
+      // unchanged-value guard passes but checkSameNameUTubOnUpdate shows the modal.
+      $("#utubNameUpdate").val("Existing UTub");
+    }
+
+    it("shows the confirm modal on a duplicate name without firing the PATCH", async () => {
+      await setupDuplicateNameSubmit();
+
+      $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+
+      // Modal shown, no PATCH yet (awaiting confirmation).
+      expect($.fn.modal).toHaveBeenCalledWith("show");
+      expect($("#modalSubmit").text()).toBe("Edit Name");
+      expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+      // The field stays open (header still hidden) behind the still-open modal.
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+    });
+
+    it("confirming keeps the field open, emits UI_FORM_SUBMIT once, and rebinds Enter cleanly", async () => {
+      const { emit } = await import("../../../lib/metrics-client.js");
+      await setupDuplicateNameSubmit();
+
+      // Confirmed PATCH resolves 200 → updateUTubNameSuccess keeps the field open.
+      vi.mocked(ajaxCall).mockReturnValue(
+        createMockJqXHRChainable({
+          done: (callback) =>
+            (
+              callback as (
+                response: { utubName: string; utubID: number },
+                textStatus: string,
+                xhr: { status: number },
+              ) => void
+            )({ utubName: "Existing UTub", utubID: UTUB_ID }, "success", {
+              status: 200,
+            }),
+        }),
+      );
+
+      // Initial duplicate-name submit → emits UI_FORM_SUBMIT (once), opens modal.
+      $("#utubNameSubmitBtnUpdate").trigger("click.updateUTubname");
+      expect(vi.mocked(ajaxCall)).not.toHaveBeenCalled();
+
+      // Confirm through the modal ("Edit Name") → updateUTubName re-invoked; the
+      // confirm click itself must NOT re-emit UI_FORM_SUBMIT.
+      $("#modalSubmit").trigger("click");
+
+      // Exactly one PATCH fired, field kept open (panel intact), tick shown.
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+      expect($("#URLDeckHeader").hasClass("hidden")).toBe(true);
+      expect($("#utubEditPanelClose").hasClass("hidden")).toBe(false);
+      expect($("#utubNameSavedTick").hasClass("opa-1")).toBe(true);
+
+      // UI_FORM_SUBMIT emitted exactly once for the whole flow (not twice).
+      expect(
+        vi.mocked(emit).mock.calls.filter((call) => {
+          const args = call[0] as { event?: string };
+          return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+        }),
+      ).toHaveLength(1);
+
+      // Simulate Bootstrap's modal-hidden event (mocked plugin doesn't fire it),
+      // which rebinds the Enter/Escape listeners via
+      // setEventListenersToEscapeUpdateUTubName.
+      $("#confirmModal").trigger("hidden.bs.modal");
+      vi.mocked(emit).mockClear();
+
+      // The rebound keydown handler is bound inside the focus callback; focus the
+      // input, then press Enter with the value now equal to the saved header text
+      // → unchanged-skip path emits UI_FORM_SUBMIT exactly once (a stacked/duplicate
+      // handler would emit it twice), proving a clean single rebind.
+      $("#utubNameUpdate").trigger("focus");
+      $("#utubNameUpdate").trigger(
+        $.Event("keydown.updateUTubname", { key: "Enter" }),
+      );
+
+      expect(
+        vi.mocked(emit).mock.calls.filter((call) => {
+          const args = call[0] as { event?: string };
+          return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+        }),
+      ).toHaveLength(1);
+      // No second PATCH — the post-rebind Enter took the unchanged-skip path.
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
     });
   });
 });

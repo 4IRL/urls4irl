@@ -18,6 +18,9 @@ const mockUpdateUTubNameHideInput = vi.fn();
 const mockUpdateUTubDescriptionHideInput = vi.fn();
 const mockCreateMemberHideInput = vi.fn();
 const mockIsHidden = vi.fn();
+const mockIsCoarsePointer = vi.fn(() => false);
+const mockResetUTubEditPanelState = vi.fn();
+const mockGetState = vi.fn(() => ({ activeUTubID: 7 }));
 
 const { mockMetricsClient } = await vi.hoisted(
   async () => await import("../../__tests__/helpers/mock-metrics-client.js"),
@@ -43,6 +46,16 @@ vi.mock("../members/create.js", () => ({
   createMemberHideInput: (...args: unknown[]) =>
     mockCreateMemberHideInput(...args),
 }));
+vi.mock("../mobile.js", () => ({
+  isCoarsePointer: () => mockIsCoarsePointer(),
+}));
+vi.mock("../urls/update-utub-panel.js", () => ({
+  resetUTubEditPanelState: (...args: unknown[]) =>
+    mockResetUTubEditPanelState(...args),
+}));
+vi.mock("../../store/app-store.js", () => ({
+  getState: () => mockGetState(),
+}));
 
 const $ = window.jQuery;
 
@@ -54,6 +67,7 @@ const BTNS_FORMS_HTML = `
   <div id="URLDeckHeader" style="display:block;">URL Deck Header</div>
   <div id="URLDeckSubheader" style="display:block;">Description</div>
   <div id="displayMemberWrap" style="display:block;">Members</div>
+  <button id="utubEditPanelClose" class="hidden"></button>
   <form id="testForm"><input type="text" /></form>
   <div class="createDiv" style="display:none;">
     <input id="hiddenInput" type="text" />
@@ -64,6 +78,11 @@ describe("btns-forms", () => {
   beforeEach(() => {
     document.body.innerHTML = BTNS_FORMS_HTML;
     vi.clearAllMocks();
+    // clearAllMocks clears call history but NOT mockReturnValue overrides; reset
+    // the pointer/state stubs each test so a mobile-branch test can't leak its
+    // isCoarsePointer=true / activeUTubID override into a later test.
+    mockIsCoarsePointer.mockReturnValue(false);
+    mockGetState.mockReturnValue({ activeUTubID: 7 });
   });
 
   describe("highlightInput", () => {
@@ -126,6 +145,53 @@ describe("btns-forms", () => {
       expect(mockCreateUTubHideInput).not.toHaveBeenCalled();
       expect(mockUpdateUTubNameHideInput).not.toHaveBeenCalled();
       expect(mockCreateMemberHideInput).not.toHaveBeenCalled();
+    });
+
+    describe("mobile consolidated panel open (destructive-flow routing)", () => {
+      // Leave/Delete UTub and Delete Member all funnel through hideInputs(). When
+      // the mobile edit panel is open, hideInputs() must route the full teardown
+      // through resetUTubEditPanelState (threading the active UTub id) and return
+      // early — never leaving the panel in the per-field keep-open state — rather
+      // than calling the per-field Hide functions.
+      it("routes through resetUTubEditPanelState(activeUTubID) once and skips the per-field hides", () => {
+        mockIsCoarsePointer.mockReturnValue(true);
+        mockGetState.mockReturnValue({ activeUTubID: 7 });
+        // Panel open ⇔ #utubEditPanelClose NOT hidden.
+        $("#utubEditPanelClose").removeClass("hidden");
+        // Even with inputs "visible", the per-field path must NOT run.
+        mockIsHidden.mockReturnValue(true);
+
+        hideInputs();
+
+        expect(mockResetUTubEditPanelState).toHaveBeenCalledTimes(1);
+        expect(mockResetUTubEditPanelState).toHaveBeenCalledWith(7);
+        // Early return: none of the per-field / other-form hides run.
+        expect(mockCreateUTubHideInput).not.toHaveBeenCalled();
+        expect(mockUpdateUTubNameHideInput).not.toHaveBeenCalled();
+        expect(mockUpdateUTubDescriptionHideInput).not.toHaveBeenCalled();
+        expect(mockCreateMemberHideInput).not.toHaveBeenCalled();
+      });
+
+      it("does NOT route through the panel teardown when the panel is closed", () => {
+        mockIsCoarsePointer.mockReturnValue(true);
+        // Panel closed ⇔ #utubEditPanelClose hidden (fixture default).
+        $("#utubEditPanelClose").addClass("hidden");
+        mockIsHidden.mockReturnValue(false);
+
+        hideInputs();
+
+        expect(mockResetUTubEditPanelState).not.toHaveBeenCalled();
+      });
+
+      it("does NOT route through the panel teardown on a fine pointer (desktop) even when the panel element is present", () => {
+        mockIsCoarsePointer.mockReturnValue(false);
+        $("#utubEditPanelClose").removeClass("hidden");
+        mockIsHidden.mockReturnValue(false);
+
+        hideInputs();
+
+        expect(mockResetUTubEditPanelState).not.toHaveBeenCalled();
+      });
     });
   });
 

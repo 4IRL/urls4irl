@@ -330,6 +330,38 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
       expect($("#URLDeckSubheader").text()).toBe("A brand new description");
     });
 
+    it("non-empty→empty via panel: the 'Add a description?' CTA is deferred until panel close", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+      // Start from a UTub that HAS a description; the user clears it to empty.
+      $("#URLDeckSubheader").text("Description");
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID);
+      $("#utubDescriptionUpdate").val(""); // cleared → real (changed) submit → empty
+      mockSuccessfulPatch("");
+
+      $("#utubDescriptionSubmitBtnUpdate").trigger("click");
+
+      // While the panel stays open, the empty-description CTA re-arm is deferred:
+      // showCreateDescriptionButtonAlways must NOT have run, so the create button
+      // is not revealed (no opa-1 / height-2rem).
+      const createCta = $("#URLDeckSubheaderCreateDescription");
+      expect(createCta.hasClass("opa-1")).toBe(false);
+      expect(createCta.hasClass("height-2rem")).toBe(false);
+      // Field is still open (keep-open) and Saved✓ flashed on the real change.
+      expect($("#URLDeckSubheader").hasClass("hidden")).toBe(true);
+      expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(true);
+
+      // Close the panel (flip the signal), then run the panel-closed Hide with the
+      // active UTub id: NOW the deferred empty-description CTA re-arm fires.
+      $("#utubEditPanelClose").addClass("hidden");
+      updateUTubDescriptionHideInput(UTUB_ID);
+
+      expect(createCta.hasClass("opa-1")).toBe(true);
+      expect(createCta.hasClass("height-2rem")).toBe(true);
+    });
+
     it("fine pointer (desktop): a changed submit collapses the field with no tick", async () => {
       vi.mocked(isCoarsePointer).mockReturnValue(false);
 

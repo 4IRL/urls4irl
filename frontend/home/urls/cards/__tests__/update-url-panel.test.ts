@@ -175,6 +175,31 @@ describe("URL edit panel orchestrator", () => {
       expect(focusSpy).not.toHaveBeenCalled();
       focusSpy.mockRestore();
     });
+
+    it("force-clears any pending Saved✓ tick on both card wraps", () => {
+      const urlCard = mountCard(true);
+      // Inject a visible tick into each wrap (as the success handlers would),
+      // simulating a Saved✓ still showing when a close/deselect tears the panel down.
+      urlCard
+        .find(".updateUrlTitleWrap")
+        .append(
+          '<span class="field-saved-tick opa-1" aria-hidden="true">Saved</span>',
+        );
+      urlCard
+        .find(".updateUrlStringWrap")
+        .append(
+          '<span class="field-saved-tick opa-1" aria-hidden="true">Saved</span>',
+        );
+
+      resetURLEditPanelState(urlCard);
+
+      const titleTick = urlCard.find(".updateUrlTitleWrap .field-saved-tick");
+      const stringTick = urlCard.find(".updateUrlStringWrap .field-saved-tick");
+      expect(titleTick.hasClass("opa-1")).toBe(false);
+      expect(titleTick.hasClass("opa-0")).toBe(true);
+      expect(stringTick.hasClass("opa-1")).toBe(false);
+      expect(stringTick.hasClass("opa-0")).toBe(true);
+    });
   });
 
   describe("panel-level Escape coordination", () => {
