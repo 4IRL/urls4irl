@@ -184,6 +184,26 @@
     }
 }
 
+/* Panel-open alignment fix (coarse-pointer only). When the edit panel is open
+   the name column (#UTubNameOuterUpdateWrap) reserves a "Saved ✓" tick slot
+   directly below the input row (layout.css `.field-saved-tick-slot`,
+   min-height 1.25rem on coarse) on top of the createDiv's 5px top pad
+   (`.pad-top-5p`). That makes the column taller than the input row itself and
+   bottom-heavy, so `.titleElement`'s `align-items: center` lands the Close
+   `.button-container` on the column's center — ~7.5px BELOW the input row's
+   true center (where the green ✓ submit sits). Nudge the button-container up by
+   half that bottom-vs-top inflation so "Close" lines up with the name input and
+   its ✓. The offset is derived from the same tick-slot height (1.25rem) and
+   createDiv top pad (5px) those rules use — not a magic pixel value. Scoped to
+   coarse + panel-open (`#utubEditPanelClose:not(.hidden)`) so desktop and the
+   mobile resting header are untouched; `:has()` matches only this header
+   (Member/Tag decks share `.titleElement` but have no #utubEditPanelClose). */
+@media (any-pointer: coarse) {
+    .titleElement:has(#utubEditPanelClose:not(.hidden)) .button-container {
+        transform: translateY(calc((1.25rem - 5px) / -2));
+    }
+}
+
 /* On coarse-pointer devices the consolidated panel has a single close control
    (the header × / #utubEditPanelClose), so the per-field red × on the name and
    description forms is redundant and confusing — hide it. The green ✓ submit
