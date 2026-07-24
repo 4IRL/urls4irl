@@ -2,6 +2,8 @@ import {
   createURLStringAndUpdateBlock,
   modifyURLStringForDisplay,
 } from "../url-string.js";
+import { updateURL, isURLStringSubmitInFlight } from "../update-string.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -113,5 +115,44 @@ describe("createUpdateURLStringInput - Saved✓ tick slot structure", () => {
     expect(tick.length).toBe(1);
     expect(tick.hasClass("opa-0")).toBe(true);
     expect(tick.attr("aria-hidden")).toBe("true");
+  });
+});
+
+describe("createUpdateURLStringInput - in-flight submit guard blocks a second overlapping submit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function mountStringBlock(): JQuery {
+    document.body.innerHTML = `<div class="urlRow" utuburlid="1" urlSelected="true" filterable="true"></div>`;
+    const urlCard = $(".urlRow");
+    urlCard.append(
+      createURLStringAndUpdateBlock("https://example.com", urlCard, 1),
+    );
+    return urlCard;
+  }
+
+  it("fires updateURL and emits UI_FORM_SUBMIT once when a second submit lands while the first is in flight", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
+    const urlCard = mountStringBlock();
+    const submitBtn = urlCard.find(".urlStringSubmitBtnUpdate");
+
+    // First submit sees "not in flight"; every subsequent read is "in flight"
+    // (mirrors the real flag flipping true inside updateURL on the panel path).
+    vi.mocked(isURLStringSubmitInFlight)
+      .mockReturnValueOnce(false)
+      .mockReturnValue(true);
+
+    submitBtn.trigger("click");
+    submitBtn.trigger("click");
+
+    // Second click short-circuits on the guard: only one updateURL + one submit.
+    expect(vi.mocked(updateURL)).toHaveBeenCalledTimes(1);
+    expect(
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string };
+        return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+      }),
+    ).toHaveLength(1);
   });
 });

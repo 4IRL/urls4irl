@@ -53,7 +53,7 @@ function isCardEditPanelOpen(urlCard: JQuery): boolean {
 // Clear the title in-flight flag and its accessible-disabled reflection at a
 // real exit of updateURLTitle (mirrors the clearTimeoutIDAndHideLoadingIcon
 // exit anchors). Harmless no-op on the desktop path where it was never set.
-function clearTitleSubmitInFlight(titleSubmitBtn: JQuery): void {
+export function clearTitleSubmitInFlight(titleSubmitBtn: JQuery): void {
   titleSubmitInFlight = false;
   titleSubmitBtn.removeAttr("aria-disabled");
 }

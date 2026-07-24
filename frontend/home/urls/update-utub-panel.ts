@@ -7,10 +7,12 @@ import { isCoarsePointer } from "../mobile.js";
 import {
   updateUTubNameShowInput,
   updateUTubNameHideInput,
+  clearNameSubmitInFlight,
 } from "./update-name.js";
 import {
   updateUTubDescriptionShowInput,
   updateUTubDescriptionHideInput,
+  clearDescriptionSubmitInFlight,
 } from "./update-description.js";
 import { clearFieldSavedTick } from "./field-saved-tick.js";
 import { deselectAllURLs } from "./cards/selection.js";
@@ -115,6 +117,14 @@ export function resetUTubEditPanelState(utubID: number | null = null): void {
   // down, so a stale timer never mutates a collapsed/hidden field.
   clearFieldSavedTick($("#utubNameSavedTick"));
   clearFieldSavedTick($("#utubDescriptionSavedTick"));
+
+  // Clear the per-field in-flight submit guards (+ their aria-disabled
+  // reflection). These module-level flags are not otherwise reset on a routine
+  // UTub switch, so without this a submit that was in flight on the old UTub
+  // would leave the flag stuck true and silently block a legit submit on the
+  // next UTub until the stale request settles (DD-1).
+  clearNameSubmitInFlight();
+  clearDescriptionSubmitInFlight();
 
   updateUTubNameHideInput();
   updateUTubDescriptionHideInput(utubID);

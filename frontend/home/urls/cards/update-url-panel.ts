@@ -5,10 +5,12 @@ import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import {
   showUpdateURLTitleForm,
   hideAndResetUpdateURLTitleForm,
+  clearTitleSubmitInFlight,
 } from "./update-title.js";
 import {
   showUpdateURLStringForm,
   hideAndResetUpdateURLStringForm,
+  clearStringSubmitInFlight,
 } from "./update-string.js";
 import { clearFieldSavedTick } from "../field-saved-tick.js";
 import { enableClickOnSelectedURLCardToHide } from "./selection.js";
@@ -59,6 +61,14 @@ export function resetURLEditPanelState(urlCard: JQuery): void {
   // opacity back on a torn-down card field after this reset runs.
   clearFieldSavedTick(urlCard.find(".updateUrlTitleWrap .field-saved-tick"));
   clearFieldSavedTick(urlCard.find(".updateUrlStringWrap .field-saved-tick"));
+
+  // Clear the per-field in-flight submit guards (+ their aria-disabled
+  // reflection) for this card. The module-level flags are not otherwise reset
+  // on a routine card deselect, so without this a submit in flight when the card
+  // is deselected would leave the flag stuck true and block the next submit
+  // (DD-1). Pass the card's own submit buttons so aria-disabled is removed too.
+  clearTitleSubmitInFlight(urlCard.find(".urlTitleSubmitBtnUpdate"));
+  clearStringSubmitInFlight(urlCard.find(".urlStringSubmitBtnUpdate"));
 
   hideAndResetUpdateURLTitleForm({ urlCard, suppressSiblingDisable: true });
   hideAndResetUpdateURLStringForm({ urlCard, suppressSiblingDisable: true });

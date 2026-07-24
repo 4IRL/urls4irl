@@ -45,7 +45,7 @@ let nameEditOpenedViaKeyboard = false;
 // `disabled`, which would drop focus and pull it from the a11y tree.
 let nameSubmitInFlight = false;
 
-function clearNameSubmitInFlight(): void {
+export function clearNameSubmitInFlight(): void {
   nameSubmitInFlight = false;
   $("#utubNameSubmitBtnUpdate").removeAttr("aria-disabled");
 }
@@ -439,19 +439,34 @@ function updateUTubNameSetup(utubID: number): [string, UpdateUtubNameRequest] {
 function updateUTubNameSuccess(response: UpdateUtubNameResponse): void {
   const utubName = response.utubName;
 
+  // A submit is fire-and-forget while the mobile panel stays open, so a success
+  // can land after the user has already switched to a different UTub. The
+  // utubs-array write below is id-keyed (matches on response.utubID), so it is
+  // always safe. But the singleton `#URLDeckHeader`/subheader DOM and the
+  // `activeUTubName` state describe the CURRENTLY displayed UTub, so writing
+  // them for a no-longer-active response would corrupt the new UTub's header
+  // (DD-1). Gate those on the response still being for the active UTub.
+  const isForActiveUTub = response.utubID === getState().activeUTubID;
+
   const utubs: UtubSummaryItem[] = getState().utubs;
   setState({
-    activeUTubName: response.utubName,
     utubs: utubs.map((utub) =>
       utub.id === response.utubID ? { ...utub, name: response.utubName } : utub,
     ),
+    ...(isForActiveUTub ? { activeUTubName: response.utubName } : {}),
   });
 
   $("#confirmModal").modal("hide");
 
-  // UTubDeck display updates
-  const updatedUTubSelector = $("#listUTubs").find(".active");
-  updatedUTubSelector.find(".UTubName").text(utubName);
+  // UTubDeck display updates — target the response's OWN list entry by id, not
+  // `.active` (which for a stale response is now a different UTub and would be
+  // mislabeled). Always safe: it labels exactly the UTub the response is for.
+  $("#listUTubs")
+    .find(`.UTubSelector[utubid='${response.utubID}']`)
+    .find(".UTubName")
+    .text(utubName);
+
+  if (!isForActiveUTub) return;
 
   // Display updates — on mobile this keeps the field open via the panelOpen
   // guard inside updateUTubNameHideInput.

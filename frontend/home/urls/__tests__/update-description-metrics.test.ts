@@ -6,7 +6,7 @@ import {
   updateUTubDescriptionShowInput,
 } from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
-import { ajaxCall } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
@@ -419,6 +419,41 @@ describe("update-description metrics — UI_UTUB_DESC_EDIT_OPEN", () => {
           return args.event === UI_EVENTS.UI_FORM_SUBMIT;
         }),
       ).toHaveLength(1);
+    });
+
+    it("clears the guard on a genuine AJAX reject (.fail), so a fresh submit is not blocked", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubDescriptionEventListeners(UTUB_ID);
+      updateUTubDescriptionShowInput(UTUB_ID);
+      $("#utubDescriptionUpdate").val("New Description"); // changed → real submit
+
+      const submitBtn = $("#utubDescriptionSubmitBtnUpdate");
+
+      // First submit → in flight, control aria-disabled.
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      submitBtn.trigger("click");
+      expect(submitBtn.attr("aria-disabled")).toBe("true");
+
+      // Genuine reject via the true `.fail()` branch. The clear runs at the top
+      // of the fail handler; short-circuit the downstream fail-display so it
+      // doesn't attempt an error-page navigation.
+      vi.mocked(is429Handled).mockReturnValueOnce(true);
+      deferred.reject({ status: 0 }, "error");
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined(); // guard cleared
+
+      // A fresh submit is no longer blocked — it fires a new PATCH.
+      const nextDeferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(nextDeferred);
+      submitBtn.trigger("click");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(2);
+      // Settle the second request (non-200 → clears the guard) so the
+      // module-level flag doesn't leak into the next test.
+      nextDeferred.resolve({ utubDescription: "New Description" }, "success", {
+        status: 500,
+      });
     });
   });
 });

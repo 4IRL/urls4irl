@@ -5,9 +5,11 @@ import { KEYS } from "../../../lib/constants.js";
 
 vi.mock("../cards/update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
+  clearTitleSubmitInFlight: vi.fn(),
 }));
 vi.mock("../cards/update-string.js", () => ({
   hideAndResetUpdateURLStringForm: vi.fn(),
+  clearStringSubmitInFlight: vi.fn(),
 }));
 vi.mock("../tags/combobox.js", () => ({
   hideAndResetTagCombobox: vi.fn(),

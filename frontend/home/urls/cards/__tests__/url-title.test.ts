@@ -1,6 +1,11 @@
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
-import { showUpdateURLTitleForm } from "../update-title.js";
+import {
+  showUpdateURLTitleForm,
+  updateURLTitle,
+  isURLTitleSubmitInFlight,
+} from "../update-title.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -141,5 +146,35 @@ describe("createUpdateURLTitleInput - Saved✓ tick slot structure", () => {
     expect(tick.length).toBe(1);
     expect(tick.hasClass("opa-0")).toBe(true);
     expect(tick.attr("aria-hidden")).toBe("true");
+  });
+});
+
+describe("createUpdateURLTitleInput - in-flight submit guard blocks a second overlapping submit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("fires updateURLTitle and emits UI_FORM_SUBMIT once when a second submit lands while the first is in flight", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
+    const { urlCard } = mountTitleBlock();
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+
+    // First submit sees "not in flight"; every subsequent read is "in flight"
+    // (mirrors the real flag flipping true inside updateURLTitle on the panel).
+    vi.mocked(isURLTitleSubmitInFlight)
+      .mockReturnValueOnce(false)
+      .mockReturnValue(true);
+
+    submitBtn.trigger("click");
+    submitBtn.trigger("click");
+
+    // Second click short-circuits on the guard: only one call + one submit.
+    expect(vi.mocked(updateURLTitle)).toHaveBeenCalledTimes(1);
+    expect(
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string };
+        return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+      }),
+    ).toHaveLength(1);
   });
 });

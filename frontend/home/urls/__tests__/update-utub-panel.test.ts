@@ -4,14 +4,24 @@ import {
   resetUTubEditPanelState,
   closeUTubEditPanel,
 } from "../update-utub-panel.js";
-import { updateUTubNameHideInput } from "../update-name.js";
-import { updateUTubDescriptionHideInput } from "../update-description.js";
+import {
+  updateUTubNameHideInput,
+  updateUTubNameShowInput,
+  setupUpdateUTubNameEventListeners,
+} from "../update-name.js";
+import {
+  updateUTubDescriptionHideInput,
+  updateUTubDescriptionShowInput,
+  setupUpdateUTubDescriptionEventListeners,
+} from "../update-description.js";
 import { getState } from "../../../store/app-store.js";
+import { ajaxCall } from "../../../lib/ajax.js";
 import { AppEvents, emit } from "../../../lib/event-bus.js";
 import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { HOME_FORM } from "../../../types/metrics-dim-values.js";
 import { deselectAllURLs } from "../cards/selection.js";
 import { isCoarsePointer } from "../../mobile.js";
+import { createMockJqXHR } from "../../../__tests__/helpers/mock-jquery.js";
 
 // This suite exercises the real UTub-panel orchestrator together with the real
 // update-name/update-description show/hide functions and the real search module
@@ -34,9 +44,16 @@ vi.mock("../../../lib/globals.js", async () => {
 vi.mock("../../../lib/config.js", () => ({
   APP_CONFIG: {
     debugEnabled: true,
-    routes: {},
+    routes: {
+      updateUTubName: vi.fn(() => "/utubs/1/name"),
+      updateUTubDescription: vi.fn(() => "/utubs/1/description"),
+    },
     constants: {},
-    strings: {},
+    strings: {
+      FIELD_SAVED: "Saved",
+      FIELD_SAVED_LABEL_UTUB_NAME: "UTub name",
+      FIELD_SAVED_LABEL_UTUB_DESCRIPTION: "UTub description",
+    },
   },
 }));
 
@@ -464,6 +481,94 @@ describe("UTub edit panel orchestrator", () => {
       expect($("#utubNameSavedTick").hasClass("opa-0")).toBe(true);
       expect($("#utubDescriptionSavedTick").hasClass("opa-1")).toBe(false);
       expect($("#utubDescriptionSavedTick").hasClass("opa-0")).toBe(true);
+    });
+  });
+
+  describe("mid-switch regression — teardown clears the guard + id-guards a stale success (DD-1)", () => {
+    beforeEach(() => {
+      // The name success path calls $("#confirmModal").modal("hide"); Bootstrap's
+      // jQuery modal plugin isn't registered in this test env, so stub it.
+      $.fn.modal = vi.fn().mockReturnThis();
+    });
+
+    it("name: switching UTubs mid-submit clears the in-flight guard and a stale success cannot overwrite the new UTub's header", () => {
+      // Panel open on UTub A (id 1), which is the active UTub.
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: 1,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+
+      setupUpdateUTubNameEventListeners(1);
+      openUTubEditPanel(1);
+      updateUTubNameShowInput(1);
+      $("#utubNameUpdate").val("A Renamed"); // changed → real submit path
+
+      // Fire-and-forget submit against a pending (unresolved) deferred.
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      const submitBtn = $("#utubNameSubmitBtnUpdate");
+      submitBtn.trigger("click.updateUTubname");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+      expect(submitBtn.attr("aria-disabled")).toBe("true"); // in flight
+
+      // Simulate a switch to UTub B (id 2): the header now shows B, B is active,
+      // and the routine teardown runs. Teardown must clear the stuck guard.
+      $("#URLDeckHeader").text("UTub B");
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: 2,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+      resetUTubEditPanelState(2);
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined(); // guard cleared
+
+      // A's stale success now lands (utubID 1 ≠ active 2): it must NOT overwrite
+      // B's displayed header.
+      deferred.resolve({ utubName: "A Renamed", utubID: 1 }, "success", {
+        status: 200,
+      });
+      expect($("#URLDeckHeader").text()).toBe("UTub B");
+    });
+
+    it("description: switching UTubs mid-submit clears the in-flight guard and a stale success cannot overwrite the new UTub's subheader", () => {
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: 1,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+
+      setupUpdateUTubDescriptionEventListeners(1);
+      openUTubEditPanel(1);
+      updateUTubDescriptionShowInput(1);
+      $("#utubDescriptionUpdate").val("A Desc Changed"); // changed → real submit
+
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      const submitBtn = $("#utubDescriptionSubmitBtnUpdate");
+      submitBtn.trigger("click");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+      expect(submitBtn.attr("aria-disabled")).toBe("true");
+
+      // Switch to UTub B (id 2).
+      $("#URLDeckSubheader").text("Desc B");
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: 2,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+      resetUTubEditPanelState(2);
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+
+      // A's stale success lands (utubID 1 ≠ active 2): B's subheader is untouched.
+      deferred.resolve(
+        { utubDescription: "A Desc Changed", utubID: 1 },
+        "success",
+        {
+          status: 200,
+        },
+      );
+      expect($("#URLDeckSubheader").text()).toBe("Desc B");
     });
   });
 });

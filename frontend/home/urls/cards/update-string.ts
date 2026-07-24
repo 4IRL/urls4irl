@@ -81,7 +81,7 @@ function isCardEditPanelOpen(urlCard: JQuery): boolean {
 // Clear the string in-flight flag and its accessible-disabled reflection at a
 // real exit of updateURL (mirrors the clearTimeoutIDAndHideLoadingIcon exit
 // anchors). Harmless no-op on the desktop path where it was never set.
-function clearStringSubmitInFlight(stringSubmitBtn: JQuery): void {
+export function clearStringSubmitInFlight(stringSubmitBtn: JQuery): void {
   stringSubmitInFlight = false;
   stringSubmitBtn.removeAttr("aria-disabled");
 }

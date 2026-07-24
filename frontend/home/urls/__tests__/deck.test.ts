@@ -37,12 +37,14 @@ vi.mock("../update-description.js", () => ({
   removeEventListenersForShowCreateUTubDescIfEmptyDesc: vi.fn(),
   showCreateDescriptionButtonAlways: vi.fn(),
   updateUTubDescriptionShowInput: vi.fn(),
+  clearDescriptionSubmitInFlight: vi.fn(),
 }));
 
 vi.mock("../update-name.js", () => ({
   setupUpdateUTubNameEventListeners: vi.fn(),
   setUTubNameAndDescription: vi.fn(),
   updateUTubNameHideInput: vi.fn(),
+  clearNameSubmitInFlight: vi.fn(),
 }));
 
 vi.mock("../create-btns.js", () => ({

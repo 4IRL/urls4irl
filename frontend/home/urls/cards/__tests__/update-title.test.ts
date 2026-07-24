@@ -6,7 +6,7 @@ import {
   updateURLTitle,
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
-import { ajaxCall } from "../../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
 import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
 import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
@@ -547,5 +547,68 @@ describe("panel-aware submit gate — deselect + sibling suppression (mobile con
     expect(isURLTitleSubmitInFlight()).toBe(false);
     expect(submitBtn.attr("aria-disabled")).toBeUndefined();
     expect(submitBtn.prop("disabled")).toBe(false);
+  });
+
+  it("fine pointer (desktop): a changed submit collapses the field with no tick", async () => {
+    // Desktop: the consolidated panel is never in play, so isCardEditPanelOpen is
+    // false and the field collapses on submit (no keep-open, no Saved✓ tick).
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    const urlCard = $(".urlRow");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // Field collapses (wrap hidden) and no tick flashes.
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(true);
+    expect(
+      urlCard.find(".updateUrlTitleWrap .field-saved-tick").hasClass("opa-1"),
+    ).toBe(false);
+  });
+
+  it("clears the in-flight guard on a genuine AJAX reject (.fail), never leaving a permanent aria-disabled lockout", async () => {
+    const urlCard = $(".urlRow");
+    // Panel-open signal so the in-flight guard is armed before the reject.
+    urlCard.find(".urlStringCancelBigBtnUpdate").removeClass("hidden");
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    // Fire the true `.fail()` reject branch and settle `.always()`. Short-circuit
+    // the downstream fail-display so it doesn't attempt an error-page navigation;
+    // the guard clear runs in `.always()` regardless.
+    vi.mocked(is429Handled).mockReturnValueOnce(true);
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (cb: unknown) =>
+          (cb as (xhr: JQuery.jqXHR) => void)({
+            status: 0,
+          } as unknown as JQuery.jqXHR),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(isURLTitleSubmitInFlight()).toBe(false);
+    expect(submitBtn.attr("aria-disabled")).toBeUndefined();
   });
 });

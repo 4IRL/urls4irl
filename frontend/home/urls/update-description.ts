@@ -34,7 +34,7 @@ let descEditOpenedViaKeyboard = false;
 // aria-disabled (never native `disabled`, which would drop focus).
 let descriptionSubmitInFlight = false;
 
-function clearDescriptionSubmitInFlight(): void {
+export function clearDescriptionSubmitInFlight(): void {
   descriptionSubmitInFlight = false;
   $("#utubDescriptionSubmitBtnUpdate").removeAttr("aria-disabled");
 }
@@ -383,6 +383,15 @@ function updateUTubDescriptionSuccess(
   response: UpdateUtubDescResponse,
   utubID: number,
 ): void {
+  // A submit is fire-and-forget while the mobile panel stays open, so a success
+  // can land after the user has switched to a different UTub. Every write here
+  // targets the singleton `#URLDeckSubheader` DOM / `activeUTubDescription`
+  // state for the CURRENTLY displayed UTub (the utubs summary array holds no
+  // description, so there is no id-keyed array write to preserve). Bail entirely
+  // when the response is no longer for the active UTub so a stale success can't
+  // overwrite the new UTub's subheader (DD-1).
+  if (response.utubID !== getState().activeUTubID) return;
+
   const utubDescription = response.utubDescription ?? "";
 
   setState({ activeUTubDescription: response.utubDescription });

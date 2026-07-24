@@ -4,7 +4,7 @@ import {
   updateUTubNameShowInput,
 } from "../update-name.js";
 import { getState } from "../../../store/app-store.js";
-import { ajaxCall } from "../../../lib/ajax.js";
+import { ajaxCall, is429Handled } from "../../../lib/ajax.js";
 import { getOpenForm } from "../../../lib/modal-tracking.js";
 import { isCoarsePointer } from "../../mobile.js";
 import {
@@ -268,6 +268,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       vi.mocked(isCoarsePointer).mockReturnValue(true);
       vi.mocked(getState).mockReturnValue({
         isCurrentUserOwner: true,
+        activeUTubID: UTUB_ID,
         utubs: [],
       } as unknown as ReturnType<typeof getState>);
       $("#utubEditPanelClose").removeClass("hidden"); // panel open
@@ -330,6 +331,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       vi.mocked(isCoarsePointer).mockReturnValue(false);
       vi.mocked(getState).mockReturnValue({
         isCurrentUserOwner: true,
+        activeUTubID: UTUB_ID,
         utubs: [],
       } as unknown as ReturnType<typeof getState>);
 
@@ -406,6 +408,50 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
         }),
       ).toHaveLength(1);
     });
+
+    it("clears the guard on a genuine AJAX reject (.fail), so a fresh submit is not blocked", () => {
+      vi.mocked(isCoarsePointer).mockReturnValue(true);
+      vi.mocked(getState).mockReturnValue({
+        isCurrentUserOwner: true,
+        activeUTubID: UTUB_ID,
+        utubs: [],
+      } as unknown as ReturnType<typeof getState>);
+      $("#utubEditPanelClose").removeClass("hidden"); // panel open
+
+      setupUpdateUTubNameEventListeners(UTUB_ID);
+      updateUTubNameShowInput(UTUB_ID);
+      $("#utubNameUpdate").val("New Name"); // changed → real submit path
+
+      const submitBtn = $("#utubNameSubmitBtnUpdate");
+
+      // First submit → in flight, control aria-disabled.
+      const deferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(deferred);
+      submitBtn.trigger("click.updateUTubname");
+      expect(submitBtn.attr("aria-disabled")).toBe("true");
+
+      // Genuine reject via the true `.fail()` branch (not a .done non-200). The
+      // clear runs at the top of the fail handler; short-circuit the downstream
+      // fail-display so it doesn't attempt an error-page navigation.
+      vi.mocked(is429Handled).mockReturnValueOnce(true);
+      deferred.reject({ status: 0 }, "error");
+      expect(submitBtn.attr("aria-disabled")).toBeUndefined(); // guard cleared
+
+      // A fresh submit is no longer blocked — it fires a new PATCH.
+      const nextDeferred = createMockJqXHR();
+      vi.mocked(ajaxCall).mockReturnValue(nextDeferred);
+      submitBtn.trigger("click.updateUTubname");
+      expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(2);
+      // Settle the second request (non-200 → clears the guard) so the
+      // module-level flag doesn't leak into the next test.
+      nextDeferred.resolve(
+        { utubName: "New Name", utubID: UTUB_ID },
+        "success",
+        {
+          status: 500,
+        },
+      );
+    });
   });
 
   describe("mobile form model — sameName confirm-modal path", () => {
@@ -422,6 +468,7 @@ describe("update-name metrics — UI_UTUB_NAME_EDIT_OPEN", () => {
       vi.mocked(isCoarsePointer).mockReturnValue(true);
       vi.mocked(getState).mockReturnValue({
         isCurrentUserOwner: true,
+        activeUTubID: UTUB_ID,
         utubs: [],
       } as unknown as ReturnType<typeof getState>);
       $("#utubEditPanelClose").removeClass("hidden"); // panel open
