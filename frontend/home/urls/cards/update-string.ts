@@ -108,9 +108,9 @@ export function showUpdateURLStringForm({
   suppressSiblingDisable?: boolean;
 }): void {
   // Desktop mutual exclusion: close an open URL-title editor first (restoring
-  // its option buttons and the title pencil affordance) so the two are never
-  // open at once. Skipped on the mobile panel path (suppressSiblingDisable),
-  // which deliberately keeps both fields open.
+  // the title pencil affordance) so the two are never open at once. Skipped on
+  // the mobile panel path (suppressSiblingDisable), which deliberately keeps
+  // both fields open.
   if (
     !suppressSiblingDisable &&
     !urlCard.find(".updateUrlTitleWrap").hasClass("hidden")

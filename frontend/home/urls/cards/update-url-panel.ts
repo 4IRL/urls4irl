@@ -18,8 +18,9 @@ import { enableClickOnSelectedURLCardToHide } from "./selection.js";
 // Opens the consolidated URL edit panel on mobile: the URL title and URL string
 // forms open together. Mirrors the UTub-level orchestrator (update-utub-panel.ts)
 // by calling both existing show functions with `suppressSiblingDisable: true`, so
-// neither field hides the other's edit affordance (the mutual-exclusion path in
-// cards/utils.ts is skipped while the panel manages both fields).
+// neither field hides the other's edit affordance (the mutual-exclusion path
+// inline in the update-title.ts/update-string.ts show functions is skipped while
+// the panel manages both fields).
 export function openURLEditPanel(urlCard: JQuery): void {
   const urlTitleAndShowUpdateIconWrap = urlCard.find(
     ".urlTitleAndUpdateIconWrap",

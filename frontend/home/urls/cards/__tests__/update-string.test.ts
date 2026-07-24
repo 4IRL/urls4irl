@@ -452,10 +452,6 @@ describe("desktop full toggle — Title and URL editors are mutually exclusive (
     expect(urlCard.find(".urlStringBtnUpdate").length).toBe(1);
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
     // Never both open.
-    expect(
-      urlCard.find(".updateUrlTitleWrap").hasClass("hidden") &&
-        urlCard.find(".updateUrlStringWrap").hasClass("hidden"),
-    ).toBe(false);
     const bothOpen =
       !urlCard.find(".updateUrlTitleWrap").hasClass("hidden") &&
       !urlCard.find(".updateUrlStringWrap").hasClass("hidden");
@@ -501,6 +497,25 @@ describe("desktop full toggle — Title and URL editors are mutually exclusive (
     // Title editor is NOT closed by the sibling open (mobile keep-both-open).
     expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
     expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(false);
+  });
+
+  it("(d) the title-side mutual-close is suppressed on the mobile panel path (suppressSiblingDisable) — both stay open", () => {
+    // Title-side mirror of (c): with suppressSiblingDisable the open URL-string
+    // editor is NOT closed when the title editor opens, so both remain open
+    // simultaneously. Covers the currently-unreachable title-side guard branch.
+    document.body.innerHTML = STRING_OPEN_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+      suppressSiblingDisable: true,
+    });
+
+    // String editor is NOT closed by the sibling open (mobile keep-both-open).
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
   });
 });
 
