@@ -12,11 +12,8 @@ import {
 import { emit } from "../../../lib/metrics-client.js";
 import { setOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
-import {
-  disableEditingURLTitle,
-  enableEditingURLTitle,
-  isEmptyString,
-} from "./utils.js";
+import { enableEditingURLTitle, isEmptyString } from "./utils.js";
+import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { isValidURL } from "../validation.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
@@ -110,6 +107,16 @@ export function showUpdateURLStringForm({
   urlStringBtnUpdate: JQuery;
   suppressSiblingDisable?: boolean;
 }): void {
+  // Desktop mutual exclusion: close an open URL-title editor first (restoring
+  // its option buttons and the title pencil affordance) so the two are never
+  // open at once. Skipped on the mobile panel path (suppressSiblingDisable),
+  // which deliberately keeps both fields open.
+  if (
+    !suppressSiblingDisable &&
+    !urlCard.find(".updateUrlTitleWrap").hasClass("hidden")
+  ) {
+    hideAndResetUpdateURLTitleForm({ urlCard });
+  }
   emit({ event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_STRING_EDIT);
   urlCard.find(".urlString").hideClass();
@@ -132,7 +139,6 @@ export function showUpdateURLStringForm({
   urlCard.find(".urlTagBtnCreate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
   urlCard.find(".urlBtnCopy").hideClass();
-  if (!suppressSiblingDisable) disableEditingURLTitle(urlCard);
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");

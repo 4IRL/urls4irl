@@ -18,7 +18,8 @@ import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
-import { disableEditingURLString, enableEditingURLString } from "./utils.js";
+import { enableEditingURLString } from "./utils.js";
+import { hideAndResetUpdateURLStringForm } from "./update-string.js";
 import { isMobile, isCoarsePointer } from "../../mobile.js";
 import { showFieldSavedTick } from "../field-saved-tick.js";
 import { getState, setState } from "../../../store/app-store.js";
@@ -82,6 +83,16 @@ export function showUpdateURLTitleForm({
   urlCard: JQuery;
   suppressSiblingDisable?: boolean;
 }): void {
+  // Desktop mutual exclusion: close an open URL-string editor first (restoring
+  // its option buttons, go-to icon, and morphed Cancel bar) so the two are never
+  // open at once. Skipped on the mobile panel path (suppressSiblingDisable),
+  // which deliberately keeps both fields open.
+  if (
+    !suppressSiblingDisable &&
+    !urlCard.find(".updateUrlStringWrap").hasClass("hidden")
+  ) {
+    hideAndResetUpdateURLStringForm({ urlCard });
+  }
   emit({ event: UI_EVENTS.UI_URL_TITLE_EDIT_OPEN });
   setOpenForm(HOME_FORM.URL_TITLE_EDIT);
   urlTitleAndShowUpdateIconWrap.hideClass();
@@ -102,7 +113,6 @@ export function showUpdateURLTitleForm({
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
   disableClickOnSelectedURLCardToHide(urlCard);
-  if (!suppressSiblingDisable) disableEditingURLString(urlCard);
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL

@@ -7,6 +7,7 @@ import {
   isURLStringSubmitInFlight,
   showUpdateURLStringForm,
 } from "../update-string.js";
+import { showUpdateURLTitleForm } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 import { isCoarsePointer } from "../../../mobile.js";
 import { openURLEditPanel } from "../update-url-panel.js";
@@ -131,6 +132,7 @@ const HIDE_RESET_URL_CARD_HTML = `
 const CONCURRENT_EDIT_CARD_HTML = `<div class="urlRow" utuburlid="42" urlSelected="true" filterable="true">
     <a class="urlString" href="https://example.com">https://example.com</a>
     <div class="updateUrlStringWrap hidden"><input class="urlStringUpdate" type="text" value="https://example.com" /></div>
+    <div class="updateUrlTitleWrap hidden"></div>
     <button class="urlStringBtnUpdate"></button>
     <button class="urlStringCancelBigBtnUpdate"></button>
     <button class="urlTitleBtnUpdate"></button>
@@ -297,19 +299,22 @@ describe("updateURL - 409 conflict delegates to checkForStaleDataOn409", () => {
   });
 });
 
-describe("URL string edit hides title pencil for mutual exclusivity", () => {
+describe("URL string edit keeps the title pencil visible (desktop full toggle)", () => {
+  // Desktop full-toggle model: opening the string editor no longer HIDES the
+  // title pencil — both triggers stay visible/hoverable at all times (the
+  // sibling title wrap starts hidden/closed here, so no mutual close fires).
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it("hides .urlTitleBtnUpdate while string-edit form is open and restores it on close", () => {
+  it("keeps .urlTitleBtnUpdate visible while the string-edit form is open (title pencil never vanishes)", () => {
     document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
     const urlCard = $(".urlRow");
     const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
 
     showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
 
-    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
 
     hideAndResetUpdateURLStringForm({ urlCard });
 
@@ -336,13 +341,13 @@ describe("suppressSiblingDisable parameter (consolidated panel)", () => {
     expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
   });
 
-  it("hides the sibling title pencil when suppressSiblingDisable is omitted (desktop mutual-exclusion preserved)", () => {
+  it("keeps the sibling title pencil visible when suppressSiblingDisable is omitted (desktop full toggle — pencil never vanishes)", () => {
     const urlCard = $(".urlRow");
     const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
 
     showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
 
-    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
   });
 
   it("does NOT re-enable the sibling title pencil on close when suppressSiblingDisable is true", () => {
@@ -361,6 +366,141 @@ describe("suppressSiblingDisable parameter (consolidated panel)", () => {
     hideAndResetUpdateURLStringForm({ urlCard });
 
     expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("desktop full toggle — Title and URL editors are mutually exclusive (fine pointer)", () => {
+  // Both editors present. Exactly one wrap is open per test so we can assert that
+  // opening the closed one CLOSES the open sibling. isCoarsePointer() is false
+  // (fine pointer / desktop), so suppressSiblingDisable is never set and the
+  // mutual-close path runs.
+  const STRING_OPEN_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate hidden"></button>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <a class="urlString hidden" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <button class="urlStringCancelBigBtnUpdate">Cancel</button>
+      <button class="urlBtnAccess hidden"></button>
+      <button class="urlTagBtnCreate hidden"></button>
+      <button class="urlBtnDelete hidden"></button>
+      <button class="urlBtnCopy hidden"></button>
+      <span class="goToUrlIcon hidden"></span>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  const TITLE_OPEN_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap hidden">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <a class="urlString" href="https://example.com">https://example.com</a>
+      <div class="updateUrlStringWrap hidden">
+        <input class="urlStringUpdate" type="text" value="https://example.com" />
+        <div class="urlStringUpdate-error"></div>
+      </div>
+      <button class="urlStringBtnUpdate"></button>
+      <button class="urlBtnAccess"></button>
+      <button class="urlTagBtnCreate"></button>
+      <button class="urlBtnDelete"></button>
+      <button class="urlBtnCopy"></button>
+      <span class="goToUrlIcon"></span>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Desktop / fine pointer — mutual exclusion is active.
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  it("(a) opening the Title editor closes an open URL-string editor, restores its option buttons, and leaves the edit-URL trigger visible", () => {
+    document.body.innerHTML = STRING_OPEN_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    // Precondition: string editor open, title editor closed.
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(true);
+
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
+
+    // String editor closed by the mutual-close; title editor now open.
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    // Option buttons restored (the string reset re-showed them).
+    expect(urlCard.find(".urlBtnAccess").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlBtnCopy").hasClass("hidden")).toBe(false);
+    // Edit-URL trigger is present and visible (morphed back from the Cancel bar).
+    expect(urlCard.find(".urlStringBtnUpdate").length).toBe(1);
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+    // Never both open.
+    expect(
+      urlCard.find(".updateUrlTitleWrap").hasClass("hidden") &&
+        urlCard.find(".updateUrlStringWrap").hasClass("hidden"),
+    ).toBe(false);
+    const bothOpen =
+      !urlCard.find(".updateUrlTitleWrap").hasClass("hidden") &&
+      !urlCard.find(".updateUrlStringWrap").hasClass("hidden");
+    expect(bothOpen).toBe(false);
+  });
+
+  it("(b) opening the URL-string editor closes an open Title editor and keeps the title pencil visible", () => {
+    document.body.innerHTML = TITLE_OPEN_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+
+    // Precondition: title editor open, string editor closed.
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(true);
+
+    showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
+
+    // Title editor closed by the mutual-close; string editor now open.
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(false);
+    // Title pencil restored/visible (enableEditingURLTitle ran on the title reset).
+    expect(urlCard.find(".urlTitleBtnUpdate").hasClass("hidden")).toBe(false);
+    // Never both open.
+    const bothOpen =
+      !urlCard.find(".updateUrlTitleWrap").hasClass("hidden") &&
+      !urlCard.find(".updateUrlStringWrap").hasClass("hidden");
+    expect(bothOpen).toBe(false);
+  });
+
+  it("(c) neither the string nor the title mutual-close fires on the mobile panel path (suppressSiblingDisable) — both stay open", () => {
+    // Mobile keep-both-open guarantee: with suppressSiblingDisable the sibling is
+    // NOT closed, so both editors remain open simultaneously.
+    document.body.innerHTML = TITLE_OPEN_CARD_HTML;
+    const urlCard = $(".urlRow");
+    const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+
+    showUpdateURLStringForm({
+      urlCard,
+      urlStringBtnUpdate,
+      suppressSiblingDisable: true,
+    });
+
+    // Title editor is NOT closed by the sibling open (mobile keep-both-open).
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".updateUrlStringWrap").hasClass("hidden")).toBe(false);
   });
 });
 

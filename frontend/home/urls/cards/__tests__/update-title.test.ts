@@ -197,7 +197,10 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
   });
 });
 
-describe("URL title edit hides string-edit button for mutual exclusivity", () => {
+describe("URL title edit keeps the string-edit trigger visible (desktop full toggle)", () => {
+  // Desktop full-toggle model: opening the title editor no longer HIDES the
+  // edit-URL button — both triggers stay visible at all times (the sibling
+  // string wrap starts hidden/closed here, so no mutual close fires).
   const CONCURRENT_EDIT_CARD_HTML = `
     <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
       <div class="urlTitleAndUpdateIconWrap">
@@ -207,6 +210,7 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
       <div class="updateUrlTitleWrap hidden">
         <input class="urlTitleUpdate" value="My Title" />
       </div>
+      <div class="updateUrlStringWrap hidden"></div>
       <button class="urlStringBtnUpdate"></button>
       <button class="urlStringCancelBigBtnUpdate"></button>
       <div class="tagBadge"></div>
@@ -217,7 +221,7 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
     vi.clearAllMocks();
   });
 
-  it("hides .urlStringBtnUpdate and .urlStringCancelBigBtnUpdate while title-edit form is open and restores them on close", () => {
+  it("keeps .urlStringBtnUpdate visible while the title-edit form is open (both triggers stay visible)", () => {
     document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
     const urlCard = $(".urlRow");
     const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
@@ -227,17 +231,14 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
       urlCard,
     });
 
-    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
-    expect(
-      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
-    ).toBe(true);
+    // Title editor is open, and the edit-URL button did NOT vanish.
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
 
     hideAndResetUpdateURLTitleForm({ urlCard });
 
+    // Still visible after close.
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
-    expect(
-      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
-    ).toBe(false);
   });
 });
 
@@ -251,6 +252,7 @@ describe("suppressSiblingDisable parameter (consolidated panel)", () => {
       <div class="updateUrlTitleWrap hidden">
         <input class="urlTitleUpdate" value="My Title" />
       </div>
+      <div class="updateUrlStringWrap hidden"></div>
       <button class="urlStringBtnUpdate"></button>
       <button class="urlStringCancelBigBtnUpdate"></button>
       <div class="tagBadge"></div>
@@ -278,7 +280,7 @@ describe("suppressSiblingDisable parameter (consolidated panel)", () => {
     ).toBe(false);
   });
 
-  it("hides the sibling string-edit button when suppressSiblingDisable is omitted (desktop mutual-exclusion preserved)", () => {
+  it("keeps the sibling string-edit button visible when suppressSiblingDisable is omitted (desktop full toggle — trigger never vanishes)", () => {
     const urlCard = $(".urlRow");
     const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
 
@@ -287,7 +289,7 @@ describe("suppressSiblingDisable parameter (consolidated panel)", () => {
       urlCard,
     });
 
-    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
   });
 
   it("does NOT re-enable the sibling string-edit buttons on close when suppressSiblingDisable is true", () => {
@@ -322,6 +324,7 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
       <div class="updateUrlTitleWrap hidden">
         <input class="urlTitleUpdate" value="My Title" />
       </div>
+      <div class="updateUrlStringWrap hidden"></div>
       <button class="urlStringBtnUpdate"></button>
       <div class="tagBadge"></div>
     </div>
