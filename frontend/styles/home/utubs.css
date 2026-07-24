@@ -98,11 +98,18 @@
     cursor: pointer;
 }
 
-#URLDeckHeader.editable:hover,
-#URLDeckHeader.editable:active,
-#URLDeckSubheader.editable:hover,
-#URLDeckSubheader.editable:active {
-    text-decoration: underline;
+/* Underline is a "click to edit" affordance that only makes sense on
+   hover-capable / fine-pointer devices. On touch, :active (and sticky :hover)
+   fire on a plain tap of the title/description text, wrongly implying tap-to-edit
+   when editing is done via the consolidated #utubEditPanelToggle button. Gate it
+   to hover-capable devices, matching the @media (hover: hover) pencil block below. */
+@media (hover: hover) {
+    #URLDeckHeader.editable:hover,
+    #URLDeckHeader.editable:active,
+    #URLDeckSubheader.editable:hover,
+    #URLDeckSubheader.editable:active {
+        text-decoration: underline;
+    }
 }
 
 .edit-pencil-icon {

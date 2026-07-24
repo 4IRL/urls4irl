@@ -421,6 +421,25 @@ a.urlString {
     padding-top: 20px;
 }
 
+/* Coarse-pointer (mobile) only: match the vertical gap between the URL card's
+   Title and URL-string inputs to the gap between the UTub header's name and
+   description inputs (measured ~36px). On touch, each field also reserves a
+   ~1.25rem (20px) `.field-saved-tick-slot` below its input, so the desktop
+   20px+20px inter-wrap padding pushes the visual title→string gap to ~60px —
+   24px wider than the UTub panel. Drop the title wrap's bottom padding and trim
+   the string wrap's top padding to 16px so tick-slot(20px) + 16px = ~36px,
+   matching the UTub name→description gap. Desktop (no tick slot, side-by-side
+   layout) keeps the 20/20 padding above and is untouched. */
+@media (any-pointer: coarse) {
+    .updateUrlTitleWrap {
+        padding-bottom: 0;
+    }
+
+    .updateUrlStringWrap {
+        padding-top: 16px;
+    }
+}
+
 
 @media not all and (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
