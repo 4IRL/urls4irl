@@ -352,6 +352,18 @@ a.urlString {
     width: 100%;
 }
 
+/* On coarse-pointer (mobile) devices the title input stacks on its own row (the
+   two-level restructure + flex-direction:column above), so — like the URL string
+   field — it should span the full row width rather than the 65% desktop cap
+   (desktop keeps 65% because the title shares its row with other elements). Same
+   specificity as the 65% rule above but later in source order, and coarse-scoped,
+   so only mobile widens and desktop is untouched. */
+@media (any-pointer: coarse) {
+    .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap .text-input-container {
+        width: 100%;
+    }
+}
+
 /* The multi-tag combobox spans the full card width when open (replacing the old
    single-input create form, which was width-capped at 45%). */
 .urlRow[filterable="true"][urlSelected="true"] .urlTagComboboxWrap {
