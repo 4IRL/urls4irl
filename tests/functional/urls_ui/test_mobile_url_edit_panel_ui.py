@@ -163,13 +163,14 @@ def test_url_edit_button_opens_both_title_and_string_forms_mobile(
     expect(selected_url.locator(HPL.GO_TO_URL_ICON)).to_be_hidden()
 
     # The four sibling option buttons collapse away, leaving a single full-width
-    # "Cancel" button (the repurposed edit button morphed to
-    # .urlStringCancelBigBtnUpdate) as the only control in the options row.
+    # "Close" button (the repurposed edit button morphed to
+    # .urlStringCancelBigBtnUpdate) as the only control in the options row. On a
+    # coarse pointer this control closes the whole panel, so it reads "Close".
     for sibling_btn in _SIBLING_OPTION_BTNS:
         expect(selected_url.locator(sibling_btn)).to_be_hidden()
     big_cancel = selected_url.locator(HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
     expect(big_cancel).to_be_visible()
-    expect(big_cancel).to_have_text("Cancel")
+    expect(big_cancel).to_have_text("Close")
     # The morphed button replaced .urlStringBtnUpdate while the panel is open.
     expect(selected_url.locator(HPL.BUTTON_URL_STRING_UPDATE)).to_have_count(0)
 

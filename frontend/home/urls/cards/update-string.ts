@@ -159,10 +159,10 @@ export function showUpdateURLStringForm({
   urlStringBtnUpdate
     .removeClass("urlStringBtnUpdate fourty-p-width")
     .addClass("urlStringCancelBigBtnUpdate")
-    .text("Cancel")
+    .text(isCoarsePointer() ? "Close" : "Cancel")
     .offAndOnExact("click", function () {
       if (isCoarsePointer()) {
-        // Panel is open on mobile — closing "Cancel" closes both the title and
+        // Panel is open on mobile — closing "Close" closes both the title and
         // string fields together and returns focus to the trigger button.
         closeURLEditPanel(urlCard);
       } else {

@@ -282,7 +282,7 @@ describe("URL edit panel orchestrator", () => {
       ".urlBtnCopy",
     ];
 
-    it("hides Access/Tag/Copy/Delete and morphs the edit button to a full-width Cancel while open", () => {
+    it("hides Access/Tag/Copy/Delete and morphs the edit button to a full-width Close while open", () => {
       const urlCard = mountCard(true);
 
       openURLEditPanel(urlCard);
@@ -291,9 +291,7 @@ describe("URL edit panel orchestrator", () => {
         expect(urlCard.find(selector).hasClass("hidden")).toBe(true);
         expect(urlCard.find(selector).hasClass("visible-flex")).toBe(false);
       });
-      expect(urlCard.find(".urlStringCancelBigBtnUpdate").text()).toBe(
-        "Cancel",
-      );
+      expect(urlCard.find(".urlStringCancelBigBtnUpdate").text()).toBe("Close");
       expect(urlCard.find(".urlStringBtnUpdate").length).toBe(0);
     });
 
