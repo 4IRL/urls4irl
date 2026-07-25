@@ -16,9 +16,11 @@ vi.mock("../../url-context.js", () => ({
 
 vi.mock("../update-title.js", () => ({
   hideAndResetUpdateURLTitleForm: vi.fn(),
+  clearTitleSubmitInFlight: vi.fn(),
 }));
 vi.mock("../update-string.js", () => ({
   hideAndResetUpdateURLStringForm: vi.fn(),
+  clearStringSubmitInFlight: vi.fn(),
 }));
 vi.mock("../../tags/combobox.js", () => ({
   hideAndResetTagCombobox: vi.fn(),

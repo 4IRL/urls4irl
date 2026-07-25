@@ -114,3 +114,45 @@
         color: var(--removeIconColorHover);
     }
 }
+
+/* Mobile only: the URL create-form submit/cancel (#urlSubmitBtnCreate green,
+   #urlCancelBtnCreate red) are the sole Bootstrap `.btn` buttons carrying a custom
+   `.green-clickable-wide` / `.cancelButton-wide` resting fill whose only hover
+   override (.green-clickable-wide:hover / .cancelButton-wide:hover above) is
+   DESKTOP-gated. Base `.btn` leaves `--bs-btn-hover-bg` undefined, so Bootstrap's
+   `.btn:hover` (0,2,0) resolves `background-color: var(--bs-btn-hover-bg)` to
+   transparent. On touch a tap leaves a sticky :hover/:focus and — with the desktop
+   `:hover` fill gone — that transparent `.btn:hover` out-specifies our resting fill,
+   so the button empties to a transparent ghost and sticks. Pin the fill to each
+   button's steady token; :active mirrors its desktop-hover fade for press feedback.
+   Scoped to `.btn.<class>` (0,3,0) so the non-`.btn` create submits that reuse these
+   classes (#utubSubmitBtnCreate etc., which never hit `.btn:hover`) are untouched.
+   background-color only — border stays `.btn`-transparent in both states, and the
+   keyboard focus box-shadow is left intact for a11y. Coarse-scoped; desktop
+   unchanged (mirrors the shipped urls.css URL-card button fixes). */
+@media (any-pointer: coarse) {
+    .btn.green-clickable-wide,
+    .btn.cancelButton-wide {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn.green-clickable-wide:hover,
+    .btn.green-clickable-wide:focus,
+    .btn.green-clickable-wide:focus-visible {
+        background-color: var(--splashGreen) !important;
+    }
+
+    .btn.green-clickable-wide:active {
+        background-color: var(--darkSplashGreen) !important;
+    }
+
+    .btn.cancelButton-wide:hover,
+    .btn.cancelButton-wide:focus,
+    .btn.cancelButton-wide:focus-visible {
+        background-color: var(--removeIconColor) !important;
+    }
+
+    .btn.cancelButton-wide:active {
+        background-color: var(--removeIconColorHover) !important;
+    }
+}

@@ -75,6 +75,7 @@ vi.mock("../../tags/tags.js", () => ({
 
 vi.mock("../../../mobile.js", () => ({
   isMobile: vi.fn(() => false),
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 vi.mock("../../../btns-forms.js", () => ({
@@ -128,7 +129,7 @@ describe("update-string metrics — UI_URL_STRING_EDIT_OPEN", () => {
     );
     urlCard.append(urlStringBtnUpdate);
 
-    showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
+    showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
 
     expect(emit).toHaveBeenCalledWith({
       event: UI_EVENTS.UI_URL_STRING_EDIT_OPEN,

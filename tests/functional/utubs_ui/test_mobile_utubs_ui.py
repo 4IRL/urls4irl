@@ -26,7 +26,7 @@ from tests.functional.playwright_utils import (
 )
 from tests.functional.utubs_ui.playwright_utils import (
     create_utub,
-    open_update_utub_desc_input,
+    open_utub_edit_panel_mobile,
 )
 
 pytestmark = pytest.mark.mobile_ui
@@ -94,7 +94,8 @@ def test_open_update_utub_description_hides_add_url_btn_and_search_mobile(
 ):
     """
     GIVEN a user owns a UTub with URLs on mobile (search icon visible)
-    WHEN the user opens the description edit input
+    WHEN the user opens the consolidated edit panel (the mobile entry point for
+        editing the UTub name/description now that the inline pencils are hidden)
     THEN the Add URL button and search icon are hidden, and restored on cancel
     """
     page = page_mobile_portrait
@@ -111,16 +112,24 @@ def test_open_update_utub_description_hides_add_url_btn_and_search_mobile(
     )
     wait_until_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
 
-    open_update_utub_desc_input(page=page)
+    open_utub_edit_panel_mobile(page=page)
 
     assert_not_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE
     )
     assert_not_visible_css_selector(page=page, css_selector=HPL.URL_OPEN_SEARCH_ICON)
 
-    wait_then_click_element(
+    # On mobile the per-field red × is hidden — the single panel close (header ×)
+    # is the only close control. Confirm both per-field cancels are not visible.
+    assert_not_visible_css_selector(
+        page=page, css_selector=HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE
+    )
+    assert_not_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE
     )
+
+    # Closing the panel via the header × restores the Add URL button and search icon.
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_CLOSE)
 
     wait_until_visible_css_selector(
         page=page, css_selector=HPL.BUTTON_CORNER_URL_CREATE

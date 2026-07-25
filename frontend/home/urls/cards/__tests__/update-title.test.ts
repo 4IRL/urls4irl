@@ -1,13 +1,16 @@
 import { createMockJqXHRChainable } from "../../../../__tests__/helpers/mock-jquery.js";
 import {
   hideAndResetUpdateURLTitleForm,
+  isURLTitleSubmitInFlight,
   showUpdateURLTitleForm,
   updateURLTitle,
 } from "../update-title.js";
 import { enableClickOnSelectedURLCardToHide } from "../selection.js";
-import { ajaxCall } from "../../../../lib/ajax.js";
-import { isMobile } from "../../../mobile.js";
+import { ajaxCall, is429Handled } from "../../../../lib/ajax.js";
+import { isMobile, isCoarsePointer } from "../../../mobile.js";
 import { getState, setState, AppState } from "../../../../store/app-store.js";
+import { clearOpenForm, getOpenForm } from "../../../../lib/modal-tracking.js";
+import { HOME_FORM } from "../../../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -43,6 +46,7 @@ vi.mock("../../../../store/app-store.js", () => ({
 
 vi.mock("../../../mobile.js", () => ({
   isMobile: vi.fn(() => true),
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 const $ = window.jQuery;
@@ -67,7 +71,7 @@ describe("hideAndResetUpdateURLTitleForm - selection guard", () => {
     const urlCard = $(".urlRow");
     urlCard.attr("urlSelected", "false");
 
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
 
     expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
   });
@@ -77,7 +81,7 @@ describe("hideAndResetUpdateURLTitleForm - selection guard", () => {
     const urlCard = $(".urlRow");
     urlCard.attr("urlSelected", "true");
 
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
 
     expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
   });
@@ -193,7 +197,10 @@ describe("updateURLTitleSuccess - tag ID mapping regression guard", () => {
   });
 });
 
-describe("URL title edit hides string-edit button for mutual exclusivity", () => {
+describe("URL title edit keeps the string-edit trigger visible (desktop full toggle)", () => {
+  // Desktop full-toggle model: opening the title editor no longer HIDES the
+  // edit-URL button — both triggers stay visible at all times (the sibling
+  // string wrap starts hidden/closed here, so no mutual close fires).
   const CONCURRENT_EDIT_CARD_HTML = `
     <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
       <div class="urlTitleAndUpdateIconWrap">
@@ -203,6 +210,7 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
       <div class="updateUrlTitleWrap hidden">
         <input class="urlTitleUpdate" value="My Title" />
       </div>
+      <div class="updateUrlStringWrap hidden"></div>
       <button class="urlStringBtnUpdate"></button>
       <button class="urlStringCancelBigBtnUpdate"></button>
       <div class="tagBadge"></div>
@@ -213,24 +221,97 @@ describe("URL title edit hides string-edit button for mutual exclusivity", () =>
     vi.clearAllMocks();
   });
 
-  it("hides .urlStringBtnUpdate and .urlStringCancelBigBtnUpdate while title-edit form is open and restores them on close", () => {
+  it("keeps .urlStringBtnUpdate visible while the title-edit form is open (both triggers stay visible)", () => {
     document.body.innerHTML = CONCURRENT_EDIT_CARD_HTML;
     const urlCard = $(".urlRow");
     const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
 
-    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
 
-    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
-    expect(
-      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
-    ).toBe(true);
+    // Title editor is open, and the edit-URL button did NOT vanish.
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
 
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
+
+    // Still visible after close.
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+});
+
+describe("suppressSiblingDisable parameter (consolidated panel)", () => {
+  const SUPPRESS_CARD_HTML = `
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">My Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap hidden">
+        <input class="urlTitleUpdate" value="My Title" />
+      </div>
+      <div class="updateUrlStringWrap hidden"></div>
+      <button class="urlStringBtnUpdate"></button>
+      <button class="urlStringCancelBigBtnUpdate"></button>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    document.body.innerHTML = SUPPRESS_CARD_HTML;
+  });
+
+  it("does NOT hide the sibling string-edit buttons when suppressSiblingDisable is true", () => {
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+      suppressSiblingDisable: true,
+    });
 
     expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
     expect(
       urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
     ).toBe(false);
+  });
+
+  it("keeps the sibling string-edit button visible when suppressSiblingDisable is omitted (desktop full toggle — trigger never vanishes)", () => {
+    const urlCard = $(".urlRow");
+    const urlTitleAndIcon = urlCard.find(".urlTitleAndUpdateIconWrap");
+
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+  });
+
+  it("does NOT re-enable the sibling string-edit buttons on close when suppressSiblingDisable is true", () => {
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlStringBtnUpdate").addClass("hidden");
+    urlCard.find(".urlStringCancelBigBtnUpdate").addClass("hidden");
+
+    hideAndResetUpdateURLTitleForm({ urlCard, suppressSiblingDisable: true });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(
+      urlCard.find(".urlStringCancelBigBtnUpdate").hasClass("hidden"),
+    ).toBe(true);
+  });
+
+  it("re-enables the sibling string-edit button on close when suppressSiblingDisable is omitted", () => {
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlStringBtnUpdate").addClass("hidden");
+
+    hideAndResetUpdateURLTitleForm({ urlCard });
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
   });
 });
 
@@ -243,6 +324,7 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
       <div class="updateUrlTitleWrap hidden">
         <input class="urlTitleUpdate" value="My Title" />
       </div>
+      <div class="updateUrlStringWrap hidden"></div>
       <button class="urlStringBtnUpdate"></button>
       <div class="tagBadge"></div>
     </div>
@@ -259,7 +341,10 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
 
     const focusSpy = vi.spyOn(HTMLInputElement.prototype, "focus");
 
-    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
 
     expect(focusSpy).toHaveBeenCalled();
 
@@ -274,7 +359,10 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
     vi.mocked(isMobile).mockReturnValueOnce(false);
     const triggerSpy = vi.spyOn($.fn, "trigger");
 
-    showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+    showUpdateURLTitleForm({
+      urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+      urlCard,
+    });
 
     const focusTriggerCall = triggerSpy.mock.calls.find(
       (callArgs) => callArgs[0] === "focus",
@@ -282,5 +370,248 @@ describe("showUpdateURLTitleForm - iOS soft-keyboard focus", () => {
     expect(focusTriggerCall).toBeDefined();
 
     triggerSpy.mockRestore();
+  });
+});
+
+describe("panel-aware submit gate — deselect + sibling suppression (mobile consolidated panel)", () => {
+  // Card with BOTH edit forms present. The sibling string wrap is left OPEN (no
+  // `hidden` class) so, on a coarse pointer, the panel-aware gate suppresses the
+  // sibling restore. The string-edit button starts hidden so we can assert it
+  // STAYS hidden (i.e. enableEditingURLString did not fire).
+  const PANEL_CARD_HTML = `
+    <span class="visually-hidden" id="fieldSavedAnnouncement" aria-live="polite"></span>
+    <div class="urlRow" utuburlid="1" urlSelected="true" filterable="true">
+      <div class="urlTitleAndUpdateIconWrap">
+        <span class="urlTitle">Old Title</span>
+        <button class="urlTitleBtnUpdate"></button>
+      </div>
+      <div class="updateUrlTitleWrap">
+        <input class="urlTitleUpdate" value="Old Title" />
+        <button class="urlTitleSubmitBtnUpdate"></button>
+        <div class="field-saved-tick-slot"><span class="field-saved-tick opa-0" aria-hidden="true"></span></div>
+      </div>
+      <div class="updateUrlStringWrap">
+        <input class="urlStringUpdate" value="https://example.com" />
+        <div class="field-saved-tick-slot"><span class="field-saved-tick opa-0" aria-hidden="true"></span></div>
+      </div>
+      <button class="urlStringBtnUpdate hidden"></button>
+      <button class="urlStringCancelBigBtnUpdate hidden"></button>
+      <div class="urlTitleUpdate-error"></div>
+      <div class="tagBadge"></div>
+    </div>
+  `;
+
+  beforeEach(() => {
+    document.body.innerHTML = PANEL_CARD_HTML;
+    vi.clearAllMocks();
+    // Coarse pointer = the mobile consolidated panel is in play.
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+    vi.mocked(getState).mockReturnValue({
+      urls: [
+        {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "Old Title",
+          utubUrlTagIDs: [],
+          canDelete: true,
+        },
+      ],
+    } as unknown as AppState);
+  });
+
+  it("value-unchanged skip: keeps the string-edit button hidden AND does not re-arm the card deselect handler while the sibling form is open on mobile", async () => {
+    const urlCard = $(".urlRow");
+    // Input value already equals the title text → value-unchanged skip path.
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // (a) sibling string-edit button stays hidden — enableEditingURLString suppressed.
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    // (b) card deselect handler is NOT re-armed.
+    expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
+  });
+
+  it("success path: keeps the string-edit button hidden AND does not re-arm the card deselect handler while the sibling form is open on mobile", async () => {
+    const urlCard = $(".urlRow");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    const chainable = createMockJqXHRChainable({
+      done: (cb: unknown) =>
+        (cb as (...args: unknown[]) => void)(response, "success", {
+          status: 200,
+        }),
+    });
+    vi.mocked(ajaxCall).mockReturnValue(chainable);
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(true);
+    expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
+  });
+
+  it("companion — sibling form closed: performs the normal restore (re-arms deselect, restores the string-edit button)", async () => {
+    const urlCard = $(".urlRow");
+    // Sibling string form is CLOSED → the gate collapses and normal restore runs
+    // even on a coarse pointer.
+    urlCard.find(".updateUrlStringWrap").addClass("hidden");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(urlCard.find(".urlStringBtnUpdate").hasClass("hidden")).toBe(false);
+    expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+  });
+
+  it("panel open: a real title change keeps the wrap open, shows the tick, announces, and re-registers the open form", async () => {
+    clearOpenForm();
+    const urlCard = $(".urlRow");
+    // Panel-open signal: the morphed full-width Cancel bar is present + unhidden.
+    urlCard.find(".urlStringCancelBigBtnUpdate").removeClass("hidden");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // Wrap stays open (keepOpen skipped the collapse).
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(false);
+    // Saved✓ tick is shown and the shared announcer reflects the field label.
+    expect(
+      urlCard.find(".updateUrlTitleWrap .field-saved-tick").hasClass("opa-1"),
+    ).toBe(true);
+    expect($("#fieldSavedAnnouncement").text()).toBe("URL title Saved");
+    // Open-form registry re-populated so a later pagehide doesn't misreport.
+    expect(getOpenForm()).toBe(HOME_FORM.URL_TITLE_EDIT);
+  });
+
+  it("panel open: marks the submit control aria-disabled while in flight and clears it (never native disabled) once settled", async () => {
+    clearOpenForm();
+    const urlCard = $(".urlRow");
+    urlCard.find(".urlStringCancelBigBtnUpdate").removeClass("hidden");
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    let inFlightAtRequest: boolean | undefined;
+    let ariaAtRequest: string | undefined;
+    vi.mocked(ajaxCall).mockImplementation(() => {
+      inFlightAtRequest = isURLTitleSubmitInFlight();
+      ariaAtRequest = submitBtn.attr("aria-disabled");
+      return createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      });
+    });
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // In flight when the request was issued (what the entry-point guard reads).
+    expect(inFlightAtRequest).toBe(true);
+    expect(ariaAtRequest).toBe("true");
+    // Cleared once settled; native `disabled` never used (focus preserved).
+    expect(isURLTitleSubmitInFlight()).toBe(false);
+    expect(submitBtn.attr("aria-disabled")).toBeUndefined();
+    expect(submitBtn.prop("disabled")).toBe(false);
+  });
+
+  it("fine pointer (desktop): a changed submit collapses the field with no tick", async () => {
+    // Desktop: the consolidated panel is never in play, so isCardEditPanelOpen is
+    // false and the field collapses on submit (no keep-open, no Saved✓ tick).
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+    const urlCard = $(".urlRow");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    const response = {
+      URL: {
+        utubUrlID: 1,
+        urlString: "https://example.com",
+        urlTitle: "New Title",
+        urlTags: [],
+      },
+    };
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        done: (cb: unknown) =>
+          (cb as (...args: unknown[]) => void)(response, "success", {
+            status: 200,
+          }),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    // Field collapses (wrap hidden) and no tick flashes.
+    expect(urlCard.find(".updateUrlTitleWrap").hasClass("hidden")).toBe(true);
+    expect(
+      urlCard.find(".updateUrlTitleWrap .field-saved-tick").hasClass("opa-1"),
+    ).toBe(false);
+  });
+
+  it("clears the in-flight guard on a genuine AJAX reject (.fail), never leaving a permanent aria-disabled lockout", async () => {
+    const urlCard = $(".urlRow");
+    // Panel-open signal so the in-flight guard is armed before the reject.
+    urlCard.find(".urlStringCancelBigBtnUpdate").removeClass("hidden");
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+    const urlTitleInput = urlCard.find(".urlTitleUpdate");
+    urlTitleInput.val("New Title");
+
+    // Fire the true `.fail()` reject branch and settle `.always()`. Short-circuit
+    // the downstream fail-display so it doesn't attempt an error-page navigation;
+    // the guard clear runs in `.always()` regardless.
+    vi.mocked(is429Handled).mockReturnValueOnce(true);
+    vi.mocked(ajaxCall).mockReturnValue(
+      createMockJqXHRChainable({
+        fail: (cb: unknown) =>
+          (cb as (xhr: JQuery.jqXHR) => void)({
+            status: 0,
+          } as unknown as JQuery.jqXHR),
+        always: (cb: unknown) => (cb as () => void)(),
+      }),
+    );
+
+    await updateURLTitle(urlTitleInput, urlCard, 1);
+
+    expect(isURLTitleSubmitInFlight()).toBe(false);
+    expect(submitBtn.attr("aria-disabled")).toBeUndefined();
   });
 });

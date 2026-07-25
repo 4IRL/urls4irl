@@ -1055,13 +1055,26 @@ def test_update_valid_url_with_same_url_as_url_adder(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.member_role != Member_Role.CREATOR
-        ).first()
-        utub_id = utub_member_of_not_created_utub.utub_id
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.user_id == current_user.id, Utub_Urls.utub_id == utub_id
-        ).first()
+        # Deterministically select a URL the current user added inside a UTub where
+        # they are a NON-creator member. Selecting the URL first (ordered by id)
+        # guarantees the row exists; picking an arbitrary non-creator UTub first could
+        # land on one where the current user added no URL, making ``.first()`` return
+        # None non-deterministically under pytest-randomly row ordering.
+        non_creator_utub_ids = Utub_Members.query.with_entities(
+            Utub_Members.utub_id
+        ).filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role != Member_Role.CREATOR,
+        )
+        url_in_this_utub: Utub_Urls = (
+            Utub_Urls.query.filter(
+                Utub_Urls.user_id == current_user.id,
+                Utub_Urls.utub_id.in_(non_creator_utub_ids),
+            )
+            .order_by(Utub_Urls.id)
+            .first()
+        )
+        utub_id = url_in_this_utub.utub_id
         current_title = url_in_this_utub.url_title
         current_url_string = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
@@ -1252,13 +1265,26 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.member_role != Member_Role.CREATOR
-        ).first()
-        utub_id = utub_member_of_not_created_utub.utub_id
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.user_id == current_user.id, Utub_Urls.utub_id == utub_id
-        ).first()
+        # Deterministically select a URL the current user added inside a UTub where
+        # they are a NON-creator member. Selecting the URL first (ordered by id)
+        # guarantees the row exists; picking an arbitrary non-creator UTub first could
+        # land on one where the current user added no URL, making ``.first()`` return
+        # None non-deterministically under pytest-randomly row ordering.
+        non_creator_utub_ids = Utub_Members.query.with_entities(
+            Utub_Members.utub_id
+        ).filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role != Member_Role.CREATOR,
+        )
+        url_in_this_utub: Utub_Urls = (
+            Utub_Urls.query.filter(
+                Utub_Urls.user_id == current_user.id,
+                Utub_Urls.utub_id.in_(non_creator_utub_ids),
+            )
+            .order_by(Utub_Urls.id)
+            .first()
+        )
+        utub_id = url_in_this_utub.utub_id
         current_title = url_in_this_utub.url_title
         current_url_id = url_in_this_utub.url_id
         url_in_this_utub_id = url_in_this_utub.id
@@ -1432,13 +1458,26 @@ def test_update_valid_url_with_url_with_credentials_as_url_adder(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.member_role != Member_Role.CREATOR
-        ).first()
-        utub_id = utub_member_of_not_created_utub.utub_id
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.user_id == current_user.id, Utub_Urls.utub_id == utub_id
-        ).first()
+        # Deterministically select a URL the current user added inside a UTub where
+        # they are a NON-creator member. Selecting the URL first (ordered by id)
+        # guarantees the row exists; picking an arbitrary non-creator UTub first could
+        # land on one where the current user added no URL, making ``.first()`` return
+        # None non-deterministically under pytest-randomly row ordering.
+        non_creator_utub_ids = Utub_Members.query.with_entities(
+            Utub_Members.utub_id
+        ).filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role != Member_Role.CREATOR,
+        )
+        url_in_this_utub: Utub_Urls = (
+            Utub_Urls.query.filter(
+                Utub_Urls.user_id == current_user.id,
+                Utub_Urls.utub_id.in_(non_creator_utub_ids),
+            )
+            .order_by(Utub_Urls.id)
+            .first()
+        )
+        utub_id = url_in_this_utub.utub_id
         current_title = url_in_this_utub.url_title
         current_url_id = url_in_this_utub.url_id
         url_in_this_utub_id = url_in_this_utub.id
@@ -2250,14 +2289,27 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.member_role != Member_Role.CREATOR
-        ).first()
-        utub_member_of: Utubs = utub_member_of_not_created_utub.to_utub
-        utub_id = utub_member_of_not_created_utub.utub_id
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.user_id == current_user.id, Utub_Urls.utub_id == utub_id
-        ).first()
+        # Deterministically select a URL the current user added inside a UTub where
+        # they are a NON-creator member. Selecting the URL first (ordered by id)
+        # guarantees the row exists; picking an arbitrary non-creator UTub first could
+        # land on one where the current user added no URL, making ``.first()`` return
+        # None non-deterministically under pytest-randomly row ordering.
+        non_creator_utub_ids = Utub_Members.query.with_entities(
+            Utub_Members.utub_id
+        ).filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role != Member_Role.CREATOR,
+        )
+        url_in_this_utub: Utub_Urls = (
+            Utub_Urls.query.filter(
+                Utub_Urls.user_id == current_user.id,
+                Utub_Urls.utub_id.in_(non_creator_utub_ids),
+            )
+            .order_by(Utub_Urls.id)
+            .first()
+        )
+        utub_id = url_in_this_utub.utub_id
+        utub_member_of: Utubs = Utubs.query.get(utub_id)
 
         initial_last_updated = utub_member_of.last_updated
 

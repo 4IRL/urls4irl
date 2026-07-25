@@ -272,11 +272,33 @@ def update_url_string(*, page: Page, url_string: str) -> None:
     clear_then_send_keys(locator=update_url_string_input, input_text=url_string)
 
 
-def update_url_title(*, page: Page, selected_url_row: Locator, url_title: str) -> None:
+def update_url_title(
+    *,
+    page: Page,
+    selected_url_row: Locator,
+    url_title: str,
+    is_mobile: bool = False,
+) -> None:
     """
     Streamlines actions required to update the selected URL's title.
+
+    On desktop (``is_mobile=False``) this hovers the title row to reveal the
+    title pencil and clicks it. On mobile the title pencil is hidden entirely —
+    the consolidated bottom-row edit button (``BUTTON_URL_STRING_UPDATE``) is the
+    only entry point and opens BOTH the title and string forms together — so the
+    mobile branch taps that button and waits for the title input to appear.
     """
-    open_update_url_title(page=page, selected_url_row=selected_url_row)
+    if is_mobile:
+        wait_then_click_element(
+            page=page,
+            css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}",
+        )
+        wait_until_visible_css_selector(
+            page=page,
+            css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}",
+        )
+    else:
+        open_update_url_title(page=page, selected_url_row=selected_url_row)
 
     url_title_input_field = selected_url_row.locator(HPL.INPUT_URL_TITLE_UPDATE)
     clear_then_send_keys(locator=url_title_input_field, input_text=url_title)

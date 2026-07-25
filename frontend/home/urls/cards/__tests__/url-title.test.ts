@@ -1,6 +1,14 @@
 import { APP_CONFIG } from "../../../../lib/config.js";
 import { createURLTitleAndUpdateBlock } from "../url-title.js";
-import { showUpdateURLTitleForm } from "../update-title.js";
+import {
+  showUpdateURLTitleForm,
+  updateURLTitle,
+  isURLTitleSubmitInFlight,
+} from "../update-title.js";
+import { ajaxCall } from "../../../../lib/ajax.js";
+import { isCoarsePointer } from "../../../mobile.js";
+import { createMockJqXHR } from "../../../../__tests__/helpers/mock-jquery.js";
+import { UI_EVENTS } from "../../../../types/metrics-events.js";
 
 const { mockMetricsClient } = await vi.hoisted(
   async () =>
@@ -13,6 +21,32 @@ vi.mock("../update-title.js", () => ({
   showUpdateURLTitleForm: vi.fn(),
   hideAndResetUpdateURLTitleForm: vi.fn(),
   updateURLTitle: vi.fn(),
+  isURLTitleSubmitInFlight: vi.fn(() => false),
+}));
+
+// Infra mocks for the in-flight guard test, which drives the REAL updateURLTitle
+// (pulled via vi.importActual inside the it() block) end-to-end: ajaxCall is
+// stubbed to return a real unresolved Deferred, the pre-flight stale-check GET
+// and loading-icon timer are stubbed out, and the coarse-pointer signal is
+// controllable. Harmless to the DOM-only tests above (they never reach these).
+vi.mock("../../../../lib/ajax.js", () => ({
+  ajaxCall: vi.fn(),
+  is429Handled: vi.fn(() => false),
+}));
+
+vi.mock("../get.js", () => ({
+  getUpdatedURL: vi.fn(() => Promise.resolve()),
+  handleRejectFromGetURL: vi.fn(),
+}));
+
+vi.mock("../loading.js", () => ({
+  setTimeoutAndShowURLCardLoadingIcon: vi.fn(() => 1),
+  clearTimeoutIDAndHideLoadingIcon: vi.fn(),
+}));
+
+vi.mock("../../../mobile.js", () => ({
+  isMobile: vi.fn(() => false),
+  isCoarsePointer: vi.fn(() => false),
 }));
 
 const $ = window.jQuery;
@@ -112,5 +146,114 @@ describe("urlTitleAndUpdateIconWrap - row-level click (UTub edit pattern)", () =
     wrap.trigger("click");
 
     expect(vi.mocked(showUpdateURLTitleForm)).not.toHaveBeenCalled();
+  });
+});
+
+describe("createUpdateURLTitleInput - Saved✓ tick slot structure", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("hangs .field-saved-tick-slot directly off the wrap as a SIBLING of the inner input row (not nested inside it)", () => {
+    const { urlCard } = mountTitleBlock();
+    const wrap = urlCard.find(".updateUrlTitleWrap");
+    const tickSlot = wrap.find(".field-saved-tick-slot");
+
+    expect(tickSlot.length).toBe(1);
+    // Core invariant: the tick slot's parent is the wrap itself, so it renders
+    // below the input row (guards against a future edit nesting it too deep).
+    expect(tickSlot.parent().is(wrap)).toBe(true);
+
+    // The input container moved one level deeper into the new inner row, so it
+    // is no longer a direct child of the wrap (the > width selector was updated
+    // to a descendant selector to match — Step 3 CSS fix).
+    expect(wrap.children(".text-input-container").length).toBe(0);
+    expect(wrap.find(".text-input-container").length).toBe(1);
+
+    const tick = tickSlot.find(".field-saved-tick");
+    expect(tick.length).toBe(1);
+    expect(tick.hasClass("opa-0")).toBe(true);
+    expect(tick.attr("aria-hidden")).toBe("true");
+  });
+});
+
+describe("createUpdateURLTitleInput - in-flight submit guard blocks a second overlapping submit", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(isCoarsePointer).mockReturnValue(false);
+  });
+
+  it("fires the real PATCH once and emits UI_FORM_SUBMIT once when a second submit lands while the first is genuinely in flight", async () => {
+    const { emit } = await import("../../../../lib/metrics-client.js");
+
+    // Wire the module mock to delegate to the REAL updateURLTitle + REAL
+    // isURLTitleSubmitInFlight (same module instance → same module-level flag)
+    // so the entry-point guard reads the true in-flight state a real pending
+    // PATCH sets — not a hard-coded getter return sequence. This test therefore
+    // FAILS if the getter is ever disconnected from real request state.
+    const updateTitleActual =
+      await vi.importActual<typeof import("../update-title.js")>(
+        "../update-title.js",
+      );
+    vi.mocked(updateURLTitle).mockImplementation(
+      updateTitleActual.updateURLTitle,
+    );
+    vi.mocked(isURLTitleSubmitInFlight).mockImplementation(
+      updateTitleActual.isURLTitleSubmitInFlight,
+    );
+
+    // Mobile consolidated panel open: coarse pointer + the string Cancel bar
+    // present/unhidden is the card panel-open signal updateURLTitle reads to arm
+    // the in-flight guard.
+    vi.mocked(isCoarsePointer).mockReturnValue(true);
+
+    const { urlCard } = mountTitleBlock();
+    urlCard.append('<button class="urlStringCancelBigBtnUpdate"></button>');
+    const submitBtn = urlCard.find(".urlTitleSubmitBtnUpdate");
+    // Changed value so the real updateURLTitle runs the PATCH (not the
+    // unchanged-skip early return).
+    urlCard.find(".urlTitleUpdate").val("Changed Title");
+
+    // A real, UNRESOLVED Deferred: the first PATCH stays in flight (done/fail
+    // never fire) so the real module-level guard stays set between the clicks.
+    const deferred = createMockJqXHR();
+    vi.mocked(ajaxCall).mockReturnValue(deferred);
+
+    // Two overlapping submits. The first sets the real flag (synchronously,
+    // before its awaited pre-flight); the second must read that real flag and
+    // short-circuit at the entry-point guard.
+    submitBtn.trigger("click");
+    submitBtn.trigger("click");
+
+    // Flush microtasks so the first submit's awaited pre-flight resolves and it
+    // reaches the real ajaxCall (the second click was already blocked above).
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Exactly one PATCH and one UI_FORM_SUBMIT — the second click was blocked by
+    // the real guard, which is still set while the request is pending.
+    expect(vi.mocked(ajaxCall)).toHaveBeenCalledTimes(1);
+    expect(
+      vi.mocked(emit).mock.calls.filter((call) => {
+        const args = call[0] as { event?: string };
+        return args.event === UI_EVENTS.UI_FORM_SUBMIT;
+      }),
+    ).toHaveLength(1);
+    expect(isURLTitleSubmitInFlight()).toBe(true);
+
+    // Settle the request (non-200) so the always-handler clears the real
+    // module-level guard and it does not leak into other tests/files.
+    deferred.resolve(
+      {
+        URL: {
+          utubUrlID: 1,
+          urlString: "https://example.com",
+          urlTitle: "Changed Title",
+          urlTags: [],
+        },
+      },
+      "success",
+      { status: 500 },
+    );
+    expect(isURLTitleSubmitInFlight()).toBe(false);
   });
 });

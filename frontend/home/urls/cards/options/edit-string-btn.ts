@@ -1,6 +1,8 @@
 import { $, bootstrap } from "../../../../lib/globals.js";
 import { APP_CONFIG } from "../../../../lib/config.js";
+import { isCoarsePointer } from "../../../mobile.js";
 import { showUpdateURLStringForm } from "../update-string.js";
+import { openURLEditPanel } from "../update-url-panel.js";
 
 export function createEditURLIcon(): JQuery<SVGSVGElement> {
   const WIDTH_HEIGHT_PX = "16px";
@@ -33,6 +35,27 @@ export function createEditURLIcon(): JQuery<SVGSVGElement> {
   return editURLOuterIconSvg;
 }
 
+// Bind the bottom-row edit button's click handler, branching on pointer type:
+// on a coarse (touch) pointer it opens the consolidated URL edit panel (both the
+// title and string forms); on desktop it opens only the URL string form, exactly
+// as before. Bound via offAndOnExact so the rebind in hideAndResetUpdateURLStringForm
+// (after an open/close cycle) re-arms idempotently without regressing the mobile branch.
+export function bindURLStringEditClickHandler({
+  urlCard,
+  urlStringBtnUpdate,
+}: {
+  urlCard: JQuery;
+  urlStringBtnUpdate: JQuery;
+}): void {
+  urlStringBtnUpdate.offAndOnExact("click", function () {
+    if (isCoarsePointer()) {
+      openURLEditPanel(urlCard);
+    } else {
+      showUpdateURLStringForm({ urlCard, urlStringBtnUpdate });
+    }
+  });
+}
+
 export function createEditURLBtn(urlCard: JQuery): JQuery<HTMLElement> {
   const urlStringBtnUpdate = $(document.createElement("button"));
 
@@ -49,10 +72,9 @@ export function createEditURLBtn(urlCard: JQuery): JQuery<HTMLElement> {
       "data-bs-title": `${APP_CONFIG.strings.EDIT_URL_TOOLTIP}`,
     })
     .disableTab()
-    .onExact("click", function () {
-      showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
-    })
     .append(createEditURLIcon());
+
+  bindURLStringEditClickHandler({ urlCard, urlStringBtnUpdate });
 
   bootstrap.Tooltip.getOrCreateInstance(urlStringBtnUpdate[0]);
   return urlStringBtnUpdate;

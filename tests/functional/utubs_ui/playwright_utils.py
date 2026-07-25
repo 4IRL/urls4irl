@@ -74,6 +74,25 @@ def open_update_utub_desc_input(*, page: Page) -> None:
     wait_then_click_element(page=page, css_selector=HPL.SUBHEADER_URL_DECK)
 
 
+def open_utub_edit_panel_mobile(*, page: Page) -> None:
+    """Tap the consolidated UTub edit-panel toggle (mobile/coarse-pointer flow).
+
+    On mobile the two inline name/description pencils are replaced by a single
+    toggle button in the URL-deck header. Tapping it opens BOTH the UTub name and
+    description forms together; this waits for both inputs to become visible so
+    the caller can drive either field.
+
+    Args:
+        page: Playwright Page open to a selected, owned, unlocked UTub on a
+            mobile (coarse-pointer) viewport
+    """
+    wait_then_click_element(page=page, css_selector=HPL.BUTTON_UTUB_EDIT_PANEL_TOGGLE)
+    wait_until_visible_css_selector(page=page, css_selector=HPL.INPUT_UTUB_NAME_UPDATE)
+    wait_until_visible_css_selector(
+        page=page, css_selector=HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+
+
 def update_utub_name(*, page: Page, utub_name: str) -> None:
     """Open the UTub name edit input and fill it with the given name.
 

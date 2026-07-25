@@ -283,11 +283,10 @@ a.urlString {
 }
 
 @media (any-pointer: coarse) {
-    .urlRow[filterable="true"][urlSelected="true"] .urlTitleBtnUpdate:not(.hidden) {
-        display: inline-flex;
-        align-items: center;
-    }
-
+    /* The URL title pencil is desktop-only in the consolidated-edit design — the
+       bottom-row edit button opens the panel on mobile. No mobile-reveal rule for
+       .urlTitleBtnUpdate here; the layout rules below still apply so the title row
+       fits the title + go-to-URL icon. */
     .urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
         width: 100%;
         justify-content: flex-start;
@@ -302,14 +301,67 @@ a.urlString {
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+    /* On coarse-pointer devices the consolidated URL edit panel has a single
+       close control (the morphed full-width "Cancel" bar,
+       .urlStringCancelBigBtnUpdate), so the small per-field red × on the title
+       and string forms is redundant and confusing — hide it. The green ✓
+       submit stays (each field submits independently). The big Cancel bar is a
+       different class token and is unaffected. */
+    .urlTitleCancelBtnUpdate,
+    .urlStringCancelBtnUpdate {
+        display: none;
+    }
+
+    /* The card title/string wraps carry the flex-row class from makeTextInput's
+       inputAndButtonWrap. Stack their children (the input+buttons inner row and
+       the "Saved ✓" tick slot below it) into a column on touch devices so the
+       tick lands below the input row. Desktop keeps the inherited side-by-side
+       flex-row layout untouched (Step 3 restructure relies on this).
+
+       Two things must line up for this to win, both confirmed via live
+       computed-style inspection of the built stack:
+         1. .flex-row collides with BOOTSTRAP's own `.flex-row` utility, which
+            ships `flex-direction: row !important` (bundled in navbar-shared*.css,
+            bootstrap 5.2.3). An `!important` declaration beats any non-important
+            one regardless of specificity, so a plain `flex-direction: column`
+            here — even compounded — silently loses and the wrap stays a ROW,
+            rendering the tick slot BESIDE the ✓ button instead of below the input.
+            So this rule is itself `!important`.
+         2. Among !important declarations the more specific selector wins, so we
+            compound each wrap's OWN two classes (.updateUrl*Wrap.flex-row =
+            (0,0,2,0)) to outrank bootstrap's `.flex-row` (0,0,1,0) !important.
+       Still strictly coarse-scoped, so desktop's side-by-side layout is
+       untouched. */
+    .updateUrlTitleWrap.flex-row,
+    .updateUrlStringWrap.flex-row {
+        flex-direction: column !important;
+    }
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {
+/* Descendant (space) combinator, not direct-child (>): the Step 3 two-level
+   restructure nests .text-input-container inside an inner-row wrapper, so it is
+   now a grandchild of .updateUrlTitleWrap/.updateUrlStringWrap. A > combinator
+   would silently stop matching and collapse both inputs to content-width on all
+   viewports. */
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap .text-input-container {
     width: 65%;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap>.text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap .text-input-container {
     width: 100%;
+}
+
+/* On coarse-pointer (mobile) devices the title input stacks on its own row (the
+   two-level restructure + flex-direction:column above), so — like the URL string
+   field — it should span the full row width rather than the 65% desktop cap
+   (desktop keeps 65% because the title shares its row with other elements). Same
+   specificity as the 65% rule above but later in source order, and coarse-scoped,
+   so only mobile widens and desktop is untouched. */
+@media (any-pointer: coarse) {
+    .urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap .text-input-container {
+        width: 100%;
+    }
 }
 
 /* The multi-tag combobox spans the full card width when open (replacing the old
@@ -369,6 +421,25 @@ a.urlString {
     padding-top: 20px;
 }
 
+/* Coarse-pointer (mobile) only: match the vertical gap between the URL card's
+   Title and URL-string inputs to the gap between the UTub header's name and
+   description inputs (measured ~36px). On touch, each field also reserves a
+   ~1.25rem (20px) `.field-saved-tick-slot` below its input, so the desktop
+   20px+20px inter-wrap padding pushes the visual title→string gap to ~60px —
+   24px wider than the UTub panel. Drop the title wrap's bottom padding and trim
+   the string wrap's top padding to 16px so tick-slot(20px) + 16px = ~36px,
+   matching the UTub name→description gap. Desktop (no tick slot, side-by-side
+   layout) keeps the 20/20 padding above and is untouched. */
+@media (any-pointer: coarse) {
+    .updateUrlTitleWrap {
+        padding-bottom: 0;
+    }
+
+    .updateUrlStringWrap {
+        padding-top: 16px;
+    }
+}
+
 
 @media not all and (any-pointer: coarse) {
     .urlRow[filterable="true"][urlSelected="true"] .urlTitle {
@@ -406,6 +477,67 @@ a.urlString {
     border-color: var(--addTagColor);
 }
 
+/* Mobile only: .urlBtnAccess (btn-primary), .urlBtnCopy (btn-info) and
+   .urlTagBtnCreate (btn-info) each set a custom resting background, but their
+   :hover state lives only in the desktop-gated block below. On touch devices a
+   tap leaves a sticky :hover/:focus, and with no mobile override Bootstrap's
+   .btn-primary/.btn-info :hover/:focus VARIANT shade out-specifies our resting
+   rule — so the button shifts to Bootstrap teal/blue and sticks there. Pin the
+   interaction states to each button's steady custom token; :active mirrors that
+   button's desktop :hover fade token for transient press feedback.
+   background/border/color only — the keyboard focus box-shadow is left intact
+   for a11y. Coarse-scoped so desktop is unchanged (mirrors the shipped
+   .urlStringBtnUpdate / .urlStringCancelBigBtnUpdate fixes). */
+@media (any-pointer: coarse) {
+    .urlBtnAccess,
+    .urlBtnCopy,
+    .urlTagBtnCreate {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlBtnAccess:hover,
+    .urlBtnAccess:focus,
+    .urlBtnAccess:focus-visible {
+        background-color: var(--accessLinkColor) !important;
+        border-width: 1px;
+        border-color: var(--accessLinkColor) !important;
+    }
+
+    .urlBtnAccess:active {
+        background-color: var(--accessLinkColorHover) !important;
+        border-width: 1px;
+        border-color: var(--accessLinkColorBorderHover) !important;
+    }
+
+    .urlBtnCopy:hover,
+    .urlBtnCopy:focus,
+    .urlBtnCopy:focus-visible {
+        background-color: var(--copyURLColor) !important;
+        border-width: 1px;
+        border-color: var(--copyURLColor) !important;
+    }
+
+    .urlBtnCopy:active {
+        background-color: var(--copyURLColorHover) !important;
+        border-width: 1px;
+        border-color: var(--copyURLColorBorderHover) !important;
+    }
+
+    .urlTagBtnCreate:hover,
+    .urlTagBtnCreate:focus,
+    .urlTagBtnCreate:focus-visible {
+        background-color: var(--addTagColor) !important;
+        border-width: 1px;
+        border-color: var(--addTagColor) !important;
+    }
+
+    .urlTagBtnCreate:active {
+        background-color: var(--addTagColorHover) !important;
+        border-width: 1px;
+        border-color: var(--addTagColorBorderHover) !important;
+    }
+}
+
 .urlStringBtnUpdate {
     background-color: var(--editURLColor);
     border-width: 1px;
@@ -426,8 +558,107 @@ a.urlString {
     transition: background-color 0.1s ease;
 }
 
+/* Mobile only: the morphed full-width "Cancel" button doubles as the
+   consolidated URL edit-panel close control, so it must read as a cancel (red),
+   not the desktop edit-yellow. Scoped to coarse pointers so the DESKTOP
+   single-field URL-string-edit cancel keeps its yellow. Red matches the app
+   cancel token (.cancelButton-wide / .funnel-x / .trash-fill →
+   var(--removeIconColor)); the btn-light dark text is forced white to stay
+   legible on red (mirrors how .cancelButton-wide keeps its glyph on panel bg). */
+@media (any-pointer: coarse) {
+    .urlStringCancelBigBtnUpdate {
+        background-color: var(--removeIconColor);
+        border-color: var(--removeIconColor);
+        color: white;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Touch devices apply a sticky :hover/:focus after a tap that persists
+       until the user taps elsewhere. Without these overrides Bootstrap's
+       .btn-light:hover/:focus GRAY out-specifies our resting rule and the
+       button sticks gray. Pin all interaction states to the cancel red.
+       color/background/border only — the focus box-shadow (keyboard a11y)
+       is deliberately left untouched. */
+    .urlStringCancelBigBtnUpdate:hover,
+    .urlStringCancelBigBtnUpdate:focus,
+    .urlStringCancelBigBtnUpdate:focus-visible {
+        background-color: var(--removeIconColor) !important;
+        border-color: var(--removeIconColor) !important;
+        color: white !important;
+    }
+
+    .urlStringCancelBigBtnUpdate:active {
+        background-color: var(--removeIconColorHover) !important;
+        border-color: var(--removeIconColorHover) !important;
+        color: white !important;
+    }
+}
+
+/* Mobile only: the edit pencil is a .btn btn-light whose custom yellow is set
+   only on the resting state and (desktop-only) :hover. On touch devices a tap
+   leaves a sticky :hover/:focus, and with no mobile override Bootstrap's
+   .btn-light:hover/:focus GRAY out-specifies our resting rule — so the pencil
+   goes gray and stays gray. Pin the interaction states to the edit yellow.
+   :hover/:focus/:focus-visible use SOLID --editURLColor so the sticky state
+   stays fully opaque and stable (the desktop 0.5-alpha fade would read as a
+   dim/washed swatch when it sticks); :active mirrors the desktop hover fade for
+   transient press feedback. background/border/color only — the keyboard focus
+   box-shadow is left intact for a11y. Coarse-scoped so desktop is unchanged. */
+@media (any-pointer: coarse) {
+    .urlStringBtnUpdate {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlStringBtnUpdate:hover,
+    .urlStringBtnUpdate:focus,
+    .urlStringBtnUpdate:focus-visible {
+        background-color: var(--editURLColor) !important;
+        border-width: 1px;
+        border-color: var(--editURLColor) !important;
+    }
+
+    .urlStringBtnUpdate:active {
+        background-color: var(--editURLColorHover) !important;
+        border-width: 1px;
+        border-color: var(--editURLColorBorderHover) !important;
+    }
+}
+
 .urlBtnDelete {
     color: black;
+}
+
+/* Mobile only: .urlBtnDelete (btn-danger) sets a custom black text color but
+   relies on Bootstrap's btn-danger red for its resting background — which is
+   exactly --removeIconColor (rgb 220,53,69). The desktop :hover block below only
+   re-asserts color:black and lets Bootstrap darken the bg for hover/press. On
+   touch devices a tap leaves a sticky :hover/:focus, so without an override the
+   bg sticks at Bootstrap's darker btn-danger:hover red instead of the resting
+   red. Pin hover/focus to the resting red (--removeIconColor) and keep the text
+   black; :active drops to --removeIconColorHover for transient press feedback
+   (the darker red of this same token family, matching the shipped
+   .urlStringCancelBigBtnUpdate:active). background/border/color only — the
+   keyboard focus box-shadow is left intact. Coarse-scoped; desktop unchanged. */
+@media (any-pointer: coarse) {
+    .urlBtnDelete {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlBtnDelete:hover,
+    .urlBtnDelete:focus,
+    .urlBtnDelete:focus-visible {
+        background-color: var(--removeIconColor) !important;
+        border-width: 1px;
+        border-color: var(--removeIconColor) !important;
+        color: black !important;
+    }
+
+    .urlBtnDelete:active {
+        background-color: var(--removeIconColorHover) !important;
+        border-width: 1px;
+        border-color: var(--removeIconColorHover) !important;
+        color: black !important;
+    }
 }
 
 .urlBtnAccess,

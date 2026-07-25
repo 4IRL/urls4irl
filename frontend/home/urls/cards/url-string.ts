@@ -11,7 +11,12 @@ import { clearOpenForm } from "../../../lib/modal-tracking.js";
 import { UI_EVENTS } from "../../../types/metrics-events.js";
 import { isURLSearchActive, getActiveTagCount } from "../url-context.js";
 import { accessLink } from "./access.js";
-import { updateURL, hideAndResetUpdateURLStringForm } from "./update-string.js";
+import {
+  updateURL,
+  hideAndResetUpdateURLStringForm,
+  isURLStringSubmitInFlight,
+} from "./update-string.js";
+import { isCoarsePointer } from "../../mobile.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -106,6 +111,8 @@ function createUpdateURLStringInput(
   );
 
   urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
+    // Block an overlapping submit while a kept-open submit is in flight.
+    if (isURLStringSubmitInFlight()) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.URL_STRING_EDIT,
@@ -127,12 +134,33 @@ function createUpdateURLStringInput(
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    hideAndResetUpdateURLStringForm(urlCard);
+    hideAndResetUpdateURLStringForm({ urlCard });
   });
 
-  urlStringUpdateTextInputContainer
+  // Two-level restructure (mirrors the UTub Jinja template's shape): nest the
+  // input container + submit/cancel buttons in an inner row, then hang the
+  // "Saved ✓" tick slot below as a sibling row. On touch devices the
+  // coarse-pointer CSS override (urls.css) stacks these two children as a
+  // column so the tick lands below the input; desktop keeps the inherited
+  // side-by-side flex-row layout from makeTextInput's wrap.
+  const urlStringInputInnerRow = $(document.createElement("div"))
+    .addClass("flex-row full-width")
+    .append(urlStringUpdateTextInputContainer.find(".text-input-container"))
     .append(urlStringSubmitBtnUpdate)
     .append(urlStringCancelBtnUpdate);
+
+  const urlStringSavedTickSlot = $(document.createElement("div"))
+    .addClass("field-saved-tick-slot")
+    .append(
+      $(document.createElement("span"))
+        .addClass("field-saved-tick opa-0")
+        .attr("aria-hidden", "true")
+        .html(`${APP_CONFIG.strings.FIELD_SAVED} <i class="bi bi-check"></i>`),
+    );
+
+  urlStringUpdateTextInputContainer
+    .append(urlStringInputInnerRow)
+    .append(urlStringSavedTickSlot);
 
   return urlStringUpdateTextInputContainer;
 }
@@ -148,6 +176,8 @@ function setFocusEventListenersOnUpdateURLStringInput(
       function (event: JQuery.TriggeredEvent) {
         switch (event.key) {
           case KEYS.ENTER:
+            // Block an overlapping submit while a kept-open submit is in flight.
+            if (isURLStringSubmitInFlight()) return;
             // Handle enter key pressed
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,
@@ -158,6 +188,10 @@ function setFocusEventListenersOnUpdateURLStringInput(
             updateURL(urlStringInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
+            // On mobile, defer to the panel-level document Escape handler
+            // (bound in openURLEditPanel) so both fields close together and the
+            // two mechanisms don't double-fire.
+            if (isCoarsePointer()) break;
             // Handle escape key pressed
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
@@ -165,7 +199,7 @@ function setFocusEventListenersOnUpdateURLStringInput(
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             clearOpenForm();
-            hideAndResetUpdateURLStringForm(urlCard);
+            hideAndResetUpdateURLStringForm({ urlCard });
             break;
           default:
           /* no-op */

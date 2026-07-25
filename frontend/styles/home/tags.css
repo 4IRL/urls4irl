@@ -442,6 +442,37 @@
     }
 }
 
+/* Mobile only: in Cancel mode the Add-Tag button carries both `.urlTagBtnCreate`
+   (btn-info) and `.urlTagCancelBigBtnCreate.cancel`. Its cancel look (transparent
+   fill, red border/text) is set only at rest + a DESKTOP-gated :hover above. On
+   touch a tap leaves a sticky :hover/:focus, and the SHIPPED coarse pin for the
+   Add-Tag button in urls.css (`.urlTagBtnCreate:hover{background:var(--addTagColor)
+   !important}`) applies on coarse pointers too — so in Cancel mode the sticky tap
+   flips the button to btn-info blue and it sticks. Re-pin the interaction states
+   to the cancel look; the `.cancel` compound selector (0,3,0) out-specifies that
+   0,2,0 !important rule. :active mirrors the desktop-hover fill for press feedback.
+   background/border/color only — the keyboard focus box-shadow is left intact for
+   a11y. Coarse-scoped so desktop is unchanged (mirrors the urls.css fixes). */
+@media (any-pointer: coarse) {
+    .urlTagCancelBigBtnCreate.cancel {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .urlTagCancelBigBtnCreate.cancel:hover,
+    .urlTagCancelBigBtnCreate.cancel:focus,
+    .urlTagCancelBigBtnCreate.cancel:focus-visible {
+        background: transparent !important;
+        border-color: var(--removeIconColor) !important;
+        color: var(--removeIconColor) !important;
+    }
+
+    .urlTagCancelBigBtnCreate.cancel:active {
+        background: var(--removeIconColor) !important;
+        border-color: var(--removeIconColor) !important;
+        color: var(--panelBackgroundColor) !important;
+    }
+}
+
 /* Coarse pointer (touch): 44px-min dropdown option rows for comfortable tapping.
    The chip remove button is intentionally NOT enlarged here — a 44px target
    would inflate the whole chip far beyond the compact .tagBadge size; it keeps

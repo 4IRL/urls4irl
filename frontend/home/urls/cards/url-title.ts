@@ -8,7 +8,9 @@ import {
   updateURLTitle,
   showUpdateURLTitleForm,
   hideAndResetUpdateURLTitleForm,
+  isURLTitleSubmitInFlight,
 } from "./update-title.js";
+import { isCoarsePointer } from "../../mobile.js";
 import {
   makeTextInput,
   makeSubmitButton,
@@ -48,9 +50,15 @@ export function createURLTitleAndUpdateBlock(
     .onExact(
       "click.showUpdateURLTitle",
       function (event: JQuery.TriggeredEvent) {
+        // On mobile the consolidated panel (opened via .urlStringBtnUpdate) is
+        // the only entry point — tapping the title row is a no-op there.
+        if (isCoarsePointer()) return;
         if (urlCard.attr("urlSelected") !== "true") return;
         const wrapEl = $(event.currentTarget) as JQuery;
-        showUpdateURLTitleForm(wrapEl, urlCard);
+        showUpdateURLTitleForm({
+          urlTitleAndShowUpdateIconWrap: wrapEl,
+          urlCard,
+        });
       },
     );
   // Parent container with both show update icon and url title, allows hover to show the update icon
@@ -102,7 +110,10 @@ function createShowUpdateURLTitleIcon(urlCard: JQuery): JQuery<HTMLElement> {
           const urlTitleAndIcon = $(event.target).closest(
             ".urlTitleAndUpdateIconWrap",
           );
-          showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
+          showUpdateURLTitleForm({
+            urlTitleAndShowUpdateIconWrap: urlTitleAndIcon,
+            urlCard,
+          });
         }
       },
     );
@@ -137,6 +148,8 @@ function createUpdateURLTitleInput(
         if ((event.originalEvent as KeyboardEvent).repeat) return;
         switch (event.key) {
           case KEYS.ENTER:
+            // Block an overlapping submit while a kept-open submit is in flight.
+            if (isURLTitleSubmitInFlight()) return;
             emit({
               event: UI_EVENTS.UI_FORM_SUBMIT,
               form: HOME_FORM.URL_TITLE_EDIT,
@@ -146,13 +159,17 @@ function createUpdateURLTitleInput(
             updateURLTitle(urlTitleTextInput, urlCard, utubID);
             break;
           case KEYS.ESCAPE:
+            // On mobile, defer to the panel-level document Escape handler
+            // (bound in openURLEditPanel) so both fields close together and the
+            // two mechanisms don't double-fire.
+            if (isCoarsePointer()) break;
             emit({
               event: UI_EVENTS.UI_FORM_CANCEL,
               form: HOME_FORM.URL_TITLE_EDIT,
               trigger: FORM_CANCEL_TRIGGER.ESCAPE_KEY,
             });
             clearOpenForm();
-            hideAndResetUpdateURLTitleForm(urlCard);
+            hideAndResetUpdateURLTitleForm({ urlCard });
             break;
           default:
           /* no-op */
@@ -171,6 +188,8 @@ function createUpdateURLTitleInput(
   );
 
   urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function () {
+    // Block an overlapping submit while a kept-open submit is in flight.
+    if (isURLTitleSubmitInFlight()) return;
     emit({
       event: UI_EVENTS.UI_FORM_SUBMIT,
       form: HOME_FORM.URL_TITLE_EDIT,
@@ -192,12 +211,33 @@ function createUpdateURLTitleInput(
       trigger: FORM_CANCEL_TRIGGER.CANCEL_BUTTON,
     });
     clearOpenForm();
-    hideAndResetUpdateURLTitleForm(urlCard);
+    hideAndResetUpdateURLTitleForm({ urlCard });
   });
 
-  urlTitleUpdateInputContainer
+  // Two-level restructure (mirrors the UTub Jinja template's shape): nest the
+  // input container + submit/cancel buttons in an inner row, then hang the
+  // "Saved ✓" tick slot below as a sibling row. On touch devices the
+  // coarse-pointer CSS override (urls.css) stacks these two children as a
+  // column so the tick lands below the input; desktop keeps the inherited
+  // side-by-side flex-row layout from makeTextInput's wrap.
+  const urlTitleInputInnerRow = $(document.createElement("div"))
+    .addClass("flex-row full-width")
+    .append(urlTitleUpdateInputContainer.find(".text-input-container"))
     .append(urlTitleSubmitBtnUpdate)
     .append(urlTitleCancelBtnUpdate);
+
+  const urlTitleSavedTickSlot = $(document.createElement("div"))
+    .addClass("field-saved-tick-slot")
+    .append(
+      $(document.createElement("span"))
+        .addClass("field-saved-tick opa-0")
+        .attr("aria-hidden", "true")
+        .html(`${APP_CONFIG.strings.FIELD_SAVED} <i class="bi bi-check"></i>`),
+    );
+
+  urlTitleUpdateInputContainer
+    .append(urlTitleInputInnerRow)
+    .append(urlTitleSavedTickSlot);
 
   return urlTitleUpdateInputContainer;
 }

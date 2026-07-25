@@ -182,6 +182,19 @@ class HomePageLocators(GenericPageLocator):
     PENCIL_ICON_NAME = "#UTubNameUpdateWrap .edit-pencil-icon"
     PENCIL_ICON_DESCRIPTION = "#UTubDescriptionSubheaderWrap .edit-pencil-icon"
 
+    # Consolidated mobile UTub edit-panel controls (coarse-pointer only). One
+    # `<button>` in the URL-deck header toolbar opens a panel showing both the
+    # UTub name and description forms; the paired close button dismisses it.
+    BUTTON_UTUB_EDIT_PANEL_TOGGLE = "#utubEditPanelToggle"
+    BUTTON_UTUB_EDIT_PANEL_CLOSE = "#utubEditPanelClose"
+
+    # Transient "Saved ✓" acknowledgment shown next to a kept-open field after a
+    # per-field save on the mobile consolidated panel, plus the shared polite
+    # aria-live announcer.
+    SAVED_TICK_NAME = "#utubNameSavedTick"
+    SAVED_TICK_DESCRIPTION = "#utubDescriptionSavedTick"
+    FIELD_SAVED_ANNOUNCEMENT = "#fieldSavedAnnouncement"
+
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#noURLsSubheader"
@@ -255,11 +268,15 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
     UPDATE_URL_STRING_WRAP = ".updateUrlStringWrap"
+    UPDATE_URL_TITLE_WRAP = ".updateUrlTitleWrap"
     BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
     INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
     BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
     BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"
+    # Mobile form-model "Saved ✓" ticks (card-scoped by wrap since cards repeat)
+    SAVED_TICK_URL_TITLE = ".updateUrlTitleWrap .field-saved-tick"
+    SAVED_TICK_URL_STRING = ".updateUrlStringWrap .field-saved-tick"
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
 
