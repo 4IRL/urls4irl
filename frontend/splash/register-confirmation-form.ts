@@ -1,5 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { is429Handled } from "../lib/ajax.js";
 import { showSplashModalAlertBanner, switchModal } from "./init.js";
 import { debug } from "../lib/debug.js";
 
@@ -75,10 +76,28 @@ function handleResendRegistrationEmail(
     showSplashModalAlertBanner($modal, response.message, "success");
   });
 
-  resendRequest.fail(() => {
+  resendRequest.fail((xhr: JQuery.jqXHR) => {
+    // The resend endpoint is rate-limited, so a 429 lands here. The global
+    // $.ajaxPrefilter already owns that case (emits the metric and replaces
+    // the page on an HTML 429); bail before touching this now-stale DOM.
+    if (is429Handled(xhr)) return;
+
     resetResendLink($modal);
-    // Only reachable on a network/timeout error. Re-show the same confirmation
-    // text stashed at open-time (no new bridged string).
-    showSplashModalAlertBanner($modal, confirmMessage, "success");
+
+    if (xhr.status === 0) {
+      // Genuine network/timeout blip: no HTTP response was received. Re-show
+      // the same opaque confirmation text stashed at open-time (no new bridged
+      // string) so the enumeration-neutral UX is preserved.
+      showSplashModalAlertBanner($modal, confirmMessage, "success");
+      return;
+    }
+
+    // A real HTTP error reached us (e.g. 400 stale CSRF, 500). Surface an error
+    // state instead of masquerading the failure as success.
+    showSplashModalAlertBanner(
+      $modal,
+      "Unable to process request...",
+      "danger",
+    );
   });
 }

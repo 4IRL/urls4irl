@@ -109,7 +109,7 @@ describe("register-confirmation-form", () => {
     );
   });
 
-  it("re-shows the stashed confirmation text on a network/timeout failure", () => {
+  it("re-shows the stashed confirmation text on a network/timeout failure (status 0)", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
@@ -126,6 +126,53 @@ describe("register-confirmation-form", () => {
       $modal,
       "Check your email",
       "success",
+    );
+  });
+
+  it("bails without touching the banner when the 429 handler already fired", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterConfirmationModal");
+    $modal
+      .data("registerEmail", "user@test.com")
+      .data("confirmMessage", "Check your email");
+    initRegisterConfirmationModal($modal);
+    const $link = $modal.find("#ResendRegistrationEmail");
+    $link.trigger("click");
+
+    // The global $.ajaxPrefilter owns the 429 case (page replacement); the
+    // handler must early-return and not write to the now-stale DOM.
+    mockDeferred.reject(
+      { status: 429, _429Handled: true },
+      "error",
+      "Too Many Requests",
+    );
+
+    expect(showSplashModalAlertBanner).not.toHaveBeenCalled();
+    // Link is left in its in-flight state — resetResendLink is not reached.
+    expect($link.hasClass("disabled")).toBe(true);
+  });
+
+  it("surfaces an error banner (not success) on a generic HTTP failure", () => {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterConfirmationModal");
+    $modal
+      .data("registerEmail", "user@test.com")
+      .data("confirmMessage", "Check your email");
+    initRegisterConfirmationModal($modal);
+    $modal.find("#ResendRegistrationEmail").trigger("click");
+
+    // A real HTTP error (e.g. 500, or 400 stale CSRF) must NOT be rendered as
+    // a success banner.
+    mockDeferred.reject({ status: 500 }, "error", "Server Error");
+
+    expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
+      $modal,
+      "Unable to process request...",
+      "danger",
     );
   });
 
