@@ -549,15 +549,15 @@ def test_schemas_with_existing_status_not_double_wrapped(runner, tmp_path):
     assert (
         "200" in register_responses
     ), "POST /register missing 200 response — key guard failed"
-    register_201_schema = register_responses["200"]["content"]["application/json"][
+    register_200_schema = register_responses["200"]["content"]["application/json"][
         "schema"
     ]
-    assert "$ref" in register_201_schema, (
+    assert "$ref" in register_200_schema, (
         "Expected direct $ref for RegisterResponseSchema (has status already), "
-        f"got: {json.dumps(register_201_schema)}"
+        f"got: {json.dumps(register_200_schema)}"
     )
     assert (
-        "allOf" not in register_201_schema
+        "allOf" not in register_200_schema
     ), "RegisterResponseSchema should not be wrapped with allOf"
 
     # ErrorResponse at 400 on POST /register
@@ -899,15 +899,15 @@ def test_register_response_status_has_literal_enum(runner, tmp_path):
     register_responses = spec["paths"]["/register"]["post"]["responses"]
     assert "200" in register_responses, "POST /register missing 200 response"
 
-    register_201_schema = register_responses["200"]["content"]["application/json"][
+    register_200_schema = register_responses["200"]["content"]["application/json"][
         "schema"
     ]
-    assert "$ref" in register_201_schema, (
+    assert "$ref" in register_200_schema, (
         f"Expected direct $ref for RegisterResponseSchema, "
-        f"got: {json.dumps(register_201_schema)}"
+        f"got: {json.dumps(register_200_schema)}"
     )
 
-    component_name = register_201_schema["$ref"].split("/")[-1]
+    component_name = register_200_schema["$ref"].split("/")[-1]
     component = spec["components"]["schemas"][component_name]
     status_prop = component["properties"]["status"]
 
