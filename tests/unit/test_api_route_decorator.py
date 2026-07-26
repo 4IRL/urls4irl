@@ -19,6 +19,7 @@ from backend.schemas.requests.splash import (
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
+    ResendRegistrationEmailRequest,
     ResetPasswordRequest,
 )
 from backend.schemas.requests.tags import AddTagRequest
@@ -314,7 +315,7 @@ def test_api_route_preserves_functools_wraps_attributes(minimal_app: Flask):
     assert callable(no_body_view_fn.__wrapped__)
 
 
-# All 24 migrated routes with their expected request schemas, response schemas,
+# All 25 migrated routes with their expected request schemas, response schemas,
 # tags, descriptions, and status_codes.
 ALL_API_ROUTES = [
     # Splash routes
@@ -367,6 +368,14 @@ ALL_API_ROUTES = [
         [OPEN_API.AUTH],
         "Reset a user password with a valid token",
         {200: ResetPasswordResponseSchema, 400: ErrorResponse, 404: ErrorResponse},
+    ),
+    (
+        "splash.resend_registration_email",
+        ResendRegistrationEmailRequest,
+        StatusMessageResponseSchema,
+        [OPEN_API.AUTH],
+        "Resend the account-confirmation email for a pending registration (opaque)",
+        {200: StatusMessageResponseSchema, 400: ErrorResponse, 429: ErrorResponse},
     ),
     # UTub routes
     (
