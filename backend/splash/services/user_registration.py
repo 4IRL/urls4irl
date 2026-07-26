@@ -1,13 +1,16 @@
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.app_logger import error_log, safe_add_log, warning_log
+from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.schemas.errors import build_field_error_response
 from backend.splash.constants import RegisterErrorCodes
-from backend.splash.services.validate_email import _send_account_confirmation_email
+from backend.splash.services.validate_email import (
+    _guard_and_send_confirmation_email,
+    _send_confirmation_email_and_log,
+)
 from backend.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM
 from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 
@@ -79,8 +82,8 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
         # the send in that case — still returning the identical opaque success so
         # the outcome stays indistinguishable rather than raising a 500.
         if email_user.email_confirm is not None:
-            _send_confirmation_email_if_not_rate_limited(
-                email_user, email_user.email_confirm
+            _guard_and_send_confirmation_email(
+                email_user, email_user.email_confirm, "registration confirmation"
             )
         return _opaque_register_success()
 
@@ -97,49 +100,15 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
 
     safe_add_log(f"User={new_user.id} successfully registered but not email validated")
 
-    _send_confirmation_email_and_log(new_user, new_user.email_confirm)
+    _send_confirmation_email_and_log(
+        new_user, new_user.email_confirm, "registration confirmation"
+    )
     return _opaque_register_success()
 
 
 def _opaque_register_success() -> FlaskResponse:
     """The single, uniform opaque success returned on every email-axis outcome."""
     return APIResponse(message=MEMBER_SUCCESS.CONFIRM_EMAIL_SENT).to_response()
-
-
-def _send_confirmation_email_if_not_rate_limited(
-    user: Users, email_validation: Email_Validations
-) -> None:
-    """Resend the confirmation email to a pending account, gated by the same
-    per-account attempt guard `send_validation_email_to_user()` uses.
-
-    A skipped (rate-limited) send is deliberately indistinguishable from a
-    completed one — the caller always returns the uniform opaque success.
-    """
-    if email_validation.has_too_many_email_attempts():
-        return
-
-    has_more_attempts = email_validation.increment_attempt()
-    db.session.commit()
-
-    if not has_more_attempts:
-        return
-
-    _send_confirmation_email_and_log(user, email_validation)
-
-
-def _send_confirmation_email_and_log(
-    user: Users, email_validation: Email_Validations
-) -> None:
-    """Send the confirmation email and, on a Mailjet server failure (>= 500),
-    log only — never surface a distinguishing error response (that would re-leak
-    the taken-vs-new signal). Mirrors `/forgot-password`'s logging pattern.
-    """
-    email_send_result = _send_account_confirmation_email(user, email_validation)
-    if email_send_result.status_code >= 500:
-        error_log(
-            f"(4) Email failed to send: registration confirmation for "
-            f"User={user.id}"
-        )
 
 
 def _build_new_user(username: str, email: str, password: str) -> Users:

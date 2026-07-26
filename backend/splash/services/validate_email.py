@@ -95,6 +95,53 @@ def _send_account_confirmation_email(
     )
 
 
+def _guard_and_send_confirmation_email(
+    user: Users, email_validation: Email_Validations, log_context: str
+) -> None:
+    """Gate the confirmation-email send behind the per-account attempt guard,
+    then send and log-only on a Mailjet server failure (>= 500).
+
+    Single source of truth for the rate-limited confirmation-email send used by
+    register branch 3 (email taken, unvalidated) and the resend endpoint. A
+    skipped (rate-limited) send is deliberately indistinguishable from a
+    completed one — every caller returns the same uniform opaque success — and a
+    >= 500 Mailjet failure is logged rather than surfaced so the taken-vs-new
+    enumeration signal never re-leaks.
+
+    Args:
+        user (Users): The account the confirmation email is for
+        email_validation (Email_Validations): That account's Email_Validations row
+        log_context (str): Phrase identifying the caller in the >= 500 error log
+    """
+    if email_validation.has_too_many_email_attempts():
+        return
+
+    has_more_attempts = email_validation.increment_attempt()
+    db.session.commit()
+
+    if not has_more_attempts:
+        return
+
+    _send_confirmation_email_and_log(user, email_validation, log_context)
+
+
+def _send_confirmation_email_and_log(
+    user: Users, email_validation: Email_Validations, log_context: str
+) -> None:
+    """Send the confirmation email and, on a Mailjet server failure (>= 500),
+    log only — never surface a distinguishing error response (that would re-leak
+    the taken-vs-new signal). Mirrors `/forgot-password`'s logging pattern.
+
+    Args:
+        user (Users): The account the confirmation email is for
+        email_validation (Email_Validations): That account's Email_Validations row
+        log_context (str): Phrase identifying the caller in the >= 500 error log
+    """
+    email_send_result = _send_account_confirmation_email(user, email_validation)
+    if email_send_result.status_code >= 500:
+        error_log(f"(4) Email failed to send: {log_context} for User={user.id}")
+
+
 def send_resend_registration_email(email: str) -> FlaskResponse:
     """Resend the account-confirmation email for a pending registration, opaquely.
 
@@ -115,16 +162,9 @@ def send_resend_registration_email(email: str) -> FlaskResponse:
         return _build_opaque_resend_success()
 
     email_validation: Email_Validations = user.email_confirm
-    if not email_validation.has_too_many_email_attempts():
-        has_more_attempts = email_validation.increment_attempt()
-        db.session.commit()
-        if has_more_attempts:
-            email_send_result = _send_account_confirmation_email(user, email_validation)
-            if email_send_result.status_code >= 500:
-                error_log(
-                    f"(4) Email failed to send: registration confirmation resend "
-                    f"for User={user.id}"
-                )
+    _guard_and_send_confirmation_email(
+        user, email_validation, "registration confirmation resend"
+    )
 
     return _build_opaque_resend_success()
 
