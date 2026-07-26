@@ -46,12 +46,12 @@ from backend.schemas.users import (
     ResetPasswordResponseSchema,
 )
 from backend.splash.constants import (
-    SPLASH_AUTH_RATE_LIMIT,
     ForgotPasswordErrorCodes,
     LoginErrorCodes,
     OAuthLinkErrorCodes,
     RegisterErrorCodes,
     ResetPasswordErrorCodes,
+    SPLASH_AUTH_RATE_LIMIT,
 )
 from backend.splash.services.forgot_password import (
     send_forgot_password_email_to_user,

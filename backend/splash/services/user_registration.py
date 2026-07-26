@@ -3,9 +3,9 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import error_log, safe_add_log, warning_log
 from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
-from backend.schemas.errors import build_field_error_response
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
+from backend.schemas.errors import build_field_error_response
 from backend.splash.constants import RegisterErrorCodes
 from backend.splash.services.validate_email import _send_account_confirmation_email
 from backend.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM
