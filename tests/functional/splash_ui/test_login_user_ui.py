@@ -1,6 +1,7 @@
 import pytest
 from playwright.sync_api import Page, expect
 
+from backend.api_common.request_errors import min_length_message
 from backend.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.splash_form_strs import LOGIN_TITLE
@@ -22,6 +23,7 @@ from tests.functional.playwright_utils import (
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
+    wait_then_get_elements,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -363,18 +365,22 @@ def test_login_with_empty_fields(page: Page):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN user attempts login with an empty login field form
-    THEN login modal shows the generic form-level banner (all INVALID_FORM_INPUT
-        failures now collapse into one banner instead of field-scoped feedback)
+    THEN login modal shows field required errors
+
+    Empty-field submissions are Pydantic schema-validation failures carrying a
+    populated `errors` dict with zero enumeration risk (they never touch the
+    DB), so field-scoped guidance is restored rather than collapsed into the
+    generic anti-enumeration banner.
     """
     login_user_ui(page=page, username="", password="")
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    splash_modal_alert_elem = wait_then_get_element(
-        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
+    error_elems = wait_then_get_elements(
+        page=page, css_selector=SPL.LOGIN_INVALID_FEEDBACK
     )
-    expect(splash_modal_alert_elem).to_be_visible()
-    expect(splash_modal_alert_elem).to_have_text(USER_FAILURE.UNABLE_TO_LOGIN)
-    assert page.locator(SPL.LOGIN_INVALID_FEEDBACK).count() == 0
+    assert len(error_elems) == 2
+    expect(error_elems[0]).to_have_text(min_length_message(3))
+    expect(error_elems[1]).to_have_text(USER_FAILURE.FIELD_REQUIRED_STR)
 
 
 def test_login_user_invalid_csrf(page: Page):
