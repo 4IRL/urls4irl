@@ -33,6 +33,10 @@ services:
       - REDIS_PASSWORD
       - NOTIFICATION_URL
       - CONTACT_US_URL
+      - GOOGLE_OAUTH_CLIENT_ID
+      - GOOGLE_OAUTH_CLIENT_SECRET
+      - GITHUB_OAUTH_CLIENT_ID
+      - GITHUB_OAUTH_CLIENT_SECRET
     volumes:
       - app_logs:/app/volume
 
@@ -157,6 +161,14 @@ secrets:
     file: ./secrets/NOTIFICATION_URL
   CONTACT_US_URL:
     file: ./secrets/CONTACT_US_URL
+  GOOGLE_OAUTH_CLIENT_ID:
+    file: ./secrets/GOOGLE_OAUTH_CLIENT_ID
+  GOOGLE_OAUTH_CLIENT_SECRET:
+    file: ./secrets/GOOGLE_OAUTH_CLIENT_SECRET
+  GITHUB_OAUTH_CLIENT_ID:
+    file: ./secrets/GITHUB_OAUTH_CLIENT_ID
+  GITHUB_OAUTH_CLIENT_SECRET:
+    file: ./secrets/GITHUB_OAUTH_CLIENT_SECRET
   ACCESS_KEY:
     file: ./secrets/ACCESS_KEY
   SECRET_ACCESS_KEY:

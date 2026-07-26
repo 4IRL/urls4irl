@@ -109,6 +109,10 @@ jobs:
               echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "${{ secrets.NOTIFICATION_URL }}" > ./secrets/NOTIFICATION_URL;
               echo "${{ secrets.CONTACT_US_URL }}" > ./secrets/CONTACT_US_URL;
+              echo "${{ secrets.PROD_GOOGLE_OAUTH_CLIENT_ID }}" > ./secrets/GOOGLE_OAUTH_CLIENT_ID;
+              echo "${{ secrets.PROD_GOOGLE_OAUTH_CLIENT_SECRET }}" > ./secrets/GOOGLE_OAUTH_CLIENT_SECRET;
+              echo "${{ secrets.PROD_GITHUB_OAUTH_CLIENT_ID }}" > ./secrets/GITHUB_OAUTH_CLIENT_ID;
+              echo "${{ secrets.PROD_GITHUB_OAUTH_CLIENT_SECRET }}" > ./secrets/GITHUB_OAUTH_CLIENT_SECRET;
               echo "${{ secrets.CF_R2_ACCESS_KEY }}" > ./secrets/ACCESS_KEY;
               echo "${{ secrets.CF_R2_SECRET_KEY }}" > ./secrets/SECRET_ACCESS_KEY;
               echo "${{ secrets.CF_R2_ENDPOINT }}" > ./secrets/R2_ENDPOINT;
