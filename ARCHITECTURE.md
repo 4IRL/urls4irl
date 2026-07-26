@@ -339,6 +339,18 @@ Organized by domain with per-feature conftest files:
 
 Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`. See `backend/config.py` for the full list and `backend/utils/strings/config_strs.py` for env var name constants.
 
+### How secrets reach each environment (deploy-rendered, not hand-managed)
+
+`local` reads secrets from a developer-maintained `.env`. **`dev` and `prod` are different: their secrets are rendered at deploy time by the GitHub Actions workflows from repo secrets — the host files are transient (`rm -rf ./secrets/` runs after each deploy), so editing them on the box does nothing.**
+
+- **dev** (`.github/workflows/dev-deploy.yml`): heredocs `~/.env` from `DEV_*` repo secrets and scps it to the host; `docker/compose.dev.yaml` `web` loads it via `env_file: .env`.
+- **prod** (`.github/workflows/prod-deploy.yml`): writes each `./secrets/<NAME>` from its repo secret, then `docker compose up` mounts them as `/run/secrets/*`; `docker/startup-flask.sh` `load_secrets()` exports those files as env vars for `config.py`.
+
+**Checklist — adding any new secret/env var. All three must land together or the value silently never reaches the app (and, for a prod docker secret, a missing writer breaks `docker compose up`):**
+1. **Consumer** — read it in `backend/config.py` (+ name constant in `config_strs.py`); wire it into the relevant `docker/compose.*.yaml` (`env_file` for dev/local, `secrets:` for prod).
+2. **Producer** — add it to the deploy workflow: a line in the `dev-deploy.yml` `.env` heredoc (from a `DEV_*` secret) and/or an `echo "${{ secrets.PROD_* }}" > ./secrets/<NAME>` line in `prod-deploy.yml`.
+3. **Source** — create the actual GitHub Actions repo secret(s). Environment-specific values use `DEV_`/`PROD_` prefixes (e.g. `DEV_DB_USER`/`PROD_DB_USER`); values shared across envs are unprefixed (e.g. `MAILJET_API_KEY`).
+
 ## String Constants
 
 All user-facing strings, model field names, and config keys are centralized in `backend/utils/strings/` and `backend/utils/constants.py`.
