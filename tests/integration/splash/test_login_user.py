@@ -230,10 +230,10 @@ def test_login_failure_oauth_only_account_records_metric_with_reason(
     """
     GIVEN an email-validated, password-less user with one linked OAuth identity
     WHEN they POST to "/login" attempting a form (password) login
-    THEN the request returns the anti-enumeration bad-password contract (HTTP 400,
-        INVALID_PASSWORD on the password field, errorCode INVALID_FORM_INPUT) so
-        the account cannot be fingerprinted AND exactly one LOGIN_FAILURE counter
-        key is written with reason="oauth_only".
+    THEN the request returns the generic anti-enumeration credential contract
+        (HTTP 400, form-level INVALID_CREDENTIALS message, no field-scoped errors
+        key, errorCode INVALID_FORM_INPUT) so the account cannot be fingerprinted
+        AND exactly one LOGIN_FAILURE counter key is written with reason="oauth_only".
     """
     client, csrf_token_str = load_login_page
     user = _make_oauth_only_user(metrics_enabled_app)
@@ -257,7 +257,8 @@ def test_login_failure_oauth_only_account_records_metric_with_reason(
 
     assert response.status_code == 400
     response_data = response.json
-    assert response_data[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_data[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
+    assert STD_JSON.ERRORS not in response_data
     assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.INVALID_FORM_INPUT
 
     counter_keys = find_counter_keys(provide_metrics_redis, EventName.LOGIN_FAILURE)
@@ -300,6 +301,42 @@ def test_login_oauth_only_response_identical_to_wrong_password(
     assert oauth_only_response.get_data() == wrong_password_response.get_data()
 
 
+def test_login_unknown_user_response_identical_to_wrong_password(
+    register_first_user, load_login_page
+):
+    """
+    GIVEN a registered password user and an unknown (never-registered) username
+    WHEN each POSTs "/login" with a wrong password
+    THEN both responses are byte-identical (same HTTP status, same JSON body) so
+        an attacker cannot distinguish an unknown username from a wrong password
+        from the login response — the established anti-fingerprint contract.
+    """
+    client, csrf_token_str = load_login_page
+    normal_user = deepcopy(valid_user_1)
+    unknown_user = deepcopy(invalid_user_1)
+
+    wrong_password_response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: normal_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "definitely-wrong-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    unknown_user_response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: unknown_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "any-password",
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    assert unknown_user_response.status_code == wrong_password_response.status_code
+    assert unknown_user_response.get_data() == wrong_password_response.get_data()
+
+
 def test_login_oauth_only_unverified_returns_invalid_password_not_unvalidated(
     load_login_page, app
 ):
@@ -307,9 +344,9 @@ def test_login_oauth_only_unverified_returns_invalid_password_not_unvalidated(
     GIVEN an UNVERIFIED (email_validated=False), password-less OAuth-only user
     WHEN they POST to "/login" attempting a form (password) login
     THEN the `password is None` short-circuit fires BEFORE the email-validation
-        check, so the response is the anti-enumeration bad-password contract
-        (HTTP 400, INVALID_PASSWORD on the password field, INVALID_FORM_INPUT)
-        and NOT the email-unvalidated contract (HTTP 401,
+        check, so the response is the generic anti-enumeration credential contract
+        (HTTP 400, form-level INVALID_CREDENTIALS message, no field-scoped errors
+        key, INVALID_FORM_INPUT) and NOT the email-unvalidated contract (HTTP 401,
         ACCOUNT_NOT_EMAIL_VALIDATED). This proves the guard ordering.
     """
     client, csrf_token_str = load_login_page
@@ -334,7 +371,8 @@ def test_login_oauth_only_unverified_returns_invalid_password_not_unvalidated(
     # The bad-password short-circuit wins: HTTP 400, not the 401 unvalidated path.
     assert response.status_code == 400
     response_data = response.json
-    assert response_data[STD_JSON.ERRORS]["password"] == [USER_FAILURE.INVALID_PASSWORD]
+    assert response_data[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
+    assert STD_JSON.ERRORS not in response_data
     assert response_data[STD_JSON.ERROR_CODE] == LoginErrorCodes.INVALID_FORM_INPUT
 
     # The email-validation error must be absent, confirming that check never ran.
@@ -352,19 +390,16 @@ def test_login_unregistered_user(load_login_page):
     """
     GIVEN an unregistered user
     WHEN "/login" is POST'd with filled in correctly with form data
-    THEN ensure login does not occur, and correct form error is given in the JSON response
+    THEN ensure login does not occur, and the generic anti-enumeration credential
+        error is returned (HTTP 400, form-level INVALID_CREDENTIALS message, no
+        field-scoped errors key) so an unknown username cannot be distinguished
+        from a wrong password.
 
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
-        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
-            [
-                {
-                    LOGIN_FORM.USERNAME: "That user does not exist. Note this is case sensitive."
-                }
-            ]
+        STD_JSON.MESSAGE: USER_FAILURE.INVALID_CREDENTIALS,
+        STD_JSON.ERROR_CODE: Integer representing the failure code, INVALID_FORM_INPUT
     }
     """
     client, csrf_token_str = load_login_page
@@ -383,15 +418,15 @@ def test_login_unregistered_user(load_login_page):
     # Ensure json response from server is valid
     login_user_response_json = response.json
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
+    assert (
+        login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
+    )
     assert (
         int(login_user_response_json[STD_JSON.ERROR_CODE])
         == LoginErrorCodes.INVALID_FORM_INPUT
     )
-    assert (
-        USER_FAILURE.USER_NOT_EXIST
-        in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
-    )
+    # The generic credential response carries no field-scoped errors dict.
+    assert STD_JSON.ERRORS not in login_user_response_json
 
     assert response.status_code == 400
 
@@ -404,19 +439,16 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     """
     GIVEN a registered user
     WHEN "/login" is POST'd with filled in correctly with form data, and an invalid password for this user
-    THEN ensure login does not occur, and correct form error is given in the JSON resonse
+    THEN ensure login does not occur, and the generic anti-enumeration credential
+        error is returned (HTTP 400, form-level INVALID_CREDENTIALS message, no
+        field-scoped errors key) so a wrong password cannot be distinguished from
+        an unknown username.
 
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
-        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
-            [
-                {
-                    LOGIN_FORM.PASSWORD: "Invalid password."
-                }
-            ]
+        STD_JSON.MESSAGE: USER_FAILURE.INVALID_CREDENTIALS,
+        STD_JSON.ERROR_CODE: Integer representing the failure code, INVALID_FORM_INPUT
     }
     """
     client, csrf_token_str = load_login_page
@@ -435,15 +467,15 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     # Ensure json response from server is valid
     login_user_response_json = response.json
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
+    assert (
+        login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.INVALID_CREDENTIALS
+    )
     assert (
         int(login_user_response_json[STD_JSON.ERROR_CODE])
         == LoginErrorCodes.INVALID_FORM_INPUT
     )
-    assert (
-        USER_FAILURE.INVALID_PASSWORD
-        in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
-    )
+    # The generic credential response carries no field-scoped errors dict.
+    assert STD_JSON.ERRORS not in login_user_response_json
 
     assert response.status_code == 400
 

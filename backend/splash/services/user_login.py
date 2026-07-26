@@ -8,10 +8,7 @@ from backend.extensions.metrics.writer import record_event
 from backend.metrics.events import EventName
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
-from backend.schemas.errors import (
-    build_field_error_response,
-    build_message_error_response,
-)
+from backend.schemas.errors import build_message_error_response
 from backend.schemas.users import LoginRedirectResponseSchema
 from backend.splash.constants import (
     LOGIN_FAILURE_REASON_BAD_PASSWORD,
@@ -37,10 +34,15 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_UNKNOWN_USER},
         )
-        return build_field_error_response(
-            message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
+        # Spend the same bcrypt time a real password check costs so the no-user
+        # path is indistinguishable from a wrong-password attempt by wall-clock
+        # latency as well as by bytes. The result is intentionally discarded —
+        # only the elapsed time matters.
+        check_password_hash(DUMMY_HASH, password)
+        return build_message_error_response(
+            message=USER_FAILURE.INVALID_CREDENTIALS,
             error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
         )
 
     if user.password is None:
@@ -50,17 +52,16 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             dimensions={"reason": LOGIN_FAILURE_REASON_OAUTH_ONLY},
         )
         # Return a response byte-identical to a genuine wrong-password attempt so
-        # an attacker cannot fingerprint password-less (OAuth-only) accounts. The
-        # OAuth steer lives in the shared INVALID_PASSWORD message every failed
-        # login sees; only the internal metrics reason distinguishes this case.
-        # Spend the same bcrypt time the wrong-password branch does so the two
-        # branches are indistinguishable by wall-clock latency as well as bytes.
-        # The result is intentionally discarded — only the elapsed time matters.
+        # an attacker cannot fingerprint password-less (OAuth-only) accounts.
+        # Only the internal metrics reason distinguishes this case. Spend the
+        # same bcrypt time the wrong-password branch does so the two branches are
+        # indistinguishable by wall-clock latency as well as bytes. The result is
+        # intentionally discarded — only the elapsed time matters.
         check_password_hash(DUMMY_HASH, password)
-        return build_field_error_response(
-            message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
+        return build_message_error_response(
+            message=USER_FAILURE.INVALID_CREDENTIALS,
             error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
         )
 
     if not user.is_password_correct(password):
@@ -69,10 +70,10 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             EventName.LOGIN_FAILURE,
             dimensions={"reason": LOGIN_FAILURE_REASON_BAD_PASSWORD},
         )
-        return build_field_error_response(
-            message=USER_FAILURE.UNABLE_TO_LOGIN,
-            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
+        return build_message_error_response(
+            message=USER_FAILURE.INVALID_CREDENTIALS,
             error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+            status_code=400,
         )
 
     if user.is_suspended:

@@ -197,7 +197,9 @@ describe("login-form double-submit guard", () => {
     expect($modal.find("#submit").attr("aria-busy")).toBe("true");
   });
 
-  it("re-enables #submit on a 400 errorCode=2 failure", () => {
+  it("shows the generic credential banner and re-enables #submit on a 400 errorCode=2 failure", async () => {
+    const { showSplashModalAlertBanner, handleImproperFormErrors } =
+      await import("../init.js");
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
 
@@ -211,8 +213,7 @@ describe("login-form double-submit guard", () => {
         status: 400,
         responseJSON: {
           errorCode: 2,
-          message: "Invalid",
-          errors: { password: ["Invalid"] },
+          message: "Invalid username or password.",
         },
         getResponseHeader: vi.fn(),
       },
@@ -220,8 +221,14 @@ describe("login-form double-submit guard", () => {
       "Bad Request",
     );
 
-    // handleImproperFormErrors is mocked (no-op DOM) in this test file;
-    // only the removeAttr calls are under test here.
+    // The credential-failure path now surfaces one generic form-level banner
+    // (anti-enumeration) and must NOT route through the field-error helper.
+    expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
+      $modal,
+      "Invalid username or password.",
+      "danger",
+    );
+    expect(handleImproperFormErrors).not.toHaveBeenCalled();
     expect($modal.find("#submit").attr("disabled")).toBeUndefined();
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
   });

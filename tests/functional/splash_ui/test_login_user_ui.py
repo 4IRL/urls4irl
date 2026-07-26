@@ -1,7 +1,6 @@
 import pytest
 from playwright.sync_api import Page, expect
 
-from backend.api_common.request_errors import min_length_message
 from backend.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.splash_form_strs import LOGIN_TITLE
@@ -23,7 +22,6 @@ from tests.functional.playwright_utils import (
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
-    wait_then_get_elements,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
@@ -253,7 +251,8 @@ def test_login_with_nonexistent_user(page: Page, create_test_users):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN user attempts login with nonexistent username
-    THEN U4I will respond with error message
+    THEN U4I responds with the generic form-level anti-enumeration banner (no
+        field-scoped error), indistinguishable from a wrong-password failure
     """
     login_user_ui(
         page=page,
@@ -262,11 +261,12 @@ def test_login_with_nonexistent_user(page: Page, create_test_users):
     )
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elems = wait_then_get_elements(
-        page=page, css_selector=SPL.LOGIN_INVALID_FEEDBACK
+    splash_modal_alert_elem = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
     )
-    assert len(error_elems) == 1
-    expect(error_elems[0]).to_have_text(USER_FAILURE.USER_NOT_EXIST)
+    expect(splash_modal_alert_elem).to_be_visible()
+    expect(splash_modal_alert_elem).to_have_text(USER_FAILURE.INVALID_CREDENTIALS)
+    assert page.locator(SPL.LOGIN_INVALID_FEEDBACK).count() == 0
 
 
 def test_login_with_invalid_password(page: Page, create_test_users):
@@ -275,7 +275,8 @@ def test_login_with_invalid_password(page: Page, create_test_users):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN user attempts login with existing user and invalid password
-    THEN U4I will respond with error message
+    THEN U4I responds with the generic form-level anti-enumeration banner (no
+        field-scoped error), indistinguishable from an unknown-username failure
     """
     login_user_ui(
         page=page,
@@ -284,11 +285,12 @@ def test_login_with_invalid_password(page: Page, create_test_users):
     )
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elems = wait_then_get_elements(
-        page=page, css_selector=SPL.LOGIN_INVALID_FEEDBACK
+    splash_modal_alert_elem = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
     )
-    assert len(error_elems) == 1
-    expect(error_elems[0]).to_have_text(USER_FAILURE.INVALID_PASSWORD)
+    expect(splash_modal_alert_elem).to_be_visible()
+    expect(splash_modal_alert_elem).to_have_text(USER_FAILURE.INVALID_CREDENTIALS)
+    assert page.locator(SPL.LOGIN_INVALID_FEEDBACK).count() == 0
 
 
 def test_invalid_username_error_dismissed_on_modal_reload(page: Page):
@@ -298,7 +300,7 @@ def test_invalid_username_error_dismissed_on_modal_reload(page: Page):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN user attempts login with nonexistent username, then closes and reopens modal
-    THEN login modal no longer shows nonexistent user error
+    THEN login modal no longer shows the generic credential error banner
     """
     login_user_ui(
         page=page,
@@ -307,20 +309,20 @@ def test_invalid_username_error_dismissed_on_modal_reload(page: Page):
     )
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elems = wait_then_get_elements(
-        page=page, css_selector=SPL.LOGIN_INVALID_FEEDBACK
+    splash_modal_alert_elem = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
     )
-    assert len(error_elems) == 1
+    expect(splash_modal_alert_elem).to_be_visible()
 
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_X_MODAL_DISMISS)
 
-    # Reopen modal — errors should be cleared
+    # Reopen modal — the banner should be hidden again
     login_user_ui(
         page=page,
         username=UTS.TEST_PASSWORD_1 + "a",
         password=UTS.TEST_PASSWORD_1 + "a",
     )
-    assert page.locator(SPL.LOGIN_INVALID_FEEDBACK).count() == 0
+    expect(page.locator(SPL.LOGIN_MODAL_ALERT)).to_be_hidden()
 
 
 def test_invalid_password_error_dismissed_on_modal_reload(page: Page):
@@ -330,7 +332,7 @@ def test_invalid_password_error_dismissed_on_modal_reload(page: Page):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN user attempts login with invalid password, then closes and reopens modal
-    THEN login modal no longer shows invalid password error
+    THEN login modal no longer shows the generic credential error banner
     """
     login_user_ui(
         page=page,
@@ -339,20 +341,20 @@ def test_invalid_password_error_dismissed_on_modal_reload(page: Page):
     )
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elems = wait_then_get_elements(
-        page=page, css_selector=SPL.LOGIN_INVALID_FEEDBACK
+    splash_modal_alert_elem = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
     )
-    assert len(error_elems) == 1
+    expect(splash_modal_alert_elem).to_be_visible()
 
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_X_MODAL_DISMISS)
 
-    # Reopen modal — errors should be cleared
+    # Reopen modal — the banner should be hidden again
     login_user_ui(
         page=page,
         username=UTS.TEST_PASSWORD_1 + "a",
         password=UTS.TEST_PASSWORD_1 + "a",
     )
-    assert page.locator(SPL.LOGIN_INVALID_FEEDBACK).count() == 0
+    expect(page.locator(SPL.LOGIN_MODAL_ALERT)).to_be_hidden()
 
 
 def test_login_with_empty_fields(page: Page):
@@ -361,17 +363,18 @@ def test_login_with_empty_fields(page: Page):
 
     GIVEN a fresh load of the U4I Splash page
     WHEN user attempts login with an empty login field form
-    THEN login modal shows field required errors
+    THEN login modal shows the generic form-level banner (all INVALID_FORM_INPUT
+        failures now collapse into one banner instead of field-scoped feedback)
     """
     login_user_ui(page=page, username="", password="")
     wait_then_click_element(page=page, css_selector=SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elems = wait_then_get_elements(
-        page=page, css_selector=SPL.LOGIN_INVALID_FEEDBACK
+    splash_modal_alert_elem = wait_then_get_element(
+        page=page, css_selector=SPL.LOGIN_MODAL_ALERT
     )
-    assert len(error_elems) == 2
-    expect(error_elems[0]).to_have_text(min_length_message(3))
-    expect(error_elems[1]).to_have_text(USER_FAILURE.FIELD_REQUIRED_STR)
+    expect(splash_modal_alert_elem).to_be_visible()
+    expect(splash_modal_alert_elem).to_have_text(USER_FAILURE.UNABLE_TO_LOGIN)
+    assert page.locator(SPL.LOGIN_INVALID_FEEDBACK).count() == 0
 
 
 def test_login_user_invalid_csrf(page: Page):

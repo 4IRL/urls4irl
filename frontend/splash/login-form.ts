@@ -8,7 +8,6 @@ import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
   resetModalFormState,
-  handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
   switchModal,
 } from "./init.js";
@@ -151,7 +150,7 @@ function handleLoginFailure(
         break;
       }
       case 2: {
-        handleImproperFormErrors($modal, errorJson);
+        showSplashModalAlertBanner($modal, errorJson.message, "danger");
         $modal.find("#submit").removeAttr("disabled").removeAttr("aria-busy");
         break;
       }
