@@ -35,6 +35,14 @@ on:
         required: true
       CONTACT_US_URL:
         required: true
+      DEV_GOOGLE_OAUTH_CLIENT_ID:
+        required: false
+      DEV_GOOGLE_OAUTH_CLIENT_SECRET:
+        required: false
+      DEV_GITHUB_OAUTH_CLIENT_ID:
+        required: false
+      DEV_GITHUB_OAUTH_CLIENT_SECRET:
+        required: false
 
 jobs:
     DevDeploy:

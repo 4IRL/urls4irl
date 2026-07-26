@@ -38,6 +38,10 @@ jobs:
             BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
             NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL_INF }}
             CONTACT_US_URL: ${{ secrets.CONTACT_US_URL_INF }}
+            DEV_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.DEV_GOOGLE_OAUTH_CLIENT_ID }}
+            DEV_GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.DEV_GOOGLE_OAUTH_CLIENT_SECRET }}
+            DEV_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.DEV_GITHUB_OAUTH_CLIENT_ID }}
+            DEV_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.DEV_GITHUB_OAUTH_CLIENT_SECRET }}
 
     deploy-dev-2:
         if: github.event.pull_request.merged == true
@@ -60,3 +64,7 @@ jobs:
             BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
             NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL_INF }}
             CONTACT_US_URL: ${{ secrets.CONTACT_US_URL_INF }}
+            DEV_GOOGLE_OAUTH_CLIENT_ID: ${{ secrets.DEV_GOOGLE_OAUTH_CLIENT_ID }}
+            DEV_GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.DEV_GOOGLE_OAUTH_CLIENT_SECRET }}
+            DEV_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.DEV_GITHUB_OAUTH_CLIENT_ID }}
+            DEV_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.DEV_GITHUB_OAUTH_CLIENT_SECRET }}

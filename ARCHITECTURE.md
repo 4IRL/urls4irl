@@ -343,13 +343,18 @@ Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `MA
 
 `local` reads secrets from a developer-maintained `.env`. **`dev` and `prod` are different: their secrets are rendered at deploy time by the GitHub Actions workflows from repo secrets — the host files are transient (`rm -rf ./secrets/` runs after each deploy), so editing them on the box does nothing.**
 
-- **dev** (`.github/workflows/dev-deploy.yml`): heredocs `~/.env` from `DEV_*` repo secrets and scps it to the host; `docker/compose.dev.yaml` `web` loads it via `env_file: .env`.
-- **prod** (`.github/workflows/prod-deploy.yml`): writes each `./secrets/<NAME>` from its repo secret, then `docker compose up` mounts them as `/run/secrets/*`; `docker/startup-flask.sh` `load_secrets()` exports those files as env vars for `config.py`.
+The deploy workflows are **reusable workflows** (`on: workflow_call`), so a secret is only visible inside them if it is *both* declared in the callee's `workflow_call.secrets` block *and* explicitly forwarded by the caller — there is no automatic repo-secret inheritance:
 
-**Checklist — adding any new secret/env var. All three must land together or the value silently never reaches the app (and, for a prod docker secret, a missing writer breaks `docker compose up`):**
+- **dev**: caller `dev-build-and-deploy.yml` (fires on PR-merge-to-`main`) fans out to **two** boxes — `deploy-dev` → `dev-deploy.yml` (`DEV_SSH_HOST`) and `deploy-dev-2` → `dev-deploy-2.yml` (`DEV_SSH_HOST_2`). Each callee heredocs `~/.env` from its passed-in `DEV_*` secrets; `docker/compose.dev.yaml` `web` loads it via `env_file: .env`. **Any dev secret must be wired in all three files** (both callees + both forwards in the caller), or the two boxes drift.
+- **prod**: caller `prod-build-and-deploy.yml` (fires on **release published**) → `deploy-prod` → `prod-deploy.yml` (`PROD_SSH_HOST`). The callee writes each `./secrets/<NAME>` from its passed-in secret, then `docker compose up` mounts them as `/run/secrets/*`; `docker/startup-flask.sh` `load_secrets()` exports those files as env vars for `config.py`.
+
+Note the caller may **remap** repo-secret names to workflow inputs (e.g. input `MAILJET_API_KEY` ← repo secret `MAILJET_API_KEY_INF`; input `SECRET_KEY` ← `PROD_SECRET_KEY`).
+
+**Checklist — adding any new secret/env var. All four must land together or the value silently never reaches the app (and, for a prod docker secret, a missing writer breaks `docker compose up`):**
 1. **Consumer** — read it in `backend/config.py` (+ name constant in `config_strs.py`); wire it into the relevant `docker/compose.*.yaml` (`env_file` for dev/local, `secrets:` for prod).
-2. **Producer** — add it to the deploy workflow: a line in the `dev-deploy.yml` `.env` heredoc (from a `DEV_*` secret) and/or an `echo "${{ secrets.PROD_* }}" > ./secrets/<NAME>` line in `prod-deploy.yml`.
-3. **Source** — create the actual GitHub Actions repo secret(s). Environment-specific values use `DEV_`/`PROD_` prefixes (e.g. `DEV_DB_USER`/`PROD_DB_USER`); values shared across envs are unprefixed (e.g. `MAILJET_API_KEY`).
+2. **Producer (callee)** — render it in the reusable deploy workflow: a line in the `dev-deploy.yml` **and** `dev-deploy-2.yml` `.env` heredocs (from a `DEV_*` secret) and/or an `echo "${{ secrets.PROD_* }}" > ./secrets/<NAME>` line in `prod-deploy.yml`.
+3. **Plumbing (callee `workflow_call.secrets` + caller forward)** — declare the secret in each callee's `on.workflow_call.secrets` block, and forward it in the caller (`dev-build-and-deploy.yml` for **both** `deploy-dev` and `deploy-dev-2`; `prod-build-and-deploy.yml` for `deploy-prod`). Skipping this is silent: the run step's `${{ secrets.X }}` just evaluates to empty.
+4. **Source** — create the actual GitHub Actions repo secret(s). Environment-specific values use `DEV_`/`PROD_` prefixes (e.g. `DEV_DB_USER`/`PROD_DB_USER`); values shared across envs are unprefixed (e.g. `MAILJET_API_KEY`).
 
 ## String Constants
 
