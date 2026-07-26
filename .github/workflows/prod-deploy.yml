@@ -47,6 +47,14 @@ on:
         required: true
       CF_R2_ENDPOINT:
         required: true
+      PROD_GOOGLE_OAUTH_CLIENT_ID:
+        required: false
+      PROD_GOOGLE_OAUTH_CLIENT_SECRET:
+        required: false
+      PROD_GITHUB_OAUTH_CLIENT_ID:
+        required: false
+      PROD_GITHUB_OAUTH_CLIENT_SECRET:
+        required: false
 
 jobs:
     ProdDeploy:

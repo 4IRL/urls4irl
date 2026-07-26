@@ -35,6 +35,14 @@ on:
         required: true
       CONTACT_US_URL:
         required: true
+      DEV_GOOGLE_OAUTH_CLIENT_ID:
+        required: false
+      DEV_GOOGLE_OAUTH_CLIENT_SECRET:
+        required: false
+      DEV_GITHUB_OAUTH_CLIENT_ID:
+        required: false
+      DEV_GITHUB_OAUTH_CLIENT_SECRET:
+        required: false
 
 jobs:
     DevDeploy:
@@ -88,6 +96,10 @@ jobs:
               POSTGRES_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
               SECRET_KEY=$KEY
               NOTIFICATION_URL="false"
+              GOOGLE_OAUTH_CLIENT_ID=${{ secrets.DEV_GOOGLE_OAUTH_CLIENT_ID }}
+              GOOGLE_OAUTH_CLIENT_SECRET=${{ secrets.DEV_GOOGLE_OAUTH_CLIENT_SECRET }}
+              GITHUB_OAUTH_CLIENT_ID=${{ secrets.DEV_GITHUB_OAUTH_CLIENT_ID }}
+              GITHUB_OAUTH_CLIENT_SECRET=${{ secrets.DEV_GITHUB_OAUTH_CLIENT_SECRET }}
               EOF
 
           - name: SCP Environment File
