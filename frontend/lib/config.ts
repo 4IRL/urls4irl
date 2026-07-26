@@ -9,6 +9,7 @@ export type RouteId =
   | "register"
   | "confirmEmailAfterRegister"
   | "sendValidationEmail"
+  | "resendRegistrationEmail"
   | "forgotPassword"
   | "oauthGoogleLogin"
   | "oauthGithubLogin"
@@ -28,6 +29,7 @@ export interface AppRoutes {
   register: string;
   confirmEmailAfterRegister: string;
   sendValidationEmail: string;
+  resendRegistrationEmail: string;
   forgotPassword: string;
   oauthGoogleLogin: string;
   oauthGithubLogin: string;
@@ -117,6 +119,7 @@ export const APP_CONFIG: AppConfig = Object.freeze({
     register: rawConfig.routes.register,
     confirmEmailAfterRegister: rawConfig.routes.confirmEmailAfterRegister,
     sendValidationEmail: rawConfig.routes.sendValidationEmail,
+    resendRegistrationEmail: rawConfig.routes.resendRegistrationEmail,
     forgotPassword: rawConfig.routes.forgotPassword,
     oauthGoogleLogin: rawConfig.routes.oauthGoogleLogin,
     oauthGithubLogin: rawConfig.routes.oauthGithubLogin,

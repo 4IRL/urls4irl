@@ -348,6 +348,7 @@ class SplashPageLocators(GenericPageLocator):
     # Per-form modal locators
     LOGIN_MODAL = "#LoginModal"
     REGISTER_MODAL = "#RegisterModal"
+    REGISTER_CONFIRMATION_MODAL = "#RegisterConfirmationModal"
     FORGOT_PASSWORD_MODAL = "#ForgotPasswordModal"
     EMAIL_VALIDATION_MODAL = "#EmailValidationModal"
 
@@ -405,6 +406,14 @@ class SplashPageLocators(GenericPageLocator):
     # Register
     BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
     HEADER_VALIDATE_EMAIL = ".validate-email-title"
+
+    # Post-register confirmation modal
+    REGISTER_CONFIRMATION_MODAL_ALERT = (
+        f"{REGISTER_CONFIRMATION_MODAL} #SplashModalAlertBanner"
+    )
+    RESEND_REGISTRATION_EMAIL_LINK = "#ResendRegistrationEmail"
+    BACK_TO_LOGIN_FROM_CONFIRMATION = "#BackToLoginFromConfirmation"
+    HEADER_REGISTER_CONFIRMATION = "#RegisterConfirmationModalLabel"
 
     # Login
     BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"

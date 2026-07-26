@@ -82,6 +82,13 @@ class ForgotPasswordRequest(BaseModel):
     )
 
 
+class ResendRegistrationEmailRequest(BaseModel):
+    email: EmailStr = Field(
+        description="Email address of the pending registration to resend confirmation for",
+        examples=["user@example.com"],
+    )
+
+
 class GoogleOAuthCallbackQuerySchema(BaseModel):
     code: str | None = None
     state: str | None = None

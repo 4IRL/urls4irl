@@ -1,9 +1,13 @@
 import threading
 from unittest import mock
+from urllib.parse import urlparse
+
 from flask import url_for
 from flask_login import current_user
 import pytest
+from requests import Response
 
+from backend.extensions.email_sender.email_sender import EmailSender
 from backend.metrics.events import EventName
 from backend.models.utils import VerifyTokenResponse
 from backend.schemas.users import EmailValidationResponseSchema
@@ -23,12 +27,35 @@ from backend.utils.strings.email_validation_strs import (
     EMAILS,
     EMAILS_FAILURE,
 )
-from backend.utils.strings.user_strs import USER_FAILURE
+from backend.utils.strings.user_strs import MEMBER_SUCCESS, USER_FAILURE
 from tests.integration.splash.conftest import register_json
 from tests.integration.system.metrics_helpers import count_counter_keys
 from tests.integration.utils import assert_response_conforms_to_schema
 
 pytestmark = pytest.mark.splash
+
+
+def _register_and_login_unvalidated(client, csrf_token, user_data=valid_user_1):
+    """Register then log in an unvalidated user so /send-validation-email has a
+    session.
+
+    Register no longer logs the user in (opacity change); login logs an
+    unvalidated user in — before returning its 401 — precisely so they can
+    request a validation-email resend.
+    """
+    client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=register_json(user_data),
+        headers={"X-CSRFToken": csrf_token},
+    )
+    client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
+            REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
 
 
 def test_registered_user_is_not_email_validated(app, load_register_page):
@@ -45,8 +72,8 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
         headers={"X-CSRFToken": csrf_token},
     )
 
-    # Assert user gets JSON 201 response
-    assert response.status_code == 201
+    # Register returns the opaque success (200) without logging the user in
+    assert response.status_code == 200
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
     with app.app_context():
@@ -70,13 +97,21 @@ def test_registered_not_email_validated_user_access_home_page(load_register_page
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Correctly responds with JSON 201
-    assert response.status_code == 201
+    # Correctly responds with the opaque success (200)
+    assert response.status_code == 200
     assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+
+    # Register no longer logs the user in, so no session exists post-register
+    assert current_user.is_authenticated is False
 
     response = client.get(url_for(ROUTES.UTUBS.HOME), follow_redirects=True)
     assert response.history[0].status_code == 302
-    assert response.history[0].location == url_for(ROUTES.SPLASH.SPLASH_PAGE)
+    # An anonymous user hitting /home is bounced by login_required back to the
+    # splash page (with a ?next= back-link) rather than the in-session
+    # email-unvalidated guard that used to fire when register logged them in.
+    assert urlparse(response.history[0].location).path == url_for(
+        ROUTES.SPLASH.SPLASH_PAGE
+    )
     assert response.status_code == 200
     assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
 
@@ -85,15 +120,14 @@ def test_registered_not_email_validated_tries_registering_again(
     register_first_user_without_email_validation, load_register_page
 ):
     """
-    GIVEN a registered user (but not logged in user) without a validated email, starting a new session
-    WHEN they try to register with their previously used email
-    THEN ensure proper JSON response with form errors is returned
+    GIVEN a registered user (but not logged in) without a validated email, starting a new session
+    WHEN they try to register again with their previously used email
+    THEN the response is the uniform opaque success (no email-not-validated leak)
 
     Proper JSON response is as follows:
     {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 1 for registered but not email validated
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: MEMBER_SUCCESS.CONFIRM_EMAIL_SENT,
     }
     """
     registered_user, _ = register_first_user_without_email_validation
@@ -105,19 +139,15 @@ def test_registered_not_email_validated_tries_registering_again(
         headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Ensure json response from server is valid
+    # Ensure json response from server is the opaque success
     register_user_response_json = response.json
-    assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert (
         register_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
-    )
-    assert (
-        int(register_user_response_json[STD_JSON.ERROR_CODE])
-        == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
+        == MEMBER_SUCCESS.CONFIRM_EMAIL_SENT
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 200
 
 
 def test_registered_not_email_validated_tries_logging_in(
@@ -183,12 +213,22 @@ def test_valid_token_generated_on_user_register(
 
 
 @mock.patch("backend.extensions.notifications.notifications.requests.post")
-def test_token_validates_user(mock_request_post, app, load_register_page):
+@mock.patch.object(EmailSender, "send_account_email_confirmation")
+def test_token_validates_user(
+    mock_send_confirmation, mock_request_post, app, load_register_page
+):
     """
     GIVEN a user trying to register via the register page
     WHEN they register and click on the link received in their email
     THEN ensure their email is validated and they are logged in and token to the home page
     """
+    # Register now sends the confirmation email server-side through the same
+    # global requests.post mailjet uses; stub that send so the welcome
+    # notification dispatched on validation is the only requests.post counted.
+    ok_response = Response()
+    ok_response.status_code = 200
+    mock_send_confirmation.return_value = ok_response
+
     notification_sent = threading.Event()
 
     def mock_post_with_event(*args, **kwargs):
@@ -240,7 +280,9 @@ def test_token_validates_user(mock_request_post, app, load_register_page):
 
 
 @mock.patch("backend.extensions.notifications.notifications.requests.post")
+@mock.patch.object(EmailSender, "send_account_email_confirmation")
 def test_token_validates_user_records_email_verified_metric(
+    mock_send_confirmation,
     mock_request_post,
     metrics_enabled_app,
     provide_metrics_redis,
@@ -253,6 +295,12 @@ def test_token_validates_user_records_email_verified_metric(
     THEN the email is validated AND exactly one EMAIL_VERIFIED counter key
         is written to the metrics Redis DB.
     """
+    # Isolate the register-time server-side confirmation send from the global
+    # requests.post the welcome notification uses (see test_token_validates_user).
+    ok_response = Response()
+    ok_response.status_code = 200
+    mock_send_confirmation.return_value = ok_response
+
     notification_sent = threading.Event()
 
     def mock_post_with_event(*args, **kwargs):
@@ -352,11 +400,7 @@ def test_success_on_send_of_email(app, load_register_page):
     """
     client, csrf_token = load_register_page
 
-    client.post(
-        url_for(ROUTES.SPLASH.REGISTER),
-        json=register_json(valid_user_1),
-        headers={"X-CSRFToken": csrf_token},
-    )
+    _register_and_login_unvalidated(client, csrf_token)
     send_email_response = client.post(
         url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
         headers={"X-CSRFToken": csrf_token},
@@ -383,11 +427,7 @@ def test_min_rate_limiting_of_sending_email(app, load_register_page):
     """
     client, csrf_token = load_register_page
 
-    client.post(
-        url_for(ROUTES.SPLASH.REGISTER),
-        json=register_json(valid_user_1),
-        headers={"X-CSRFToken": csrf_token},
-    )
+    _register_and_login_unvalidated(client, csrf_token)
     client.post(
         url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
         headers={"X-CSRFToken": csrf_token},
@@ -427,11 +467,7 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
     """
     client, csrf_token = load_register_page
 
-    client.post(
-        url_for(ROUTES.SPLASH.REGISTER),
-        json=register_json(valid_user_1),
-        headers={"X-CSRFToken": csrf_token},
-    )
+    _register_and_login_unvalidated(client, csrf_token)
 
     with app.app_context():
         user: Users = Users.query.filter(
@@ -464,12 +500,9 @@ def test_send_validation_email_response_conforms_to_schema(app, load_register_pa
     """
     client, csrf_token = load_register_page
 
-    # Register the user (leaves them logged in but not email-validated)
-    client.post(
-        url_for(ROUTES.SPLASH.REGISTER),
-        json=register_json(valid_user_1),
-        headers={"X-CSRFToken": csrf_token},
-    )
+    # Register + log in (register no longer logs the user in; login logs an
+    # unvalidated user in so they can request a resend)
+    _register_and_login_unvalidated(client, csrf_token)
 
     # Request validation email
     send_email_response = client.post(

@@ -42,6 +42,7 @@ from backend.utils.strings.url_strs import (
 )
 from backend.utils.strings.user_settings_strs import USER_SETTINGS_STRINGS
 from backend.utils.strings.user_strs import (
+    CONFIRM_EMAIL_SENT,
     COOKIE_BANNER_SEEN,
     MEMBER_SEARCH_NO_RESULTS,
 )
@@ -131,6 +132,8 @@ class UI_TEST_STRINGS:
     # Register
     PASSWORD_EQUALITY_FAILED = "Passwords are not identical."
     EMAIL_EQUALITY_FAILED = "Emails do not match."
+    # Post-register confirmation banner — locked to the backend source constant.
+    REGISTER_CONFIRM_EMAIL_SENT = CONFIRM_EMAIL_SENT
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"

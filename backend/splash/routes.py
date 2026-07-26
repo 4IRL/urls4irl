@@ -22,7 +22,11 @@ from backend.app_logger import (
 )
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
-from backend.schemas.base import EmptyRedirectSchema, HtmlErrorPageSchema
+from backend.schemas.base import (
+    EmptyRedirectSchema,
+    HtmlErrorPageSchema,
+    StatusMessageResponseSchema,
+)
 from backend.schemas.errors import ErrorResponse
 from backend.schemas.requests.splash import (
     ConfirmLinkRequest,
@@ -31,6 +35,7 @@ from backend.schemas.requests.splash import (
     GoogleOAuthCallbackQuerySchema,
     LoginRequest,
     RegisterRequest,
+    ResendRegistrationEmailRequest,
     ResetPasswordRequest,
 )
 from backend.schemas.users import (
@@ -72,6 +77,7 @@ from backend.splash.services.user_registration import (
     register_new_user,
 )
 from backend.splash.services.validate_email import (
+    send_resend_registration_email,
     send_validation_email_to_user,
     validate_email_for_user,
 )
@@ -121,7 +127,7 @@ def splash_page() -> WerkzeugResponse | str:
     ajax_required=False,
     tags=[OPEN_API.AUTH],
     description="Register a new user account",
-    status_codes={201: RegisterResponseSchema, 400: ErrorResponse, 401: ErrorResponse},
+    status_codes={200: RegisterResponseSchema, 400: ErrorResponse},
 )
 def register_user(register_request: RegisterRequest) -> FlaskResponse:
     """Handles registration form submission."""
@@ -179,6 +185,24 @@ def confirm_email_after_register() -> WerkzeugResponse:
 )
 def send_validation_email() -> WerkzeugResponse | FlaskResponse:
     return send_validation_email_to_user()
+
+
+@splash.route("/resend-registration-email", methods=["POST"])
+@no_authenticated_users_allowed
+@api_route(
+    request_schema=ResendRegistrationEmailRequest,
+    response_schema=StatusMessageResponseSchema,
+    error_message=USER_FAILURE.UNABLE_TO_REGISTER,
+    error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
+    ajax_required=False,
+    tags=[OPEN_API.AUTH],
+    description="Resend the account-confirmation email for a pending registration (opaque)",
+    status_codes={200: StatusMessageResponseSchema, 400: ErrorResponse},
+)
+def resend_registration_email(
+    resend_registration_email_request: ResendRegistrationEmailRequest,
+) -> FlaskResponse:
+    return send_resend_registration_email(resend_registration_email_request.email)
 
 
 @splash.route("/validate/expired", methods=["GET"])

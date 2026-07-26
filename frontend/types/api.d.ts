@@ -1011,6 +1011,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/resend-registration-email": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** @description Resend the account-confirmation email for a pending registration (opaque) */
+    post: operations["resendRegistrationEmail"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/forgot-password": {
     parameters: {
       query?: never;
@@ -2487,7 +2504,7 @@ export interface components {
      * @description Error codes for RegisterErrorCodes
      * @enum {integer}
      */
-    RegisterErrorCodes: 1 | 2;
+    RegisterErrorCodes: 2;
     LoginRequest: {
       /**
        * @description Username for login
@@ -2518,6 +2535,14 @@ export interface components {
       status: "Success" | "Failure" | "No change";
       /** @description Human-readable response message */
       message: string;
+    };
+    ResendRegistrationEmailRequest: {
+      /**
+       * Format: email
+       * @description Email address of the pending registration to resend confirmation for
+       * @example user@example.com
+       */
+      email: string;
     };
     ForgotPasswordRequest: {
       /**
@@ -6290,7 +6315,7 @@ export interface operations {
     };
     responses: {
       /** @description Register */
-      201: {
+      200: {
         headers: {
           [name: string]: unknown;
         };
@@ -6305,15 +6330,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse_RegisterErrorCodes"];
-        };
-      };
-      /** @description Unauthorized */
-      401: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["ErrorResponse"];
         };
       };
     };
@@ -6404,6 +6420,39 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorResponse"];
+        };
+      };
+    };
+  };
+  resendRegistrationEmail: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ResendRegistrationEmailRequest"];
+      };
+    };
+    responses: {
+      /** @description Status and message response */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["StatusMessageResponseSchema"];
+        };
+      };
+      /** @description Bad request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorResponse_RegisterErrorCodes"];
         };
       };
     };

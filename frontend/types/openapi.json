@@ -5543,7 +5543,7 @@
           }
         },
         "responses": {
-          "201": {
+          "200": {
             "description": "Register",
             "content": {
               "application/json": {
@@ -5559,16 +5559,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse_RegisterErrorCodes"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
                 }
               }
             }
@@ -5696,6 +5686,54 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/resend-registration-email": {
+      "post": {
+        "operationId": "resendRegistrationEmail",
+        "tags": ["auth"],
+        "security": [
+          {
+            "csrfToken": []
+          }
+        ],
+        "description": "Resend the account-confirmation email for a pending registration (opaque)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendRegistrationEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status and message response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatusMessageResponseSchema"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse_RegisterErrorCodes"
+                }
+              }
+            }
+          }
+        },
+        "x-error-codes": {
+          "RegisterErrorCodes": {
+            "$ref": "#/components/schemas/RegisterErrorCodes"
           }
         }
       }
@@ -9674,11 +9712,8 @@
       },
       "RegisterErrorCodes": {
         "type": "integer",
-        "enum": [1, 2],
-        "x-enum-varnames": [
-          "ACCOUNT_NOT_EMAIL_VALIDATED",
-          "INVALID_FORM_INPUT"
-        ],
+        "enum": [2],
+        "x-enum-varnames": ["INVALID_FORM_INPUT"],
         "description": "Error codes for RegisterErrorCodes"
       },
       "LoginRequest": {
@@ -9748,6 +9783,18 @@
           }
         },
         "required": ["status", "message"],
+        "type": "object"
+      },
+      "ResendRegistrationEmailRequest": {
+        "properties": {
+          "email": {
+            "description": "Email address of the pending registration to resend confirmation for",
+            "examples": ["user@example.com"],
+            "format": "email",
+            "type": "string"
+          }
+        },
+        "required": ["email"],
         "type": "object"
       },
       "ForgotPasswordRequest": {

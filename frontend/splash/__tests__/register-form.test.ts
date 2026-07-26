@@ -2,6 +2,7 @@ import { UI_EVENTS } from "../../types/metrics-events.js";
 import { createMockJqXHR } from "../../__tests__/helpers/mock-jquery.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
 import { initRegisterForm } from "../register-form.js";
+import { switchModal, showSplashModalAlertBanner } from "../init.js";
 import { VALIDATION_FORM } from "../../types/metrics-dim-values.js";
 
 const { mockMetricsClient } = await vi.hoisted(
@@ -18,9 +19,7 @@ vi.mock("../init.js", () => ({
   showSplashModalAlertBanner: vi.fn(),
   resetModalFormState: vi.fn(),
   handleImproperFormErrors: vi.fn(),
-  handleUserHasAccountNotEmailValidated: vi.fn(),
   switchModal: vi.fn(),
-  emailValidationModalOpener: vi.fn(),
 }));
 
 vi.mock("../../lib/globals.js", () => ({
@@ -201,31 +200,6 @@ describe("register-form double-submit guard", () => {
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
   });
 
-  it("leaves #submit disabled (and aria-busy) on 401 errorCode=1", () => {
-    const mockDeferred = createMockJqXHR();
-    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
-
-    const $modal = $("#RegisterModal");
-    initRegisterForm($modal);
-    $modal.find("#submit").trigger("click");
-
-    // disabled-leftover is intentional: handleUserHasAccountNotEmailValidated
-    // removes .modal-footer so re-enable in case 401 would be a silent no-op
-    // (jQuery set is empty); aria-busy is similarly left set.
-    mockDeferred.reject(
-      {
-        status: 401,
-        responseJSON: { errorCode: 1, message: "Email not validated" },
-        getResponseHeader: vi.fn(),
-      },
-      "error",
-      "Unauthorized",
-    );
-
-    expect($modal.find("#submit").attr("disabled")).toBe("disabled");
-    expect($modal.find("#submit").attr("aria-busy")).toBe("true");
-  });
-
   it("re-enables #submit when failure JSON has no errorCode", () => {
     const mockDeferred = createMockJqXHR();
     vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
@@ -247,5 +221,81 @@ describe("register-form double-submit guard", () => {
 
     expect($modal.find("#submit").attr("disabled")).toBeUndefined();
     expect($modal.find("#submit").attr("aria-busy")).toBeUndefined();
+  });
+});
+
+const REGISTER_WITH_CONFIRMATION_HTML = `
+  <div class="modal fade" id="RegisterModal">
+    <div id="ToLoginFromRegister"></div>
+    <input id="username" class="form-control" value="testuser" />
+    <input id="email" class="form-control" value="test@test.com" />
+    <input id="confirmEmail" class="form-control" value="test@test.com" />
+    <input id="password" class="form-control" value="testpass" />
+    <input id="confirmPassword" class="form-control" value="testpass" />
+    <button id="submit" type="submit"></button>
+  </div>
+  <div class="modal fade" id="RegisterConfirmationModal">
+    <div id="SplashModalAlertBanner" class="alert" role="alert"></div>
+    <a id="ResendRegistrationEmail" href="#"></a>
+    <button id="BackToLoginFromConfirmation"></button>
+  </div>
+`;
+
+describe("register-form success → confirmation modal", () => {
+  beforeEach(() => {
+    document.body.innerHTML = REGISTER_WITH_CONFIRMATION_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function submitAndResolve(message: string): JQuery {
+    const mockDeferred = createMockJqXHR();
+    vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $modal = $("#RegisterModal");
+    initRegisterForm($modal);
+    $modal.find("#submit").trigger("click");
+
+    mockDeferred.resolve({ status: "Success", message }, "success", {
+      status: 200,
+    });
+    return $modal;
+  }
+
+  it("switches to #RegisterConfirmationModal on 200 success (not EmailValidationModal)", () => {
+    const $modal = submitAndResolve("Almost there");
+
+    expect(switchModal).toHaveBeenCalledWith(
+      $modal,
+      "#RegisterConfirmationModal",
+    );
+    // Only the register POST fired — no auto /send-validation-email request
+    expect($.ajax).toHaveBeenCalledTimes(1);
+  });
+
+  it("announces the success banner only on shown.bs.modal", () => {
+    submitAndResolve("Almost there — check your email");
+
+    // Deferred to shown.bs.modal so the live role=alert region is already visible
+    expect(showSplashModalAlertBanner).not.toHaveBeenCalled();
+
+    $("#RegisterConfirmationModal").trigger("shown.bs.modal");
+
+    expect(showSplashModalAlertBanner).toHaveBeenCalledWith(
+      expect.anything(),
+      "Almost there — check your email",
+      "success",
+    );
+  });
+
+  it("stashes the submitted email + confirmation message on the confirmation modal", () => {
+    submitAndResolve("msg");
+
+    const $confirmation = $("#RegisterConfirmationModal");
+    expect($confirmation.data("registerEmail")).toBe("test@test.com");
+    expect($confirmation.data("confirmMessage")).toBe("msg");
   });
 });
